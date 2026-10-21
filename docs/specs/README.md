@@ -35,5 +35,6 @@ Every substantive spec should contain: purpose, scope, terminology, invariants, 
 - `SPEC-0009`: security and capability model
 - `SPEC-0010`: implementation roadmap/checkpoints
 - `SPEC-0011`: plugin authoring experience and lightweight scripting direction
+- `SPEC-0012`: dependency-light semantic coordinates, IDs, revision, time, and orientation
 
 For execution-sized tasks and dependency ordering, see `docs/plan/MASTER_PLAN.md`.
