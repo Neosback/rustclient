@@ -2,6 +2,7 @@ use core::fmt;
 
 use rustclient_model::TickSpan;
 
+use crate::commit::{OperationCommit, SemanticEvent, StateDelta};
 use crate::state::{GameState, LifecycleError, TickAdvanceError};
 
 /// Source-neutral semantic operation applied to the authoritative [`GameState`].
@@ -92,46 +93,98 @@ impl GameState {
     /// This is the public mutation gateway for semantic inputs. The dispatcher
     /// deliberately delegates to the crate's validated transition primitives so
     /// lifecycle/time rules have one implementation rather than being repeated.
+    /// A successful return describes only facts and state domains that actually
+    /// changed as a consequence of the committed mutation.
     ///
     /// # Errors
     ///
     /// Returns [`OperationError`] when the requested operation is invalid for
-    /// the current state. Failed operations leave authoritative state unchanged.
-    pub fn apply_operation(&mut self, operation: SemanticOperation) -> Result<(), OperationError> {
+    /// the current state. Failed operations leave authoritative state unchanged
+    /// and therefore produce no [`OperationCommit`].
+    pub fn apply_operation(
+        &mut self,
+        operation: SemanticOperation,
+    ) -> Result<OperationCommit, OperationError> {
         match operation {
             SemanticOperation::BeginSession => {
-                self.begin_session().map_err(OperationError::Lifecycle)
+                self.begin_session().map_err(OperationError::Lifecycle)?;
+                Ok(OperationCommit::new(
+                    Some(SemanticEvent::SessionBegan),
+                    StateDelta::SESSION_BOUNDARY,
+                ))
             }
-            SemanticOperation::EndSession => self.end_session().map_err(OperationError::Lifecycle),
-            SemanticOperation::AdvanceTick(span) => self
-                .advance_tick(span)
-                .map(|_| ())
-                .map_err(OperationError::TickAdvance),
+            SemanticOperation::EndSession => {
+                self.end_session().map_err(OperationError::Lifecycle)?;
+                Ok(OperationCommit::new(
+                    Some(SemanticEvent::SessionEnded),
+                    StateDelta::SESSION_BOUNDARY,
+                ))
+            }
+            SemanticOperation::AdvanceTick(span) => {
+                let (previous, current) = self
+                    .advance_tick(span)
+                    .map_err(OperationError::TickAdvance)?;
+
+                if previous == current {
+                    Ok(OperationCommit::new(None, StateDelta::default()))
+                } else {
+                    Ok(OperationCommit::new(
+                        Some(SemanticEvent::GameTickAdvanced { previous, current }),
+                        StateDelta::GAME_TICK,
+                    ))
+                }
+            }
         }
     }
 
     /// Apply an ordered batch of semantic operations from first to last.
     ///
-    /// Batches are intentionally not transactional. Each successful operation
-    /// commits before the next operation begins. Processing stops at the first
-    /// failure, preserves that successful prefix, and does not attempt the
-    /// remaining suffix. An empty batch is a valid no-op.
+    /// This convenience path preserves CP3D batch semantics while intentionally
+    /// discarding commit metadata. Consumers that need committed events/deltas
+    /// should call [`Self::apply_operation_batch_with_commits`].
     ///
     /// # Errors
     ///
-    /// Returns [`OperationBatchError`] containing the first failing operation's
-    /// zero-based index and typed [`OperationError`]. The failing operation itself
-    /// leaves authoritative state unchanged.
+    /// Returns [`OperationBatchError`] for the first failing operation. Earlier
+    /// successful prefix mutations remain committed and later operations are not
+    /// attempted.
     pub fn apply_operation_batch(
         &mut self,
         operations: &[SemanticOperation],
     ) -> Result<(), OperationBatchError> {
+        self.apply_operation_batch_with_commits(operations, |_, _| {})
+    }
+
+    /// Apply an ordered batch and stream each successful commit in input order.
+    ///
+    /// `on_commit` runs immediately after each operation commits and receives
+    /// that operation's zero-based input index plus its [`OperationCommit`]. No
+    /// callback occurs for a failing operation or for any skipped suffix.
+    /// This keeps batch application allocation-free while exposing exact commit
+    /// order to future projection/replay consumers.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`OperationBatchError`] containing the first failing operation's
+    /// zero-based index and typed [`OperationError`]. Successful prefix commits
+    /// have already been delivered to `on_commit` and remain authoritative.
+    pub fn apply_operation_batch_with_commits<F>(
+        &mut self,
+        operations: &[SemanticOperation],
+        mut on_commit: F,
+    ) -> Result<(), OperationBatchError>
+    where
+        F: FnMut(usize, OperationCommit),
+    {
         for (index, operation) in operations.iter().copied().enumerate() {
-            if let Err(error) = self.apply_operation(operation) {
-                return Err(OperationBatchError {
-                    failed_index: index,
-                    error,
-                });
+            match self.apply_operation(operation) {
+                Ok(commit) => on_commit(index, commit),
+                Err(error) => {
+                    return Err(OperationBatchError {
+                        failed_index: index,
+                        error,
+                    });
+                }
             }
         }
 
@@ -165,6 +218,54 @@ mod tests {
             .expect("active state can end a session");
         assert_eq!(state.lifecycle(), SessionLifecycle::Inactive);
         assert_eq!(state.current_tick(), None);
+    }
+
+    #[test]
+    fn operation_commit_describes_only_committed_changes() {
+        let mut state = GameState::new();
+
+        let begin = state
+            .apply_operation(SemanticOperation::BeginSession)
+            .expect("inactive state can begin a session");
+        assert_eq!(begin.event(), Some(SemanticEvent::SessionBegan));
+        assert!(begin.delta().lifecycle_changed());
+        assert!(begin.delta().game_tick_changed());
+
+        let advance = state
+            .apply_operation(SemanticOperation::AdvanceTick(TickSpan::new(3)))
+            .expect("small tick advance cannot overflow");
+        assert_eq!(
+            advance.event(),
+            Some(SemanticEvent::GameTickAdvanced {
+                previous: GameTick::ZERO,
+                current: GameTick::new(3),
+            })
+        );
+        assert!(!advance.delta().lifecycle_changed());
+        assert!(advance.delta().game_tick_changed());
+
+        let end = state
+            .apply_operation(SemanticOperation::EndSession)
+            .expect("active state can end a session");
+        assert_eq!(end.event(), Some(SemanticEvent::SessionEnded));
+        assert!(end.delta().lifecycle_changed());
+        assert!(end.delta().game_tick_changed());
+    }
+
+    #[test]
+    fn zero_tick_span_commits_without_claiming_an_observable_change() {
+        let mut state = GameState::new();
+        state
+            .apply_operation(SemanticOperation::BeginSession)
+            .expect("inactive state can begin a session");
+
+        let commit = state
+            .apply_operation(SemanticOperation::AdvanceTick(TickSpan::ZERO))
+            .expect("zero tick span is valid");
+
+        assert_eq!(commit.event(), None);
+        assert!(commit.delta().is_empty());
+        assert_eq!(state.current_tick(), Some(GameTick::ZERO));
     }
 
     #[test]
@@ -216,11 +317,10 @@ mod tests {
         let mut right = GameState::new();
 
         for operation in operations {
-            left.apply_operation(operation)
-                .expect("reference operation sequence is valid");
-            right
-                .apply_operation(operation)
-                .expect("same operation sequence is valid");
+            assert_eq!(
+                left.apply_operation(operation),
+                right.apply_operation(operation)
+            );
         }
 
         assert_eq!(left.lifecycle(), right.lifecycle());
@@ -265,6 +365,39 @@ mod tests {
         assert_eq!(
             error.operation_error(),
             OperationError::Lifecycle(LifecycleError::AlreadyActive)
+        );
+        assert_eq!(state.lifecycle(), SessionLifecycle::Active);
+        assert_eq!(state.current_tick(), Some(GameTick::new(2)));
+    }
+
+    #[test]
+    fn batch_commit_stream_matches_successful_prefix_only() {
+        let operations = [
+            SemanticOperation::BeginSession,
+            SemanticOperation::AdvanceTick(TickSpan::new(2)),
+            SemanticOperation::BeginSession,
+            SemanticOperation::EndSession,
+        ];
+        let mut state = GameState::new();
+        let mut commits = Vec::new();
+
+        let error = state
+            .apply_operation_batch_with_commits(&operations, |index, commit| {
+                commits.push((index, commit));
+            })
+            .expect_err("second begin-session must fail");
+
+        assert_eq!(error.failed_index(), 2);
+        assert_eq!(commits.len(), 2);
+        assert_eq!(commits[0].0, 0);
+        assert_eq!(commits[0].1.event(), Some(SemanticEvent::SessionBegan));
+        assert_eq!(commits[1].0, 1);
+        assert_eq!(
+            commits[1].1.event(),
+            Some(SemanticEvent::GameTickAdvanced {
+                previous: GameTick::ZERO,
+                current: GameTick::new(2),
+            })
         );
         assert_eq!(state.lifecycle(), SessionLifecycle::Active);
         assert_eq!(state.current_tick(), Some(GameTick::new(2)));

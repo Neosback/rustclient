@@ -129,26 +129,30 @@ impl GameState {
 
     /// Advance deterministic semantic time by an explicit tick span.
     ///
-    /// This transition primitive performs validation before mutation and commits
-    /// the new tick only on success. Public semantic inputs reach it through the
-    /// operation gateway rather than bypassing operation typing.
+    /// This transition primitive performs validation before mutation and returns
+    /// both the previous and committed tick so event generation can describe the
+    /// exact fact without reimplementing transition rules.
     ///
     /// # Errors
     ///
     /// Returns [`TickAdvanceError::InactiveSession`] when no session is active,
     /// or [`TickAdvanceError::Overflow`] when the tick ordinal would overflow.
     /// Failed transitions leave the state unchanged.
-    pub(crate) fn advance_tick(&mut self, span: TickSpan) -> Result<GameTick, TickAdvanceError> {
+    pub(crate) fn advance_tick(
+        &mut self,
+        span: TickSpan,
+    ) -> Result<(GameTick, GameTick), TickAdvanceError> {
         if self.lifecycle == SessionLifecycle::Inactive {
             return Err(TickAdvanceError::InactiveSession);
         }
 
-        let Some(next_tick) = self.tick.checked_advance(span) else {
+        let previous = self.tick;
+        let Some(next_tick) = previous.checked_advance(span) else {
             return Err(TickAdvanceError::Overflow);
         };
 
         self.tick = next_tick;
-        Ok(next_tick)
+        Ok((previous, next_tick))
     }
 }
 
@@ -208,7 +212,10 @@ mod tests {
             .begin_session()
             .expect("inactive state can begin a session");
 
-        assert_eq!(state.advance_tick(TickSpan::new(5)), Ok(GameTick::new(5)));
+        assert_eq!(
+            state.advance_tick(TickSpan::new(5)),
+            Ok((GameTick::ZERO, GameTick::new(5)))
+        );
         assert_eq!(state.current_tick(), Some(GameTick::new(5)));
 
         state.tick = GameTick::new(u64::MAX);
