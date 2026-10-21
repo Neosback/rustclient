@@ -98,7 +98,7 @@ impl GameState {
     ///
     /// Returns [`LifecycleError::AlreadyActive`] when a session is already
     /// active. Failed transitions leave the state unchanged.
-    pub fn begin_session(&mut self) -> Result<(), LifecycleError> {
+    pub(crate) fn begin_session(&mut self) -> Result<(), LifecycleError> {
         if self.lifecycle == SessionLifecycle::Active {
             return Err(LifecycleError::AlreadyActive);
         }
@@ -117,7 +117,7 @@ impl GameState {
     ///
     /// Returns [`LifecycleError::NotActive`] when no session is active. Failed
     /// transitions leave the state unchanged.
-    pub fn end_session(&mut self) -> Result<(), LifecycleError> {
+    pub(crate) fn end_session(&mut self) -> Result<(), LifecycleError> {
         if self.lifecycle == SessionLifecycle::Inactive {
             return Err(LifecycleError::NotActive);
         }
@@ -129,15 +129,16 @@ impl GameState {
 
     /// Advance deterministic semantic time by an explicit tick span.
     ///
-    /// This is the first concrete `GameState` transition boundary. It performs
-    /// validation before mutation and commits the new tick only on success.
+    /// This transition primitive performs validation before mutation and commits
+    /// the new tick only on success. Public semantic inputs reach it through the
+    /// operation gateway rather than bypassing operation typing.
     ///
     /// # Errors
     ///
     /// Returns [`TickAdvanceError::InactiveSession`] when no session is active,
     /// or [`TickAdvanceError::Overflow`] when the tick ordinal would overflow.
     /// Failed transitions leave the state unchanged.
-    pub fn advance_tick(&mut self, span: TickSpan) -> Result<GameTick, TickAdvanceError> {
+    pub(crate) fn advance_tick(&mut self, span: TickSpan) -> Result<GameTick, TickAdvanceError> {
         if self.lifecycle == SessionLifecycle::Inactive {
             return Err(TickAdvanceError::InactiveSession);
         }
