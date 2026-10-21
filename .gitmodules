@@ -1,0 +1,4 @@
+[submodule "references/rustosrs"]
+	path = references/rustosrs
+	url = https://github.com/Neosback/RustOSRS
+	branch = main
