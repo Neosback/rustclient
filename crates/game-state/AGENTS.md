@@ -17,6 +17,11 @@ This crate owns authoritative live semantic state and validated transitions.
 - Batch processing stops at the first failure; the failing operation leaves state unchanged and the remaining suffix is not attempted.
 - Batch errors must identify the first failing zero-based operation index and preserve the typed `OperationError`.
 - `apply_operation_batch_with_commits` streams successful commit metadata in exact input order without requiring a per-batch allocation.
+- `ReplayEnvelope` pairs a semantic operation with the `OperationCommit` recorded when that operation originally succeeded; it is not yet a serialized replay-file contract.
+- Replay must call the normal `apply_operation` gateway. Never add a replay-only mutation path or duplicate transition logic.
+- Replay verifies exact `OperationCommit` equality and stops at the first rejected operation or commit mismatch.
+- Replay callbacks receive only commits that have matched the recorded commit exactly.
+- A replay commit mismatch is detected after the operation commits; callers must discard that replay state after mismatch rather than attempting rollback or continuation.
 - Semantic game ticks are session-owned state and advance only through explicit checked transitions.
 - Failed transitions and failed operations must leave authoritative state unchanged.
 - Events describe committed facts; commands/operations request changes.

@@ -100,8 +100,6 @@ Operation batches are therefore **not transactional** and are not rolled back on
 
 `GameState::apply_operation_batch_with_commits` preserves the same mutation/failure semantics but additionally invokes a caller-provided callback immediately after each successful commit. The callback receives the operation's zero-based batch index and its `OperationCommit` in exact input order. No callback occurs for the failed operation or skipped suffix. This exposes deterministic commit order without requiring `game-state` to allocate a `Vec` per batch.
 
-CP3E intentionally does not define a persistent event queue, replay envelope, provenance metadata, renderer projection integration, plugin delivery, or domain operations beyond lifecycle/time.
-
 ## Input batches
 
 A logical frame/tick may eventually combine operations translated from multiple sources such as:
@@ -112,7 +110,7 @@ A logical frame/tick may eventually combine operations translated from multiple 
 4. timers/scheduled work,
 5. lifecycle operations.
 
-CP3D/CP3E define ordering and commit semantics *after* a concrete ordered slice has been assembled. Policy for merging multiple source queues into that ordered slice remains an application/runtime concern to specify when those producers exist. Parallel preparation may never alter the final committed order.
+CP3D through CP3F define ordering, commit, and semantic replay behavior *after* a concrete ordered operation sequence has been assembled. Policy for merging multiple source queues into that ordered sequence remains an application/runtime concern to specify when those producers exist. Parallel preparation may never alter the final committed order.
 
 ## Events
 
@@ -130,9 +128,34 @@ A `StateDelta` is an efficient description of what changed. Renderer/UI may use 
 
 ## Replay
 
-The replay format will record enough information to reproduce semantic state transitions without a live server. Initial target: protocol-decoded operation batches + local input + deterministic clocks/random seeds + profile metadata.
+CP3F defines the first executable semantic replay boundary.
 
-Raw packet capture may be an optional diagnostic stream, not the canonical replay contract.
+`ReplayEnvelope` pairs:
+
+- one source-neutral `SemanticOperation`, and
+- the exact `OperationCommit` that was recorded when that operation originally succeeded.
+
+The envelope is currently an **in-memory semantic contract**, not a stable on-disk or wire format. It deliberately contains no byte serialization, version header, compression, packet capture, wall-clock timestamp, protocol opcode, platform handle, or renderer/plugin data.
+
+`GameState::replay_envelopes` and `replay_envelopes_with_commits` replay envelopes in exact slice order. Replay always calls the normal `GameState::apply_operation` mutation gateway; there is no replay-only state mutation path.
+
+For each envelope:
+
+1. replay applies the recorded semantic operation,
+2. a rejected operation stops replay at that exact zero-based index with the original typed `OperationError`,
+3. if the operation succeeds, replay compares the newly produced `OperationCommit` with the recorded commit using exact equality,
+4. a commit mismatch stops replay at that exact index and reports both expected and actual commit metadata,
+5. verified-commit callbacks run only after the actual commit matches the recording exactly,
+6. later envelopes are never attempted after a rejection or mismatch,
+7. an empty replay sequence is a valid no-op.
+
+A replay rejection leaves the rejected operation uncommitted, following normal operation semantics. A commit mismatch is different: the mismatch can only be known after the operation has successfully committed and produced its actual metadata. Therefore replay state after a commit mismatch is invalid for continued use and must be discarded rather than rolled back or resumed.
+
+This design intentionally avoids cloning the authoritative state tree or introducing rollback authority solely for replay verification.
+
+Current CP3F replay is sufficient to prove that the modeled semantic operation stream can reconstruct equivalent modeled semantic state without network or GPU access. It does **not** yet define the persistent replay-file format required for full client sessions. Future replay checkpoints must add, as separate concerns, the initial profile/revision identity, deterministic random inputs/seeds when those exist, source/provenance metadata where needed, persistent encoding/versioning, and integration with additional semantic domains.
+
+Raw packet capture may be an optional diagnostic stream later, but it is not the canonical semantic replay contract.
 
 ## Determinism
 
@@ -142,6 +165,8 @@ Raw packet capture may be an optional diagnostic stream, not the canonical repla
 - Parallel preparation may not change committed operation order.
 - Identical initial state plus an identical valid operation sequence must produce identical observable state and commit metadata.
 - Identical initial state plus an identical operation batch must produce the same successful prefix, commit metadata order, first failure index/error, and final observable state.
+- Replaying an identical `ReplayEnvelope` sequence from equivalent initial semantic state must reproduce the recorded `OperationCommit` sequence exactly.
+- Replay divergence must stop at the first exact envelope index where an operation is rejected or commit metadata differs.
 
 ## Acceptance criteria
 
@@ -150,5 +175,7 @@ Raw packet capture may be an optional diagnostic stream, not the canonical repla
 - Batch tests prove exact ordering, partial-commit semantics, first-failure reporting, suffix suppression, and successful-prefix commit delivery.
 - Successful mutations expose committed event/delta metadata; failed operations expose none.
 - A successful semantic no-op produces no event and an empty `StateDelta`.
+- Replay tests can record semantic operation/commit envelopes, replay them into equivalent initial state without network/GPU access, and reconstruct equivalent modeled semantic state.
+- Replay tests detect the first rejected operation and first commit mismatch at the exact envelope index.
+- Replay consumers receive callbacks only for commits that exactly match their recorded envelope.
 - Projection rebuild equals incremental projection in reference tests once projections exist.
-- Replay can drive the client without network I/O once implemented.
