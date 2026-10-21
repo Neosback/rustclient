@@ -130,6 +130,12 @@ pub struct SurfaceRenderer {
 
 impl SurfaceRenderer {
     /// Initialize one renderer from any target accepted by `wgpu`.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`RendererInitError`] if surface creation fails, no compatible
+    /// adapter can be acquired, device creation fails, or the surface exposes no
+    /// usable texture format.
     pub async fn new<T>(target: T, size: SurfaceSize) -> Result<Self, RendererInitError>
     where
         T: Into<wgpu::SurfaceTarget<'static>>,
@@ -202,6 +208,12 @@ impl SurfaceRenderer {
     /// `before_present` lets a window-system adapter perform its required
     /// pre-present notification without making the renderer depend on that
     /// windowing library.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`RenderError::Validation`] when `wgpu` reports a validation
+    /// failure while acquiring the next surface texture. Recoverable surface
+    /// state changes are reported through [`FrameOutcome`] instead.
     pub fn render_clear<F>(
         &mut self,
         color: ClearColor,
