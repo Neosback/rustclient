@@ -12,6 +12,19 @@ Make runtime behavior deterministic enough to debug, replay, test plugins, and s
 
 State is changed through explicit operations. Systems must not retain mutable aliases into state across a transition boundary.
 
+### Root ownership constraints
+
+The authoritative root is deliberately difficult to duplicate or bypass:
+
+- `GameState` does not implement `Clone`.
+- Domain fields are private to `game-state`.
+- External crates receive immutable queries/snapshots rather than mutable field references.
+- Session lifecycle changes pass through explicit validated transitions.
+- Starting a session initializes session-owned state; ending it clears session-owned state before another session may begin.
+- An invalid lifecycle transition leaves state unchanged.
+
+These constraints apply before the richer operation/event model is implemented and remain invariants afterward.
+
 ## Input batches
 
 A logical frame/tick may contain:
