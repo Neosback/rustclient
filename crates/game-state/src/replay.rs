@@ -289,10 +289,7 @@ mod tests {
 
     #[test]
     fn replay_preserves_semantic_no_op_commit_metadata() {
-        let operations = [
-            BEGIN_240,
-            SemanticOperation::AdvanceTick(TickSpan::ZERO),
-        ];
+        let operations = [BEGIN_240, SemanticOperation::AdvanceTick(TickSpan::ZERO)];
         let (_, envelopes) = record_operations(&operations);
         let mut replayed_state = GameState::new();
         let mut verified = Vec::new();
@@ -324,10 +321,7 @@ mod tests {
 
     #[test]
     fn replay_envelope_preserves_recorded_event_payload() {
-        let operations = [
-            BEGIN_240,
-            SemanticOperation::AdvanceTick(TickSpan::new(4)),
-        ];
+        let operations = [BEGIN_240, SemanticOperation::AdvanceTick(TickSpan::new(4))];
         let (_, envelopes) = record_operations(&operations);
 
         assert_eq!(
