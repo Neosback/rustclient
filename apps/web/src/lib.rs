@@ -39,7 +39,7 @@ mod browser {
                 if shared.initializing_renderer || shared.renderer.is_some() {
                     return;
                 }
-                let Some(window) = shared.window.as_ref().cloned() else {
+                let Some(window) = shared.window.clone() else {
                     return;
                 };
                 shared.initializing_renderer = true;
@@ -102,7 +102,7 @@ mod browser {
             window_id: WindowId,
             event: WindowEvent,
         ) {
-            let Some(window) = self.shared.borrow().window.as_ref().cloned() else {
+            let Some(window) = self.shared.borrow().window.clone() else {
                 return;
             };
             if window.id() != window_id {
