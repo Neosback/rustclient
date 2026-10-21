@@ -61,8 +61,14 @@ semantic_id!(InterfaceId, "Top-level interface identity.");
 semantic_id!(ScriptId, "Client-script identity.");
 semantic_id!(RegionId, "Cache/map-region identity.");
 
-semantic_id!(PlayerIndex, "Runtime player slot/index, not a definition ID.");
-semantic_id!(NpcIndex, "Runtime NPC slot/index, not an NPC definition ID.");
+semantic_id!(
+    PlayerIndex,
+    "Runtime player slot/index, not a definition ID."
+);
+semantic_id!(
+    NpcIndex,
+    "Runtime NPC slot/index, not an NPC definition ID."
+);
 
 #[cfg(test)]
 mod tests {

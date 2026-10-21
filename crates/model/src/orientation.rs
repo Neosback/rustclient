@@ -18,11 +18,7 @@ impl LocOrientation {
     /// Construct a validated location orientation.
     #[must_use]
     pub const fn new(value: u8) -> Option<Self> {
-        if value <= 3 {
-            Some(Self(value))
-        } else {
-            None
-        }
+        if value <= 3 { Some(Self(value)) } else { None }
     }
 
     /// Return the encoded orientation value.

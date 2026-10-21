@@ -344,7 +344,10 @@ mod tests {
         assert_eq!(region, RegionCoord::new(-1, 1));
         assert_eq!(local.x(), 63);
         assert_eq!(local.y(), 0);
-        assert_eq!(WorldTile::from_region(region, local, Plane::MIN), Some(tile));
+        assert_eq!(
+            WorldTile::from_region(region, local, Plane::MIN),
+            Some(tile)
+        );
     }
 
     #[test]
@@ -358,7 +361,9 @@ mod tests {
     fn scene_conversion_is_plane_aware_and_reversible() {
         let origin = WorldTile::new(3200, 3200, Plane::MIN);
         let world = WorldTile::new(3250, 3260, Plane::MIN);
-        let scene = world.to_scene(origin).expect("tile is inside positive scene space");
+        let scene = world
+            .to_scene(origin)
+            .expect("tile is inside positive scene space");
 
         assert_eq!(scene, SceneTile::new(50, 60, Plane::MIN));
         assert_eq!(scene.to_world(origin), Some(world));
