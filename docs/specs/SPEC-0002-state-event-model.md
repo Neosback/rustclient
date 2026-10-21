@@ -36,6 +36,7 @@ The current semantic game tick is session-owned authoritative state.
 - Tick advancement requires an active session.
 - Tick advancement uses an explicit `TickSpan`; domain transitions do not read wall time.
 - Tick arithmetic is checked. Overflow rejects the transition without mutating state.
+- A zero-span tick advance is valid but causes no observable state change.
 - A future runtime scheduler decides *when* to request tick advancement; `GameState` only validates and commits the semantic transition.
 
 ### Semantic operation application boundary
@@ -56,7 +57,29 @@ The operation boundary follows these rules:
 - validation happens before committed mutation,
 - failure preserves authoritative observable state for the failing operation,
 - operation errors preserve the typed subsystem error category,
-- operation application does not itself emit committed events yet.
+- successful operations return commit metadata only after authoritative mutation has completed.
+
+### Commit metadata
+
+`OperationCommit` is the result metadata for one successfully applied semantic operation. It contains:
+
+- an optional `SemanticEvent`, and
+- a `StateDelta`.
+
+`SemanticEvent` describes a committed fact, never a request. The currently modeled event facts are:
+
+- `SessionBegan`,
+- `SessionEnded`,
+- `GameTickAdvanced { previous, current }`.
+
+Events are emitted only when observable semantic state actually changed. For example, `AdvanceTick(TickSpan::ZERO)` succeeds but returns no semantic event because the authoritative tick ordinal is unchanged.
+
+`StateDelta` is projection-oriented metadata describing which modeled state domains changed. It is not authoritative state and must be discardable. CP3E tracks only:
+
+- session lifecycle changed,
+- observable semantic game tick changed.
+
+A successful operation that changes no observable state returns an empty delta. Consumers query the authoritative `GameState` for current values rather than treating the delta as a second state store.
 
 ### Ordered operation batches
 
@@ -73,9 +96,11 @@ Batch behavior is deliberately simple and deterministic:
 7. an empty batch is a valid no-op,
 8. the returned batch error identifies the first failing zero-based index and preserves its typed `OperationError`.
 
-Operation batches are therefore **not transactional** and are not rolled back on later failure. This avoids full-state cloning or rollback authority and gives later events/replay a single observable committed order: the successful prefix, in input order.
+Operation batches are therefore **not transactional** and are not rolled back on later failure. This avoids full-state cloning or rollback authority.
 
-CP3D intentionally does not define event types, `StateDelta`, replay envelopes, provenance metadata, or domain operations beyond lifecycle/time. Those contracts remain separate checkpoints.
+`GameState::apply_operation_batch_with_commits` preserves the same mutation/failure semantics but additionally invokes a caller-provided callback immediately after each successful commit. The callback receives the operation's zero-based batch index and its `OperationCommit` in exact input order. No callback occurs for the failed operation or skipped suffix. This exposes deterministic commit order without requiring `game-state` to allocate a `Vec` per batch.
+
+CP3E intentionally does not define a persistent event queue, replay envelope, provenance metadata, renderer projection integration, plugin delivery, or domain operations beyond lifecycle/time.
 
 ## Input batches
 
@@ -87,7 +112,7 @@ A logical frame/tick may eventually combine operations translated from multiple 
 4. timers/scheduled work,
 5. lifecycle operations.
 
-CP3D defines only the ordering and failure semantics *after* a concrete ordered slice has been assembled. Policy for merging multiple source queues into that ordered slice remains an application/runtime concern to specify when those producers exist. Parallel preparation may never alter the final committed order.
+CP3D/CP3E define ordering and commit semantics *after* a concrete ordered slice has been assembled. Policy for merging multiple source queues into that ordered slice remains an application/runtime concern to specify when those producers exist. Parallel preparation may never alter the final committed order.
 
 ## Events
 
@@ -97,7 +122,7 @@ Events describe committed facts, not requests. Example distinction:
 - operation: validated semantic interaction
 - event: `InventorySlotChanged`
 
-Events should carry stable semantic identifiers and the minimum payload consumers require.
+Events should carry stable semantic identifiers and the minimum payload consumers require. Event generation must occur only after the corresponding mutation successfully commits.
 
 ## StateDelta
 
@@ -115,13 +140,15 @@ Raw packet capture may be an optional diagnostic stream, not the canonical repla
 - Randomness enters through an injected deterministic source.
 - HashMap iteration order must not define visible behavior.
 - Parallel preparation may not change committed operation order.
-- Identical initial state plus an identical valid operation sequence must produce identical observable state.
-- Identical initial state plus an identical operation batch must produce the same successful prefix, first failure index/error, and final observable state.
+- Identical initial state plus an identical valid operation sequence must produce identical observable state and commit metadata.
+- Identical initial state plus an identical operation batch must produce the same successful prefix, commit metadata order, first failure index/error, and final observable state.
 
 ## Acceptance criteria
 
 - Tests can construct a state and apply typed semantic operations and ordered operation batches.
 - Identical initial state + inputs produce identical observable state/events.
-- Batch tests prove exact ordering, partial-commit semantics, first-failure reporting, and suffix suppression.
-- Projection rebuild equals incremental projection in reference tests once projections/events exist.
+- Batch tests prove exact ordering, partial-commit semantics, first-failure reporting, suffix suppression, and successful-prefix commit delivery.
+- Successful mutations expose committed event/delta metadata; failed operations expose none.
+- A successful semantic no-op produces no event and an empty `StateDelta`.
+- Projection rebuild equals incremental projection in reference tests once projections exist.
 - Replay can drive the client without network I/O once implemented.

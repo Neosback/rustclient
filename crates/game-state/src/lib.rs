@@ -5,8 +5,10 @@
 
 #![forbid(unsafe_code)]
 
+mod commit;
 mod operation;
 mod state;
 
+pub use commit::{OperationCommit, SemanticEvent, StateDelta};
 pub use operation::{OperationBatchError, OperationError, SemanticOperation};
 pub use state::{GameState, LifecycleError, SessionLifecycle, TickAdvanceError};
