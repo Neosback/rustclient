@@ -6,7 +6,7 @@
 
 use core::{fmt, str::FromStr};
 
-/// Initial RustClient compatibility target.
+/// Initial `RustClient` compatibility target.
 pub const REVISION_240: Revision = Revision::new(240);
 
 /// OSRS-style revision with an optional subrevision (for example `240.2`).
