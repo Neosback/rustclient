@@ -58,12 +58,10 @@ impl GameState {
     /// the current state. Failed operations leave authoritative state unchanged.
     pub fn apply_operation(&mut self, operation: SemanticOperation) -> Result<(), OperationError> {
         match operation {
-            SemanticOperation::BeginSession => self
-                .begin_session()
-                .map_err(OperationError::Lifecycle),
-            SemanticOperation::EndSession => {
-                self.end_session().map_err(OperationError::Lifecycle)
+            SemanticOperation::BeginSession => {
+                self.begin_session().map_err(OperationError::Lifecycle)
             }
+            SemanticOperation::EndSession => self.end_session().map_err(OperationError::Lifecycle),
             SemanticOperation::AdvanceTick(span) => self
                 .advance_tick(span)
                 .map(|_| ())
