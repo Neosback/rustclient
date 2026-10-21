@@ -207,10 +207,7 @@ mod tests {
             .begin_session()
             .expect("inactive state can begin a session");
 
-        assert_eq!(
-            state.advance_tick(TickSpan::new(5)),
-            Ok(GameTick::new(5))
-        );
+        assert_eq!(state.advance_tick(TickSpan::new(5)), Ok(GameTick::new(5)));
         assert_eq!(state.current_tick(), Some(GameTick::new(5)));
 
         state.tick = GameTick::new(u64::MAX);
