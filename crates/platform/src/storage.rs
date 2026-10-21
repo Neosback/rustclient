@@ -39,7 +39,10 @@ fn validate_key(value: &str) -> Result<(), StorageKeyError> {
     {
         return Err(StorageKeyError::InvalidCharacter);
     }
-    if value.split('/').any(|segment| segment.is_empty() || segment == "." || segment == "..") {
+    if value
+        .split('/')
+        .any(|segment| segment.is_empty() || segment == "." || segment == "..")
+    {
         return Err(StorageKeyError::InvalidSegment);
     }
     Ok(())

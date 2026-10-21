@@ -49,11 +49,9 @@ mod browser {
             let shared = Rc::clone(&self.shared);
 
             spawn_local(async move {
-                let result = SurfaceRenderer::new(
-                    window.clone(),
-                    SurfaceSize::new(size.width, size.height),
-                )
-                .await;
+                let result =
+                    SurfaceRenderer::new(window.clone(), SurfaceSize::new(size.width, size.height))
+                        .await;
 
                 let initialized = {
                     let mut state = shared.borrow_mut();
