@@ -1,6 +1,6 @@
 use core::fmt;
 
-use rustclient_model::TickSpan;
+use rustclient_model::{Revision, TickSpan};
 
 use crate::commit::{OperationCommit, SemanticEvent, StateDelta};
 use crate::state::{GameState, LifecycleError, TickAdvanceError};
@@ -11,8 +11,11 @@ use crate::state::{GameState, LifecycleError, TickAdvanceError};
 /// details have already been translated away. They are not committed events.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SemanticOperation {
-    /// Begin a new semantic game session.
-    BeginSession,
+    /// Begin a new semantic game session for an explicit compatibility revision.
+    BeginSession {
+        /// Protocol/cache compatibility revision selected by the caller.
+        revision: Revision,
+    },
     /// End the active semantic game session.
     EndSession,
     /// Advance deterministic semantic game time by the supplied span.
@@ -106,10 +109,11 @@ impl GameState {
         operation: SemanticOperation,
     ) -> Result<OperationCommit, OperationError> {
         match operation {
-            SemanticOperation::BeginSession => {
-                self.begin_session().map_err(OperationError::Lifecycle)?;
+            SemanticOperation::BeginSession { revision } => {
+                self.begin_session(revision)
+                    .map_err(OperationError::Lifecycle)?;
                 Ok(OperationCommit::new(
-                    Some(SemanticEvent::SessionBegan),
+                    Some(SemanticEvent::SessionBegan { revision }),
                     StateDelta::SESSION_BOUNDARY,
                 ))
             }
@@ -194,29 +198,35 @@ impl GameState {
 
 #[cfg(test)]
 mod tests {
-    use rustclient_model::{GameTick, TickSpan};
+    use rustclient_model::{GameTick, REVISION_240, TickSpan};
 
     use super::*;
     use crate::SessionLifecycle;
+
+    const BEGIN_240: SemanticOperation = SemanticOperation::BeginSession {
+        revision: REVISION_240,
+    };
 
     #[test]
     fn lifecycle_and_tick_changes_apply_through_one_public_gateway() {
         let mut state = GameState::new();
 
         state
-            .apply_operation(SemanticOperation::BeginSession)
+            .apply_operation(BEGIN_240)
             .expect("inactive state can begin a session");
         state
             .apply_operation(SemanticOperation::AdvanceTick(TickSpan::new(5)))
             .expect("small tick advance cannot overflow");
 
         assert_eq!(state.lifecycle(), SessionLifecycle::Active);
+        assert_eq!(state.session_revision(), Some(REVISION_240));
         assert_eq!(state.current_tick(), Some(GameTick::new(5)));
 
         state
             .apply_operation(SemanticOperation::EndSession)
             .expect("active state can end a session");
         assert_eq!(state.lifecycle(), SessionLifecycle::Inactive);
+        assert_eq!(state.session_revision(), None);
         assert_eq!(state.current_tick(), None);
     }
 
@@ -225,9 +235,14 @@ mod tests {
         let mut state = GameState::new();
 
         let begin = state
-            .apply_operation(SemanticOperation::BeginSession)
+            .apply_operation(BEGIN_240)
             .expect("inactive state can begin a session");
-        assert_eq!(begin.event(), Some(SemanticEvent::SessionBegan));
+        assert_eq!(
+            begin.event(),
+            Some(SemanticEvent::SessionBegan {
+                revision: REVISION_240,
+            })
+        );
         assert!(begin.delta().lifecycle_changed());
         assert!(begin.delta().game_tick_changed());
 
@@ -256,7 +271,7 @@ mod tests {
     fn zero_tick_span_commits_without_claiming_an_observable_change() {
         let mut state = GameState::new();
         state
-            .apply_operation(SemanticOperation::BeginSession)
+            .apply_operation(BEGIN_240)
             .expect("inactive state can begin a session");
 
         let commit = state
@@ -272,6 +287,7 @@ mod tests {
     fn invalid_operation_preserves_authoritative_state_and_typed_error() {
         let mut state = GameState::new();
         let before_lifecycle = state.lifecycle();
+        let before_revision = state.session_revision();
         let before_tick = state.current_tick();
 
         assert_eq!(
@@ -281,6 +297,7 @@ mod tests {
             ))
         );
         assert_eq!(state.lifecycle(), before_lifecycle);
+        assert_eq!(state.session_revision(), before_revision);
         assert_eq!(state.current_tick(), before_tick);
     }
 
@@ -288,7 +305,7 @@ mod tests {
     fn operation_gateway_preserves_checked_tick_overflow() {
         let mut state = GameState::new();
         state
-            .apply_operation(SemanticOperation::BeginSession)
+            .apply_operation(BEGIN_240)
             .expect("inactive state can begin a session");
         state
             .apply_operation(SemanticOperation::AdvanceTick(TickSpan::new(u64::MAX)))
@@ -305,11 +322,11 @@ mod tests {
     #[test]
     fn identical_operation_sequences_produce_identical_observable_state() {
         let operations = [
-            SemanticOperation::BeginSession,
+            BEGIN_240,
             SemanticOperation::AdvanceTick(TickSpan::new(2)),
             SemanticOperation::AdvanceTick(TickSpan::new(3)),
             SemanticOperation::EndSession,
-            SemanticOperation::BeginSession,
+            BEGIN_240,
             SemanticOperation::AdvanceTick(TickSpan::ONE),
         ];
 
@@ -324,17 +341,19 @@ mod tests {
         }
 
         assert_eq!(left.lifecycle(), right.lifecycle());
+        assert_eq!(left.session_revision(), right.session_revision());
         assert_eq!(left.current_tick(), right.current_tick());
+        assert_eq!(left.session_revision(), Some(REVISION_240));
         assert_eq!(left.current_tick(), Some(GameTick::new(1)));
     }
 
     #[test]
     fn operation_batch_applies_in_exact_slice_order() {
         let operations = [
-            SemanticOperation::BeginSession,
+            BEGIN_240,
             SemanticOperation::AdvanceTick(TickSpan::new(2)),
             SemanticOperation::EndSession,
-            SemanticOperation::BeginSession,
+            BEGIN_240,
             SemanticOperation::AdvanceTick(TickSpan::new(3)),
         ];
         let mut state = GameState::new();
@@ -344,15 +363,16 @@ mod tests {
             .expect("ordered reference batch is valid");
 
         assert_eq!(state.lifecycle(), SessionLifecycle::Active);
+        assert_eq!(state.session_revision(), Some(REVISION_240));
         assert_eq!(state.current_tick(), Some(GameTick::new(3)));
     }
 
     #[test]
     fn operation_batch_stops_at_first_failure_and_preserves_committed_prefix() {
         let operations = [
-            SemanticOperation::BeginSession,
+            BEGIN_240,
             SemanticOperation::AdvanceTick(TickSpan::new(2)),
-            SemanticOperation::BeginSession,
+            BEGIN_240,
             SemanticOperation::AdvanceTick(TickSpan::new(5)),
         ];
         let mut state = GameState::new();
@@ -367,15 +387,16 @@ mod tests {
             OperationError::Lifecycle(LifecycleError::AlreadyActive)
         );
         assert_eq!(state.lifecycle(), SessionLifecycle::Active);
+        assert_eq!(state.session_revision(), Some(REVISION_240));
         assert_eq!(state.current_tick(), Some(GameTick::new(2)));
     }
 
     #[test]
     fn batch_commit_stream_matches_successful_prefix_only() {
         let operations = [
-            SemanticOperation::BeginSession,
+            BEGIN_240,
             SemanticOperation::AdvanceTick(TickSpan::new(2)),
-            SemanticOperation::BeginSession,
+            BEGIN_240,
             SemanticOperation::EndSession,
         ];
         let mut state = GameState::new();
@@ -390,7 +411,12 @@ mod tests {
         assert_eq!(error.failed_index(), 2);
         assert_eq!(commits.len(), 2);
         assert_eq!(commits[0].0, 0);
-        assert_eq!(commits[0].1.event(), Some(SemanticEvent::SessionBegan));
+        assert_eq!(
+            commits[0].1.event(),
+            Some(SemanticEvent::SessionBegan {
+                revision: REVISION_240,
+            })
+        );
         assert_eq!(commits[1].0, 1);
         assert_eq!(
             commits[1].1.event(),
@@ -400,6 +426,7 @@ mod tests {
             })
         );
         assert_eq!(state.lifecycle(), SessionLifecycle::Active);
+        assert_eq!(state.session_revision(), Some(REVISION_240));
         assert_eq!(state.current_tick(), Some(GameTick::new(2)));
     }
 
@@ -407,6 +434,7 @@ mod tests {
     fn empty_operation_batch_is_a_no_op() {
         let mut state = GameState::new();
         let before_lifecycle = state.lifecycle();
+        let before_revision = state.session_revision();
         let before_tick = state.current_tick();
 
         state
@@ -414,6 +442,7 @@ mod tests {
             .expect("empty batch is valid");
 
         assert_eq!(state.lifecycle(), before_lifecycle);
+        assert_eq!(state.session_revision(), before_revision);
         assert_eq!(state.current_tick(), before_tick);
     }
 }

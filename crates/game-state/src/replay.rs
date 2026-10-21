@@ -99,6 +99,8 @@ impl GameState {
     ///
     /// Each operation is applied through the normal authoritative mutation
     /// gateway. Replay stops at the first rejected operation or commit mismatch.
+    /// Session revision identity is reproduced by the recorded `BeginSession`
+    /// operation and verified again by its committed `SessionBegan` event.
     /// An empty sequence is a valid no-op.
     ///
     /// A commit mismatch can only be detected after the operation has committed.
@@ -158,10 +160,14 @@ impl GameState {
 
 #[cfg(test)]
 mod tests {
-    use rustclient_model::{GameTick, TickSpan};
+    use rustclient_model::{GameTick, REVISION_240, TickSpan};
 
     use super::*;
     use crate::{SemanticEvent, SessionLifecycle};
+
+    const BEGIN_240: SemanticOperation = SemanticOperation::BeginSession {
+        revision: REVISION_240,
+    };
 
     fn record_operations(operations: &[SemanticOperation]) -> (GameState, Vec<ReplayEnvelope>) {
         let mut state = GameState::new();
@@ -180,12 +186,12 @@ mod tests {
     #[test]
     fn replay_reconstructs_equivalent_semantic_state_and_verified_commits() {
         let operations = [
-            SemanticOperation::BeginSession,
+            BEGIN_240,
             SemanticOperation::AdvanceTick(TickSpan::new(2)),
             SemanticOperation::AdvanceTick(TickSpan::ZERO),
             SemanticOperation::AdvanceTick(TickSpan::new(3)),
             SemanticOperation::EndSession,
-            SemanticOperation::BeginSession,
+            BEGIN_240,
             SemanticOperation::AdvanceTick(TickSpan::ONE),
         ];
         let (recorded_state, envelopes) = record_operations(&operations);
@@ -199,8 +205,13 @@ mod tests {
             .expect("recorded semantic sequence must replay exactly");
 
         assert_eq!(replayed_state.lifecycle(), recorded_state.lifecycle());
+        assert_eq!(
+            replayed_state.session_revision(),
+            recorded_state.session_revision()
+        );
         assert_eq!(replayed_state.current_tick(), recorded_state.current_tick());
         assert_eq!(replayed_state.lifecycle(), SessionLifecycle::Active);
+        assert_eq!(replayed_state.session_revision(), Some(REVISION_240));
         assert_eq!(replayed_state.current_tick(), Some(GameTick::new(1)));
         assert_eq!(verified.len(), envelopes.len());
         for (index, commit) in verified {
@@ -212,11 +223,11 @@ mod tests {
     fn replay_reports_rejected_operation_at_exact_index_and_stops() {
         let mut source = GameState::new();
         let begin_commit = source
-            .apply_operation(SemanticOperation::BeginSession)
+            .apply_operation(BEGIN_240)
             .expect("first begin-session is valid");
         let envelopes = [
-            ReplayEnvelope::new(SemanticOperation::BeginSession, begin_commit),
-            ReplayEnvelope::new(SemanticOperation::BeginSession, begin_commit),
+            ReplayEnvelope::new(BEGIN_240, begin_commit),
+            ReplayEnvelope::new(BEGIN_240, begin_commit),
             ReplayEnvelope::new(SemanticOperation::EndSession, begin_commit),
         ];
         let mut replayed_state = GameState::new();
@@ -237,13 +248,14 @@ mod tests {
         );
         assert_eq!(verified_indexes, vec![0]);
         assert_eq!(replayed_state.lifecycle(), SessionLifecycle::Active);
+        assert_eq!(replayed_state.session_revision(), Some(REVISION_240));
         assert_eq!(replayed_state.current_tick(), Some(GameTick::ZERO));
     }
 
     #[test]
     fn replay_detects_commit_mismatch_after_operation_commit() {
         let operations = [
-            SemanticOperation::BeginSession,
+            BEGIN_240,
             SemanticOperation::AdvanceTick(TickSpan::new(2)),
             SemanticOperation::AdvanceTick(TickSpan::new(3)),
         ];
@@ -271,13 +283,14 @@ mod tests {
             }
         );
         assert_eq!(verified_indexes, vec![0]);
+        assert_eq!(replayed_state.session_revision(), Some(REVISION_240));
         assert_eq!(replayed_state.current_tick(), Some(GameTick::new(2)));
     }
 
     #[test]
     fn replay_preserves_semantic_no_op_commit_metadata() {
         let operations = [
-            SemanticOperation::BeginSession,
+            BEGIN_240,
             SemanticOperation::AdvanceTick(TickSpan::ZERO),
         ];
         let (_, envelopes) = record_operations(&operations);
@@ -292,6 +305,7 @@ mod tests {
 
         assert_eq!(verified[1].event(), None);
         assert!(verified[1].delta().is_empty());
+        assert_eq!(replayed_state.session_revision(), Some(REVISION_240));
         assert_eq!(replayed_state.current_tick(), Some(GameTick::ZERO));
     }
 
@@ -304,17 +318,24 @@ mod tests {
             .expect("empty replay sequence is valid");
 
         assert_eq!(state.lifecycle(), SessionLifecycle::Inactive);
+        assert_eq!(state.session_revision(), None);
         assert_eq!(state.current_tick(), None);
     }
 
     #[test]
     fn replay_envelope_preserves_recorded_event_payload() {
         let operations = [
-            SemanticOperation::BeginSession,
+            BEGIN_240,
             SemanticOperation::AdvanceTick(TickSpan::new(4)),
         ];
         let (_, envelopes) = record_operations(&operations);
 
+        assert_eq!(
+            envelopes[0].commit().event(),
+            Some(SemanticEvent::SessionBegan {
+                revision: REVISION_240,
+            })
+        );
         assert_eq!(
             envelopes[1].commit().event(),
             Some(SemanticEvent::GameTickAdvanced {
