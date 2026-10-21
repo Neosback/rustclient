@@ -59,9 +59,9 @@ pub trait DeterministicRandomSource {
     fn next_sample(&mut self) -> RandomSample;
 }
 
-/// SplitMix64 deterministic random source initialized from an explicit seed.
+/// `SplitMix64` deterministic random source initialized from an explicit seed.
 ///
-/// SplitMix64 is used here because it is compact, allocation-free, and defined
+/// `SplitMix64` is used here because it is compact, allocation-free, and defined
 /// entirely in terms of fixed-width integer operations. The exact output vectors
 /// are regression-tested. This source is runtime infrastructure, not
 /// authoritative semantic game state.
