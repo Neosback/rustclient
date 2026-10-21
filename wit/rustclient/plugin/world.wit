@@ -1,0 +1,5 @@
+// Draft namespace reservation only. Do not treat this as ABI v1.
+package rustclient:plugin@0.0.0;
+
+world plugin {
+}
