@@ -18,7 +18,7 @@ struct NativeApp {
 
 impl NativeApp {
     fn create_renderer(&mut self, event_loop: &ActiveEventLoop) {
-        let Some(window) = self.window.as_ref().cloned() else {
+        let Some(window) = self.window.clone() else {
             return;
         };
         let size = window.inner_size();
@@ -63,7 +63,7 @@ impl ApplicationHandler for NativeApp {
         window_id: WindowId,
         event: WindowEvent,
     ) {
-        let Some(window) = self.window.as_ref().cloned() else {
+        let Some(window) = self.window.clone() else {
             return;
         };
         if window.id() != window_id {
