@@ -10,6 +10,16 @@ The renderer is a projection of committed semantic state and decoded assets. Los
 
 The target abstraction is `wgpu`, with WGSL shaders and shared native/browser renderer code. Native and browser may select different backend capabilities while preserving scene semantics.
 
+## Bootstrap ownership contract
+
+The shared renderer owns GPU projection resources required to present a surface, including the `wgpu` instance, surface, logical device, queue, and surface configuration. It does not own native windows, browser canvases, event loops, semantic game state, protocol state, or platform services.
+
+Composition roots provide a surface target and remain responsible for their window-system lifecycle. A pre-present callback may be supplied by the composition root when its windowing backend requires notification before presentation; this must not create a renderer dependency on that windowing library.
+
+A zero-sized surface is suspended rather than configured with invalid dimensions. Recoverable timeout, occlusion, outdated, and suboptimal states are reported explicitly. Surface loss requires the composition root to discard and recreate the renderer from still-authoritative state and assets.
+
+The CP2 diagnostic clear frame is only a boundary proof. It is not a second scene representation and must not accumulate gameplay or scene semantics.
+
 ## RenderWorld
 
 `RenderWorld` is optimized projection data such as instance buffers, visibility sets, material references, prepared meshes, camera matrices, picking data, and GPU resource handles. It can be rebuilt.
@@ -38,5 +48,7 @@ Picking/hover/click geometry must derive from the same semantic/render transform
 
 - identical reference scene semantics on native/web within backend tolerances,
 - renderer rebuild from state/assets yields equivalent visible projection,
+- surface loss never mutates or invalidates authoritative gameplay state,
+- native/browser composition can target the same shared renderer API without platform branching inside `renderer`,
 - plugin overlays cannot mutate core render resources,
 - performance counters exist before optimization claims are made.
