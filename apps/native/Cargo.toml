@@ -5,5 +5,11 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[dependencies]
+pollster.workspace = true
+rustclient-platform-native = { path = "../../crates/platform-native" }
+rustclient-renderer = { path = "../../crates/renderer" }
+winit.workspace = true
+
 [lints]
 workspace = true
