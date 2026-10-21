@@ -45,6 +45,47 @@ impl std::error::Error for OperationError {
     }
 }
 
+/// Failure while applying an ordered semantic-operation batch.
+///
+/// Every operation before `failed_index` has already committed successfully.
+/// The failing operation does not mutate authoritative state, and later
+/// operations in the slice are not attempted.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct OperationBatchError {
+    failed_index: usize,
+    error: OperationError,
+}
+
+impl OperationBatchError {
+    /// Return the zero-based index of the first operation that failed.
+    #[must_use]
+    pub const fn failed_index(self) -> usize {
+        self.failed_index
+    }
+
+    /// Return the typed error produced by the failing operation.
+    #[must_use]
+    pub const fn operation_error(self) -> OperationError {
+        self.error
+    }
+}
+
+impl fmt::Display for OperationBatchError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            formatter,
+            "semantic operation batch failed at index {}: {}",
+            self.failed_index, self.error
+        )
+    }
+}
+
+impl std::error::Error for OperationBatchError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        Some(&self.error)
+    }
+}
+
 impl GameState {
     /// Validate and apply exactly one source-neutral semantic operation.
     ///
@@ -67,6 +108,34 @@ impl GameState {
                 .map(|_| ())
                 .map_err(OperationError::TickAdvance),
         }
+    }
+
+    /// Apply an ordered batch of semantic operations from first to last.
+    ///
+    /// Batches are intentionally not transactional. Each successful operation
+    /// commits before the next operation begins. Processing stops at the first
+    /// failure, preserves that successful prefix, and does not attempt the
+    /// remaining suffix. An empty batch is a valid no-op.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`OperationBatchError`] containing the first failing operation's
+    /// zero-based index and typed [`OperationError`]. The failing operation itself
+    /// leaves authoritative state unchanged.
+    pub fn apply_operation_batch(
+        &mut self,
+        operations: &[SemanticOperation],
+    ) -> Result<(), OperationBatchError> {
+        for (index, operation) in operations.iter().copied().enumerate() {
+            if let Err(error) = self.apply_operation(operation) {
+                return Err(OperationBatchError {
+                    failed_index: index,
+                    error,
+                });
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -157,5 +226,61 @@ mod tests {
         assert_eq!(left.lifecycle(), right.lifecycle());
         assert_eq!(left.current_tick(), right.current_tick());
         assert_eq!(left.current_tick(), Some(GameTick::new(1)));
+    }
+
+    #[test]
+    fn operation_batch_applies_in_exact_slice_order() {
+        let operations = [
+            SemanticOperation::BeginSession,
+            SemanticOperation::AdvanceTick(TickSpan::new(2)),
+            SemanticOperation::EndSession,
+            SemanticOperation::BeginSession,
+            SemanticOperation::AdvanceTick(TickSpan::new(3)),
+        ];
+        let mut state = GameState::new();
+
+        state
+            .apply_operation_batch(&operations)
+            .expect("ordered reference batch is valid");
+
+        assert_eq!(state.lifecycle(), SessionLifecycle::Active);
+        assert_eq!(state.current_tick(), Some(GameTick::new(3)));
+    }
+
+    #[test]
+    fn operation_batch_stops_at_first_failure_and_preserves_committed_prefix() {
+        let operations = [
+            SemanticOperation::BeginSession,
+            SemanticOperation::AdvanceTick(TickSpan::new(2)),
+            SemanticOperation::BeginSession,
+            SemanticOperation::AdvanceTick(TickSpan::new(5)),
+        ];
+        let mut state = GameState::new();
+
+        let error = state
+            .apply_operation_batch(&operations)
+            .expect_err("second begin-session must fail");
+
+        assert_eq!(error.failed_index(), 2);
+        assert_eq!(
+            error.operation_error(),
+            OperationError::Lifecycle(LifecycleError::AlreadyActive)
+        );
+        assert_eq!(state.lifecycle(), SessionLifecycle::Active);
+        assert_eq!(state.current_tick(), Some(GameTick::new(2)));
+    }
+
+    #[test]
+    fn empty_operation_batch_is_a_no_op() {
+        let mut state = GameState::new();
+        let before_lifecycle = state.lifecycle();
+        let before_tick = state.current_tick();
+
+        state
+            .apply_operation_batch(&[])
+            .expect("empty batch is valid");
+
+        assert_eq!(state.lifecycle(), before_lifecycle);
+        assert_eq!(state.current_tick(), before_tick);
     }
 }
