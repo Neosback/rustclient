@@ -61,6 +61,27 @@ Useful for:
 
 Networking is intentionally deferred. Until then, use OpenRune primarily to validate semantic expectations and create fixtures/replays.
 
+## CP1 semantic-model evidence
+
+For coordinate/identity/orientation work, inspect these pinned files first:
+
+- `references/rustosrs/crates/osrs-core/src/coords.rs`
+- `references/rustosrs/crates/osrs-core/src/ids.rs`
+- `references/rustosrs/crates/osrs-core/src/orientation.rs`
+- `references/rustosrs/RuneLite-melxin/runelite-api/src/main/java/net/runelite/api/coords/WorldPoint.java`
+- `references/rustosrs/RuneLite-melxin/runelite-api/src/main/java/net/runelite/api/coords/LocalPoint.java`
+
+Important evidence used by RustClient CP1:
+
+- map regions are 64×64 tiles,
+- fine/local game coordinates use 128 units per tile,
+- world location is plane-aware,
+- scene-relative coordinates depend on a scene/world-view origin,
+- model-local coordinates and game-world coordinates are different spaces,
+- runtime entity indexes must not be conflated with definition/resource IDs.
+
+RustClient deliberately does not copy the reference types verbatim. See `SPEC-0012` for the owned contract.
+
 ## Search discipline
 
 Before implementing a nontrivial OSRS-style behavior:
