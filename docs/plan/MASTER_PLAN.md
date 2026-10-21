@@ -133,15 +133,15 @@ Establish subsystem errors with contextual source location/identifier fields. De
 
 ## CP2.1 Clock capability
 
-Define monotonic/game clock contracts with native/web implementations.
+Define platform monotonic and wall-clock contracts with native/web implementations. Semantic game ticks remain owned by the model/runtime layer rather than being derived from a platform clock type.
 
 ## CP2.2 Storage capability
 
-Define key/value and blob storage contracts with explicit limits/errors. Native/web adapters implement them without leaking filesystem/IndexedDB details inward.
+Define key/value and blob storage contracts with explicit limits/errors. Native/web adapters implement them without leaking filesystem or browser-storage details inward. CP2 only proves small persistent blobs; bulk browser cache storage is deferred.
 
-## CP2.3 Transport capability
+## CP2.3 Transport capability - deferred
 
-Define async byte/message transport abstractions suitable for later private-server TCP/WebSocket/WebTransport adapters. Do not implement game protocol here.
+Do not add a placeholder transport abstraction in CP2. Networking is intentionally deferred until revision-240 protocol/replay requirements make the consuming contract concrete. Later native TCP and browser WebSocket/WebTransport adapters will remain below protocol framing and revision semantics.
 
 ## CP2.4 Shared `wgpu` bootstrap
 
@@ -149,11 +149,12 @@ Create one renderer surface/device abstraction used by both composition roots.
 
 Proof:
 
-- desktop window renders a deterministic test scene,
-- browser canvas renders the same semantic scene,
-- shared renderer code contains no platform branching beyond injected surface/platform contracts.
+- desktop window compiles against the shared deterministic diagnostic clear-frame path,
+- browser canvas compiles against that same renderer path,
+- shared renderer code contains no native/browser branching or `winit` dependency,
+- actual visual runtime smoke tests are recorded separately when interactive native/browser runners are available.
 
-**CP2 exit:** native and browser can execute the same renderer API and platform-neutral runtime primitives.
+**CP2 exit:** native and browser can execute the same renderer API and platform-neutral runtime primitives, with transport deliberately absent rather than prematurely specified.
 
 ---
 
