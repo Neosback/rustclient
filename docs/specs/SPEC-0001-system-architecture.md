@@ -22,6 +22,7 @@ Define module ownership and dependency direction before implementation makes tho
 |---|---|---|
 | shared semantic primitives | `model` | networking, GPU, OS handles |
 | state transitions | `game-state` | sockets, cache byte parsing, GPU resources |
+| runtime orchestration and deterministic runtime services | `application` | authoritative domain state, target-specific platform handles |
 | packet encoding/decoding | `protocol` | renderer/UI behavior |
 | archive/definition decoding | `cache` | live game state |
 | loaded scene semantics | `scene` | platform/windowing |
@@ -48,6 +49,8 @@ bytes/input/time -> adapter -> DomainInput -> GameRuntime -> GameState transitio
                                                    |
                                                    +-> StateDelta/EventBatch
 ```
+
+Deterministic runtime services follow the same rule. For example, a random-dependent semantic transition receives explicit deterministic random input produced by application orchestration; it never reaches into OS/browser entropy or hidden global RNG state during the transition.
 
 ## Query path
 

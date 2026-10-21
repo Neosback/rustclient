@@ -34,11 +34,11 @@ Exit: native window and browser canvas use shared renderer API; no domain target
 
 ## CP3 - Deterministic state runtime
 
-**Status after CP3H audit: in progress.**
+**Status after CP3I: in progress; one closure item remains.**
 
 Deliver `GameState`, typed operations, ordered batches, events, deltas, explicit deterministic semantic time/random inputs, and replay skeleton.
 
-Implemented through CP3G:
+Implemented through CP3I:
 
 - authoritative non-`Clone` `GameState`,
 - session-owned deterministic game tick,
@@ -46,18 +46,20 @@ Implemented through CP3G:
 - exact ordered batch semantics,
 - post-commit semantic events and `StateDelta`,
 - in-memory deterministic replay envelopes with exact commit verification,
-- explicit session `Revision` identity that participates in replay.
+- explicit session `Revision` identity that participates in replay,
+- explicit deterministic randomness contract owned by `application`, including `RandomSeed`, raw `RandomSample`, injectable `DeterministicRandomSource`, and a regression-tested `SplitMix64Random` reference provider.
 
-The original deterministic-clock intent is satisfied by explicit `AdvanceTick(TickSpan)` semantic input. `GameState` does not read wall time or a clock provider internally; adding such a read would create a second time authority and weaken deterministic replay.
+The deterministic-clock intent is satisfied by explicit `AdvanceTick(TickSpan)` semantic input. `GameState` does not read wall time or a clock provider internally; adding such a read would create a second time authority and weaken deterministic replay.
 
-Remaining CP3 closure work identified by CP3H:
+The deterministic-randomness intent is satisfied without putting hidden RNG state into `GameState`: application orchestration owns seeded deterministic raw-sample production, providers cannot consult platform entropy while drawing samples, and future random-dependent semantic behavior must receive deterministic random input explicitly at its semantic boundary. Native/browser entropy acquisition for choosing a live seed remains outside deterministic providers and is not required until a real live consumer exists.
 
-- define the canonical deterministic randomness/input contract so nondeterministic platform entropy never enters domain transitions implicitly,
+Remaining CP3 closure work:
+
 - define a canonical semantic state/event fingerprint/hash surface and the final repeatability exit test.
 
 Exit: identical initial semantic state plus identical deterministic semantic inputs produce identical canonical state and committed-event/commit fingerprints in tests.
 
-CP3 must remain open until those remaining closure items are implemented and validated. Persistent replay serialization, concrete server profiles, protocol/networking, renderer/UI/plugin integration, and richer game domains remain later-checkpoint work and do not block CP3.
+CP3 must remain open until the fingerprint/exit-test checkpoint is implemented and validated. Persistent replay serialization, concrete server profiles, protocol/networking, renderer/UI/plugin integration, richer game domains, and platform entropy acquisition remain later-checkpoint work and do not block CP3.
 
 ## CP4 - Binary/protocol primitives
 
