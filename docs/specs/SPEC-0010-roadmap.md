@@ -34,9 +34,30 @@ Exit: native window and browser canvas use shared renderer API; no domain target
 
 ## CP3 - Deterministic state runtime
 
-Deliver `GameState`, typed operations, ordered batches, events, deltas, deterministic clock/random providers and replay skeleton.
+**Status after CP3H audit: in progress.**
 
-Exit: identical inputs produce identical state/event hashes in tests.
+Deliver `GameState`, typed operations, ordered batches, events, deltas, explicit deterministic semantic time/random inputs, and replay skeleton.
+
+Implemented through CP3G:
+
+- authoritative non-`Clone` `GameState`,
+- session-owned deterministic game tick,
+- source-neutral typed semantic operations,
+- exact ordered batch semantics,
+- post-commit semantic events and `StateDelta`,
+- in-memory deterministic replay envelopes with exact commit verification,
+- explicit session `Revision` identity that participates in replay.
+
+The original deterministic-clock intent is satisfied by explicit `AdvanceTick(TickSpan)` semantic input. `GameState` does not read wall time or a clock provider internally; adding such a read would create a second time authority and weaken deterministic replay.
+
+Remaining CP3 closure work identified by CP3H:
+
+- define the canonical deterministic randomness/input contract so nondeterministic platform entropy never enters domain transitions implicitly,
+- define a canonical semantic state/event fingerprint/hash surface and the final repeatability exit test.
+
+Exit: identical initial semantic state plus identical deterministic semantic inputs produce identical canonical state and committed-event/commit fingerprints in tests.
+
+CP3 must remain open until those remaining closure items are implemented and validated. Persistent replay serialization, concrete server profiles, protocol/networking, renderer/UI/plugin integration, and richer game domains remain later-checkpoint work and do not block CP3.
 
 ## CP4 - Binary/protocol primitives
 
