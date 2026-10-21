@@ -15,9 +15,14 @@ pub struct DirectoryStorage {
 
 impl DirectoryStorage {
     /// Create/open storage rooted at `root`.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`StorageError`] if the root directory cannot be created or
+    /// accessed by the native filesystem backend.
     pub fn new(root: impl Into<PathBuf>) -> Result<Self, StorageError> {
         let root = root.into();
-        fs::create_dir_all(&root).map_err(map_io_error)?;
+        fs::create_dir_all(&root).map_err(|error| map_io_error(&error))?;
         Ok(Self { root })
     }
 
@@ -29,7 +34,7 @@ impl DirectoryStorage {
 
     fn ensure_parent(path: &Path) -> Result<(), StorageError> {
         if let Some(parent) = path.parent() {
-            fs::create_dir_all(parent).map_err(map_io_error)?;
+            fs::create_dir_all(parent).map_err(|error| map_io_error(&error))?;
         }
         Ok(())
     }
@@ -41,26 +46,26 @@ impl BlobStorage for DirectoryStorage {
         match fs::read(path) {
             Ok(value) => Ok(Some(value)),
             Err(error) if error.kind() == ErrorKind::NotFound => Ok(None),
-            Err(error) => Err(map_io_error(error)),
+            Err(error) => Err(map_io_error(&error)),
         }
     }
 
     fn put(&self, key: &StorageKey, value: &[u8]) -> Result<(), StorageError> {
         let path = self.path_for(key);
         Self::ensure_parent(&path)?;
-        fs::write(path, value).map_err(map_io_error)
+        fs::write(path, value).map_err(|error| map_io_error(&error))
     }
 
     fn delete(&self, key: &StorageKey) -> Result<(), StorageError> {
         match fs::remove_file(self.path_for(key)) {
             Ok(()) => Ok(()),
             Err(error) if error.kind() == ErrorKind::NotFound => Ok(()),
-            Err(error) => Err(map_io_error(error)),
+            Err(error) => Err(map_io_error(&error)),
         }
     }
 }
 
-fn map_io_error(error: std::io::Error) -> StorageError {
+fn map_io_error(error: &std::io::Error) -> StorageError {
     let kind = match error.kind() {
         ErrorKind::PermissionDenied => StorageErrorKind::PermissionDenied,
         ErrorKind::StorageFull | ErrorKind::FileTooLarge => StorageErrorKind::Capacity,
