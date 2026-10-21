@@ -107,7 +107,9 @@ mod tests {
     fn lifecycle_transitions_are_explicit_and_strict() {
         let mut state = GameState::new();
 
-        state.begin_session().expect("inactive state can begin a session");
+        state
+            .begin_session()
+            .expect("inactive state can begin a session");
         assert_eq!(state.lifecycle(), SessionLifecycle::Active);
         assert_eq!(state.begin_session(), Err(LifecycleError::AlreadyActive));
         assert_eq!(state.lifecycle(), SessionLifecycle::Active);
