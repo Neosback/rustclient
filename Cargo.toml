@@ -1,0 +1,39 @@
+[workspace]
+resolver = "2"
+members = [
+    "apps/native",
+    "apps/web",
+    "crates/application",
+    "crates/model",
+    "crates/game-state",
+    "crates/protocol",
+    "crates/cache",
+    "crates/scene",
+    "crates/client-script",
+    "crates/renderer",
+    "crates/game-ui",
+    "crates/shell-ui",
+    "crates/input",
+    "crates/audio",
+    "crates/platform",
+    "crates/platform-native",
+    "crates/platform-web",
+    "crates/plugin-api",
+    "crates/plugin-host",
+    "crates/plugin-runtime-native",
+    "crates/plugin-runtime-web",
+    "plugin-sdk/rust",
+    "xtask",
+]
+
+[workspace.package]
+edition = "2024"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/Neosback/rustclient"
+
+[workspace.lints.rust]
+unsafe_code = "deny"
+
+[workspace.lints.clippy]
+all = "warn"
+pedantic = "warn"
