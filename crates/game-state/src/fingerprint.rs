@@ -231,9 +231,7 @@ mod tests {
         revision: REVISION_240,
     };
 
-    fn run_operations(
-        operations: &[SemanticOperation],
-    ) -> (GameState, CommitStreamFingerprint) {
+    fn run_operations(operations: &[SemanticOperation]) -> (GameState, CommitStreamFingerprint) {
         let mut state = GameState::new();
         let mut commits = CommitStreamFingerprintBuilder::new();
 
@@ -247,10 +245,7 @@ mod tests {
     #[test]
     fn state_fingerprint_v1_has_exact_regression_vectors() {
         let mut state = GameState::new();
-        assert_eq!(
-            state.semantic_fingerprint().get(),
-            0x64EF_5A30_6B7F_DE9E
-        );
+        assert_eq!(state.semantic_fingerprint().get(), 0x64EF_5A30_6B7F_DE9E);
 
         state
             .apply_operation(BEGIN_240)
@@ -259,10 +254,7 @@ mod tests {
             .apply_operation(SemanticOperation::AdvanceTick(TickSpan::new(5)))
             .expect("small tick advance cannot overflow");
 
-        assert_eq!(
-            state.semantic_fingerprint().get(),
-            0x8B41_8067_C226_7506
-        );
+        assert_eq!(state.semantic_fingerprint().get(), 0x8B41_8067_C226_7506);
     }
 
     #[test]
@@ -366,7 +358,10 @@ mod tests {
         let (left_state, left_commits) = run_operations(&operations);
         let (right_state, right_commits) = run_operations(&operations);
 
-        assert_eq!(left_state.semantic_fingerprint(), right_state.semantic_fingerprint());
+        assert_eq!(
+            left_state.semantic_fingerprint(),
+            right_state.semantic_fingerprint()
+        );
         assert_eq!(left_commits, right_commits);
         assert_eq!(left_state.current_tick(), Some(GameTick::new(1)));
     }
