@@ -25,11 +25,16 @@ This crate owns authoritative live semantic state and validated transitions.
 - Replay must use `GameState::apply_operation`; never create a replay-only mutation implementation.
 - Replay commit mismatches are detected after the operation commits; the replay state is disposable after mismatch and must not be resumed.
 - Verified replay callbacks run only after actual commit metadata exactly matches the recording.
+- Semantic fingerprints are deterministic diagnostics/regression evidence, never an authoritative state store or security primitive.
+- `GameState::semantic_fingerprint` must include every observable authoritative semantic field owned by this crate in explicit canonical order.
+- Commit-stream fingerprints must include committed `SemanticEvent` and `StateDelta` values in exact commit order; they must never depend on pointer/layout details or Rust randomized hashers.
+- Any canonical fingerprint encoding/algorithm change that changes output requires incrementing `SEMANTIC_FINGERPRINT_VERSION` and updating exact regression vectors/specs in the same checkpoint.
+- New state/event fields require an explicit fingerprint implication alongside mutation, reset, event/delta, and replay implications.
 - Semantic game ticks are session-owned state and advance only through explicit checked transitions.
 - Failed transitions and failed operations must leave authoritative state unchanged.
 - Events describe committed facts; commands/operations request changes.
 - Avoid mutable references escaping transition boundaries.
 - `GameState` must not implement `Clone`; do not create a second mutable semantic authority by copying the full state tree.
 - Domain fields stay private. Expose immutable queries and explicit transitions rather than `&mut` field accessors.
-- Every new state field needs a clear owner, mutation path, reset/session lifecycle, event/delta implication, and replay implication.
+- Every new state field needs a clear owner, mutation path, reset/session lifecycle, event/delta implication, replay implication, and fingerprint implication.
 - Prefer deterministic containers/order where ordering is observable.
