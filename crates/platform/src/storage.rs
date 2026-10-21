@@ -13,6 +13,11 @@ pub struct StorageKey(Box<str>);
 
 impl StorageKey {
     /// Parse and validate a semantic storage key.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`StorageKeyError`] when the value is empty, too long, contains
+    /// non-portable characters, or contains an invalid namespace segment.
     pub fn parse(value: impl Into<Box<str>>) -> Result<Self, StorageKeyError> {
         let value = value.into();
         validate_key(&value)?;
@@ -134,12 +139,27 @@ impl std::error::Error for StorageError {}
 /// adapter-specific until a later persistence spec defines them.
 pub trait BlobStorage {
     /// Read a value, returning `None` when the key does not exist.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`StorageError`] when the active platform backend cannot service
+    /// the read or stored bytes cannot be decoded by that adapter.
     fn get(&self, key: &StorageKey) -> Result<Option<Vec<u8>>, StorageError>;
 
     /// Replace the complete value stored at `key`.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`StorageError`] when the platform denies the write, storage is
+    /// unavailable/full, or the backend otherwise fails the operation.
     fn put(&self, key: &StorageKey, value: &[u8]) -> Result<(), StorageError>;
 
     /// Remove a value. Removing a missing key succeeds.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`StorageError`] when the platform backend cannot perform the
+    /// removal for reasons other than the key being absent.
     fn delete(&self, key: &StorageKey) -> Result<(), StorageError>;
 }
 
