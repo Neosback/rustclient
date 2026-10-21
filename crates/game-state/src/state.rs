@@ -1,6 +1,6 @@
 use core::fmt;
 
-use rustclient_model::{GameTick, TickSpan};
+use rustclient_model::{GameTick, Revision, TickSpan};
 
 /// Whether the authoritative state currently represents an active game session.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
@@ -61,6 +61,7 @@ impl std::error::Error for TickAdvanceError {}
 #[derive(Debug)]
 pub struct GameState {
     lifecycle: SessionLifecycle,
+    revision: Option<Revision>,
     tick: GameTick,
 }
 
@@ -70,6 +71,7 @@ impl GameState {
     pub const fn new() -> Self {
         Self {
             lifecycle: SessionLifecycle::Inactive,
+            revision: None,
             tick: GameTick::ZERO,
         }
     }
@@ -78,6 +80,15 @@ impl GameState {
     #[must_use]
     pub const fn lifecycle(&self) -> SessionLifecycle {
         self.lifecycle
+    }
+
+    /// Return the semantic compatibility revision of the active session.
+    ///
+    /// Revision identity is session-owned. An inactive state has no current
+    /// session revision and callers must not infer an implicit default.
+    #[must_use]
+    pub const fn session_revision(&self) -> Option<Revision> {
+        self.revision
     }
 
     /// Return the current semantic game tick when a session is active.
@@ -89,26 +100,30 @@ impl GameState {
         }
     }
 
-    /// Begin a new semantic game session at tick zero.
+    /// Begin a new semantic game session for an explicit compatibility revision.
     ///
     /// Future session-owned fields must be initialized/reset through this same
     /// lifecycle boundary rather than by exposing mutable field access.
+    /// `Revision` identifies semantic/protocol/cache compatibility; it is not a
+    /// server-profile identity and does not itself assert that a revision is
+    /// implemented by the surrounding application.
     ///
     /// # Errors
     ///
     /// Returns [`LifecycleError::AlreadyActive`] when a session is already
     /// active. Failed transitions leave the state unchanged.
-    pub(crate) fn begin_session(&mut self) -> Result<(), LifecycleError> {
+    pub(crate) fn begin_session(&mut self, revision: Revision) -> Result<(), LifecycleError> {
         if self.lifecycle == SessionLifecycle::Active {
             return Err(LifecycleError::AlreadyActive);
         }
 
         self.tick = GameTick::ZERO;
+        self.revision = Some(revision);
         self.lifecycle = SessionLifecycle::Active;
         Ok(())
     }
 
-    /// End the active semantic game session and clear session-owned tick state.
+    /// End the active semantic game session and clear session-owned state.
     ///
     /// Future session-owned fields must be cleared through this same lifecycle
     /// boundary so stale state cannot leak into the next session.
@@ -123,6 +138,7 @@ impl GameState {
         }
 
         self.tick = GameTick::ZERO;
+        self.revision = None;
         self.lifecycle = SessionLifecycle::Inactive;
         Ok(())
     }
@@ -164,12 +180,15 @@ impl Default for GameState {
 
 #[cfg(test)]
 mod tests {
+    use rustclient_model::REVISION_240;
+
     use super::*;
 
     #[test]
     fn state_starts_without_an_active_session() {
         let state = GameState::new();
         assert_eq!(state.lifecycle(), SessionLifecycle::Inactive);
+        assert_eq!(state.session_revision(), None);
         assert_eq!(state.current_tick(), None);
     }
 
@@ -178,19 +197,26 @@ mod tests {
         let mut state = GameState::new();
 
         state
-            .begin_session()
+            .begin_session(REVISION_240)
             .expect("inactive state can begin a session");
         assert_eq!(state.lifecycle(), SessionLifecycle::Active);
+        assert_eq!(state.session_revision(), Some(REVISION_240));
         assert_eq!(state.current_tick(), Some(GameTick::ZERO));
-        assert_eq!(state.begin_session(), Err(LifecycleError::AlreadyActive));
+        assert_eq!(
+            state.begin_session(REVISION_240),
+            Err(LifecycleError::AlreadyActive)
+        );
         assert_eq!(state.lifecycle(), SessionLifecycle::Active);
+        assert_eq!(state.session_revision(), Some(REVISION_240));
         assert_eq!(state.current_tick(), Some(GameTick::ZERO));
 
         state.end_session().expect("active state can end a session");
         assert_eq!(state.lifecycle(), SessionLifecycle::Inactive);
+        assert_eq!(state.session_revision(), None);
         assert_eq!(state.current_tick(), None);
         assert_eq!(state.end_session(), Err(LifecycleError::NotActive));
         assert_eq!(state.lifecycle(), SessionLifecycle::Inactive);
+        assert_eq!(state.session_revision(), None);
         assert_eq!(state.current_tick(), None);
     }
 
@@ -209,7 +235,7 @@ mod tests {
     fn tick_advance_is_explicit_and_checked() {
         let mut state = GameState::new();
         state
-            .begin_session()
+            .begin_session(REVISION_240)
             .expect("inactive state can begin a session");
 
         assert_eq!(
@@ -227,19 +253,24 @@ mod tests {
     }
 
     #[test]
-    fn new_session_never_inherits_previous_tick() {
+    fn new_session_never_inherits_previous_session_state() {
         let mut state = GameState::new();
         state
-            .begin_session()
+            .begin_session(REVISION_240)
             .expect("inactive state can begin a session");
         state
             .advance_tick(TickSpan::new(12))
             .expect("small tick advance cannot overflow");
         state.end_session().expect("active state can end a session");
+
+        assert_eq!(state.session_revision(), None);
+        assert_eq!(state.current_tick(), None);
+
         state
-            .begin_session()
+            .begin_session(REVISION_240)
             .expect("inactive state can begin another session");
 
+        assert_eq!(state.session_revision(), Some(REVISION_240));
         assert_eq!(state.current_tick(), Some(GameTick::ZERO));
     }
 }

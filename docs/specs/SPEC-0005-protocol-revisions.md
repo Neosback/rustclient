@@ -20,9 +20,11 @@ Revision
 └── subrevision: optional
 ```
 
-The concrete semantic type may evolve during CP1, but callers must not rely on a process-wide `CLIENT_REVISION = 240` constant.
+The canonical semantic type is `rustclient_model::Revision`. Callers must not rely on a process-wide `CLIENT_REVISION = 240` constant.
 
-Only revisions with an implemented and validated profile appear in the supported-revision registry. RustClient does not claim broad historical compatibility merely because the registry can hold multiple revisions.
+Only revisions with an implemented and validated profile appear in the supported-revision registry. RustClient does not claim broad historical compatibility merely because the semantic `Revision` value type can represent additional values.
+
+An active semantic `GameState` records the explicitly selected `Revision` as session-owned identity. `BeginSession { revision }` establishes that value and session shutdown clears it. `game-state` does not decide whether the revision is supported; profile/revision selection and validation happen before the semantic session begins.
 
 ## Server profile concept
 
@@ -43,6 +45,8 @@ Potential profile dimensions:
 - custom server capabilities/extensions.
 
 Two servers may target the same base revision while using different server profiles because of cache, extension or protocol differences.
+
+`Revision` must never be treated as a substitute for profile identity. Until the canonical `ServerProfile` abstraction exists, replay/session code records revision only and explicitly defers profile identity rather than inventing a second profile-ID type in another crate.
 
 ## Revision selection
 
@@ -67,6 +71,8 @@ SupportedRevisionRegistry
 ```
 
 Adding a revision is an implementation/testing event, not a data-entry exercise.
+
+The selected validated profile supplies its `Revision` when the application begins the semantic session. Higher-level code must not allow `game-state` to silently choose or coerce a revision.
 
 ## Decode boundary
 
@@ -100,7 +106,7 @@ Prefer explicit modules/data tables for protocol families. Shared primitives can
 
 Avoid inheritance-style revision chains where revision N mutates revision N-1 through dozens of overrides; they make provenance and testing difficult.
 
-Revision-specific behavior must not leak into renderer, plugin API, generic game state or unrelated UI code.
+Revision-specific behavior must not leak into renderer, plugin API, generic game state or unrelated UI code. Storing the selected `Revision` as immutable session identity is not revision-specific branching; semantic subsystems still must not switch on protocol details that belong to the selected profile/codec layer.
 
 ## Extensions
 
@@ -118,10 +124,13 @@ Each supported profile requires golden fixtures for login/framing and high-value
 
 Revision-registry tests must prove that unsupported revisions fail explicitly rather than silently falling back to `240`.
 
+Semantic-state/replay tests must prove that the selected `Revision` is explicitly established at session begin, cleared at session end, and reproduced exactly by deterministic replay without making `game-state` responsible for support-registry validation.
+
 ## Acceptance criteria
 
 - Revision `240` can be the only initial implementation without becoming a global hard-coded assumption.
 - `Revision` and `ServerProfile` remain separate concepts.
 - Supported revision/profile selection is explicit and discoverable.
+- The active semantic session records the selected canonical `Revision` without owning profile-selection policy.
 - Adding a new profile does not require renderer, plugin API or generic game-state conditionals for opcode differences.
 - Unsupported revisions fail clearly instead of being coerced to the nearest known revision.

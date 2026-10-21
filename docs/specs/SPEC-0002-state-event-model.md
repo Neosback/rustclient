@@ -20,11 +20,25 @@ The authoritative root is deliberately difficult to duplicate or bypass:
 - Domain fields are private to `game-state`.
 - External crates receive immutable queries/snapshots rather than mutable field references.
 - External semantic mutation enters through typed `SemanticOperation` values and `GameState::apply_operation` / `apply_operation_batch`.
-- Session lifecycle and game-time validation remain crate-owned transition primitives behind that public operation gateway.
-- Starting a session initializes session-owned state; ending it clears session-owned state before another session may begin.
+- Session lifecycle, revision identity, and game-time validation remain crate-owned transition primitives behind that public operation gateway.
+- Starting a session requires an explicit `Revision` and initializes session-owned state.
+- Ending a session clears the active revision and all other session-owned state before another session may begin.
 - An invalid operation leaves state unchanged.
 
 These constraints remain invariants as richer domains are added.
+
+### Session revision identity
+
+The active semantic session owns an explicit `rustclient_model::Revision`.
+
+- An inactive `GameState` has no session revision.
+- `SemanticOperation::BeginSession { revision }` establishes the active revision.
+- `GameState::session_revision()` exposes the revision only while that session is active.
+- `SemanticOperation::EndSession` clears the revision.
+- No process-wide or implicit fallback revision exists inside `game-state`.
+- `Revision` is a compatibility identity for protocol/cache semantics; it is not server identity and is not a `ServerProfile`.
+- Supported-profile validation remains an application/protocol responsibility. `game-state` records the already-selected semantic revision without owning a revision registry.
+- When a canonical server-profile identity type is implemented by its owning subsystem, replay/session metadata may incorporate it explicitly rather than inventing a duplicate profile identifier here.
 
 ### Semantic game time
 
@@ -45,7 +59,7 @@ The current semantic game tick is session-owned authoritative state.
 
 Current operations are deliberately minimal:
 
-- begin session,
+- begin session for an explicit `Revision`,
 - end session,
 - advance semantic game tick by `TickSpan`.
 
@@ -68,16 +82,20 @@ The operation boundary follows these rules:
 
 `SemanticEvent` describes a committed fact, never a request. The currently modeled event facts are:
 
-- `SessionBegan`,
+- `SessionBegan { revision }`,
 - `SessionEnded`,
 - `GameTickAdvanced { previous, current }`.
 
+The session-began event repeats the exact committed `Revision`. This lets replay and observers verify the compatibility identity that actually became authoritative rather than relying only on an input request.
+
 Events are emitted only when observable semantic state actually changed. For example, `AdvanceTick(TickSpan::ZERO)` succeeds but returns no semantic event because the authoritative tick ordinal is unchanged.
 
-`StateDelta` is projection-oriented metadata describing which modeled state domains changed. It is not authoritative state and must be discardable. CP3E tracks only:
+`StateDelta` is projection-oriented metadata describing which modeled state domains changed. It is not authoritative state and must be discardable. CP3E/CP3G track only:
 
 - session lifecycle changed,
 - observable semantic game tick changed.
+
+Session revision is lifecycle-owned and changes only at session boundaries, so `lifecycle_changed()` instructs consumers to re-query both lifecycle and `GameState::session_revision()`. A separate revision-delta bit is unnecessary while that invariant holds.
 
 A successful operation that changes no observable state returns an empty delta. Consumers query the authoritative `GameState` for current values rather than treating the delta as a second state store.
 
@@ -110,7 +128,7 @@ A logical frame/tick may eventually combine operations translated from multiple 
 4. timers/scheduled work,
 5. lifecycle operations.
 
-CP3D through CP3F define ordering, commit, and semantic replay behavior *after* a concrete ordered operation sequence has been assembled. Policy for merging multiple source queues into that ordered sequence remains an application/runtime concern to specify when those producers exist. Parallel preparation may never alter the final committed order.
+CP3D through CP3G define ordering, commit, replay, and session-revision behavior *after* a concrete ordered operation sequence has been assembled. Policy for merging multiple source queues into that ordered sequence remains an application/runtime concern to specify when those producers exist. Parallel preparation may never alter the final committed order.
 
 ## Events
 
@@ -128,7 +146,7 @@ A `StateDelta` is an efficient description of what changed. Renderer/UI may use 
 
 ## Replay
 
-CP3F defines the first executable semantic replay boundary.
+CP3F defines the first executable semantic replay boundary; CP3G makes session revision identity part of that semantic stream.
 
 `ReplayEnvelope` pairs:
 
@@ -136,6 +154,15 @@ CP3F defines the first executable semantic replay boundary.
 - the exact `OperationCommit` that was recorded when that operation originally succeeded.
 
 The envelope is currently an **in-memory semantic contract**, not a stable on-disk or wire format. It deliberately contains no byte serialization, version header, compression, packet capture, wall-clock timestamp, protocol opcode, platform handle, or renderer/plugin data.
+
+Session revision is already replayable without a separate replay-only identity path:
+
+- `BeginSession { revision }` records the requested semantic compatibility identity,
+- successful application stores that revision in authoritative `GameState`,
+- `SessionBegan { revision }` records the committed fact,
+- replay re-applies the operation through the normal gateway and exact-commit comparison verifies the revision again.
+
+A future persistent replay header may surface revision/profile information for indexing or early compatibility checks, but it must be derived from or validated against the canonical semantic session identity rather than becoming a competing source of truth. Concrete server-profile identity remains deferred until the canonical `ServerProfile` abstraction exists.
 
 `GameState::replay_envelopes` and `replay_envelopes_with_commits` replay envelopes in exact slice order. Replay always calls the normal `GameState::apply_operation` mutation gateway; there is no replay-only state mutation path.
 
@@ -153,7 +180,7 @@ A replay rejection leaves the rejected operation uncommitted, following normal o
 
 This design intentionally avoids cloning the authoritative state tree or introducing rollback authority solely for replay verification.
 
-Current CP3F replay is sufficient to prove that the modeled semantic operation stream can reconstruct equivalent modeled semantic state without network or GPU access. It does **not** yet define the persistent replay-file format required for full client sessions. Future replay checkpoints must add, as separate concerns, the initial profile/revision identity, deterministic random inputs/seeds when those exist, source/provenance metadata where needed, persistent encoding/versioning, and integration with additional semantic domains.
+Current replay is sufficient to prove that the modeled semantic operation stream, including active session revision identity, can reconstruct equivalent modeled semantic state without network or GPU access. It does **not** yet define the persistent replay-file format required for full client sessions. Future replay checkpoints must add, as separate concerns, canonical profile identity once implemented, deterministic random inputs/seeds when those exist, source/provenance metadata where needed, persistent encoding/versioning, and integration with additional semantic domains.
 
 Raw packet capture may be an optional diagnostic stream later, but it is not the canonical semantic replay contract.
 
@@ -163,19 +190,22 @@ Raw packet capture may be an optional diagnostic stream later, but it is not the
 - Randomness enters through an injected deterministic source.
 - HashMap iteration order must not define visible behavior.
 - Parallel preparation may not change committed operation order.
-- Identical initial state plus an identical valid operation sequence must produce identical observable state and commit metadata.
+- Identical initial state plus an identical valid operation sequence must produce identical observable state, active session revision, and commit metadata.
 - Identical initial state plus an identical operation batch must produce the same successful prefix, commit metadata order, first failure index/error, and final observable state.
-- Replaying an identical `ReplayEnvelope` sequence from equivalent initial semantic state must reproduce the recorded `OperationCommit` sequence exactly.
+- Replaying an identical `ReplayEnvelope` sequence from equivalent initial semantic state must reproduce the recorded `OperationCommit` sequence and session revision exactly.
 - Replay divergence must stop at the first exact envelope index where an operation is rejected or commit metadata differs.
 
 ## Acceptance criteria
 
 - Tests can construct a state and apply typed semantic operations and ordered operation batches.
+- An active session exposes exactly the `Revision` supplied by `BeginSession`; inactive state exposes no revision.
+- Ending a session clears revision identity before another session begins.
+- `SessionBegan` commit metadata carries the exact committed revision.
 - Identical initial state + inputs produce identical observable state/events.
 - Batch tests prove exact ordering, partial-commit semantics, first-failure reporting, suffix suppression, and successful-prefix commit delivery.
 - Successful mutations expose committed event/delta metadata; failed operations expose none.
 - A successful semantic no-op produces no event and an empty `StateDelta`.
-- Replay tests can record semantic operation/commit envelopes, replay them into equivalent initial state without network/GPU access, and reconstruct equivalent modeled semantic state.
+- Replay tests can record semantic operation/commit envelopes, replay them into equivalent initial state without network/GPU access, and reconstruct equivalent modeled semantic state including session revision.
 - Replay tests detect the first rejected operation and first commit mismatch at the exact envelope index.
 - Replay consumers receive callbacks only for commits that exactly match their recorded envelope.
 - Projection rebuild equals incremental projection in reference tests once projections exist.

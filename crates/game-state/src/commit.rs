@@ -1,4 +1,4 @@
-use rustclient_model::GameTick;
+use rustclient_model::{GameTick, Revision};
 
 /// A semantic fact that became true because authoritative state committed.
 ///
@@ -6,8 +6,11 @@ use rustclient_model::GameTick;
 /// does not change observable state may commit without producing an event.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SemanticEvent {
-    /// A semantic game session became active at its defined initial state.
-    SessionBegan,
+    /// A semantic game session became active for an explicit compatibility revision.
+    SessionBegan {
+        /// Protocol/cache compatibility revision selected for the session.
+        revision: Revision,
+    },
     /// The active semantic game session ended.
     SessionEnded,
     /// Deterministic semantic game time changed from one tick to another.
@@ -41,6 +44,9 @@ impl StateDelta {
     };
 
     /// Return whether session lifecycle changed in this commit.
+    ///
+    /// Session revision is lifecycle-owned, so consumers must re-query
+    /// [`crate::GameState::session_revision`] whenever this is true.
     #[must_use]
     pub const fn lifecycle_changed(self) -> bool {
         self.lifecycle_changed
