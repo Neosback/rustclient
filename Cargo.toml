@@ -25,6 +25,7 @@ members = [
     "plugin-sdk/rust",
     "xtask",
 ]
+exclude = ["references/rustosrs"]
 
 [workspace.package]
 edition = "2024"

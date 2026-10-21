@@ -16,6 +16,7 @@ Before significant work, read `ARCHITECTURE.md`, then the applicable `docs/specs
 8. No hidden global mutable state.
 9. New architecture boundaries require a spec or ADR update.
 10. Keep commits/checkpoints coherent and validation claims exact.
+11. `references/` is pinned evidence, not RustClient source ownership. Never depend on or silently modify reference trees to solve implementation work.
 
 ## Implementation discipline
 
@@ -25,6 +26,7 @@ Before significant work, read `ARCHITECTURE.md`, then the applicable `docs/specs
 - Avoid `unsafe`; workspace lint denies it unless an ADR later creates a narrowly scoped audited exception.
 - Errors crossing subsystem boundaries must carry context without leaking secrets.
 - Tests should exercise semantic contracts, not private implementation details unless necessary.
+- When reference code materially informs behavior, port the semantics into the owning RustClient subsystem and add a focused test/fixture; do not mirror foreign architecture mechanically.
 
 ## Validation baseline
 

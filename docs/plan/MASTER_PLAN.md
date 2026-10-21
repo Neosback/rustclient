@@ -65,7 +65,21 @@ Define a machine-readable dependency policy. Initial checks should reject obviou
 
 Implement as `cargo xtask architecture` once real crate dependencies are introduced.
 
-**CP0 exit:** repository has a stable skeleton and green baseline CI.
+## CP0.5 Reference baseline
+
+Pin `Neosback/RustOSRS` as read-only implementation evidence under `references/rustosrs`.
+
+The pinned snapshot supplies:
+
+- RustOSRS Rust/editor implementation evidence,
+- the bundled RuneLite reference tree,
+- the bundled OpenRune server reference tree.
+
+Add scoped reference-agent rules, a reference index and `cargo xtask references sync/status` tooling. Amend `SPEC-0005` so revision `240` is the first implementation baseline while preserving explicit multi-revision/profile architecture.
+
+**Evidence:** the reference path is a mode `160000` gitlink, `cargo xtask references status` validates the checkout against the gitlink, and the ordinary RustClient CI suite remains green.
+
+**CP0 exit:** repository has a stable skeleton, pinned reference evidence and green baseline CI.
 
 ---
 
@@ -119,428 +133,199 @@ Establish subsystem errors with contextual source location/identifier fields. De
 
 ## CP2.1 Clock capability
 
-Contracts for monotonic time and wall-clock time. Domain code receives time rather than reading global clocks.
+Define monotonic/game clock contracts with native/web implementations.
 
 ## CP2.2 Storage capability
 
-Async key/blob store with namespaces and atomic-write expectations. Implement:
-
-- native filesystem/database-backed adapter,
-- browser IndexedDB-style adapter.
-
-Do not expose paths to shared domain APIs.
+Define key/value and blob storage contracts with explicit limits/errors. Native/web adapters implement them without leaking filesystem/IndexedDB details inward.
 
 ## CP2.3 Transport capability
 
-Define transport traits around connection establishment and ordered byte/message I/O. Keep packet framing outside this layer.
+Define async byte/message transport abstractions suitable for later private-server TCP/WebSocket/WebTransport adapters. Do not implement game protocol here.
 
-Implement initial adapters:
+## CP2.4 Shared `wgpu` bootstrap
 
-- native TCP,
-- browser WebSocket.
+Create one renderer surface/device abstraction used by both composition roots.
 
-Leave room for native WebSocket and future WebTransport.
+Proof:
 
-## CP2.4 Window/canvas and GPU bootstrap
+- desktop window renders a deterministic test scene,
+- browser canvas renders the same semantic scene,
+- shared renderer code contains no platform branching beyond injected surface/platform contracts.
 
-Add `winit`/browser canvas composition and initialize `wgpu` through one renderer-facing API.
-
-Vertical proof: same scene primitive/diagnostic frame from one renderer implementation on native and web.
-
-## CP2.5 Logging/diagnostics bootstrap
-
-Structured tracing sinks for native console/files and browser console.
-
-**CP2 exit:** native and browser are real executable surfaces sharing the renderer/application interfaces.
+**CP2 exit:** native and browser can execute the same renderer API and platform-neutral runtime primitives.
 
 ---
 
-# CP3 - Deterministic runtime and GameState
+# CP3 - Authoritative runtime and replay
 
-## CP3.1 GameState root
+## CP3.1 `GameState`
 
-Define session-scoped root state with explicit reset/connect/disconnect lifecycle.
+Introduce the single-writer state container and mutation gateway.
 
-Initial owned domains:
+## CP3.2 Semantic operations
 
-- session/profile identity,
-- vars,
-- skills,
-- inventories/containers,
-- entity registries,
-- scene semantic state,
-- widget state,
-- chat/message state as needed.
+Define input/domain operations independent of packet opcode, UI toolkit and renderer.
 
-## CP3.2 Domain operation model
+## CP3.3 `StateDelta` / event batches
 
-Define typed inbound/local/timer/script operations. Operations are validated before mutation.
+Committed mutations produce deterministic deltas/events consumed by projections.
 
-## CP3.3 Transaction/batch ordering
+## CP3.4 Replay envelope
 
-Specify processing order for one logical update cycle. No subsystem may mutate state outside the runtime transition API.
+Define a versioned replay format for semantic operations/events plus fixture metadata.
 
-## CP3.4 Event and StateDelta generation
-
-Generate committed fact events and dirty/delta records from transitions. Events should not require consumers to diff entire state.
-
-## CP3.5 Deterministic services
-
-Injected clock/random providers. Stable ordering in any collection that affects output.
-
-## CP3.6 Replay envelope v0
-
-Define an internal unstable replay envelope carrying profile metadata, operation batches, local intents, timing and seeds.
-
-**CP3 exit:** a synthetic replay can produce deterministic state/event hashes without network/GPU.
+**CP3 exit:** deterministic replay reconstructs equivalent semantic state without network or GPU involvement.
 
 ---
 
-# CP4 - Binary and protocol primitives
+# CP4 - Binary/protocol primitives
 
-## CP4.1 Safe read/write cursors
+## CP4.1 Bounded readers/writers
 
-Implement bounded cursor APIs for primitive integers, endian variants, transformed bytes/shorts/ints as needed by target protocol families.
+Implement endian variants, transformed bytes/shorts/ints where required, smart values, strings, bit access and length framing with explicit errors.
 
-## CP4.2 Protocol value encodings
+## CP4.2 Codec property/fuzz tests
 
-Implement smart/compact values, strings and any family-specific variable integer formats behind named primitives.
+Malformed lengths/bitstreams never panic or allocate unbounded memory.
 
-## CP4.3 Packet framing
+## CP4.3 Revision/profile interfaces
 
-Length tables, fixed/byte/short-variable packet lengths, maximum-size policy, partial stream handling and queueing.
+Define protocol codec ownership selected by `ServerProfile`; still no live login requirement.
 
-## CP4.4 Cipher interfaces
-
-Define inbound/outbound opcode cipher state independently of framing. Add concrete algorithms only when required by the first profile.
-
-## CP4.5 Decoder hardening
-
-Property/fuzz tests for truncation, oversized lengths, invalid strings, malformed masks and cursor underflow/overflow.
-
-**CP4 exit:** protocol foundation can safely parse hostile byte streams without involving game state.
+**CP4 exit:** revision codecs can be implemented without exposing byte quirks outside `protocol`.
 
 ---
 
-# CP5 - First reference private-server profile
+# CP5 - First private-server profile
 
-The first profile becomes the architecture proving ground. Pin its exact revision/server assumptions in fixtures/docs rather than calling it simply "OSRS".
+## CP5.1 Choose/pin target
 
-## CP5.1 ServerProfile metadata
+Record the first server/revision/cache assumptions as fixtures and profile metadata.
 
-Stable profile ID, display name, protocol family/revision, cache family, transport requirements and extension negotiation information.
+## CP5.2 Login/framing codec
 
-## CP5.2 Login/bootstrap codec
+Implement login response/request framing and connection state machine against offline/golden fixtures first.
 
-Handshake, seed/session exchange, login payload, response parsing and reconnect/logout states required by the selected server.
+## CP5.3 High-value inbound operations
 
-## CP5.3 Initial packet registry
+Decode enough region/player/NPC/var/widget operations to drive semantic fixtures.
 
-Implement enough inbound semantic operations for:
+## CP5.4 Outbound semantic intents
 
-- local player/session initialization,
-- region/scene load,
-- player/NPC basics,
-- var/skill/container updates,
-- widgets/messages required to reach a usable session.
+Encode a minimal interaction subset through profile-owned encoders.
 
-## CP5.4 Initial outbound registry
-
-Enough semantic actions for movement/menu/widget/chat or other minimum interactions selected for the vertical slice.
-
-## CP5.5 Fixture server or recorded byte fixtures
-
-Prefer a deterministic test fixture server for login/framing integration plus pinned packet fixture vectors.
-
-**CP5 exit:** connection reaches a semantic logged-in state; no opcode leaks outside protocol/profile implementation.
+**CP5 exit:** a profile can translate between representative server bytes and semantic operations with deterministic fixtures.
 
 ---
 
-# CP6 - Cache and assets
+# CP6 - Cache/assets
 
 ## CP6.1 Cache source abstraction
 
-Read archive/index/group/file data from native local cache, packaged/web source, or server-provided source without changing decoders.
+Support local/native and browser-compatible asset sources without leaking platform details.
 
-## CP6.2 Container/compression layer
+## CP6.2 Containers/indexes
 
-Bounds-limited decompression with explicit archive/group/file context.
+Decode required archive/index/compression formats with bounds.
 
-## CP6.3 Definition families
+## CP6.3 Semantic definitions
 
-Prioritize definitions required for the first playable scene:
+Object/NPC/item/sequence/spotanim/varbit/etc. decode into typed CPU-side definitions retaining source identity.
 
-1. underlays/overlays,
-2. objects,
-3. NPCs,
-4. items,
-5. sequences,
-6. spot animations,
-7. varbits,
-8. widgets/scripts as profile needs dictate.
+## CP6.4 Media/model assets
 
-## CP6.4 Sprite/texture/model decode
+Models, textures, sprites and fonts decode into renderer-neutral CPU representations.
 
-Keep decoded CPU representation independent from `wgpu`.
-
-## CP6.5 Asset repository/cache
-
-Typed lookup service, explicit missing/corrupt behavior, CPU memory accounting and eviction design.
-
-**CP6 exit:** a reference region and its required entities/UI assets can be decoded entirely from pinned cache fixtures.
+**CP6 exit:** fixtures decode deterministically on native and wasm-compatible paths.
 
 ---
 
-# CP7 - Scene and classic rendering vertical slice
+# CP7 - Scene and classic renderer
 
-## CP7.1 Scene build
+## CP7.1 Terrain/tiles
 
-Terrain heights, overlays/underlays, tile shapes, collision/occupancy metadata and static object placement from semantic map data.
+Build semantic scene tiles from map/cache definitions.
 
-## CP7.2 Model preparation
+## CP7.2 Loc/object placement
 
-Transform cache models into renderer-ready CPU mesh/material data without losing source identity.
+Footprints/orientation/planes/collision-visible scene semantics are typed and testable.
 
-## CP7.3 RenderWorld projection
+## CP7.3 Render projection
 
-Dirty tracking from state/scene into disposable rendering data.
+Generate disposable `RenderWorld`/GPU data from semantic scene state.
 
-## CP7.4 GPU resources
+## CP7.4 Classic parity fixtures
 
-Mesh/index buffers, texture arrays/atlases where appropriate, bind group/material strategy, depth and camera resources.
+Add deterministic camera/render captures for representative tile/object/model cases.
 
-## CP7.5 Classic scene passes
-
-Terrain, static objects, entities as they become available, alpha/transparency rules and ordering required for reference parity.
-
-## CP7.6 Camera and visibility
-
-Viewport projection, camera movement, frustum/scene visibility and clipping semantics.
-
-## CP7.7 Picking
-
-Generate/select clickable geometry from the same transforms used for visual rendering.
-
-**CP7 exit:** pinned reference scene renders on native/web and can be rebuilt from state/cache after renderer reset.
+**CP7 exit:** static revision-compatible map scenes render natively and in browser from the same semantic inputs.
 
 ---
 
-# CP8 - Dynamic entities and animation
+# CP8 - Entities and animation
 
-## CP8.1 Entity lifecycle
+Players, NPCs, projectiles, graphics objects, spot animations, sequence blending, orientation and interpolation.
 
-Spawn/update/despawn semantic state for players, NPCs, projectiles and graphics objects required by profile.
-
-## CP8.2 Appearance/model composition
-
-Player equipment/colors and NPC transformations/variants.
-
-## CP8.3 Animation system
-
-Sequence timing, skeleton transforms, interpolation policy if supported, movement/stance/action precedence and spot animations.
-
-## CP8.4 Movement
-
-Server path updates, local prediction only if explicitly designed, orientation/turning and teleport semantics.
-
-## CP8.5 Projection performance
-
-Generation counters and incremental renderer uploads for changing entities.
-
-**CP8 exit:** recorded entity sessions replay identically and render without renderer ownership of gameplay truth.
+Tests emphasize tick timing and deterministic semantic outputs, not only screenshots.
 
 ---
 
-# CP9 - Widgets, menus, and client scripts
+# CP9 - Widgets and client scripts
 
-## CP9.1 Widget model
-
-Parent/child identity, layout/alignment, visibility, scroll, text, sprites, models, inventories and interaction metadata.
-
-## CP9.2 Layout engine
-
-Deterministic layout independent from native/web shell toolkit.
-
-## CP9.3 Menu model
-
-Semantic menu entries, target/action metadata, ordering and plugin decoration hooks.
-
-## CP9.4 Script VM foundation
-
-Stacks/locals/call frames, instruction budget, errors, deterministic execution and profile-specific opcode tables.
-
-## CP9.5 Required script opcode families
-
-Implement from fixtures/use rather than trying to implement every opcode before first UI works.
-
-## CP9.6 Fonts/text
-
-Game-specific font decoding/layout/drawing with renderer integration.
-
-**CP9 exit:** representative gameplay interfaces work in replay mode and have inspectable script/widget state.
+Decode/represent game interfaces separately from shell UI. Implement widget hierarchy/layout/state, text/sprites/models, vars and the required client-script VM semantics incrementally from fixtures.
 
 ---
 
-# CP10 - Input and outbound interaction
+# CP10 - Input and interaction
 
-## CP10.1 Input normalization
-
-Mouse, keyboard, wheel, touch/pointer mapping where appropriate; platform events become semantic input events.
-
-## CP10.2 Hover/picking/menu construction
-
-Scene/widget hits feed a deterministic menu builder.
-
-## CP10.3 Interaction intent
-
-Menu selection creates a semantic intent, not a packet.
-
-## CP10.4 Policy validation
-
-Validate local state, plugin/user source, server profile capabilities and any interaction restrictions.
-
-## CP10.5 Protocol encode
-
-Profile converts accepted intent to outbound packet(s).
-
-**CP10 exit:** a user action is traceable across every boundary with no packet construction in UI or renderer code.
+Typed pointer/keyboard/menu input becomes semantic intents. Introduce `UserGestureToken` or equivalent provenance token before any plugin API can request player-affecting actions.
 
 ---
 
-# CP11 - Plugin platform vertical slice
+# CP11 - Plugin ABI/runtime
 
 ## CP11.1 WIT package structure
-
-Split interfaces by least privilege: lifecycle, events, game queries, overlays, panels, config/storage, diagnostics, optional interaction.
-
 ## CP11.2 Manifest/package format
-
-Stable ID/version/API compatibility/capabilities/entry artifact and integrity metadata.
-
-## CP11.3 PluginHost state machine
-
-Discover -> validate -> grant -> instantiate -> start -> running -> stopping/faulted/disabled.
-
+## CP11.3 PluginHost lifecycle state machine
 ## CP11.4 Event subscriptions
-
-Plugins declare/filter events; host emits batches rather than invoking a crossing for every tiny event.
-
-## CP11.5 Query API
-
-Bounded semantic queries and snapshots. Avoid exposing the entire world as one giant serialized object each frame.
-
-## CP11.6 Command buffers
-
-Overlay/UI/notification/menu-decoration commands validated by host and applied after plugin execution.
-
-## CP11.7 Native runtime
-
-Wasmtime Component Model integration, resource/fuel/epoch limits, trap diagnostics and no ambient WASI permissions unless granted.
-
-## CP11.8 Browser runtime
-
-Component-to-browser toolchain, Web Worker isolation, host bridge, budget/watchdog behavior and graceful worker restart.
-
+## CP11.5 State query API
+## CP11.6 Plugin command buffers
+## CP11.7 Native Wasmtime runtime
+## CP11.8 Browser worker runtime
 ## CP11.9 Rust SDK
+## CP11.10 Cross-platform sample plugin
 
-Ergonomic generated bindings, plugin trait/macros/helpers, typed events/queries/commands, config helpers.
-
-## CP11.10 Sample plugin
-
-A useful but small plugin such as tile/XP/entity overlay. Same source artifact pipeline proves native/web behavior.
-
-**CP11 exit:** external plugin can do meaningful work without internal Rust types or privileged access.
+**Exit:** the same packaged sample plugin runs under native and web hosts against the same semantic fixture.
 
 ---
 
-# CP12 - Plugin tooling and scripting
+# CP12 - Plugin tooling and optional scripting
 
-## CP12.1 Developer loader
-
-Local unsigned/dev mode with conspicuous trust status and deterministic reload lifecycle.
-
-## CP12.2 Hot reload
-
-Stop old instance, preserve/migrate allowed plugin storage/config, load new instance and report compatibility errors.
-
-## CP12.3 Inspectors
-
-Events, queries, capabilities, command buffers, logs, CPU/fuel and errors.
-
-## CP12.4 Replay tests
-
-SDK harness feeds recorded/synthetic events and asserts emitted plugin commands.
-
-## CP12.5 Lightweight scripts research
-
-Prototype Rhai and optionally Luau against the same host capability model. Choose only after measuring browser/native integration and developer value. Scripts must not bypass PluginHost policy.
+Implement scaffold/build/test/dev/hot-reload tooling, event/state inspectors and deterministic replay-based plugin tests. Prototype optional Rhai/Luau only through `PluginHost` services; select or reject by ADR after measurements and DX evaluation.
 
 ---
 
-# CP13 - Second profile architecture proof
+# CP13 - Second server profile proof
 
-Select a profile with meaningful differences: login, packet mappings/update masks, cache schema or custom extensions.
+Implement a meaningfully different protocol/revision profile. This is the architecture test that revision isolation is real rather than theoretical.
 
-Required evidence:
-
-- no renderer fork,
-- no plugin API fork,
-- no scattered revision conditionals,
-- common semantic tests reused,
-- only genuinely different adapters/profile modules added.
-
-If this is painful, fix the abstraction before supporting many profiles.
+**Exit:** adding profile two requires changes in profile/codec/fixtures and composition configuration, not renderer/plugin/generic game-state revision branches.
 
 ---
 
 # CP14 - Performance program
 
-## Measurements first
-
-Instrument:
-
-- state update time,
-- packet decode queues,
-- cache decode latency,
-- CPU asset bytes,
-- GPU upload bytes,
-- draw/dispatch counts,
-- frame stages,
-- entity/scene update counts,
-- plugin execution/crossing cost,
-- allocations in hot loops.
-
-## Likely optimization tools
-
-Only after profiling: arenas/slot maps, SoA hot data, command batching, persistent buffers, atlas/array textures, dirty generations, job preparation, cache eviction, event coalescing.
-
-Every optimization requires before/after benchmark evidence and parity tests.
+Establish CPU frame/tick budgets, allocation tracking, GPU timings, scene rebuild costs, plugin budgets and browser memory limits. Optimize from profiles/benchmarks rather than intuition.
 
 ---
 
-# CP15 - Packaging, plugin registry, trust
+# CP15 - Distribution and plugin registry
 
-Native installers/update strategy, web build/deploy, cache bootstrap/update, plugin package hashing/signing, registry metadata, compatibility ranges, revocation/disable mechanism and reproducible plugin build investigation.
+Define signed package metadata, trust/review model, capability declarations, compatibility ranges, update flow and reproducible release packaging.
 
 ---
 
 # CP16 - Production hardening
 
-Reconnect/session failure handling, corrupt asset/cache recovery, settings/config migrations, plugin migration failure behavior, crash diagnostics, safe mode, accessibility/input options, browser storage quota behavior, low-memory behavior, updater rollback, release validation matrix and documentation.
-
----
-
-# Definition of done for any checkpoint
-
-A checkpoint close note must record:
-
-- branch and exact head SHA,
-- specs/ADRs changed,
-- implementation artifacts,
-- tests added,
-- exact validation commands/checks that passed,
-- checks intentionally skipped and why,
-- known limitations carried forward,
-- next checkpoint dependencies.
-
-A passing demo alone is not checkpoint completion.
+Crash/device-loss recovery, corrupted caches, hostile packets, plugin exhaustion, storage quota failures, browser suspension/resume, telemetry/privacy controls and migration/versioning guarantees.
