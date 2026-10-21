@@ -24,7 +24,7 @@ impl DirectoryStorage {
     fn path_for(&self, key: &StorageKey) -> PathBuf {
         key.as_str()
             .split('/')
-            .fold(self.root.clone(), PathBuf::join)
+            .fold(self.root.clone(), |path, segment| path.join(segment))
     }
 
     fn ensure_parent(path: &Path) -> Result<(), StorageError> {
