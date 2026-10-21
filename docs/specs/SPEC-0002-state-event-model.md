@@ -1,4 +1,4 @@
-# SPEC-0002: Authoritative State, Events, Commands, and Replay
+# SPEC-0002: Authoritative State, Events, Commands, Replay, and Fingerprints
 
 **Status:** Draft
 
@@ -144,9 +144,51 @@ Events should carry stable semantic identifiers and the minimum payload consumer
 
 A `StateDelta` is an efficient description of what changed. Renderer/UI may use it to incrementally update projections. It is not independently authoritative and can be discarded/rebuilt from state.
 
+## Canonical semantic fingerprints
+
+CP3J defines a versioned canonical fingerprint surface for deterministic regression/replay evidence.
+
+The fingerprint surface is **derived read-only metadata**. It is not authoritative semantic state, a replay log, a security primitive, or a substitute for exact semantic values when those values are already available.
+
+`SEMANTIC_FINGERPRINT_VERSION` starts at `1`. Schema v1 uses deterministic `FNV-1a-64` over an explicitly tagged canonical byte stream. Rust's `Hash`, `DefaultHasher`, randomized hasher seeds, pointer addresses, memory layout, platform state, renderer state, and wall-clock values are forbidden inputs.
+
+Canonical integers are encoded little-endian and enum/option/list boundaries use explicit byte tags. State and commit-stream fingerprints have distinct ASCII domain prefixes, so equal byte payloads in different semantic domains cannot intentionally share one namespace.
+
+### State fingerprint
+
+`GameState::semantic_fingerprint()` returns `StateFingerprint` for the currently observable authoritative semantic state.
+
+Schema v1 includes, in exact order:
+
+1. session lifecycle,
+2. optional active `Revision`, including explicit subrevision presence,
+3. optional observable `GameTick`.
+
+The implementation derives these values through immutable semantic queries rather than hashing `GameState` memory/layout. Two histories that reach the same observable semantic state therefore produce the same state fingerprint.
+
+As future authoritative domains are added, every new observable semantic field requires an explicit fingerprint decision. If adding that field changes the canonical encoding/output, the fingerprint version and golden vectors must change in the same checkpoint.
+
+### Committed-output stream fingerprint
+
+`CommitStreamFingerprintBuilder` incrementally fingerprints successful `OperationCommit` values in exact authoritative commit order and finishes as `CommitStreamFingerprint`.
+
+Schema v1 includes for every commit:
+
+1. an explicit commit-item marker,
+2. optional `SemanticEvent`,
+3. explicit event variant plus payload when present,
+4. lifecycle-changed `StateDelta` flag,
+5. game-tick-changed `StateDelta` flag.
+
+The finite stream ends with an explicit terminal marker. A different order of the same commits is a different canonical stream.
+
+Operations themselves are not duplicated into this output fingerprint. `ReplayEnvelope` already pairs operation input with the exact resulting commit; the commit-stream fingerprint answers whether committed semantic output was identical.
+
+The fingerprint is deliberately non-cryptographic. It is suitable for deterministic regression checks, replay diagnostics, fixture identities, and CI evidence. Future content authenticity or adversarial integrity requirements require a separately specified cryptographic mechanism.
+
 ## Replay
 
-CP3F defines the first executable semantic replay boundary; CP3G makes session revision identity part of that semantic stream.
+CP3F defines the first executable semantic replay boundary; CP3G makes session revision identity part of that semantic stream; CP3J verifies replay equivalence with canonical state and committed-output fingerprints.
 
 `ReplayEnvelope` pairs:
 
@@ -180,20 +222,23 @@ A replay rejection leaves the rejected operation uncommitted, following normal o
 
 This design intentionally avoids cloning the authoritative state tree or introducing rollback authority solely for replay verification.
 
-Current replay is sufficient to prove that the modeled semantic operation stream, including active session revision identity, can reconstruct equivalent modeled semantic state without network or GPU access. It does **not** yet define the persistent replay-file format required for full client sessions. Future replay checkpoints must add, as separate concerns, canonical profile identity once implemented, deterministic random inputs/seeds when those exist, source/provenance metadata where needed, persistent encoding/versioning, and integration with additional semantic domains.
+Current replay is sufficient to prove that the modeled semantic operation stream, including active session revision identity, can reconstruct equivalent modeled semantic state without network or GPU access. Persistent replay-file format work remains deferred.
 
 Raw packet capture may be an optional diagnostic stream later, but it is not the canonical semantic replay contract.
 
 ## Determinism
 
 - No wall-clock reads inside domain transitions.
-- Randomness enters through an injected deterministic source.
+- Randomness enters through an injected deterministic source and future random-dependent semantic behavior receives its deterministic random input explicitly.
 - HashMap iteration order must not define visible behavior.
 - Parallel preparation may not change committed operation order.
 - Identical initial state plus an identical valid operation sequence must produce identical observable state, active session revision, and commit metadata.
 - Identical initial state plus an identical operation batch must produce the same successful prefix, commit metadata order, first failure index/error, and final observable state.
 - Replaying an identical `ReplayEnvelope` sequence from equivalent initial semantic state must reproduce the recorded `OperationCommit` sequence and session revision exactly.
 - Replay divergence must stop at the first exact envelope index where an operation is rejected or commit metadata differs.
+- Identical modeled semantic state must produce identical `StateFingerprint` under the same `SEMANTIC_FINGERPRINT_VERSION`.
+- Identical ordered successful commit streams must produce identical `CommitStreamFingerprint` under the same fingerprint version.
+- Canonical fingerprint output must be architecture-independent and must never use Rust randomized hashers.
 
 ## Acceptance criteria
 
@@ -208,4 +253,7 @@ Raw packet capture may be an optional diagnostic stream later, but it is not the
 - Replay tests can record semantic operation/commit envelopes, replay them into equivalent initial state without network/GPU access, and reconstruct equivalent modeled semantic state including session revision.
 - Replay tests detect the first rejected operation and first commit mismatch at the exact envelope index.
 - Replay consumers receive callbacks only for commits that exactly match their recorded envelope.
+- Fingerprint tests freeze exact schema-v1 state and committed-output golden vectors.
+- Identical semantic runs produce identical final state and committed-output stream fingerprints.
+- Replay of a recorded semantic sequence reconstructs the same canonical state and committed-output stream fingerprints.
 - Projection rebuild equals incremental projection in reference tests once projections exist.
