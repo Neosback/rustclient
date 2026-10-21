@@ -7,4 +7,4 @@
 
 mod state;
 
-pub use state::{GameState, LifecycleError, SessionLifecycle};
+pub use state::{GameState, LifecycleError, SessionLifecycle, TickAdvanceError};

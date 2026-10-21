@@ -25,6 +25,20 @@ The authoritative root is deliberately difficult to duplicate or bypass:
 
 These constraints apply before the richer operation/event model is implemented and remain invariants afterward.
 
+### Semantic game time
+
+The current semantic game tick is session-owned authoritative state.
+
+- An inactive state has no observable current tick.
+- Beginning a session starts at `GameTick::ZERO`.
+- Ending a session clears the observable session tick.
+- Tick advancement requires an active session.
+- Tick advancement uses an explicit `TickSpan`; domain transitions do not read wall time.
+- Tick arithmetic is checked. Overflow rejects the transition without mutating state.
+- A future runtime scheduler decides *when* to request tick advancement; `GameState` only validates and commits the semantic transition.
+
+CP3B intentionally does not introduce a generic operation enum, event stream, `StateDelta`, or replay envelope. Those build on this transition invariant later.
+
 ## Input batches
 
 A logical frame/tick may contain:

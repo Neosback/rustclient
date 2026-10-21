@@ -5,6 +5,8 @@ This crate owns authoritative live semantic state and validated transitions.
 - No socket, filesystem, browser, window, GPU, `egui`, Wasm runtime, or packet opcode dependencies.
 - No revision-specific byte encodings.
 - Time/randomness enter explicitly.
+- Semantic game ticks are session-owned state and advance only through explicit checked transitions.
+- Failed transitions must leave authoritative state unchanged.
 - Events describe committed facts; commands/operations request changes.
 - Avoid mutable references escaping transition boundaries.
 - `GameState` must not implement `Clone`; do not create a second mutable semantic authority by copying the full state tree.
