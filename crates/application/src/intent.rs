@@ -171,7 +171,8 @@ mod tests {
 
         let prepared = prepare_game_intent(&state, GameIntent::WalkTo { destination })
             .expect("in-scene walk should validate");
-        let expected = ClientIntent::walk_to(destination).expect("profile should encode coordinate");
+        let expected =
+            ClientIntent::walk_to(destination).expect("profile should encode coordinate");
 
         assert_eq!(prepared, expected);
     }
