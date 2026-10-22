@@ -242,7 +242,7 @@ impl ClientIntent {
                 (102, Some(5), p)
             }
         };
-        let mut bytes = Vec::with_capacity(1 + usize::from(length_prefix.is_some()) + payload.len());
+        let mut bytes = Vec::with_capacity(payload.len() + 2);
         bytes.push(u8::wrapping_add(
             opcode,
             cipher.next_word().to_le_bytes()[0],
