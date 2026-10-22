@@ -88,6 +88,7 @@ into `rustclient-plugin-sdk` during CP11.9.
 
 - `--plugins-dir PATH` (default `<preferences-dir>/plugins`) is scanned one package per child
   directory, sorted, capped at 32.
+- Plugin config is rooted at `<preferences-dir>/plugin-data`; the package tree is read-only.
 - Loading happens once at startup; a bad package logs and is skipped, never failing the client.
 - Sessions dispatch `Started` on authentication, batched `Tick` events when the client step
   advances, and `Stopped` on disconnect.

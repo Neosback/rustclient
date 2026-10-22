@@ -20,12 +20,15 @@ pub(super) struct Plugins {
 }
 
 impl Plugins {
-    /// Load every package directory under `directory`, skipping failures.
-    pub(super) fn load(directory: &Path) -> Self {
-        let storage = DirectoryStorage::new(directory.join("config"));
+    /// Load every package directory under `packages`, skipping failures.
+    ///
+    /// Plugin-local persisted data is rooted at `storage_root`; the package tree itself is
+    /// treated as read-only input.
+    pub(super) fn load(packages: &Path, storage_root: &Path) -> Self {
+        let storage = DirectoryStorage::new(storage_root.to_path_buf());
         let logs = StderrLogSink;
         let mut set = PluginSet::new();
-        if !directory.is_dir() {
+        if !packages.is_dir() {
             return Self {
                 set,
                 storage,
@@ -36,7 +39,7 @@ impl Plugins {
         }
         match NativeRuntime::new() {
             Ok(runtime) => {
-                let mut packages = std::fs::read_dir(directory)
+                let mut entries = std::fs::read_dir(packages)
                     .map(|entries| {
                         entries
                             .flatten()
@@ -44,8 +47,8 @@ impl Plugins {
                             .collect::<Vec<_>>()
                     })
                     .unwrap_or_default();
-                packages.sort();
-                for package in packages.into_iter().take(32) {
+                entries.sort();
+                for package in entries.into_iter().take(32) {
                     if !package.is_dir() {
                         continue;
                     }

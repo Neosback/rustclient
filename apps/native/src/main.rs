@@ -130,7 +130,10 @@ impl NativeApp {
             .unwrap_or_default();
         let mut ui = TitleUi::new(preferences.clone());
         ui.set_online(options.connection.is_some());
-        let plugins = plugins::Plugins::load(&options.plugins_dir);
+        let plugins = plugins::Plugins::load(
+            &options.plugins_dir,
+            &options.preferences_dir.join("plugin-data"),
+        );
         Self {
             scene: scene::SceneView::new(options),
             connection_options: options.connection.clone(),
