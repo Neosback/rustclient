@@ -36,10 +36,13 @@ trees, verified with empty `git diff --stat` comparisons:
 | `feat/cp3i-deterministic-randomness` | `e80c184` |
 | `feat/cp3j-semantic-fingerprints` | `2a164db` |
 
-Their ancestry can be recorded with content-preserving merges because their
-entire snapshots equal those existing ancestors. Reapplying their old patches
-must not revert later fingerprint/entity/profile changes. Keep branches and the
-other worktree available; no branch deletion or worktree reset is needed.
+Their ancestry was recorded with content-preserving merges (`ccd329bc`,
+`1d535b5a`, `73cdeabb`) because their entire snapshots equal those existing
+ancestors. The resulting tree is byte-for-byte identical to `61c030d9`; old
+patches did not revert later fingerprint/entity/profile changes. Main was
+fast-forwarded to the consolidated working line before these ancestry merges.
+Every local and fetched remote branch is now reachable from main. Branches and
+the other worktree were retained; no branch deletion or worktree reset occurred.
 
 ## Integrated animation work
 
@@ -94,6 +97,9 @@ forking gameplay by platform or freezing a speculative plugin ABI prematurely.
 ## Validation for this consolidation
 
 Animation/client code checkpoint: `1a84c31d` (including the merged animation work).
+Reference-status tooling and documentation checkpoint: `61c030d9`. Main's ancestry
+merges preserve that exact source tree; this final record changes documentation
+only.
 
 Passed on the integrated code:
 
