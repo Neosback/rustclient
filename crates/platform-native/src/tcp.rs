@@ -73,6 +73,10 @@ impl NativeTcp {
         }
     }
 }
+#[allow(
+    clippy::manual_async_fn,
+    reason = "explicit futures avoid Rust 1.99 unused_async_trait_impl on this blocking worker adapter"
+)]
 impl ByteStream for NativeTcp {
     fn receive(&mut self, bytes: &mut [u8]) -> impl Future<Output = Result<usize, TransportError>> {
         async move {
