@@ -40,12 +40,14 @@ Exit: downstream code can express `WalkTo` and target interaction requests witho
 
 ### P1.2 Terrain picking and Walk Here menu
 
-Status: in progress.
+Status: complete. Implementation validated at `9219b9f7eed3bc90a0b35baf4268d932a728e495` by CI run 144.
 
 - Add deterministic world-terrain picking through the scene/render projection boundary.
 - Convert a viewport click into a semantic world tile using the active camera/viewport transforms.
 - Build the first context-menu entry, `Walk here`, from the picked semantic tile.
 - No network transmission yet.
+
+Automated validation at the implementation head passed `cargo fmt --all --check`, `cargo check --workspace --all-targets`, strict workspace Clippy, `cargo test --workspace`, and the WebAssembly web-target check. A synthetic flat-scene regression proves a viewport pointer resolves to the expected visible `WorldTile`; native wiring produces the corresponding typed `GameIntent::WalkTo` while deliberately stopping before protocol/network handling.
 
 Exit: native input can select a visible terrain tile and produce the exact `GameIntent::WalkTo` requested by the user.
 
