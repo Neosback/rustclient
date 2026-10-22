@@ -273,7 +273,7 @@ impl NativeApp {
         let destination = pick_terrain(&loaded.asset, plane, camera, viewport, pointer)?;
         Some(GameFrameUi::walk_here_entry(destination).intent)
     }
-    fn accept_game_intent(&mut self, intent: GameIntent) {
+    fn accept_game_intent(intent: GameIntent) {
         // P1.2 deliberately stops at the semantic boundary. P1.3 owns validation and encoding.
         eprintln!("game intent ready (network deferred to P1.3): {intent:?}");
     }
@@ -304,7 +304,7 @@ impl NativeApp {
             }
         });
         if let Some(intent) = intent {
-            self.accept_game_intent(intent);
+            Self::accept_game_intent(intent);
         }
         operation
     }
