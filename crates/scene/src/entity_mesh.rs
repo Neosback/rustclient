@@ -10,11 +10,13 @@ use rustclient_cache::{
     },
     world::{
         ItemDefinition, LegacyFrame, NpcDefinition, SequenceAsset, SkeletonTransform, StaticModel,
+        VarbitDefinition,
     },
 };
 use rustclient_game_state::{NpcEntity, PlayerEntity, WorldEntitiesState};
 use rustclient_model::{
-    ItemDefinitionId, ModelId, ModelPoint, NpcDefinitionId, SequenceId, SlotContent,
+    ItemDefinitionId, ModelId, ModelPoint, NpcDefinitionId, SequenceId, SlotContent, VarbitId,
+    VarpId,
 };
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -30,6 +32,7 @@ pub struct EntityCatalog {
     sequences: BTreeMap<SequenceId, SequenceAsset>,
     frames: BTreeMap<u32, LegacyFrame>,
     skeletons: BTreeMap<u16, Vec<SkeletonTransform>>,
+    varbits: BTreeMap<VarbitId, VarbitDefinition>,
     requested_npcs: BTreeSet<NpcDefinitionId>,
     requested_items: BTreeSet<ItemDefinitionId>,
     requested_sequences: BTreeSet<SequenceId>,
@@ -102,6 +105,48 @@ impl EntityCatalog {
         self.sequences.extend(assets.sequences);
         self.frames.extend(assets.frames);
         self.skeletons.extend(assets.skeletons);
+        self.varbits.extend(assets.varbits);
+    }
+
+    /// Resolve an NPC's current definition through its variable-driven transformation.
+    ///
+    /// `None` means the transformation selected "not shown" or a dependency has not
+    /// arrived yet; the caller simply skips the NPC until the catalog grows.
+    fn resolve_npc<'a>(
+        &'a self,
+        asset: &SceneAsset,
+        id: NpcDefinitionId,
+        variables: &BTreeMap<VarpId, i32>,
+    ) -> Option<&'a NpcDefinition> {
+        let def = self.npcs.get(&id)?;
+        let Some(morphs) = &def.morphs else {
+            return Some(def);
+        };
+        let selector = if let Some(varbit) = morphs.varbit {
+            let bit = self
+                .varbits
+                .get(&varbit)
+                .or_else(|| asset.sources().varbits.get(&varbit))?;
+            let value = *variables.get(&bit.varp).unwrap_or(&0);
+            let width = u32::from(bit.high - bit.low) + 1;
+            let mask = if width == 32 {
+                u32::MAX
+            } else {
+                (1_u32 << width) - 1
+            };
+            ((value.cast_unsigned() >> bit.low) & mask).cast_signed()
+        } else {
+            morphs
+                .varp
+                .map_or(-1, |varp| *variables.get(&varp).unwrap_or(&0))
+        };
+        let last = morphs.transforms.len().checked_sub(1)?;
+        let index = usize::try_from(selector)
+            .ok()
+            .filter(|index| *index < last)
+            .unwrap_or(last);
+        let target = (*morphs.transforms.get(index)?)?;
+        self.npcs.get(&target)
     }
 
     fn model<'a>(&'a self, asset: &'a SceneAsset, id: ModelId) -> Option<&'a StaticModel> {
@@ -149,13 +194,14 @@ pub fn build_entities_geometry(
     asset: &SceneAsset,
     catalog: &EntityCatalog,
     entities: &WorldEntitiesState,
+    variables: &BTreeMap<VarpId, i32>,
     geometry: &mut SceneGeometry,
 ) -> Result<()> {
     for player in entities.players().values() {
         build_player(asset, catalog, player, geometry)?;
     }
     for npc in entities.npcs().values() {
-        build_npc(asset, catalog, npc, geometry)?;
+        build_npc(asset, catalog, npc, variables, geometry)?;
     }
     Ok(())
 }
@@ -242,9 +288,10 @@ fn build_npc(
     asset: &SceneAsset,
     catalog: &EntityCatalog,
     npc: &NpcEntity,
+    variables: &BTreeMap<VarpId, i32>,
     geometry: &mut SceneGeometry,
 ) -> Result<()> {
-    let Some(def) = catalog.npcs.get(&npc.definition_id) else {
+    let Some(def) = catalog.resolve_npc(asset, npc.definition_id, variables) else {
         return Ok(());
     };
     let Some(mut model) = build_npc_base(def, |id| catalog.model(asset, id)) else {

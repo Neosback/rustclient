@@ -10,10 +10,10 @@ use crate::{
     Cache, CacheProfile, FileId, GroupId, IndexId, Source,
     world::{
         ItemDefinition, LegacyFrame, NpcDefinition, SequenceAsset, SkeletonTransform, StaticModel,
-        WorldAssets,
+        VarbitDefinition, WorldAssets,
     },
 };
-use rustclient_model::{ItemDefinitionId, ModelId, NpcDefinitionId, SequenceId};
+use rustclient_model::{ItemDefinitionId, ModelId, NpcDefinitionId, SequenceId, VarbitId};
 use rustclient_platform::ReadOnlyBlobs;
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -44,6 +44,8 @@ pub struct EntityAssets {
     pub sequences: BTreeMap<SequenceId, SequenceAsset>,
     pub frames: BTreeMap<u32, LegacyFrame>,
     pub skeletons: BTreeMap<u16, Vec<SkeletonTransform>>,
+    /// Varbit layouts that NPC transformations select by.
+    pub varbits: BTreeMap<VarbitId, VarbitDefinition>,
     /// Per-asset decode problems with source context.
     pub failures: Vec<String>,
 }
@@ -56,6 +58,7 @@ pub struct EntityLoader {
     sequences: BTreeSet<SequenceId>,
     frames: BTreeSet<u32>,
     skeletons: BTreeSet<u16>,
+    varbits: BTreeSet<VarbitId>,
     npcs: BTreeSet<NpcDefinitionId>,
     items: BTreeSet<ItemDefinitionId>,
 }
@@ -70,6 +73,7 @@ impl EntityLoader {
             sequences: world.sequences.keys().copied().collect(),
             frames: world.frames.keys().copied().collect(),
             skeletons: world.skeletons.keys().copied().collect(),
+            varbits: world.varbits.keys().copied().collect(),
             ..Self::default()
         }
     }
@@ -83,8 +87,17 @@ impl EntityLoader {
         let mut out = EntityAssets::default();
         let mut sequences: BTreeSet<SequenceId> = request.sequences.clone();
         let mut models: BTreeSet<ModelId> = BTreeSet::new();
+        let mut varbits: BTreeSet<VarbitId> = BTreeSet::new();
 
-        self.load_npcs(cache, request, &mut out, &mut sequences, &mut models);
+        self.load_npcs(
+            cache,
+            request,
+            &mut out,
+            &mut sequences,
+            &mut models,
+            &mut varbits,
+        );
+        self.load_varbits(cache, &varbits, &mut out);
         self.load_items(cache, request, &mut out, &mut models);
         self.load_sequences(cache, &sequences, &mut out);
         self.load_models(cache, &models, &mut out);
@@ -109,36 +122,41 @@ impl EntityLoader {
         out: &mut EntityAssets,
         sequences: &mut BTreeSet<SequenceId>,
         models: &mut BTreeSet<ModelId>,
+        varbits: &mut BTreeSet<VarbitId>,
     ) {
-        let wanted: BTreeSet<_> = request
+        let mut pending: BTreeSet<_> = request
             .npcs
             .iter()
             .filter(|id| !self.npcs.contains(id))
             .take(MAX_BATCH)
             .copied()
             .collect();
-        if wanted.is_empty() {
+        if pending.is_empty() {
             return;
         }
         let group = GroupId(9);
-        let files = match self.group(cache, IndexId(2), group) {
-            Ok(files) => files,
+        let files: BTreeMap<FileId, Vec<u8>> = match self.group(cache, IndexId(2), group) {
+            Ok(files) => files.into_iter().collect(),
             Err(error) => {
                 out.failures.push(format!("npc group: {error}"));
                 return;
             }
         };
-        for (file, bytes) in files {
-            let id = NpcDefinitionId::new(file.0);
-            if !wanted.contains(&id) {
+        // Transformation targets join the queue; each id decodes at most once per loader.
+        while let Some(id) = pending.pop_first() {
+            if !self.npcs.insert(id) {
                 continue;
             }
+            let file = FileId(id.get());
+            let Some(bytes) = files.get(&file) else {
+                continue;
+            };
             let source = Source {
                 index: IndexId(2),
                 group: Some(group),
                 file: Some(file),
             };
-            match super::definitions::npc(&bytes, id, source) {
+            match super::definitions::npc(bytes, id, source) {
                 Ok(def) => {
                     models.extend(def.models.iter().copied());
                     sequences.extend(
@@ -154,18 +172,64 @@ impl EntityLoader {
                         .into_iter()
                         .flatten(),
                     );
-                    self.npcs.insert(id);
+                    if let Some(morphs) = &def.morphs {
+                        varbits.extend(morphs.varbit);
+                        pending.extend(
+                            morphs
+                                .transforms
+                                .iter()
+                                .flatten()
+                                .filter(|target| !self.npcs.contains(target))
+                                .copied(),
+                        );
+                    }
                     out.npcs.insert(id, def);
                 }
                 Err(error) => out.failures.push(error.to_string()),
             }
         }
-        for id in wanted {
-            if !out.npcs.contains_key(&id) {
-                // Never retry: a definition that is absent or undecodable stays absent.
-                self.npcs.insert(id);
+    }
+
+    fn load_varbits<S: ReadOnlyBlobs>(
+        &mut self,
+        cache: &Cache<S>,
+        wanted: &BTreeSet<VarbitId>,
+        out: &mut EntityAssets,
+    ) {
+        let pending: BTreeSet<_> = wanted
+            .iter()
+            .filter(|id| !self.varbits.contains(id))
+            .copied()
+            .collect();
+        if pending.is_empty() {
+            return;
+        }
+        let group = GroupId(14);
+        let files = match self.group(cache, IndexId(2), group) {
+            Ok(files) => files,
+            Err(error) => {
+                out.failures.push(format!("varbit group: {error}"));
+                return;
+            }
+        };
+        for (file, bytes) in files {
+            let id = VarbitId::new(file.0);
+            if !pending.contains(&id) {
+                continue;
+            }
+            let source = Source {
+                index: IndexId(2),
+                group: Some(group),
+                file: Some(file),
+            };
+            match animation::varbit(&bytes, source) {
+                Ok(def) => {
+                    out.varbits.insert(id, def);
+                }
+                Err(error) => out.failures.push(error.to_string()),
             }
         }
+        self.varbits.extend(pending);
     }
 
     fn load_items<S: ReadOnlyBlobs>(

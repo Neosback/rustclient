@@ -47,6 +47,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         decoded.failures.len(),
         started.elapsed()
     );
+    println!(
+        "morphing npcs: {}, varbits loaded: {}",
+        decoded.npcs.values().filter(|n| n.morphs.is_some()).count(),
+        decoded.varbits.len()
+    );
+    println!(
+        "skeletal sequences: {} of {}",
+        decoded
+            .sequences
+            .values()
+            .filter(|s| s.skeletal.is_some())
+            .count(),
+        decoded.sequences.len()
+    );
     for failure in &decoded.failures {
         println!("  failure: {failure}");
     }
@@ -71,7 +85,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
     entities.apply_npc_info(&update, tile);
     let mut geometry = SceneGeometry::default();
-    entity_mesh::build_entities_geometry(&scene, &catalog, &entities, &mut geometry)?;
+    entity_mesh::build_entities_geometry(
+        &scene,
+        &catalog,
+        &entities,
+        &std::collections::BTreeMap::new(),
+        &mut geometry,
+    )?;
     println!(
         "entity triangles: {}",
         (geometry.opaque.len() + geometry.transparent.len()) / 3

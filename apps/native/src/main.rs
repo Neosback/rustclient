@@ -813,6 +813,7 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                     &loaded.asset,
                     &self.scene.entity_catalog,
                     self.state.entities(),
+                    self.state.scenery().variables(),
                     &mut combined,
                 ) {
                     eprintln!("entity geometry: {e}");

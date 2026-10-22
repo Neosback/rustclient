@@ -3,7 +3,7 @@ use crate::{
     error::Result,
     reader::Reader,
     world::{
-        FloorMaterial, ItemDefinition, KitDefinition, ModelReference, NpcDefinition,
+        FloorMaterial, ItemDefinition, KitDefinition, ModelReference, NpcDefinition, NpcMorphs,
         ObjectDefinition, ObjectMorphs, WearModels,
     },
 };
@@ -266,6 +266,7 @@ pub fn npc(bytes: &[u8], id: NpcDefinitionId, source: Source) -> Result<NpcDefin
         actions: [None, None, None, None, None],
         draw_minimap_dot: true,
         interactable: true,
+        morphs: None,
     };
     loop {
         let op = r.u8()?;
@@ -384,15 +385,22 @@ pub fn npc(bytes: &[u8], id: NpcDefinitionId, source: Source) -> Result<NpcDefin
                 }
             }
             106 | 118 => {
-                r.u16()?;
-                r.u16()?;
-                if op == 118 {
-                    r.u16()?;
-                }
+                let bit = r.u16()?;
+                let varp = r.u16()?;
+                let default = if op == 118 { r.u16()? } else { 65535 };
                 let count = usize::from(r.u8()?);
+                let mut transforms = Vec::with_capacity(count + 2);
                 for _ in 0..=count {
-                    r.u16()?;
+                    let id = r.u16()?;
+                    transforms.push((id != 65535).then_some(NpcDefinitionId::new(u32::from(id))));
                 }
+                transforms
+                    .push((default != 65535).then_some(NpcDefinitionId::new(u32::from(default))));
+                out.morphs = Some(NpcMorphs {
+                    varbit: (bit != 65535).then_some(VarbitId::new(u32::from(bit))),
+                    varp: (varp != 65535).then_some(VarpId::new(u32::from(varp))),
+                    transforms,
+                });
             }
             107 => out.interactable = false,
             115 | 117 => {

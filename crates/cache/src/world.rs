@@ -77,6 +77,17 @@ pub struct ObjectDefinition {
     pub decoration_displacement: u8,
 }
 
+/// Variable-driven NPC transformation (client opcodes 106 and 118).
+///
+/// `transforms` always ends with the default entry used when the selector is
+/// negative or past the last mapped value; `None` means the NPC is not shown.
+#[derive(Debug, Clone)]
+pub struct NpcMorphs {
+    pub varbit: Option<VarbitId>,
+    pub varp: Option<VarpId>,
+    pub transforms: Vec<Option<NpcDefinitionId>>,
+}
+
 /// Render-relevant NPC definition.
 #[derive(Debug, Clone)]
 pub struct NpcDefinition {
@@ -102,6 +113,7 @@ pub struct NpcDefinition {
     pub actions: [Option<String>; 5],
     pub draw_minimap_dot: bool,
     pub interactable: bool,
+    pub morphs: Option<NpcMorphs>,
 }
 
 /// Player identity kit definition (body part models and recolors).
