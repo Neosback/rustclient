@@ -12,9 +12,12 @@ use rustclient_protocol::{
 use std::{
     io::Read,
     path::PathBuf,
+    sync::mpsc::{Receiver, SyncSender, TrySendError, sync_channel},
     time::{Duration, Instant},
 };
 use winit::event_loop::EventLoopProxy;
+
+const OUTBOUND_CAPACITY: usize = 64;
 
 #[derive(Clone)]
 pub(super) struct ConnectionOptions {
@@ -29,29 +32,57 @@ pub(super) enum NetworkEvent {
     Operation(SemanticOperation),
     Failed(LoginFailure, String),
 }
+
+/// Native handle for one live connection worker.
+///
+/// The worker remains the sole owner of the socket and both game ciphers. UI/application code
+/// can only enqueue already validated protocol intents through the bounded channel.
+pub(super) struct ConnectionHandle {
+    cancel: ConnectionCancellation,
+    outbound: SyncSender<ClientIntent>,
+}
+impl ConnectionHandle {
+    pub fn cancel(&self) {
+        self.cancel.cancel();
+    }
+
+    pub fn send(&self, intent: ClientIntent) -> Result<(), String> {
+        self.outbound.try_send(intent).map_err(|error| match error {
+            TrySendError::Full(_) => "outbound gameplay queue is full".to_owned(),
+            TrySendError::Disconnected(_) => "connection worker is not available".to_owned(),
+        })
+    }
+}
+
 /// One worker owns each transport and its cipher state. Stale generations are ignored by the app.
 pub(super) fn spawn(
     options: ConnectionOptions,
     credentials: Credentials,
     generation: u64,
     proxy: EventLoopProxy<LoadEvent>,
-) -> Result<ConnectionCancellation, String> {
+) -> Result<ConnectionHandle, String> {
     let cancel = ConnectionCancellation::default();
     let worker_cancel = cancel.clone();
+    let (outbound, outbound_rx) = sync_channel(OUTBOUND_CAPACITY);
     std::thread::Builder::new()
         .name("server-connection".into())
         .spawn(move || {
             let emit = |event| {
                 let _ = proxy.send_event(LoadEvent::Network(generation, event));
             };
-            if let Err((category, error)) = run(&options, credentials, &worker_cancel, &emit)
-                && !worker_cancel.is_cancelled()
+            if let Err((category, error)) = run(
+                &options,
+                credentials,
+                &worker_cancel,
+                &outbound_rx,
+                &emit,
+            ) && !worker_cancel.is_cancelled()
             {
                 emit(NetworkEvent::Failed(category, error));
             }
         })
         .map_err(|_| "could not start connection worker".to_owned())?;
-    Ok(cancel)
+    Ok(ConnectionHandle { cancel, outbound })
 }
 type Failure = (LoginFailure, String);
 fn prepare(
@@ -104,6 +135,7 @@ fn run(
     options: &ConnectionOptions,
     credentials: Credentials,
     cancel: &ConnectionCancellation,
+    outbound: &Receiver<ClientIntent>,
     emit: &impl Fn(NetworkEvent),
 ) -> Result<(), Failure> {
     let failure = |category, error: String| (category, error);
@@ -157,7 +189,14 @@ fn run(
         if cancel.is_cancelled() {
             return Ok(());
         }
-        stream.deadline_after(Duration::from_millis(200));
+
+        while let Ok(intent) = outbound.try_recv() {
+            stream.deadline_after(Duration::from_secs(2));
+            pollster::block_on(stream.send(&decoder.encode(intent)))
+                .map_err(|e| failure(LoginFailure::Disconnected, e.to_string()))?;
+        }
+
+        stream.deadline_after(Duration::from_millis(50));
         match pollster::block_on(stream.receive(&mut bytes)) {
             Ok(0) => {
                 return Err(failure(
