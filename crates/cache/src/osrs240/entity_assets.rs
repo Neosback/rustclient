@@ -321,6 +321,11 @@ impl EntityLoader {
             };
             match animation::sequence(&bytes, id, source) {
                 Ok(sequence) => {
+                    if sequence.skeletal.is_some() {
+                        out.failures.push(format!(
+                            "sequence {id} uses cached-model skeletal animation; it is drawn in rest pose until that format is ported"
+                        ));
+                    }
                     frame_ids.extend(sequence.frames.iter().copied());
                     out.sequences.insert(id, sequence);
                 }
