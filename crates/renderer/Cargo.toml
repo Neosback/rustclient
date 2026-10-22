@@ -6,6 +6,14 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+glam.workspace = true
+rustclient-model = { path = "../model" }
+rustclient-scene = { path = "../scene" }
+futures-channel.workspace = true
+bytemuck.workspace = true
+rustclient-game-ui = { path = "../game-ui" }
+rustclient-cache = { path = "../cache" }
+
 wgpu.workspace = true
 
 [lints]

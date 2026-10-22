@@ -2,6 +2,8 @@
 
 **Status:** Draft
 
+Render parity and the cap on test volume are governed by [ADR-0004](../adr/ADR-0004-verification-policy.md); where this pyramid conflicts with it, the ADR wins.
+
 ## Test pyramid
 
 - unit tests for binary primitives, coordinates, value objects, state transitions,

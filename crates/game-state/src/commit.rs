@@ -1,4 +1,6 @@
-use rustclient_model::{GameTick, Revision};
+use crate::TitleScreen;
+use crate::{AuthenticatedPlayer, InitialPlacement};
+use rustclient_model::{GameTick, Revision, SceneDescriptor};
 
 /// A semantic fact that became true because authoritative state committed.
 ///
@@ -6,6 +8,41 @@ use rustclient_model::{GameTick, Revision};
 /// does not change observable state may commit without producing an event.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SemanticEvent {
+    ClientCyclesAdvanced {
+        previous: rustclient_model::ClientCycle,
+        current: rustclient_model::ClientCycle,
+    },
+    VariableChanged {
+        id: rustclient_model::VarpId,
+        previous: i32,
+        current: i32,
+    },
+    VariablesReset,
+    LocationChanged {
+        key: rustclient_model::LocationKey,
+        previous: crate::LocationOverride,
+        current: crate::LocationOverride,
+    },
+    /// Authoritative entity state (players/NPCs) updated.
+    EntitiesUpdated,
+    /// Active gameframe tab selection changed.
+    GameFrameTabSelected(Option<usize>),
+    /// A server authenticated this session.
+    SessionAuthenticated {
+        revision: Revision,
+        player: AuthenticatedPlayer,
+    },
+    /// The server supplied initial placement.
+    InitialPlacementEstablished(InitialPlacement),
+    /// A validated immutable asset became the active scene.
+    SceneInstalled(SceneDescriptor),
+    /// Non-secret pre-session navigation committed.
+    TitleScreenChanged {
+        /// Previously displayed panel.
+        previous: TitleScreen,
+        /// Newly committed panel.
+        current: TitleScreen,
+    },
     /// A semantic game session became active for an explicit compatibility revision.
     SessionBegan {
         /// Protocol/cache compatibility revision selected for the session.
@@ -28,40 +65,67 @@ pub enum SemanticEvent {
 /// [`crate::GameState`] for current values after observing changed domains.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct StateDelta {
-    lifecycle_changed: bool,
-    game_tick_changed: bool,
+    changed: u16,
 }
-
 impl StateDelta {
-    pub(crate) const SESSION_BOUNDARY: Self = Self {
-        lifecycle_changed: true,
-        game_tick_changed: true,
-    };
-
-    pub(crate) const GAME_TICK: Self = Self {
-        lifecycle_changed: false,
-        game_tick_changed: true,
-    };
-
-    /// Return whether session lifecycle changed in this commit.
-    ///
-    /// Session revision is lifecycle-owned, so consumers must re-query
-    /// [`crate::GameState::session_revision`] whenever this is true.
+    pub(crate) const fn session_boundary(title_changed: bool) -> Self {
+        Self {
+            changed: 1 | 2 | 8 | 16 | 32 | 64 | 128 | 256 | if title_changed { 4 } else { 0 },
+        }
+    }
+    pub(crate) const ENTITIES: Self = Self { changed: 128 };
+    pub(crate) const GAMEFRAME: Self = Self { changed: 256 };
+    pub(crate) const SCENERY: Self = Self { changed: 32 };
+    pub(crate) const CLIENT_CYCLE: Self = Self { changed: 64 };
+    #[must_use]
+    pub const fn entities_changed(self) -> bool {
+        self.changed & 128 != 0
+    }
+    #[must_use]
+    pub const fn gameframe_changed(self) -> bool {
+        self.changed & 256 != 0
+    }
+    #[must_use]
+    pub const fn scenery_changed(self) -> bool {
+        self.changed & 32 != 0
+    }
+    #[must_use]
+    pub const fn client_cycle_changed(self) -> bool {
+        self.changed & 64 != 0
+    }
+    pub(crate) const SCENE: Self = Self { changed: 16 };
+    /// Whether the session's immutable scene reference changed.
+    #[must_use]
+    pub const fn scene_changed(self) -> bool {
+        self.changed & 16 != 0
+    }
+    pub(crate) const TITLE: Self = Self { changed: 4 };
+    pub(crate) const GAME_TICK: Self = Self { changed: 2 };
+    pub(crate) const CONNECTION: Self = Self { changed: 8 };
+    /// Whether authenticated identity or initial placement changed.
+    #[must_use]
+    pub const fn connection_changed(self) -> bool {
+        self.changed & 8 != 0
+    }
+    /// Whether non-secret title navigation or feedback changed.
+    #[must_use]
+    pub const fn title_changed(self) -> bool {
+        self.changed & 4 != 0
+    }
+    /// Whether lifecycle or session revision changed.
     #[must_use]
     pub const fn lifecycle_changed(self) -> bool {
-        self.lifecycle_changed
+        self.changed & 1 != 0
     }
-
-    /// Return whether the observable semantic game tick changed in this commit.
+    /// Whether observable semantic game time changed.
     #[must_use]
     pub const fn game_tick_changed(self) -> bool {
-        self.game_tick_changed
+        self.changed & 2 != 0
     }
-
-    /// Return whether no currently modeled state domain changed.
+    /// Whether no modeled domain changed.
     #[must_use]
     pub const fn is_empty(self) -> bool {
-        !self.lifecycle_changed && !self.game_tick_changed
+        self.changed == 0
     }
 }
 

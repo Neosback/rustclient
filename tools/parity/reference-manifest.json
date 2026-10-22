@@ -1,0 +1,754 @@
+{
+  "reference_commit": "854a3962164ad401d21064a5f207f86869ea69b4",
+  "deob_commit": "1ad572d7dcdbc0fb67a4a00f0c2f959d5ab25abc",
+  "source_files": [
+    {
+      "path": "crates/osrs-core/src/actor_pose.rs",
+      "sha256": "de7a63c6e6eae3a2644b17ea456422dbc69269e66f5574bb437ba851ad2de490"
+    },
+    {
+      "path": "crates/osrs-core/src/actor_snapshot.rs",
+      "sha256": "503139e22306146496610462a156b99e622ef7eb912f890f93b34839305ce6d0"
+    },
+    {
+      "path": "crates/osrs-core/src/animation.rs",
+      "sha256": "5eaa6440c0ef086c091225bdee97aed46226ebaf5eb2f1de401394deb1433652"
+    },
+    {
+      "path": "crates/osrs-core/src/animation_pose.rs",
+      "sha256": "71b595a4daa92549d74e59876f6d5ba11d24da9a210e25bf5d3fe4f3dafa85f9"
+    },
+    {
+      "path": "crates/osrs-core/src/audio/effect/tests.rs",
+      "sha256": "35e6336278594e0c9be8d279bc264707bd84c414e386944348f32539f7d88762"
+    },
+    {
+      "path": "crates/osrs-core/src/audio/effect.rs",
+      "sha256": "18a485438e9b5cacfeea4239b338cd7b7a11761462ece1e9ad9730758279486c"
+    },
+    {
+      "path": "crates/osrs-core/src/audio/envelope.rs",
+      "sha256": "907d33fa8cc316955bad701c36d6b91bd13d47ee88223be62cb5063695890643"
+    },
+    {
+      "path": "crates/osrs-core/src/audio/filter.rs",
+      "sha256": "4a4639e96ec715f4caf34cc568fa77e13a2168ffd93f5546e50836bb3283785e"
+    },
+    {
+      "path": "crates/osrs-core/src/audio/instrument.rs",
+      "sha256": "3950ec0a6b588b82da3e91f2e023d3d66d944c9f992d1d7a855419de3a74644b"
+    },
+    {
+      "path": "crates/osrs-core/src/audio.rs",
+      "sha256": "7bfb88352906f03dffba1f589ac6851194160759eeded8b39e8598c3f4e18af3"
+    },
+    {
+      "path": "crates/osrs-core/src/color_palette.rs",
+      "sha256": "cec85595b0ea5e3f6642afe886028890e27c07b103060d701515e35e08c7f66c"
+    },
+    {
+      "path": "crates/osrs-core/src/contour.rs",
+      "sha256": "96c7dae63316733cdc08ad4d0b37b50e316832d6ff5fab32a4c1eaaedec9582e"
+    },
+    {
+      "path": "crates/osrs-core/src/coordinate_math.rs",
+      "sha256": "2609bacd803947b552fc54aa66c85d107c769a5523e040cc918c7fd4fff84a91"
+    },
+    {
+      "path": "crates/osrs-core/src/coords.rs",
+      "sha256": "e2dc0e039ca8d09919e3bc3c2acb0b17c582456d7b83baeade26aeb700f41b41"
+    },
+    {
+      "path": "crates/osrs-core/src/definitions.rs",
+      "sha256": "d23e473ec6456c3feb2ab64b22c502cee69bf9acfdd271f359ee6bdba706fddd"
+    },
+    {
+      "path": "crates/osrs-core/src/dynamic_model.rs",
+      "sha256": "6eae4c2f85eae73322f8857365990f35b728555ea0535f1d5965ff575e84d9e3"
+    },
+    {
+      "path": "crates/osrs-core/src/entity.rs",
+      "sha256": "8697753d11a2628bb1ae7f72a7851898d5787668f1394e6ad3d6c89a3373be69"
+    },
+    {
+      "path": "crates/osrs-core/src/entity_effect/mod.rs",
+      "sha256": "32cc7460b7c103fcc42b78459c90de13c50feffdc4a783deeede163669ef6caa"
+    },
+    {
+      "path": "crates/osrs-core/src/entity_effect/projectile.rs",
+      "sha256": "745ce8eb303ec738526f8822e6bc805b4a630450b2f4a2a66bedb2c18d604518"
+    },
+    {
+      "path": "crates/osrs-core/src/entity_effect/spot.rs",
+      "sha256": "3c173e57543f224d11fb22eaba5ada0d8cc1f9ecf2a65bad5654721d36e6fbce"
+    },
+    {
+      "path": "crates/osrs-core/src/floor_color.rs",
+      "sha256": "eff5ba9df32438c0339fe70687efafbf0512e177af7144a0c85024cb937417e6"
+    },
+    {
+      "path": "crates/osrs-core/src/ids.rs",
+      "sha256": "668b2936f70712ee25f72a1085db10caf655857e45e53c8f9275b1c545980116"
+    },
+    {
+      "path": "crates/osrs-core/src/lib.rs",
+      "sha256": "221806a90bbd0df7bb47a9913ecd0699e98850a83eb99f514b0ff951f6498ec8"
+    },
+    {
+      "path": "crates/osrs-core/src/lighting.rs",
+      "sha256": "e225a6818515aa9dcaf08efd126c1ae53ee4e70ed58908426933234171a4284f"
+    },
+    {
+      "path": "crates/osrs-core/src/model.rs",
+      "sha256": "0ea08b9a5258c93e2d19d38e94d93e6e46132081324d7e519fcf01d9af44f01c"
+    },
+    {
+      "path": "crates/osrs-core/src/model_construction/instance_transform.rs",
+      "sha256": "4a778a7c1db4e5db3bf6eb787008e10513ecbd0a7dc8a0df882776c0272483a6"
+    },
+    {
+      "path": "crates/osrs-core/src/model_construction.rs",
+      "sha256": "c8f24a446f12f8763616e4af38c833f1828ea5dc86803a52d1522a35dbb743e2"
+    },
+    {
+      "path": "crates/osrs-core/src/model_identity.rs",
+      "sha256": "427fdc23dd0d46fe72476a1906e5494347c2ca0611da58b73e482f47f07f0105"
+    },
+    {
+      "path": "crates/osrs-core/src/morph.rs",
+      "sha256": "cef37a76208877571a27cfc3006192f0def2214fa0f1d50b17ef392aeb9b554c"
+    },
+    {
+      "path": "crates/osrs-core/src/normals.rs",
+      "sha256": "40fb2304a9d46f6fd09ef7ded2eb1e9de8d0ded10e59f1d0d2f7c5c544bc0e1f"
+    },
+    {
+      "path": "crates/osrs-core/src/object_names.rs",
+      "sha256": "0064ddc3e31ca2ea6f0c43bdbd2175407d3c69e403ff890ddd93cddd28541976"
+    },
+    {
+      "path": "crates/osrs-core/src/orientation.rs",
+      "sha256": "dc9a24c8594016e05f714a6bb0a417a09fe23d8bec3e1d8574fe2c7738cb7563"
+    },
+    {
+      "path": "crates/osrs-core/src/player/tests.rs",
+      "sha256": "db5cfd93e3bc176ca6c68145cb075f512c99483059440f3ea48d2796b0b26fc4"
+    },
+    {
+      "path": "crates/osrs-core/src/player.rs",
+      "sha256": "9bf0aad23b7c993ec61b9e18e8e60fc45cd9280ba15f36e1339e58d00060939c"
+    },
+    {
+      "path": "crates/osrs-core/src/provenance.rs",
+      "sha256": "b46ea5a3dfbe50ae5440d5f8cb5c338b8d57dee7eca80e5f2d18e5c8fdfaee92"
+    },
+    {
+      "path": "crates/osrs-core/src/scenario.rs",
+      "sha256": "33f7648d41703b166d49d79a29d2b500fc31d2d1d7214aa07f25a9690a4a24d7"
+    },
+    {
+      "path": "crates/osrs-core/src/sequence_replacement.rs",
+      "sha256": "2731644c5faef5e11dffc78588ea34a32f998adcd0ee3937b6710e2b71954ff1"
+    },
+    {
+      "path": "crates/osrs-core/src/static_entity.rs",
+      "sha256": "131c52968ba70256f179423ac38ac7528cc9177975819d795c67443849777086"
+    },
+    {
+      "path": "crates/osrs-core/src/trig.rs",
+      "sha256": "61eb58a196013eac56ad6a0b6339d881434bf985d8c1f53201fb7648449e32c8"
+    },
+    {
+      "path": "crates/osrs-core/src/var_names.rs",
+      "sha256": "344cd281169f5a96060c37fd51dba254e9f01233a20aeb2bfa3e1736f6684eb3"
+    },
+    {
+      "path": "crates/osrs-scene/src/building_census/description/pick.rs",
+      "sha256": "cfd3db37df064757c650d9148aadbfd88ab2a719b63bd15b1ef83cef9981e376"
+    },
+    {
+      "path": "crates/osrs-scene/src/building_census/description/tests.rs",
+      "sha256": "7f781cb0e4e86c84d924e3ac1b0506b341a5243746b3e130adc065a794c27c15"
+    },
+    {
+      "path": "crates/osrs-scene/src/building_census/description.rs",
+      "sha256": "d68281b70f606fe0e6a62922b04822204e9fc6d898616099b1bedc99873e54c4"
+    },
+    {
+      "path": "crates/osrs-scene/src/building_census/edges.rs",
+      "sha256": "2b652789acc4c7bb01d0a2aaaa8d8514d6bdb3315530643513eca69f9d86de29"
+    },
+    {
+      "path": "crates/osrs-scene/src/building_census/guess.rs",
+      "sha256": "40c3830e6de0031467d2f4b7e50b1b4b10496020904cde8e6bee6af9fa6e6153"
+    },
+    {
+      "path": "crates/osrs-scene/src/building_census/judge.rs",
+      "sha256": "efc656441f838529eb36cd42142ee2fe82191e91925ef90c86e3a633de07ce7e"
+    },
+    {
+      "path": "crates/osrs-scene/src/building_census/rooms.rs",
+      "sha256": "d882aff18b833b16ba093b9d9c41632ada334ed23007220c1e44dc8e39d13123"
+    },
+    {
+      "path": "crates/osrs-scene/src/building_census/tags.rs",
+      "sha256": "eab0481bf879729bcc192f4d193809d4c4ccbda2372bc89cb518516bd284a865"
+    },
+    {
+      "path": "crates/osrs-scene/src/building_census/tests.rs",
+      "sha256": "9a7102d6bedf6157d89344ab136467b59881777895821f4873ac4e44a6673e50"
+    },
+    {
+      "path": "crates/osrs-scene/src/building_census.rs",
+      "sha256": "12be66013ee4cf8a8fe8d45d615c39dbc579a0773c4ec35ec17d2a8cce8b23e8"
+    },
+    {
+      "path": "crates/osrs-scene/src/collision/snapshot.rs",
+      "sha256": "9f4c2d098d5edd42a6b8ae354aeea340e1dedd8c4b4b10f2402c310c51dd95e5"
+    },
+    {
+      "path": "crates/osrs-scene/src/collision/stencil.rs",
+      "sha256": "8849383843715068af453c210c9280fde72b1112d06d63f465c43e7d50bc4e1b"
+    },
+    {
+      "path": "crates/osrs-scene/src/collision/tests.rs",
+      "sha256": "2bdf262b1fe4a684e66e715550fe911cd30e9d10c4f90662de244cda112e2636"
+    },
+    {
+      "path": "crates/osrs-scene/src/collision.rs",
+      "sha256": "fee7b69e42a04fe9a366adad7ef34c6bc9a226f366487c79b1f3b7512ffc3bdf"
+    },
+    {
+      "path": "crates/osrs-scene/src/dynamic_model.rs",
+      "sha256": "7b3aca1fdfea14a3e8088a8b2f55c0ae487f5400f9adc4959ecc91347d7101c3"
+    },
+    {
+      "path": "crates/osrs-scene/src/dynamic_placement.rs",
+      "sha256": "2de4f8cb66b1c667a2cfbca654dbd96def3ad1f9b9e5fe04a285bf2003025f99"
+    },
+    {
+      "path": "crates/osrs-scene/src/lib.rs",
+      "sha256": "ea60c10976c8b40c40b1928781e56477b6dc8d5f486cc85445a3917059abe24d"
+    },
+    {
+      "path": "crates/osrs-scene/src/normal_finalization.rs",
+      "sha256": "d3e160bf9b2ddb0918be88416cc6e2282f0e3c6bbb16d476004e790cfc32e232"
+    },
+    {
+      "path": "crates/osrs-scene/src/object_semantics/infer/tests.rs",
+      "sha256": "d27b15d28faae4141548ea2b3f20135934cc145977e5c2d51fe16c247dac5aeb"
+    },
+    {
+      "path": "crates/osrs-scene/src/object_semantics/infer.rs",
+      "sha256": "c71a9dbcb05ffbbf9ac247f5d67a91cfd880d2b2440a94a9fd975035037a933a"
+    },
+    {
+      "path": "crates/osrs-scene/src/object_semantics/relations/tests.rs",
+      "sha256": "e571b9143ceeb1b9923a604133120183d17d984a9574014d87c40866db2c08ed"
+    },
+    {
+      "path": "crates/osrs-scene/src/object_semantics/relations.rs",
+      "sha256": "1d74b471994d207655e494a91bbb0de31e003f944bb2f7f828679deee18629ab"
+    },
+    {
+      "path": "crates/osrs-scene/src/object_semantics/structure.rs",
+      "sha256": "f60811dec930c5d64683f43dd5a46e56f56a0e625a4f90e01d39a62592fe1a7d"
+    },
+    {
+      "path": "crates/osrs-scene/src/object_semantics/tokens.rs",
+      "sha256": "cfb929d7d1f0c15e12cdfc3ddf131e8867e1d5579b620d69e8d4b540a269634f"
+    },
+    {
+      "path": "crates/osrs-scene/src/object_semantics.rs",
+      "sha256": "0dc1220d734158ef47974c835b2964e26480301e8680f679d0faa49f5e33fa78"
+    },
+    {
+      "path": "crates/osrs-scene/src/path_catalog.rs",
+      "sha256": "d1cd81741e2245ba8d3b1c8267e4d147961d8ffec0a74032cb4550d6978529a0"
+    },
+    {
+      "path": "crates/osrs-scene/src/pending_replacement.rs",
+      "sha256": "99331d428ca56c46043d4ad86bf5aa2c0da995058dafa52c71c4b46a02176bec"
+    },
+    {
+      "path": "crates/osrs-scene/src/placement.rs",
+      "sha256": "1da54670ca2b1dfd866da31be84e8805b5fc9914d39243dc851e0458e9950ce8"
+    },
+    {
+      "path": "crates/osrs-scene/src/placement_height.rs",
+      "sha256": "ca1e54c6d16369ace6c06fb581b962bc08f535ab3a53bebf7ea573611a7cbf5c"
+    },
+    {
+      "path": "crates/osrs-scene/src/planes.rs",
+      "sha256": "d460837edfbab9f42e08cc82a1c3266c99191280f6f5aed143f544d00a4f6c00"
+    },
+    {
+      "path": "crates/osrs-scene/src/reference_finalization.rs",
+      "sha256": "e5b3879df66128c9864acf164eaa309664ade50bc684ccc2861269609975f6cd"
+    },
+    {
+      "path": "crates/osrs-scene/src/roofs/overrides.rs",
+      "sha256": "90a395c5580907875fa0a1722c82020d16739cc1def11ec343d1a808d3007216"
+    },
+    {
+      "path": "crates/osrs-scene/src/roofs.rs",
+      "sha256": "d324d7b6c23a16f140545aebb6e9b28f0756a9694a850b62ec0f0d62a880672e"
+    },
+    {
+      "path": "crates/osrs-scene/src/scene.rs",
+      "sha256": "47dbe2d0859494dd24fea2890d72db9cedd05f375bf9f4733abac92242501996"
+    },
+    {
+      "path": "crates/osrs-scene/src/semantic_hash.rs",
+      "sha256": "328e33d891d5d92133467a0800222769fb877f02682765ae65ee61dd89f3e462"
+    },
+    {
+      "path": "crates/osrs-scene/src/side_effects.rs",
+      "sha256": "e57832f3d277839c9cf19792235ffb1c8a083545e27996572111f728bf47a0a8"
+    },
+    {
+      "path": "crates/osrs-scene/src/terrain.rs",
+      "sha256": "068dec4c58459d0fb9a18ab6af5ceadcab9b7848ac13992323c9cbd9cc2af773"
+    },
+    {
+      "path": "crates/osrs-scene/src/terrain_appearance.rs",
+      "sha256": "5bbfdc912120847d84c7b5d1a7356ee8f98076bc46edbdb489137dce16d7915e"
+    },
+    {
+      "path": "crates/osrs-scene/src/terrain_build.rs",
+      "sha256": "06e68ccf1de0fd80102117e97befe3425af7d9d7d0199095cc3e61bc24fe3e76"
+    },
+    {
+      "path": "crates/osrs-scene/src/terrain_contract.rs",
+      "sha256": "ac2503c920f74c721c2d44a053fac25e3c73f2de4ebd8261ed710c8a173bea41"
+    },
+    {
+      "path": "crates/osrs-scene/src/terrain_load.rs",
+      "sha256": "dd81a9c3a4fe61a2819c07a386245e175e9c03de844bf044c0c1f3d739793bd7"
+    },
+    {
+      "path": "crates/osrs-scene/src/terrain_path/eiken_golden.txt",
+      "sha256": "4f0ef936c9d0769ec5f1156cde91c988e513950e859565f37aa964368ac5777b"
+    },
+    {
+      "path": "crates/osrs-scene/src/terrain_path/fit/tests.rs",
+      "sha256": "a147e18ee502dc8cd398686ed5656acb52734e8311bb8c505e5d17db4438d969"
+    },
+    {
+      "path": "crates/osrs-scene/src/terrain_path/fit.rs",
+      "sha256": "045bc35fed41d8d560e1d092e333f98abeb67971cb5deadb41065ad7d5ddd9c1"
+    },
+    {
+      "path": "crates/osrs-scene/src/terrain_path/java_order/golden.txt",
+      "sha256": "76649cbae4caa775397213cc8399e24732e1d107dea5253f1c06bc9adcbfebcd"
+    },
+    {
+      "path": "crates/osrs-scene/src/terrain_path/java_order/tests.rs",
+      "sha256": "c54a7a386d2d895bcaff0aea35e00ca75c0b12f9b197c053c4040f6fe1763fa2"
+    },
+    {
+      "path": "crates/osrs-scene/src/terrain_path/java_order/tree.rs",
+      "sha256": "f0f021044c73e2e324d96621d3ad589219f692e41732f78c3db25905924ab663"
+    },
+    {
+      "path": "crates/osrs-scene/src/terrain_path/java_order.rs",
+      "sha256": "e21a80cce9954bb962203bed1fe1966e51748afd60c40652938b728c6b7814bf"
+    },
+    {
+      "path": "crates/osrs-scene/src/terrain_path/mod.rs",
+      "sha256": "6700b34e87b516adb7fde8441c2a9fc16979004d12cfd7977ed528dcb06de3d5"
+    },
+    {
+      "path": "crates/osrs-scene/src/terrain_path/shapes.rs",
+      "sha256": "db14ac68494f1231cc0587043eb95ad673ee89d1c2b2feb378619fc165074571"
+    },
+    {
+      "path": "crates/osrs-render/src/alpha.rs",
+      "sha256": "369a79c9838b7d4482f3a2de1795c1f6b0ac0bd76a382cee13519a9a4f27501f"
+    },
+    {
+      "path": "crates/osrs-render/src/classification.rs",
+      "sha256": "73e729abaca32c60bd4e86a9840563af08f953be58958df619c8a83cdbcbf96e"
+    },
+    {
+      "path": "crates/osrs-render/src/coordinates.rs",
+      "sha256": "f144e5e11b5d756a6d72fca0afd9454a388f3a90aeb3ca8c3a5ca8d3718c8540"
+    },
+    {
+      "path": "crates/osrs-render/src/draw_plan.rs",
+      "sha256": "944d5f98ca33dbc878b0fa520dd6f9b0bb42b5ca9797089b4695f0bb9abe55a1"
+    },
+    {
+      "path": "crates/osrs-render/src/generation.rs",
+      "sha256": "ebdec59ee29e8959b6ec3f026f445ec10df2e6b5bce15dd06c1f956842e7c782"
+    },
+    {
+      "path": "crates/osrs-render/src/geometry.rs",
+      "sha256": "379d962fe26d84c3ea27bf7956f5d7bf4ebed654712a226532372c47b01ed797"
+    },
+    {
+      "path": "crates/osrs-render/src/gpu/counters.rs",
+      "sha256": "212ecfcf7b8f1e18e670e1208356730974dda6533001f5b5926cab1cf0c70055"
+    },
+    {
+      "path": "crates/osrs-render/src/gpu/frame_graph.rs",
+      "sha256": "0048b40b03c21136589bfa3b42d0212a2b29d0aea9ee728df5bf56ff107e3d9f"
+    },
+    {
+      "path": "crates/osrs-render/src/gpu/hd/common.wgsl",
+      "sha256": "38ee80e9898a108cf64dfbb42f4e07b022a0600b0a707e99146ca40ad7813819"
+    },
+    {
+      "path": "crates/osrs-render/src/gpu/hd/layout.rs",
+      "sha256": "63d8881a93784af501084e487d356994a9149bea6cdc78d77fde49af7a83bc29"
+    },
+    {
+      "path": "crates/osrs-render/src/gpu/hd/materials.rs",
+      "sha256": "feb15ad7bb4eed1d652020cd9a1f66153e875d29add65ca97c9f763b3feac075"
+    },
+    {
+      "path": "crates/osrs-render/src/gpu/hd/materials.wgsl",
+      "sha256": "7979fc610ff53980aab405565014a2791f1e490b44990dd5c4efae924775b0d8"
+    },
+    {
+      "path": "crates/osrs-render/src/gpu/hd/mod.rs",
+      "sha256": "3dab5686b8f761554b7351cbc350a1caff38b41080137b2136be5bc848bca5ea"
+    },
+    {
+      "path": "crates/osrs-render/src/gpu/hd/post.rs",
+      "sha256": "d4fd698c9069c0431204d368afe24d0589bf2023b90c0b8bf7f8ad96fd468787"
+    },
+    {
+      "path": "crates/osrs-render/src/gpu/hd/post.wgsl",
+      "sha256": "fd73e5a3c934af69c8f96bb8549db776e0a7060176a05b2ed10f3ef4c8c64ad6"
+    },
+    {
+      "path": "crates/osrs-render/src/gpu/hd/scene.wgsl",
+      "sha256": "9a62223cc63e2194297bd921430e27c7f6e4218136d6aea7f3fcdf891471f7b0"
+    },
+    {
+      "path": "crates/osrs-render/src/gpu/hd/shadow.rs",
+      "sha256": "02fd009e84bad835c4c369937af84f08ba85b2c98040ce3faf01470d577fa22a"
+    },
+    {
+      "path": "crates/osrs-render/src/gpu/hd/shadow_cast.wgsl",
+      "sha256": "a962ce3869fe99cbba5a442de0f9f647204d2df9c9243c821db35f6ff93bf20d"
+    },
+    {
+      "path": "crates/osrs-render/src/gpu/hd/shadow_receive.wgsl",
+      "sha256": "4cf8a41220920012d85160494f0b4cd94cf23c7ff56f70320f2b0e3bc6a4c22b"
+    },
+    {
+      "path": "crates/osrs-render/src/gpu/hd/sky.rs",
+      "sha256": "2636b2d7f37636c52b1dec84952a30326262e8fd11a7a791ef3321a3c9a89af1"
+    },
+    {
+      "path": "crates/osrs-render/src/gpu/hd/sky.wgsl",
+      "sha256": "72f3edbefa1beedd7b2d3d7ae935f27510ca6a7acff3022a04f60158b320d582"
+    },
+    {
+      "path": "crates/osrs-render/src/gpu/mod.rs",
+      "sha256": "cdc443d380e76e111be4f1926d7ac3c162674e0ad9419b5d9e45418645dc4663"
+    },
+    {
+      "path": "crates/osrs-render/src/gpu/overlay.rs",
+      "sha256": "97715ddad34eda3d652a5217aa4d6dd089a3a9528225b5714145a669f0143b71"
+    },
+    {
+      "path": "crates/osrs-render/src/gpu/overlay.wgsl",
+      "sha256": "14d870cf5a32ed80ed84d2a7c805b2408240c5484e4574ff061b86256fe77083"
+    },
+    {
+      "path": "crates/osrs-render/src/gpu/profile.rs",
+      "sha256": "c33f6459fdc3db1315968c207769aada48f003ef00f67a81c9cb95e3f77b0ce6"
+    },
+    {
+      "path": "crates/osrs-render/src/gpu/resources.rs",
+      "sha256": "10407b60134eba4ea2aa561bb1ce0589bd59ab5e4f2467e93f997764f9c713a3"
+    },
+    {
+      "path": "crates/osrs-render/src/gpu/roof.rs",
+      "sha256": "95d28accb59456eb143ae505018468850300d0e4214cecf7194a0efaa1b59971"
+    },
+    {
+      "path": "crates/osrs-render/src/gpu/scene.wgsl",
+      "sha256": "a92d221c0e60e44be4d17ad9da7d3da91e00f4bbd04377fa3c0457d59ab34a81"
+    },
+    {
+      "path": "crates/osrs-render/src/gpu/theme.rs",
+      "sha256": "a94a629f7a00de831d480f1556aa5939c2897c6d381a4a9d6b32409377c3b5eb"
+    },
+    {
+      "path": "crates/osrs-render/src/gpu/timing.rs",
+      "sha256": "08915fe4458508f060c6ed248055fb8639365e9570136e8249a8f62ab7388f52"
+    },
+    {
+      "path": "crates/osrs-render/src/hd_geometry.rs",
+      "sha256": "b8d4a85dcc8136caa4dfb373477270915797e1c1300c7cfffc04264e708cab96"
+    },
+    {
+      "path": "crates/osrs-render/src/lib.rs",
+      "sha256": "f798e412a6bd50d05661f395475d148cd779641f1e2b2cf7b1d44f1c6d4fe955"
+    },
+    {
+      "path": "crates/osrs-render/src/material.rs",
+      "sha256": "f9f65d8b073796c127837328466c06823aae4ab6f2852188806492f75958c3d2"
+    },
+    {
+      "path": "crates/osrs-render/src/mesh.rs",
+      "sha256": "5defbd41c287ccea70ad6c90f8e8ac20f7d0cc19a8cbd3c43a4695fa478cd0de"
+    },
+    {
+      "path": "crates/osrs-render/src/priority.rs",
+      "sha256": "fe534f512fe00377b2866b35ef2c79800ad6c77e67435c53acc5ba6ebe6349a8"
+    },
+    {
+      "path": "crates/osrs-render/src/snapshot.rs",
+      "sha256": "ada169948d8e40e2287d9d01e8a44dce87cf695e730aa259e0b2d438b76e4bc6"
+    },
+    {
+      "path": "crates/osrs-render/src/uv.rs",
+      "sha256": "474b44d20e15e334470c0aaf5f92689aa7482f3f3a86db9cd3d2ed3b02ba578a"
+    },
+    {
+      "path": "crates/osrs-render/src/zone.rs",
+      "sha256": "11d7d140c01fa605fd52dfe6c307521654445164a51722fa9312e63e0a85eb23"
+    },
+    {
+      "path": "crates/osrs-world/src/animation.rs",
+      "sha256": "a4b4f78faa0b53ad1d176828a77f4fdfd9a1b01baddf7d44242815ae2d6d9fd4"
+    },
+    {
+      "path": "crates/osrs-world/src/animation_worker.rs",
+      "sha256": "532cb58b6eac0fd887f044e5991197ae9e7418dd380a0401ae7e955e3c150298"
+    },
+    {
+      "path": "crates/osrs-world/src/assets.rs",
+      "sha256": "a238ce2528ac3f15871d5e3ff256cc257beaab82e41c4176a0845f26324270f4"
+    },
+    {
+      "path": "crates/osrs-world/src/collision_stage.rs",
+      "sha256": "70372e268faf05c353e25ac27ad48de8d5a461a80e956ca864875ae846792fb2"
+    },
+    {
+      "path": "crates/osrs-world/src/definitions/map.rs",
+      "sha256": "583a0bd84c02b7b27ef6496c5dcfea9e7b5754a4e9fbc603e0edc7992e2f3567"
+    },
+    {
+      "path": "crates/osrs-world/src/definitions/npc.rs",
+      "sha256": "369a3c73019f437c1c95bcbe6200d6298b61df590340e0beebd708d0f1f51be6"
+    },
+    {
+      "path": "crates/osrs-world/src/definitions/player.rs",
+      "sha256": "e38289899380b3d1ffbf34d19de48db8de49eea8eae23327dcda6ca3353378b3"
+    },
+    {
+      "path": "crates/osrs-world/src/definitions/terrain.rs",
+      "sha256": "7eea39c7ccf978583892c800df3b8d96befece3721292aef6eb0aacd4bf507af"
+    },
+    {
+      "path": "crates/osrs-world/src/definitions.rs",
+      "sha256": "b55f3fb1698d7bfeef21c8d5833d52afcce0108b140eb6fcccd8e040413f2c2b"
+    },
+    {
+      "path": "crates/osrs-world/src/error.rs",
+      "sha256": "939c322548a4977ebff784a2166849e95d32124dc75af7e0184c5d8938c12a3e"
+    },
+    {
+      "path": "crates/osrs-world/src/extract.rs",
+      "sha256": "b423c3eb3fa39d00090fdcb65cbce9e5191202cebd86c0beee33e1a01265ce58"
+    },
+    {
+      "path": "crates/osrs-world/src/floor_palette.rs",
+      "sha256": "2a93bb826dc3a538cce07a189d53876a5e37b5d452f186edff9f46be94225c82"
+    },
+    {
+      "path": "crates/osrs-world/src/hd/extract.rs",
+      "sha256": "5d87178005bb717f228938c2b7b8d130b2e0a6e28ae64a35239a3d01a6995350"
+    },
+    {
+      "path": "crates/osrs-world/src/hd/gpu.rs",
+      "sha256": "c5ed446cc4125de113cd62daf34eda2e1e45dda48b094039067352271f815feb"
+    },
+    {
+      "path": "crates/osrs-world/src/hd/mod.rs",
+      "sha256": "1b0193b441044d48c3b35ce87d27e060cc74c71a25846eb25ad96bf69bea2d52"
+    },
+    {
+      "path": "crates/osrs-world/src/hd/model.rs",
+      "sha256": "482dc0c254fdb6336c5e4da10076224f59ad03b8e9d7cc3ffbff8054991016a2"
+    },
+    {
+      "path": "crates/osrs-world/src/hd/procedural.rs",
+      "sha256": "7a7ee70a15e85581d7bfc596721823e7127541aa0506955cb247f3c6e5dbc3f8"
+    },
+    {
+      "path": "crates/osrs-world/src/hd/terrain.rs",
+      "sha256": "cb92dd9803cb5b69cf02f7ba20d91923ddecf3c562d5cb6e740a10cf1c8488bc"
+    },
+    {
+      "path": "crates/osrs-world/src/height_dependencies.rs",
+      "sha256": "80faca3b8cf599c986144742d15763cc1c7f7ac28bdcb40d72373896a350ac62"
+    },
+    {
+      "path": "crates/osrs-world/src/info.rs",
+      "sha256": "945978daf9d18c216cb4e8eb13272a02bb13db1e8298c6be5f1ceae15f7e0155"
+    },
+    {
+      "path": "crates/osrs-world/src/lib.rs",
+      "sha256": "eefb3fd2015872106cd128946769d9e24749a9c61c209fa171c0f390fb1060e0"
+    },
+    {
+      "path": "crates/osrs-world/src/loc_edits.rs",
+      "sha256": "4bb2647baf2e2e4d5ef55f06abf432e9aaaac93886457fbdc387aa4504a276ac"
+    },
+    {
+      "path": "crates/osrs-world/src/loc_stage.rs",
+      "sha256": "ca24640d231b4d45069f11f7aebca8fe3e9c66e68487f10610bf78f883cd00fb"
+    },
+    {
+      "path": "crates/osrs-world/src/minimap.rs",
+      "sha256": "bddc79b7791aa83ebefc16368f58934afbce1f6c1e4e180195b2574fadbed546"
+    },
+    {
+      "path": "crates/osrs-world/src/npc.rs",
+      "sha256": "4deffffb1b598f629d3c335e0b5babc0a956fb3ecd1c01b5247f9e82903a231a"
+    },
+    {
+      "path": "crates/osrs-world/src/object_catalog.rs",
+      "sha256": "720199efe902022b38a8a5eafeba90e21c7b075e408771043cde198e8df260e0"
+    },
+    {
+      "path": "crates/osrs-world/src/object_output_adversarial_tests.rs",
+      "sha256": "44bb35c2867640422d5a9358ec4456a5d9373e6c7410f0f47dc6176260b42877"
+    },
+    {
+      "path": "crates/osrs-world/src/object_output_proof.rs",
+      "sha256": "5912aa259e7cc5475f7e1262957adc79691b6fac803af6ed8cce1099f96cc08f"
+    },
+    {
+      "path": "crates/osrs-world/src/oracle_dump.rs",
+      "sha256": "f3bf691a996f2681b752bcbefc3d4819fa447c47132afd0dc30828dc65bd7f6a"
+    },
+    {
+      "path": "crates/osrs-world/src/scene_builder.rs",
+      "sha256": "c053296c10188d540b76a246b6934533fe832462c246f0b772a8df33feb90947"
+    },
+    {
+      "path": "crates/osrs-world/src/sound.rs",
+      "sha256": "0233f42ca1470a19dddc99b657765abf1ca51ead09d8c76ff09f6214b477208e"
+    },
+    {
+      "path": "crates/osrs-world/src/source_squares.rs",
+      "sha256": "6078d8eb9cd353f0b26082162fe8977a12f8cd51e67c5c3ecee0c50e00750eb7"
+    },
+    {
+      "path": "crates/osrs-world/src/streaming.rs",
+      "sha256": "ea37d42a5eeeb9f16aa65bac3e4c7eee08380fe17358005ed962bc1ac8c59140"
+    },
+    {
+      "path": "crates/osrs-world/src/terrain_edits.rs",
+      "sha256": "9660292bc5609762588df1a45a5ea35129114a1648007c8319343b217f5737a4"
+    },
+    {
+      "path": "crates/osrs-world/src/terrain_stage.rs",
+      "sha256": "5df94b820da546d576651174646b25c3d97c789ea87183daf12e47bd2c29797d"
+    },
+    {
+      "path": "crates/osrs-world/src/window.rs",
+      "sha256": "16f9c512f01f24a2b8773c79e2d24099ae2079f35efce87def4344accc2e975f"
+    },
+    {
+      "path": "crates/osrs-world/src/worldmap/font.rs",
+      "sha256": "4a9c718f8a1da1983f20b4153eaa6dac54705f16fc983f9daf8e73091d043a9f"
+    },
+    {
+      "path": "crates/osrs-world/src/worldmap/mod.rs",
+      "sha256": "d09cce0ed0ab54c05d7dc5c653cf8555a49419cc4339fba87b9c64286377aa50"
+    },
+    {
+      "path": "crates/osrs-world/src/worldmap/templates.rs",
+      "sha256": "de868b4f8748eb2dfe62b804409a5a3dc80c362f4a4e4640e3a1174c180a54fb"
+    },
+    {
+      "path": "crates/osrs-cache/src/decode/animation.rs",
+      "sha256": "e40640c48d016156fd2ae7ac3a9937e500cb10a79b2f9d0d258e8f0e005aeb30"
+    },
+    {
+      "path": "crates/osrs-cache/src/decode/context.rs",
+      "sha256": "9b5b71444fad3adcdead4bc35045f88a10ca61f2ad6ac467d8b7914b43b46b84"
+    },
+    {
+      "path": "crates/osrs-cache/src/decode/error.rs",
+      "sha256": "3de388e68804fad2541b190fc1b528513ce5425364ba9a98d170c2ea76b6b3f1"
+    },
+    {
+      "path": "crates/osrs-cache/src/decode/floor.rs",
+      "sha256": "424da92f38a08cb74c4783ddb428e54ec30755da9cb148fefd5ff8b9566f9c6e"
+    },
+    {
+      "path": "crates/osrs-cache/src/decode/item.rs",
+      "sha256": "75db0655b0240bde3c611b18fe84c3b3fe0600ead583404949b7d38ee17feb03"
+    },
+    {
+      "path": "crates/osrs-cache/src/decode/kit.rs",
+      "sha256": "21d0a87e984443b4d43eed9dc6eb663c8be5468b0dbab1c65f916020ad053f7a"
+    },
+    {
+      "path": "crates/osrs-cache/src/decode/map.rs",
+      "sha256": "1e87e3ff6b8309e2e6736d4cb72ef5693c21527307c702f7c0a92cfc13e41bbe"
+    },
+    {
+      "path": "crates/osrs-cache/src/decode/mod.rs",
+      "sha256": "4f3a93bd4febd73a799759f1bcb316e402f831847792133fec070254216298a5"
+    },
+    {
+      "path": "crates/osrs-cache/src/decode/model.rs",
+      "sha256": "e4f134f606fa160876b8a796f6e6fc80cd919ebe09a0f603d00f7b4c92693493"
+    },
+    {
+      "path": "crates/osrs-cache/src/decode/npc.rs",
+      "sha256": "16758d4c20e952682d685739d22f1d8cf62c6a403816b6572e2bc5caa7aaf280"
+    },
+    {
+      "path": "crates/osrs-cache/src/decode/object.rs",
+      "sha256": "61034938c4e94b99ef208e830fb51ede0535da77268bfecd8427e413e6f29bb1"
+    },
+    {
+      "path": "crates/osrs-cache/src/decode/reader.rs",
+      "sha256": "4e0599ed46ac80cb15bb8409ecc2bf1113d152c6c6ef260b6c5e9e1b3cef440e"
+    },
+    {
+      "path": "crates/osrs-cache/src/decode/sequence.rs",
+      "sha256": "0d221c96001c71727f11dd23594cdd4ab42880a40f133122532bb34d2b295d90"
+    },
+    {
+      "path": "crates/osrs-cache/src/decode/sound.rs",
+      "sha256": "19147ace4d34f69ef9f74daa0947632332479abd155581c0b6b10d50102fcfa0"
+    },
+    {
+      "path": "crates/osrs-cache/src/decode/sprite.rs",
+      "sha256": "d8e1200a5c5c446e427468a8755bc1d22834c498ae86c3e79aff22fb08c6a005"
+    },
+    {
+      "path": "crates/osrs-cache/src/decode/texture.rs",
+      "sha256": "0568d7328c904563f19010cfa78d9cba5f06da5013f8f29be8a7445f2322249d"
+    },
+    {
+      "path": "crates/osrs-cache/src/decode/vars.rs",
+      "sha256": "51c7ab50672cc4cd7a9949d9082dd3c108c752b8a741710406b9e842a394e031"
+    }
+  ],
+  "oracle_adjustments": [],
+  "settings": {
+    "brightness": 0.8,
+    "remove_color_banding": true,
+    "bright_textures": false,
+    "fog": 0,
+    "draw_distance_tiles": 50,
+    "msaa": 4,
+    "smooth_animation": false,
+    "smooth_terrain": false,
+    "flush_decorations": false
+  }
+}

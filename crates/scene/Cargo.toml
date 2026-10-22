@@ -5,5 +5,11 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[dependencies]
+rustclient-game-state = {path="../game-state"}
+bytemuck.workspace = true
+rustclient-model = { path = "../model" }
+rustclient-cache = { path = "../cache" }
+
 [lints]
 workspace = true

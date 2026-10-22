@@ -4,6 +4,10 @@
 
 The roadmap is dependency-ordered. A checkpoint is complete only when its acceptance criteria and validation evidence are recorded. Do not skip semantics to build a visually impressive shell that cannot be tested.
 
+SPEC-0014 permits authenticated OpenRune bootstrap immediately after the offline
+title slice. Authentication and initial placement do not close world rendering,
+general entities, widgets or CS2 checkpoints.
+
 ## CP0 - Repository and architecture foundation
 
 Deliver:
@@ -63,6 +67,10 @@ Exit: identical initial semantic state plus identical deterministic semantic inp
 Persistent replay serialization, concrete server profiles, protocol/networking, renderer/UI/plugin integration, richer game domains, projection rebuild tests before projections exist, and platform entropy acquisition remain later-checkpoint work and do not reopen CP3.
 
 ## CP4 - Binary/protocol primitives
+
+The accepted [offline title milestone](SPEC-0013-offline-title.md) implements the
+cache-facing binary subset and title-specific CP6/CP9 work before CP5. This does
+not mark the remaining protocol, general assets, widgets or scripts complete.
 
 Deliver buffers, endian/transforms, smart values, strings, framing, cipher interfaces, limits and fuzz/property tests.
 

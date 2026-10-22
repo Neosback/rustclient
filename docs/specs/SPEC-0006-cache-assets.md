@@ -36,3 +36,17 @@ Profiles may define custom archives/definitions. Extensions are decoded by profi
 ## Validation
 
 Golden fixtures must pin representative assets per supported cache family. Decoder errors include archive/group/file/definition context.
+
+## First implemented slice: title assets
+
+SPEC-0013 defines the bounded read-only JS5 reader and explicit `osrs-240` profile.
+The supported binary subset includes sector chains, container compression,
+protocol-5–7 reference tables, named lookup, multi-file splitting, indexed sprites,
+JPEG backgrounds and simple 257-byte bitmap-font metrics. Extended font metrics,
+XTEA-encrypted maps, models and other definition families remain unsupported.
+The metadata fingerprint is SHA-256 over a domain prefix and ordered
+(index byte, big-endian u64 encoded length, exact reference
+container bytes) tuples; it does not claim to hash all dat2 contents.
+
+The LIVE publisher encoded-size policy is defined in
+[SPEC-0013](SPEC-0013-offline-title.md#live-encoded-size-metadata-policy).

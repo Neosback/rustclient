@@ -1,21 +1,42 @@
+use crate::{
+    AuthenticatedPlayer, ConnectionStateError, InitialPlacement, TitleScreen, TitleTransitionError,
+};
 use core::fmt;
 
-use rustclient_model::{Revision, TickSpan};
+use rustclient_model::{Revision, SceneDescriptor, TickSpan};
 
 use crate::commit::{OperationCommit, SemanticEvent, StateDelta};
-use crate::state::{GameState, LifecycleError, TickAdvanceError};
+use crate::state::{GameState, LifecycleError, SessionLifecycle, TickAdvanceError};
 
 /// Source-neutral semantic operation applied to the authoritative [`GameState`].
 ///
 /// Operations describe requested domain changes after transport/UI-specific
 /// details have already been translated away. They are not committed events.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SemanticOperation {
+    Scenery(crate::SceneryOperation),
+    /// Authoritative player info tick update.
+    UpdatePlayers(rustclient_model::PlayerInfoUpdate),
+    /// Authoritative NPC info tick update.
+    UpdateNpcs(rustclient_model::NpcInfoUpdate),
+    /// Select or unselect active gameframe tab.
+    SelectGameFrameTab(Option<usize>),
+    /// Change non-secret pre-session title navigation/feedback.
+    SetTitleScreen(TitleScreen),
     /// Begin a new semantic game session for an explicit compatibility revision.
     BeginSession {
         /// Protocol/cache compatibility revision selected by the caller.
         revision: Revision,
     },
+    /// Establish an authenticated server session with explicit profile identity.
+    AuthenticateSession {
+        revision: Revision,
+        player: AuthenticatedPlayer,
+    },
+    /// Establish the initial map/player placement after authentication.
+    EstablishInitialPlacement(InitialPlacement),
+    /// Select a validated immutable scene after initial placement.
+    InstallScene(SceneDescriptor),
     /// End the active semantic game session.
     EndSession,
     /// Advance deterministic semantic game time by the supplied span.
@@ -25,6 +46,11 @@ pub enum SemanticOperation {
 /// Failure while validating or applying one semantic operation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OperationError {
+    Scenery(crate::SceneryError),
+    /// Authenticated bootstrap transition failed.
+    Connection(ConnectionStateError),
+    /// Title navigation requires an inactive session.
+    Title(TitleTransitionError),
     /// Session lifecycle validation failed.
     Lifecycle(LifecycleError),
     /// Deterministic game-time validation failed.
@@ -34,6 +60,9 @@ pub enum OperationError {
 impl fmt::Display for OperationError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Scenery(error) => error.fmt(formatter),
+            Self::Connection(error) => error.fmt(formatter),
+            Self::Title(error) => error.fmt(formatter),
             Self::Lifecycle(error) => error.fmt(formatter),
             Self::TickAdvance(error) => error.fmt(formatter),
         }
@@ -43,6 +72,9 @@ impl fmt::Display for OperationError {
 impl std::error::Error for OperationError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
+            Self::Scenery(error) => Some(error),
+            Self::Connection(error) => Some(error),
+            Self::Title(error) => Some(error),
             Self::Lifecycle(error) => Some(error),
             Self::TickAdvance(error) => Some(error),
         }
@@ -109,19 +141,65 @@ impl GameState {
         operation: SemanticOperation,
     ) -> Result<OperationCommit, OperationError> {
         match operation {
+            SemanticOperation::Scenery(op) => self.apply_scenery(op),
+            SemanticOperation::UpdatePlayers(update) => self.apply_update_players(&update),
+            SemanticOperation::UpdateNpcs(update) => self.apply_update_npcs(&update),
+            SemanticOperation::SelectGameFrameTab(tab) => self.apply_select_tab(tab),
+            SemanticOperation::InstallScene(scene) => {
+                self.install_scene(scene)
+                    .map_err(OperationError::Connection)?;
+                Ok(OperationCommit::new(
+                    Some(SemanticEvent::SceneInstalled(scene)),
+                    StateDelta::SCENE,
+                ))
+            }
+            SemanticOperation::AuthenticateSession { revision, player } => {
+                let title_changed = self.title_screen() != TitleScreen::Welcome;
+                self.authenticate_session(revision, player)
+                    .map_err(OperationError::Lifecycle)?;
+                Ok(OperationCommit::new(
+                    Some(SemanticEvent::SessionAuthenticated { revision, player }),
+                    StateDelta::session_boundary(title_changed),
+                ))
+            }
+            SemanticOperation::EstablishInitialPlacement(placement) => {
+                self.establish_placement(placement)
+                    .map_err(OperationError::Connection)?;
+                Ok(OperationCommit::new(
+                    Some(SemanticEvent::InitialPlacementEstablished(placement)),
+                    StateDelta::CONNECTION,
+                ))
+            }
+            SemanticOperation::SetTitleScreen(screen) => {
+                let previous = self
+                    .set_title_screen(screen)
+                    .map_err(OperationError::Title)?;
+                if previous == screen {
+                    Ok(OperationCommit::new(None, StateDelta::default()))
+                } else {
+                    Ok(OperationCommit::new(
+                        Some(SemanticEvent::TitleScreenChanged {
+                            previous,
+                            current: screen,
+                        }),
+                        StateDelta::TITLE,
+                    ))
+                }
+            }
             SemanticOperation::BeginSession { revision } => {
+                let title_changed = self.title_screen() != TitleScreen::Welcome;
                 self.begin_session(revision)
                     .map_err(OperationError::Lifecycle)?;
                 Ok(OperationCommit::new(
                     Some(SemanticEvent::SessionBegan { revision }),
-                    StateDelta::SESSION_BOUNDARY,
+                    StateDelta::session_boundary(title_changed),
                 ))
             }
             SemanticOperation::EndSession => {
                 self.end_session().map_err(OperationError::Lifecycle)?;
                 Ok(OperationCommit::new(
                     Some(SemanticEvent::SessionEnded),
-                    StateDelta::SESSION_BOUNDARY,
+                    StateDelta::session_boundary(false),
                 ))
             }
             SemanticOperation::AdvanceTick(span) => {
@@ -138,6 +216,61 @@ impl GameState {
                     ))
                 }
             }
+        }
+    }
+
+    fn require_active(&self) -> Result<(), OperationError> {
+        if self.lifecycle() == SessionLifecycle::Active {
+            Ok(())
+        } else {
+            Err(OperationError::Lifecycle(LifecycleError::NotActive))
+        }
+    }
+
+    fn apply_update_players(
+        &mut self,
+        update: &rustclient_model::PlayerInfoUpdate,
+    ) -> Result<OperationCommit, OperationError> {
+        self.require_active()?;
+        self.entities.apply_player_info(update);
+        Ok(OperationCommit::new(
+            Some(SemanticEvent::EntitiesUpdated),
+            StateDelta::ENTITIES,
+        ))
+    }
+
+    fn apply_update_npcs(
+        &mut self,
+        update: &rustclient_model::NpcInfoUpdate,
+    ) -> Result<OperationCommit, OperationError> {
+        self.require_active()?;
+        let local_tile = self
+            .entities
+            .local_player()
+            .map(|p| p.tile)
+            .or_else(|| self.initial_placement().map(|p| p.position))
+            .unwrap_or(rustclient_model::WorldTile::new(
+                0,
+                0,
+                rustclient_model::Plane::MIN,
+            ));
+        self.entities.apply_npc_info(update, local_tile);
+        Ok(OperationCommit::new(
+            Some(SemanticEvent::EntitiesUpdated),
+            StateDelta::ENTITIES,
+        ))
+    }
+
+    fn apply_select_tab(&mut self, tab: Option<usize>) -> Result<OperationCommit, OperationError> {
+        self.require_active()?;
+        if self.selected_tab == tab {
+            Ok(OperationCommit::new(None, StateDelta::default()))
+        } else {
+            self.selected_tab = tab;
+            Ok(OperationCommit::new(
+                Some(SemanticEvent::GameFrameTabSelected(tab)),
+                StateDelta::GAMEFRAME,
+            ))
         }
     }
 
@@ -180,7 +313,7 @@ impl GameState {
     where
         F: FnMut(usize, OperationCommit),
     {
-        for (index, operation) in operations.iter().copied().enumerate() {
+        for (index, operation) in operations.iter().cloned().enumerate() {
             match self.apply_operation(operation) {
                 Ok(commit) => on_commit(index, commit),
                 Err(error) => {
@@ -335,7 +468,7 @@ mod tests {
 
         for operation in operations {
             assert_eq!(
-                left.apply_operation(operation),
+                left.apply_operation(operation.clone()),
                 right.apply_operation(operation)
             );
         }

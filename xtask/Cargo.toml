@@ -5,5 +5,10 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[dependencies]
+rustclient-model = { path = "../crates/model" }
+rustclient-cache = { path = "../crates/cache" }
+rustclient-platform-native = { path = "../crates/platform-native" }
+
 [lints]
 workspace = true

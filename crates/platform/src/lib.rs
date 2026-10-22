@@ -7,7 +7,12 @@
 #![forbid(unsafe_code)]
 
 mod clock;
+mod read_only;
 mod storage;
 
 pub use clock::{Clock, MonotonicTime, WallTime};
+pub use read_only::{MemoryBlobs, ReadOnlyBlobs};
 pub use storage::{BlobStorage, StorageError, StorageErrorKind, StorageKey, StorageKeyError};
+
+mod transport;
+pub use transport::{ByteStream, TransportError};

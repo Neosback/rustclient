@@ -150,7 +150,7 @@ CP3J defines a versioned canonical fingerprint surface for deterministic regress
 
 The fingerprint surface is **derived read-only metadata**. It is not authoritative semantic state, a replay log, a security primitive, or a substitute for exact semantic values when those values are already available.
 
-`SEMANTIC_FINGERPRINT_VERSION` starts at `1`. Schema v1 uses deterministic `FNV-1a-64` over an explicitly tagged canonical byte stream. Rust's `Hash`, `DefaultHasher`, randomized hasher seeds, pointer addresses, memory layout, platform state, renderer state, and wall-clock values are forbidden inputs.
+`SEMANTIC_FINGERPRINT_VERSION` is `4` for scene selection (CP3J used v1; offline title v2; authenticated bootstrap v3). Schema v4 uses deterministic `FNV-1a-64` over an explicitly tagged canonical byte stream. Rust's `Hash`, `DefaultHasher`, randomized hasher seeds, pointer addresses, memory layout, platform state, renderer state, and wall-clock values are forbidden inputs.
 
 Canonical integers are encoded little-endian and enum/option/list boundaries use explicit byte tags. State and commit-stream fingerprints have distinct ASCII domain prefixes, so equal byte payloads in different semantic domains cannot intentionally share one namespace.
 
@@ -158,11 +158,15 @@ Canonical integers are encoded little-endian and enum/option/list boundaries use
 
 `GameState::semantic_fingerprint()` returns `StateFingerprint` for the currently observable authoritative semantic state.
 
-Schema v1 includes, in exact order:
+Schema v4 includes, in exact order:
 
 1. session lifecycle,
 2. optional active `Revision`, including explicit subrevision presence,
-3. optional observable `GameTick`.
+3. optional observable `GameTick`,
+4. non-secret `TitleScreen`,
+5. optional authenticated identity (profile u32, player index u32, member byte, staff byte),
+6. optional initial placement (position then map anchor: x i32, y i32, plane byte; optional area (presence byte, then u32 when present)),
+7. optional scene descriptor (presence byte, then SHA-256 ID bytes, origin x i32/y i32/plane byte, width u32/height u32).
 
 The implementation derives these values through immutable semantic queries rather than hashing `GameState` memory/layout. Two histories that reach the same observable semantic state therefore produce the same state fingerprint.
 
@@ -172,13 +176,16 @@ As future authoritative domains are added, every new observable semantic field r
 
 `CommitStreamFingerprintBuilder` incrementally fingerprints successful `OperationCommit` values in exact authoritative commit order and finishes as `CommitStreamFingerprint`.
 
-Schema v1 includes for every commit:
+Schema v4 includes for every commit:
 
 1. an explicit commit-item marker,
 2. optional `SemanticEvent`,
 3. explicit event variant plus payload when present,
 4. lifecycle-changed `StateDelta` flag,
-5. game-tick-changed `StateDelta` flag.
+5. game-tick-changed `StateDelta` flag,
+6. title-changed `StateDelta` flag,
+7. connection-changed `StateDelta` flag,
+8. scene-changed `StateDelta` flag.
 
 The finite stream ends with an explicit terminal marker. A different order of the same commits is a different canonical stream.
 
@@ -253,7 +260,44 @@ Raw packet capture may be an optional diagnostic stream later, but it is not the
 - Replay tests can record semantic operation/commit envelopes, replay them into equivalent initial state without network/GPU access, and reconstruct equivalent modeled semantic state including session revision.
 - Replay tests detect the first rejected operation and first commit mismatch at the exact envelope index.
 - Replay consumers receive callbacks only for commits that exactly match their recorded envelope.
-- Fingerprint tests freeze exact schema-v1 state and committed-output golden vectors.
+- Fingerprint tests freeze exact schema-v4 state and committed-output golden vectors.
 - Identical semantic runs produce identical final state and committed-output stream fingerprints.
 - Replay of a recorded semantic sequence reconstructs the same canonical state and committed-output stream fingerprints.
 - Projection rebuild equals incremental projection in reference tests once projections exist.
+
+## Offline pre-session title state (schema v2)
+
+`GameState::title_screen()` is the single owner of non-secret welcome,
+credential-feedback and local information navigation. `SetTitleScreen` is valid
+only while inactive, emits `TitleScreenChanged { previous, current }` and sets
+`StateDelta::title_changed()` only on change. Repeating a screen is a semantic
+no-op. Session begin/end reset title state to Welcome; beginning a session from
+another title panel includes the title delta in the existing session commit.
+Credentials, hover/focus, preferences and cosmetic flames stay outside semantic
+state/replay, as specified by SPEC-0013. No offline title action begins a session.
+
+The title state canonical encoding is: Welcome tag `0`; Credentials tag `1`
+followed by Prompt `0`, UsernameRequired `1`, PasswordRequired `2`, Offline `3`;
+Information tag `2` followed by NewUser `0` or Help `1`. Event tag `3` encodes
+previous then current title state. Existing event tags stay unchanged.
+State and commit fingerprints use the same version-2 domain headers, and
+exact vectors were independently derived from that byte contract.
+
+## Authenticated bootstrap (schema v3)
+
+See SPEC-0014. `AuthenticateSession` establishes lifecycle/revision and canonical
+`ServerProfileId` plus player identity in one validated transition. It emits
+`SessionAuthenticated` (fingerprint tag 4, revision then identity) and changes
+lifecycle, game time and connection delta domains. Legacy `BeginSession` remains
+available for synthetic semantic fixtures. `EstablishInitialPlacement` requires
+authentication, consistent planes and no prior placement; its event tag is 5 and
+contains position, map anchor and area in the state encoding order. EndSession
+clears identity and placement and marks the connection delta domain.
+
+Title feedback appends Connecting tag 4 and Failed tag 5 followed by failure byte:
+Connection 0, Authentication 1, CacheMismatch 2, Protocol 3, Disconnected 4.
+Passwords and network cipher/challenge state are absent from every semantic type.
+
+## Immutable scene selection (schema v4)
+
+`InstallScene(SceneDescriptor)` requires established placement inside the descriptor's bounds/plane, and rejects a second installation. It emits `SceneInstalled` (tag 6, payload encoded as above), with scene delta bit 16. Session boundaries reset the scene reference and invalidate the scene projection domain. No CPU mesh, GPU handle, camera or credential draft enters semantic state. Immutable CPU assets may be prepared before the operation, but presentation selects only the committed descriptor. Replay failures box their detailed mismatch payload so success-path `Result` values stay small.

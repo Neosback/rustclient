@@ -1,6 +1,9 @@
+use crate::{
+    AuthenticatedPlayer, InitialPlacement, LoginFailure, LoginStatus, TitleInformation, TitleScreen,
+};
 use core::fmt;
 
-use rustclient_model::{GameTick, Revision};
+use rustclient_model::{GameTick, Revision, SceneDescriptor};
 
 use crate::{GameState, OperationCommit, SemanticEvent, SessionLifecycle};
 
@@ -8,7 +11,7 @@ use crate::{GameState, OperationCommit, SemanticEvent, SessionLifecycle};
 ///
 /// Any change to field ordering, tags, integer encoding, or fingerprint
 /// algorithm that changes canonical output must increment this version.
-pub const SEMANTIC_FINGERPRINT_VERSION: u16 = 1;
+pub const SEMANTIC_FINGERPRINT_VERSION: u16 = 6;
 
 const FNV_OFFSET_BASIS: u64 = 0xCBF2_9CE4_8422_2325;
 const FNV_PRIME: u64 = 0x0000_0100_0000_01B3;
@@ -107,6 +110,11 @@ impl GameState {
     /// pointers, renderer/platform state, wall time, and randomized collection
     /// iteration are excluded by construction.
     #[must_use]
+    #[expect(
+        clippy::missing_panics_doc,
+        clippy::too_many_lines,
+        reason = "all counts are bounded by validated GameState transitions"
+    )]
     pub fn semantic_fingerprint(&self) -> StateFingerprint {
         let mut fingerprint = StableFingerprint64::for_domain(STATE_DOMAIN);
 
@@ -116,7 +124,106 @@ impl GameState {
         });
         write_optional_revision(&mut fingerprint, self.session_revision());
         write_optional_tick(&mut fingerprint, self.current_tick());
+        write_title(&mut fingerprint, self.title_screen());
+        match self.authenticated_player() {
+            None => fingerprint.write_u8(0),
+            Some(player) => {
+                fingerprint.write_u8(1);
+                write_player(&mut fingerprint, player);
+            }
+        }
+        match self.initial_placement() {
+            None => fingerprint.write_u8(0),
+            Some(placement) => {
+                fingerprint.write_u8(1);
+                write_placement(&mut fingerprint, placement);
+            }
+        }
 
+        match self.loaded_scene() {
+            None => fingerprint.write_u8(0),
+            Some(scene) => {
+                fingerprint.write_u8(1);
+                write_scene(&mut fingerprint, scene);
+            }
+        }
+        let scenery = self.scenery();
+        fingerprint.write_u64(scenery.cycle().get());
+        fingerprint.write_bytes(
+            &u32::try_from(scenery.variables().len())
+                .expect("bounded variables")
+                .to_le_bytes(),
+        );
+        for (id, value) in scenery.variables() {
+            fingerprint.write_bytes(&id.get().to_le_bytes());
+            fingerprint.write_bytes(&value.to_le_bytes());
+        }
+        fingerprint.write_bytes(
+            &u32::try_from(scenery.locations().len())
+                .expect("bounded overrides")
+                .to_le_bytes(),
+        );
+        for (key, value) in scenery.locations() {
+            write_location_key(&mut fingerprint, *key);
+            write_location_override(&mut fingerprint, *value);
+        }
+
+        match self.selected_tab() {
+            None => fingerprint.write_u8(0),
+            Some(tab) => {
+                fingerprint.write_u8(1);
+                fingerprint.write_u8(u8::try_from(tab).unwrap_or(255));
+            }
+        }
+
+        let entities = self.entities();
+        match entities.local_player_index() {
+            None => fingerprint.write_u8(0),
+            Some(idx) => {
+                fingerprint.write_u8(1);
+                fingerprint.write_u32(idx.get());
+            }
+        }
+        fingerprint.write_bytes(
+            &u32::try_from(entities.players().len())
+                .expect("bounded players")
+                .to_le_bytes(),
+        );
+        for (idx, player) in entities.players() {
+            fingerprint.write_u32(idx.get());
+            fingerprint.write_bytes(&player.tile.x.to_le_bytes());
+            fingerprint.write_bytes(&player.tile.y.to_le_bytes());
+            fingerprint.write_u8(player.tile.plane.get());
+            fingerprint.write_u16(player.orientation);
+            fingerprint.write_u8(u8::from(player.appearance.is_some()));
+            match player.sequence {
+                None => fingerprint.write_u8(0),
+                Some(seq) => {
+                    fingerprint.write_u8(1);
+                    fingerprint.write_u32(seq.get());
+                }
+            }
+        }
+        fingerprint.write_bytes(
+            &u32::try_from(entities.npcs().len())
+                .expect("bounded npcs")
+                .to_le_bytes(),
+        );
+        for (idx, npc) in entities.npcs() {
+            fingerprint.write_u32(idx.get());
+            fingerprint.write_u32(npc.definition_id.get());
+            fingerprint.write_bytes(&npc.tile.x.to_le_bytes());
+            fingerprint.write_bytes(&npc.tile.y.to_le_bytes());
+            fingerprint.write_u8(npc.tile.plane.get());
+            fingerprint.write_u16(npc.orientation);
+            match npc.sequence {
+                None => fingerprint.write_u8(0),
+                Some(seq) => {
+                    fingerprint.write_u8(1);
+                    fingerprint.write_u32(seq.get());
+                }
+            }
+        }
         StateFingerprint(fingerprint.finish())
     }
 }
@@ -148,6 +255,10 @@ impl StableFingerprint64 {
     }
 
     fn write_u16(&mut self, value: u16) {
+        self.write_bytes(&value.to_le_bytes());
+    }
+
+    fn write_u32(&mut self, value: u32) {
         self.write_bytes(&value.to_le_bytes());
     }
 
@@ -203,10 +314,61 @@ fn write_commit(fingerprint: &mut StableFingerprint64, commit: OperationCommit) 
     let delta = commit.delta();
     fingerprint.write_u8(u8::from(delta.lifecycle_changed()));
     fingerprint.write_u8(u8::from(delta.game_tick_changed()));
+    fingerprint.write_u8(u8::from(delta.title_changed()));
+    fingerprint.write_u8(u8::from(delta.connection_changed()));
+    fingerprint.write_u8(u8::from(delta.scene_changed()));
+    fingerprint.write_u8(u8::from(delta.scenery_changed()));
+    fingerprint.write_u8(u8::from(delta.client_cycle_changed()));
+    fingerprint.write_u8(u8::from(delta.entities_changed()));
+    fingerprint.write_u8(u8::from(delta.gameframe_changed()));
 }
 
 fn write_event(fingerprint: &mut StableFingerprint64, event: SemanticEvent) {
     match event {
+        SemanticEvent::ClientCyclesAdvanced { previous, current } => {
+            fingerprint.write_u8(7);
+            fingerprint.write_u64(previous.get());
+            fingerprint.write_u64(current.get());
+        }
+        SemanticEvent::VariableChanged {
+            id,
+            previous,
+            current,
+        } => {
+            fingerprint.write_u8(8);
+            fingerprint.write_bytes(&id.get().to_le_bytes());
+            fingerprint.write_bytes(&previous.to_le_bytes());
+            fingerprint.write_bytes(&current.to_le_bytes());
+        }
+        SemanticEvent::VariablesReset => fingerprint.write_u8(9),
+        SemanticEvent::LocationChanged {
+            key,
+            previous,
+            current,
+        } => {
+            fingerprint.write_u8(10);
+            write_location_key(fingerprint, key);
+            write_location_override(fingerprint, previous);
+            write_location_override(fingerprint, current);
+        }
+        SemanticEvent::SceneInstalled(scene) => {
+            fingerprint.write_u8(6);
+            write_scene(fingerprint, scene);
+        }
+        SemanticEvent::SessionAuthenticated { revision, player } => {
+            fingerprint.write_u8(4);
+            write_revision(fingerprint, revision);
+            write_player(fingerprint, player);
+        }
+        SemanticEvent::InitialPlacementEstablished(placement) => {
+            fingerprint.write_u8(5);
+            write_placement(fingerprint, placement);
+        }
+        SemanticEvent::TitleScreenChanged { previous, current } => {
+            fingerprint.write_u8(3);
+            write_title(fingerprint, previous);
+            write_title(fingerprint, current);
+        }
         SemanticEvent::SessionBegan { revision } => {
             fingerprint.write_u8(0);
             write_revision(fingerprint, revision);
@@ -216,6 +378,119 @@ fn write_event(fingerprint: &mut StableFingerprint64, event: SemanticEvent) {
             fingerprint.write_u8(2);
             fingerprint.write_u64(previous.get());
             fingerprint.write_u64(current.get());
+        }
+        SemanticEvent::EntitiesUpdated => fingerprint.write_u8(11),
+        SemanticEvent::GameFrameTabSelected(tab) => {
+            fingerprint.write_u8(12);
+            match tab {
+                None => fingerprint.write_u8(0),
+                Some(tab) => {
+                    fingerprint.write_u8(1);
+                    fingerprint.write_u8(u8::try_from(tab).unwrap_or(255));
+                }
+            }
+        }
+    }
+}
+
+fn write_location_key(f: &mut StableFingerprint64, key: rustclient_model::LocationKey) {
+    f.write_bytes(&key.tile.x.to_le_bytes());
+    f.write_bytes(&key.tile.y.to_le_bytes());
+    f.write_u8(key.tile.plane.get());
+    f.write_u8(match key.layer {
+        rustclient_model::LocationLayer::Boundary => 0,
+        rustclient_model::LocationLayer::WallDecoration => 1,
+        rustclient_model::LocationLayer::GameObject => 2,
+        rustclient_model::LocationLayer::FloorDecoration => 3,
+    });
+}
+fn write_location_override(f: &mut StableFingerprint64, value: crate::LocationOverride) {
+    use rustclient_model::LocationChange;
+    match value.change {
+        LocationChange::Inherit => f.write_u8(0),
+        LocationChange::Remove => f.write_u8(1),
+        LocationChange::Replace(def) => {
+            f.write_u8(2);
+            f.write_bytes(&def.object.get().to_le_bytes());
+            f.write_u8(def.shape);
+            f.write_u8(def.orientation.get());
+        }
+    }
+    match value.animation {
+        None => f.write_u8(0),
+        Some(start) => {
+            f.write_u8(1);
+            match start.sequence {
+                None => f.write_u8(0),
+                Some(sequence) => {
+                    f.write_u8(1);
+                    f.write_bytes(&sequence.get().to_le_bytes());
+                }
+            }
+            f.write_u64(start.cycle.get());
+            f.write_u64(start.random_seed);
+        }
+    }
+}
+
+fn write_title(fingerprint: &mut StableFingerprint64, screen: TitleScreen) {
+    match screen {
+        TitleScreen::Welcome => fingerprint.write_u8(0),
+        TitleScreen::Credentials(status) => {
+            fingerprint.write_u8(1);
+            fingerprint.write_u8(match status {
+                LoginStatus::Prompt => 0,
+                LoginStatus::UsernameRequired => 1,
+                LoginStatus::PasswordRequired => 2,
+                LoginStatus::Offline => 3,
+                LoginStatus::Connecting => 4,
+                LoginStatus::Failed(_) => 5,
+            });
+            if let LoginStatus::Failed(failure) = status {
+                fingerprint.write_u8(match failure {
+                    LoginFailure::Connection => 0,
+                    LoginFailure::Authentication => 1,
+                    LoginFailure::CacheMismatch => 2,
+                    LoginFailure::Protocol => 3,
+                    LoginFailure::Disconnected => 4,
+                });
+            }
+        }
+        TitleScreen::Information(info) => {
+            fingerprint.write_u8(2);
+            fingerprint.write_u8(match info {
+                TitleInformation::NewUser => 0,
+                TitleInformation::Help => 1,
+            });
+        }
+    }
+}
+
+fn write_scene(f: &mut StableFingerprint64, scene: SceneDescriptor) {
+    f.write_bytes(&scene.id().bytes());
+    f.write_bytes(&scene.origin().x.to_le_bytes());
+    f.write_bytes(&scene.origin().y.to_le_bytes());
+    f.write_u8(scene.origin().plane.get());
+    f.write_bytes(&scene.width().to_le_bytes());
+    f.write_bytes(&scene.height().to_le_bytes());
+}
+fn write_player(f: &mut StableFingerprint64, player: AuthenticatedPlayer) {
+    f.write_bytes(&player.profile.get().to_le_bytes());
+    f.write_bytes(&player.player.get().to_le_bytes());
+    f.write_u8(u8::from(player.member));
+    f.write_u8(player.staff_level);
+}
+fn write_placement(f: &mut StableFingerprint64, placement: InitialPlacement) {
+    for tile in [placement.position, placement.map_anchor] {
+        f.write_bytes(&tile.x.to_le_bytes());
+        f.write_bytes(&tile.y.to_le_bytes());
+        f.write_u8(tile.plane.get());
+    }
+    match placement.area {
+        None => f.write_u8(0),
+        Some(area) => {
+            f.write_u8(1);
+            f.write_bytes(&area.get().to_le_bytes());
         }
     }
 }
@@ -243,9 +518,12 @@ mod tests {
     }
 
     #[test]
-    fn state_fingerprint_v1_has_exact_regression_vectors() {
+    fn state_fingerprint_v6_has_exact_regression_vectors() {
         let mut state = GameState::new();
-        assert_eq!(state.semantic_fingerprint().get(), 0x64EF_5A30_6B7F_DE9E);
+        assert_eq!(
+            state.semantic_fingerprint().get(),
+            8_648_089_271_838_886_857
+        );
 
         state
             .apply_operation(BEGIN_240)
@@ -254,7 +532,35 @@ mod tests {
             .apply_operation(SemanticOperation::AdvanceTick(TickSpan::new(5)))
             .expect("small tick advance cannot overflow");
 
-        assert_eq!(state.semantic_fingerprint().get(), 0x8B41_8067_C226_7506);
+        assert_eq!(
+            state.semantic_fingerprint().get(),
+            1_662_451_992_595_177_179
+        );
+    }
+
+    #[test]
+    fn title_panels_and_feedback_participate_in_canonical_state_and_commits() {
+        let screens = [
+            TitleScreen::Welcome,
+            TitleScreen::Credentials(LoginStatus::Prompt),
+            TitleScreen::Credentials(LoginStatus::UsernameRequired),
+            TitleScreen::Credentials(LoginStatus::PasswordRequired),
+            TitleScreen::Credentials(LoginStatus::Offline),
+            TitleScreen::Information(TitleInformation::NewUser),
+            TitleScreen::Information(TitleInformation::Help),
+        ];
+        let mut states = std::collections::BTreeSet::new();
+        let mut streams = std::collections::BTreeSet::new();
+        for screen in screens {
+            let mut state = GameState::new();
+            let commit = state
+                .apply_operation(SemanticOperation::SetTitleScreen(screen))
+                .unwrap();
+            let mut stream = CommitStreamFingerprintBuilder::new();
+            stream.push(commit);
+            assert!(states.insert(state.semantic_fingerprint()));
+            assert!(streams.insert(stream.finish()));
+        }
     }
 
     #[test]
@@ -283,7 +589,7 @@ mod tests {
         );
         assert_eq!(
             subrevision.semantic_fingerprint().get(),
-            0x357F_0290_2B69_983D
+            13_610_782_365_595_794_734
         );
     }
 
@@ -306,7 +612,7 @@ mod tests {
     }
 
     #[test]
-    fn commit_stream_fingerprint_v1_has_exact_regression_vector() {
+    fn commit_stream_fingerprint_v6_has_exact_regression_vector() {
         let operations = [
             BEGIN_240,
             SemanticOperation::AdvanceTick(TickSpan::new(2)),
@@ -315,10 +621,10 @@ mod tests {
         ];
         let (_, fingerprint) = run_operations(&operations);
 
-        assert_eq!(fingerprint.get(), 0xE51B_0092_A298_14E4);
+        assert_eq!(fingerprint.get(), 3_758_896_452_731_557_813);
         assert_eq!(
             CommitStreamFingerprintBuilder::new().finish().get(),
-            0x25E3_8229_4080_5551
+            3_354_334_176_184_128_508
         );
     }
 
@@ -380,7 +686,7 @@ mod tests {
 
         for operation in operations {
             let commit = recorded_state
-                .apply_operation(operation)
+                .apply_operation(operation.clone())
                 .expect("reference operation sequence must be valid");
             recorded_stream.push(commit);
             envelopes.push(ReplayEnvelope::new(operation, commit));

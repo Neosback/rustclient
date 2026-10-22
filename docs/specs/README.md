@@ -36,5 +36,9 @@ Every substantive spec should contain: purpose, scope, terminology, invariants, 
 - `SPEC-0010`: implementation roadmap/checkpoints
 - `SPEC-0011`: plugin authoring experience and lightweight scripting direction
 - `SPEC-0012`: dependency-light semantic coordinates, IDs, revision, time, and orientation
+- `SPEC-0013`: offline cache-backed desktop title milestone
+- `SPEC-0014`: OpenRune 240.2 authenticated desktop bootstrap
 
 For execution-sized tasks and dependency ordering, see `docs/plan/MASTER_PLAN.md`.
+
+- [SPEC-0015: Cache-backed spawn scene preview](SPEC-0015-spawn-scene.md) — static terrain/location geometry after authenticated placement.

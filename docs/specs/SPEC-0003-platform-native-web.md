@@ -47,9 +47,9 @@ Game ticks are semantic runtime values and remain separate from platform time. N
 
 ## Transport sequencing
 
-Private servers may expose different transports, but transport work is intentionally deferred beyond CP2 at project direction so networking does not force an interface before revision-240 protocol/replay requirements are concrete.
+CP2 deferred transports until concrete consumers existed. SPEC-0014 now defines `ByteStream`: runtime-neutral future-based ordered receive and send-all operations, with stable Closed/Timeout/Cancelled/Unavailable failures. Native TCP is worker-bound, accepts IP literals or localhost, and checks explicit cancellation and deadlines. Sockets and OS entropy remain native capabilities.
 
-Expected later adapters remain:
+Adapter scope:
 
 - Native: TCP commonly, plus TLS/WebSocket/other transports where required.
 - Browser: WebSocket/WebTransport or a compatible relay/endpoint because raw TCP is unavailable.
@@ -73,4 +73,15 @@ Shared semantic code may permit parallelism but must not require native threads 
 - semantic storage keys cannot escape a native root through traversal syntax,
 - browser-only APIs are target-gated,
 - no protocol/cache/game-state crate imports browser/native OS bindings,
-- transport remains absent rather than represented by a knowingly premature placeholder.
+- transport consumers follow the concrete SPEC-0014 byte-stream contract rather than an unrelated placeholder.
+
+## Read-only bulk asset ranges
+
+The offline title milestone adds `ReadOnlyBlobs`: optional blob length and exact
+bounded range reads by `StorageKey`. Unlike writable preference storage, opening
+an asset source never creates directories/files or repairs missing data.
+`DirectoryBlobs` supplies native reads and confines resolved paths to its root;
+`MemoryBlobs` supplies already-acquired bytes for portable tests and future web
+import. Cache code owns JS5 interpretation, bounds and source context. Native
+schedules loading on a worker; a future browser adapter acquires data
+asynchronously before invoking the same bounded decoders.

@@ -2,6 +2,20 @@
 
 This plan expands `SPEC-0010` into execution-sized work packages. Specs remain the normative behavioral source. This file defines sequencing, expected artifacts, and checkpoint evidence.
 
+## Offline title milestone
+
+The user-approved [SPEC-0013](../specs/SPEC-0013-offline-title.md) vertical slice
+implements cache-facing CP4 primitives and title-specific CP6/CP9/input work
+before live networking. See [the completed checkpoint](TITLE-offline-cache.md).
+It does not close the remaining CP4–CP10 work or claim an authenticated session.
+
+## Authenticated bootstrap milestone
+
+The user-approved [SPEC-0014](../specs/SPEC-0014-openrune-login.md) slice adds the
+first concrete server profile, transport and login exchange after title loading.
+See [the connection checkpoint](OPENRUNE-login.md). It proves authentication and
+initial placement; broader entity, map, widget and script checkpoints remain open.
+
 ## Planning rules
 
 - Work in checkpoint branches or tightly scoped sub-branches.
@@ -330,3 +344,7 @@ Define signed package metadata, trust/review model, capability declarations, com
 # CP16 - Production hardening
 
 Crash/device-loss recovery, corrupted caches, hostile packets, plugin exhaustion, storage quota failures, browser suspension/resume, telemetry/privacy controls and migration/versioning guarantees.
+
+## Cache-backed spawn preview checkpoint
+
+The focused SPEC-0015 slice follows authenticated initial placement and precedes general world/entity work. Cache adapters now decode actual terrain and static location geometry; GameState selects an immutable scene descriptor through replayable schema-v4 operations. Camera/GPU buffers are disposable. See [SPAWN-scene.md](SPAWN-scene.md) for measured completion and deliberate material/entity limits. This does not complete the general CP6 scene, CP7 entity, widget or script milestones.

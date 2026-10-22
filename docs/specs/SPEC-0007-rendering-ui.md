@@ -52,3 +52,23 @@ Picking/hover/click geometry must derive from the same semantic/render transform
 - native/browser composition can target the same shared renderer API without platform branching inside `renderer`,
 - plugin overlays cannot mutate core render resources,
 - performance counters exist before optimization claims are made.
+
+## Offline title projection
+
+`game-ui::UiFrame` is a disposable painter-ordered quad stream using typed CPU
+image roles, logical rectangles, UVs, tint and clip rectangles. It contains no
+GPU handles or raw passwords. The renderer consumes it using one static title
+atlas and a separate dynamic flame texture. Texture sampling is nearest-neighbor;
+straight-alpha assets use an sRGB atlas and normal GPU alpha blending. Flames may
+therefore differ slightly from the Java software rasterizer's sRGB integer blend.
+Shared `TitleViewport` governs both input conversion and draw positioning.
+
+The renderer uploads static assets once per resource lifetime, reuses a bounded
+vertex buffer, preserves painter order while batching consecutive texture uses,
+and exposes quad/draw/upload counters. The diagnostic `capture_ui` path uses the
+same GPU pipeline; native drives device polling through an explicit callback,
+while browser readback can use its event loop. It does not acquire platform files.
+
+Device-loss callbacks set a renderer-owned atomic signal; the next frame returns
+`RecreateRequired`, using the same composition-root recovery path as surface loss.
+This signal contains no semantic state and does not mutate `GameState`.

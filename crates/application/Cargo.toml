@@ -5,5 +5,19 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[dependencies]
+rustclient-scene = { path = "../scene" }
+rustclient-protocol = { path = "../protocol" }
+rustclient-game-state = { path = "../game-state" }
+rustclient-model = { path = "../model" }
+rustclient-cache = { path = "../cache" }
+rustclient-game-ui = { path = "../game-ui" }
+rustclient-platform = { path = "../platform" }
+serde.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+sha2.workspace = true
+
 [lints]
 workspace = true

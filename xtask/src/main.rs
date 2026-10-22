@@ -3,6 +3,8 @@
 use std::path::Path;
 use std::process::{Command, ExitCode};
 
+mod cache;
+
 const REFERENCE_PATH: &str = "references/rustosrs";
 const EXPECTED_ORIGIN: &str = "https://github.com/Neosback/RustOSRS";
 
@@ -19,6 +21,9 @@ fn main() -> ExitCode {
 fn run() -> Result<(), String> {
     let mut args = std::env::args().skip(1);
     let command = args.next();
+    if command.as_deref() == Some("cache") {
+        return cache::run(args.collect());
+    }
     let action = args.next();
     let extra = args.next();
 
@@ -43,6 +48,7 @@ fn print_help() {
          Commands:\n\
            references status  verify pinned reference checkout\n\
            references sync    initialize/update pinned reference checkout\n\n\
+           cache inspect --cache-dir PATH --cache-profile osrs-240  validate title assets\n\n\
          Planned commands: architecture, check, plugin, fixtures"
     );
 }

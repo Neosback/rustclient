@@ -1,0 +1,53 @@
+//! Source-neutral scenery identities and explicit animation-start inputs.
+use crate::{ClientCycle, LocOrientation, ObjectDefinitionId, SequenceId, WorldTile};
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum LocationLayer {
+    Boundary,
+    WallDecoration,
+    GameObject,
+    FloorDecoration,
+}
+
+impl LocationLayer {
+    #[must_use]
+    pub const fn from_shape(shape: u8) -> Self {
+        match shape {
+            0..=3 => Self::Boundary,
+            4..=8 => Self::WallDecoration,
+            9..=11 | 22 => Self::GameObject,
+            _ => Self::FloorDecoration,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct LocationKey {
+    pub tile: WorldTile,
+    pub layer: LocationLayer,
+}
+
+impl LocationKey {
+    #[must_use]
+    pub const fn new(tile: WorldTile, layer: LocationLayer) -> Self {
+        Self { tile, layer }
+    }
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LocationDefinition {
+    pub object: ObjectDefinitionId,
+    pub shape: u8,
+    pub orientation: LocOrientation,
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LocationChange {
+    Inherit,
+    Remove,
+    Replace(LocationDefinition),
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AnimationStart {
+    /// None explicitly stops the inherited animation.
+    pub sequence: Option<SequenceId>,
+    pub cycle: ClientCycle,
+    pub random_seed: u64,
+}

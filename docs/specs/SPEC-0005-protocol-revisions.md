@@ -46,7 +46,7 @@ Potential profile dimensions:
 
 Two servers may target the same base revision while using different server profiles because of cache, extension or protocol differences.
 
-`Revision` must never be treated as a substitute for profile identity. Until the canonical `ServerProfile` abstraction exists, replay/session code records revision only and explicitly defers profile identity rather than inventing a second profile-ID type in another crate.
+`Revision` must never be treated as a substitute for profile identity. The canonical `protocol::ServerProfile` registry now allocates `model::ServerProfileId`; authenticated GameState and replay record this identity alongside Revision.
 
 ## Revision selection
 
@@ -88,7 +88,7 @@ The domain should not construct packet buffers.
 
 ## Networking sequencing
 
-Networking/login is intentionally deferred until semantic model, cache, scene, entities, UI and interaction contracts are sufficiently stable.
+SPEC-0014 permits the focused OpenRune authenticated bootstrap after the offline title slice. World rendering, general entity updates, widgets and CS2 remain later work.
 
 Before live networking exists, revision-specific behavior can be developed and tested with:
 

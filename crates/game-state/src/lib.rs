@@ -5,11 +5,19 @@
 
 #![forbid(unsafe_code)]
 
+mod entities;
+pub use entities::{
+    NpcEntity, PlayerEntity, WorldEntitiesState, direction_to_delta, direction_to_orientation,
+};
+
 mod commit;
 mod fingerprint;
 mod operation;
 mod replay;
+mod scenery;
 mod state;
+pub use scenery::{LocationOverride, SceneryError, SceneryOperation, SceneryState};
+mod title;
 
 pub use commit::{OperationCommit, SemanticEvent, StateDelta};
 pub use fingerprint::{
@@ -19,3 +27,8 @@ pub use fingerprint::{
 pub use operation::{OperationBatchError, OperationError, SemanticOperation};
 pub use replay::{ReplayEnvelope, ReplayError, ReplayFailure};
 pub use state::{GameState, LifecycleError, SessionLifecycle, TickAdvanceError};
+
+pub use title::{LoginFailure, LoginStatus, TitleInformation, TitleScreen, TitleTransitionError};
+
+mod connection;
+pub use connection::{AuthenticatedPlayer, ConnectionStateError, InitialPlacement};

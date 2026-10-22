@@ -83,3 +83,26 @@ mod tests {
         assert_eq!(GameTick::new(u64::MAX).checked_advance(TickSpan::ONE), None);
     }
 }
+
+/// Explicit 50 Hz presentation/scripting cycle, distinct from a server game tick.
+/// Runtime adapters translate elapsed time to explicit cycle advances.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+pub struct ClientCycle(u64);
+impl ClientCycle {
+    pub const ZERO: Self = Self(0);
+    #[must_use]
+    pub const fn new(value: u64) -> Self {
+        Self(value)
+    }
+    #[must_use]
+    pub const fn get(self) -> u64 {
+        self.0
+    }
+    #[must_use]
+    pub const fn checked_advance(self, cycles: u32) -> Option<Self> {
+        match self.0.checked_add(cycles as u64) {
+            Some(value) => Some(Self(value)),
+            None => None,
+        }
+    }
+}

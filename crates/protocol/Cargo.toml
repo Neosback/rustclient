@@ -5,5 +5,15 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[dependencies]
+rustclient-model = { path = "../model" }
+rustclient-platform = { path = "../platform" }
+num-bigint.workspace = true
+sha2.workspace = true
+zeroize.workspace = true
+
+[dev-dependencies]
+pollster.workspace = true
+
 [lints]
 workspace = true

@@ -49,6 +49,7 @@ macro_rules! semantic_id {
 semantic_id!(ObjectDefinitionId, "Object/location definition identity.");
 semantic_id!(NpcDefinitionId, "NPC definition identity.");
 semantic_id!(ItemDefinitionId, "Item definition identity.");
+semantic_id!(KitId, "Identity kit definition identity.");
 semantic_id!(ModelId, "Model resource identity.");
 semantic_id!(SpriteId, "Sprite resource identity.");
 semantic_id!(TextureId, "Texture definition identity.");
@@ -60,6 +61,16 @@ semantic_id!(WidgetId, "Widget/component identity.");
 semantic_id!(InterfaceId, "Top-level interface identity.");
 semantic_id!(ScriptId, "Client-script identity.");
 semantic_id!(RegionId, "Cache/map-region identity.");
+semantic_id!(FloorUnderlayId, "Terrain underlay definition identity.");
+semantic_id!(FloorOverlayId, "Terrain overlay definition identity.");
+semantic_id!(
+    ServerProfileId,
+    "Canonical server-profile registry identity; configuration stays in protocol."
+);
+semantic_id!(
+    WorldAreaId,
+    "Semantic map-area identity; absence is represented with Option."
+);
 
 semantic_id!(
     PlayerIndex,

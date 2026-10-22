@@ -7,7 +7,7 @@ use crate::{GameState, OperationCommit, OperationError, SemanticOperation};
 /// This is an in-memory semantic contract, not a stable serialized file format.
 /// The operation is replayed through [`GameState::apply_operation`], and the
 /// resulting commit must exactly match `commit` for replay to continue.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReplayEnvelope {
     operation: SemanticOperation,
     commit: OperationCommit,
@@ -16,25 +16,29 @@ pub struct ReplayEnvelope {
 impl ReplayEnvelope {
     /// Pair one semantic operation with the commit metadata recorded when it succeeded.
     #[must_use]
-    pub const fn new(operation: SemanticOperation, commit: OperationCommit) -> Self {
+    pub fn new(operation: SemanticOperation, commit: OperationCommit) -> Self {
         Self { operation, commit }
     }
 
     /// Return the semantic operation that must be replayed.
     #[must_use]
-    pub const fn operation(self) -> SemanticOperation {
-        self.operation
+    pub fn operation(&self) -> SemanticOperation {
+        self.operation.clone()
     }
 
     /// Return the commit metadata expected from deterministic replay.
     #[must_use]
-    pub const fn commit(self) -> OperationCommit {
+    pub const fn commit(&self) -> OperationCommit {
         self.commit
     }
 }
 
 /// Why deterministic semantic replay stopped.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[expect(
+    clippy::large_enum_variant,
+    reason = "failure is already boxed at the ReplayError boundary; keep exact Copy commit evidence"
+)]
 pub enum ReplayFailure {
     /// A recorded operation was rejected when replayed against the current state.
     OperationRejected(OperationError),
@@ -48,29 +52,29 @@ pub enum ReplayFailure {
 }
 
 /// Failure while replaying an ordered sequence of semantic commit envelopes.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReplayError {
     failed_index: usize,
-    failure: ReplayFailure,
+    failure: Box<ReplayFailure>,
 }
 
 impl ReplayError {
     /// Return the zero-based replay-envelope index where replay stopped.
     #[must_use]
-    pub const fn failed_index(self) -> usize {
+    pub const fn failed_index(&self) -> usize {
         self.failed_index
     }
 
     /// Return the typed replay failure.
     #[must_use]
-    pub const fn failure(self) -> ReplayFailure {
-        self.failure
+    pub const fn failure(&self) -> ReplayFailure {
+        *self.failure
     }
 }
 
 impl fmt::Display for ReplayError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.failure {
+        match *self.failure {
             ReplayFailure::OperationRejected(error) => write!(
                 formatter,
                 "semantic replay rejected operation at index {}: {}",
@@ -87,7 +91,7 @@ impl fmt::Display for ReplayError {
 
 impl std::error::Error for ReplayError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match &self.failure {
+        match self.failure.as_ref() {
             ReplayFailure::OperationRejected(error) => Some(error),
             ReplayFailure::CommitMismatch { .. } => None,
         }
@@ -133,21 +137,21 @@ impl GameState {
     where
         F: FnMut(usize, OperationCommit),
     {
-        for (index, envelope) in envelopes.iter().copied().enumerate() {
+        for (index, envelope) in envelopes.iter().enumerate() {
             let actual = self
-                .apply_operation(envelope.operation)
+                .apply_operation(envelope.operation())
                 .map_err(|error| ReplayError {
                     failed_index: index,
-                    failure: ReplayFailure::OperationRejected(error),
+                    failure: Box::new(ReplayFailure::OperationRejected(error)),
                 })?;
 
             if actual != envelope.commit {
                 return Err(ReplayError {
                     failed_index: index,
-                    failure: ReplayFailure::CommitMismatch {
+                    failure: Box::new(ReplayFailure::CommitMismatch {
                         expected: envelope.commit,
                         actual,
-                    },
+                    }),
                 });
             }
 
@@ -173,9 +177,9 @@ mod tests {
         let mut state = GameState::new();
         let mut envelopes = Vec::with_capacity(operations.len());
 
-        for operation in operations.iter().copied() {
+        for operation in operations.iter().cloned() {
             let commit = state
-                .apply_operation(operation)
+                .apply_operation(operation.clone())
                 .expect("recording operation sequence must be valid");
             envelopes.push(ReplayEnvelope::new(operation, commit));
         }
@@ -261,9 +265,9 @@ mod tests {
         ];
         let (_, recorded) = record_operations(&operations);
         let envelopes = [
-            recorded[0],
+            recorded[0].clone(),
             ReplayEnvelope::new(recorded[1].operation(), recorded[2].commit()),
-            recorded[2],
+            recorded[2].clone(),
         ];
         let mut replayed_state = GameState::new();
         let mut verified_indexes = Vec::new();

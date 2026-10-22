@@ -1,0 +1,14 @@
+{
+  "commit": "1ad572d7dcdbc0fb67a4a00f0c2f959d5ab25abc",
+  "sources": {
+    "Client.java": "72af4f9723a9704ff23faa7d862e287048e54ec49760f44e1137aca451830a9d",
+    "class33.java": "8a8b9e9526c273aba64435acda5681039e5d41c290271d9b0eac64d793bd6022",
+    "Rasterizer3D.java": "8641ab86b33abaf7ff031bc79e432be9fbe1c8e3df04e3913eaa7774a25a9b99",
+    "SoundCache.java": "c56b242c8f66892a13fef1157843eb83b78666c8db56443cb68392c258424bf0"
+  },
+  "adjustments": [
+    "Literal held-key/middle-mouse block with input substitutions; literal class33 pose block with field substitutions; shake disabled; 400 deterministic input cycles; extracted default viewport zoom arithmetic."
+  ],
+  "generated_java_sha256": "80bc872a280566a2110b8bc4ee63e09e2c2857ebc7784ff02cd8949b61c263de",
+  "trace_sha256": "8c53348ead13c3920b8bf197e4ec51643b6a626d3e5e768f91fef4672108ca36"
+}

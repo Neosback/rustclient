@@ -209,3 +209,16 @@ Do not micro-optimize field widths by leaking revision-specific limits into sema
 - widget/client-script semantics,
 - plugin ABI serialization,
 - choosing every future supported revision.
+
+## Bootstrap identity primitives
+
+`ServerProfileId(u32)` is the semantic identity allocated by the canonical protocol
+profile registry. It contains no address or wire behavior; `Revision` remains a
+separate compatibility identity. `WorldAreaId(u32)` names the server's semantic map
+area; its geometry is interpreted by the profile. Neither wrapper infers defaults
+or reserves absence sentinels. GameState owns optional session presence. The map-area field is optional: a profile
+translates the main-world sentinel to absence; sentinel bytes never become IDs.
+
+## Immutable scene references
+
+`SceneAssetId([u8;32])` is the SHA-256 identity supplied by the immutable asset catalog. `SceneDescriptor` pairs it with checked nonempty world bounds and a selected plane. It supports exclusive containment; it contains no GPU/camera information. `FloorUnderlayId` and `FloorOverlayId` are separate definition identities. Scene selection is optional session-owned `GameState` data; its content resides in the immutable application asset catalog (SPEC-0015).

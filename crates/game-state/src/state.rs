@@ -1,6 +1,9 @@
+use crate::{
+    AuthenticatedPlayer, ConnectionStateError, InitialPlacement, TitleScreen, TitleTransitionError,
+};
 use core::fmt;
 
-use rustclient_model::{GameTick, Revision, TickSpan};
+use rustclient_model::{GameTick, Revision, SceneDescriptor, TickSpan};
 
 /// Whether the authoritative state currently represents an active game session.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
@@ -63,17 +66,138 @@ pub struct GameState {
     lifecycle: SessionLifecycle,
     revision: Option<Revision>,
     tick: GameTick,
+    title: TitleScreen,
+    authenticated: Option<AuthenticatedPlayer>,
+    placement: Option<InitialPlacement>,
+    scene: Option<SceneDescriptor>,
+    pub(crate) scenery: crate::SceneryState,
+    pub(crate) entities: crate::WorldEntitiesState,
+    pub(crate) selected_tab: Option<usize>,
 }
 
 impl GameState {
     /// Construct an inactive authoritative state root.
     #[must_use]
-    pub const fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             lifecycle: SessionLifecycle::Inactive,
             revision: None,
             tick: GameTick::ZERO,
+            title: TitleScreen::Welcome,
+            authenticated: None,
+            placement: None,
+            scene: None,
+            scenery: crate::SceneryState::default(),
+            entities: crate::WorldEntitiesState::default(),
+            selected_tab: Some(3),
         }
+    }
+
+    /// Authoritative world entities (players and NPCs).
+    #[must_use]
+    pub const fn entities(&self) -> &crate::WorldEntitiesState {
+        &self.entities
+    }
+
+    /// Mutable authoritative world entities.
+    #[must_use]
+    pub fn entities_mut(&mut self) -> &mut crate::WorldEntitiesState {
+        &mut self.entities
+    }
+
+    /// Currently active gameframe stone tab index.
+    #[must_use]
+    pub const fn selected_tab(&self) -> Option<usize> {
+        self.selected_tab
+    }
+
+    /// Non-secret identity established by server authentication.
+    #[must_use]
+    pub const fn authenticated_player(&self) -> Option<AuthenticatedPlayer> {
+        self.authenticated
+    }
+    /// Initial placement for this authenticated session.
+    #[must_use]
+    pub const fn initial_placement(&self) -> Option<InitialPlacement> {
+        self.placement
+    }
+    /// Immutable asset reference selected by the authoritative session.
+    #[must_use]
+    pub const fn loaded_scene(&self) -> Option<SceneDescriptor> {
+        self.scene
+    }
+    pub(crate) fn install_scene(
+        &mut self,
+        scene: SceneDescriptor,
+    ) -> Result<(), ConnectionStateError> {
+        let placement = self
+            .placement
+            .ok_or(ConnectionStateError::SceneRequiresPlacement)?;
+        if !scene.contains(placement.position) {
+            return Err(ConnectionStateError::SceneOutsidePlacement);
+        }
+        if self.scene.is_some() {
+            return Err(ConnectionStateError::SceneAlreadyInstalled);
+        }
+        self.scene = Some(scene);
+        Ok(())
+    }
+    pub(crate) fn authenticate_session(
+        &mut self,
+        revision: Revision,
+        player: AuthenticatedPlayer,
+    ) -> Result<(), LifecycleError> {
+        self.begin_session(revision)?;
+        self.authenticated = Some(player);
+        Ok(())
+    }
+    pub(crate) fn establish_placement(
+        &mut self,
+        placement: InitialPlacement,
+    ) -> Result<(), ConnectionStateError> {
+        if self.authenticated.is_none() {
+            return Err(ConnectionStateError::NotAuthenticated);
+        }
+        if self.placement.is_some() {
+            return Err(ConnectionStateError::AlreadyPlaced);
+        }
+        if placement.position.plane != placement.map_anchor.plane {
+            return Err(ConnectionStateError::InconsistentPlane);
+        }
+        self.placement = Some(placement);
+        if let Some(auth) = self.authenticated {
+            self.entities.local_player_index = Some(auth.player);
+            self.entities.players.insert(
+                auth.player,
+                crate::PlayerEntity {
+                    index: auth.player,
+                    tile: placement.position,
+                    orientation: 0,
+                    appearance: None,
+                    sequence: None,
+                    animation_cycle: 0,
+                },
+            );
+        }
+        Ok(())
+    }
+
+    /// Current non-secret title screen.
+    #[must_use]
+    pub const fn title_screen(&self) -> TitleScreen {
+        self.title
+    }
+
+    pub(crate) fn set_title_screen(
+        &mut self,
+        screen: TitleScreen,
+    ) -> Result<TitleScreen, TitleTransitionError> {
+        if self.lifecycle == SessionLifecycle::Active {
+            return Err(TitleTransitionError);
+        }
+        let previous = self.title;
+        self.title = screen;
+        Ok(previous)
     }
 
     /// Return the current session lifecycle.
@@ -117,8 +241,15 @@ impl GameState {
             return Err(LifecycleError::AlreadyActive);
         }
 
+        self.title = TitleScreen::Welcome;
         self.tick = GameTick::ZERO;
         self.revision = Some(revision);
+        self.authenticated = None;
+        self.placement = None;
+        self.scene = None;
+        self.scenery = crate::SceneryState::default();
+        self.entities = crate::WorldEntitiesState::default();
+        self.selected_tab = Some(3);
         self.lifecycle = SessionLifecycle::Active;
         Ok(())
     }
@@ -137,8 +268,15 @@ impl GameState {
             return Err(LifecycleError::NotActive);
         }
 
+        self.title = TitleScreen::Welcome;
         self.tick = GameTick::ZERO;
         self.revision = None;
+        self.authenticated = None;
+        self.placement = None;
+        self.scene = None;
+        self.scenery = crate::SceneryState::default();
+        self.entities = crate::WorldEntitiesState::default();
+        self.selected_tab = Some(3);
         self.lifecycle = SessionLifecycle::Inactive;
         Ok(())
     }
