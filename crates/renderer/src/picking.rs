@@ -121,25 +121,25 @@ fn ray_triangle(
     vertex_b: Vec3,
     vertex_c: Vec3,
 ) -> Option<f32> {
-    let edge_ab = vertex_b - vertex_a;
-    let edge_ac = vertex_c - vertex_a;
-    let direction_cross_ac = direction.cross(edge_ac);
-    let determinant = edge_ab.dot(direction_cross_ac);
+    let first_edge = vertex_b - vertex_a;
+    let second_edge = vertex_c - vertex_a;
+    let direction_cross_second = direction.cross(second_edge);
+    let determinant = first_edge.dot(direction_cross_second);
     if determinant.abs() <= HIT_EPSILON {
         return None;
     }
     let inverse_determinant = determinant.recip();
     let origin_offset = origin - vertex_a;
-    let barycentric_u = origin_offset.dot(direction_cross_ac) * inverse_determinant;
+    let barycentric_u = origin_offset.dot(direction_cross_second) * inverse_determinant;
     if !(0.0..=1.0).contains(&barycentric_u) {
         return None;
     }
-    let offset_cross_ab = origin_offset.cross(edge_ab);
-    let barycentric_v = direction.dot(offset_cross_ab) * inverse_determinant;
+    let offset_cross_first = origin_offset.cross(first_edge);
+    let barycentric_v = direction.dot(offset_cross_first) * inverse_determinant;
     if barycentric_v < 0.0 || barycentric_u + barycentric_v > 1.0 {
         return None;
     }
-    let distance = edge_ac.dot(offset_cross_ab) * inverse_determinant;
+    let distance = second_edge.dot(offset_cross_first) * inverse_determinant;
     (distance > HIT_EPSILON).then_some(distance)
 }
 
