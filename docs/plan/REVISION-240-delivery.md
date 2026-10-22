@@ -18,6 +18,20 @@ and an ergonomic sandboxed plugin ecosystem. See the
 | Plugins | Accepted WIT/Component architecture and crate ownership | Real WIT interfaces/bindings, host mediation, both runtimes, SDK, sample plugin and authoring tooling |
 | Distribution | Development native launch scripts | Reproducible desktop bundles and browser build/deployment with asset/transport setup |
 
+## Verified 240 client reference (2026-10-22)
+
+Downloaded RuneLite's official `injected-client-1.12.39.jar` to
+`/Users/tylercovalt/gamepack/gamepack_240_runelite-injected-1.12.39.jar`.
+Its SHA-256 matches RuneLite's historical bootstrap manifest. Static inspection
+traces revision 240 from `client.init` through the engine assignment to the
+`getRevision` accessor; login serialization also contains revision 240.
+[Provenance and limits](../reference/gamepack-240.json) are recorded.
+
+This removes the missing-240-client-reference obstacle. It does not establish an
+untouched vanilla gamepack, successful decompilation/mapping, OpenRune 240.2
+compatibility or visual parity. The next reference step is isolated inspection
+and decompilation of this injected artifact while preserving the 235 source tree.
+
 ## Branch reconciliation
 
 The working line `Neosback/openrune-240-login` contains the native client slices

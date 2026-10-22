@@ -55,9 +55,27 @@ The supplied RuneLite tree already contains deobfuscated **235** Java source.
 
 Deobfuscation, mapping and decompilation are separate steps; changing a Gradle
 revision number does not supply a new gamepack or validate transferred mappings.
-A version-verified **240 gamepack** and its SHA-256 are required for a 240 deob.
-The local `~/gamepack/gamepack_235.jar` is 235 evidence; the unversioned
-`gamepack.jar` has not been established as 240. No 240 deob run is claimed.
+A verified **240 RuneLite-injected client** is now available at
+`/Users/tylercovalt/gamepack/gamepack_240_runelite-injected-1.12.39.jar`.
+[The binary provenance record](gamepack-240.json) pins the official download,
+SHA-256, historical publisher hash manifest and static revision checks.
+The downloaded bytes match RuneLite's published SHA-256 and the installed,
+unpatched `injected-client-1.12.39.jar`. `client.init` supplies revision 240 to
+the engine; the engine stores it in the field returned by `getRevision`.
+
+This is a transformed/injected client, not the untouched vanilla input expected
+by the old Gradle deob/mapping tasks. Use it as a separate 240 inspection and
+decompilation source; do not run the old vanilla pipeline blindly or overwrite
+the pinned 235 Java. Major-revision verification does not establish OpenRune
+240.2 compatibility. No 240 deob/decompile run is claimed by the download.
+
+The local `~/gamepack/gamepack_235.jar` matches the public archive's 235 artifact.
+The unversioned `~/gamepack/gamepack.jar` contains only nine entries, including
+`Base64ImageStore.class`: it is the farewell stub and must not be used as a game
+client. The public [runetech archive](https://github.com/runetech/osrs-gamepacks)
+ends at vanilla 235. That archive's limit does not imply newer RuneLite-injected
+clients are unavailable. A missing untouched vanilla 240 JAR is not a blocker
+for continuing the Rust client using the verified injected reference.
 
 Run this toolchain only in an isolated scratch copy outside `references/` and
 outside the supplied source directories. Configure the explicit input/output
@@ -65,8 +83,9 @@ paths and exact revision there. Record input hash, tool/tree identity, mapping
 warnings, source hashes, and scratch adjustments. Keep original reference trees
 read-only. Do not use the downloader's current live gamepack as an implicit 240
 input, overwrite reference Java with generated output, or commit binary cache and
-account material. Until verified 240 deob output exists, use 235 behavior with
-explicit 240 cross-checks and mark uncertain rules unresolved.
+account material. Inspect the verified injected 240 artifact alongside the pinned
+235 Java, selected rsprot 240 sources and actual cache; keep injection effects and
+uncertain rules explicit until decompilation/mapping is validated.
 
 ## Ownership and rendering
 

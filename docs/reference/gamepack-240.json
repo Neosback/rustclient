@@ -1,0 +1,35 @@
+{
+  "retrieved_date": "2026-10-22",
+  "kind": "RuneLite-injected OSRS client; not an untouched vanilla gamepack",
+  "revision_major": 240,
+  "server_profile_compatibility": "OpenRune 240.2 compatibility not established by this download",
+  "runelite_version": "1.12.39",
+  "local_path": "/Users/tylercovalt/gamepack/gamepack_240_runelite-injected-1.12.39.jar",
+  "download_url": "https://repo.runelite.net/net/runelite/injected-client/1.12.39/injected-client-1.12.39.jar",
+  "size_bytes": 4207579,
+  "sha256": "25f42961c400bd9dfff1554402441c0ba6d1cffd011163cb9b0b4c42ae194f85",
+  "publisher_hash_manifest": {
+    "git_commit": "c8f9b14be8bd3fae44fa830381795cdfd32aa95f",
+    "url": "https://raw.githubusercontent.com/runelite/static.runelite.net/c8f9b14be8bd3fae44fa830381795cdfd32aa95f/bootstrap.json",
+    "artifact_name": "injected-client-1.12.39.jar",
+    "sha256": "25f42961c400bd9dfff1554402441c0ba6d1cffd011163cb9b0b4c42ae194f85"
+  },
+  "verification": {
+    "method": "Static javap inspection only; client JAR was not executed",
+    "startup": "client.init calls agf(765, 503, 240, 1, obfuscation_argument)",
+    "revision_storage": "tq.agf stores argument 3 multiplied by -154973313 into aal.ae",
+    "revision_accessor": "client.getRevision reads aal.ae and multiplies by 2098754687",
+    "multiplier_product_modulo_2_32": 1,
+    "login": "client login serialization also writes literal revision 240",
+    "installed_copy": "Downloaded bytes equal ~/.runelite/repository2/injected-client-1.12.39.jar; locally patched variants were excluded",
+    "reproduce_with": [
+      "javap -c -p -classpath <downloaded-jar> client",
+      "javap -c -p -classpath <downloaded-jar> tq"
+    ]
+  },
+  "limits": [
+    "RuneLite injected hooks and transformations are present; this is not the vanilla-240 artifact expected by the old deob Gradle configuration.",
+    "Do not apply the vanilla deob/mapping pipeline blindly to injected bytecode. Use isolated scratch output for inspection/decompilation.",
+    "Major revision verification is not proof of complete server/cache compatibility or rendering parity."
+  ]
+}
