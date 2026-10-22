@@ -74,40 +74,44 @@ impl NativeTcp {
     }
 }
 impl ByteStream for NativeTcp {
-    async fn receive(&mut self, bytes: &mut [u8]) -> Result<usize, TransportError> {
-        loop {
-            self.check()?;
-            match self.stream.read(bytes) {
-                Ok(n) => return Ok(n),
-                Err(e)
-                    if matches!(
-                        e.kind(),
-                        std::io::ErrorKind::TimedOut
-                            | std::io::ErrorKind::WouldBlock
-                            | std::io::ErrorKind::Interrupted
-                    ) => {}
-                Err(_) => return Err(TransportError::Closed),
+    fn receive(&mut self, bytes: &mut [u8]) -> impl Future<Output = Result<usize, TransportError>> {
+        async move {
+            loop {
+                self.check()?;
+                match self.stream.read(bytes) {
+                    Ok(n) => return Ok(n),
+                    Err(e)
+                        if matches!(
+                            e.kind(),
+                            std::io::ErrorKind::TimedOut
+                                | std::io::ErrorKind::WouldBlock
+                                | std::io::ErrorKind::Interrupted
+                        ) => {}
+                    Err(_) => return Err(TransportError::Closed),
+                }
             }
         }
     }
-    async fn send(&mut self, bytes: &[u8]) -> Result<(), TransportError> {
-        let mut offset = 0;
-        while offset < bytes.len() {
-            self.check()?;
-            match self.stream.write(&bytes[offset..]) {
-                Ok(0) => return Err(TransportError::Closed),
-                Ok(n) => offset += n,
-                Err(e)
-                    if matches!(
-                        e.kind(),
-                        std::io::ErrorKind::TimedOut
-                            | std::io::ErrorKind::WouldBlock
-                            | std::io::ErrorKind::Interrupted
-                    ) => {}
-                Err(_) => return Err(TransportError::Closed),
+    fn send(&mut self, bytes: &[u8]) -> impl Future<Output = Result<(), TransportError>> {
+        async move {
+            let mut offset = 0;
+            while offset < bytes.len() {
+                self.check()?;
+                match self.stream.write(&bytes[offset..]) {
+                    Ok(0) => return Err(TransportError::Closed),
+                    Ok(n) => offset += n,
+                    Err(e)
+                        if matches!(
+                            e.kind(),
+                            std::io::ErrorKind::TimedOut
+                                | std::io::ErrorKind::WouldBlock
+                                | std::io::ErrorKind::Interrupted
+                        ) => {}
+                    Err(_) => return Err(TransportError::Closed),
+                }
             }
+            Ok(())
         }
-        Ok(())
     }
 }
 
