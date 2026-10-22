@@ -51,6 +51,7 @@ pub(crate) fn build(
             let rotation = loc.orientation.get();
             let thickness = i32::from(*walls.get(&loc.tile).unwrap_or(&16));
             let requests = placement_requests(loc.shape, rotation, thickness);
+            let first_vertex = mesh.geometry.vertices.len();
             let mut selected = false;
             for (shape, orientation, offset) in requests {
                 selected |= place(asset, mesh, loc, def, shape, orientation, offset, inputs)?;
@@ -58,11 +59,21 @@ pub(crate) fn build(
             if !selected {
                 mesh.stats.no_model += 1;
             }
+            if mesh.geometry.vertices.len() > first_vertex {
+                mesh.geometry.picks.push(crate::PickRange {
+                    vertices: first_vertex..mesh.geometry.vertices.len(),
+                    target: rustclient_model::WorldTarget::Location {
+                        key: location_key(loc),
+                        definition: loc.object,
+                        resolved: def.id,
+                    },
+                });
+            }
         }
     }
     Ok(())
 }
-fn resolve<'a>(
+pub(crate) fn resolve<'a>(
     asset: &'a SceneAsset,
     mut def: &'a ObjectDefinition,
     inputs: &crate::SceneryInputs,
@@ -546,7 +557,9 @@ pub(crate) fn shadows(
     Ok(shadows)
 }
 
-pub(crate) fn location_key(loc: &StaticLocation) -> rustclient_model::LocationKey {
+/// Canonical semantic address for a decoded location placement.
+#[must_use]
+pub fn location_key(loc: &StaticLocation) -> rustclient_model::LocationKey {
     use rustclient_model::LocationLayer;
     let layer = match loc.shape {
         0..=3 => LocationLayer::Boundary,

@@ -1,8 +1,10 @@
 #![forbid(unsafe_code)]
 mod capture;
+mod interaction;
 mod network;
 mod options;
 mod scene;
+mod widgets;
 
 use rustclient_application::{
     DeterministicRandomSource, RandomSeed, SplitMix64Random, load_title, load_title_preferences,
@@ -37,6 +39,14 @@ enum LoadEvent {
     Progress(String),
     Loaded(Box<Result<TitleAssets, String>>),
     Network(u64, network::NetworkEvent),
+    ScriptsReady(
+        Box<Result<rustclient_application::scripts::ClientScripts<DirectoryBlobs>, String>>,
+    ),
+    WidgetAssets(
+        u64,
+        rustclient_application::scripts::WidgetAssetRequest,
+        Box<rustclient_game_ui::widget_visuals::WidgetVisualAssets>,
+    ),
     SceneProgress(u64, String),
     EntityAssets(
         u64,
@@ -62,6 +72,16 @@ struct NativeApp {
     state: GameState,
     ui: TitleUi,
     gameframe_ui: GameFrameUi,
+    context_menu: rustclient_game_ui::ContextMenu,
+    widget_menu: rustclient_game_ui::ContextMenu<rustclient_model::WidgetAction>,
+    reported_script_errors: std::collections::BTreeSet<String>,
+    scripts: Option<rustclient_application::scripts::ClientScripts<DirectoryBlobs>>,
+    widget_assets: rustclient_game_ui::widget_visuals::WidgetVisualAssets,
+    widget_requested: rustclient_application::scripts::WidgetAssetRequest,
+    widget_loading: bool,
+    widget_tree: rustclient_game_ui::widgets::WidgetTree,
+    widget_cache_dir: std::path::PathBuf,
+    widget_cache_profile: rustclient_cache::CacheProfile,
     minimap: Option<MinimapImage>,
     minimap_pixels: Vec<u8>,
     compass_pixels: Vec<u8>,
@@ -78,8 +98,10 @@ struct NativeApp {
     failed: bool,
     load_status: String,
     connection_options: Option<network::ConnectionOptions>,
-    connection: Option<rustclient_platform_native::ConnectionCancellation>,
+    connection: Option<network::ConnectionHandle>,
     connection_generation: u64,
+    map_epoch: u64,
+    interface_epoch: u64,
     proxy: winit::event_loop::EventLoopProxy<LoadEvent>,
 }
 impl NativeApp {
@@ -111,6 +133,8 @@ impl NativeApp {
             connection_options: options.connection.clone(),
             connection: None,
             connection_generation: 0,
+            map_epoch: 0,
+            interface_epoch: 0,
             proxy,
             window: None,
             renderer: None,
@@ -118,6 +142,16 @@ impl NativeApp {
             state: GameState::new(),
             ui,
             gameframe_ui: GameFrameUi::new(),
+            context_menu: rustclient_game_ui::ContextMenu::default(),
+            widget_menu: Default::default(),
+            reported_script_errors: Default::default(),
+            scripts: None,
+            widget_assets: Default::default(),
+            widget_requested: Default::default(),
+            widget_loading: false,
+            widget_tree: Default::default(),
+            widget_cache_dir: options.cache_dir.clone(),
+            widget_cache_profile: options.profile,
             minimap: None,
             minimap_pixels: vec![0; 156 * 156 * 4],
             compass_pixels: vec![0; 33 * 33 * 4],
@@ -158,6 +192,15 @@ impl NativeApp {
                     self.fail(event_loop, &error.to_string());
                     return;
                 }
+                if let Some(scene) = &self.scene.loaded
+                    && let Err(error) = renderer.set_world_dynamic(
+                        scene.asset.descriptor().id(),
+                        &self.scene.displayed_dynamic,
+                    )
+                {
+                    self.fail(event_loop, &error.to_string());
+                    return;
+                }
                 if self.scene.loaded.is_some() {
                     eprintln!(
                         "World GPU recreated; semantic fingerprint preserved: {}",
@@ -176,6 +219,14 @@ impl NativeApp {
         event_loop.exit();
     }
     fn disconnect(&mut self) {
+        self.widget_menu.close();
+        self.widget_tree.nodes.clear();
+        self.widget_requested = Default::default();
+        self.widget_loading = false;
+        if let Some(scripts) = &mut self.scripts {
+            scripts.reset();
+        }
+        self.context_menu.close();
         self.minimap = None;
         self.scene.clear();
         if let Some(cancel) = self.connection.take() {
@@ -203,10 +254,28 @@ impl NativeApp {
             self.disconnect();
         }
 
-        if let Some(operation) = operation
-            && let Err(error) = self.state.apply_operation(operation)
-        {
-            eprintln!("title transition rejected: {error}");
+        if let Some(operation) = operation {
+            let result = if let Some(scripts) = &mut self.scripts {
+                scripts.commit(&mut self.state, operation)
+            } else {
+                self.state
+                    .apply_operation(operation)
+                    .map(|_| Vec::new())
+                    .map_err(|e| e.to_string())
+            };
+            match result {
+                Ok(errors) => {
+                    for error in errors {
+                        if self.reported_script_errors.len() < 256
+                            && self.reported_script_errors.insert(error.clone())
+                        {
+                            eprintln!("client script: {error}");
+                        }
+                    }
+                }
+                Err(error) => eprintln!("semantic input rejected: {error}"),
+            }
+            self.widget_tree.nodes.clear();
         }
         if let Some(credentials) = self.ui.take_submission() {
             self.disconnect();
@@ -257,8 +326,24 @@ impl NativeApp {
                 } else {
                     self.frame.quads.clear();
                     self.gameframe_ui
-                        .project(assets, &self.state, 765.0, 503.0, &mut self.frame);
+                        .project(assets, &self.state, 765., 503., &mut self.frame);
+                    if let Some(scripts) = &self.scripts {
+                        match rustclient_game_ui::widget_visuals::project_widgets(
+                            &self.state,
+                            &scripts.interfaces,
+                            &self.widget_assets,
+                            &mut self.frame,
+                        ) {
+                            Ok(tree) => self.widget_tree = tree,
+                            Err(error) => {
+                                eprintln!("widget projection: {error}");
+                                self.widget_tree.nodes.clear();
+                            }
+                        }
+                    }
                 }
+                self.context_menu.project(assets, &mut self.frame);
+                self.widget_menu.project(assets, &mut self.frame);
                 if let (Some(gameframe), Some(minimap), Some(camera)) =
                     (&assets.gameframe, &self.minimap, self.scene.camera)
                 {
@@ -360,7 +445,7 @@ impl NativeApp {
                             scene.asset,
                             placement,
                             self.state.scenery().into(),
-                            self.connection_generation,
+                            self.scene.generation,
                             self.proxy.clone(),
                         )
                     {
@@ -394,7 +479,7 @@ impl NativeApp {
                 }
                 if let Err(e) = self.scene.start_entity_loader(
                     scene.asset.clone(),
-                    self.connection_generation,
+                    self.scene.generation,
                     self.proxy.clone(),
                 ) {
                     eprintln!("entity asset worker: {e}");
@@ -403,7 +488,7 @@ impl NativeApp {
                     && let Err(e) = self.scene.start_animator(
                         scene.asset.clone(),
                         placement,
-                        self.connection_generation,
+                        self.scene.generation,
                         self.proxy.clone(),
                     )
                 {
@@ -413,8 +498,10 @@ impl NativeApp {
                     self.minimap =
                         Some(build_scene_minimap(&scene.asset, placement.position.plane));
                 }
+                self.scene.displayed_dynamic = scene.mesh.dynamic.clone();
                 self.scene.loaded = Some(scene);
                 if first {
+                    self.acknowledge_map();
                     self.scene.reset_camera();
                     self.next_step = Instant::now() + STEP;
                 }
@@ -502,16 +589,43 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
     )]
     fn user_event(&mut self, event_loop: &ActiveEventLoop, event: LoadEvent) {
         match event {
+            LoadEvent::ScriptsReady(result) => match *result {
+                Ok(mut scripts) => {
+                    if let Err(e) = scripts.synchronize(&self.state) {
+                        eprintln!("script definitions: {e}");
+                    }
+                    self.scripts = Some(scripts);
+                }
+                Err(e) => self.fail(event_loop, &format!("script cache: {e}")),
+            },
+            LoadEvent::WidgetAssets(generation, request, assets) => {
+                if generation == self.connection_generation {
+                    self.widget_loading = false;
+                    for error in &assets.failures {
+                        eprintln!("widget asset: {error}");
+                    }
+                    if let (Some(renderer), Some(title)) = (&mut self.renderer, &self.assets)
+                        && let Err(e) = renderer.set_widget_images(title, &assets.images)
+                    {
+                        eprintln!("widget GPU upload: {e}");
+                        return;
+                    }
+                    self.widget_assets = *assets;
+                    self.widget_requested = request;
+                    self.request_widget_assets();
+                    if let Some(window) = &self.window {
+                        window.request_redraw();
+                    }
+                }
+            }
             LoadEvent::SceneProgress(generation, message)
-                if generation == self.connection_generation =>
+                if generation == self.scene.generation =>
             {
                 if let Some(window) = &self.window {
                     window.set_title(&format!("RustClient - {message}"));
                 }
             }
-            LoadEvent::SceneLoaded(generation, result)
-                if generation == self.connection_generation =>
-            {
+            LoadEvent::SceneLoaded(generation, result) if generation == self.scene.generation => {
                 self.finish_scene(event_loop, *result);
             }
 
@@ -522,8 +636,42 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                             window.set_title(&format!("RustClient - {message}"));
                         }
                     }
-                    network::NetworkEvent::Operation(operation) => {
+                    network::NetworkEvent::Script(epoch, request) => {
+                        self.interface_epoch = epoch;
+                        if let Some(scripts) = &mut self.scripts {
+                            match scripts.enqueue(request, None) {
+                                Ok(()) => {
+                                    for error in scripts.drain(&mut self.state) {
+                                        if self.reported_script_errors.len() < 256
+                                            && self.reported_script_errors.insert(error.clone())
+                                        {
+                                            eprintln!("client script: {error}");
+                                        }
+                                    }
+                                }
+                                Err(error) => eprintln!("client script: {error}"),
+                            }
+                        }
+                        self.widget_tree.nodes.clear();
+                        self.request_widget_assets();
+                        if let Some(window) = &self.window {
+                            window.request_redraw();
+                        }
+                    }
+                    network::NetworkEvent::Operation(map_epoch, interface_epoch, operation) => {
+                        self.interface_epoch = interface_epoch;
+                        self.map_epoch = map_epoch;
+                        let rebuild = matches!(operation, SemanticOperation::RebuildMap(_));
+                        let previous_scene = self.state.loaded_scene();
                         self.apply(Some(operation));
+                        self.request_widget_assets();
+                        if rebuild
+                            || previous_scene.is_some() && self.state.loaded_scene().is_none()
+                        {
+                            self.context_menu.close();
+                            self.scene.invalidate_map();
+                            self.minimap = None;
+                        }
                         if let Some(loaded) = &mut self.scene.loaded {
                             let mut current: rustclient_scene::SceneryInputs =
                                 self.state.scenery().into();
@@ -542,7 +690,7 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                                 asset,
                                 placement,
                                 self.state.scenery().into(),
-                                self.connection_generation,
+                                self.scene.generation,
                                 self.proxy.clone(),
                             ) {
                                 eprintln!("scenery projection: {e}");
@@ -558,7 +706,7 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                             if let Some(placement) = self.state.initial_placement()
                                 && let Err(error) = self.scene.start(
                                     placement,
-                                    self.connection_generation,
+                                    self.scene.generation,
                                     self.proxy.clone(),
                                 )
                             {
@@ -578,7 +726,7 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                 }
             }
             LoadEvent::DynamicReady(session, generation, cycle, result) => {
-                if session == self.connection_generation
+                if session == self.scene.generation
                     && generation == self.state.scenery().generation()
                     && cycle >= self.scene.dynamic_cycle
                     && !self.scene.loading
@@ -593,7 +741,9 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                                     )
                                 {
                                     eprintln!("dynamic GPU upload: {e}");
+                                    return;
                                 }
+                                self.scene.displayed_dynamic = geometry.clone();
                                 loaded.mesh.dynamic = geometry;
                                 self.scene.dynamic_cycle = cycle;
                                 if let Some(window) = &self.window {
@@ -609,7 +759,7 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                 }
             }
             LoadEvent::EntityAssets(session, assets) => {
-                if session == self.connection_generation {
+                if session == self.scene.generation {
                     for failure in &assets.failures {
                         eprintln!("entity asset advisory: {failure}");
                     }
@@ -692,13 +842,52 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                 window.request_redraw();
             }
             WindowEvent::RedrawRequested => self.redraw(event_loop),
-            WindowEvent::ModifiersChanged(modifiers) => self.modifiers = modifiers.state(),
+            WindowEvent::MouseWheel { delta, .. } => {
+                let amount = match delta {
+                    winit::event::MouseScrollDelta::LineDelta(_, y) => {
+                        if y > 0. {
+                            -45
+                        } else {
+                            45
+                        }
+                    }
+                    winit::event::MouseScrollDelta::PixelDelta(p) => {
+                        if p.y > 0. {
+                            -45
+                        } else {
+                            45
+                        }
+                    }
+                };
+                if let Some((x, y)) = self.cursor {
+                    let (x, y) = title_pointer(&window, x, y);
+                    match self.widget_scroll(x, y, amount) {
+                        Ok(true) => {
+                            window.request_redraw();
+                        }
+                        Err(e) => eprintln!("widget scroll: {e}"),
+                        Ok(false) => {}
+                    }
+                }
+            }
+            WindowEvent::ModifiersChanged(modifiers) => {
+                self.modifiers = modifiers.state();
+                if let Some(scripts) = &mut self.scripts {
+                    scripts.modifiers = [
+                        self.modifiers.control_key(),
+                        self.modifiers.shift_key(),
+                        self.modifiers.alt_key(),
+                    ];
+                }
+            }
             WindowEvent::CursorMoved { position, .. } => {
                 self.scene.input.pointer =
                     scene::pointer(position.x, position.y, window.scale_factor());
                 self.cursor = Some((position.x, position.y));
                 let (x, y) = title_pointer(&window, position.x, position.y);
                 self.ui.pointer(x, y);
+                self.context_menu.pointer(x, y);
+                self.widget_menu.pointer(x, y);
                 window.request_redraw();
             }
             WindowEvent::CursorLeft { .. } => {
@@ -721,6 +910,32 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
             } if self.assets.is_some() => {
                 if let Some((x, y)) = self.cursor {
                     let (x, y) = title_pointer(&window, x, y);
+                    if self.state.loaded_scene().is_some() {
+                        match self.widget_click(x, y, false) {
+                            Ok(true) => {
+                                window.request_redraw();
+                                return;
+                            }
+                            Err(e) => {
+                                eprintln!("widget action: {e}");
+                                return;
+                            }
+                            Ok(false) => {}
+                        }
+                        match self.world_click(&window, x, y, false) {
+                            Ok(true) => {
+                                window.request_redraw();
+                                return;
+                            }
+                            Err(error) => {
+                                eprintln!("world action: {error}");
+                                window.set_title(&format!("RustClient - {error}"));
+                                window.request_redraw();
+                                return;
+                            }
+                            Ok(false) => {}
+                        }
+                    }
                     let operation = if self.state.loaded_scene().is_some() {
                         if self.scene.diagnostics {
                             (TitleUi::world_disconnect_hit(x, y)).then_some(
@@ -751,12 +966,78 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                         self.ui.click(self.state.title_screen(), x, y)
                     };
                     self.apply(operation);
+                    if let Err(error) = self.walk_click(&window, x, y) {
+                        eprintln!("movement: {error}");
+                        window.set_title(&format!("RustClient - {error}"));
+                    }
+                }
+            }
+            WindowEvent::MouseInput {
+                state: ElementState::Pressed,
+                button: MouseButton::Right,
+                ..
+            } if self.state.loaded_scene().is_some() => {
+                if let Some((x, y)) = self.cursor {
+                    let (x, y) = title_pointer(&window, x, y);
+                    match self.widget_click(x, y, true) {
+                        Ok(true) => {
+                            window.request_redraw();
+                            return;
+                        }
+                        Err(e) => {
+                            eprintln!("widget action: {e}");
+                            return;
+                        }
+                        Ok(false) => {}
+                    }
+                    if let Err(error) = self.world_click(&window, x, y, true) {
+                        eprintln!("world action: {error}");
+                    }
+                    window.request_redraw();
                 }
             }
             WindowEvent::Focused(false) => {
                 self.scene.input = rustclient_renderer::CameraInput::default();
             }
             WindowEvent::KeyboardInput { event, .. } if self.assets.is_some() => {
+                if self.widget_menu.is_open() {
+                    if event.state == ElementState::Pressed {
+                        match &event.logical_key {
+                            Key::Named(NamedKey::ArrowUp) => self.widget_menu.navigate(-1),
+                            Key::Named(NamedKey::ArrowDown) => self.widget_menu.navigate(1),
+                            Key::Named(NamedKey::Escape) => self.widget_menu.close(),
+                            Key::Named(NamedKey::Enter) => {
+                                if let Some(action) = self.widget_menu.activate()
+                                    && let Err(e) = self.send_widget_action(action)
+                                {
+                                    eprintln!("widget action: {e}");
+                                }
+                            }
+                            _ => {}
+                        }
+                        window.request_redraw();
+                    }
+                    return;
+                }
+                if self.context_menu.is_open() {
+                    if event.state == ElementState::Pressed {
+                        match &event.logical_key {
+                            Key::Named(NamedKey::ArrowUp) => self.context_menu.navigate(-1),
+                            Key::Named(NamedKey::ArrowDown) => self.context_menu.navigate(1),
+                            Key::Named(NamedKey::Escape) => self.context_menu.close(),
+                            Key::Named(NamedKey::Enter) => {
+                                if let Some(action) = self.context_menu.activate()
+                                    && let Err(error) = self.send_world_action(action)
+                                {
+                                    eprintln!("world action: {error}");
+                                }
+                            }
+                            _ => {}
+                        }
+                        window.request_redraw();
+                    }
+                    return;
+                }
                 let held = event.state == ElementState::Pressed;
                 match &event.logical_key {
                     Key::Named(NamedKey::ArrowLeft) => self.scene.input.left = held,
@@ -779,10 +1060,12 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
         }
     }
     fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
-        if self.state.loaded_scene().is_some() {
+        if self.state.authenticated_player().is_some() {
             let now = Instant::now();
             let mut advanced = false;
-            while now >= self.next_step {
+            let mut steps = 0;
+            while now >= self.next_step && steps < 5 {
+                steps += 1;
                 advanced = true;
                 if let (Some(camera), Some(loaded)) = (&mut self.scene.camera, &self.scene.loaded) {
                     let target = if let Some(player) = self.state.entities().local_player() {
@@ -792,13 +1075,33 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                     };
                     camera.step(target, self.scene.input);
                 }
-                if let Err(e) = self.state.apply_operation(SemanticOperation::Scenery(
+                let operation = SemanticOperation::Scenery(
                     rustclient_game_state::SceneryOperation::AdvanceCycles(1),
-                )) {
-                    eprintln!("client cycle: {e}");
+                );
+                let result = if let Some(scripts) = &mut self.scripts {
+                    scripts.commit(&mut self.state, operation)
+                } else {
+                    self.state
+                        .apply_operation(operation)
+                        .map(|_| Vec::new())
+                        .map_err(|e| e.to_string())
+                };
+                match result {
+                    Ok(errors) => {
+                        for error in errors {
+                            if self.reported_script_errors.len() < 256
+                                && self.reported_script_errors.insert(error.clone())
+                            {
+                                eprintln!("client timer: {error}");
+                            }
+                        }
+                    }
+                    Err(error) => eprintln!("client cycle: {error}"),
                 }
-                self.state.entities_mut().advance_cycles(1);
                 self.next_step += STEP;
+            }
+            if now >= self.next_step {
+                self.next_step = now + STEP;
             }
             if advanced && let Some(animator) = &self.scene.animator {
                 let _ = animator.try_send(self.state.scenery().into());
@@ -821,11 +1124,11 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                     &mut combined,
                 ) {
                     eprintln!("entity geometry: {e}");
-                } else if let Some(renderer) = &mut self.renderer
-                    && let Err(e) =
-                        renderer.set_world_dynamic(loaded.asset.descriptor().id(), &combined)
-                {
-                    eprintln!("dynamic entities upload: {e}");
+                } else if let Some(renderer) = &mut self.renderer {
+                    match renderer.set_world_dynamic(loaded.asset.descriptor().id(), &combined) {
+                        Ok(()) => self.scene.displayed_dynamic = combined,
+                        Err(e) => eprintln!("dynamic entities upload: {e}"),
+                    }
                 }
             }
             if advanced && let Some(window) = &self.window {
@@ -882,7 +1185,7 @@ fn run() -> Result<(), String> {
     std::thread::Builder::new()
         .name("title-cache-loader".into())
         .spawn(move || {
-            let result = DirectoryBlobs::open(options.cache_dir)
+            let result = DirectoryBlobs::open(&options.cache_dir)
                 .map_err(|e| e.to_string())
                 .and_then(|source| {
                     load_title(source, options.profile, |name| {
@@ -890,6 +1193,13 @@ fn run() -> Result<(), String> {
                     })
                     .map_err(|e| e.to_string())
                 });
+            let scripts = DirectoryBlobs::open(&options.cache_dir)
+                .map_err(|e| e.to_string())
+                .and_then(|source| rustclient_cache::Cache::open(source).map_err(|e| e.to_string()))
+                .map(|cache| {
+                    rustclient_application::scripts::ClientScripts::new(cache, options.profile)
+                });
+            let _ = proxy.send_event(LoadEvent::ScriptsReady(Box::new(scripts)));
             let _ = proxy.send_event(LoadEvent::Loaded(Box::new(result)));
         })
         .map_err(|e| format!("cache worker: {e}"))?;

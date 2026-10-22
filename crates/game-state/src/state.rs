@@ -71,6 +71,8 @@ pub struct GameState {
     placement: Option<InitialPlacement>,
     scene: Option<SceneDescriptor>,
     pub(crate) scenery: crate::SceneryState,
+    pub(crate) interfaces: crate::InterfaceState,
+    pub(crate) inventories: crate::InventoryState,
     pub(crate) entities: crate::WorldEntitiesState,
     pub(crate) selected_tab: Option<usize>,
 }
@@ -89,20 +91,26 @@ impl GameState {
             scene: None,
             scenery: crate::SceneryState::default(),
             entities: crate::WorldEntitiesState::default(),
+            inventories: crate::InventoryState::default(),
+            interfaces: crate::InterfaceState::default(),
             selected_tab: Some(3),
         }
+    }
+
+    #[must_use]
+    pub const fn inventories(&self) -> &crate::InventoryState {
+        &self.inventories
+    }
+
+    #[must_use]
+    pub const fn interfaces(&self) -> &crate::InterfaceState {
+        &self.interfaces
     }
 
     /// Authoritative world entities (players and NPCs).
     #[must_use]
     pub const fn entities(&self) -> &crate::WorldEntitiesState {
         &self.entities
-    }
-
-    /// Mutable authoritative world entities.
-    #[must_use]
-    pub fn entities_mut(&mut self) -> &mut crate::WorldEntitiesState {
-        &mut self.entities
     }
 
     /// Currently active gameframe stone tab index.
@@ -116,7 +124,7 @@ impl GameState {
     pub const fn authenticated_player(&self) -> Option<AuthenticatedPlayer> {
         self.authenticated
     }
-    /// Initial placement for this authenticated session.
+    /// Current map selection, initially established by the login rebuild.
     #[must_use]
     pub const fn initial_placement(&self) -> Option<InitialPlacement> {
         self.placement
@@ -133,7 +141,7 @@ impl GameState {
         let placement = self
             .placement
             .ok_or(ConnectionStateError::SceneRequiresPlacement)?;
-        if !scene.contains(placement.position) {
+        if !scene.contains(placement.map_anchor) {
             return Err(ConnectionStateError::SceneOutsidePlacement);
         }
         if self.scene.is_some() {
@@ -141,6 +149,34 @@ impl GameState {
         }
         self.scene = Some(scene);
         Ok(())
+    }
+    pub(crate) fn change_map_plane(&mut self, position: rustclient_model::WorldTile) {
+        if let Some(placement) = &mut self.placement {
+            placement.position = position;
+            placement.map_anchor.plane = position.plane;
+        }
+        self.scene = None;
+    }
+    pub(crate) fn rebuild_map(
+        &mut self,
+        anchor: rustclient_model::MapAnchor,
+    ) -> Result<InitialPlacement, ConnectionStateError> {
+        let previous = self
+            .placement
+            .ok_or(ConnectionStateError::SceneRequiresPlacement)?;
+        let position = self
+            .entities
+            .local_player()
+            .map_or(previous.position, |p| p.tile);
+        let placement = InitialPlacement {
+            position,
+            map_anchor: anchor.on_plane(position.plane),
+            area: None,
+        };
+        self.placement = Some(placement);
+        self.scene = None;
+        self.scenery.clear_map_locations();
+        Ok(placement)
     }
     pub(crate) fn authenticate_session(
         &mut self,
@@ -176,6 +212,7 @@ impl GameState {
                     appearance: None,
                     sequence: None,
                     animation_cycle: 0,
+                    locomotion: crate::Locomotion::Idle,
                 },
             );
         }
@@ -249,6 +286,8 @@ impl GameState {
         self.scene = None;
         self.scenery = crate::SceneryState::default();
         self.entities = crate::WorldEntitiesState::default();
+        self.inventories = crate::InventoryState::default();
+        self.interfaces = crate::InterfaceState::default();
         self.selected_tab = Some(3);
         self.lifecycle = SessionLifecycle::Active;
         Ok(())
@@ -276,6 +315,8 @@ impl GameState {
         self.scene = None;
         self.scenery = crate::SceneryState::default();
         self.entities = crate::WorldEntitiesState::default();
+        self.inventories = crate::InventoryState::default();
+        self.interfaces = crate::InterfaceState::default();
         self.selected_tab = Some(3);
         self.lifecycle = SessionLifecycle::Inactive;
         Ok(())

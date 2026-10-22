@@ -11,7 +11,7 @@ use crate::{GameState, OperationCommit, SemanticEvent, SessionLifecycle};
 ///
 /// Any change to field ordering, tags, integer encoding, or fingerprint
 /// algorithm that changes canonical output must increment this version.
-pub const SEMANTIC_FINGERPRINT_VERSION: u16 = 6;
+pub const SEMANTIC_FINGERPRINT_VERSION: u16 = 10;
 
 const FNV_OFFSET_BASIS: u64 = 0xCBF2_9CE4_8422_2325;
 const FNV_PRIME: u64 = 0x0000_0100_0000_01B3;
@@ -176,7 +176,39 @@ impl GameState {
             }
         }
 
+        let inventories = self.inventories();
+        fingerprint
+            .write_u32(u32::try_from(inventories.iter().len()).expect("bounded inventories"));
+        for (id, slots) in inventories.iter() {
+            fingerprint.write_u32(id.get());
+            fingerprint.write_u32(u32::try_from(slots.len()).expect("bounded inventory slots"));
+            for stack in slots {
+                match stack {
+                    None => fingerprint.write_u8(0),
+                    Some(stack) => {
+                        fingerprint.write_u8(1);
+                        fingerprint.write_u32(stack.item.get());
+                        fingerprint.write_u32(stack.amount);
+                    }
+                }
+            }
+        }
+        interfaces::write(&mut fingerprint, self.interfaces());
+        fingerprint.write_u64(self.scenery().server_variables().len() as u64);
+        for (id, value) in self.scenery().server_variables() {
+            fingerprint.write_u32(id.get());
+            fingerprint.write_u32(value.cast_unsigned());
+        }
         let entities = self.entities();
+        fingerprint.write_bytes(&entities.run_energy().to_le_bytes());
+        fingerprint.write_bytes(&entities.run_weight().to_le_bytes());
+        fingerprint.write_u64(entities.skills().len() as u64);
+        for (id, skill) in entities.skills() {
+            fingerprint.write_u32(id.get());
+            fingerprint.write_u32(skill.experience);
+            fingerprint.write_bytes(&skill.current.to_le_bytes());
+            fingerprint.write_bytes(&skill.invisible.to_le_bytes());
+        }
         match entities.local_player_index() {
             None => fingerprint.write_u8(0),
             Some(idx) => {
@@ -195,7 +227,14 @@ impl GameState {
             fingerprint.write_bytes(&player.tile.y.to_le_bytes());
             fingerprint.write_u8(player.tile.plane.get());
             fingerprint.write_u16(player.orientation);
-            fingerprint.write_u8(u8::from(player.appearance.is_some()));
+            fingerprint.write_u32(player.animation_cycle);
+            fingerprint.write_u8(match player.locomotion {
+                crate::Locomotion::Idle => 0,
+                crate::Locomotion::Walk => 1,
+                crate::Locomotion::Run => 2,
+                crate::Locomotion::Turn => 3,
+            });
+            write_appearance(&mut fingerprint, player.appearance.as_ref());
             match player.sequence {
                 None => fingerprint.write_u8(0),
                 Some(seq) => {
@@ -209,23 +248,103 @@ impl GameState {
                 .expect("bounded npcs")
                 .to_le_bytes(),
         );
+        fingerprint.write_u64(entities.npc_serial);
         for (idx, npc) in entities.npcs() {
+            fingerprint.write_u64(npc.instance.get());
             fingerprint.write_u32(idx.get());
             fingerprint.write_u32(npc.definition_id.get());
             fingerprint.write_bytes(&npc.tile.x.to_le_bytes());
             fingerprint.write_bytes(&npc.tile.y.to_le_bytes());
             fingerprint.write_u8(npc.tile.plane.get());
             fingerprint.write_u16(npc.orientation);
-            match npc.sequence {
+            fingerprint.write_u32(npc.animation_cycle);
+            match npc.sequence.sequence {
                 None => fingerprint.write_u8(0),
                 Some(seq) => {
                     fingerprint.write_u8(1);
                     fingerprint.write_u32(seq.get());
                 }
             }
+            fingerprint.write_u8(match npc.locomotion {
+                crate::Locomotion::Idle => 0,
+                crate::Locomotion::Walk => 1,
+                crate::Locomotion::Run => 2,
+                crate::Locomotion::Turn => 3,
+            });
+            match &npc.name {
+                None => fingerprint.write_u8(0),
+                Some(name) => {
+                    fingerprint.write_u8(1);
+                    fingerprint.write_u64(u64::try_from(name.len()).expect("bounded NPC name"));
+                    fingerprint.write_bytes(name.as_bytes());
+                }
+            }
+            for enabled in npc.actions.enabled() {
+                fingerprint.write_u8(u8::from(enabled));
+            }
+            match npc.sequence.frame {
+                None => fingerprint.write_u8(0),
+                Some(frame) => {
+                    fingerprint.write_u8(1);
+                    fingerprint.write_u32(frame);
+                }
+            }
+            fingerprint.write_bytes(&npc.sequence.cycle.to_le_bytes());
+            fingerprint.write_bytes(&npc.sequence.delay.to_le_bytes());
         }
         StateFingerprint(fingerprint.finish())
     }
+}
+
+fn write_appearance(
+    f: &mut StableFingerprint64,
+    appearance: Option<&rustclient_model::PlayerAppearance>,
+) {
+    use rustclient_model::{Gender, SlotContent};
+    let Some(a) = appearance else {
+        f.write_u8(0);
+        return;
+    };
+    f.write_u8(1);
+    f.write_u8(match a.gender {
+        Gender::Male => 0,
+        Gender::Female => 1,
+    });
+    for slot in a.slots {
+        match slot {
+            SlotContent::Empty => f.write_u8(0),
+            SlotContent::Kit(id) => {
+                f.write_u8(1);
+                f.write_u32(id.get());
+            }
+            SlotContent::Item(id) => {
+                f.write_u8(2);
+                f.write_u32(id.get());
+            }
+        }
+    }
+    f.write_bytes(&a.colors);
+    let m = a.movement_sequences;
+    for sequence in [
+        m.idle,
+        m.turn,
+        m.walk,
+        m.walk_back,
+        m.walk_left,
+        m.walk_right,
+        m.run,
+    ] {
+        match sequence {
+            None => f.write_u8(0),
+            Some(id) => {
+                f.write_u8(1);
+                f.write_u32(id.get());
+            }
+        }
+    }
+    f.write_u8(a.combat_level);
+    f.write_u16(a.skill_level);
+    f.write_u8(u8::from(a.hidden));
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -321,6 +440,8 @@ fn write_commit(fingerprint: &mut StableFingerprint64, commit: OperationCommit) 
     fingerprint.write_u8(u8::from(delta.client_cycle_changed()));
     fingerprint.write_u8(u8::from(delta.entities_changed()));
     fingerprint.write_u8(u8::from(delta.gameframe_changed()));
+    fingerprint.write_u8(u8::from(delta.inventory_changed()));
+    fingerprint.write_u8(u8::from(delta.interfaces_changed()));
 }
 
 fn write_event(fingerprint: &mut StableFingerprint64, event: SemanticEvent) {
@@ -351,6 +472,10 @@ fn write_event(fingerprint: &mut StableFingerprint64, event: SemanticEvent) {
             write_location_override(fingerprint, previous);
             write_location_override(fingerprint, current);
         }
+        SemanticEvent::MapRebuilt(placement) => {
+            fingerprint.write_u8(13);
+            write_placement(fingerprint, placement);
+        }
         SemanticEvent::SceneInstalled(scene) => {
             fingerprint.write_u8(6);
             write_scene(fingerprint, scene);
@@ -378,6 +503,22 @@ fn write_event(fingerprint: &mut StableFingerprint64, event: SemanticEvent) {
             fingerprint.write_u8(2);
             fingerprint.write_u64(previous.get());
             fingerprint.write_u64(current.get());
+        }
+        SemanticEvent::VariablesSynchronized => fingerprint.write_u8(16),
+        SemanticEvent::ServerVariableChanged {
+            id,
+            previous,
+            current,
+        } => {
+            fingerprint.write_u8(17);
+            fingerprint.write_u32(id.get());
+            fingerprint.write_u32(previous.cast_unsigned());
+            fingerprint.write_u32(current.cast_unsigned());
+        }
+        SemanticEvent::InterfacesChanged => fingerprint.write_u8(15),
+        SemanticEvent::InventoryChanged(id) => {
+            fingerprint.write_u8(14);
+            fingerprint.write_u32(id.get());
         }
         SemanticEvent::EntitiesUpdated => fingerprint.write_u8(11),
         SemanticEvent::GameFrameTabSelected(tab) => {
@@ -495,215 +636,6 @@ fn write_placement(f: &mut StableFingerprint64, placement: InitialPlacement) {
     }
 }
 
+mod interfaces;
 #[cfg(test)]
-mod tests {
-    use rustclient_model::{GameTick, REVISION_240, Revision, TickSpan};
-
-    use super::*;
-    use crate::{ReplayEnvelope, SemanticOperation};
-
-    const BEGIN_240: SemanticOperation = SemanticOperation::BeginSession {
-        revision: REVISION_240,
-    };
-
-    fn run_operations(operations: &[SemanticOperation]) -> (GameState, CommitStreamFingerprint) {
-        let mut state = GameState::new();
-        let mut commits = CommitStreamFingerprintBuilder::new();
-
-        state
-            .apply_operation_batch_with_commits(operations, |_, commit| commits.push(commit))
-            .expect("reference semantic operation sequence must be valid");
-
-        (state, commits.finish())
-    }
-
-    #[test]
-    fn state_fingerprint_v6_has_exact_regression_vectors() {
-        let mut state = GameState::new();
-        assert_eq!(
-            state.semantic_fingerprint().get(),
-            8_648_089_271_838_886_857
-        );
-
-        state
-            .apply_operation(BEGIN_240)
-            .expect("inactive state can begin a session");
-        state
-            .apply_operation(SemanticOperation::AdvanceTick(TickSpan::new(5)))
-            .expect("small tick advance cannot overflow");
-
-        assert_eq!(
-            state.semantic_fingerprint().get(),
-            1_662_451_992_595_177_179
-        );
-    }
-
-    #[test]
-    fn title_panels_and_feedback_participate_in_canonical_state_and_commits() {
-        let screens = [
-            TitleScreen::Welcome,
-            TitleScreen::Credentials(LoginStatus::Prompt),
-            TitleScreen::Credentials(LoginStatus::UsernameRequired),
-            TitleScreen::Credentials(LoginStatus::PasswordRequired),
-            TitleScreen::Credentials(LoginStatus::Offline),
-            TitleScreen::Information(TitleInformation::NewUser),
-            TitleScreen::Information(TitleInformation::Help),
-        ];
-        let mut states = std::collections::BTreeSet::new();
-        let mut streams = std::collections::BTreeSet::new();
-        for screen in screens {
-            let mut state = GameState::new();
-            let commit = state
-                .apply_operation(SemanticOperation::SetTitleScreen(screen))
-                .unwrap();
-            let mut stream = CommitStreamFingerprintBuilder::new();
-            stream.push(commit);
-            assert!(states.insert(state.semantic_fingerprint()));
-            assert!(streams.insert(stream.finish()));
-        }
-    }
-
-    #[test]
-    fn state_fingerprint_distinguishes_revision_identity() {
-        let mut major_only = GameState::new();
-        major_only
-            .apply_operation(BEGIN_240)
-            .expect("inactive state can begin a session");
-        major_only
-            .apply_operation(SemanticOperation::AdvanceTick(TickSpan::new(5)))
-            .expect("small tick advance cannot overflow");
-
-        let mut subrevision = GameState::new();
-        subrevision
-            .apply_operation(SemanticOperation::BeginSession {
-                revision: Revision::with_subrevision(240, 2),
-            })
-            .expect("inactive state can begin a session");
-        subrevision
-            .apply_operation(SemanticOperation::AdvanceTick(TickSpan::new(5)))
-            .expect("small tick advance cannot overflow");
-
-        assert_ne!(
-            major_only.semantic_fingerprint(),
-            subrevision.semantic_fingerprint()
-        );
-        assert_eq!(
-            subrevision.semantic_fingerprint().get(),
-            13_610_782_365_595_794_734
-        );
-    }
-
-    #[test]
-    fn equivalent_observable_state_has_equivalent_fingerprint() {
-        let initial = GameState::new().semantic_fingerprint();
-        let mut state = GameState::new();
-
-        state
-            .apply_operation(BEGIN_240)
-            .expect("inactive state can begin a session");
-        state
-            .apply_operation(SemanticOperation::AdvanceTick(TickSpan::new(9)))
-            .expect("small tick advance cannot overflow");
-        state
-            .apply_operation(SemanticOperation::EndSession)
-            .expect("active state can end a session");
-
-        assert_eq!(state.semantic_fingerprint(), initial);
-    }
-
-    #[test]
-    fn commit_stream_fingerprint_v6_has_exact_regression_vector() {
-        let operations = [
-            BEGIN_240,
-            SemanticOperation::AdvanceTick(TickSpan::new(2)),
-            SemanticOperation::AdvanceTick(TickSpan::ZERO),
-            SemanticOperation::EndSession,
-        ];
-        let (_, fingerprint) = run_operations(&operations);
-
-        assert_eq!(fingerprint.get(), 3_758_896_452_731_557_813);
-        assert_eq!(
-            CommitStreamFingerprintBuilder::new().finish().get(),
-            3_354_334_176_184_128_508
-        );
-    }
-
-    #[test]
-    fn commit_stream_fingerprint_is_order_sensitive() {
-        let mut state = GameState::new();
-        let begin = state
-            .apply_operation(BEGIN_240)
-            .expect("inactive state can begin a session");
-        let advance = state
-            .apply_operation(SemanticOperation::AdvanceTick(TickSpan::ONE))
-            .expect("small tick advance cannot overflow");
-
-        let mut forward = CommitStreamFingerprintBuilder::new();
-        forward.push(begin);
-        forward.push(advance);
-
-        let mut reversed = CommitStreamFingerprintBuilder::new();
-        reversed.push(advance);
-        reversed.push(begin);
-
-        assert_ne!(forward.finish(), reversed.finish());
-    }
-
-    #[test]
-    fn identical_semantic_runs_have_identical_canonical_fingerprints() {
-        let operations = [
-            BEGIN_240,
-            SemanticOperation::AdvanceTick(TickSpan::new(2)),
-            SemanticOperation::AdvanceTick(TickSpan::ZERO),
-            SemanticOperation::AdvanceTick(TickSpan::new(3)),
-            SemanticOperation::EndSession,
-            BEGIN_240,
-            SemanticOperation::AdvanceTick(TickSpan::ONE),
-        ];
-
-        let (left_state, left_commits) = run_operations(&operations);
-        let (right_state, right_commits) = run_operations(&operations);
-
-        assert_eq!(
-            left_state.semantic_fingerprint(),
-            right_state.semantic_fingerprint()
-        );
-        assert_eq!(left_commits, right_commits);
-        assert_eq!(left_state.current_tick(), Some(GameTick::new(1)));
-    }
-
-    #[test]
-    fn replay_reconstructs_state_and_commit_stream_fingerprints() {
-        let operations = [
-            BEGIN_240,
-            SemanticOperation::AdvanceTick(TickSpan::new(2)),
-            SemanticOperation::AdvanceTick(TickSpan::ZERO),
-            SemanticOperation::AdvanceTick(TickSpan::new(3)),
-        ];
-        let mut recorded_state = GameState::new();
-        let mut recorded_stream = CommitStreamFingerprintBuilder::new();
-        let mut envelopes = Vec::with_capacity(operations.len());
-
-        for operation in operations {
-            let commit = recorded_state
-                .apply_operation(operation.clone())
-                .expect("reference operation sequence must be valid");
-            recorded_stream.push(commit);
-            envelopes.push(ReplayEnvelope::new(operation, commit));
-        }
-
-        let mut replayed_state = GameState::new();
-        let mut replayed_stream = CommitStreamFingerprintBuilder::new();
-        replayed_state
-            .replay_envelopes_with_commits(&envelopes, |_, commit| {
-                replayed_stream.push(commit);
-            })
-            .expect("recorded semantic sequence must replay exactly");
-
-        assert_eq!(
-            recorded_state.semantic_fingerprint(),
-            replayed_state.semantic_fingerprint()
-        );
-        assert_eq!(recorded_stream.finish(), replayed_stream.finish());
-    }
-}
+mod tests;

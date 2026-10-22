@@ -1,5 +1,7 @@
 //! Headless native bootstrap diagnostic. Credentials are accepted only on bounded stdin.
-use rustclient_application::ConnectionDecoder;
+#[path = "login_probe/journey.rs"]
+mod journey;
+use rustclient_application::{ConnectionDecoder, ConnectionInput};
 use rustclient_cache::Cache;
 use rustclient_game_state::{GameState, SemanticOperation};
 use rustclient_platform::{ByteStream, TransportError};
@@ -27,9 +29,17 @@ fn read_credentials() -> Result<Credentials, Box<dyn std::error::Error>> {
     }
     Ok(Credentials::new(username.to_owned(), password.to_owned())?)
 }
+#[expect(
+    clippy::too_many_lines,
+    reason = "bounded live diagnostic stages with one credential lifetime"
+)]
 fn run() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().skip(1).collect();
-    if args.len() != 2 {
+    let verify = args.get(2).is_some_and(|s| s == "--verify-bank");
+    let travel = args
+        .get(2)
+        .is_some_and(|s| s == "--walk-and-bank" || s == "--verify-bank");
+    if args.len() != 2 && !(args.len() == 3 && travel) {
         return Err(
             "usage: login_probe CACHE_DIR PUBLIC_KEY (two stdin lines: username, password)".into(),
         );
@@ -66,6 +76,10 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     ))?;
     drop(entropy);
     let (mut decoder, authenticated) = ConnectionDecoder::new(profile, login);
+    let mut scripts = rustclient_application::scripts::ClientScripts::new(
+        cache,
+        rustclient_cache::CacheProfile::OpenRune240,
+    );
     let mut state = GameState::new();
     state.apply_operation(authenticated)?;
     println!(
@@ -79,9 +93,11 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     pollster::block_on(stream.send(&decoder.encode(ClientIntent::WindowStatus {
         width: 765,
         height: 503,
-    })))?;
+    })?))?;
     let mut bytes = [0; 16384];
-    let end = Instant::now() + Duration::from_secs(8);
+    let end = Instant::now() + Duration::from_secs(if travel { 240 } else { 8 });
+    let mut journey = travel.then(|| journey::Journey::new(args[0].clone().into(), verify));
+    let mut next_cycle = Instant::now();
     let mut next_heartbeat = Instant::now() + Duration::from_secs(5);
     let mut reported = false;
     while Instant::now() < end {
@@ -90,9 +106,20 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
             Ok(0) => return Err("game stream closed".into()),
             Ok(n) => {
                 let mut operation_error = None;
-                let connected = decoder.receive(&bytes[..n], |op| {
-                    if let Err(e) = state.apply_operation(op) {
-                        operation_error = Some(e);
+                let connected = decoder.receive_inputs(&bytes[..n], |input| {
+                    let result = match input {
+                        ConnectionInput::Operation(op) => scripts.commit(&mut state, op),
+                        ConnectionInput::Script(request) => scripts
+                            .enqueue(request, None)
+                            .map(|()| scripts.drain(&mut state)),
+                    };
+                    match result {
+                        Ok(errors) => {
+                            for error in errors {
+                                eprintln!("client script: {error}");
+                            }
+                        }
+                        Err(e) => operation_error = Some(e),
                     }
                 })?;
                 if let Some(error) = operation_error {
@@ -105,15 +132,35 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
             Err(TransportError::Timeout) => {}
             Err(e) => return Err(e.into()),
         }
+        if journey.is_some() && Instant::now() >= next_cycle {
+            for error in scripts.commit(
+                &mut state,
+                SemanticOperation::Scenery(rustclient_game_state::SceneryOperation::AdvanceCycles(
+                    1,
+                )),
+            )? {
+                eprintln!("client timer: {error}");
+            }
+            next_cycle = Instant::now() + Duration::from_millis(20);
+        }
+        if let Some(journey) = &mut journey {
+            journey.step(&mut state, &mut scripts, &mut decoder, &mut stream)?;
+            if journey.completed() {
+                break;
+            }
+        }
         if !reported && let Some(placement) = state.initial_placement() {
             println!("initial placement {placement:?}");
             reported = true;
         }
         if Instant::now() >= next_heartbeat {
             stream.deadline_after(Duration::from_secs(2));
-            pollster::block_on(stream.send(&decoder.encode(ClientIntent::KeepAlive)))?;
+            pollster::block_on(stream.send(&decoder.encode(ClientIntent::KeepAlive)?))?;
             next_heartbeat = Instant::now() + Duration::from_secs(5);
         }
+    }
+    if journey.as_ref().is_some_and(|j| !j.completed()) {
+        return Err("walk-and-bank diagnostic timed out".into());
     }
     if !reported {
         return Err("no initial placement received".into());

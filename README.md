@@ -13,6 +13,12 @@ unfinished. The browser app currently presents a bootstrap canvas; shared crates
 compile for Wasm, but browser gameplay/cache import/transport are not delivered.
 No production protocol, renderer or plugin ABI is considered stable yet.
 
+Movement input, ordinary map-rebuild handling and local-player decoder groundwork
+are now wired, with semantic/codec checks passing; live gameplay remains unverified.
+The [walk-and-bank checkpoint](docs/plan/PLAYABLE-desktop.md) records the
+implemented movement, stock NPC updates, world menus and inventory synchronization,
+and the unfinished widget, CS2 and banking work.
+
 The first implementation compatibility target is revision `240`, while the architecture is designed to support additional validated revisions/profiles later.
 
 ## Architectural goals

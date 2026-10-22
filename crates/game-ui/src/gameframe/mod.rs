@@ -20,6 +20,62 @@ use crate::{Rect, UiFrame};
 use rustclient_cache::TitleAssets;
 use rustclient_game_state::{GameState, SemanticOperation};
 
+/// Pointer routing derived from the actual HUD projection.
+pub enum GameplayPointer {
+    World,
+    Blocked,
+    /// Offset in minimap source pixels, ready for the displayed rotation.
+    Minimap {
+        dx: f32,
+        dy: f32,
+    },
+}
+
+/// Route world input through the same quads and aperture mask used to draw HUD.
+#[must_use]
+pub fn gameplay_pointer(frame: &UiFrame, assets: &TitleAssets, x: f32, y: f32) -> GameplayPointer {
+    use crate::UiImageId;
+    if !x.is_finite() || !y.is_finite() {
+        return GameplayPointer::Blocked;
+    }
+    let hit = |quad: &&crate::Quad| quad.rect.contains(x, y) && quad.clip.contains(x, y);
+    if frame
+        .quads
+        .iter()
+        .filter(hit)
+        .any(|q| q.image == UiImageId::Compass)
+    {
+        return GameplayPointer::Blocked;
+    }
+    if let Some(quad) = frame
+        .quads
+        .iter()
+        .filter(hit)
+        .find(|q| q.image == UiImageId::Minimap)
+        && let Some(gameframe) = &assets.gameframe
+    {
+        let mask = &gameframe.minimap_mask.image;
+        let width = mask.width() as f32;
+        let height = mask.height() as f32;
+        let px = (x - quad.rect.x) * width / quad.rect.width;
+        let py = (y - quad.rect.y) * height / quad.rect.height;
+        let index = ((py.floor() as usize) * mask.width() as usize + px.floor() as usize) * 4 + 3;
+        return if mask.pixels().get(index) == Some(&0) {
+            GameplayPointer::Minimap {
+                dx: px - width / 2.,
+                dy: py - height / 2.,
+            }
+        } else {
+            GameplayPointer::Blocked
+        };
+    }
+    if frame.quads.iter().any(|q| hit(&q)) {
+        GameplayPointer::Blocked
+    } else {
+        GameplayPointer::World
+    }
+}
+
 /// Live gameframe HUD state and click dispatcher.
 #[derive(Debug, Clone, Default)]
 pub struct GameFrameUi {

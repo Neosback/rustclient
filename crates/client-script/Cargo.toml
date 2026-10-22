@@ -5,5 +5,9 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[dependencies]
+rustclient-model = { path = "../model" }
+rustclient-cache = { path = "../cache" }
+
 [lints]
 workspace = true

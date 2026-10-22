@@ -83,3 +83,38 @@ fn golden_multichunk_group_reconstructs_sparse_files() {
     assert!(split_files(&bad, &ids, SOURCE).is_err());
     assert!(split_files(&[0], &ids, SOURCE).is_err());
 }
+
+#[test]
+fn item_placeholder_links_only_convert_back_when_a_template_is_present() {
+    use rustclient_cache::osrs240::definitions::item;
+    use rustclient_model::ItemDefinitionId;
+    let source = Source::group(IndexId(2), GroupId(10));
+    // Normal coins has a forward link to its placeholder, but remains coins.
+    let normal = item(&[148, 0x38, 0x76, 0], ItemDefinitionId::new(995), source).unwrap();
+    assert_eq!(normal.placeholder, Some(ItemDefinitionId::new(14454)));
+    assert_eq!(normal.placeholder_template, None);
+    assert_eq!(normal.unplaceholder(), ItemDefinitionId::new(995));
+    let placeholder = item(
+        &[148, 3, 0xe3, 149, 0x38, 0x73, 0],
+        ItemDefinitionId::new(14454),
+        source,
+    )
+    .unwrap();
+    assert_eq!(
+        placeholder.placeholder_template,
+        Some(ItemDefinitionId::new(14451))
+    );
+    assert_eq!(placeholder.unplaceholder(), ItemDefinitionId::new(995));
+    let empty = item(&[0], ItemDefinitionId::new(1), source).unwrap();
+    assert_eq!(empty.unplaceholder(), ItemDefinitionId::new(1));
+    for length in 0..7 {
+        assert!(
+            item(
+                &[148, 3, 0xe3, 149, 0x38, 0x73, 0][..length],
+                ItemDefinitionId::new(14454),
+                source
+            )
+            .is_err()
+        );
+    }
+}

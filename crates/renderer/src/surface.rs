@@ -230,6 +230,18 @@ impl SurfaceRenderer {
         Ok(())
     }
 
+    /// Upload retained CPU widget images into the same ordered UI pipeline.
+    /// # Errors
+    /// Rejects assets exceeding the bounded atlas.
+    pub fn set_widget_images(
+        &mut self,
+        assets: &TitleAssets,
+        images: &std::collections::BTreeMap<rustclient_game_ui::UiImageId, rustclient_cache::Image>,
+    ) -> Result<(), RenderError> {
+        let ui = UiGpu::with_images(&self.device, &self.queue, self.view_format, assets, images)?;
+        self.ui = Some(ui);
+        Ok(())
+    }
     /// Upload a disposable world mesh once per asset/GPU lifetime.
     /// # Errors
     /// Returns bounded mesh/device allocation failures.

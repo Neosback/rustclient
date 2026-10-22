@@ -1,0 +1,394 @@
+--- a/deobfuscator/net/runelite/asm/Annotation.java
++++ b/deobfuscator/net/runelite/asm/Annotation.java
+@@ -68,7 +68,7 @@
+ 
+ 	public Annotation(Type type, boolean visible)
+ 	{
+-		super(Opcodes.ASM5);
++		super(Opcodes.ASM9);
+ 		this.type = type;
+ 		this.visible = visible;
+ 	}
+@@ -143,7 +143,7 @@
+ 	{
+ 		final var lst = new ArrayList<>();
+ 		data.put(name, lst);
+-		return new AnnotationVisitor(Opcodes.ASM5)
++		return new AnnotationVisitor(Opcodes.ASM9)
+ 		{
+ 			@Override
+ 			public void visit(String name, Object value)
+--- a/deobfuscator/net/runelite/asm/ClassFile.java
++++ b/deobfuscator/net/runelite/asm/ClassFile.java
+@@ -50,6 +50,8 @@
+ 	private Class name;
+ 	private Class super_class;
+ 	private String source;
++    public String nestHost;
++    public final List<String> nestMembers = new ArrayList<>();
+ 	private final Interfaces interfaces;
+ 	private final List<Field> fields = new ArrayList<>();
+ 	private final List<Method> methods = new ArrayList<>();
+@@ -100,6 +102,8 @@
+ 
+ 		visitor.visit(version, access, name.getName(), null, super_class.getName(), ints);
+ 		visitor.visitSource(source, null);
++        if (nestHost != null) visitor.visitNestHost(nestHost);
++        for (String member : nestMembers) visitor.visitNestMember(member);
+ 
+ 		for (Annotation annotation : annotations.values())
+ 		{
+--- /dev/null
++++ b/deobfuscator/net/runelite/asm/DynamicReferences.java
+@@ -0,0 +1,65 @@
++package net.runelite.asm;
++
++import java.util.IdentityHashMap;
++import java.util.Map;
++import org.objectweb.asm.ConstantDynamic;
++import org.objectweb.asm.Handle;
++import org.objectweb.asm.Opcodes;
++
++/** Scratch compatibility adapter: keep bootstrap handles attached to renamed members. */
++public final class DynamicReferences {
++    private final Map<Handle, Method> methods = new IdentityHashMap<>();
++    private final Map<Handle, Field> fields = new IdentityHashMap<>();
++
++    public void lookup(Object value, ClassGroup group) {
++        if (value instanceof ConstantDynamic) {
++            ConstantDynamic c = (ConstantDynamic) value;
++            lookup(c.getBootstrapMethod(), group);
++            for (int i = 0; i < c.getBootstrapMethodArgumentCount(); i++) lookup(c.getBootstrapMethodArgument(i), group);
++        } else if (value instanceof Handle) {
++            Handle h = (Handle) value;
++            ClassFile owner = group.findClass(h.getOwner());
++            if (owner == null) return;
++            if (h.getTag() <= Opcodes.H_PUTSTATIC) {
++                Field f = owner.findField(h.getName(), new Type(h.getDesc()));
++                if (f != null) fields.put(h, f);
++            } else {
++                Method m = owner.findMethod(h.getName(), new net.runelite.asm.signature.Signature(h.getDesc()));
++                if (m != null) methods.put(h, m);
++            }
++        }
++    }
++
++    public Object rewrite(Object value, String oldName, String newName) {
++        if (value instanceof ConstantDynamic) {
++            ConstantDynamic c = (ConstantDynamic) value;
++            Object[] args = new Object[c.getBootstrapMethodArgumentCount()];
++            for (int i = 0; i < args.length; i++) args[i] = rewrite(c.getBootstrapMethodArgument(i), oldName, newName);
++            return new ConstantDynamic(c.getName(), descriptor(c.getDescriptor(), oldName, newName),
++                (Handle) rewrite(c.getBootstrapMethod(), oldName, newName), args);
++        }
++        if (value instanceof org.objectweb.asm.Type) {
++            return org.objectweb.asm.Type.getType(descriptor(((org.objectweb.asm.Type) value).getDescriptor(), oldName, newName));
++        }
++        if (!(value instanceof Handle)) return value;
++        Handle h = (Handle) value;
++        String owner = h.getOwner(), name = h.getName(), desc = h.getDesc();
++        Method m = methods.get(h);
++        Field f = fields.get(h);
++        if (oldName == null) {
++            if (m != null) { owner = m.getClassFile().getName(); name = m.getName(); desc = m.getDescriptor().toString(); }
++            if (f != null) { owner = f.getClassFile().getName(); name = f.getName(); desc = f.getType().toString(); }
++        } else {
++            if (owner.equals(oldName)) owner = newName;
++            desc = descriptor(desc, oldName, newName);
++        }
++        Handle out = new Handle(h.getTag(), owner, name, desc, h.isInterface());
++        if (m != null) methods.put(out, m);
++        if (f != null) fields.put(out, f);
++        return out;
++    }
++
++    public static String descriptor(String value, String oldName, String newName) {
++        return oldName == null ? value : value.replace("L" + oldName + ";", "L" + newName + ";");
++    }
++}
+--- a/deobfuscator/net/runelite/asm/Type.java
++++ b/deobfuscator/net/runelite/asm/Type.java
+@@ -194,6 +194,14 @@
+ 	{
+ 		Type type;
+ 
++        if (object instanceof org.objectweb.asm.ConstantDynamic)
++            return new Type(((org.objectweb.asm.ConstantDynamic) object).getDescriptor());
++        if (object instanceof org.objectweb.asm.Type)
++            return ((org.objectweb.asm.Type) object).getSort() == org.objectweb.asm.Type.METHOD
++                ? new Type("Ljava/lang/invoke/MethodType;") : new Type("Ljava/lang/Class;");
++        if (object instanceof org.objectweb.asm.Handle)
++            return new Type("Ljava/lang/invoke/MethodHandle;");
++
+ 		if (object instanceof Double)
+ 		{
+ 			type = DOUBLE;
+--- a/deobfuscator/net/runelite/asm/attributes/code/instructions/InvokeDynamic.java
++++ b/deobfuscator/net/runelite/asm/attributes/code/instructions/InvokeDynamic.java
+@@ -46,7 +46,20 @@
+ 
+ public class InvokeDynamic extends Instruction implements InvokeInstruction
+ {
+-	private String name;
++	private final net.runelite.asm.DynamicReferences dynamic = new net.runelite.asm.DynamicReferences();
++    @Override public void lookup() {
++        net.runelite.asm.ClassGroup group = getInstructions().getCode().getMethod().getClassFile().getGroup();
++        dynamic.lookup(bsm, group);
++        for (Object arg : bsmArgs) dynamic.lookup(arg, group);
++    }
++    private void rewrite(String oldName, String newName) {
++        desc = net.runelite.asm.DynamicReferences.descriptor(desc, oldName, newName);
++        bsm = (Handle) dynamic.rewrite(bsm, oldName, newName);
++        for (int i = 0; i < bsmArgs.length; i++) bsmArgs[i] = dynamic.rewrite(bsmArgs[i], oldName, newName);
++    }
++    @Override public void regeneratePool() { rewrite(null, null); }
++    @Override public void renameClass(String oldName, String newName) { rewrite(oldName, newName); }
++    private String name;
+ 	private String desc;
+ 	private Handle bsm;
+ 	private Object[] bsmArgs;
+--- a/deobfuscator/net/runelite/asm/attributes/code/instructions/LDC.java
++++ b/deobfuscator/net/runelite/asm/attributes/code/instructions/LDC.java
+@@ -54,6 +54,9 @@
+ public class LDC extends Instruction implements PushConstantInstruction
+ {
+ 	private Object value;
++    private final net.runelite.asm.DynamicReferences dynamic = new net.runelite.asm.DynamicReferences();
++    @Override public void lookup() { dynamic.lookup(value, getInstructions().getCode().getMethod().getClassFile().getGroup()); }
++    @Override public void regeneratePool() { value = dynamic.rewrite(value, null, null); }
+ 
+ 	public LDC(Instructions instructions, Object value)
+ 	{
+@@ -140,7 +143,7 @@
+ 		InstructionContext ins = new InstructionContext(this, frame);
+ 		Stack stack = frame.getStack();
+ 
+-		StackContext ctx = new StackContext(ins, Type.getType(value), new Value(value));
++		StackContext ctx = new StackContext(ins, Type.getType(value), value instanceof org.objectweb.asm.ConstantDynamic ? Value.UNKNOWN : new Value(value));
+ 		stack.push(ctx);
+ 
+ 		ins.push(ctx);
+@@ -186,6 +189,7 @@
+ 	@Override
+ 	public void renameClass(String oldName, String newName)
+ 	{
++        value = dynamic.rewrite(value, oldName, newName);
+ 		Object object = getConstant();
+ 		if (object instanceof net.runelite.asm.pool.Class)
+ 		{
+--- a/deobfuscator/net/runelite/asm/visitors/ClassFieldVisitor.java
++++ b/deobfuscator/net/runelite/asm/visitors/ClassFieldVisitor.java
+@@ -39,7 +39,7 @@
+ 
+ 	ClassFieldVisitor(ClassFile cf, int access, String name, Type desc, Object value)
+ 	{
+-		super(Opcodes.ASM5);
++		super(Opcodes.ASM9);
+ 
+ 		this.field = new Field(cf, name, desc);
+ 		this.field.setAccessFlags(access);
+--- a/deobfuscator/net/runelite/asm/visitors/ClassFileVisitor.java
++++ b/deobfuscator/net/runelite/asm/visitors/ClassFileVisitor.java
+@@ -41,7 +41,7 @@
+ 
+ 	public ClassFileVisitor()
+ 	{
+-		super(Opcodes.ASM5);
++		super(Opcodes.ASM9);
+ 	}
+ 
+ 	public ClassFile getClassFile()
+@@ -60,6 +60,11 @@
+ 		for (String inter : interfaces)
+ 			classFile.getInterfaces().addInterface(new net.runelite.asm.pool.Class(inter));
+ 	}
++
++    @Override
++    public void visitNestHost(String name) { classFile.nestHost = name; }
++    @Override
++    public void visitNestMember(String name) { classFile.nestMembers.add(name); }
+ 
+ 	@Override
+ 	public void visitSource(String source, String debug)
+--- a/deobfuscator/net/runelite/asm/visitors/CodeVisitor.java
++++ b/deobfuscator/net/runelite/asm/visitors/CodeVisitor.java
+@@ -82,7 +82,7 @@
+ 
+ 	CodeVisitor(ClassFile classFile, int access, String name, Signature signature, String[] sexceptions)
+ 	{
+-		super(Opcodes.ASM5);
++		super(Opcodes.ASM9);
+ 
+ 		this.classFile = classFile;
+ 
+--- a/deobfuscator/net/runelite/deob/Deob.java
++++ b/deobfuscator/net/runelite/deob/Deob.java
+@@ -80,7 +80,7 @@
+ 		ClassGroup group = JarUtil.load(new File(args[0]), true);
+ 
+ 		// remove except RuntimeException
+-		run(group, new RuntimeExceptions());
++		// Injected-input preservation profile skips: run(group, new RuntimeExceptions());
+ 
+ 		run(group, new ControlFlowDeobfuscator());
+ 
+@@ -88,32 +88,32 @@
+ 
+ 		// remove unused methods - this leaves Code with no instructions,
+ 		// which is not valid, so unused methods is run after
+-		run(group, new UnreachedCode());
+-		run(group, new UnusedMethods());
++		// Injected-input preservation profile skips: run(group, new UnreachedCode());
++		// Injected-input preservation profile skips: run(group, new UnusedMethods());
+ 
+ 		// remove illegal state exceptions, frees up some parameters
+-		run(group, new IllegalStateExceptions());
++		// Injected-input preservation profile skips: run(group, new IllegalStateExceptions());
+ 
+ 		// remove constant logically dead parameters
+-		run(group, new ConstantParameter());
++		// Injected-input preservation profile skips: run(group, new ConstantParameter());
+ 
+ 		// remove unhit blocks
+-		run(group, new UnreachedCode());
+-		run(group, new UnusedMethods());
++		// Injected-input preservation profile skips: run(group, new UnreachedCode());
++		// Injected-input preservation profile skips: run(group, new UnusedMethods());
+ 
+ 		// remove unused parameters
+-		run(group, new UnusedParameters());
++		// Injected-input preservation profile skips: run(group, new UnusedParameters());
+ 
+ 		// remove unused fields
+-		run(group, new UnusedFields());
+-
+-		run(group, new FieldInliner());
++		// Injected-input preservation profile skips: run(group, new UnusedFields());
++
++		// Injected-input preservation profile skips: run(group, new FieldInliner());
+ 
+ 		// order uses class name order for sorting fields/methods,
+ 		// so run it before removing classes below
+ 		run(group, new Order());
+ 
+-		run(group, new UnusedClass());
++		// Injected-input preservation profile skips: run(group, new UnusedClass());
+ 
+ 		runMath(group);
+ 
+@@ -125,19 +125,28 @@
+ 
+ 		run(group, new EnumDeobfuscator());
+ 
+-		new OpcodesTransformer().transform(group);
++		// Injected-input preservation profile skips: new OpcodesTransformer().transform(group);
+ 		//run(group, new PacketHandlerOrder());
+ 		//run(group, new PacketWriteDeobfuscator());
+ 
+-		run(group, new MenuActionDeobfuscator());
+-
+-		new GetPathTransformer().transform(group);
+-		new ClientErrorTransformer().transform(group);
+-		new ReflectionTransformer().transform(group);
++		// Injected-input preservation profile skips: run(group, new MenuActionDeobfuscator());
++
++		// Injected-input preservation profile skips: new GetPathTransformer().transform(group);
++		// Injected-input preservation profile skips: new ClientErrorTransformer().transform(group);
++		// Injected-input preservation profile skips: new ReflectionTransformer().transform(group);
+ 		//new MaxMemoryTransformer().transform(group);
+ 		//new RuneliteBufferTransformer().transform(group);
+ 
+-		JarUtil.save(group, new File(args[1]));
++		// Keep an inspectable checkpoint before frame generation.
++        try (java.util.jar.JarOutputStream out = new java.util.jar.JarOutputStream(new java.io.FileOutputStream(args[1]))) {
++            for (net.runelite.asm.ClassFile cf : group.getClasses()) {
++                org.objectweb.asm.ClassWriter writer = new org.objectweb.asm.ClassWriter(org.objectweb.asm.ClassWriter.COMPUTE_MAXS);
++                cf.accept(writer);
++                out.putNextEntry(new java.util.jar.JarEntry(cf.getName() + ".class"));
++                out.write(writer.toByteArray()); out.closeEntry();
++            }
++        }
++        // The research runner repairs type/member references before computing frames.
+ 
+ 		stopwatch.stop();
+ 		logger.info("Done in {}", stopwatch);
+@@ -170,7 +179,7 @@
+ 			// the change in guessDecreasesConstants()
+ 			new MultiplyOneDeobfuscator(true).run(group);
+ 
+-			new MultiplyZeroDeobfuscator().run(group);
++			// Skip destructive zero-stack pruning for injected input.
+ 
+ 			if (last == cur)
+ 			{
+--- a/deobfuscator/net/runelite/deob/deobfuscators/Renamer.java
++++ b/deobfuscator/net/runelite/deob/deobfuscators/Renamer.java
+@@ -66,6 +66,9 @@
+ 			on.setParentClass(new net.runelite.asm.pool.Class(name));
+ 		}
+ 
++        if (old.getName().equals(on.nestHost)) on.nestHost = name;
++        on.nestMembers.replaceAll(member -> member.equals(old.getName()) ? name : member);
++
+ 		Interfaces interfaces = on.getInterfaces();
+ 		List<net.runelite.asm.pool.Class> interfaceList = interfaces.getInterfaces();
+ 		for (net.runelite.asm.pool.Class inter : interfaceList)
+--- a/deobfuscator/net/runelite/deob/deobfuscators/mapping/AnnotationIntegrityChecker.java
++++ b/deobfuscator/net/runelite/deob/deobfuscators/mapping/AnnotationIntegrityChecker.java
+@@ -209,7 +209,7 @@
+ 			if (im != null && im.value().equals(name))
+ 			{
+ 				logger.debug(name);
+-				return false;
++				return true;
+ 			}
+ 		}
+ 
+--- a/deobfuscator/net/runelite/deob/deobfuscators/mapping/ExecutionMapper.java
++++ b/deobfuscator/net/runelite/deob/deobfuscators/mapping/ExecutionMapper.java
+@@ -43,12 +43,14 @@
+ 
+ 	public ParallelExecutorMapping run()
+ 	{
+-		ParallelExecutorMapping highest = null;
++		if (method1.getCode() == null) return null; // Native/abstract methods cannot be symbolically executed.
++        ParallelExecutorMapping highest = null;
+ 		boolean multiple = false;
+ 
+ 		for (Method m : methods2)
+ 		{
+-			ParallelExecutorMapping mapping = MappingExecutorUtil.map(method1, m);
++			if (m.getCode() == null) continue;
++            ParallelExecutorMapping mapping = MappingExecutorUtil.map(method1, m);
+ 
+ 			if (highest == null || mapping.same > highest.same)
+ 			{
+--- a/deobfuscator/net/runelite/deob/util/JarUtil.java
++++ b/deobfuscator/net/runelite/deob/util/JarUtil.java
+@@ -81,7 +81,7 @@
+ 		}
+ 		catch (IOException e)
+ 		{
+-			e.printStackTrace();
++			throw new IllegalStateException("JAR I/O failed", e);
+ 		}
+ 
+ 		group.initialize();
+@@ -147,7 +147,7 @@
+ 		}
+ 		catch (IOException e)
+ 		{
+-			e.printStackTrace();
++			throw new IllegalStateException("JAR I/O failed", e);
+ 		}
+ 	}
+ 
+@@ -176,7 +176,7 @@
+ 		}
+ 		catch (Exception ex)
+ 		{
+-			logger.warn("Class {} failed validation", name, ex);
++			throw new IllegalStateException("Class " + name + " failed validation", ex);
+ 		}
+ 	}
+ }

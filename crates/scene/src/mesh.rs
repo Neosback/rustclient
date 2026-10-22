@@ -25,6 +25,13 @@ pub struct SceneGeometry {
     pub vertices: Vec<SceneVertex>,
     pub opaque: Vec<u32>,
     pub transparent: Vec<u32>,
+    /// Ordered vertex spans emitted for the same posed models submitted to the GPU.
+    pub picks: Vec<PickRange>,
+}
+#[derive(Debug, Clone)]
+pub struct PickRange {
+    pub vertices: std::ops::Range<usize>,
+    pub target: rustclient_model::WorldTarget,
 }
 pub struct WorldMesh {
     pub asset: SceneAssetId,

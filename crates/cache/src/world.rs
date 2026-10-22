@@ -48,6 +48,13 @@ pub struct ModelReference {
     pub id: ModelId,
     pub shape: Option<u8>,
 }
+/// Movement participation decoded by the cache adapter, independent of opcode values.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ObjectCollision {
+    None,
+    Geometry,
+    GeometryAndFloorDecoration,
+}
 /// Render-relevant immutable definition; other verified fields are consumed by the adapter.
 #[derive(Debug)]
 #[expect(
@@ -56,6 +63,9 @@ pub struct ModelReference {
 )]
 pub struct ObjectDefinition {
     pub id: ObjectDefinitionId,
+    pub name: Option<String>,
+    pub actions: [Option<String>; 5],
+    pub collision: ObjectCollision,
     pub models: Vec<ModelReference>,
     pub size: [u8; 2],
     pub scale: [u16; 3],
@@ -136,6 +146,16 @@ pub struct WearModels {
 /// Worn item appearance definition.
 #[derive(Debug, Clone)]
 pub struct ItemDefinition {
+    pub icon_model: Option<ModelId>,
+    pub icon_zoom: u16,
+    pub icon_angles: [u16; 3],
+    pub icon_offset: [i32; 2],
+    pub stackable: bool,
+    pub members: bool,
+    pub inventory_actions: [Option<String>; 5],
+    pub parameters: BTreeMap<u32, rustclient_model::ScriptValue>,
+    pub placeholder: Option<ItemDefinitionId>,
+    pub placeholder_template: Option<ItemDefinitionId>,
     pub id: ItemDefinitionId,
     pub name: Option<String>,
     pub equip_slot: Option<u8>,
@@ -145,6 +165,19 @@ pub struct ItemDefinition {
     pub recolors: Vec<(u16, u16)>,
     pub retextures: Vec<(Option<TextureId>, Option<TextureId>)>,
 }
+impl ItemDefinition {
+    /// Convert a placeholder definition back to its real item. A real item's
+    /// forward placeholder link does not make it a placeholder itself.
+    #[must_use]
+    pub fn unplaceholder(&self) -> ItemDefinitionId {
+        if self.placeholder_template.is_some() {
+            self.placeholder.unwrap_or(self.id)
+        } else {
+            self.id
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct ModelFace {
     pub vertices: [u32; 3],

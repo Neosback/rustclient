@@ -39,11 +39,8 @@ fn authentication_and_initial_placement_replay_exactly_and_reset_on_disconnect()
         stream.push(commit);
         envelopes.push(ReplayEnvelope::new(operation, commit));
     }
-    assert_eq!(
-        state.semantic_fingerprint().get(),
-        2_995_545_447_196_546_419
-    );
-    assert_eq!(stream.finish().get(), 15_314_672_986_390_209_640);
+    assert_eq!(state.semantic_fingerprint().get(), 595_697_232_476_055_175);
+    assert_eq!(stream.finish().get(), 12_910_528_816_417_453);
     assert_eq!(state.lifecycle(), SessionLifecycle::Active);
     assert_eq!(state.authenticated_player(), Some(player()));
     assert_eq!(state.initial_placement(), Some(placement()));

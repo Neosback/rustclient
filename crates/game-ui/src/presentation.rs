@@ -464,7 +464,7 @@ fn centered(
     clippy::too_many_arguments,
     reason = "literal font projection parameters are explicit and independent"
 )]
-fn text(
+pub(crate) fn text(
     frame: &mut UiFrame,
     font: &BitmapFont,
     id: u8,

@@ -78,6 +78,13 @@ A requested ID range is not a count of existing definitions: absent cache IDs
 remain absent, and variable-controlled invisible morphs may emit no geometry.
 This diagnostic exercises asset/pose execution, not visual parity.
 
+## Playable desktop work in progress
+
+[SPEC-0018](../specs/SPEC-0018-playable-desktop.md) defines the selected walk-and-bank
+milestone. [The implementation checkpoint](PLAYABLE-desktop.md) records movement,
+normal map rebuild and local-player decoder groundwork, exact validation and the
+unfinished NPC/action/widget/CS2/banking work. It does not establish a playable loop.
+
 ## Next delivery slices
 
 1. **Close classic rendering behavior.** Audit missing SPEC-0016/0017 behavior
@@ -151,3 +158,12 @@ input). The superseded single-batch probe had not covered the requested ranges.
 Rendering acceptance, a 240 deob run, live server login and browser gameplay
 were **not run**. No visual parity, complete plugin runtime, or playable browser
 claim follows from these checks.
+
+### Playable desktop continuation
+
+Stock NPC list/origin/movement/attribute updates, validated NPC/location actions,
+posed-geometry picking and native menus, plus authoritative inventory packet
+synchronization are implemented. Schema 8 covers their semantic state/replay.
+Widget/interface rendering and CS2, bank transactions and live acceptance remain
+incomplete. See the [current checkpoint](PLAYABLE-desktop.md) for exact limits and
+validation; this does not establish RuneLite parity or working banking.

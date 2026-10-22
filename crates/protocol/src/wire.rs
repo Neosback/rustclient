@@ -99,13 +99,22 @@ impl<'a> Reader<'a> {
         )?))
     }
 }
+pub(crate) fn decode_cp1252(byte: u8) -> char {
+    if (128..160).contains(&byte) {
+        CP1252_SPECIAL
+            .chars()
+            .nth(usize::from(byte - 128))
+            .unwrap_or('\u{fffd}')
+    } else {
+        char::from(byte)
+    }
+}
+const CP1252_SPECIAL: &str = "€\u{81}‚ƒ„…†‡ˆ‰Š‹Œ\u{8d}Ž\u{8f}\u{90}‘’“”•–—˜™š›œ\u{9d}žŸ";
 pub(crate) fn cp1252(ch: char) -> Option<u8> {
-    const SPECIAL: &str = "€\u{81}‚ƒ„…†‡ˆ‰Š‹Œ\u{8d}Ž\u{8f}\u{90}‘’“”•–—˜™š›œ\u{9d}žŸ";
-
     if matches!(ch,'\u{1}'..='\u{7f}'|'\u{a0}'..='\u{ff}') {
         return u8::try_from(u32::from(ch)).ok();
     }
-    SPECIAL
+    CP1252_SPECIAL
         .chars()
         .position(|c| c == ch)
         .and_then(|p| u8::try_from(p + 128).ok())

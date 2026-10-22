@@ -15,6 +15,9 @@ use crate::state::{GameState, LifecycleError, SessionLifecycle, TickAdvanceError
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SemanticOperation {
     Scenery(crate::SceneryOperation),
+    PlayerStatus(rustclient_model::PlayerStatusUpdate),
+    Inventory(rustclient_model::InventoryUpdate),
+    Interface(rustclient_model::InterfaceUpdate),
     /// Authoritative player info tick update.
     UpdatePlayers(rustclient_model::PlayerInfoUpdate),
     /// Authoritative NPC info tick update.
@@ -35,6 +38,8 @@ pub enum SemanticOperation {
     },
     /// Establish the initial map/player placement after authentication.
     EstablishInitialPlacement(InitialPlacement),
+    /// Select a new ordinary map window, retaining confirmed world entities.
+    RebuildMap(rustclient_model::MapAnchor),
     /// Select a validated immutable scene after initial placement.
     InstallScene(SceneDescriptor),
     /// End the active semantic game session.
@@ -46,7 +51,11 @@ pub enum SemanticOperation {
 /// Failure while validating or applying one semantic operation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OperationError {
+    /// Entity transition validation failed.
+    EntityUpdate(crate::EntityUpdateError),
     Scenery(crate::SceneryError),
+    Inventory(crate::InventoryError),
+    Interface(crate::InterfaceError),
     /// Authenticated bootstrap transition failed.
     Connection(ConnectionStateError),
     /// Title navigation requires an inactive session.
@@ -60,7 +69,10 @@ pub enum OperationError {
 impl fmt::Display for OperationError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::EntityUpdate(error) => error.fmt(formatter),
             Self::Scenery(error) => error.fmt(formatter),
+            Self::Inventory(error) => error.fmt(formatter),
+            Self::Interface(error) => error.fmt(formatter),
             Self::Connection(error) => error.fmt(formatter),
             Self::Title(error) => error.fmt(formatter),
             Self::Lifecycle(error) => error.fmt(formatter),
@@ -72,7 +84,10 @@ impl fmt::Display for OperationError {
 impl std::error::Error for OperationError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
+            Self::EntityUpdate(error) => Some(error),
             Self::Scenery(error) => Some(error),
+            Self::Inventory(error) => Some(error),
+            Self::Interface(error) => Some(error),
             Self::Connection(error) => Some(error),
             Self::Title(error) => Some(error),
             Self::Lifecycle(error) => Some(error),
@@ -141,10 +156,33 @@ impl GameState {
         operation: SemanticOperation,
     ) -> Result<OperationCommit, OperationError> {
         match operation {
+            SemanticOperation::PlayerStatus(update) => {
+                self.require_active()?;
+                let changed = self
+                    .entities
+                    .status(update)
+                    .map_err(OperationError::EntityUpdate)?;
+                Ok(if changed {
+                    OperationCommit::new(Some(SemanticEvent::EntitiesUpdated), StateDelta::ENTITIES)
+                } else {
+                    OperationCommit::new(None, StateDelta::default())
+                })
+            }
             SemanticOperation::Scenery(op) => self.apply_scenery(op),
+            SemanticOperation::Inventory(update) => self.apply_inventory(update),
+            SemanticOperation::Interface(update) => self.apply_interface(update),
             SemanticOperation::UpdatePlayers(update) => self.apply_update_players(&update),
             SemanticOperation::UpdateNpcs(update) => self.apply_update_npcs(&update),
             SemanticOperation::SelectGameFrameTab(tab) => self.apply_select_tab(tab),
+            SemanticOperation::RebuildMap(anchor) => {
+                let placement = self
+                    .rebuild_map(anchor)
+                    .map_err(OperationError::Connection)?;
+                Ok(OperationCommit::new(
+                    Some(SemanticEvent::MapRebuilt(placement)),
+                    StateDelta::MAP_REBUILD,
+                ))
+            }
             SemanticOperation::InstallScene(scene) => {
                 self.install_scene(scene)
                     .map_err(OperationError::Connection)?;
@@ -219,6 +257,60 @@ impl GameState {
         }
     }
 
+    fn apply_interface(
+        &mut self,
+        update: rustclient_model::InterfaceUpdate,
+    ) -> Result<OperationCommit, OperationError> {
+        self.require_active()?;
+        let topology = matches!(
+            &update,
+            rustclient_model::InterfaceUpdate::SetRoot(_)
+                | rustclient_model::InterfaceUpdate::Open(_)
+                | rustclient_model::InterfaceUpdate::Close(_)
+                | rustclient_model::InterfaceUpdate::Move { .. }
+                | rustclient_model::InterfaceUpdate::Resync { .. }
+                | rustclient_model::InterfaceUpdate::CloneChild { .. }
+                | rustclient_model::InterfaceUpdate::CreateChild { .. }
+                | rustclient_model::InterfaceUpdate::DeleteChild(_)
+                | rustclient_model::InterfaceUpdate::DeleteChildren(_)
+        );
+        if self
+            .interfaces
+            .apply(update)
+            .map_err(OperationError::Interface)?
+        {
+            if topology {
+                self.interfaces.invalidate();
+            }
+            Ok(OperationCommit::new(
+                Some(SemanticEvent::InterfacesChanged),
+                StateDelta::INTERFACE,
+            ))
+        } else {
+            Ok(OperationCommit::new(None, StateDelta::default()))
+        }
+    }
+
+    fn apply_inventory(
+        &mut self,
+        update: rustclient_model::InventoryUpdate,
+    ) -> Result<OperationCommit, OperationError> {
+        self.require_active()?;
+        let id = update.id();
+        if self
+            .inventories
+            .apply(update)
+            .map_err(OperationError::Inventory)?
+        {
+            Ok(OperationCommit::new(
+                Some(SemanticEvent::InventoryChanged(id)),
+                StateDelta::INVENTORY,
+            ))
+        } else {
+            Ok(OperationCommit::new(None, StateDelta::default()))
+        }
+    }
+
     fn require_active(&self) -> Result<(), OperationError> {
         if self.lifecycle() == SessionLifecycle::Active {
             Ok(())
@@ -232,7 +324,22 @@ impl GameState {
         update: &rustclient_model::PlayerInfoUpdate,
     ) -> Result<OperationCommit, OperationError> {
         self.require_active()?;
-        self.entities.apply_player_info(update);
+        self.entities
+            .validate_player_info(update)
+            .map_err(OperationError::EntityUpdate)?;
+        let previous_plane = self.entities.local_player().map(|p| p.tile.plane);
+        if !self.entities.apply_player_info(update) {
+            return Ok(OperationCommit::new(None, StateDelta::default()));
+        }
+        if let Some(player) = self.entities.local_player()
+            && Some(player.tile.plane) != previous_plane
+        {
+            self.change_map_plane(player.tile);
+            return Ok(OperationCommit::new(
+                Some(SemanticEvent::EntitiesUpdated),
+                StateDelta::PLAYER_PLANE,
+            ));
+        }
         Ok(OperationCommit::new(
             Some(SemanticEvent::EntitiesUpdated),
             StateDelta::ENTITIES,
@@ -244,17 +351,44 @@ impl GameState {
         update: &rustclient_model::NpcInfoUpdate,
     ) -> Result<OperationCommit, OperationError> {
         self.require_active()?;
-        let local_tile = self
-            .entities
-            .local_player()
-            .map(|p| p.tile)
-            .or_else(|| self.initial_placement().map(|p| p.position))
-            .unwrap_or(rustclient_model::WorldTile::new(
-                0,
-                0,
-                rustclient_model::Plane::MIN,
-            ));
-        self.entities.apply_npc_info(update, local_tile);
+        let local_tile =
+            self.entities
+                .local_player()
+                .map(|p| p.tile)
+                .ok_or(OperationError::EntityUpdate(
+                    crate::EntityUpdateError::MissingLocalPlayer,
+                ))?;
+        let origin = if let Some(offset) = update.origin {
+            let anchor = self
+                .initial_placement()
+                .ok_or(OperationError::Connection(
+                    ConnectionStateError::SceneRequiresPlacement,
+                ))?
+                .map_anchor;
+            rustclient_model::WorldTile::new(
+                anchor
+                    .x
+                    .checked_add(offset.x)
+                    .ok_or(OperationError::EntityUpdate(
+                        crate::EntityUpdateError::PositionOverflow,
+                    ))?,
+                anchor
+                    .y
+                    .checked_add(offset.y)
+                    .ok_or(OperationError::EntityUpdate(
+                        crate::EntityUpdateError::PositionOverflow,
+                    ))?,
+                local_tile.plane,
+            )
+        } else {
+            local_tile
+        };
+        self.entities
+            .validate_npc_info(update, origin)
+            .map_err(OperationError::EntityUpdate)?;
+        if !self.entities.apply_npc_info(update, origin) {
+            return Ok(OperationCommit::new(None, StateDelta::default()));
+        }
         Ok(OperationCommit::new(
             Some(SemanticEvent::EntitiesUpdated),
             StateDelta::ENTITIES,

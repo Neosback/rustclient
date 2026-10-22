@@ -104,6 +104,8 @@ pub(super) fn animations<S: ReadOnlyBlobs>(
     cache: &Cache<S>,
     needed: &BTreeSet<SequenceId>,
     digest: &mut Sha256,
+    profile: crate::CacheProfile,
+    warnings: &mut Vec<String>,
 ) -> Result<Animations> {
     let mut sequences = BTreeMap::new();
     let mut wanted = BTreeSet::new();
@@ -140,7 +142,12 @@ pub(super) fn animations<S: ReadOnlyBlobs>(
         if let std::collections::btree_map::Entry::Vacant(e) = groups.entry(group) {
             e.insert(
                 cache
-                    .group_files(IndexId(0), GroupId(group))?
+                    .group_files_policy(
+                        IndexId(0),
+                        GroupId(group),
+                        profile == crate::CacheProfile::OpenRune240,
+                        warnings,
+                    )?
                     .into_iter()
                     .collect::<BTreeMap<_, _>>(),
             );

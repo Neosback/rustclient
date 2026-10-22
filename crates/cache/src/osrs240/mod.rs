@@ -6,7 +6,11 @@ pub mod entity_assets;
 pub mod models;
 pub mod npc_model;
 pub mod player_model;
+mod script_opcodes;
+pub mod script_tables;
+pub mod scripts;
 mod terrain;
+pub mod widgets;
 use crate::{
     Cache, CacheProfile, FileId, GroupId, IndexId, Source,
     error::Result,
@@ -98,7 +102,8 @@ impl CacheProfile {
         for seq in [808, 819, 820, 821, 822, 823, 824] {
             wanted.insert(SequenceId::new(seq));
         }
-        let (sequences, frames, skeletons) = dependencies::animations(cache, &wanted, &mut digest)?;
+        let (sequences, frames, skeletons) =
+            dependencies::animations(cache, &wanted, &mut digest, self, &mut warnings)?;
         let wanted = objects
             .values()
             .filter_map(|d| d.morphs.as_ref().and_then(|m| m.varbit))

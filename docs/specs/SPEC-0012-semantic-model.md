@@ -62,6 +62,14 @@ Values outside that range are invalid semantic world planes and must be rejected
 
 Signed coordinates are retained so arithmetic and synthetic fixtures can represent values around zero without unsigned underflow.
 
+### MapAnchor
+
+`MapAnchor` is a plane-independent centre of the selected map window in signed
+world tile coordinates. It carries no region size, wire width or scene extent.
+`on_plane(Plane)` explicitly projects it to a `WorldTile`; the session's confirmed
+player plane supplies that input. This avoids manufacturing a plane in rebuild
+packets that carry no plane. SPEC-0018 owns its map-selection lifecycle.
+
 ### RegionCoord and RegionTile
 
 A map region is 64×64 tiles.
@@ -222,3 +230,25 @@ translates the main-world sentinel to absence; sentinel bytes never become IDs.
 ## Immutable scene references
 
 `SceneAssetId([u8;32])` is the SHA-256 identity supplied by the immutable asset catalog. `SceneDescriptor` pairs it with checked nonempty world bounds and a selected plane. It supports exclusive containment; it contains no GPU/camera information. `FloorUnderlayId` and `FloorOverlayId` are separate definition identities. Scene selection is optional session-owned `GameState` data; its content resides in the immutable application asset catalog (SPEC-0015).
+
+## Playable desktop entity updates
+
+Player movement includes typed step/run changes and teleport deltas with an
+explicit plane change. `SequenceChange` distinguishes an omitted update from an
+assigned sequence and an explicit clear; profile sentinel values never become
+semantic sequence IDs. Wire lists, skip counts and mask layouts stay in protocol.
+
+NPC batches include a typed map-anchor TileOffset origin, ordered properties,
+action visibility, movement and sequence delay. Runtime NpcInstanceId identifies
+a spawned lifetime independently of a reusable NpcIndex. WorldTarget captures
+that lifetime plus the base and resolved definition; location targets capture
+the typed LocationKey and definitions. WorldAction adds a SceneDescriptor and a
+checked ActionSlot in 0..5. ActionMask governs those five independent slots.
+These values carry no wire opcodes or renderer handles. ActorSequenceSlot consumes
+delay before advancing its cycle with explicit wrapping playback arithmetic.
+
+InventoryId and InventorySlot distinguish container identity from slot position
+and ItemDefinitionId. ItemStack preserves a quantity of zero (a placeholder)
+separately from absence. InventoryUpdate expresses replacement, ordered patches
+and removal; limits and session ownership belong to game-state, encodings to the
+profile. These internal semantic types do not extend the versioned plugin API.

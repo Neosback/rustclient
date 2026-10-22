@@ -9,6 +9,17 @@
 pub mod coords;
 pub mod entity;
 pub mod ids;
+mod interaction;
+pub use interaction::{
+    ActionMask, ActionSlot, NpcInstanceId, TileOffset, WorldAction, WorldTarget,
+};
+mod interface;
+pub use interface::{
+    ClientSetting, InterfaceMount, InterfaceMountKind, InterfaceUpdate, ScriptRequest, ScriptValue,
+    WidgetAction, WidgetEventRange, WidgetOperation, WidgetPermissions, WidgetProperty,
+};
+mod inventory;
+pub use inventory::{InventorySlotUpdate, InventoryUpdate, ItemStack};
 pub mod orientation;
 pub mod revision;
 pub mod time;
@@ -19,13 +30,14 @@ pub use coords::{
 };
 pub use entity::{
     APPEARANCE_SLOTS, ActorSequenceSlot, COLOR_SLOTS, Gender, KIT_PARTS, KIT_SLOT,
-    MovementSequences, NewNpc, NpcInfoUpdate, NpcMovement, PlayerAppearance, PlayerInfoUpdate,
-    PlayerMovement, SlotContent,
+    MovementSequences, NewNpc, NpcAttributeUpdate, NpcInfoUpdate, NpcMovement, NpcProperty,
+    PlayerAppearance, PlayerInfoUpdate, PlayerMovement, SequenceChange, SlotContent,
 };
 pub use ids::{
-    FloorOverlayId, FloorUnderlayId, InterfaceId, ItemDefinitionId, KitId, ModelId,
-    NpcDefinitionId, NpcIndex, ObjectDefinitionId, PlayerIndex, RegionId, ScriptId, SequenceId,
-    ServerProfileId, SpotAnimationId, SpriteId, TextureId, VarbitId, VarpId, WidgetId, WorldAreaId,
+    FloorOverlayId, FloorUnderlayId, FontId, InterfaceId, InventoryId, InventorySlot,
+    ItemDefinitionId, KitId, ModelId, NpcDefinitionId, NpcIndex, ObjectDefinitionId, PlayerIndex,
+    RegionId, ScriptId, SequenceId, ServerProfileId, SkillId, SpotAnimationId, SpriteId, TextureId,
+    VarbitId, VarpId, WidgetId, WorldAreaId,
 };
 pub use orientation::{JAU_FULL_TURN, JAU_QUARTER_TURN, JauAngle, LocOrientation, QuarterTurn};
 pub use revision::{REVISION_240, Revision, RevisionParseError};
@@ -34,4 +46,23 @@ mod scenery;
 pub use scenery::{AnimationStart, LocationChange, LocationDefinition, LocationKey, LocationLayer};
 
 mod scene;
-pub use scene::{SceneAssetId, SceneDescriptor};
+pub use scene::{MapAnchor, SceneAssetId, SceneDescriptor};
+
+mod widget;
+pub use widget::{
+    PositionMode, SizeMode, WidgetAddress, WidgetBody, WidgetContent, WidgetDefinition,
+    WidgetLayout, WidgetListener, WidgetRuntime,
+};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SkillValues {
+    pub experience: u32,
+    pub current: u16,
+    pub invisible: u16,
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PlayerStatusUpdate {
+    Skill { id: SkillId, values: SkillValues },
+    RunEnergy(u16),
+    RunWeight(i16),
+}

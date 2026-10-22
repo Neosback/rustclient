@@ -1649,6 +1649,7 @@ name = "rustclient-application"
 version = "0.0.0"
 dependencies = [
  "rustclient-cache",
+ "rustclient-client-script",
  "rustclient-game-state",
  "rustclient-game-ui",
  "rustclient-model",
@@ -1680,6 +1681,10 @@ dependencies = [
 [[package]]
 name = "rustclient-client-script"
 version = "0.0.0"
+dependencies = [
+ "rustclient-cache",
+ "rustclient-model",
+]
 
 [[package]]
 name = "rustclient-game-state"

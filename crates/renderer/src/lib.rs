@@ -8,7 +8,7 @@
 mod capture;
 mod surface;
 mod ui;
-pub use capture::capture_ui;
+pub use capture::{capture_ui, capture_ui_with_images};
 pub use ui::UiStats;
 
 pub use surface::{

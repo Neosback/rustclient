@@ -301,3 +301,46 @@ Passwords and network cipher/challenge state are absent from every semantic type
 ## Immutable scene selection (schema v4)
 
 `InstallScene(SceneDescriptor)` requires established placement inside the descriptor's bounds/plane, and rejects a second installation. It emits `SceneInstalled` (tag 6, payload encoded as above), with scene delta bit 16. Session boundaries reset the scene reference and invalidate the scene projection domain. No CPU mesh, GPU handle, camera or credential draft enters semantic state. Immutable CPU assets may be prepared before the operation, but presentation selects only the committed descriptor. Replay failures box their detailed mismatch payload so success-path `Result` values stay small.
+
+## Fingerprint schema: version 7 (SPEC-0018)
+
+The earlier v4 encoding description above is historical. Version 7 retains the
+v6 scene/scenery/entity/gameframe domains and additionally encodes full modeled
+player appearance (gender, ordered equipment/kit slots, colours, movement
+sequences, combat/skill levels and hidden flag), player/NPC animation cycles,
+and player locomotion (idle/walk/run/turn). Generation counters remain derived
+invalidation metadata and are excluded. Exact regression vectors live in the
+fingerprint contract tests.
+
+`MapRebuilt` uses event tag 13 with the current placement encoding. Ordinary
+rebuilds replace map selection, invalidate its scene, clear map-local location
+overrides and preserve variables and world entities. Scene installation validates
+against the current map anchor, since a teleport's confirmed player update can
+arrive after its rebuild. Confirmed plane changes invalidate the current scene
+and update the existing map selection's plane; entity deltas also mark the map
+selection/scene domains. Advancing client cycles advances entity playback through
+the same mutation gateway and marks the entity domain when entities exist.
+
+## Current fingerprint schema: version 8 (NPCs and inventories)
+
+Retains schema 7, with these canonical additions (integers little-endian):
+
+- After selected-tab encoding, inventories: u32 container count, ascending
+  InventoryId u32, u32 slot count, then slot-order option tags (u8 0/1), and
+  present item ID u32 and quantity u32. Empty containers are observable.
+- After NPC count, u64 lifetime allocation serial, even when no NPCs remain.
+  Each NPC begins with u64 instance ID before its existing index. After sequence
+  presence/ID, encode locomotion u8 (idle=0, walk=1, run=2, turn=3), name option
+  u8 and UTF-8 length u64/bytes when present, five action visibility u8 values,
+  frame option u8/u32, cycle i32 and delay i32. Existing NPC animation_cycle is
+  base locomotion playback; ActorSequenceSlot is action playback.
+- InventoryChanged uses event tag 14 followed by InventoryId u32. The inventory
+  delta boolean follows the gameframe boolean in each commit. StateDelta uses
+  bit 512 and session boundaries invalidate it.
+
+NPC lifetime serials are semantic identity allocation state and reset at session
+boundaries; projection generations remain excluded. Complete NPC batches and
+inventory operations validate before mutation. No-op updates emit no event;
+new/removal/reuse, sequence delay, visibility, names and container contents replay
+through the same gateway. Exact schema 8 golden vectors reside in the contract
+tests alongside replay and malformed-operation checks.

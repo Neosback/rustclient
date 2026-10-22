@@ -11,6 +11,8 @@ use rustclient_renderer::{CameraInput, CameraTarget, GameplayCameraController};
 use std::path::PathBuf;
 use winit::event_loop::EventLoopProxy;
 pub struct SceneView {
+    pub generation: u64,
+    pub displayed_dynamic: rustclient_scene::SceneGeometry,
     pub cache_dir: PathBuf,
     pub profile: CacheProfile,
     pub loading: bool,
@@ -27,6 +29,8 @@ pub struct SceneView {
 impl SceneView {
     pub fn new(options: &crate::options::Options) -> Self {
         Self {
+            generation: 0,
+            displayed_dynamic: rustclient_scene::SceneGeometry::default(),
             cache_dir: options.cache_dir.clone(),
             profile: options.profile,
             loading: false,
@@ -42,6 +46,8 @@ impl SceneView {
         }
     }
     pub fn clear(&mut self) {
+        self.displayed_dynamic = rustclient_scene::SceneGeometry::default();
+        self.generation = self.generation.wrapping_add(1);
         self.entity_catalog = rustclient_scene::entity_mesh::EntityCatalog::default();
         self.entity_loader = None;
         self.loading = false;
@@ -51,6 +57,11 @@ impl SceneView {
         self.dynamic_cycle = rustclient_model::ClientCycle::ZERO;
         self.camera = None;
         self.input = CameraInput::default();
+    }
+    pub fn invalidate_map(&mut self) {
+        let camera = self.camera;
+        self.clear();
+        self.camera = camera;
     }
     pub fn start(
         &mut self,
@@ -176,10 +187,13 @@ impl SceneView {
         Ok(())
     }
     pub fn reset_camera(&mut self) {
-        self.camera = self
-            .loaded
-            .as_ref()
-            .map(|s| GameplayCameraController::new(target(s)));
+        if let Some(scene) = &self.loaded {
+            if let Some(camera) = &mut self.camera {
+                camera.recenter(target(scene));
+            } else {
+                self.camera = Some(GameplayCameraController::new(target(scene)));
+            }
+        }
     }
 }
 

@@ -93,6 +93,16 @@ impl ActorSequenceSlot {
         }
     }
 
+    /// Advance action playback after consuming its explicit start delay.
+    pub fn advance_cycles(&mut self, cycles: u32) {
+        if self.sequence.is_none() {
+            return;
+        }
+        let delay = self.delay.max(0).cast_unsigned();
+        let consumed = cycles.min(delay);
+        self.delay -= consumed.cast_signed();
+        self.cycle = self.cycle.wrapping_add((cycles - consumed).cast_signed());
+    }
     pub fn clear(&mut self) {
         self.sequence = None;
         self.frame = None;
@@ -104,17 +114,33 @@ impl ActorSequenceSlot {
 /// Player movement update decoded from player info.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PlayerMovement {
-    Step { direction: u8 },
-    Run { direction1: u8, direction2: u8 },
-    Teleport { delta_x: i32, delta_y: i32 },
+    Step {
+        direction: u8,
+    },
+    Run {
+        direction1: u8,
+        direction2: u8,
+    },
+    Teleport {
+        delta_x: i32,
+        delta_y: i32,
+        plane_delta: u8,
+    },
 }
 
+/// A sequence field can be absent, assigned, or explicitly cleared by the server.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum SequenceChange {
+    #[default]
+    Unchanged,
+    Set(Option<SequenceId>),
+}
 /// Consolidated player info update for one tick.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct PlayerInfoUpdate {
     pub local_movement: Option<PlayerMovement>,
     pub local_appearance: Option<PlayerAppearance>,
-    pub local_sequence: Option<SequenceId>,
+    pub local_sequence: SequenceChange,
     pub local_facing: Option<u16>,
 }
 
@@ -134,12 +160,34 @@ pub struct NpcMovement {
     pub index: crate::NpcIndex,
     pub delta_x: i32,
     pub delta_y: i32,
+    pub running: bool,
 }
 
 /// Consolidated NPC info tick update.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct NpcInfoUpdate {
+    /// Spawn origin relative to the current map anchor. None uses the local player.
+    pub origin: Option<crate::TileOffset>,
+    pub attributes: Vec<NpcAttributeUpdate>,
     pub new_npcs: Vec<NewNpc>,
     pub movements: Vec<NpcMovement>,
     pub removals: Vec<crate::NpcIndex>,
+}
+
+/// Server-authored changes to a visible NPC, applied in packet block order.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NpcAttributeUpdate {
+    pub index: crate::NpcIndex,
+    pub changes: Vec<NpcProperty>,
+}
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum NpcProperty {
+    Definition(crate::NpcDefinitionId),
+    Sequence {
+        sequence: Option<SequenceId>,
+        delay: u32,
+    },
+    Facing(u16),
+    Name(Option<String>),
+    Actions(crate::ActionMask),
 }

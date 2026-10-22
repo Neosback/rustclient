@@ -20,6 +20,27 @@ pub async fn capture_ui(
     viewport: TitleViewport,
     drive_readback: impl FnOnce(&wgpu::Device),
 ) -> Result<Vec<u8>, RenderError> {
+    capture_ui_with_images(
+        assets,
+        &std::collections::BTreeMap::new(),
+        frame,
+        flames,
+        viewport,
+        drive_readback,
+    )
+    .await
+}
+/// Render widget assets through the same GPU quad pipeline used by the desktop.
+/// # Errors
+/// Rejects oversized image sets, invalid projections or failed GPU readback.
+pub async fn capture_ui_with_images(
+    assets: &TitleAssets,
+    images: &std::collections::BTreeMap<rustclient_game_ui::UiImageId, rustclient_cache::Image>,
+    frame: &UiFrame,
+    flames: &[u8],
+    viewport: TitleViewport,
+    drive_readback: impl FnOnce(&wgpu::Device),
+) -> Result<Vec<u8>, RenderError> {
     let (device, queue) = capture_device().await?;
     let width = viewport.physical_width;
     let height = viewport.physical_height;
@@ -27,7 +48,7 @@ pub async fn capture_ui(
         return Err(RenderError::Ui("invalid capture dimensions"));
     }
     let format = wgpu::TextureFormat::Rgba8UnormSrgb;
-    let mut ui = UiGpu::new(&device, &queue, format, assets)?;
+    let mut ui = UiGpu::with_images(&device, &queue, format, assets, images)?;
     ui.prepare(&queue, frame, flames, &[], &[], viewport)?;
     let texture = target(&device, width, height, format);
     let view = texture.create_view(&wgpu::TextureViewDescriptor::default());

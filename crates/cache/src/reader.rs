@@ -94,7 +94,7 @@ impl<'a> Reader<'a> {
                 return Err(self.source.error("string", "string length limit"));
             }
         }
-        Ok(bytes.into_iter().map(char::from).collect())
+        Ok(bytes.into_iter().map(crate::table::decode_cp1252).collect())
     }
     pub(crate) fn string(&mut self) -> Result<()> {
         let mut count = 0;

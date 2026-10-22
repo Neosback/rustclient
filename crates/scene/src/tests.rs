@@ -53,6 +53,9 @@ fn scene(assets: WorldAssets) -> SceneAsset {
 }
 fn definition() -> ObjectDefinition {
     ObjectDefinition {
+        name: None,
+        actions: Default::default(),
+        collision: ObjectCollision::Geometry,
         id: ObjectDefinitionId::new(1),
         models: vec![ModelReference {
             id: ModelId::new(1),

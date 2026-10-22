@@ -181,13 +181,24 @@ pub fn name_hash(name: &str) -> u32 {
 /// Encode one character in the cache font/name character set.
 #[must_use]
 pub fn cp1252(ch: char) -> Option<u8> {
-    const EXTRA: &str = "€\u{81}‚ƒ„…†‡ˆ‰Š‹Œ\u{8d}Ž\u{8f}\u{90}‘’“”•–—˜™š›œ\u{9d}žŸ";
     let code = u32::from(ch);
     if code < 128 || (160..=255).contains(&code) {
         return u8::try_from(code).ok();
     }
-    EXTRA
+    CP1252_EXTRA
         .chars()
         .position(|c| c == ch)
         .and_then(|i| u8::try_from(i + 128).ok())
+}
+
+const CP1252_EXTRA: &str = "€\u{81}‚ƒ„…†‡ˆ‰Š‹Œ\u{8d}Ž\u{8f}\u{90}‘’“”•–—˜™š›œ\u{9d}žŸ";
+pub(crate) fn decode_cp1252(byte: u8) -> char {
+    if (128..160).contains(&byte) {
+        CP1252_EXTRA
+            .chars()
+            .nth(usize::from(byte - 128))
+            .unwrap_or('?')
+    } else {
+        char::from(byte)
+    }
 }

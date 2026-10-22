@@ -23,6 +23,8 @@ pub enum UiImageId {
     White,
     /// Static gameframe / interface sprite by ID.
     Sprite(u32),
+    WidgetGlyph(rustclient_model::FontId, u8),
+    ItemIcon(rustclient_model::ItemDefinitionId),
     /// Dynamic rotating minimap circle texture.
     Minimap,
     /// Dynamic rotating compass texture.
@@ -72,6 +74,8 @@ pub struct Quad {
     pub tint: [u8; 4],
     /// Logical clipping rectangle.
     pub clip: Rect,
+    /// Clockwise sprite rotation; a full turn is 65,536 units.
+    pub rotation: u16,
 }
 
 /// Reusable CPU projection buffer. Contains no credential secrets.
@@ -88,6 +92,7 @@ impl UiFrame {
             uv: Rect::new(0., 0., 1., 1.),
             tint: [255; 4],
             clip,
+            rotation: 0,
         });
     }
 
@@ -98,6 +103,7 @@ impl UiFrame {
             uv: Rect::new(0., 0., 1., 1.),
             tint,
             clip,
+            rotation: 0,
         });
     }
 

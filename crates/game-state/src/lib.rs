@@ -5,9 +5,14 @@
 
 #![forbid(unsafe_code)]
 
+mod interfaces;
+pub use interfaces::{InterfaceError, InterfaceState};
+mod inventory;
+pub use inventory::{InventoryError, InventoryState};
 mod entities;
 pub use entities::{
-    NpcEntity, PlayerEntity, WorldEntitiesState, direction_to_delta, direction_to_orientation,
+    EntityUpdateError, Locomotion, NpcEntity, PlayerEntity, WorldEntitiesState, direction_to_delta,
+    direction_to_orientation,
 };
 
 mod commit;

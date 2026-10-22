@@ -1,20 +1,26 @@
 //! Immutable scene asset assembly and disposable CPU mesh projection.
 #![forbid(unsafe_code)]
 mod animation;
+mod collision;
 mod color;
+pub mod item_icon;
+pub use collision::CollisionMap;
 pub mod entity_mesh;
 mod inputs;
 mod lighting;
 pub mod minimap;
 pub use inputs::SceneryInputs;
 mod locations;
+pub use locations::location_key;
 mod mesh;
+mod picking;
+pub use picking::{SurfaceHit, pick_surface, pick_terrain};
 mod shapes;
 mod terrain;
 mod uv;
 use core::fmt;
 pub use mesh::{
-    SceneGeometry, SceneStats, SceneVertex, WorldMesh, build_dynamic, build_mesh,
+    PickRange, SceneGeometry, SceneStats, SceneVertex, WorldMesh, build_dynamic, build_mesh,
     build_mesh_with_inputs,
 };
 use rustclient_cache::world::{TerrainTile, WorldAssets};
@@ -88,6 +94,28 @@ impl SceneAsset {
             + usize::try_from(x.rem_euclid(64)).ok()? * 64
             + usize::try_from(y.rem_euclid(64)).ok()?;
         square.tiles.get(index)
+    }
+    /// Resolve a currently present location through the same overrides/morphs used to render it.
+    /// # Errors
+    /// Reports missing definition/morph dependencies.
+    pub fn location_definition(
+        &self,
+        key: rustclient_model::LocationKey,
+        base: rustclient_model::ObjectDefinitionId,
+        inputs: &SceneryInputs,
+    ) -> Result<Option<&rustclient_cache::world::ObjectDefinition>> {
+        let present = locations::effective_locations(self, inputs)
+            .iter()
+            .any(|loc| locations::location_key(loc) == key && loc.object == base);
+        if !present {
+            return Ok(None);
+        }
+        let definition = self
+            .sources()
+            .objects
+            .get(&base)
+            .ok_or_else(|| SceneError("location definition unavailable".into()))?;
+        locations::resolve(self, definition, inputs)
     }
     /// Bridge-aware bilinear scene-local height, in reference negative-up fine units.
     /// # Errors

@@ -8,6 +8,8 @@ use rustclient_model::{GameTick, Revision, SceneDescriptor};
 /// does not change observable state may commit without producing an event.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SemanticEvent {
+    InterfacesChanged,
+    InventoryChanged(rustclient_model::InventoryId),
     ClientCyclesAdvanced {
         previous: rustclient_model::ClientCycle,
         current: rustclient_model::ClientCycle,
@@ -18,6 +20,12 @@ pub enum SemanticEvent {
         current: i32,
     },
     VariablesReset,
+    VariablesSynchronized,
+    ServerVariableChanged {
+        id: rustclient_model::VarpId,
+        previous: i32,
+        current: i32,
+    },
     LocationChanged {
         key: rustclient_model::LocationKey,
         previous: crate::LocationOverride,
@@ -34,6 +42,8 @@ pub enum SemanticEvent {
     },
     /// The server supplied initial placement.
     InitialPlacementEstablished(InitialPlacement),
+    /// The current map selection changed; previous scene projections are invalid.
+    MapRebuilt(InitialPlacement),
     /// A validated immutable asset became the active scene.
     SceneInstalled(SceneDescriptor),
     /// Non-secret pre-session navigation committed.
@@ -68,15 +78,45 @@ pub struct StateDelta {
     changed: u16,
 }
 impl StateDelta {
+    pub(crate) const PLAYER_PLANE: Self = Self {
+        changed: 8 | 16 | 128,
+    };
+    pub(crate) const MAP_REBUILD: Self = Self {
+        changed: 8 | 16 | 32,
+    };
     pub(crate) const fn session_boundary(title_changed: bool) -> Self {
         Self {
-            changed: 1 | 2 | 8 | 16 | 32 | 64 | 128 | 256 | if title_changed { 4 } else { 0 },
+            changed: 1
+                | 2
+                | 8
+                | 16
+                | 32
+                | 64
+                | 128
+                | 256
+                | 512
+                | 1024
+                | if title_changed { 4 } else { 0 },
         }
+    }
+    pub(crate) const INTERFACE: Self = Self { changed: 1024 };
+    #[must_use]
+    pub const fn interfaces_changed(self) -> bool {
+        self.changed & 1024 != 0
+    }
+    pub(crate) const INVENTORY: Self = Self { changed: 512 };
+    #[must_use]
+    pub const fn inventory_changed(self) -> bool {
+        self.changed & 512 != 0
     }
     pub(crate) const ENTITIES: Self = Self { changed: 128 };
     pub(crate) const GAMEFRAME: Self = Self { changed: 256 };
     pub(crate) const SCENERY: Self = Self { changed: 32 };
-    pub(crate) const CLIENT_CYCLE: Self = Self { changed: 64 };
+    pub(crate) const fn client_cycle(entities_changed: bool) -> Self {
+        Self {
+            changed: 64 | if entities_changed { 128 } else { 0 },
+        }
+    }
     #[must_use]
     pub const fn entities_changed(self) -> bool {
         self.changed & 128 != 0

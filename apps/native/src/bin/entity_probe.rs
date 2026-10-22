@@ -3,7 +3,9 @@ use rustclient_cache::{
     Cache, CacheProfile,
     osrs240::entity_assets::{EntityAssets, EntityLoader, EntityRequest},
 };
-use rustclient_game_state::WorldEntitiesState;
+use rustclient_game_state::{
+    AuthenticatedPlayer, GameState, InitialPlacement, SceneryOperation, SemanticOperation,
+};
 use rustclient_model::{NewNpc, NpcDefinitionId, NpcIndex, NpcInfoUpdate, Plane, WorldTile};
 use rustclient_platform_native::DirectoryBlobs;
 use rustclient_scene::{SceneAsset, SceneGeometry, entity_mesh};
@@ -110,7 +112,23 @@ fn mesh_batches(
     // Reuse a bounded projection rather than putting every cache definition into one world.
     let mut geometry = SceneGeometry::default();
     for ids in npc_ids.chunks(32) {
-        let mut entities = WorldEntitiesState::default();
+        let mut state = GameState::new();
+        state.apply_operation(SemanticOperation::AuthenticateSession {
+            revision: rustclient_model::Revision::with_subrevision(240, 2),
+            player: AuthenticatedPlayer {
+                profile: rustclient_protocol::ServerProfile::OPENRUNE_240_2.id(),
+                player: rustclient_model::PlayerIndex::new(1),
+                member: false,
+                staff_level: 0,
+            },
+        })?;
+        state.apply_operation(SemanticOperation::EstablishInitialPlacement(
+            InitialPlacement {
+                position: tile,
+                map_anchor: tile,
+                area: None,
+            },
+        ))?;
         let update = NpcInfoUpdate {
             new_npcs: ids
                 .iter()
@@ -125,17 +143,20 @@ fn mesh_batches(
                 .collect(),
             ..NpcInfoUpdate::default()
         };
-        entities.apply_npc_info(&update, tile);
+        state.apply_operation(SemanticOperation::UpdateNpcs(update))?;
         // Exercise more than the first sample of each animation without retaining geometry.
         for cycle in [0, 10] {
-            entities.advance_cycles(cycle);
+            state.apply_operation(SemanticOperation::Scenery(SceneryOperation::AdvanceCycles(
+                cycle,
+            )))?;
             geometry.vertices.clear();
+            geometry.picks.clear();
             geometry.opaque.clear();
             geometry.transparent.clear();
             entity_mesh::build_entities_geometry(
                 scene,
                 catalog,
-                &entities,
+                state.entities(),
                 &std::collections::BTreeMap::new(),
                 &mut geometry,
             )?;

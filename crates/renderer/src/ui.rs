@@ -11,7 +11,7 @@ use std::collections::BTreeMap;
 
 const ATLAS_WIDTH: u32 = 2048;
 const ATLAS_HEIGHT: u32 = 2048;
-const MAX_QUADS: usize = 8192;
+const MAX_QUADS: usize = 32768;
 
 pub const MINIMAP_WIDTH: u32 = 156;
 pub const MINIMAP_HEIGHT: u32 = 156;
@@ -72,6 +72,8 @@ pub(crate) struct UiGpu {
     flame_texture: wgpu::Texture,
     minimap: wgpu::BindGroup,
     minimap_texture: wgpu::Texture,
+    minimap_size: [u32; 2],
+    compass_size: [u32; 2],
     compass: wgpu::BindGroup,
     compass_texture: wgpu::Texture,
     regions: BTreeMap<UiImageId, Region>,
@@ -90,6 +92,15 @@ impl UiGpu {
         queue: &wgpu::Queue,
         format: wgpu::TextureFormat,
         assets: &TitleAssets,
+    ) -> Result<Self, RenderError> {
+        Self::with_images(device, queue, format, assets, &BTreeMap::new())
+    }
+    pub(crate) fn with_images(
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        format: wgpu::TextureFormat,
+        assets: &TitleAssets,
+        images: &BTreeMap<UiImageId, Image>,
     ) -> Result<Self, RenderError> {
         let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("title images: group 0, texture 0, sampler 1"),
@@ -156,7 +167,7 @@ impl UiGpu {
             min_filter: wgpu::FilterMode::Nearest,
             ..Default::default()
         });
-        let (pixels, regions) = atlas(assets)?;
+        let (pixels, regions) = atlas(assets, images)?;
         let atlas_texture = texture(device, ATLAS_WIDTH, ATLAS_HEIGHT, "title static atlas");
         upload(queue, &atlas_texture, ATLAS_WIDTH, ATLAS_HEIGHT, &pixels);
         let flame_texture = texture(
@@ -165,16 +176,28 @@ impl UiGpu {
             Flames::HEIGHT,
             "title dynamic flames",
         );
+        let minimap_size = assets
+            .gameframe
+            .as_ref()
+            .map_or([MINIMAP_WIDTH, MINIMAP_HEIGHT], |g| {
+                [g.minimap_mask.image.width(), g.minimap_mask.image.height()]
+            });
+        let compass_size = assets
+            .gameframe
+            .as_ref()
+            .map_or([COMPASS_WIDTH, COMPASS_HEIGHT], |g| {
+                [g.compass_mask.image.width(), g.compass_mask.image.height()]
+            });
         let minimap_texture = texture(
             device,
-            MINIMAP_WIDTH,
-            MINIMAP_HEIGHT,
+            minimap_size[0],
+            minimap_size[1],
             "gameframe dynamic minimap",
         );
         let compass_texture = texture(
             device,
-            COMPASS_WIDTH,
-            COMPASS_HEIGHT,
+            compass_size[0],
+            compass_size[1],
             "gameframe dynamic compass",
         );
         let atlas = bind(device, &layout, &sampler, &atlas_texture);
@@ -194,6 +217,8 @@ impl UiGpu {
             flame_texture,
             minimap,
             minimap_texture,
+            minimap_size,
+            compass_size,
             compass,
             compass_texture,
             regions,
@@ -221,10 +246,12 @@ impl UiGpu {
                 != usize::try_from(Flames::WIDTH * Flames::HEIGHT * 4).unwrap_or(0))
             || (!minimap_pixels.is_empty()
                 && minimap_pixels.len()
-                    != usize::try_from(MINIMAP_WIDTH * MINIMAP_HEIGHT * 4).unwrap_or(0))
+                    != usize::try_from(self.minimap_size[0] * self.minimap_size[1] * 4)
+                        .unwrap_or(0))
             || (!compass_pixels.is_empty()
                 && compass_pixels.len()
-                    != usize::try_from(COMPASS_WIDTH * COMPASS_HEIGHT * 4).unwrap_or(0))
+                    != usize::try_from(self.compass_size[0] * self.compass_size[1] * 4)
+                        .unwrap_or(0))
             || frame.quads.len() > MAX_QUADS
             || !viewport.scale.is_finite()
             || viewport.scale <= 0.
@@ -250,21 +277,21 @@ impl UiGpu {
             upload(
                 queue,
                 &self.minimap_texture,
-                MINIMAP_WIDTH,
-                MINIMAP_HEIGHT,
+                self.minimap_size[0],
+                self.minimap_size[1],
                 minimap_pixels,
             );
-            self.stats.dynamic_upload_bytes += MINIMAP_WIDTH * MINIMAP_HEIGHT * 4;
+            self.stats.dynamic_upload_bytes += self.minimap_size[0] * self.minimap_size[1] * 4;
         }
         if !compass_pixels.is_empty() {
             upload(
                 queue,
                 &self.compass_texture,
-                COMPASS_WIDTH,
-                COMPASS_HEIGHT,
+                self.compass_size[0],
+                self.compass_size[1],
                 compass_pixels,
             );
-            self.stats.dynamic_upload_bytes += COMPASS_WIDTH * COMPASS_HEIGHT * 4;
+            self.stats.dynamic_upload_bytes += self.compass_size[0] * self.compass_size[1] * 4;
         }
         for quad in &frame.quads {
             let (source, region, width, height) = match quad.image {
@@ -284,22 +311,22 @@ impl UiGpu {
                     Region {
                         x: 0,
                         y: 0,
-                        width: MINIMAP_WIDTH,
-                        height: MINIMAP_HEIGHT,
+                        width: self.minimap_size[0],
+                        height: self.minimap_size[1],
                     },
-                    MINIMAP_WIDTH,
-                    MINIMAP_HEIGHT,
+                    self.minimap_size[0],
+                    self.minimap_size[1],
                 ),
                 UiImageId::Compass => (
                     DrawSource::Compass,
                     Region {
                         x: 0,
                         y: 0,
-                        width: COMPASS_WIDTH,
-                        height: COMPASS_HEIGHT,
+                        width: self.compass_size[0],
+                        height: self.compass_size[1],
                     },
-                    COMPASS_WIDTH,
-                    COMPASS_HEIGHT,
+                    self.compass_size[0],
+                    self.compass_size[1],
                 ),
                 _ => {
                     let region = self
@@ -315,13 +342,18 @@ impl UiGpu {
             if self.vertices.len() == before {
                 continue;
             }
+            if self.vertices.len() > MAX_QUADS * 6 {
+                return Err(RenderError::Ui("UI vertex budget exceeded"));
+            }
+            let count = u32::try_from(self.vertices.len() - before)
+                .map_err(|_| RenderError::Ui("vertex overflow"))?;
             let first = u32::try_from(before).map_err(|_| RenderError::Ui("vertex overflow"))?;
             if let Some(draw) = self.draws.last_mut().filter(|draw| draw.source == source) {
-                draw.count += 6;
+                draw.count += count;
             } else {
                 self.draws.push(Draw {
                     first,
-                    count: 6,
+                    count,
                     source,
                 });
             }
@@ -413,7 +445,10 @@ fn bind(
     })
 }
 
-fn atlas(assets: &TitleAssets) -> Result<(Vec<u8>, BTreeMap<UiImageId, Region>), RenderError> {
+fn atlas(
+    assets: &TitleAssets,
+    extra: &BTreeMap<UiImageId, Image>,
+) -> Result<(Vec<u8>, BTreeMap<UiImageId, Region>), RenderError> {
     let mut images = vec![
         (UiImageId::Background, &assets.background),
         (UiImageId::Logo, &assets.logo.image),
@@ -467,6 +502,7 @@ fn atlas(assets: &TitleAssets) -> Result<(Vec<u8>, BTreeMap<UiImageId, Region>),
     }
     let mut pixels = vec![0; usize::try_from(ATLAS_WIDTH * ATLAS_HEIGHT * 4).unwrap_or(0)];
     pixels[..4].copy_from_slice(&[255; 4]);
+    images.extend(extra.iter().map(|(id, image)| (*id, image)));
     let mut regions = BTreeMap::from([(
         UiImageId::White,
         Region {
@@ -524,6 +560,10 @@ fn add_quad(
     let rect = quad.rect;
     let clip = quad.clip;
     if rect.width <= 0. || rect.height <= 0. {
+        return;
+    }
+    if quad.rotation != 0 {
+        add_rotated_quad(vertices, quad, region, tw, th, viewport);
         return;
     }
     let x0 = rect.x.max(clip.x);
@@ -589,6 +629,102 @@ fn add_quad(
         bottom_left,
     ]);
 }
+/// Rotated sprites use a bounded eight-corner clip polygon; ordinary quads keep the fast path.
+#[expect(
+    clippy::cast_possible_truncation,
+    reason = "bounded DPI scale and texture coordinates"
+)]
+fn add_rotated_quad(
+    vertices: &mut Vec<Vertex>,
+    quad: &Quad,
+    region: Region,
+    tw: u32,
+    th: u32,
+    viewport: TitleViewport,
+) {
+    let rect = quad.rect;
+    let center = [rect.x + rect.width / 2., rect.y + rect.height / 2.];
+    let radians = f32::from(quad.rotation) * std::f32::consts::TAU / 65_536.;
+    let (sin, cos) = radians.sin_cos();
+    let tint = [
+        linear(quad.tint[0]),
+        linear(quad.tint[1]),
+        linear(quad.tint[2]),
+        f32::from(quad.tint[3]) / 255.,
+    ];
+    let mut polygon = Vec::with_capacity(8);
+    for (x, y, u, v) in [
+        (rect.x, rect.y, 0., 0.),
+        (rect.x + rect.width, rect.y, 1., 0.),
+        (rect.x + rect.width, rect.y + rect.height, 1., 1.),
+        (rect.x, rect.y + rect.height, 0., 1.),
+    ] {
+        let delta = [x - center[0], y - center[1]];
+        polygon.push(Vertex {
+            position: [
+                center[0] + delta[0] * cos - delta[1] * sin,
+                center[1] + delta[0] * sin + delta[1] * cos,
+            ],
+            uv: [
+                (region.x as f32 + (quad.uv.x + u * quad.uv.width) * region.width as f32)
+                    / tw as f32,
+                (region.y as f32 + (quad.uv.y + v * quad.uv.height) * region.height as f32)
+                    / th as f32,
+            ],
+            tint,
+        });
+    }
+    for (axis, boundary, positive) in [
+        (0, quad.clip.x, true),
+        (0, quad.clip.x + quad.clip.width, false),
+        (1, quad.clip.y, true),
+        (1, quad.clip.y + quad.clip.height, false),
+    ] {
+        let mut clipped = Vec::with_capacity(8);
+        if let Some(mut previous) = polygon.last().copied() {
+            let inside = |point: Vertex| {
+                if positive {
+                    point.position[axis] >= boundary
+                } else {
+                    point.position[axis] <= boundary
+                }
+            };
+            for current in polygon {
+                if inside(previous) != inside(current) {
+                    let t = (boundary - previous.position[axis])
+                        / (current.position[axis] - previous.position[axis]);
+                    clipped.push(Vertex {
+                        position: std::array::from_fn(|i| {
+                            previous.position[i] + t * (current.position[i] - previous.position[i])
+                        }),
+                        uv: std::array::from_fn(|i| {
+                            previous.uv[i] + t * (current.uv[i] - previous.uv[i])
+                        }),
+                        tint,
+                    });
+                }
+                if inside(current) {
+                    clipped.push(current);
+                }
+                previous = current;
+            }
+        }
+        polygon = clipped;
+    }
+    for point in &mut polygon {
+        point.position = [
+            (point.position[0] + viewport.origin_x()) * viewport.scale as f32
+                / viewport.physical_width as f32
+                * 2.
+                - 1.,
+            1. - point.position[1] * viewport.scale as f32 / viewport.physical_height as f32 * 2.,
+        ];
+    }
+    for index in 1..polygon.len().saturating_sub(1) {
+        vertices.extend_from_slice(&[polygon[0], polygon[index], polygon[index + 1]]);
+    }
+}
+
 fn linear(channel: u8) -> f32 {
     let value = f32::from(channel) / 255.;
     if value <= 0.04045 {
@@ -611,6 +747,7 @@ mod tests {
             uv: Rect::new(1., 0., -1., 1.),
             tint: [255; 4],
             clip: Rect::new(0., 0., 765., 503.),
+            rotation: 0,
         };
         let region = Region {
             x: 0,

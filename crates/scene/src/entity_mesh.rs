@@ -87,7 +87,7 @@ impl EntityCatalog {
             }
         }
         for npc in entities.npcs().values() {
-            if let Some(sequence) = npc.sequence {
+            if let Some(sequence) = npc.sequence.sequence {
                 want_sequence(sequence, &mut self.requested_sequences);
             }
             if self.requested_npcs.insert(npc.definition_id) {
@@ -132,7 +132,8 @@ impl EntityCatalog {
     ///
     /// `None` means the transformation selected "not shown" or a dependency has not
     /// arrived yet; the caller simply skips the NPC until the catalog grows.
-    fn resolve_npc<'a>(
+    #[must_use]
+    pub fn resolve_npc<'a>(
         &'a self,
         asset: &SceneAsset,
         id: NpcDefinitionId,
@@ -306,7 +307,14 @@ fn build_player(
 
     let recolors = body_recolors(appearance.colors);
     let mut model = adjusted_model(&base_model, &recolors, &[], 0);
-    let sequence = player.sequence.or(appearance.movement_sequences.idle);
+    let movement = appearance.movement_sequences;
+    let base = match player.locomotion {
+        rustclient_game_state::Locomotion::Idle => movement.idle,
+        rustclient_game_state::Locomotion::Walk => movement.walk.or(movement.idle),
+        rustclient_game_state::Locomotion::Run => movement.run.or(movement.walk).or(movement.idle),
+        rustclient_game_state::Locomotion::Turn => movement.turn.or(movement.idle),
+    };
+    let sequence = player.sequence.or(base);
     pose_model(asset, catalog, &mut model, sequence, player.animation_cycle)?;
 
     emit_model(
@@ -335,8 +343,19 @@ fn build_npc(
     let Some(mut model) = build_npc_base(def, |id| catalog.model(asset, id)) else {
         return Ok(());
     };
-    let sequence = npc.sequence.or(def.idle_sequence);
-    pose_model(asset, catalog, &mut model, sequence, npc.animation_cycle)?;
+    let base = match npc.locomotion {
+        rustclient_game_state::Locomotion::Walk | rustclient_game_state::Locomotion::Run => {
+            def.walk_sequence.or(def.idle_sequence)
+        }
+        rustclient_game_state::Locomotion::Turn => def.turn_left_sequence.or(def.idle_sequence),
+        rustclient_game_state::Locomotion::Idle => def.idle_sequence,
+    };
+    let (sequence, cycle) = if npc.sequence.sequence.is_some() && npc.sequence.delay == 0 {
+        (npc.sequence.sequence, npc.sequence.cycle.cast_unsigned())
+    } else {
+        (base, npc.animation_cycle)
+    };
+    pose_model(asset, catalog, &mut model, sequence, cycle)?;
     // The reference scales the animated model, so bone translations stay in unscaled units.
     if def.scale_width != 128 || def.scale_height != 128 {
         let (width, height) = (i32::from(def.scale_width), i32::from(def.scale_height));
@@ -345,6 +364,7 @@ fn build_npc(
         }
     }
 
+    let first_vertex = geometry.vertices.len();
     emit_model(
         asset,
         &model,
@@ -358,7 +378,19 @@ fn build_npc(
             i32::from(def.contrast) * 5 + 850,
         ),
         geometry,
-    )
+    )?;
+    if geometry.vertices.len() > first_vertex {
+        geometry.picks.push(crate::PickRange {
+            vertices: first_vertex..geometry.vertices.len(),
+            target: rustclient_model::WorldTarget::Npc {
+                index: npc.index,
+                instance: npc.instance,
+                definition: npc.definition_id,
+                resolved: def.id,
+            },
+        });
+    }
+    Ok(())
 }
 
 #[derive(Clone, Copy)]

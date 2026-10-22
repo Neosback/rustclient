@@ -119,6 +119,14 @@ impl GameplayCameraController {
         self.yaw = i32::from(yaw & 2047);
         self.yaw_velocity = 0;
     }
+    /// Move the disposable camera into a newly loaded map while retaining the
+    /// user's yaw, pitch and zoom preferences.
+    pub fn recenter(&mut self, target: CameraTarget) {
+        let target = target.bounded();
+        self.focal = [target.x, target.height - 50, target.z];
+        self.yaw_velocity = 0;
+        self.pitch_velocity = 0;
+    }
     /// Advance exactly one 20 ms client cycle.
     #[expect(
         clippy::manual_midpoint,
@@ -230,6 +238,38 @@ impl GameplayCameraController {
         let translation =
             Mat4::from_translation(-Vec3::from_array(pose.position.map(|v| v as f32)));
         scale * projection * Mat4::from_rotation_x(pitch) * Mat4::from_rotation_y(yaw) * translation
+    }
+    /// Scene-local fine-unit ray through a logical pointer, using the exact
+    /// world rendering matrix. No GPU readback or semantic mutation is involved.
+    #[must_use]
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "bounded logical viewport dimensions"
+    )]
+    pub fn pointer_ray(
+        self,
+        viewport: CameraViewport,
+        pointer: [f32; 2],
+    ) -> Option<([f32; 3], [f32; 3])> {
+        let [x, y] = pointer;
+        if !x.is_finite()
+            || !y.is_finite()
+            || x < 0.
+            || y < 0.
+            || x >= viewport.width as f32
+            || y >= viewport.height as f32
+        {
+            return None;
+        }
+        let inverse = self.matrix(viewport).inverse();
+        let ndc = [
+            2. * x / viewport.width as f32 - 1.,
+            1. - 2. * y / viewport.height as f32,
+        ];
+        let near = inverse.project_point3(Vec3::new(ndc[0], ndc[1], 1.));
+        let far = inverse.project_point3(Vec3::new(ndc[0], ndc[1], 0.01));
+        let direction = (far - near).try_normalize()?;
+        Some((near.to_array(), direction.to_array()))
     }
 }
 #[expect(

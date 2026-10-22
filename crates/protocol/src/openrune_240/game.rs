@@ -172,17 +172,111 @@ pub fn decode_bootstrap(packet: &GamePacket) -> Result<Bootstrap> {
         area,
     })
 }
+/// Ordinary rebuild header (rsprot `RebuildNormalV2Encoder`). Plane is supplied
+/// by committed entity state above the wire boundary.
+fn decode_map_anchor(payload: &[u8]) -> Result<rustclient_model::MapAnchor> {
+    let [ylo, yhi, alo, ahi, xlo, xhi] = payload else {
+        return Err(ProtocolError::new(
+            "map rebuild",
+            "expected six-byte normal rebuild",
+        ));
+    };
+    let short = |lo: u8, hi: u8| u16::from_le_bytes([lo.wrapping_sub(128), hi]);
+    if short(*alo, *ahi) != u16::MAX {
+        return Err(ProtocolError::new(
+            "map rebuild",
+            "world-area rebuild is not supported",
+        ));
+    }
+    let (x, y) = (short(*xlo, *xhi), short(*ylo, *yhi));
+    if x > 2047 || y > 2047 {
+        return Err(ProtocolError::new(
+            "map rebuild",
+            "map anchor outside profile range",
+        ));
+    }
+    Ok(rustclient_model::MapAnchor {
+        x: i32::from(x) * 8,
+        y: i32::from(y) * 8,
+    })
+}
 /// Narrow outbound semantic intents supported by this profile.
 #[derive(Debug, Clone, Copy)]
 pub enum ClientIntent {
-    WindowStatus { width: u16, height: u16 },
+    WindowStatus {
+        width: u16,
+        height: u16,
+    },
     KeepAlive,
+    /// User-selected destination. Confirmed player position does not change.
+    Walk {
+        destination: WorldTile,
+        invert_run: bool,
+    },
+    /// The selected map has finished loading.
+    MapBuildComplete,
+    WidgetAction(rustclient_model::WidgetAction),
+    CloseModal,
+    NpcAction {
+        index: rustclient_model::NpcIndex,
+        slot: rustclient_model::ActionSlot,
+        control: bool,
+    },
+    LocationAction {
+        tile: WorldTile,
+        object: rustclient_model::ObjectDefinitionId,
+        slot: rustclient_model::ActionSlot,
+        control: bool,
+    },
 }
 impl ClientIntent {
-    #[must_use]
-    pub fn encode(self, cipher: &mut Isaac) -> Vec<u8> {
+    /// Encode only after validating all fields, before advancing the cipher.
+    /// # Errors
+    /// Rejects destinations outside this profile's coordinate range.
+    pub fn encode(self, cipher: &mut Isaac) -> Result<Vec<u8>> {
         let (opcode, payload) = match self {
             Self::KeepAlive => (99, vec![]),
+            Self::CloseModal => (98, vec![]),
+            Self::WidgetAction(action) => super::actions::widget(action)?,
+            Self::NpcAction {
+                index,
+                slot,
+                control,
+            } => super::actions::npc(index, slot, control)?,
+            Self::LocationAction {
+                tile,
+                object,
+                slot,
+                control,
+            } => super::actions::location(tile, object, slot, control)?,
+            Self::MapBuildComplete => (27, vec![]),
+            Self::Walk {
+                destination,
+                invert_run,
+            } => {
+                let coordinate = |value| {
+                    u16::try_from(value).map_err(|_| {
+                        ProtocolError::new(
+                            "movement encode",
+                            "destination outside profile coordinate range",
+                        )
+                    })
+                };
+                let x = coordinate(destination.x)?.to_le_bytes();
+                let y = coordinate(destination.y)?.to_le_bytes();
+                // rsprot 240: g2Alt3(z), g1Alt2(keys), g2Alt3(x); VAR_BYTE.
+                (
+                    102,
+                    vec![
+                        5,
+                        y[0].wrapping_add(128),
+                        y[1],
+                        u8::from(invert_run).wrapping_neg(),
+                        x[0].wrapping_add(128),
+                        x[1],
+                    ],
+                )
+            }
             Self::WindowStatus { width, height } => {
                 let mut p = vec![2];
                 p.extend_from_slice(&width.to_be_bytes());
@@ -195,21 +289,29 @@ impl ClientIntent {
             cipher.next_word().to_le_bytes()[0],
         )];
         bytes.extend_from_slice(&payload);
-        bytes
+        Ok(bytes)
     }
 }
 
 use super::{
     loc_anim::{LocAnimUpdate, decode_loc_anim_specific},
-    npc_info::{NpcInfoUpdate, decode_npc_info},
-    player_info::{PlayerInfoUpdate, decode_player_info},
+    npc_info::{NpcInfoDecoder, NpcInfoUpdate},
+    player_info::{PlayerInfoDecoder, PlayerInfoUpdate},
 };
 
 /// Profile-decoded updates, without exposing wire IDs to application semantics.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ServerUpdate {
+    Interface(rustclient_model::InterfaceUpdate),
+    Script(rustclient_model::ScriptRequest),
+    PlayerStatus(rustclient_model::PlayerStatusUpdate),
+    Inventory(rustclient_model::InventoryUpdate),
     Variable(VariableUpdate),
     InitialPlacement(Bootstrap),
+    /// New ordinary map anchor; the profile carries no player position here.
+    RebuildMap {
+        map_anchor: rustclient_model::MapAnchor,
+    },
     PlayerInfo(PlayerInfoUpdate),
     NpcInfo(NpcInfoUpdate),
     LocationAnim(LocAnimUpdate),
@@ -252,15 +354,23 @@ pub struct SessionCodec {
     outgoing: Isaac,
     awaiting_rebuild: bool,
     framed_packets: u64,
+    players: PlayerInfoDecoder,
+    npcs: NpcInfoDecoder,
 }
 impl SessionCodec {
     #[must_use]
-    pub fn new(incoming: Isaac, outgoing: Isaac) -> Self {
+    pub fn new(
+        incoming: Isaac,
+        outgoing: Isaac,
+        local_player: rustclient_model::PlayerIndex,
+    ) -> Self {
         Self {
             framer: GameFramer::new(incoming),
             outgoing,
             awaiting_rebuild: true,
             framed_packets: 0,
+            players: PlayerInfoDecoder::new(local_player),
+            npcs: NpcInfoDecoder::default(),
         }
     }
     /// Diagnostic count, never used as semantic game time.
@@ -272,8 +382,9 @@ impl SessionCodec {
     pub const fn awaiting_initial_rebuild(&self) -> bool {
         self.awaiting_rebuild
     }
-    #[must_use]
-    pub fn encode(&mut self, intent: ClientIntent) -> Vec<u8> {
+    /// # Errors
+    /// Rejects invalid outbound fields without advancing the stream cipher.
+    pub fn encode(&mut self, intent: ClientIntent) -> Result<Vec<u8>> {
         intent.encode(&mut self.outgoing)
     }
     /// Deliver complete, profile-decoded updates in stream order.
@@ -284,36 +395,54 @@ impl SessionCodec {
         while let Some(packet) = self.framer.next_packet()? {
             self.framed_packets = self.framed_packets.saturating_add(1);
             let update = match packet.opcode {
+                19 | 63 | 120 => ServerUpdate::PlayerStatus(super::scripts::status(
+                    packet.opcode,
+                    &packet.payload,
+                )?),
+                10 => ServerUpdate::Script(super::scripts::decode(&packet.payload)?),
                 39 if self.awaiting_rebuild => {
                     let bootstrap = decode_bootstrap(&packet)?;
                     self.awaiting_rebuild = false;
                     ServerUpdate::InitialPlacement(bootstrap)
                 }
-                12 | 39 => {
+                39 => {
+                    let map_anchor = decode_map_anchor(&packet.payload)?;
+                    self.npcs.clear_origin();
+                    ServerUpdate::RebuildMap { map_anchor }
+                }
+                12 => {
                     return Err(ProtocolError::new(
                         "map rebuild",
-                        "subsequent or instanced rebuild is not implemented",
+                        "instanced rebuild is not supported",
                     ));
                 }
                 91 => {
-                    let update = decode_player_info(
-                        &packet.payload,
-                        WorldTile::new(0, 0, rustclient_model::Plane::MIN),
-                    )?;
+                    let update = self.players.decode(&packet.payload)?;
                     ServerUpdate::PlayerInfo(update)
                 }
+                111 => {
+                    self.npcs.set_origin(&packet.payload)?;
+                    ServerUpdate::Deferred
+                }
                 150 => {
-                    let update = decode_npc_info(&packet.payload, false)?;
+                    let update = self.npcs.decode(&packet.payload, false)?;
                     ServerUpdate::NpcInfo(update)
                 }
                 141 => {
-                    let update = decode_npc_info(&packet.payload, true)?;
+                    let update = self.npcs.decode(&packet.payload, true)?;
                     ServerUpdate::NpcInfo(update)
                 }
                 84 => {
                     let update = decode_loc_anim_specific(&packet.payload)?;
                     ServerUpdate::LocationAnim(update)
                 }
+                11 | 30 | 35 | 45 | 51 | 54 | 78 | 106 | 116 => ServerUpdate::Interface(
+                    super::interfaces::decode(packet.opcode, &packet.payload)?,
+                ),
+                14 | 23 | 74 => ServerUpdate::Inventory(super::inventory::decode(
+                    packet.opcode,
+                    &packet.payload,
+                )?),
                 68 | 94 | 100 | 127 => ServerUpdate::Variable(decode_variable(&packet)?),
                 92 => ServerUpdate::Tick,
                 26 | 37 | 56 => ServerUpdate::LoggedOut,
@@ -371,5 +500,50 @@ mod variable_tests {
             .unwrap(),
             VariableUpdate::Reset
         );
+    }
+}
+
+#[cfg(test)]
+mod action_tests {
+    use super::*;
+    #[test]
+    fn movement_family_has_reference_transforms_lengths_and_atomic_cipher_validation() {
+        let mut cipher = Isaac::new([1, 2, 3, 4]);
+        let mut expected_cipher = Isaac::new([1, 2, 3, 4]);
+        for destination in [
+            WorldTile::new(-1, 3200, Plane::MIN),
+            WorldTile::new(3200, 65536, Plane::MIN),
+        ] {
+            assert!(
+                ClientIntent::Walk {
+                    destination,
+                    invert_run: false
+                }
+                .encode(&mut cipher)
+                .is_err()
+            );
+        }
+        let bytes = ClientIntent::Walk {
+            destination: WorldTile::new(3221, 3218, Plane::MIN),
+            invert_run: true,
+        }
+        .encode(&mut cipher)
+        .unwrap();
+        assert_eq!(
+            bytes[0],
+            102_u8.wrapping_add(expected_cipher.next_word().to_le_bytes()[0])
+        );
+        assert_eq!(&bytes[1..], &[5, 0x12, 0x0c, 0xff, 0x15, 0x0c]);
+        assert_eq!(
+            ClientIntent::MapBuildComplete.encode(&mut cipher).unwrap(),
+            vec![27_u8.wrapping_add(expected_cipher.next_word().to_le_bytes()[0])]
+        );
+        assert_eq!(
+            decode_map_anchor(&[0x13, 1, 0x7f, 0xff, 0x14, 1]).unwrap(),
+            rustclient_model::MapAnchor { x: 3232, y: 3224 }
+        );
+        for payload in [&[][..], &[0; 5], &[0; 6], &[0x13, 1, 0x7f, 0xff, 0x14, 8]] {
+            assert!(decode_map_anchor(payload).is_err());
+        }
     }
 }
