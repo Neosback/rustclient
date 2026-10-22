@@ -63,14 +63,7 @@ impl GameFrameUi {
     }
 
     /// Open the one-entry terrain context menu at a logical gameframe coordinate.
-    pub fn open_walk_menu(
-        &mut self,
-        x: f32,
-        y: f32,
-        view_w: f32,
-        view_h: f32,
-        tile: WorldTile,
-    ) {
+    pub fn open_walk_menu(&mut self, x: f32, y: f32, view_w: f32, view_h: f32, tile: WorldTile) {
         self.context_menu = Some(context_menu::ContextMenu::walk_here(
             x, y, view_w, view_h, tile,
         ));
@@ -81,7 +74,12 @@ impl GameFrameUi {
     pub fn world_pointer_blocked(x: f32, y: f32, view_w: f32, view_h: f32) -> bool {
         let map_x = view_w - 210.0 - 10.0;
         let minimap = Rect::new(map_x - 24.0, 10.0, view_w - (map_x - 24.0), 170.0);
-        let tabs = Rect::new(view_w - 32.0 * 7.0 - 8.0, view_h - 32.0 * 2.0 - 8.0, 224.0, 64.0);
+        let tabs = Rect::new(
+            view_w - 32.0 * 7.0 - 8.0,
+            view_h - 32.0 * 2.0 - 8.0,
+            224.0,
+            64.0,
+        );
         let chatbox = Rect::new(8.0, view_h - 130.0 - 8.0, 450.0, 130.0);
         minimap.contains(x, y) || tabs.contains(x, y) || chatbox.contains(x, y)
     }
@@ -200,8 +198,14 @@ mod tests {
 
     #[test]
     fn retained_hud_blocks_terrain_click_through() {
-        assert!(GameFrameUi::world_pointer_blocked(600.0, 30.0, 765.0, 503.0));
-        assert!(GameFrameUi::world_pointer_blocked(50.0, 450.0, 765.0, 503.0));
-        assert!(!GameFrameUi::world_pointer_blocked(350.0, 250.0, 765.0, 503.0));
+        assert!(GameFrameUi::world_pointer_blocked(
+            600.0, 30.0, 765.0, 503.0
+        ));
+        assert!(GameFrameUi::world_pointer_blocked(
+            50.0, 450.0, 765.0, 503.0
+        ));
+        assert!(!GameFrameUi::world_pointer_blocked(
+            350.0, 250.0, 765.0, 503.0
+        ));
     }
 }

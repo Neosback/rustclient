@@ -104,7 +104,9 @@ fn pointer_ray(
     let pitch = f32::from(pose.pitch) * std::f32::consts::TAU / 2048.0;
     let yaw = f32::from(pose.yaw) * std::f32::consts::TAU / 2048.0;
     let inverse_view = Mat4::from_rotation_y(-yaw) * Mat4::from_rotation_x(-pitch);
-    let direction = inverse_view.transform_vector3(camera_direction).normalize_or_zero();
+    let direction = inverse_view
+        .transform_vector3(camera_direction)
+        .normalize_or_zero();
     if direction == Vec3::ZERO {
         return None;
     }
@@ -145,14 +147,8 @@ mod tests {
         let a = Vec3::new(-1.0, 0.0, 2.0);
         let b = Vec3::new(1.0, 0.0, 2.0);
         let c = Vec3::new(0.0, 1.0, 2.0);
-        assert_eq!(
-            ray_triangle(Vec3::ZERO, Vec3::Z, a, b, c),
-            Some(2.0)
-        );
-        assert_eq!(
-            ray_triangle(Vec3::ZERO, -Vec3::Z, a, b, c),
-            None
-        );
+        assert_eq!(ray_triangle(Vec3::ZERO, Vec3::Z, a, b, c), Some(2.0));
+        assert_eq!(ray_triangle(Vec3::ZERO, -Vec3::Z, a, b, c), None);
     }
 
     #[test]

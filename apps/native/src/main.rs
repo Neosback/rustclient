@@ -258,7 +258,11 @@ impl NativeApp {
             .entities()
             .local_player()
             .map(|player| player.tile.plane)
-            .or_else(|| self.state.initial_placement().map(|placement| placement.position.plane))?;
+            .or_else(|| {
+                self.state
+                    .initial_placement()
+                    .map(|placement| placement.position.plane)
+            })?;
         let size = window.inner_size();
         let scale = window.scale_factor();
         let viewport = [
@@ -804,11 +808,7 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                                 ),
                             )
                         } else {
-                            self.handle_game_left_click(
-                                &window,
-                                (physical_x, physical_y),
-                                (x, y),
-                            )
+                            self.handle_game_left_click(&window, (physical_x, physical_y), (x, y))
                         }
                     } else if self.state.authenticated_player().is_some() {
                         TitleUi::disconnect_hit(x, y).then_some(SemanticOperation::SetTitleScreen(

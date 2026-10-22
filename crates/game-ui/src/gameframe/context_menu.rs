@@ -47,13 +47,21 @@ impl ContextMenu {
         let clip = Rect::new(0.0, 0.0, view_w, view_h);
         let rect = self.rect();
         frame.fill_rect(rect, [32, 32, 32, 245], clip);
-        frame.fill_rect(Rect::new(rect.x, rect.y, rect.width, 1.0), [110, 110, 110, 255], clip);
+        frame.fill_rect(
+            Rect::new(rect.x, rect.y, rect.width, 1.0),
+            [110, 110, 110, 255],
+            clip,
+        );
         frame.fill_rect(
             Rect::new(rect.x, rect.y + rect.height - 1.0, rect.width, 1.0),
             [110, 110, 110, 255],
             clip,
         );
-        frame.fill_rect(Rect::new(rect.x, rect.y, 1.0, rect.height), [110, 110, 110, 255], clip);
+        frame.fill_rect(
+            Rect::new(rect.x, rect.y, 1.0, rect.height),
+            [110, 110, 110, 255],
+            clip,
+        );
         frame.fill_rect(
             Rect::new(rect.x + rect.width - 1.0, rect.y, 1.0, rect.height),
             [110, 110, 110, 255],
