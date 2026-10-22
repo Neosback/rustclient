@@ -35,7 +35,7 @@ fn editing_validation_offline_submission_cancel_and_preferences_are_local() {
     );
     assert_eq!(state.session_revision(), None);
     assert!(!ui.preferences().remember_username);
-    assert!(ui.preferences().username.is_empty());
+    assert_eq!(ui.preferences().username, "");
     let operation = ui.click(state.title_screen(), 270., 280.);
     apply(&mut state, operation);
     assert_eq!(ui.preferences().username, "Preview<> ");
