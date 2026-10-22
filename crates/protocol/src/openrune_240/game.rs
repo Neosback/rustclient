@@ -402,12 +402,8 @@ mod client_intent_tests {
 
     #[test]
     fn revision_240_move_gameclick_rejects_unrepresentable_world_coordinates() {
-        assert!(
-            ClientIntent::walk_to(WorldTile::new(-1, 3_200, Plane::MIN)).is_err()
-        );
-        assert!(
-            ClientIntent::walk_to(WorldTile::new(16_384, 3_200, Plane::MIN)).is_err()
-        );
+        assert!(ClientIntent::walk_to(WorldTile::new(-1, 3_200, Plane::MIN)).is_err());
+        assert!(ClientIntent::walk_to(WorldTile::new(16_384, 3_200, Plane::MIN)).is_err());
     }
 }
 
