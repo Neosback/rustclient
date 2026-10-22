@@ -1,7 +1,10 @@
 //! Native scene worker and disposable camera state.
 use crate::LoadEvent;
 use rustclient_application::{LoadedScene, load_scene};
-use rustclient_cache::CacheProfile;
+use rustclient_cache::{
+    Cache, CacheProfile,
+    osrs240::entity_assets::{EntityLoader, EntityRequest},
+};
 use rustclient_game_state::InitialPlacement;
 use rustclient_platform_native::DirectoryBlobs;
 use rustclient_renderer::{CameraInput, CameraTarget, GameplayCameraController};
@@ -17,6 +20,8 @@ pub struct SceneView {
     pub input: CameraInput,
     pub diagnostics: bool,
     pub animator: Option<std::sync::mpsc::SyncSender<rustclient_scene::SceneryInputs>>,
+    pub entity_catalog: rustclient_scene::entity_mesh::EntityCatalog,
+    pub entity_loader: Option<std::sync::mpsc::Sender<EntityRequest>>,
     pub dynamic_cycle: rustclient_model::ClientCycle,
 }
 impl SceneView {
@@ -31,10 +36,14 @@ impl SceneView {
             input: CameraInput::default(),
             diagnostics: false,
             animator: None,
+            entity_catalog: rustclient_scene::entity_mesh::EntityCatalog::default(),
+            entity_loader: None,
             dynamic_cycle: rustclient_model::ClientCycle::ZERO,
         }
     }
     pub fn clear(&mut self) {
+        self.entity_catalog = rustclient_scene::entity_mesh::EntityCatalog::default();
+        self.entity_loader = None;
         self.loading = false;
         self.attempted = false;
         self.loaded = None;
@@ -126,6 +135,44 @@ impl SceneView {
             })
             .map_err(|e| e.to_string())?;
         self.animator = Some(sender);
+        Ok(())
+    }
+    /// Start the worker that decodes NPC, worn-item and animation dependencies on demand.
+    pub fn start_entity_loader(
+        &mut self,
+        asset: std::sync::Arc<rustclient_scene::SceneAsset>,
+        session: u64,
+        proxy: EventLoopProxy<LoadEvent>,
+    ) -> Result<(), String> {
+        let (sender, receiver) = std::sync::mpsc::channel::<EntityRequest>();
+        let path = self.cache_dir.clone();
+        let profile = self.profile;
+        std::thread::Builder::new()
+            .name("entity-assets".into())
+            .spawn(move || {
+                let cache = match DirectoryBlobs::open(path)
+                    .map_err(|e| e.to_string())
+                    .and_then(|source| Cache::open(source).map_err(|e| e.to_string()))
+                {
+                    Ok(cache) => cache,
+                    Err(error) => {
+                        eprintln!("entity assets: {error}");
+                        return;
+                    }
+                };
+                let mut loader = EntityLoader::new(profile, asset.sources());
+                while let Ok(request) = receiver.recv() {
+                    let assets = loader.load(&cache, &request);
+                    if proxy
+                        .send_event(LoadEvent::EntityAssets(session, Box::new(assets)))
+                        .is_err()
+                    {
+                        break;
+                    }
+                }
+            })
+            .map_err(|e| e.to_string())?;
+        self.entity_loader = Some(sender);
         Ok(())
     }
     pub fn reset_camera(&mut self) {

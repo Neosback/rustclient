@@ -5,20 +5,19 @@ use crate::{
     world::{NpcDefinition, StaticModel},
 };
 use rustclient_model::ModelId;
-use std::collections::BTreeMap;
 
 /// Assemble an unposed NPC model from definition and loaded model meshes.
 #[must_use]
-pub fn build_npc_base(
+pub fn build_npc_base<'m>(
     definition: &NpcDefinition,
-    models: &BTreeMap<ModelId, StaticModel>,
+    models: impl Fn(ModelId) -> Option<&'m StaticModel>,
 ) -> Option<StaticModel> {
     if definition.models.is_empty() {
         return None;
     }
     let mut part_models = Vec::new();
     for id in &definition.models {
-        if let Some(source) = models.get(id) {
+        if let Some(source) = models(*id) {
             part_models.push(source);
         }
     }

@@ -30,6 +30,12 @@ impl<'a> Reader<'a> {
     pub(crate) fn u8(&mut self) -> Result<u8> {
         Ok(self.take(1)?[0])
     }
+    pub(crate) fn peek_u8(&self) -> Result<u8> {
+        self.bytes
+            .get(self.position)
+            .copied()
+            .ok_or_else(|| self.source.error("binary", "truncated at peek"))
+    }
     pub(crate) fn u16(&mut self) -> Result<u16> {
         let b = self.take(2)?;
         Ok(u16::from_be_bytes([b[0], b[1]]))

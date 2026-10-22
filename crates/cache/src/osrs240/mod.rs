@@ -2,6 +2,7 @@
 mod animation;
 pub mod definitions;
 mod dependencies;
+pub mod entity_assets;
 pub mod models;
 pub mod npc_model;
 pub mod player_model;

@@ -13,8 +13,8 @@ impl Normal {
         }
         self.count = self.count.wrapping_add(other.count);
     }
-    fn dot(self) -> i32 {
-        self.xyz[0] * -50 + self.xyz[1] * -10 + self.xyz[2] * -50
+    fn dot(self, sun: [i32; 3]) -> i32 {
+        self.xyz[0] * sun[0] + self.xyz[1] * sun[1] + self.xyz[2] * sun[2]
     }
 }
 pub(crate) struct Normals {
@@ -72,6 +72,42 @@ fn adjust(color: u16, light: i32, textured: bool) -> i32 {
         (color & 0xff80) + (((color & 127) * light) >> 7).clamp(2, 126)
     }
 }
+/// Reference `ModelData.toModel` lighting rig: ambient, contrast and sun direction.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct Light {
+    /// Final ambient term, including the reference +64 offset.
+    ambient: i32,
+    /// Final contrast term already scaled by the sun-vector length.
+    contrast: i32,
+    sun: [i32; 3],
+}
+impl Light {
+    /// Scenery rig: `toModel(ambient + 64, contrast + 768, -50, -10, -50)`.
+    pub fn scenery(ambient: i16, contrast: i16) -> Self {
+        Self::new(
+            i32::from(ambient) + 64,
+            i32::from(contrast) + 768,
+            [-50, -10, -50],
+        )
+    }
+    /// Player and NPC rig: sun `(-30, -50, -30)`; callers pass the reference arguments.
+    pub fn entity(ambient: i32, contrast: i32) -> Self {
+        Self::new(ambient, contrast, [-30, -50, -30])
+    }
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "reference truncates the sun vector length"
+    )]
+    fn new(ambient: i32, contrast: i32, sun: [i32; 3]) -> Self {
+        let squares: i32 = sun.iter().map(|c| c * c).sum();
+        let length = f64::from(squares).sqrt() as i32;
+        Self {
+            ambient,
+            contrast: (length * contrast) >> 8,
+            sun,
+        }
+    }
+}
 /// None is reference C=-2 suppression; flat faces repeat A for upload.
 pub(crate) fn bake(
     face: ModelFace,
@@ -81,22 +117,40 @@ pub(crate) fn bake(
     ambient: i16,
     contrast: i16,
 ) -> Option<[i32; 3]> {
+    bake_lit(
+        face,
+        index,
+        normals,
+        merged,
+        Light::scenery(ambient, contrast),
+    )
+}
+pub(crate) fn bake_lit(
+    face: ModelFace,
+    index: usize,
+    normals: &Normals,
+    merged: &[Option<Normal>],
+    light: Light,
+) -> Option<[i32; 3]> {
     let kind = match face.alpha {
         -2 => 3,
         -1 => 2,
         _ => face.render_type,
     };
-    let ambient = i32::from(ambient) + 64;
-    let contrast = (71 * (i32::from(contrast) + 768)) >> 8;
+    let Light {
+        ambient,
+        contrast,
+        sun,
+    } = light;
     let textured = face.texture.is_some();
     match kind {
         0 => Some(face.vertices.map(|v| {
             let n = merged[v as usize].unwrap_or(normals.vertices[v as usize]);
-            let light = ambient + n.dot() / (contrast * n.count).max(1);
+            let light = ambient + n.dot(sun) / (contrast * n.count).max(1);
             adjust(face.color, light, textured)
         })),
         1 => {
-            let light = ambient + normals.faces[index].dot() / (contrast + contrast / 2).max(1);
+            let light = ambient + normals.faces[index].dot(sun) / (contrast + contrast / 2).max(1);
             Some([adjust(face.color, light, textured); 3])
         }
         3 if !textured => Some([128; 3]),

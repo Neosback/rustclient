@@ -1,17 +1,128 @@
 //! Scene geometry generation for live player and NPC entities.
 
-use crate::{Result, SceneAsset, SceneGeometry};
+use crate::{Result, SceneAsset, SceneGeometry, lighting::Light};
 use rustclient_cache::{
     osrs240::{
+        entity_assets::{EntityAssets, EntityRequest},
         models::adjusted_model,
         npc_model::build_npc_base,
         player_model::{body_recolors, build_player_base},
     },
-    world::{ItemDefinition, KitDefinition, NpcDefinition, StaticModel},
+    world::{
+        ItemDefinition, LegacyFrame, NpcDefinition, SequenceAsset, SkeletonTransform, StaticModel,
+    },
 };
 use rustclient_game_state::{NpcEntity, PlayerEntity, WorldEntitiesState};
-use rustclient_model::{ItemDefinitionId, KitId, ModelId, ModelPoint, NpcDefinitionId};
-use std::collections::BTreeMap;
+use rustclient_model::{
+    ItemDefinitionId, ModelId, ModelPoint, NpcDefinitionId, SequenceId, SlotContent,
+};
+use std::collections::{BTreeMap, BTreeSet};
+
+/// Grow-only entity dependencies layered over the immutable spawn window.
+///
+/// This is catalog data, not semantic state: it can be dropped and rebuilt from the cache
+/// without affecting `GameState`.
+#[derive(Debug, Default)]
+pub struct EntityCatalog {
+    npcs: BTreeMap<NpcDefinitionId, NpcDefinition>,
+    items: BTreeMap<ItemDefinitionId, ItemDefinition>,
+    models: BTreeMap<ModelId, StaticModel>,
+    sequences: BTreeMap<SequenceId, SequenceAsset>,
+    frames: BTreeMap<u32, LegacyFrame>,
+    skeletons: BTreeMap<u16, Vec<SkeletonTransform>>,
+    requested_npcs: BTreeSet<NpcDefinitionId>,
+    requested_items: BTreeSet<ItemDefinitionId>,
+    requested_sequences: BTreeSet<SequenceId>,
+}
+
+impl EntityCatalog {
+    /// Definitions that live entities reference and no earlier request covered.
+    ///
+    /// Each id is requested once; the loader never retries absent or undecodable assets.
+    pub fn request_missing(
+        &mut self,
+        asset: &SceneAsset,
+        entities: &WorldEntitiesState,
+    ) -> Option<EntityRequest> {
+        let mut request = EntityRequest::default();
+        let mut want_sequence = |id: SequenceId, requested: &mut BTreeSet<SequenceId>| {
+            if !asset.sources().sequences.contains_key(&id) && requested.insert(id) {
+                request.sequences.insert(id);
+            }
+        };
+        for player in entities.players().values() {
+            if let Some(sequence) = player.sequence {
+                want_sequence(sequence, &mut self.requested_sequences);
+            }
+            let Some(appearance) = &player.appearance else {
+                continue;
+            };
+            let movement = appearance.movement_sequences;
+            for sequence in [
+                movement.idle,
+                movement.turn,
+                movement.walk,
+                movement.walk_back,
+                movement.walk_left,
+                movement.walk_right,
+                movement.run,
+            ]
+            .into_iter()
+            .flatten()
+            {
+                want_sequence(sequence, &mut self.requested_sequences);
+            }
+            for slot in &appearance.slots {
+                if let SlotContent::Item(item) = slot
+                    && self.requested_items.insert(*item)
+                {
+                    request.items.insert(*item);
+                }
+            }
+        }
+        for npc in entities.npcs().values() {
+            if let Some(sequence) = npc.sequence {
+                want_sequence(sequence, &mut self.requested_sequences);
+            }
+            if self.requested_npcs.insert(npc.definition_id) {
+                request.npcs.insert(npc.definition_id);
+            }
+        }
+        // Sequences referenced by NPC definitions are resolved by the loader itself.
+        self.requested_sequences
+            .extend(request.sequences.iter().copied());
+        (!request.is_empty()).then_some(request)
+    }
+
+    /// Fold a decoded batch into the catalog.
+    pub fn merge(&mut self, assets: EntityAssets) {
+        self.npcs.extend(assets.npcs);
+        self.items.extend(assets.items);
+        self.models.extend(assets.models);
+        self.sequences.extend(assets.sequences);
+        self.frames.extend(assets.frames);
+        self.skeletons.extend(assets.skeletons);
+    }
+
+    fn model<'a>(&'a self, asset: &'a SceneAsset, id: ModelId) -> Option<&'a StaticModel> {
+        self.models
+            .get(&id)
+            .or_else(|| asset.sources().models.get(&id))
+    }
+
+    fn frame<'a>(&'a self, asset: &'a SceneAsset, id: u32) -> Option<&'a LegacyFrame> {
+        self.frames
+            .get(&id)
+            .or_else(|| asset.sources().frames.get(&id))
+    }
+
+    fn skeleton<'a>(&'a self, asset: &'a SceneAsset, id: u16) -> Option<&'a [SkeletonTransform]> {
+        self.skeletons
+            .get(&id)
+            .or_else(|| asset.sources().skeletons.get(&id))
+            .map(Vec::as_slice)
+    }
+}
 
 /// Rotate a model point around the Y axis by an OSRS orientation angle (0..2047).
 #[must_use]
@@ -36,28 +147,62 @@ pub fn rotate_y(p: ModelPoint, angle: u16) -> ModelPoint {
 /// Returns error on vertex allocation limit or pose failures.
 pub fn build_entities_geometry(
     asset: &SceneAsset,
+    catalog: &EntityCatalog,
     entities: &WorldEntitiesState,
-    kits: &BTreeMap<KitId, KitDefinition>,
-    items: &BTreeMap<ItemDefinitionId, ItemDefinition>,
-    npc_defs: &BTreeMap<NpcDefinitionId, NpcDefinition>,
-    models: &BTreeMap<ModelId, StaticModel>,
     geometry: &mut SceneGeometry,
 ) -> Result<()> {
     for player in entities.players().values() {
-        build_player(asset, player, kits, items, models, geometry)?;
+        build_player(asset, catalog, player, geometry)?;
     }
     for npc in entities.npcs().values() {
-        build_npc(asset, npc, npc_defs, models, geometry)?;
+        build_npc(asset, catalog, npc, geometry)?;
+    }
+    Ok(())
+}
+
+/// Apply the legacy frame selected by `cycle`. Skeletal sequences are not posed here.
+fn pose_model(
+    asset: &SceneAsset,
+    catalog: &EntityCatalog,
+    model: &mut StaticModel,
+    sequence: Option<SequenceId>,
+    cycle: u32,
+) -> Result<()> {
+    let Some(sequence) = sequence else {
+        return Ok(());
+    };
+    let Some(sequence) = catalog
+        .sequences
+        .get(&sequence)
+        .or_else(|| asset.sources().sequences.get(&sequence))
+    else {
+        return Ok(());
+    };
+    let Ok(Some(index)) = crate::animation::frame_index(sequence, u64::from(cycle), None) else {
+        return Ok(());
+    };
+    if let Some(frame) = sequence
+        .frames
+        .get(index)
+        .and_then(|id| catalog.frame(asset, *id))
+        && let Some(skeleton) = catalog.skeleton(asset, frame.skeleton)
+    {
+        crate::animation::pose(
+            &mut model.vertices,
+            &mut model.faces,
+            &model.vertex_skins,
+            frame,
+            skeleton,
+            0,
+        )?;
     }
     Ok(())
 }
 
 fn build_player(
     asset: &SceneAsset,
+    catalog: &EntityCatalog,
     player: &PlayerEntity,
-    kits: &BTreeMap<KitId, KitDefinition>,
-    items: &BTreeMap<ItemDefinitionId, ItemDefinition>,
-    models: &BTreeMap<ModelId, StaticModel>,
     geometry: &mut SceneGeometry,
 ) -> Result<()> {
     let Some(appearance) = &player.appearance else {
@@ -67,104 +212,95 @@ fn build_player(
         return Ok(());
     }
 
-    let Some(base_model) = build_player_base(appearance, kits, items, models) else {
+    let Some(base_model) =
+        build_player_base(appearance, &asset.sources().kits, &catalog.items, |id| {
+            catalog.model(asset, id)
+        })
+    else {
         return Ok(());
     };
 
     let recolors = body_recolors(appearance.colors);
     let mut model = adjusted_model(&base_model, &recolors, &[], 0);
-
-    let active_seq = player.sequence.or(appearance.movement_sequences.idle);
-
-    if let Some(seq_id) = active_seq
-        && let Some(seq) = asset.sources().sequences.get(&seq_id)
-        && let Ok(Some(frame_idx)) =
-            crate::animation::frame_index(seq, u64::from(player.animation_cycle), None)
-        && let Some(frame) = asset.sources().frames.get(&seq.frames[frame_idx])
-        && let Some(skeleton) = asset.sources().skeletons.get(&frame.skeleton)
-    {
-        crate::animation::pose(
-            &mut model.vertices,
-            &mut model.faces,
-            &model.vertex_skins,
-            frame,
-            skeleton,
-            0,
-        )?;
-    }
+    let sequence = player.sequence.or(appearance.movement_sequences.idle);
+    pose_model(asset, catalog, &mut model, sequence, player.animation_cycle)?;
 
     emit_model(
         asset,
         &model,
-        player.tile.plane,
-        player.tile.x,
-        player.tile.y,
-        player.orientation,
+        Placement {
+            tile: player.tile,
+            size: 1,
+            orientation: player.orientation,
+        },
+        Light::entity(64, 850),
         geometry,
     )
 }
 
 fn build_npc(
     asset: &SceneAsset,
+    catalog: &EntityCatalog,
     npc: &NpcEntity,
-    npc_defs: &BTreeMap<NpcDefinitionId, NpcDefinition>,
-    models: &BTreeMap<ModelId, StaticModel>,
     geometry: &mut SceneGeometry,
 ) -> Result<()> {
-    let Some(def) = npc_defs.get(&npc.definition_id) else {
+    let Some(def) = catalog.npcs.get(&npc.definition_id) else {
         return Ok(());
     };
-
-    let Some(base_model) = build_npc_base(def, models) else {
+    let Some(mut model) = build_npc_base(def, |id| catalog.model(asset, id)) else {
         return Ok(());
     };
-
-    let mut model = base_model;
-
-    let active_seq = npc.sequence.or(def.idle_sequence);
-
-    if let Some(seq_id) = active_seq
-        && let Some(seq) = asset.sources().sequences.get(&seq_id)
-        && let Ok(Some(frame_idx)) =
-            crate::animation::frame_index(seq, u64::from(npc.animation_cycle), None)
-        && let Some(frame) = asset.sources().frames.get(&seq.frames[frame_idx])
-        && let Some(skeleton) = asset.sources().skeletons.get(&frame.skeleton)
-    {
-        crate::animation::pose(
-            &mut model.vertices,
-            &mut model.faces,
-            &model.vertex_skins,
-            frame,
-            skeleton,
-            0,
-        )?;
+    if def.scale_width != 128 || def.scale_height != 128 {
+        let (width, height) = (i32::from(def.scale_width), i32::from(def.scale_height));
+        for p in &mut model.vertices {
+            *p = ModelPoint::new(p.x * width / 128, p.y * height / 128, p.z * width / 128);
+        }
     }
+    let sequence = npc.sequence.or(def.idle_sequence);
+    pose_model(asset, catalog, &mut model, sequence, npc.animation_cycle)?;
 
     emit_model(
         asset,
         &model,
-        npc.tile.plane,
-        npc.tile.x,
-        npc.tile.y,
-        npc.orientation,
+        Placement {
+            tile: npc.tile,
+            size: def.size.max(1),
+            orientation: npc.orientation,
+        },
+        Light::entity(
+            i32::from(def.ambient) + 64,
+            i32::from(def.contrast) * 5 + 850,
+        ),
         geometry,
     )
+}
+
+#[derive(Clone, Copy)]
+struct Placement {
+    tile: rustclient_model::WorldTile,
+    /// Footprint edge in tiles; the model is centred on the whole footprint.
+    size: u8,
+    orientation: u16,
 }
 
 fn emit_model(
     asset: &SceneAsset,
     model: &StaticModel,
-    plane: rustclient_model::Plane,
-    tile_x: i32,
-    tile_y: i32,
-    orientation: u16,
+    placement: Placement,
+    light: Light,
     geometry: &mut SceneGeometry,
 ) -> Result<()> {
+    let Placement {
+        tile,
+        size,
+        orientation,
+    } = placement;
     let origin = asset.descriptor().origin();
-    let center_fine_x = (tile_x - origin.x) * 128 + 64;
-    let center_fine_z = (tile_y - origin.y) * 128 + 64;
+    let half_footprint = i32::from(size) * 64;
+    let center_fine_x = (tile.x - origin.x) * 128 + half_footprint;
+    let center_fine_z = (tile.y - origin.y) * 128 + half_footprint;
     let ground_height = asset
-        .ground_height(plane, [center_fine_x, center_fine_z])
+        .ground_height(tile.plane, [center_fine_x, center_fine_z])
         .unwrap_or(0);
 
     let normals = crate::lighting::calculate(&model.vertices, &model.faces);
@@ -173,7 +309,7 @@ fn emit_model(
         .faces
         .iter()
         .enumerate()
-        .map(|(i, &f)| crate::lighting::bake(f, i, &normals, &merged, 64, 850))
+        .map(|(i, &f)| crate::lighting::bake_lit(f, i, &normals, &merged, light))
         .collect();
 
     for (index, &face) in model.faces.iter().enumerate() {

@@ -278,6 +278,20 @@ pub fn npc(bytes: &[u8], id: NpcDefinitionId, source: Source) -> Result<NpcDefin
                     out.models.push(ModelId::new(u32::from(r.u16()?)));
                 }
             }
+            61 => {
+                let count = usize::from(r.u8()?);
+                out.models.clear();
+                for _ in 0..count {
+                    out.models.push(ModelId::new(r.u32()?));
+                }
+            }
+            62 => {
+                let count = usize::from(r.u8()?);
+                out.head_models.clear();
+                for _ in 0..count {
+                    out.head_models.push(ModelId::new(r.u32()?));
+                }
+            }
             2 => out.name = Some(r.string_value()?),
             12 => out.size = r.u8()?,
             13 => {
@@ -306,7 +320,7 @@ pub fn npc(bytes: &[u8], id: NpcDefinitionId, source: Source) -> Result<NpcDefin
                 out.walk_left_sequence = (wl != 65535).then_some(SequenceId::new(u32::from(wl)));
                 out.walk_right_sequence = (wr != 65535).then_some(SequenceId::new(u32::from(wr)));
             }
-            18 | 74..=79 | 103 | 114 | 116 | 124 => {
+            18 | 42 | 74..=79 | 103 | 114 | 116 | 124 | 126 | 146 => {
                 r.u16()?;
             }
             30..=34 => {
@@ -347,22 +361,26 @@ pub fn npc(bytes: &[u8], id: NpcDefinitionId, source: Source) -> Result<NpcDefin
             }
             97 => out.scale_width = r.u16()?,
             98 => out.scale_height = r.u16()?,
-            99 => {
-                r.u8()?;
-            }
+            // Flag opcodes without payload: render priority, clickability, follower and z-buffer flags.
+            99 | 109 | 111 | 122 | 123 | 130 | 145 | 147 => {}
             100 => out.ambient = i16::from(r.i8()?),
             101 => out.contrast = i16::from(r.i8()?),
             102 => {
-                let bitmask = r.u8()?;
-                let mut count = 0;
-                let mut v = bitmask;
-                while v != 0 {
-                    count += 1;
-                    v >>= 1;
-                }
-                for _ in 0..count {
-                    let _ = r.u_smart()?;
-                    let _ = r.u_smart()?;
+                let bits = r.u8()?;
+                for index in 0..8 {
+                    if bits & (1 << index) != 0 {
+                        // Sprite group (nullable large smart), then icon index (shifted smart).
+                        if r.peek_u8()? & 128 != 0 {
+                            r.u32()?;
+                        } else {
+                            r.u16()?;
+                        }
+                        if r.peek_u8()? < 128 {
+                            r.u8()?;
+                        } else {
+                            r.u16()?;
+                        }
+                    }
                 }
             }
             106 | 118 => {
@@ -380,6 +398,32 @@ pub fn npc(bytes: &[u8], id: NpcDefinitionId, source: Source) -> Result<NpcDefin
             115 | 117 => {
                 r.take(8)?;
             }
+            148 => {
+                r.take(4)?;
+            }
+            149 | 151 => {
+                r.u8()?;
+            }
+            150 => {
+                r.take(6)?;
+            }
+            152 => {
+                r.take(6)?;
+                let count = usize::from(r.u8()?);
+                r.take(count * 2)?;
+            }
+            251 => {
+                r.take(2)?;
+                r.string()?;
+            }
+            252 => {
+                r.take(13)?;
+                r.string()?;
+            }
+            253 => {
+                r.take(15)?;
+                r.string()?;
+            }
             249 => {
                 let count = r.u8()?;
                 for _ in 0..count {
@@ -394,9 +438,7 @@ pub fn npc(bytes: &[u8], id: NpcDefinitionId, source: Source) -> Result<NpcDefin
                     }
                 }
             }
-            _ => {
-                // Ignore unknown non-critical attributes
-            }
+            op => return Err(source.error("npc", format!("unsupported opcode {op}"))),
         }
     }
     r.finish()?;
@@ -491,8 +533,34 @@ pub fn item(bytes: &[u8], id: ItemDefinitionId, source: Source) -> Result<ItemDe
             0 => break,
             2 => out.name = Some(r.string_value()?),
             3 | 30..=39 => r.string()?,
-            1 | 4..=8 | 75 | 94 | 95 | 97 | 98 | 99 | 110..=112 | 139 | 140 | 148 | 149 => {
+            1 | 4..=8 | 75 | 90..=95 | 97..=99 | 110..=112 | 139 | 140 | 148 | 149 => {
                 r.u16()?;
+            }
+            // Flag opcodes without payload: stackability, tradeability, membership, market, unlock.
+            11 | 15 | 16 | 65 | 160 | 251 => {}
+            42 | 113..=115 => {
+                r.u8()?;
+            }
+            100..=109 => {
+                r.take(4)?;
+            }
+            43 => {
+                r.u8()?;
+                while r.u8()? != 0 {
+                    r.string()?;
+                }
+            }
+            200 => {
+                r.take(2)?;
+                r.string()?;
+            }
+            201 => {
+                r.take(13)?;
+                r.string()?;
+            }
+            202 => {
+                r.take(15)?;
+                r.string()?;
             }
             12 | 44 | 51..=54 => {
                 r.u32()?;
@@ -591,7 +659,7 @@ pub fn item(bytes: &[u8], id: ItemDefinitionId, source: Source) -> Result<ItemDe
                     }
                 }
             }
-            _ => {}
+            op => return Err(source.error("item", format!("unsupported opcode {op}"))),
         }
     }
     r.finish()?;

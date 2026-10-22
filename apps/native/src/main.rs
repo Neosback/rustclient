@@ -38,6 +38,10 @@ enum LoadEvent {
     Loaded(Box<Result<TitleAssets, String>>),
     Network(u64, network::NetworkEvent),
     SceneProgress(u64, String),
+    EntityAssets(
+        u64,
+        Box<rustclient_cache::osrs240::entity_assets::EntityAssets>,
+    ),
     DynamicReady(
         u64,
         u64,
@@ -388,6 +392,13 @@ impl NativeApp {
                     self.fail(event_loop, &error.to_string());
                     return;
                 }
+                if let Err(e) = self.scene.start_entity_loader(
+                    scene.asset.clone(),
+                    self.connection_generation,
+                    self.proxy.clone(),
+                ) {
+                    eprintln!("entity asset worker: {e}");
+                }
                 if let Some(placement) = self.state.initial_placement()
                     && let Err(e) = self.scene.start_animator(
                         scene.asset.clone(),
@@ -597,6 +608,14 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                     }
                 }
             }
+            LoadEvent::EntityAssets(session, assets) => {
+                if session == self.connection_generation {
+                    for failure in &assets.failures {
+                        eprintln!("entity asset advisory: {failure}");
+                    }
+                    self.scene.entity_catalog.merge(*assets);
+                }
+            }
             LoadEvent::SceneLoaded(_, _)
             | LoadEvent::SceneProgress(_, _)
             | LoadEvent::Network(_, _) => {}
@@ -781,16 +800,19 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                 let _ = animator.try_send(self.state.scenery().into());
             }
             if advanced && let Some(loaded) = &self.scene.loaded {
+                if let Some(request) = self
+                    .scene
+                    .entity_catalog
+                    .request_missing(&loaded.asset, self.state.entities())
+                    && let Some(loader) = &self.scene.entity_loader
+                {
+                    let _ = loader.send(request);
+                }
                 let mut combined = loaded.mesh.dynamic.clone();
-                let empty_items = std::collections::BTreeMap::new();
-                let empty_npcs = std::collections::BTreeMap::new();
                 if let Err(e) = build_entities_geometry(
                     &loaded.asset,
+                    &self.scene.entity_catalog,
                     self.state.entities(),
-                    &loaded.asset.sources().kits,
-                    &empty_items,
-                    &empty_npcs,
-                    &loaded.asset.sources().models,
                     &mut combined,
                 ) {
                     eprintln!("entity geometry: {e}");

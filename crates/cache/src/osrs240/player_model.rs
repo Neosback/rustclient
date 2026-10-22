@@ -65,11 +65,11 @@ pub fn body_recolors(colors: [u8; 5]) -> Vec<(u16, u16)> {
 
 /// Assemble an unposed player base model from appearance slots, kit defs, and item defs.
 #[must_use]
-pub fn build_player_base(
+pub fn build_player_base<'m>(
     appearance: &PlayerAppearance,
     kits: &BTreeMap<KitId, KitDefinition>,
     items: &BTreeMap<ItemDefinitionId, ItemDefinition>,
-    models: &BTreeMap<ModelId, StaticModel>,
+    models: impl Fn(ModelId) -> Option<&'m StaticModel>,
 ) -> Option<StaticModel> {
     if appearance.hidden {
         return None;
@@ -81,7 +81,7 @@ pub fn build_player_base(
             SlotContent::Kit(kit_id) => {
                 if let Some(kit_def) = kits.get(kit_id) {
                     for m_id in &kit_def.models {
-                        if let Some(source) = models.get(m_id) {
+                        if let Some(source) = models(*m_id) {
                             part_models.push(adjusted_model(
                                 source,
                                 &kit_def.recolors,
@@ -99,7 +99,7 @@ pub fn build_player_base(
                         Gender::Female => &item_def.female,
                     };
                     for m_id in wear.models.iter().flatten() {
-                        if let Some(source) = models.get(m_id) {
+                        if let Some(source) = models(*m_id) {
                             part_models.push(adjusted_model(
                                 source,
                                 &item_def.recolors,
