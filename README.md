@@ -18,8 +18,10 @@ are wired. Live login against the OpenRune 240.2 profile is verified end-to-end
 (authentication, initial placement, 395 framed gameplay packets, clean disconnect);
 the desktop GUI acceptance pass remains manual. A first native plugin slice now runs
 the `hello-overlay` WebAssembly component through the WIT ABI, queries committed
-player position, persists plugin-local config and draws an overlay. It is recorded
-in the [plugin checkpoint](docs/plan/CP11-plugin-slice.md) together with the
+player position, persists plugin-local config and draws an overlay. The same component
+transpiles with `jco` and runs against a JS host (`scripts/check-plugin-web.sh`) with
+identical overlay and persistence behavior; browser worker integration remains open. It is
+recorded in the [plugin checkpoint](docs/plan/CP11-plugin-slice.md) together with the
 remaining browser runtime and SDK work. The [walk-and-bank
 checkpoint](docs/plan/PLAYABLE-desktop.md) records movement, stock NPC updates,
 world menus, inventory synchronization and unfinished widget/CS2/banking work.

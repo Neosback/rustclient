@@ -48,12 +48,18 @@ Desktop client:
 scripts/run-openrune.sh /path/to/OpenRune-Server --plugins-dir plugins
 ```
 
+Web ABI check (transpiles the same component with `jco` and drives a JS host):
+
+```text
+scripts/check-plugin-web.sh
+```
+
 Each child directory of `--plugins-dir` is one package. Packages that fail manifest validation,
 API compatibility or instantiation are logged and skipped; they cannot prevent the client from
 starting. A plugin is disabled after three consecutive faults.
 
 ## Status
 
-Native component execution is implemented. Browser transpilation (`jco`), the ergonomic Rust SDK,
-interactive capability grants, menus/panels and signed distribution are tracked in
-[CP11](../docs/plan/CP11-plugin-slice.md).
+Native component execution and cross-host component parity (Wasmtime + `jco`/JS) are implemented.
+The browser worker, IndexedDB storage, the ergonomic Rust SDK, interactive capability grants,
+menus/panels and signed distribution are tracked in [CP11](../docs/plan/CP11-plugin-slice.md).

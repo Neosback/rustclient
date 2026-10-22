@@ -6,9 +6,10 @@ Prove the plugin architecture end-to-end before broadening the feature surface: 
 WIT contract, one package format, one mediated host, one real WebAssembly component loaded by
 the desktop client, and one overlay drawn from plugin commands.
 
-This closes the executable part of CP11.1–CP11.7. Browser transpilation (CP11.8), SDK ergonomics
-(CP11.9) and cross-platform sample parity (CP11.10) remain open and are listed under
-[Deliberately skipped](#deliberately-skipped).
+This closes the executable part of CP11.1–CP11.7 and proves CP11.10 at the component level: the
+same packaged component runs under Wasmtime and under `jco`'s JS bindings against the same
+fixture. Browser worker integration (CP11.8) and SDK ergonomics (CP11.9) remain open and are
+listed under [Deliberately skipped](#deliberately-skipped).
 
 ## ABI v0.1.0
 
@@ -104,6 +105,24 @@ cargo run -p rustclient-native --bin plugin_probe -- \
 scripts/run-openrune.sh /path/to/OpenRune-Server --plugins-dir plugins
 ```
 
+## Web host proof
+
+The packaged component is not tied to Wasmtime. `scripts/check-plugin-web.sh` builds the same
+`hello_overlay.wasm`, transpiles it with `jco` (Node 26, jco 1.39), maps the host interface to a
+reference JS host, and drives `init` → `started` → 120 ticks → `stopped` → `overlay` twice:
+
+```text
+packaged plugin package: .../plugins/hello-overlay (plugin.json + hello_overlay.wasm)
+web plugin fresh run passed: hello-overlay · tick 100 · 3224,3218 plane 0
+web plugin restored run passed: hello-overlay · tick 100 · 3224,3218 plane 0
+```
+
+Both runs assert the exact overlay text, position, style, `last_tick = 100` and the three expected
+log lines. The second run restores `last persisted tick 100` from the JSON config, matching the
+native probe. The generated module imports only `rustclient:plugin/host`; no WASI or preview2
+shims are involved. The reference host keeps config in Node's filesystem; the browser worker will
+replace that with IndexedDB and a message boundary (CP11.8).
+
 ## Validation evidence
 
 - `cargo fmt --all --check` — pass.
@@ -124,18 +143,21 @@ scripts/run-openrune.sh /path/to/OpenRune-Server --plugins-dir plugins
 - Probe run 2 (same storage): init log `hello-overlay ready (last persisted tick 100)`,
   proving plugin-local persistence across instantiations.
 - Guest artifact: 19,754 bytes, imports only `rustclient:plugin/host@0.1.0`.
+- `scripts/check-plugin-web.sh` — jco transpilation and fresh/restored JS-host runs pass with
+  the same overlay text and persisted tick as the native probe.
 
 The GUI overlay acceptance pass (login → walk → overlay visible) is manual and not claimed here.
 The protocol login probe against OpenRune 240.2 is already verified separately.
 
 ## Deliberately skipped
 
-- **CP11.8 browser runtime.** The same component is designed for `jco transpile`; the browser
-  host and worker boundary are not implemented yet. The guest has no WASI imports specifically
-  so browser transpilation does not require preview2 shims.
+- **CP11.8 browser runtime.** Component-level parity is proven, but the browser worker, message
+  boundary and IndexedDB-backed storage are not implemented yet. The guest has no WASI imports
+  specifically so browser transpilation does not require preview2 shims.
 - **CP11.9 SDK.** `plugin-sdk/rust` is still a facade stub; the sample carries the guest runtime
   plumbing. Extracting it needs a documented exception for the canonical-ABI realloc shim.
-- **CP11.10 cross-platform parity proof.** Requires CP11.8.
+- **In-browser acceptance.** The JS proof runs in Node; loading the overlay from the web client is
+  still open.
 - **Visual acceptance.** No screenshots or manual in-world overlay check in this checkpoint.
 - Plugin memory quotas, hot reload, menus/panels, interactive commands, signed packages,
   config schemas and cross-plugin dependencies are future checkpoints.
@@ -147,3 +169,5 @@ The protocol login probe against OpenRune 240.2 is already verified separately.
 - Capability grants are manifest-declared and operator-authorized by directory placement; there
   is no interactive grant UI or signature verification yet.
 - The Wasmtime 49 pin is driven by the current rustc 1.96 toolchain (Wasmtime 50 needs 1.97).
+- The JS host harness persists config with Node's filesystem; only the ABI and guest behavior are
+  browser-equivalent so far.
