@@ -24,6 +24,16 @@ OpenRune FileStore and the actual development server are additional local,
 read-only evidence. Their locations, purposes and selected file hashes are in
 [`docs/reference/INDEX.md`](../docs/reference/INDEX.md) and its source manifest.
 
+## Revision-240 client binary
+
+`references/gamepacks/osrs-240/injected-client-1.12.39.jar` is a verified
+revision-240 RuneLite-injected client, tracked directly in Git. Its bytes match
+RuneLite's historical publisher manifest. Source URL, SHA-256, revision evidence
+and compatibility limits are recorded in
+[`docs/reference/gamepack-240.json`](../docs/reference/gamepack-240.json).
+The adjacent `revision-verification.txt` records the static bytecode evidence.
+Use it as read-only research input; no RustClient runtime depends on it.
+
 ## Commands
 
 ```text

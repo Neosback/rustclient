@@ -1,0 +1,48 @@
+Revision verification for injected-client-1.12.39.jar
+SHA-256: 25f42961c400bd9dfff1554402441c0ba6d1cffd011163cb9b0b4c42ae194f85
+
+client.init tail:
+       652: putstatic     #1014               // Field gs:I
+       655: aload_0
+       656: sipush        765
+       659: sipush        503
+       662: sipush        240
+       665: iconst_1
+       666: ldc_w         #1022               // int -23054365
+       669: invokevirtual #1026               // Method agf:(IIIII)V
+       672: return
+       673: new           #768                // class java/lang/StringBuilder
+
+  public int getRevision();
+    Code:
+         0: getstatic     #14214              // Field aal.ae:I
+         3: ldc_w         #14215              // int 2098754687
+         6: imul
+         7: ireturn
+
+
+tq.agf revision assignment:
+       115: iload_3
+       116: ldc_w         #584                // int -154973313
+       119: imul
+       120: putstatic     #589                // Field aal.ae:I
+tq.agf revision assignment:
+        75: iload_3
+        76: ldc_w         #584                // int -154973313
+        79: imul
+        80: putstatic     #589                // Field aal.ae:I
+tq.agf revision assignment:
+        75: iload_3
+        76: ldc_w         #584                // int -154973313
+        79: imul
+        80: putstatic     #589                // Field aal.ae:I
+tq.agf revision assignment:
+        75: iload_3
+        76: ldc_w         #584                // int -154973313
+        79: imul
+        80: putstatic     #589                // Field aal.ae:I
+tq.agf revision assignment:
+        76: iload_3
+        77: ldc_w         #584                // int -154973313
+        80: imul
+        81: putstatic     #589                // Field aal.ae:I

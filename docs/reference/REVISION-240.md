@@ -56,7 +56,7 @@ The supplied RuneLite tree already contains deobfuscated **235** Java source.
 Deobfuscation, mapping and decompilation are separate steps; changing a Gradle
 revision number does not supply a new gamepack or validate transferred mappings.
 A verified **240 RuneLite-injected client** is now available at
-`/Users/tylercovalt/gamepack/gamepack_240_runelite-injected-1.12.39.jar`.
+`references/gamepacks/osrs-240/injected-client-1.12.39.jar`.
 [The binary provenance record](gamepack-240.json) pins the official download,
 SHA-256, historical publisher hash manifest and static revision checks.
 The downloaded bytes match RuneLite's published SHA-256 and the installed,

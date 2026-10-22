@@ -21,7 +21,7 @@ and an ergonomic sandboxed plugin ecosystem. See the
 ## Verified 240 client reference (2026-10-22)
 
 Downloaded RuneLite's official `injected-client-1.12.39.jar` to
-`/Users/tylercovalt/gamepack/gamepack_240_runelite-injected-1.12.39.jar`.
+`references/gamepacks/osrs-240/injected-client-1.12.39.jar`.
 Its SHA-256 matches RuneLite's historical bootstrap manifest. Static inspection
 traces revision 240 from `client.init` through the engine assignment to the
 `getRevision` accessor; login serialization also contains revision 240.
