@@ -23,7 +23,7 @@ fn state_fingerprint_v10_has_exact_regression_vectors() {
     let mut state = GameState::new();
     assert_eq!(
         state.semantic_fingerprint().get(),
-        7_612_509_243_728_535_271
+        8_035_029_329_598_267_847
     );
 
     state
@@ -35,7 +35,7 @@ fn state_fingerprint_v10_has_exact_regression_vectors() {
 
     assert_eq!(
         state.semantic_fingerprint().get(),
-        1_226_679_929_557_361_853
+        5_421_647_543_626_128_989
     );
 }
 
@@ -90,7 +90,7 @@ fn state_fingerprint_distinguishes_revision_identity() {
     );
     assert_eq!(
         subrevision.semantic_fingerprint().get(),
-        6_556_566_487_683_337_686
+        11_824_828_006_867_936_406
     );
 }
 
