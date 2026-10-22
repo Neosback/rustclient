@@ -87,7 +87,6 @@ pub fn project_widgets(
             continue;
         }
         match widget.body {
-            WidgetBody::Container { .. } | WidgetBody::Model { .. } => {}
             WidgetBody::Rectangle {
                 color,
                 filled,
@@ -218,8 +217,7 @@ pub fn project_widgets(
                     .width
                     .abs()
                     .max(node.bounds.height.abs())
-                    .min(16_384)
-                    .max(1);
+                    .clamp(1, 16_384);
                 for i in 0..segments {
                     let t = f(i) / f(segments);
                     let y = if reversed { 1. - t } else { t };
@@ -236,6 +234,7 @@ pub fn project_widgets(
                     );
                 }
             }
+            // Containers, models and missing sprite/font bodies draw no primitives.
             _ => {}
         }
     }

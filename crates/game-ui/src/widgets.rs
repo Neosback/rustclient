@@ -4,7 +4,7 @@ use rustclient_cache::widget::{
     InterfaceDefinition, PositionMode, SizeMode, WidgetBody, WidgetDefinition,
 };
 use rustclient_game_state::InterfaceState;
-use rustclient_model::{InterfaceId, WidgetAddress, WidgetId};
+use rustclient_model::{InterfaceId, WidgetAddress, WidgetId, WidgetPermissions};
 use std::collections::BTreeMap;
 const LIMIT: usize = 16_384;
 const EXTENT: i64 = 16_777_216;
@@ -84,6 +84,10 @@ impl WidgetTree {
     /// Hidden ancestors prune their descendants. No listeners run here.
     /// # Errors
     /// Rejects missing assets, excessive depth/nodes, invalid extents or overflow.
+    #[expect(
+        clippy::too_many_lines,
+        reason = "single-pass layout construction keeps validation beside each node"
+    )]
     pub fn build(
         state: &InterfaceState,
         assets: &BTreeMap<InterfaceId, InterfaceDefinition>,
@@ -312,7 +316,7 @@ pub fn resolve_widget(
         value.hidden = false;
         value.actions.clear();
         value.listeners.clear();
-        value.permissions = Default::default();
+        value.permissions = WidgetPermissions::default();
         value.data_text.clear();
     }
     if let Some(overrides) = state.runtime().get(&address) {
@@ -333,16 +337,16 @@ pub fn resolve_widget(
         if let (Some(text), WidgetBody::Text { text: target, .. }) =
             (&overrides.text, &mut value.body)
         {
-            *target = text.clone();
+            target.clone_from(text);
         }
         if let Some(hidden) = overrides.hidden {
             value.hidden = hidden;
         }
         if let Some(actions) = &overrides.actions {
-            value.actions = actions.clone();
+            value.actions.clone_from(actions);
         }
         if let Some(text) = &overrides.data_text {
-            value.data_text = text.clone();
+            value.data_text.clone_from(text);
         }
         for (listener, args) in &overrides.listeners {
             if let Some(args) = args {

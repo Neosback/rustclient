@@ -5,5 +5,10 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[dependencies]
+rustclient-plugin-api = { path = "../plugin-api" }
+rustclient-plugin-host = { path = "../plugin-host" }
+wasmtime = { workspace = true }
+
 [lints]
 workspace = true

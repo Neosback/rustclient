@@ -83,10 +83,6 @@ pub(crate) struct UiGpu {
     pub(crate) stats: UiStats,
 }
 impl UiGpu {
-    #[expect(
-        clippy::too_many_lines,
-        reason = "one-time pipeline and buffer construction"
-    )]
     pub(crate) fn new(
         device: &wgpu::Device,
         queue: &wgpu::Queue,
@@ -95,6 +91,10 @@ impl UiGpu {
     ) -> Result<Self, RenderError> {
         Self::with_images(device, queue, format, assets, &BTreeMap::new())
     }
+    #[expect(
+        clippy::too_many_lines,
+        reason = "one-time pipeline and buffer construction"
+    )]
     pub(crate) fn with_images(
         device: &wgpu::Device,
         queue: &wgpu::Queue,

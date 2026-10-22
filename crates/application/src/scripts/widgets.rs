@@ -73,6 +73,7 @@ fn default_body(kind: i32) -> Result<WidgetBody> {
 }
 #[expect(
     clippy::too_many_lines,
+    clippy::many_single_char_names,
     reason = "named widget instruction grammar keeps stack effects next to semantic mutations"
 )]
 pub(super) fn instruction<S: ReadOnlyBlobs>(

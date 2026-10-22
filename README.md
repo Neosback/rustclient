@@ -14,10 +14,15 @@ compile for Wasm, but browser gameplay/cache import/transport are not delivered.
 No production protocol, renderer or plugin ABI is considered stable yet.
 
 Movement input, ordinary map-rebuild handling and local-player decoder groundwork
-are now wired, with semantic/codec checks passing; live gameplay remains unverified.
-The [walk-and-bank checkpoint](docs/plan/PLAYABLE-desktop.md) records the
-implemented movement, stock NPC updates, world menus and inventory synchronization,
-and the unfinished widget, CS2 and banking work.
+are wired. Live login against the OpenRune 240.2 profile is verified end-to-end
+(authentication, initial placement, 395 framed gameplay packets, clean disconnect);
+the desktop GUI acceptance pass remains manual. A first native plugin slice now runs
+the `hello-overlay` WebAssembly component through the WIT ABI, queries committed
+player position, persists plugin-local config and draws an overlay. It is recorded
+in the [plugin checkpoint](docs/plan/CP11-plugin-slice.md) together with the
+remaining browser runtime and SDK work. The [walk-and-bank
+checkpoint](docs/plan/PLAYABLE-desktop.md) records movement, stock NPC updates,
+world menus, inventory synchronization and unfinished widget/CS2/banking work.
 
 The first implementation compatibility target is revision `240`, while the architecture is designed to support additional validated revisions/profiles later.
 

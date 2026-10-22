@@ -8,7 +8,8 @@
     reason = "pixel and tile coordinate math is bounded by 104x104 scenes and viewport sizes"
 )]
 
-use crate::{Rect, UiFrame, UiImageId};
+use crate::text::draw_text as draw_text_line;
+use crate::{Rect, UiFrame};
 use rustclient_cache::TitleAssets;
 use rustclient_game_state::GameState;
 
@@ -113,43 +114,4 @@ pub fn project_chatbox(
     }
 }
 
-fn draw_text_line(
-    frame: &mut UiFrame,
-    assets: &TitleAssets,
-    text: &str,
-    x: f32,
-    y: f32,
-    tint: [u8; 4],
-    clip: Rect,
-) {
-    if assets.fonts.is_empty() {
-        return;
-    }
-    let font_idx = 1.min(assets.fonts.len() - 1);
-    let font = &assets.fonts[font_idx];
-    let mut cursor_x = x;
-    for ch in text.chars() {
-        let byte = rustclient_cache::cp1252(ch).unwrap_or(b'?');
-        if let Some(sprite) = font.glyphs.get(usize::from(byte)) {
-            if sprite.image.width() > 0 && sprite.image.height() > 0 {
-                let px = cursor_x + sprite.offset[0] as f32;
-                let py = y + sprite.offset[1] as f32;
-                frame.image_tinted(
-                    UiImageId::Glyph(font_idx as u8, byte),
-                    Rect::new(
-                        px,
-                        py,
-                        sprite.image.width() as f32,
-                        sprite.image.height() as f32,
-                    ),
-                    clip,
-                    tint,
-                );
-            }
-            let advance = font.advances.get(usize::from(byte)).copied().unwrap_or(7);
-            cursor_x += advance as f32;
-        } else {
-            cursor_x += 7.0;
-        }
-    }
-}
+// Text projection lives in `crate::text::draw_text`, shared with plugin overlays.

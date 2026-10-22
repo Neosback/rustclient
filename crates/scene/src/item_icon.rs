@@ -12,10 +12,6 @@ use rustclient_cache::{
 /// Project a small untextured icon from immutable model geometry.
 /// # Errors
 /// Rejects invalid model indexes or inconsistent image storage.
-#[expect(
-    clippy::many_single_char_names,
-    reason = "triangle edge/barycentric raster arithmetic"
-)]
 pub fn item_icon(def: &ItemDefinition, model: &StaticModel) -> Result<Image> {
     let mut points = Vec::with_capacity(model.vertices.len());
     let angle = |a: u16| f64::from(a) * std::f64::consts::TAU / 2048.;
@@ -103,6 +99,7 @@ pub fn item_icon(def: &ItemDefinition, model: &StaticModel) -> Result<Image> {
 #[expect(
     clippy::cast_possible_truncation,
     clippy::cast_sign_loss,
+    clippy::many_single_char_names,
     reason = "normalized HSL to clamped byte channels"
 )]
 fn hsl(packed: u16, alpha: u8) -> [u8; 4] {

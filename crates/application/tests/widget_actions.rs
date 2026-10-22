@@ -122,7 +122,7 @@ fn widget_actions_reject_reused_children_changed_items_and_revoked_permissions()
             widget,
             first: 0,
             last: 0,
-            permissions: Default::default(),
+            permissions: WidgetPermissions::default(),
         }),
     );
     assert!(validate_widget_action(&state, &assets, selected).is_err());

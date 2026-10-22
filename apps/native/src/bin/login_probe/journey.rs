@@ -7,10 +7,15 @@ use rustclient_model::{
 use rustclient_platform::ByteStream;
 use rustclient_platform_native::{DirectoryBlobs, NativeTcp};
 use rustclient_protocol::ClientIntent;
+use rustclient_scene::entity_mesh::EntityCatalog;
 use std::{
     path::PathBuf,
     time::{Duration, Instant},
 };
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "independent linear journey phase flags"
+)]
 pub struct Journey {
     cache: PathBuf,
     scene: Option<LoadedScene>,
@@ -173,7 +178,7 @@ impl Journey {
                     let entries = rustclient_application::world_actions(
                         state,
                         &loaded.asset,
-                        &Default::default(),
+                        &EntityCatalog::default(),
                         loaded.asset.descriptor(),
                         target,
                     )?;
@@ -191,7 +196,7 @@ impl Journey {
             let intent = rustclient_application::validate_world_action(
                 state,
                 &loaded.asset,
-                &Default::default(),
+                &EntityCatalog::default(),
                 *action,
                 false,
             )?;
@@ -211,7 +216,7 @@ impl Journey {
                 rustclient_application::validate_world_action(
                     state,
                     &loaded.asset,
-                    &Default::default(),
+                    &EntityCatalog::default(),
                     action,
                     false,
                 )?,
@@ -278,12 +283,9 @@ impl Journey {
             self.phase = 14;
         }
         let expected = match self.phase {
-            15 => (10, 0),
+            15 | 3 | 7 => (10, 0),
             1 => (9, 1),
-            3 => (10, 0),
-            5 => (0, 10),
-            7 => (10, 0),
-            9 => (0, 10),
+            5 | 9 => (0, 10),
             _ => (inventory, bank),
         };
         if self.phase % 2 == 1 {
@@ -338,7 +340,7 @@ impl Journey {
         }
         let normalize = |s: &str| {
             s.chars()
-                .filter(|c| c.is_ascii_alphanumeric())
+                .filter(char::is_ascii_alphanumeric)
                 .flat_map(char::to_lowercase)
                 .collect::<String>()
         };

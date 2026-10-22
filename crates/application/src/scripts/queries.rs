@@ -406,6 +406,7 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
 
 #[expect(
     clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
     reason = "bounded positive experience threshold formula"
 )]
 fn base_level(experience: u32) -> i32 {

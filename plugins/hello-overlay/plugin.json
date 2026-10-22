@@ -1,0 +1,8 @@
+{
+    "id": "dev.rustclient.hello-overlay",
+    "name": "Hello Overlay",
+    "version": "0.1.0",
+    "plugin-api": "0.1",
+    "capabilities": ["game.read.players", "ui.overlay", "storage.plugin"],
+    "entry": "hello_overlay.wasm"
+}

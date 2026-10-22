@@ -3,6 +3,7 @@ mod capture;
 mod interaction;
 mod network;
 mod options;
+mod plugins;
 mod scene;
 mod widgets;
 
@@ -88,6 +89,7 @@ struct NativeApp {
     flames: Option<Flames>,
     random: SplitMix64Random,
     frame: UiFrame,
+    plugins: plugins::Plugins,
     storage: Option<DirectoryStorage>,
     saved_preferences: TitlePreferences,
     modifiers: ModifiersState,
@@ -128,6 +130,7 @@ impl NativeApp {
             .unwrap_or_default();
         let mut ui = TitleUi::new(preferences.clone());
         ui.set_online(options.connection.is_some());
+        let plugins = plugins::Plugins::load(&options.plugins_dir);
         Self {
             scene: scene::SceneView::new(options),
             connection_options: options.connection.clone(),
@@ -143,13 +146,13 @@ impl NativeApp {
             ui,
             gameframe_ui: GameFrameUi::new(),
             context_menu: rustclient_game_ui::ContextMenu::default(),
-            widget_menu: Default::default(),
-            reported_script_errors: Default::default(),
+            widget_menu: rustclient_game_ui::ContextMenu::default(),
+            reported_script_errors: std::collections::BTreeSet::default(),
             scripts: None,
-            widget_assets: Default::default(),
-            widget_requested: Default::default(),
+            widget_assets: rustclient_game_ui::widget_visuals::WidgetVisualAssets::default(),
+            widget_requested: rustclient_application::scripts::WidgetAssetRequest::default(),
             widget_loading: false,
-            widget_tree: Default::default(),
+            widget_tree: rustclient_game_ui::widgets::WidgetTree::default(),
             widget_cache_dir: options.cache_dir.clone(),
             widget_cache_profile: options.profile,
             minimap: None,
@@ -158,6 +161,7 @@ impl NativeApp {
             flames: None,
             random: SplitMix64Random::new(RandomSeed::new(240)),
             frame: UiFrame::default(),
+            plugins,
             storage,
             saved_preferences: preferences,
             modifiers: ModifiersState::default(),
@@ -221,7 +225,7 @@ impl NativeApp {
     fn disconnect(&mut self) {
         self.widget_menu.close();
         self.widget_tree.nodes.clear();
-        self.widget_requested = Default::default();
+        self.widget_requested = rustclient_application::scripts::WidgetAssetRequest::default();
         self.widget_loading = false;
         if let Some(scripts) = &mut self.scripts {
             scripts.reset();
@@ -244,6 +248,7 @@ impl NativeApp {
         if self.state.lifecycle() == rustclient_game_state::SessionLifecycle::Active {
             let _ = self.state.apply_operation(SemanticOperation::EndSession);
         }
+        self.plugins.stop(&self.state);
     }
     fn apply(&mut self, operation: Option<SemanticOperation>) {
         if operation
@@ -315,6 +320,10 @@ impl NativeApp {
             window.request_redraw();
         }
     }
+    #[expect(
+        clippy::too_many_lines,
+        reason = "one frame projects every interface layer in paint order"
+    )]
     fn redraw(&mut self, event_loop: &ActiveEventLoop) {
         let Some(window) = self.window.clone() else {
             return;
@@ -344,6 +353,7 @@ impl NativeApp {
                 }
                 self.context_menu.project(assets, &mut self.frame);
                 self.widget_menu.project(assets, &mut self.frame);
+                self.plugins.overlay(&self.state, assets, &mut self.frame);
                 if let (Some(gameframe), Some(minimap), Some(camera)) =
                     (&assets.gameframe, &self.minimap, self.scene.camera)
                 {
@@ -1059,11 +1069,16 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
             _ => {}
         }
     }
+    #[expect(
+        clippy::too_many_lines,
+        reason = "frame scheduling, timer commits, plugin dispatch and asset upload in one loop"
+    )]
     fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
         if self.state.authenticated_player().is_some() {
+            self.plugins.start(&self.state);
             let now = Instant::now();
             let mut advanced = false;
-            let mut steps = 0;
+            let mut steps: u32 = 0;
             while now >= self.next_step && steps < 5 {
                 steps += 1;
                 advanced = true;
@@ -1099,6 +1114,9 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                     Err(error) => eprintln!("client cycle: {error}"),
                 }
                 self.next_step += STEP;
+            }
+            if advanced {
+                self.plugins.advance(&self.state, steps);
             }
             if now >= self.next_step {
                 self.next_step = now + STEP;
