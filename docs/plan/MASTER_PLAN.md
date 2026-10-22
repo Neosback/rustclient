@@ -2,6 +2,13 @@
 
 This plan expands `SPEC-0010` into execution-sized work packages. Specs remain the normative behavioral source. This file defines sequencing, expected artifacts, and checkpoint evidence.
 
+## Current revision-240 execution status
+
+[Revision-240 delivery](REVISION-240-delivery.md) records the consolidated source
+map, actual implementation gaps, branch decisions and next vertical slices.
+Follow it alongside the normative specs; the historic checkpoint list below is
+not a claim that browser gameplay, plugins or rendering parity are delivered.
+
 ## Offline title milestone
 
 The user-approved [SPEC-0013](../specs/SPEC-0013-offline-title.md) vertical slice

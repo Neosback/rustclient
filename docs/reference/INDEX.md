@@ -2,64 +2,40 @@
 
 This index tells humans and coding agents where to look before reinventing OSRS-style behavior. Reference sources are evidence only; RustClient specs and code remain authoritative.
 
-## RustOSRS snapshot
+## Revision-240 source map
 
-Path: `references/rustosrs/`
+Read [the revision-240 integration guide](REVISION-240.md) before protocol, cache,
+rendering or plugin work. The client target is OpenRune `240.2`; a nearby source
+revision is evidence, not a compatibility declaration.
 
-Use the pinned snapshot for behavior/provenance research. Never assume its architecture should be copied into RustClient.
+| Source | Location | Use and limits |
+| --- | --- | --- |
+| RuneLite / deob 235 | `references/RuneLite-melxin/` | Primary executable client behavior: model transforms, normal merging, offsets, skinning, scene order, camera, widgets, scripts, menus. Plugin ergonomics and feature ideas. `buildSrc/.../Dependencies.kt` explicitly declares 235; recheck layouts changed by 240. |
+| rsprox | `references/rsprox-master/` | **Both client and server packet tables/codecs**, byte transforms, framing and proxy diagnostics. Supplied OSRS modules reach 235, not 240. `incoming` means client-to-server; `outgoing` means server-to-client. |
+| OpenRune development server | `/Users/tylercovalt/Desktop/OpenRune Project/OpenRune-Server` | Actual server behavior and cache for the target. Pins `net.rsprot:osrs-240-*` `1.0.0-ALPHA-20260825`; those source JARs provide exact 240 wire evidence. See existing protocol fixture provenance. |
+| OpenRune FileStore | `/Users/tylercovalt/Documents/OpenRune-FileStore-main` | Cache definition/opcode, container and model decoder research. Verify individual 240 layouts against actual cache and deob; presence of a codec does not prove every 240 format is supported. External local source, not yet vendored. |
+| RustOSRS | `references/rustosrs/` | Pinned Rust cache/scene/rendering research, coordinate conventions, model offsets, transforms, neighboring normal merges and Reference GPU oracle. Port semantic rules into RustClient; do not adopt editor enhancements as OSRS behavior. |
 
-### Rust editor / Rust implementation
+The separate RuneLite and rsprox copies are vendored Git trees, not submodules.
+Their exact versions are the trees in the RustClient commit; `cargo run -p xtask
+-- references status` reports and checks all three in-repository sources.
+`references sync` initializes only the RustOSRS submodule and then checks all
+sources; it never downloads or advances the vendored copies.
 
-Path: `references/rustosrs/crates/`
+Selected source SHA-256 values and local source roots are recorded in
+[source-manifest.json](source-manifest.json). This is research provenance, not
+runtime configuration. External source entries pin only the named files, not an
+entire server/FileStore checkout. Work remains independent of those local paths.
 
-Useful for:
+The original supplied copies remain available at:
 
-- cache/archive decoding,
-- terrain and tile semantics,
-- scene construction,
-- object placement,
-- models and model identity,
-- textures/materials,
-- animations,
-- coordinates and region behavior,
-- classic/HD rendering research,
-- deterministic fixture ideas.
+- RuneLite: `/Users/tylercovalt/Documents/ChatGPT/RSPSi-resources/RuneLite-melxin`
+- rsprox: `/Users/tylercovalt/Documents/rsprox-master`
+- RustOSRS: `/Users/tylercovalt/Documents/RustOSRS`
 
-When porting behavior, find the owning RustClient crate first. The editor's types are not RustClient API types.
-
-### RuneLite reference
-
-Path: `references/rustosrs/RuneLite-melxin/`
-
-Useful for:
-
-- client-visible behavior,
-- widgets/interfaces,
-- client scripts,
-- varps/varbits,
-- menu/action semantics,
-- player/NPC state presentation,
-- animation behavior,
-- plugin lifecycle and developer-experience ideas,
-- API naming/behavior comparisons.
-
-Do not reproduce Java-specific architecture, classloader assumptions, Guice wiring or mutable-client internals merely for parity.
-
-### OpenRune server reference
-
-Path: `references/rustosrs/OpenRune-Server-main/`
-
-Useful for:
-
-- revision-240-era private-server behavior,
-- entity synchronization semantics,
-- update masks,
-- region/state expectations,
-- cache assumptions,
-- vars/widgets where server behavior matters,
-- packet/login/protocol research when networking work begins.
-
-Networking is intentionally deferred. Until then, use OpenRune primarily to validate semantic expectations and create fixtures/replays.
+Older checkpoints cite RuneLite and OpenRune bundled inside `references/rustosrs/`.
+Those citations remain valid for their recorded snapshot. New research should use
+the source map above and record the specific files/revision used.
 
 ## CP1 semantic-model evidence
 

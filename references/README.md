@@ -12,14 +12,26 @@ This directory contains pinned external source trees used as implementation evid
 
 The submodule gitlink is the single source of truth for the pinned reference commit.
 
+## Direct RuneLite and rsprox snapshots
+
+`references/RuneLite-melxin` and `references/rsprox-master` are vendored trees
+recorded by the parent RustClient commit, not submodules. RuneLite declares OSRS
+235; the supplied rsprox OSRS modules reach 235 and include **both client and
+server** packet information. Cross-check revision changes against OpenRune's
+selected rsprot 240 sources. Neither copy is a declaration of 240 compatibility.
+
+OpenRune FileStore and the actual development server are additional local,
+read-only evidence. Their locations, purposes and selected file hashes are in
+[`docs/reference/INDEX.md`](../docs/reference/INDEX.md) and its source manifest.
+
 ## Commands
 
 ```text
-cargo xtask references sync
-cargo xtask references status
+cargo run -p xtask -- references sync
+cargo run -p xtask -- references status
 ```
 
-`sync` initializes/updates the submodule to the exact commit recorded by RustClient. `status` compares the checked-out reference commit with the gitlink recorded by the current RustClient commit.
+`sync` initializes/updates the submodule to the exact commit recorded by RustClient. `status` compares the RustOSRS checkout with its gitlink and verifies that the two vendored trees match the current RustClient commit.
 
 Do not use `git submodule update --remote` during normal implementation work. Updating the reference snapshot must be an explicit reviewed change to the RustClient gitlink.
 

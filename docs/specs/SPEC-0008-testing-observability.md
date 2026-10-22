@@ -8,10 +8,10 @@ Render parity and the cap on test volume are governed by [ADR-0004](../adr/ADR-0
 
 - unit tests for binary primitives, coordinates, value objects, state transitions,
 - property/fuzz tests for parsers/framing and deterministic transformations,
-- golden fixtures for protocol/cache/script/render semantics,
-- subsystem integration tests,
+- golden fixtures for protocol/cache/script semantics,
+- focused subsystem integration tests,
 - deterministic replay tests,
-- native/web parity tests,
+- small native/web semantic contract checks,
 - end-to-end private-server fixture tests only after lower layers are stable.
 
 ## Fixtures

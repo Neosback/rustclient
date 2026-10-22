@@ -4,7 +4,14 @@ RustClient is a greenfield OSRS-style client platform for private servers. The g
 
 ## Status
 
-The desktop client loads a local JS5 cache and renders an animated login screen using real cache sprites and bitmap fonts. The opt-in OpenRune 240.2 profile authenticates against the development server and receives initial player placement. After placement it loads and renders real cached terrain and static location models around spawn. Live entities/movement, full texture materials, widgets and CS2 remain deferred. No production protocol, renderer, or plugin ABI is considered stable yet.
+The desktop client loads a local JS5 cache, presents the login screen and connects
+using the opt-in OpenRune 240.2 profile. It decodes cached terrain/location models,
+a gameframe/minimap and initial live player/NPC update families. NPC and worn-item
+assets load on demand, including cached-model skeletal animation support. Classic
+render parity, complete movement/actions, widgets/CS2 and plugin execution remain
+unfinished. The browser app currently presents a bootstrap canvas; shared crates
+compile for Wasm, but browser gameplay/cache import/transport are not delivered.
+No production protocol, renderer or plugin ABI is considered stable yet.
 
 The first implementation compatibility target is revision `240`, while the architecture is designed to support additional validated revisions/profiles later.
 
@@ -16,7 +23,7 @@ The first implementation compatibility target is revision `240`, while the archi
 - Server/revision differences live behind explicit profiles/codecs, not scattered conditionals.
 - Plugins depend on a versioned public API, never internal crate types.
 - WebAssembly Component Model/WIT is the intended cross-platform plugin ABI.
-- Architecture is enforced by crate ownership, tests, and eventually `xtask` dependency checks.
+- Architecture follows crate ownership and a small semantic/codec suite; rendering has one manual acceptance gate when complete (ADR-0004).
 - Specs and ADRs precede large implementation changes.
 
 ## Reference sources
@@ -33,7 +40,12 @@ Verify the exact pinned checkout with:
 cargo run -p xtask -- references status
 ```
 
-The reference tree is not part of the RustClient Cargo workspace and is not architectural source of truth.
+The reference trees are outside the RustClient Cargo workspace. Direct RuneLite
+235 and rsprox snapshots now supplement the RustOSRS submodule. rsprox supplies
+both client and server packet evidence; OpenRune and its pinned rsprot sources
+resolve revision-240 differences. OpenRune FileStore supplies additional cache
+opcode/decoder evidence. See [the integration guide](docs/reference/REVISION-240.md)
+and [the current delivery plan](docs/plan/REVISION-240-delivery.md).
 
 Start with [`ARCHITECTURE.md`](ARCHITECTURE.md), [`docs/specs/README.md`](docs/specs/README.md), and [`docs/reference/INDEX.md`](docs/reference/INDEX.md).
 
@@ -49,7 +61,7 @@ Existing User opens the credential form. Use a new dev-server username of at mos
 12 characters to create a disposable account. The form retains the reference
 320/20 character editing limits; server account policy can reject longer names.
 Login verifies the 23 desktop archive CRCs against the actual JS5 service, completes
-RSA/XTEA/ISAAC and proof of work, and opens a static preview of the cached spawn region. Disconnect or Escape ends the session. Passwords are erased after
+RSA/XTEA/ISAAC and proof of work, and opens the cached spawn region. Disconnect or Escape ends the session. Passwords are erased after
 handoff and are excluded from preferences, semantic state, replay and diagnostics.
 
 The script selects the explicit `openrune-240` cache repack adapter (including a reported stale object-archive size hint), and supplies `--server-profile openrune-240.2` and `--rsa-public-key PATH`;
@@ -58,7 +70,14 @@ native transport accepts IP literals or `localhost`; a DNS resolver and browser
 relay are later adapters. The separate Desktop/LIVE snapshot is **not** the same
 cache as this server's modified LIVE cache. Do not substitute its checksums.
 
-The authenticated world preview decodes the normal 104×104 window around the server's map anchor. Right-drag or arrows orbit; wheel zooms; Home resets; F5 recreates GPU resources from retained CPU assets. A gold marker shows initial placement. Objects use static geometry, with average texture colors and flat lighting. Var-driven morphing objects are deferred. Ongoing player/NPC updates, movement, instances, widgets and scripts remain unimplemented. See [the spawn-scene checkpoint](docs/plan/SPAWN-scene.md) for exact evidence and limits.
+The world projection decodes the normal 104×104 window around the server's map
+anchor. Camera input, cached scenery, variable-driven location changes, textures,
+entity assets and gameframe work are present; full reference parity is unverified.
+F5 recreates GPU resources from retained CPU assets. Instances, complete entity
+movement/animation selection, interactions, widgets and scripts remain unfinished.
+The original [spawn-scene checkpoint](docs/plan/SPAWN-scene.md) describes the earlier
+static slice; [SPEC-0016](docs/specs/SPEC-0016-reference-scenery-parity.md) and
+[SPEC-0017](docs/specs/SPEC-0017-gameframe-entities.md) define later work.
 
 Capture fixed-camera GPU frames and verify byte-identical reconstruction from the server cache without connecting:
 

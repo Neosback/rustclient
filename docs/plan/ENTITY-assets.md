@@ -25,15 +25,19 @@ Delivered: NPCs and equipped players are meshed from real cache definitions.
 
 ## Verification actually run
 
-`entity_probe` against the OpenRune LIVE cache: NPC definitions 0-16000 (including transformation
-targets and varbits) and item definitions 0-32000 decode with 0 failures. Workspace fmt, check,
+Correction during branch consolidation: the original `entity_probe` requested NPC
+IDs 0–16000 and item IDs 0–32000 in a single request, but the loader capped each
+requested family at 4096. The old result therefore did **not** establish full
+range coverage. The corrected batched diagnostic and current evidence are in
+[the delivery record](REVISION-240-delivery.md). Workspace fmt, check,
 strict Clippy, tests and the wasm checks pass. Not run: live login observing NPCs, and the
 parity gate.
 
 ## Known gaps
 
-- Cached-model (skeletal) sequences are drawn in rest pose and reported as advisories. About 7% of
-  NPC-referenced sequences are skeletal, concentrated in recent content.
+- Superseded by the integrated cached-model decode/pose implementation; visual
+  skeletal parity remains unverified. Decode/preparation failures still report
+  advisories and must not count as successful parity.
 - NPC/player animation state (walk/run/turn selection) is not driven yet; entities use their
   idle or server-provided sequence.
 - Entity geometry is rebuilt on the main thread every client cycle.

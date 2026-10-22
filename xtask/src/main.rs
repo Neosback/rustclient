@@ -46,7 +46,7 @@ fn print_help() {
     println!(
         "RustClient xtask\n\n\
          Commands:\n\
-           references status  verify pinned reference checkout\n\
+           references status  verify pinned submodule and vendored reference trees\n\
            references sync    initialize/update pinned reference checkout\n\n\
            cache inspect --cache-dir PATH --cache-profile osrs-240  validate title assets\n\n\
          Planned commands: architecture, check, plugin, fixtures"
@@ -89,11 +89,53 @@ fn references_status() -> Result<(), String> {
             "reference checkout is out of sync: expected {expected}, found {actual}; run `cargo xtask references sync`"
         ));
     }
+    let changes = git_stdout(&[
+        "-C",
+        REFERENCE_PATH,
+        "status",
+        "--porcelain",
+        "--untracked-files=normal",
+    ])?;
+    if !changes.is_empty() {
+        return Err(format!(
+            "{REFERENCE_PATH} has local reference changes: {changes}"
+        ));
+    }
 
     println!("RustOSRS reference OK");
     println!("  path:     {REFERENCE_PATH}");
     println!("  commit:   {actual}");
     println!("  origin:   {origin}");
+    for (path, description) in [
+        ("references/RuneLite-melxin", "RuneLite/deob 235"),
+        (
+            "references/rsprox-master",
+            "rsprox client/server packet evidence through OSRS 235",
+        ),
+    ] {
+        let entry = git_stdout(&["ls-tree", "HEAD", "--", path])?;
+        let fields: Vec<_> = entry.split_whitespace().collect();
+        if fields.len() != 4 || fields[0] != "040000" || fields[1] != "tree" {
+            return Err(format!(
+                "{path} is not a vendored tree in the current commit"
+            ));
+        }
+        let changes = git_stdout(&[
+            "status",
+            "--porcelain",
+            "--untracked-files=normal",
+            "--",
+            path,
+        ])?;
+        if !changes.is_empty() {
+            return Err(format!(
+                "{path} differs from the committed reference snapshot: {changes}"
+            ));
+        }
+        println!("{description} reference OK");
+        println!("  path:     {path}");
+        println!("  git tree: {}", fields[2]);
+    }
     Ok(())
 }
 

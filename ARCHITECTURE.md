@@ -6,6 +6,17 @@ This document is the compact architectural map. Detailed normative requirements 
 
 RustClient is an OSRS-style client platform for private servers. It is not designed around a single server revision. A server is described by explicit protocol/cache/capability profiles.
 
+## Initial delivery target
+
+OpenRune 240.2 is the first concrete server target. The product aims for
+RuneLite-class client features with simpler plugin authoring and the same core
+on desktop and browser Wasm. RuneLite/deob 235 and both directions of rsprox
+packet codecs are behavioral evidence; OpenRune's selected rsprot 240 sources
+and cache resolve revision differences. OpenRune FileStore supplies cache decoder
+research; RustOSRS supplies additional scene/GPU evidence. See
+[the source map](docs/reference/INDEX.md) and
+[delivery status](docs/plan/REVISION-240-delivery.md).
+
 ## Core rule
 
 `GameState` is the single authoritative semantic state of the running client.

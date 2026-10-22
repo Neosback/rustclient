@@ -114,8 +114,13 @@ Private servers may expose negotiated extensions. Extension IDs/namespaces must 
 
 ## Reference evidence
 
-Pinned source under `references/rustosrs/` may be used to research revision behavior, RuneLite semantics and OpenRune server expectations. Reference source is evidence only; RustClient specs and tests remain authoritative.
-
+Use [the canonical reference map](../reference/INDEX.md) for exact source locations.
+The direct rsprox snapshot includes both client-to-server and server-to-client
+packet tables/codecs through OSRS 235. RuneLite's supplied deob is also 235.
+Cross-check every affected 240 ID/length/transform/mask against the actual OpenRune
+server and its selected rsprot 240 source artifacts; a nearby revision must never
+be registered as supported on resemblance alone. All sources remain read-only
+evidence.
 When behavior is ported from a reference, the implementation should capture the semantic rule in focused tests/fixtures rather than relying on continued source-code resemblance.
 
 ## Testing
