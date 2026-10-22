@@ -8,6 +8,10 @@
     clippy::manual_midpoint,
     reason = "reference animation root-finder arithmetic order is preserved for parity-sensitive f32 rounding"
 )]
+#![allow(
+    clippy::assert_is_empty,
+    reason = "scene unit tests intentionally assert projected geometry buffers are empty"
+)]
 mod animation;
 mod color;
 pub mod entity_mesh;
