@@ -131,7 +131,7 @@ mod tests {
         assert_eq!(load_title_preferences(&store).unwrap(), preferences);
         preferences.remember_username = false;
         save_title_preferences(&store, &preferences).unwrap();
-        assert!(load_title_preferences(&store).unwrap().username.is_empty());
+        assert_eq!(load_title_preferences(&store).unwrap().username, "");
         assert!(
             !String::from_utf8(store.0.borrow().clone().unwrap())
                 .unwrap()
