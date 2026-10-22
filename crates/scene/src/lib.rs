@@ -1,5 +1,13 @@
 //! Immutable scene asset assembly and disposable CPU mesh projection.
 #![forbid(unsafe_code)]
+#![allow(
+    clippy::chunks_exact_to_as_chunks,
+    reason = "reference terrain face rows use validated fixed-width four-byte records"
+)]
+#![allow(
+    clippy::manual_midpoint,
+    reason = "reference animation root-finder arithmetic order is preserved for parity-sensitive f32 rounding"
+)]
 mod animation;
 mod color;
 pub mod entity_mesh;
