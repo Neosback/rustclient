@@ -6,7 +6,7 @@ mod scene;
 
 use rustclient_application::{
     DeterministicRandomSource, RandomSeed, SplitMix64Random, load_title, load_title_preferences,
-    save_title_preferences,
+    prepare_game_intent, save_title_preferences,
 };
 use rustclient_cache::TitleAssets;
 use rustclient_game_state::{GameState, SemanticOperation};
@@ -78,7 +78,7 @@ struct NativeApp {
     failed: bool,
     load_status: String,
     connection_options: Option<network::ConnectionOptions>,
-    connection: Option<rustclient_platform_native::ConnectionCancellation>,
+    connection: Option<network::ConnectionHandle>,
     connection_generation: u64,
     proxy: winit::event_loop::EventLoopProxy<LoadEvent>,
 }
@@ -217,7 +217,7 @@ impl NativeApp {
                     self.connection_generation,
                     self.proxy.clone(),
                 ) {
-                    Ok(cancel) => self.connection = Some(cancel),
+                    Ok(connection) => self.connection = Some(connection),
                     Err(error) => {
                         eprintln!("connection worker: {error}");
                         let _ = self
@@ -273,9 +273,21 @@ impl NativeApp {
         let destination = pick_terrain(&loaded.asset, plane, camera, viewport, pointer)?;
         Some(GameFrameUi::walk_here_entry(destination).intent)
     }
-    fn accept_game_intent(intent: GameIntent) {
-        // P1.2 deliberately stops at the semantic boundary. P1.3 owns validation and encoding.
-        eprintln!("game intent ready (network deferred to P1.3): {intent:?}");
+    fn accept_game_intent(&mut self, intent: GameIntent) {
+        let outbound = match prepare_game_intent(&self.state, intent) {
+            Ok(outbound) => outbound,
+            Err(error) => {
+                eprintln!("game intent rejected: {error}");
+                return;
+            }
+        };
+        let Some(connection) = &self.connection else {
+            eprintln!("game intent rejected: connection worker is not available");
+            return;
+        };
+        if let Err(error) = connection.send(outbound) {
+            eprintln!("game intent send: {error}");
+        }
     }
     fn handle_game_left_click(
         &mut self,
@@ -304,7 +316,7 @@ impl NativeApp {
             }
         });
         if let Some(intent) = intent {
-            Self::accept_game_intent(intent);
+            self.accept_game_intent(intent);
         }
         operation
     }
