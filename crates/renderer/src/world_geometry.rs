@@ -59,7 +59,8 @@ impl GeometryGpu {
         self.transparent_count = u32::try_from(geometry.transparent.len())
             .map_err(|_| RenderError::World("alpha index count"))?;
         self.triangles.clear();
-        for (ordinal, triangle) in geometry.transparent.chunks_exact(3).enumerate() {
+        let (triangles, _) = geometry.transparent.as_chunks::<3>();
+        for (ordinal, triangle) in triangles.iter().enumerate() {
             let mut center = Vec3::ZERO;
             for &index in triangle {
                 let vertex = geometry
