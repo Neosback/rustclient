@@ -613,7 +613,11 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                     for failure in &assets.failures {
                         eprintln!("entity asset advisory: {failure}");
                     }
-                    self.scene.entity_catalog.merge(*assets);
+                    if let Some(loaded) = &self.scene.loaded {
+                        for failure in self.scene.entity_catalog.merge(&loaded.asset, *assets) {
+                            eprintln!("entity asset advisory: {failure}");
+                        }
+                    }
                 }
             }
             LoadEvent::SceneLoaded(_, _)

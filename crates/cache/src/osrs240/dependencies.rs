@@ -4,7 +4,7 @@ use crate::{
     Cache, FileId, GroupId, IndexId, Source,
     error::Result,
     reader::Reader,
-    world::{LegacyFrame, SequenceAsset, SkeletonTransform, TextureAsset, VarbitDefinition},
+    world::{LegacyFrame, SequenceAsset, Skeleton, TextureAsset, VarbitDefinition},
 };
 use rustclient_model::{SequenceId, TextureId, VarbitId};
 use rustclient_platform::ReadOnlyBlobs;
@@ -98,7 +98,7 @@ pub(super) fn textures<S: ReadOnlyBlobs>(
 pub(super) type Animations = (
     BTreeMap<SequenceId, SequenceAsset>,
     BTreeMap<u32, LegacyFrame>,
-    BTreeMap<u16, Vec<SkeletonTransform>>,
+    BTreeMap<u16, Skeleton>,
 );
 pub(super) fn animations<S: ReadOnlyBlobs>(
     cache: &Cache<S>,
@@ -166,7 +166,7 @@ pub(super) fn animations<S: ReadOnlyBlobs>(
             hash_file(digest, source, &bytes);
             e.insert(animation::skeleton(&bytes, source)?);
         }
-        frames.insert(id, animation::frame(bytes, &skeletons[&skeleton], source)?);
+        frames.insert(id, animation::frame(bytes, &skeletons[&skeleton].transforms, source)?);
     }
     Ok((sequences, frames, skeletons))
 }
