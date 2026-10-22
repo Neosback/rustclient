@@ -172,28 +172,83 @@ pub fn decode_bootstrap(packet: &GamePacket) -> Result<Bootstrap> {
         area,
     })
 }
+
+/// Validated game-click movement fields for this wire profile.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct WalkRequest {
+    x: u16,
+    z: u16,
+    key_combination: u8,
+}
+
 /// Narrow outbound semantic intents supported by this profile.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ClientIntent {
     WindowStatus { width: u16, height: u16 },
     KeepAlive,
+    Walk(WalkRequest),
 }
 impl ClientIntent {
+    /// Construct an ordinary main-viewport walk request from semantic world coordinates.
+    ///
+    /// Revision 240 uses 14-bit absolute world coordinates in the client even though the
+    /// packet fields are two bytes wide. Modifier-key movement is intentionally deferred
+    /// until the platform-neutral input contract carries that semantic choice.
+    ///
+    /// # Errors
+    /// Rejects coordinates outside the revision-240 world-coordinate range.
+    pub fn walk_to(destination: WorldTile) -> Result<Self> {
+        let coordinate = |value: i32| {
+            if !(0..=16_383).contains(&value) {
+                return Err(ProtocolError::new(
+                    "move gameclick encode",
+                    "world coordinate outside revision-240 range",
+                ));
+            }
+            u16::try_from(value).map_err(|_| {
+                ProtocolError::new(
+                    "move gameclick encode",
+                    "world coordinate outside revision-240 range",
+                )
+            })
+        };
+        Ok(Self::Walk(WalkRequest {
+            x: coordinate(destination.x)?,
+            z: coordinate(destination.y)?,
+            key_combination: 0,
+        }))
+    }
+
     #[must_use]
     pub fn encode(self, cipher: &mut Isaac) -> Vec<u8> {
-        let (opcode, payload) = match self {
-            Self::KeepAlive => (99, vec![]),
+        let (opcode, variable_byte, payload) = match self {
+            Self::KeepAlive => (99, false, vec![]),
             Self::WindowStatus { width, height } => {
                 let mut p = vec![2];
                 p.extend_from_slice(&width.to_be_bytes());
                 p.extend_from_slice(&height.to_be_bytes());
-                (44, p)
+                (44, false, p)
+            }
+            Self::Walk(request) => {
+                // rsprot osrs-240 evidence at commit 37c4eb46e4731ae6764343d136f3076a50567ec1:
+                // MOVE_GAMECLICK=102, VAR_BYTE body reads z g2Alt3, key g1Alt2, x g2Alt3.
+                let mut p = Vec::with_capacity(5);
+                p.push(request.z.to_le_bytes()[0].wrapping_add(128));
+                p.push(request.z.to_be_bytes()[0]);
+                p.push(request.key_combination.wrapping_neg());
+                p.push(request.x.to_le_bytes()[0].wrapping_add(128));
+                p.push(request.x.to_be_bytes()[0]);
+                (102, true, p)
             }
         };
-        let mut bytes = vec![u8::wrapping_add(
+        let mut bytes = Vec::with_capacity(1 + usize::from(variable_byte) + payload.len());
+        bytes.push(u8::wrapping_add(
             opcode,
             cipher.next_word().to_le_bytes()[0],
-        )];
+        ));
+        if variable_byte {
+            bytes.push(u8::try_from(payload.len()).expect("bounded client packet payload"));
+        }
         bytes.extend_from_slice(&payload);
         bytes
     }
@@ -326,6 +381,33 @@ impl SessionCodec {
             }
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod client_intent_tests {
+    use super::*;
+
+    #[test]
+    fn revision_240_move_gameclick_matches_rsprot_golden() {
+        let destination = WorldTile::new(3_200, 3_201, Plane::MIN);
+        let intent = ClientIntent::walk_to(destination).expect("valid revision-240 coordinate");
+        let mut cipher = Isaac::new([0; 4]);
+
+        assert_eq!(
+            intent.encode(&mut cipher),
+            vec![0x59, 5, 0x01, 0x0c, 0, 0x00, 0x0c]
+        );
+    }
+
+    #[test]
+    fn revision_240_move_gameclick_rejects_unrepresentable_world_coordinates() {
+        assert!(
+            ClientIntent::walk_to(WorldTile::new(-1, 3_200, Plane::MIN)).is_err()
+        );
+        assert!(
+            ClientIntent::walk_to(WorldTile::new(16_384, 3_200, Plane::MIN)).is_err()
+        );
     }
 }
 
