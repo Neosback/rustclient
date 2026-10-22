@@ -114,26 +114,32 @@ fn pointer_ray(
     Some((origin, direction))
 }
 
-fn ray_triangle(origin: Vec3, direction: Vec3, a: Vec3, b: Vec3, c: Vec3) -> Option<f32> {
-    let edge1 = b - a;
-    let edge2 = c - a;
-    let p = direction.cross(edge2);
-    let determinant = edge1.dot(p);
+fn ray_triangle(
+    origin: Vec3,
+    direction: Vec3,
+    vertex_a: Vec3,
+    vertex_b: Vec3,
+    vertex_c: Vec3,
+) -> Option<f32> {
+    let edge_ab = vertex_b - vertex_a;
+    let edge_ac = vertex_c - vertex_a;
+    let direction_cross_ac = direction.cross(edge_ac);
+    let determinant = edge_ab.dot(direction_cross_ac);
     if determinant.abs() <= HIT_EPSILON {
         return None;
     }
-    let inverse = determinant.recip();
-    let offset = origin - a;
-    let u = offset.dot(p) * inverse;
-    if !(0.0..=1.0).contains(&u) {
+    let inverse_determinant = determinant.recip();
+    let origin_offset = origin - vertex_a;
+    let barycentric_u = origin_offset.dot(direction_cross_ac) * inverse_determinant;
+    if !(0.0..=1.0).contains(&barycentric_u) {
         return None;
     }
-    let q = offset.cross(edge1);
-    let v = direction.dot(q) * inverse;
-    if v < 0.0 || u + v > 1.0 {
+    let offset_cross_ab = origin_offset.cross(edge_ab);
+    let barycentric_v = direction.dot(offset_cross_ab) * inverse_determinant;
+    if barycentric_v < 0.0 || barycentric_u + barycentric_v > 1.0 {
         return None;
     }
-    let distance = edge2.dot(q) * inverse;
+    let distance = edge_ac.dot(offset_cross_ab) * inverse_determinant;
     (distance > HIT_EPSILON).then_some(distance)
 }
 
@@ -144,11 +150,17 @@ mod tests {
 
     #[test]
     fn triangle_hit_is_two_sided_and_rejects_points_behind_ray() {
-        let a = Vec3::new(-1.0, 0.0, 2.0);
-        let b = Vec3::new(1.0, 0.0, 2.0);
-        let c = Vec3::new(0.0, 1.0, 2.0);
-        assert_eq!(ray_triangle(Vec3::ZERO, Vec3::Z, a, b, c), Some(2.0));
-        assert_eq!(ray_triangle(Vec3::ZERO, -Vec3::Z, a, b, c), None);
+        let vertex_a = Vec3::new(-1.0, 0.0, 2.0);
+        let vertex_b = Vec3::new(1.0, 0.0, 2.0);
+        let vertex_c = Vec3::new(0.0, 1.0, 2.0);
+        assert_eq!(
+            ray_triangle(Vec3::ZERO, Vec3::Z, vertex_a, vertex_b, vertex_c),
+            Some(2.0)
+        );
+        assert_eq!(
+            ray_triangle(Vec3::ZERO, -Vec3::Z, vertex_a, vertex_b, vertex_c),
+            None
+        );
     }
 
     #[test]
