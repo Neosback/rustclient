@@ -21,7 +21,14 @@ fn injected_seed_and_explicit_steps_freeze_flames_through_noise_reseed() {
         for _ in 0..300 {
             flames.step(&runes, || random.next_sample().get());
         }
-        assert!(flames.pixels().chunks_exact(4).any(|pixel| pixel[3] > 0));
+        assert!(
+            flames
+                .pixels()
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .any(|pixel| pixel[3] > 0)
+        );
         format!("{:x}", Sha256::digest(flames.pixels()))
     };
     assert_eq!(run(), run());
