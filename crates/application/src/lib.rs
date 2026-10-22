@@ -15,5 +15,8 @@ pub use title::{load_title, load_title_preferences, save_title_preferences};
 mod connection;
 pub use connection::ConnectionDecoder;
 
+mod intent;
+pub use intent::{GameIntentError, prepare_game_intent};
+
 mod scene;
 pub use scene::{LoadedScene, load_scene, reproject_scene};
