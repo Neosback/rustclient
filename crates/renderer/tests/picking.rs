@@ -45,12 +45,6 @@ fn center_pointer_selects_expected_visible_flat_tile() {
         z: 320,
         terrain_drop: 0,
     });
-    let picked = pick_terrain(
-        &scene,
-        Plane::MIN,
-        camera,
-        [765, 503],
-        [382.5, 251.5],
-    );
+    let picked = pick_terrain(&scene, Plane::MIN, camera, [765, 503], [382.5, 251.5]);
     assert_eq!(picked, Some(WorldTile::new(3, 3, Plane::MIN)));
 }
