@@ -1,6 +1,8 @@
 //! Scene geometry generation for live player and NPC entities.
 
-use crate::{Result, SceneAsset, SceneError, SceneGeometry, animation::BakedAnimation, lighting::Light};
+use crate::{
+    Result, SceneAsset, SceneError, SceneGeometry, animation::BakedAnimation, lighting::Light,
+};
 use rustclient_cache::{
     osrs240::{
         entity_assets::{EntityAssets, EntityRequest},
@@ -9,8 +11,8 @@ use rustclient_cache::{
         player_model::{body_recolors, build_player_base},
     },
     world::{
-        ItemDefinition, LegacyFrame, NpcDefinition, SequenceAsset, Skeleton,
-        StaticModel, VarbitDefinition,
+        ItemDefinition, LegacyFrame, NpcDefinition, SequenceAsset, Skeleton, StaticModel,
+        VarbitDefinition,
     },
 };
 use rustclient_game_state::{NpcEntity, PlayerEntity, WorldEntitiesState};
@@ -249,8 +251,7 @@ fn pose_model(
         let Some(animation) = catalog.cached_animations.get(&animation) else {
             return Ok(());
         };
-        let Some(frame) = crate::animation::skeletal_frame(sequence, u64::from(cycle), None)
-        else {
+        let Some(frame) = crate::animation::skeletal_frame(sequence, u64::from(cycle), None) else {
             return Ok(());
         };
         return crate::animation::pose_skeletal(

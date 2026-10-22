@@ -166,7 +166,10 @@ pub(super) fn animations<S: ReadOnlyBlobs>(
             hash_file(digest, source, &bytes);
             e.insert(animation::skeleton(&bytes, source)?);
         }
-        frames.insert(id, animation::frame(bytes, &skeletons[&skeleton].transforms, source)?);
+        frames.insert(
+            id,
+            animation::frame(bytes, &skeletons[&skeleton].transforms, source)?,
+        );
     }
     Ok((sequences, frames, skeletons))
 }

@@ -9,8 +9,8 @@ use crate::{
         VarbitDefinition,
     },
 };
-use std::collections::BTreeMap;
 use rustclient_model::{SequenceId, VarpId};
+use std::collections::BTreeMap;
 pub(super) fn sequence(bytes: &[u8], id: SequenceId, source: Source) -> Result<SequenceAsset> {
     let mut r = Reader::new(bytes, source);
     let mut out = SequenceAsset {
@@ -98,13 +98,20 @@ pub(super) fn skeleton(bytes: &[u8], source: Source) -> Result<Skeleton> {
 const BONE_VARIANT_BYTES: usize = (16 + 3) * 4;
 fn bone_hierarchy(r: &mut Reader<'_>, count: usize, source: Source) -> Result<BoneHierarchy> {
     let variants = r.u8()?;
+    if count > 1024 || variants == 0 {
+        return Err(source.error("skeleton", "invalid or excessive bone hierarchy"));
+    }
     let per_bone = 2 + usize::from(variants) * BONE_VARIANT_BYTES;
     if r.remaining() < count * per_bone {
         return Err(source.error("skeleton", "bone table exceeds resource"));
     }
     let mut bones = Vec::with_capacity(count);
     for _ in 0..count {
-        let parent = usize::try_from(r.i16()?).ok();
+        let encoded_parent = r.i16()?;
+        if encoded_parent < -1 {
+            return Err(source.error("skeleton", "invalid negative bone parent"));
+        }
+        let parent = usize::try_from(encoded_parent).ok();
         if parent.is_some_and(|p| p >= count) {
             return Err(source.error("skeleton", "bone parent outside hierarchy"));
         }
@@ -113,6 +120,9 @@ fn bone_hierarchy(r: &mut Reader<'_>, count: usize, source: Source) -> Result<Bo
             let mut matrix: Matrix4 = [0.; 16];
             for value in &mut matrix {
                 *value = r.f32()?;
+                if !value.is_finite() {
+                    return Err(source.error("skeleton", "non-finite bind matrix"));
+                }
             }
             for _ in 0..3 {
                 r.f32()?;
@@ -182,7 +192,14 @@ fn curve(r: &mut Reader<'_>, source: Source) -> Result<Curve> {
             out_y: r.f32()?,
         });
     }
-    if keys.windows(2).any(|pair| pair[0].time > pair[1].time) {
+    if keys.iter().any(|key| {
+        [key.value, key.in_x, key.in_y, key.out_x, key.out_y]
+            .iter()
+            .any(|value| !value.is_finite())
+    }) {
+        return Err(source.error("cached animation", "non-finite keyframe"));
+    }
+    if keys.windows(2).any(|pair| pair[0].time >= pair[1].time) {
         return Err(source.error("cached animation", "keyframes out of order"));
     }
     Ok(Curve {
@@ -226,16 +243,28 @@ pub(super) fn cached_animation(
         vec![std::array::from_fn(|_| None); hierarchy.bones.len()];
     let mut transform_curves: BTreeMap<usize, Vec<Option<Curve>>> = BTreeMap::new();
     let mut has_alpha = false;
+    // Curves expand to one f32 per integer frame during projection preparation.
+    let mut sample_count = 0_usize;
     for _ in 0..curves {
         let kind = r.u8()?;
         let target = r.s_smart()?;
         let ordinal = r.u8()?;
         let value = curve(&mut r, source)?;
+        sample_count += usize::try_from(value.keys[value.keys.len() - 1].time - value.keys[0].time)
+            .map_err(|_| source.error("cached animation", "invalid curve range"))?
+            + 1;
+        if sample_count > 8 * 1024 * 1024 {
+            return Err(source.error("cached animation", "curve sample budget exceeded"));
+        }
         let slots = *KIND_SLOTS.get(usize::from(kind)).ok_or_else(|| {
             source.error("cached animation", format!("unknown curve kind {kind}"))
         })?;
-        let slot = channel_slot(ordinal)
-            .ok_or_else(|| source.error("cached animation", format!("unknown channel {ordinal}")))?;
+        let slot = channel_slot(ordinal).ok_or_else(|| {
+            source.error("cached animation", format!("unknown channel {ordinal}"))
+        })?;
+        if slot >= slots {
+            return Err(source.error("cached animation", "channel outside curve kind"));
+        }
         let target = usize::try_from(target)
             .map_err(|_| source.error("cached animation", "negative curve target"))?;
         if kind == KIND_BONE {
@@ -374,6 +403,51 @@ mod tests {
         assert_eq!(frame.transforms[1].values, [-1, 128, 128]);
         assert!(super::frame(&[0, 7, 2, 0, 8], &skel.transforms, source()).is_err());
         assert!(skeleton(&[0, 0, 1], source()).is_err());
+    }
+    #[test]
+    fn cached_animation_family_preserves_channels_and_rejects_malformed_resources() {
+        // Synthetic one-bone hierarchy and translation curve. Grammar evidence:
+        // RuneLite 235 Skeleton, class136, class146, class139 and class134.
+        let mut bones = vec![0, 0, 1, 1, 255, 255];
+        for index in 0..19 {
+            let value = if index < 16 && index % 5 == 0 {
+                1_f32
+            } else {
+                0_f32
+            };
+            bones.extend_from_slice(&value.to_be_bytes());
+        }
+        let skel = skeleton(&bones, source()).unwrap();
+        let mut bytes = vec![
+            1, 0, 7, 0, 0, 0, 0, 0, 0, 1, 1, 64, 4, 0, 1, 0, 0, 0, 0, 0, 0,
+        ];
+        for value in [12_f32, 0., 0., 0., 0.] {
+            bytes.extend_from_slice(&value.to_be_bytes());
+        }
+        let decoded = cached_animation(&bytes, &skel, source()).unwrap();
+        assert_eq!(decoded.skeleton, 7);
+        assert_eq!(
+            decoded.bone_curves[0][3].as_ref().unwrap().keys[0]
+                .value
+                .to_bits(),
+            12_f32.to_bits()
+        );
+        for end in 0..bytes.len() {
+            assert!(cached_animation(&bytes[..end], &skel, source()).is_err());
+        }
+        for (index, value) in [(7, 1), (10, 0), (11, 63), (12, 255)] {
+            let mut invalid = bytes.clone();
+            invalid[index] = value;
+            assert!(cached_animation(&invalid, &skel, source()).is_err());
+        }
+        let mut invalid = bytes;
+        invalid[21..25].copy_from_slice(&f32::NAN.to_be_bytes());
+        assert!(cached_animation(&invalid, &skel, source()).is_err());
+        // Parent zero makes the only bone its own ancestor.
+        bones[4..6].copy_from_slice(&0_i16.to_be_bytes());
+        assert!(skeleton(&bones, source()).is_err());
+        bones[4..6].copy_from_slice(&(-2_i16).to_be_bytes());
+        assert!(skeleton(&bones, source()).is_err());
     }
     #[test]
     fn morph_bit_bounds_and_unknown_opcodes_fail_with_context() {

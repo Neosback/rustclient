@@ -3,6 +3,10 @@
 //! The reference bakes every curve once at load into one sample per integer frame plus two
 //! out-of-range values. Baking here evaluates the same function at the same integer frames, so
 //! playback reads samples instead of solving cubic segments for every entity every cycle.
+#![expect(
+    clippy::float_cmp,
+    reason = "exact sentinels, integer times and branch comparisons reproduce the deob arithmetic"
+)]
 use rustclient_cache::world::{Curve, Extrapolation, Keyframe};
 
 /// One-third as the reference's single-precision constant.
@@ -266,10 +270,9 @@ fn horner(coefficients: &[f32], degree: usize, x: f32) -> f32 {
 /// polynomial is numerically zero. Bracketed roots are refined with Brent's method.
 #[expect(
     clippy::too_many_lines,
-    clippy::many_single_char_names,
-    clippy::too_many_arguments,
     clippy::cast_precision_loss,
-    clippy::cast_possible_wrap,
+    clippy::cast_sign_loss,
+    clippy::needless_range_loop,
     reason = "direct port of the reference root finder, keeping its variable roles"
 )]
 fn roots_in_range(
@@ -327,7 +330,15 @@ fn roots_in_range(
         derivative[k - 1] = normalized[k] * k as f32;
     }
     let mut turning = vec![0.0_f32; degree + 1];
-    let turning_count = roots_in_range(&derivative, degree - 1, low, false, high, false, &mut turning);
+    let turning_count = roots_in_range(
+        &derivative,
+        degree - 1,
+        low,
+        false,
+        high,
+        false,
+        &mut turning,
+    );
     if turning_count == -1 {
         return 0;
     }

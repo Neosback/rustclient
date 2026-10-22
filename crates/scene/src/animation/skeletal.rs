@@ -54,6 +54,9 @@ impl BakedAnimation {
         }
         let variant = usize::from(animation.variant);
         let parents: Vec<Option<usize>> = hierarchy.bones.iter().map(|b| b.parent).collect();
+        if parents.iter().flatten().any(|parent| *parent >= count) {
+            return Err(SceneError("bone parent outside hierarchy".into()));
+        }
         // Parents precede children: sort by chain depth. Cycles were rejected by the decoder.
         let depth = |mut bone: usize| {
             let mut depth = 0_usize;
@@ -79,13 +82,18 @@ impl BakedAnimation {
                 .bind
                 .get(variant)
                 .ok_or_else(|| SceneError("pose variant outside bone variants".into()))?;
-            bind_world[bone] = parents[bone].map_or(*bind, |p| matrix::multiply(bind, &bind_world[p]));
+            bind_world[bone] =
+                parents[bone].map_or(*bind, |p| matrix::multiply(bind, &bind_world[p]));
         }
         for bone in &hierarchy.bones {
             let bind = bone
                 .bind
                 .get(variant)
                 .ok_or_else(|| SceneError("pose variant outside bone variants".into()))?;
+            let determinant = matrix::determinant(bind);
+            if !determinant.is_finite() || determinant == 0. {
+                return Err(SceneError("singular or non-finite bind matrix".into()));
+            }
             defaults.push(BoneDefaults {
                 rotation: matrix::euler(&matrix::invert(bind)),
                 translation: [bind[12], bind[13], bind[14]],
@@ -97,9 +105,7 @@ impl BakedAnimation {
         let curves = animation
             .bone_curves
             .iter()
-            .map(|channels| {
-                std::array::from_fn(|i| channels[i].as_ref().map(BakedCurve::bake))
-            })
+            .map(|channels| std::array::from_fn(|i| channels[i].as_ref().map(BakedCurve::bake)))
             .collect();
         let alpha = animation
             .transform_curves
@@ -217,7 +223,8 @@ pub(crate) fn pose(
             clippy::cast_possible_truncation,
             reason = "the reference truncates the transformed coordinate toward zero"
         )]
-        let transformed = |a: f32, b: f32, c: f32, d: f32| (a * x + b * y + c * z + d * 1.0_f32) as i32;
+        let transformed =
+            |a: f32, b: f32, c: f32, d: f32| (a * x + b * y + c * z + d * 1.0_f32) as i32;
         *vertex = ModelPoint::new(
             transformed(sum[0], sum[4], sum[8], sum[12]),
             transformed(sum[1], sum[5], sum[9], sum[13]).wrapping_neg(),
@@ -243,12 +250,15 @@ fn apply_alpha(animation: &BakedAnimation, frame: i32, faces: &mut [ModelFace]) 
                 #[expect(
                     clippy::cast_possible_truncation,
                     clippy::cast_sign_loss,
-                    clippy::cast_precision_loss,
                     reason = "the reference adds in float, truncates, then clamps to a byte"
                 )]
                 let alpha = ((f32::from(base) + delta * 255.0) as i32).clamp(0, 255) as u8;
                 // 254 is the sentinel's bit pattern; the nearest distinct value is fully hidden.
-                face.alpha = if alpha == 254 { -1 } else { alpha.cast_signed() };
+                face.alpha = if alpha == 254 {
+                    -1
+                } else {
+                    alpha.cast_signed()
+                };
             }
         }
     }

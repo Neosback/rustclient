@@ -1,7 +1,7 @@
 //! Diagnostic: decode NPC dependencies on demand and mesh one NPC of each requested definition.
 use rustclient_cache::{
     Cache, CacheProfile,
-    osrs240::entity_assets::{EntityLoader, EntityRequest},
+    osrs240::entity_assets::{EntityAssets, EntityLoader, EntityRequest},
 };
 use rustclient_game_state::WorldEntitiesState;
 use rustclient_model::{NewNpc, NpcDefinitionId, NpcIndex, NpcInfoUpdate, Plane, WorldTile};
@@ -31,92 +31,116 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let scene = SceneAsset::new(assets, origin, 104, 104)?;
 
     let mut asset_loader = EntityLoader::new(CacheProfile::OpenRune240, scene.sources());
-    let request = EntityRequest {
-        npcs: npc_ids.iter().map(|id| NpcDefinitionId::new(*id)).collect(),
-        items: item_ids
-            .iter()
-            .map(|id| rustclient_model::ItemDefinitionId::new(*id))
-            .collect(),
-        ..EntityRequest::default()
-    };
+    let mut catalog = entity_mesh::EntityCatalog::default();
+    let mut failures = 0;
     let started = std::time::Instant::now();
-    let decoded = asset_loader.load(&cache, &request);
+    // Keep every request below the loader's batch limit; one large request would truncate.
+    for offset in (0..npc_ids.len().max(item_ids.len())).step_by(2048) {
+        let request = EntityRequest {
+            npcs: npc_ids
+                .iter()
+                .skip(offset)
+                .take(2048)
+                .map(|id| NpcDefinitionId::new(*id))
+                .collect(),
+            items: item_ids
+                .iter()
+                .skip(offset)
+                .take(2048)
+                .map(|id| rustclient_model::ItemDefinitionId::new(*id))
+                .collect(),
+            ..EntityRequest::default()
+        };
+        let decoded = asset_loader.load(&cache, &request);
+        report_batch(&decoded);
+        failures += decoded.failures.len();
+        for failure in &decoded.failures {
+            eprintln!("  decode failure: {failure}");
+        }
+        let pose_failures = catalog.merge(&scene, decoded);
+        failures += pose_failures.len();
+        for failure in pose_failures {
+            eprintln!("  pose failure: {failure}");
+        }
+    }
+    let triangles = mesh_batches(&scene, &catalog, &npc_ids)?;
     println!(
-        "items {} npcs {} models {} sequences {} frames {} skeletons {} failures {} in {:?}",
+        "requested NPCs {} items {}; entity triangles {triangles}; failures {failures}; elapsed {:?}",
+        npc_ids.len(),
+        item_ids.len(),
+        started.elapsed()
+    );
+    if failures > 0 {
+        return Err(format!("entity probe recorded {failures} asset/pose failures").into());
+    }
+    Ok(())
+}
+
+fn report_batch(decoded: &EntityAssets) {
+    println!(
+        "decoded items {} npcs {} models {} sequences {} frames {} skeletons {} failures {}",
         decoded.items.len(),
         decoded.npcs.len(),
         decoded.models.len(),
         decoded.sequences.len(),
         decoded.frames.len(),
         decoded.skeletons.len(),
-        decoded.failures.len(),
-        started.elapsed()
+        decoded.failures.len()
     );
+    for (id, sequence) in &decoded.sequences {
+        if let Some(animation) = sequence.skeletal {
+            println!("  skeletal sequence {id}: animation {animation}");
+        }
+    }
     println!(
-        "morphing npcs: {}, varbits loaded: {}",
+        "cached animations decoded {}; morphing npcs {}; varbits {}",
+        decoded.cached_animations.len(),
         decoded.npcs.values().filter(|n| n.morphs.is_some()).count(),
         decoded.varbits.len()
     );
-    let skeletal = decoded
-        .sequences
-        .values()
-        .filter_map(|s| s.skeletal)
-        .collect::<std::collections::BTreeSet<_>>();
-    println!(
-        "skeletal sequences: {} of {}; cached animations decoded {} of {} ids; bone skeletons {}",
-        decoded
-            .sequences
-            .values()
-            .filter(|s| s.skeletal.is_some())
-            .count(),
-        decoded.sequences.len(),
-        decoded.cached_animations.len(),
-        skeletal.len(),
-        decoded
-            .skeletons
-            .values()
-            .filter(|s| s.bones.is_some())
-            .count(),
-    );
-    for failure in decoded.failures.iter().take(40) {
-        println!("  failure: {failure}");
-    }
-    if decoded.failures.len() > 40 {
-        println!("  ... and {} more failures", decoded.failures.len() - 40);
-    }
-    let mut catalog = entity_mesh::EntityCatalog::default();
-    for failure in catalog.merge(&scene, decoded) {
-        println!("  pose failure: {failure}");
-    }
+}
 
-    let mut entities = WorldEntitiesState::default();
+fn mesh_batches(
+    scene: &SceneAsset,
+    catalog: &entity_mesh::EntityCatalog,
+    npc_ids: &[u32],
+) -> Result<usize, Box<dyn std::error::Error>> {
     let tile = WorldTile::new(3222, 3218, Plane::MIN);
-    let update = NpcInfoUpdate {
-        new_npcs: npc_ids
-            .iter()
-            .enumerate()
-            .map(|(i, id)| NewNpc {
-                index: NpcIndex::new(u32::try_from(i).unwrap_or(0)),
-                definition_id: NpcDefinitionId::new(*id),
-                delta_x: i32::try_from(i % 40).unwrap_or(0) - 20,
-                delta_y: 0,
-                orientation: 0,
-            })
-            .collect(),
-        ..NpcInfoUpdate::default()
-    };
-    entities.apply_npc_info(&update, tile);
+    let mut triangles = 0;
+    // Reuse a bounded projection rather than putting every cache definition into one world.
     let mut geometry = SceneGeometry::default();
-    entity_mesh::build_entities_geometry(
-        &scene,
-        &catalog,
-        &entities,
-        &std::collections::BTreeMap::new(),
-        &mut geometry,
-    )?;
-    println!(
-        "entity triangles: {}",
-        (geometry.opaque.len() + geometry.transparent.len()) / 3
-    );
-    Ok(())
+    for ids in npc_ids.chunks(32) {
+        let mut entities = WorldEntitiesState::default();
+        let update = NpcInfoUpdate {
+            new_npcs: ids
+                .iter()
+                .enumerate()
+                .map(|(i, id)| NewNpc {
+                    index: NpcIndex::new(u32::try_from(i).unwrap_or(0)),
+                    definition_id: NpcDefinitionId::new(*id),
+                    delta_x: i32::try_from(i).unwrap_or(0) - 16,
+                    delta_y: 0,
+                    orientation: 0,
+                })
+                .collect(),
+            ..NpcInfoUpdate::default()
+        };
+        entities.apply_npc_info(&update, tile);
+        // Exercise more than the first sample of each animation without retaining geometry.
+        for cycle in [0, 10] {
+            entities.advance_cycles(cycle);
+            geometry.vertices.clear();
+            geometry.opaque.clear();
+            geometry.transparent.clear();
+            entity_mesh::build_entities_geometry(
+                scene,
+                catalog,
+                &entities,
+                &std::collections::BTreeMap::new(),
+                &mut geometry,
+            )?;
+            triangles += (geometry.opaque.len() + geometry.transparent.len()) / 3;
+        }
+    }
+    Ok(triangles)
 }

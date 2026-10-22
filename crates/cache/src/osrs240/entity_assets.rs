@@ -386,14 +386,14 @@ impl EntityLoader {
                     continue;
                 }
             };
-            let skeleton = match self.resolve_skeleton(cache, skeleton_id, &mut local_skeletons, out)
-            {
-                Ok(skeleton) => skeleton,
-                Err(message) => {
-                    out.failures.push(message);
-                    continue;
-                }
-            };
+            let skeleton =
+                match self.resolve_skeleton(cache, skeleton_id, &mut local_skeletons, out) {
+                    Ok(skeleton) => skeleton,
+                    Err(message) => {
+                        out.failures.push(message);
+                        continue;
+                    }
+                };
             match animation::cached_animation(bytes, skeleton, source) {
                 Ok(animation) => {
                     out.cached_animations.insert(id, animation);
@@ -481,10 +481,7 @@ impl EntityLoader {
         }
     }
 
-    fn skeleton<S: ReadOnlyBlobs>(
-        cache: &Cache<S>,
-        id: u16,
-    ) -> Result<Skeleton, String> {
+    fn skeleton<S: ReadOnlyBlobs>(cache: &Cache<S>, id: u16) -> Result<Skeleton, String> {
         let group = GroupId(u32::from(id));
         let source = Source {
             index: IndexId(1),
