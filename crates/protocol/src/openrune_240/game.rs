@@ -221,33 +221,34 @@ impl ClientIntent {
 
     #[must_use]
     pub fn encode(self, cipher: &mut Isaac) -> Vec<u8> {
-        let (opcode, variable_byte, payload) = match self {
-            Self::KeepAlive => (99, false, vec![]),
+        let (opcode, length_prefix, payload) = match self {
+            Self::KeepAlive => (99, None, vec![]),
             Self::WindowStatus { width, height } => {
                 let mut p = vec![2];
                 p.extend_from_slice(&width.to_be_bytes());
                 p.extend_from_slice(&height.to_be_bytes());
-                (44, false, p)
+                (44, None, p)
             }
             Self::Walk(request) => {
                 // rsprot osrs-240 evidence at commit 37c4eb46e4731ae6764343d136f3076a50567ec1:
                 // MOVE_GAMECLICK=102, VAR_BYTE body reads z g2Alt3, key g1Alt2, x g2Alt3.
-                let mut p = Vec::with_capacity(5);
-                p.push(request.z.to_le_bytes()[0].wrapping_add(128));
-                p.push(request.z.to_be_bytes()[0]);
-                p.push(request.key_combination.wrapping_neg());
-                p.push(request.x.to_le_bytes()[0].wrapping_add(128));
-                p.push(request.x.to_be_bytes()[0]);
-                (102, true, p)
+                let p = vec![
+                    request.z.to_le_bytes()[0].wrapping_add(128),
+                    request.z.to_be_bytes()[0],
+                    request.key_combination.wrapping_neg(),
+                    request.x.to_le_bytes()[0].wrapping_add(128),
+                    request.x.to_be_bytes()[0],
+                ];
+                (102, Some(5), p)
             }
         };
-        let mut bytes = Vec::with_capacity(1 + usize::from(variable_byte) + payload.len());
+        let mut bytes = Vec::with_capacity(1 + usize::from(length_prefix.is_some()) + payload.len());
         bytes.push(u8::wrapping_add(
             opcode,
             cipher.next_word().to_le_bytes()[0],
         ));
-        if variable_byte {
-            bytes.push(u8::try_from(payload.len()).expect("bounded client packet payload"));
+        if let Some(length) = length_prefix {
+            bytes.push(length);
         }
         bytes.extend_from_slice(&payload);
         bytes
