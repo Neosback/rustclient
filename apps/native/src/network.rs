@@ -70,13 +70,9 @@ pub(super) fn spawn(
             let emit = |event| {
                 let _ = proxy.send_event(LoadEvent::Network(generation, event));
             };
-            if let Err((category, error)) = run(
-                &options,
-                credentials,
-                &worker_cancel,
-                &outbound_rx,
-                &emit,
-            ) && !worker_cancel.is_cancelled()
+            if let Err((category, error)) =
+                run(&options, credentials, &worker_cancel, &outbound_rx, &emit)
+                && !worker_cancel.is_cancelled()
             {
                 emit(NetworkEvent::Failed(category, error));
             }
