@@ -12,6 +12,7 @@ rustclient-game-state = { path = "../game-state" }
 rustclient-model = { path = "../model" }
 rustclient-cache = { path = "../cache" }
 rustclient-game-ui = { path = "../game-ui" }
+rustclient-input = { path = "../input" }
 rustclient-platform = { path = "../platform" }
 serde.workspace = true
 serde_json.workspace = true
