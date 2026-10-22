@@ -11,9 +11,9 @@ use rustclient_application::{
 use rustclient_cache::TitleAssets;
 use rustclient_game_state::{GameState, SemanticOperation};
 use rustclient_game_ui::{Flames, GameFrameUi, TitlePreferences, TitleUi, TitleViewport, UiFrame};
-use rustclient_input::EditKey;
+use rustclient_input::{EditKey, GameIntent};
 use rustclient_platform_native::{DirectoryBlobs, DirectoryStorage};
-use rustclient_renderer::{ClearColor, FrameOutcome, SurfaceRenderer, SurfaceSize};
+use rustclient_renderer::{ClearColor, FrameOutcome, SurfaceRenderer, SurfaceSize, pick_terrain};
 use rustclient_scene::{
     entity_mesh::build_entities_geometry,
     minimap::{MinimapImage, build_scene_minimap, compose_compass, compose_minimap},
@@ -245,6 +245,64 @@ impl NativeApp {
         if let Some(window) = &self.window {
             window.request_redraw();
         }
+    }
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "bounded native window coordinates are intentionally projected to logical f32/i32"
+    )]
+    fn terrain_intent(&self, window: &Window, physical: (f64, f64)) -> Option<GameIntent> {
+        let loaded = self.scene.loaded.as_ref()?;
+        let camera = self.scene.camera?;
+        let plane = self
+            .state
+            .entities()
+            .local_player()
+            .map(|player| player.tile.plane)
+            .or_else(|| self.state.initial_placement().map(|placement| placement.position.plane))?;
+        let size = window.inner_size();
+        let scale = window.scale_factor();
+        let viewport = [
+            (f64::from(size.width) / scale) as i32,
+            (f64::from(size.height) / scale) as i32,
+        ];
+        let pointer = [(physical.0 / scale) as f32, (physical.1 / scale) as f32];
+        let destination = pick_terrain(&loaded.asset, plane, camera, viewport, pointer)?;
+        Some(GameFrameUi::walk_here_entry(destination).intent)
+    }
+    fn accept_game_intent(&mut self, intent: GameIntent) {
+        // P1.2 deliberately stops at the semantic boundary. P1.3 owns validation and encoding.
+        eprintln!("game intent ready (network deferred to P1.3): {intent:?}");
+    }
+    fn handle_game_left_click(
+        &mut self,
+        window: &Window,
+        physical: (f64, f64),
+        logical: (f32, f32),
+    ) -> Option<SemanticOperation> {
+        let operation = self.gameframe_ui.handle_pointer_down(
+            logical.0,
+            logical.1,
+            765.0,
+            503.0,
+            self.state.selected_tab(),
+        );
+        let consumed = self.gameframe_ui.pointer_consumed();
+        if self.gameframe_ui.take_compass_click()
+            && let Some(camera) = &mut self.scene.camera
+        {
+            camera.set_yaw(0);
+        }
+        let intent = self.gameframe_ui.take_intent().or_else(|| {
+            if consumed {
+                None
+            } else {
+                self.terrain_intent(window, physical)
+            }
+        });
+        if let Some(intent) = intent {
+            self.accept_game_intent(intent);
+        }
+        operation
     }
     fn redraw(&mut self, event_loop: &ActiveEventLoop) {
         let Some(window) = self.window.clone() else {
@@ -716,11 +774,28 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
             }
             WindowEvent::MouseInput {
                 state: ElementState::Pressed,
+                button: MouseButton::Right,
+                ..
+            } if self.state.loaded_scene().is_some() && !self.scene.diagnostics => {
+                if let Some((physical_x, physical_y)) = self.cursor {
+                    let (x, y) = title_pointer(&window, physical_x, physical_y);
+                    if !GameFrameUi::world_pointer_blocked(x, y, 765.0, 503.0)
+                        && let Some(GameIntent::WalkTo { destination }) =
+                            self.terrain_intent(&window, (physical_x, physical_y))
+                    {
+                        self.gameframe_ui
+                            .open_walk_menu(x, y, 765.0, 503.0, destination);
+                        window.request_redraw();
+                    }
+                }
+            }
+            WindowEvent::MouseInput {
+                state: ElementState::Pressed,
                 button: MouseButton::Left,
                 ..
             } if self.assets.is_some() => {
-                if let Some((x, y)) = self.cursor {
-                    let (x, y) = title_pointer(&window, x, y);
+                if let Some((physical_x, physical_y)) = self.cursor {
+                    let (x, y) = title_pointer(&window, physical_x, physical_y);
                     let operation = if self.state.loaded_scene().is_some() {
                         if self.scene.diagnostics {
                             (TitleUi::world_disconnect_hit(x, y)).then_some(
@@ -729,19 +804,11 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                                 ),
                             )
                         } else {
-                            let op = self.gameframe_ui.handle_pointer_down(
-                                x,
-                                y,
-                                765.0,
-                                503.0,
-                                self.state.selected_tab(),
-                            );
-                            if self.gameframe_ui.take_compass_click()
-                                && let Some(camera) = &mut self.scene.camera
-                            {
-                                camera.set_yaw(0);
-                            }
-                            op
+                            self.handle_game_left_click(
+                                &window,
+                                (physical_x, physical_y),
+                                (x, y),
+                            )
                         }
                     } else if self.state.authenticated_player().is_some() {
                         TitleUi::disconnect_hit(x, y).then_some(SemanticOperation::SetTitleScreen(
