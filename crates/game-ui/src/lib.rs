@@ -9,4 +9,4 @@ mod presentation;
 pub use controller::{TitlePreferences, TitleUi};
 pub use draw::{Quad, Rect, TitleViewport, UiFrame, UiImageId};
 pub use flame::Flames;
-pub use gameframe::GameFrameUi;
+pub use gameframe::{ContextMenuEntry, GameFrameUi};

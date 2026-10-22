@@ -113,7 +113,7 @@ pub fn project_chatbox(
     }
 }
 
-fn draw_text_line(
+pub(super) fn draw_text_line(
     frame: &mut UiFrame,
     assets: &TitleAssets,
     text: &str,

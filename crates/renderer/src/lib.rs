@@ -16,6 +16,7 @@ pub use surface::{
 };
 
 mod camera;
+mod picking;
 mod world;
 mod world_geometry;
 mod world_target;
@@ -23,6 +24,7 @@ mod world_textures;
 pub use camera::{
     CameraInput, CameraTarget, CameraViewport, GameplayCameraController, ReferenceCameraPose,
 };
+pub use picking::pick_terrain;
 
 mod world_capture;
 pub use world_capture::{capture_world, capture_world_at};

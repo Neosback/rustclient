@@ -29,6 +29,8 @@ login
 
 ### P1.1 Interaction intent contract
 
+Status: complete (`03e3a3bf027d5882e1d910b5c4bd6f48b3d76807`).
+
 - Extend `rustclient-input` beyond title editing with typed revision-neutral gameplay intents.
 - Represent walking and target/action selection with existing model IDs and world coordinates.
 - Keep packet opcodes, renderer handles, raw mouse events, and mutable game state out of the contract.
@@ -37,6 +39,8 @@ login
 Exit: downstream code can express `WalkTo` and target interaction requests without knowing OpenRune packet encodings.
 
 ### P1.2 Terrain picking and Walk Here menu
+
+Status: in progress.
 
 - Add deterministic world-terrain picking through the scene/render projection boundary.
 - Convert a viewport click into a semantic world tile using the active camera/viewport transforms.
