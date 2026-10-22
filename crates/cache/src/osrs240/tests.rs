@@ -108,11 +108,9 @@ fn both_modern_model_families_decode_the_same_authored_triangle() {
     let mut empty = vec![0; 23];
     empty[21] = 255;
     empty[22] = 254;
-    assert!(
-        models::decode(&empty, source())
-            .unwrap()
-            .vertices
-            .is_empty()
+    assert_eq!(
+        models::decode(&empty, source()).unwrap().vertices,
+        Vec::<ModelPoint>::new()
     );
 }
 #[test]
@@ -188,7 +186,7 @@ fn repacked_object_size_exception_is_explicit_and_preserves_crc_enforcement() {
         )
         .is_err()
     );
-    assert!(warnings.is_empty());
+    assert_eq!(warnings.as_slice(), &[] as &[String]);
     let (objects, _) = load_objects(
         &cache,
         CacheProfile::OpenRune240,
