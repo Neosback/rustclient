@@ -1,6 +1,6 @@
 //! Scene geometry generation for live player and NPC entities.
 
-use crate::{Result, SceneAsset, SceneGeometry, lighting::Light};
+use crate::{Result, SceneAsset, SceneError, SceneGeometry, animation::BakedAnimation, lighting::Light};
 use rustclient_cache::{
     osrs240::{
         entity_assets::{EntityAssets, EntityRequest},
@@ -9,8 +9,8 @@ use rustclient_cache::{
         player_model::{body_recolors, build_player_base},
     },
     world::{
-        ItemDefinition, LegacyFrame, NpcDefinition, SequenceAsset, SkeletonTransform, StaticModel,
-        VarbitDefinition,
+        ItemDefinition, LegacyFrame, NpcDefinition, SequenceAsset, Skeleton,
+        StaticModel, VarbitDefinition,
     },
 };
 use rustclient_game_state::{NpcEntity, PlayerEntity, WorldEntitiesState};
@@ -31,7 +31,8 @@ pub struct EntityCatalog {
     models: BTreeMap<ModelId, StaticModel>,
     sequences: BTreeMap<SequenceId, SequenceAsset>,
     frames: BTreeMap<u32, LegacyFrame>,
-    skeletons: BTreeMap<u16, Vec<SkeletonTransform>>,
+    skeletons: BTreeMap<u16, Skeleton>,
+    cached_animations: BTreeMap<u32, BakedAnimation>,
     varbits: BTreeMap<VarbitId, VarbitDefinition>,
     requested_npcs: BTreeSet<NpcDefinitionId>,
     requested_items: BTreeSet<ItemDefinitionId>,
@@ -98,14 +99,31 @@ impl EntityCatalog {
     }
 
     /// Fold a decoded batch into the catalog.
-    pub fn merge(&mut self, assets: EntityAssets) {
+    ///
+    /// Returns advisories for cached-model animations that could not be prepared for playback;
+    /// those sequences are then drawn in rest pose.
+    pub fn merge(&mut self, asset: &SceneAsset, assets: EntityAssets) -> Vec<String> {
         self.npcs.extend(assets.npcs);
         self.items.extend(assets.items);
         self.models.extend(assets.models);
         self.sequences.extend(assets.sequences);
         self.frames.extend(assets.frames);
         self.skeletons.extend(assets.skeletons);
+        let mut failures = Vec::new();
+        for (id, animation) in assets.cached_animations {
+            let baked = self
+                .skeleton(asset, animation.skeleton)
+                .ok_or_else(|| SceneError(format!("skeleton {} missing", animation.skeleton)))
+                .and_then(|skeleton| BakedAnimation::new(&animation, skeleton));
+            match baked {
+                Ok(baked) => {
+                    self.cached_animations.insert(id, baked);
+                }
+                Err(error) => failures.push(format!("cached animation {id}: {error}")),
+            }
+        }
         self.varbits.extend(assets.varbits);
+        failures
     }
 
     /// Resolve an NPC's current definition through its variable-driven transformation.
@@ -161,11 +179,10 @@ impl EntityCatalog {
             .or_else(|| asset.sources().frames.get(&id))
     }
 
-    fn skeleton<'a>(&'a self, asset: &'a SceneAsset, id: u16) -> Option<&'a [SkeletonTransform]> {
+    fn skeleton<'a>(&'a self, asset: &'a SceneAsset, id: u16) -> Option<&'a Skeleton> {
         self.skeletons
             .get(&id)
             .or_else(|| asset.sources().skeletons.get(&id))
-            .map(Vec::as_slice)
     }
 }
 
@@ -206,7 +223,11 @@ pub fn build_entities_geometry(
     Ok(())
 }
 
-/// Apply the legacy frame selected by `cycle`. Skeletal sequences are not posed here.
+/// Apply the sequence pose selected by `cycle`: a cached-model (skeletal) animation when the
+/// sequence names one, otherwise the legacy frame.
+///
+/// A skeletal animation that failed to decode or prepare was already reported as an advisory;
+/// its sequence is drawn in rest pose rather than failing the whole scene.
 fn pose_model(
     asset: &SceneAsset,
     catalog: &EntityCatalog,
@@ -224,6 +245,22 @@ fn pose_model(
     else {
         return Ok(());
     };
+    if let Some(animation) = sequence.skeletal {
+        let Some(animation) = catalog.cached_animations.get(&animation) else {
+            return Ok(());
+        };
+        let Some(frame) = crate::animation::skeletal_frame(sequence, u64::from(cycle), None)
+        else {
+            return Ok(());
+        };
+        return crate::animation::pose_skeletal(
+            animation,
+            frame,
+            &mut model.vertices,
+            &mut model.faces,
+            &model.skeletal_weights,
+        );
+    }
     let Ok(Some(index)) = crate::animation::frame_index(sequence, u64::from(cycle), None) else {
         return Ok(());
     };
@@ -238,7 +275,7 @@ fn pose_model(
             &mut model.faces,
             &model.vertex_skins,
             frame,
-            skeleton,
+            &skeleton.transforms,
             0,
         )?;
     }
@@ -297,14 +334,15 @@ fn build_npc(
     let Some(mut model) = build_npc_base(def, |id| catalog.model(asset, id)) else {
         return Ok(());
     };
+    let sequence = npc.sequence.or(def.idle_sequence);
+    pose_model(asset, catalog, &mut model, sequence, npc.animation_cycle)?;
+    // The reference scales the animated model, so bone translations stay in unscaled units.
     if def.scale_width != 128 || def.scale_height != 128 {
         let (width, height) = (i32::from(def.scale_width), i32::from(def.scale_height));
         for p in &mut model.vertices {
             *p = ModelPoint::new(p.x * width / 128, p.y * height / 128, p.z * width / 128);
         }
     }
-    let sequence = npc.sequence.or(def.idle_sequence);
-    pose_model(asset, catalog, &mut model, sequence, npc.animation_cycle)?;
 
     emit_model(
         asset,

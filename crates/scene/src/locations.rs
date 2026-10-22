@@ -279,7 +279,7 @@ fn place(
                 &mut model.faces,
                 &model.skins,
                 frame,
-                skeleton,
+                &skeleton.transforms,
                 orientation,
             )?;
         }

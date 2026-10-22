@@ -1,7 +1,45 @@
-//! Discrete legacy location poses. Inputs are immutable and time is explicit.
+//! Discrete legacy location poses and cached-model (skeletal) entity poses. Inputs are immutable
+//! and time is explicit.
+mod curve;
+mod matrix;
+mod skeletal;
+
 use crate::{Result, SceneError};
 use rustclient_cache::world::{LegacyFrame, ModelFace, SequenceAsset, SkeletonTransform};
 use rustclient_model::ModelPoint;
+
+pub use skeletal::BakedAnimation;
+pub(crate) use skeletal::pose as pose_skeletal;
+
+/// Animation frame of a cached-model sequence after `elapsed` client cycles.
+///
+/// Skeletal sequences advance one frame per cycle through `range.1 - range.0` frames. Reaching
+/// the end jumps back `frame_step` frames; without a valid step the sequence has finished and
+/// `None` is returned. A sequence with no frame range holds frame zero.
+#[must_use]
+pub(crate) fn skeletal_frame(
+    sequence: &SequenceAsset,
+    elapsed: u64,
+    random: Option<u64>,
+) -> Option<i32> {
+    let (start, end) = sequence.range.unwrap_or((0, 0));
+    let length = u64::from(end.saturating_sub(start));
+    if length == 0 {
+        return Some(0);
+    }
+    let first = random
+        .filter(|_| sequence.frame_step.is_some())
+        .map_or(0, |bits| bits % length);
+    let first_pass = length - first;
+    if elapsed < first_pass {
+        return i32::try_from(first + elapsed).ok();
+    }
+    let step = u64::from(sequence.frame_step?);
+    if step == 0 || step > length {
+        return None;
+    }
+    i32::try_from(length - step + (elapsed - first_pass) % step).ok()
+}
 /// Resolve a frame from an explicit initial random word and elapsed cycles.
 pub(crate) fn frame_index(
     sequence: &SequenceAsset,
@@ -10,7 +48,7 @@ pub(crate) fn frame_index(
 ) -> Result<Option<usize>> {
     if sequence.skeletal.is_some() {
         return Err(SceneError(format!(
-            "sequence {} requires cached-model pose support",
+            "sequence {} is a cached-model sequence; pose it with skeletal_frame",
             sequence.id
         )));
     }

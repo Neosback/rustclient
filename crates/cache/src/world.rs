@@ -179,7 +179,7 @@ pub struct WorldAssets {
     pub textures: BTreeMap<TextureId, TextureAsset>,
     pub sequences: BTreeMap<SequenceId, SequenceAsset>,
     pub frames: BTreeMap<u32, LegacyFrame>,
-    pub skeletons: BTreeMap<u16, Vec<SkeletonTransform>>,
+    pub skeletons: BTreeMap<u16, Skeleton>,
     pub varbits: BTreeMap<VarbitId, VarbitDefinition>,
     pub kits: BTreeMap<KitId, KitDefinition>,
     pub metadata_fingerprint: String,
@@ -224,6 +224,73 @@ pub struct VarbitDefinition {
 pub struct SkeletonTransform {
     pub kind: u8,
     pub labels: Vec<u8>,
+}
+/// One revision-240 skeleton resource: legacy label transforms plus the optional bone hierarchy
+/// that cached-model (skeletal) animations drive.
+#[derive(Debug, Clone)]
+pub struct Skeleton {
+    pub transforms: Vec<SkeletonTransform>,
+    pub bones: Option<BoneHierarchy>,
+}
+/// Bind-pose bone hierarchy. Every bone carries one local matrix per pose variant.
+#[derive(Debug, Clone)]
+pub struct BoneHierarchy {
+    /// Number of bind-pose variants each bone stores.
+    pub variants: u8,
+    pub bones: Vec<Bone>,
+}
+/// Row-major 4x4 matrix in the reference's row-vector convention (translation in 12..=14).
+pub type Matrix4 = [f32; 16];
+#[derive(Debug, Clone)]
+pub struct Bone {
+    /// Index into [`BoneHierarchy::bones`], validated by the decoder.
+    pub parent: Option<usize>,
+    /// Local bind matrices, one per pose variant.
+    pub bind: Vec<Matrix4>,
+}
+/// How a curve continues outside its first and last keyframe.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Extrapolation {
+    Constant,
+    /// Continue along the end keyframe's tangent.
+    Tangent,
+    Repeat,
+    /// Repeat, shifting by the curve's total value change on each cycle.
+    Offset,
+    Mirror,
+}
+#[derive(Debug, Clone, Copy)]
+pub struct Keyframe {
+    pub time: i32,
+    pub value: f32,
+    pub in_x: f32,
+    pub in_y: f32,
+    pub out_x: f32,
+    pub out_y: f32,
+}
+/// One animated scalar channel. Keyframe times are ascending and there is at least one key.
+#[derive(Debug, Clone)]
+pub struct Curve {
+    pub before: Extrapolation,
+    pub after: Extrapolation,
+    /// Curve segments are cubic Beziers in both time and value, not value-only polynomials.
+    pub bezier: bool,
+    pub keys: Vec<Keyframe>,
+}
+/// Per-bone channels: rotation XYZ, translation XYZ, scale XYZ.
+pub const BONE_CHANNELS: usize = 9;
+/// A cached-model (skeletal) animation resource.
+#[derive(Debug, Clone)]
+pub struct CachedAnimation {
+    pub skeleton: u16,
+    /// Which bind-pose variant of every bone the animation starts from.
+    pub variant: u8,
+    /// Indexed by bone; absent channels keep the bind pose.
+    pub bone_curves: Vec<[Option<Curve>; BONE_CHANNELS]>,
+    /// Channels attached to skeleton label transforms (alpha lives here), indexed by transform.
+    pub transform_curves: BTreeMap<usize, Vec<Option<Curve>>>,
+    /// At least one alpha-channel curve exists, so faces need a transparency pass.
+    pub has_alpha: bool,
 }
 #[derive(Debug, Clone)]
 pub struct LegacyFrame {

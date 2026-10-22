@@ -9,8 +9,8 @@ use super::animation;
 use crate::{
     Cache, CacheProfile, FileId, GroupId, IndexId, Source,
     world::{
-        ItemDefinition, LegacyFrame, NpcDefinition, SequenceAsset, SkeletonTransform, StaticModel,
-        VarbitDefinition, WorldAssets,
+        CachedAnimation, ItemDefinition, LegacyFrame, NpcDefinition, SequenceAsset, Skeleton,
+        StaticModel, VarbitDefinition, WorldAssets,
     },
 };
 use rustclient_model::{ItemDefinitionId, ModelId, NpcDefinitionId, SequenceId, VarbitId};
@@ -43,7 +43,9 @@ pub struct EntityAssets {
     pub models: BTreeMap<ModelId, StaticModel>,
     pub sequences: BTreeMap<SequenceId, SequenceAsset>,
     pub frames: BTreeMap<u32, LegacyFrame>,
-    pub skeletons: BTreeMap<u16, Vec<SkeletonTransform>>,
+    pub skeletons: BTreeMap<u16, Skeleton>,
+    /// Cached-model (skeletal) animations, keyed by the id sequences name in opcode 13.
+    pub cached_animations: BTreeMap<u32, CachedAnimation>,
     /// Varbit layouts that NPC transformations select by.
     pub varbits: BTreeMap<VarbitId, VarbitDefinition>,
     /// Per-asset decode problems with source context.
@@ -58,6 +60,7 @@ pub struct EntityLoader {
     sequences: BTreeSet<SequenceId>,
     frames: BTreeSet<u32>,
     skeletons: BTreeSet<u16>,
+    cached_animations: BTreeSet<u32>,
     varbits: BTreeSet<VarbitId>,
     npcs: BTreeSet<NpcDefinitionId>,
     items: BTreeSet<ItemDefinitionId>,
@@ -309,6 +312,7 @@ impl EntityLoader {
             }
         };
         let mut frame_ids = BTreeSet::new();
+        let mut cached_ids = BTreeSet::new();
         for (file, bytes) in files {
             let id = SequenceId::new(file.0);
             if !wanted.contains(&id) {
@@ -321,11 +325,7 @@ impl EntityLoader {
             };
             match animation::sequence(&bytes, id, source) {
                 Ok(sequence) => {
-                    if sequence.skeletal.is_some() {
-                        out.failures.push(format!(
-                            "sequence {id} uses cached-model skeletal animation; it is drawn in rest pose until that format is ported"
-                        ));
-                    }
+                    cached_ids.extend(sequence.skeletal);
                     frame_ids.extend(sequence.frames.iter().copied());
                     out.sequences.insert(id, sequence);
                 }
@@ -334,6 +334,91 @@ impl EntityLoader {
         }
         self.sequences.extend(wanted);
         self.load_frames(cache, &frame_ids, out);
+        self.load_cached_animations(cache, &cached_ids, out);
+    }
+
+    /// Cached-model animations live in index 22: group is the id's high half, file its low half.
+    fn load_cached_animations<S: ReadOnlyBlobs>(
+        &mut self,
+        cache: &Cache<S>,
+        wanted: &BTreeSet<u32>,
+        out: &mut EntityAssets,
+    ) {
+        let mut groups: BTreeMap<u32, BTreeMap<FileId, Vec<u8>>> = BTreeMap::new();
+        let mut local_skeletons: BTreeMap<u16, Skeleton> = BTreeMap::new();
+        let pending: Vec<u32> = wanted
+            .iter()
+            .copied()
+            .filter(|id| !self.cached_animations.contains(id))
+            .collect();
+        for id in pending {
+            self.cached_animations.insert(id);
+            let group = id >> 16;
+            let file = FileId(id & 65535);
+            let source = Source {
+                index: IndexId(22),
+                group: Some(GroupId(group)),
+                file: Some(file),
+            };
+            if let std::collections::btree_map::Entry::Vacant(slot) = groups.entry(group) {
+                match self.group(cache, IndexId(22), GroupId(group)) {
+                    Ok(files) => {
+                        slot.insert(files.into_iter().collect());
+                    }
+                    Err(error) => {
+                        out.failures.push(error.to_string());
+                        continue;
+                    }
+                }
+            }
+            let Some(bytes) = groups.get(&group).and_then(|g| g.get(&file)) else {
+                out.failures.push(
+                    source
+                        .error("cached animation lookup", "missing animation")
+                        .to_string(),
+                );
+                continue;
+            };
+            let skeleton_id = match animation::cached_animation_skeleton(bytes, source) {
+                Ok(skeleton_id) => skeleton_id,
+                Err(error) => {
+                    out.failures.push(error.to_string());
+                    continue;
+                }
+            };
+            let skeleton = match self.resolve_skeleton(cache, skeleton_id, &mut local_skeletons, out)
+            {
+                Ok(skeleton) => skeleton,
+                Err(message) => {
+                    out.failures.push(message);
+                    continue;
+                }
+            };
+            match animation::cached_animation(bytes, skeleton, source) {
+                Ok(animation) => {
+                    out.cached_animations.insert(id, animation);
+                }
+                Err(error) => out.failures.push(error.to_string()),
+            }
+        }
+    }
+
+    /// Load a skeleton once per batch, delivering it to the catalog only the first time.
+    fn resolve_skeleton<'a, S: ReadOnlyBlobs>(
+        &mut self,
+        cache: &Cache<S>,
+        id: u16,
+        local: &'a mut BTreeMap<u16, Skeleton>,
+        out: &mut EntityAssets,
+    ) -> Result<&'a Skeleton, String> {
+        if let std::collections::btree_map::Entry::Vacant(slot) = local.entry(id) {
+            let skeleton = Self::skeleton(cache, id)?;
+            if self.skeletons.insert(id) {
+                out.skeletons.insert(id, skeleton.clone());
+            }
+            slot.insert(skeleton);
+        }
+        Ok(&local[&id])
     }
 
     fn load_frames<S: ReadOnlyBlobs>(
@@ -343,7 +428,7 @@ impl EntityLoader {
         out: &mut EntityAssets,
     ) {
         let mut groups: BTreeMap<u32, BTreeMap<FileId, Vec<u8>>> = BTreeMap::new();
-        let mut local_skeletons: BTreeMap<u16, Vec<SkeletonTransform>> = BTreeMap::new();
+        let mut local_skeletons: BTreeMap<u16, Skeleton> = BTreeMap::new();
         let pending: Vec<u32> = frame_ids
             .iter()
             .copied()
@@ -379,25 +464,15 @@ impl EntityLoader {
                     .push(source.error("frame", "truncated header").to_string());
                 continue;
             };
-            if let std::collections::btree_map::Entry::Vacant(slot) =
-                local_skeletons.entry(skeleton_id)
-            {
-                match Self::skeleton(cache, skeleton_id) {
-                    Ok(skeleton) => {
-                        // Deliver each skeleton to the catalog only once.
-                        if self.skeletons.insert(skeleton_id) {
-                            out.skeletons.insert(skeleton_id, skeleton.clone());
-                        }
-                        slot.insert(skeleton);
-                    }
+            let skeleton =
+                match self.resolve_skeleton(cache, skeleton_id, &mut local_skeletons, out) {
+                    Ok(skeleton) => skeleton,
                     Err(message) => {
                         out.failures.push(message);
                         continue;
                     }
-                }
-            }
-            let skeleton = &local_skeletons[&skeleton_id];
-            match animation::frame(bytes, skeleton, source) {
+                };
+            match animation::frame(bytes, &skeleton.transforms, source) {
                 Ok(frame) => {
                     out.frames.insert(id, frame);
                 }
@@ -409,7 +484,7 @@ impl EntityLoader {
     fn skeleton<S: ReadOnlyBlobs>(
         cache: &Cache<S>,
         id: u16,
-    ) -> Result<Vec<SkeletonTransform>, String> {
+    ) -> Result<Skeleton, String> {
         let group = GroupId(u32::from(id));
         let source = Source {
             index: IndexId(1),
