@@ -137,10 +137,10 @@ fn local_step_with_exact_move(direction: u8) -> Vec<u8> {
 
     writer.finish(&[
         0x01, 0x02, // extended mask 0x200
-        129, // readByteSub => -1
-        0,   // readByte => 0
-        2,   // readByte => 2
-        129, // readByteAdd => 1
+        129,  // readByteSub => -1
+        0,    // readByte => 0
+        2,    // readByte => 2
+        129,  // readByteAdd => 1
         0, 133, // readUnsignedShortAdd => 5
         0, 10, // readUnsignedShort => 10
         128, 4, // readUnsignedShortAddLE => 1024
@@ -148,14 +148,12 @@ fn local_step_with_exact_move(direction: u8) -> Vec<u8> {
 }
 
 fn initialized_codec(server: &mut Isaac) -> SessionCodec {
-    let mut codec = SessionCodec::new(
-        Isaac::new([0; 4]),
-        Isaac::new([0; 4]),
-        PlayerIndex::new(1),
-    );
+    let mut codec = SessionCodec::new(Isaac::new([0; 4]), Isaac::new([0; 4]), PlayerIndex::new(1));
     let rebuild = frame(server, 39, &bootstrap());
     let mut updates = Vec::new();
-    codec.receive(&rebuild, |update| updates.push(update)).unwrap();
+    codec
+        .receive(&rebuild, |update| updates.push(update))
+        .unwrap();
     assert!(matches!(
         updates.as_slice(),
         [ServerUpdate::InitialPlacement(_)]
@@ -166,13 +164,17 @@ fn initialized_codec(server: &mut Isaac) -> SessionCodec {
 fn player_update(codec: &mut SessionCodec, server: &mut Isaac, payload: &[u8]) -> ServerUpdate {
     let packet = frame(server, 91, payload);
     let mut updates = Vec::new();
-    codec.receive(&packet, |update| updates.push(update)).unwrap();
+    codec
+        .receive(&packet, |update| updates.push(update))
+        .unwrap();
     assert_eq!(updates.len(), 1);
     updates.pop().unwrap()
 }
 
-fn local<'a>(update: &'a rustclient_model::PlayerInfoUpdate) -> &'a rustclient_model::PlayerUpdate {
-    update.player(PlayerIndex::new(1)).expect("local player update")
+fn local(update: &rustclient_model::PlayerInfoUpdate) -> &rustclient_model::PlayerUpdate {
+    update
+        .player(PlayerIndex::new(1))
+        .expect("local player update")
 }
 
 #[test]
@@ -180,18 +182,20 @@ fn player_info_keeps_four_pass_state_across_step_and_run_ticks() {
     let mut server = Isaac::new([0; 4]);
     let mut codec = initialized_codec(&mut server);
 
-    let ServerUpdate::PlayerInfo(step) = player_update(&mut codec, &mut server, &local_step(7)) else {
+    let ServerUpdate::PlayerInfo(step) = player_update(&mut codec, &mut server, &local_step(7))
+    else {
         panic!("expected player info");
     };
     let step = local(&step);
-    assert_eq!(
-        step.movement,
-        Some(PlayerMovement::Step { direction: 7 })
-    );
+    assert_eq!(step.movement, Some(PlayerMovement::Step { direction: 7 }));
     assert_eq!(step.movement_speed, Some(MoveSpeed::Walk));
-    assert_eq!((step.tile.x, step.tile.y, step.tile.plane.get()), (3222, 3219, 0));
+    assert_eq!(
+        (step.tile.x, step.tile.y, step.tile.plane.get()),
+        (3222, 3219, 0)
+    );
 
-    let ServerUpdate::PlayerInfo(run) = player_update(&mut codec, &mut server, &local_run(13)) else {
+    let ServerUpdate::PlayerInfo(run) = player_update(&mut codec, &mut server, &local_run(13))
+    else {
         panic!("expected player info");
     };
     let run = local(&run);
@@ -203,7 +207,10 @@ fn player_info_keeps_four_pass_state_across_step_and_run_ticks() {
         })
     );
     assert_eq!(run.movement_speed, Some(MoveSpeed::Walk));
-    assert_eq!((run.tile.x, run.tile.y, run.tile.plane.get()), (3222, 3221, 0));
+    assert_eq!(
+        (run.tile.x, run.tile.y, run.tile.plane.get()),
+        (3222, 3221, 0)
+    );
 }
 
 #[test]
@@ -224,7 +231,10 @@ fn player_info_decodes_signed_relative_teleport_and_plane_delta() {
             delta_y: 11,
         })
     );
-    assert_eq!((update.tile.x, update.tile.y, update.tile.plane.get()), (3214, 3229, 2));
+    assert_eq!(
+        (update.tile.x, update.tile.y, update.tile.plane.get()),
+        (3214, 3229, 2)
+    );
 }
 
 #[test]
