@@ -1,6 +1,6 @@
 //! Semantic entity types: player appearance, slots, animation slots, and actor states.
 
-use crate::{ItemDefinitionId, KitId, SequenceId};
+use crate::{ItemDefinitionId, KitId, PlayerIndex, SequenceId, WorldTile};
 
 /// Total appearance body slots in client order.
 pub const APPEARANCE_SLOTS: usize = 12;
@@ -101,6 +101,29 @@ impl ActorSequenceSlot {
     }
 }
 
+/// Traversal speed carried by revision-240 player path entries.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub enum MoveSpeed {
+    Stationary,
+    Crawl,
+    #[default]
+    Walk,
+    Run,
+}
+
+impl MoveSpeed {
+    #[must_use]
+    pub const fn from_wire(value: i8) -> Option<Self> {
+        match value {
+            -1 => Some(Self::Stationary),
+            0 => Some(Self::Crawl),
+            1 => Some(Self::Walk),
+            2 => Some(Self::Run),
+            _ => None,
+        }
+    }
+}
+
 /// Player movement update decoded from player info.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PlayerMovement {
@@ -116,15 +139,53 @@ pub enum PlayerMovement {
     },
 }
 
-/// Consolidated player info update for one tick.
+/// One high-resolution player change emitted by the revision-specific decoder.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PlayerUpdate {
+    pub index: PlayerIndex,
+    /// Resulting authoritative network tile after this packet's movement bits.
+    pub tile: WorldTile,
+    /// Present only when ordinary path movement survives all pending update masks.
+    pub movement: Option<PlayerMovement>,
+    pub movement_speed: Option<MoveSpeed>,
+    /// True when a low-resolution player became high-resolution in this packet.
+    pub spawned: bool,
+    pub appearance: Option<PlayerAppearance>,
+    /// `None` means no sequence mask; `Some(None)` explicitly clears the action sequence.
+    pub sequence: Option<Option<SequenceId>>,
+    pub sequence_delay: Option<u8>,
+    pub facing: Option<u16>,
+}
+
+impl PlayerUpdate {
+    #[must_use]
+    pub const fn new(index: PlayerIndex, tile: WorldTile) -> Self {
+        Self {
+            index,
+            tile,
+            movement: None,
+            movement_speed: None,
+            spawned: false,
+            appearance: None,
+            sequence: None,
+            sequence_delay: None,
+            facing: None,
+        }
+    }
+}
+
+/// Consolidated revision-240 player info update for one tick.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct PlayerInfoUpdate {
-    pub local_movement: Option<PlayerMovement>,
-    pub local_appearance: Option<PlayerAppearance>,
-    /// `None` means no sequence mask; `Some(None)` explicitly clears the action sequence.
-    pub local_sequence: Option<Option<SequenceId>>,
-    pub local_sequence_delay: Option<u8>,
-    pub local_facing: Option<u16>,
+    pub players: Vec<PlayerUpdate>,
+    pub removals: Vec<PlayerIndex>,
+}
+
+impl PlayerInfoUpdate {
+    #[must_use]
+    pub fn player(&self, index: PlayerIndex) -> Option<&PlayerUpdate> {
+        self.players.iter().find(|update| update.index == index)
+    }
 }
 
 /// Newly spawned or high-resolution NPC.
