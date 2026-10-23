@@ -68,6 +68,21 @@ pub const fn direction_to_orientation(direction: u8) -> u16 {
     }
 }
 
+fn delta_to_orientation(delta_x: i8, delta_y: i8) -> u16 {
+    let direction = match (delta_x.signum(), delta_y.signum()) {
+        (-1, -1) => 0,
+        (0, -1) => 1,
+        (1, -1) => 2,
+        (-1, 0) => 3,
+        (1, 0) => 4,
+        (-1, 1) => 5,
+        (0, 1) => 6,
+        (1, 1) => 7,
+        _ => return 0,
+    };
+    direction_to_orientation(direction)
+}
+
 impl WorldEntitiesState {
     #[must_use]
     pub const fn generation(&self) -> u64 {
@@ -137,24 +152,25 @@ impl WorldEntitiesState {
                         WorldTile::new(player.tile.x + dx, player.tile.y + dy, player.tile.plane);
                     player.orientation = direction_to_orientation(*direction);
                 }
-                PlayerMovement::Run {
-                    direction1,
-                    direction2,
-                } => {
-                    let (dx1, dy1) = direction_to_delta(*direction1);
-                    let (dx2, dy2) = direction_to_delta(*direction2);
+                PlayerMovement::Run { delta_x, delta_y } => {
                     player.tile = WorldTile::new(
-                        player.tile.x + dx1 + dx2,
-                        player.tile.y + dy1 + dy2,
+                        player.tile.x + i32::from(*delta_x),
+                        player.tile.y + i32::from(*delta_y),
                         player.tile.plane,
                     );
-                    player.orientation = direction_to_orientation(*direction2);
+                    player.orientation = delta_to_orientation(*delta_x, *delta_y);
                 }
-                PlayerMovement::Teleport { delta_x, delta_y } => {
+                PlayerMovement::Teleport {
+                    plane_delta,
+                    delta_x,
+                    delta_y,
+                } => {
+                    let plane_value = player.tile.plane.get().wrapping_add(*plane_delta) & 3;
+                    let plane = Plane::new(plane_value).unwrap_or(Plane::MIN);
                     player.tile = WorldTile::new(
-                        player.tile.x + delta_x,
-                        player.tile.y + delta_y,
-                        player.tile.plane,
+                        (player.tile.x + delta_x).rem_euclid(16_384),
+                        (player.tile.y + delta_y).rem_euclid(16_384),
+                        plane,
                     );
                 }
             }
