@@ -1,4 +1,4 @@
-use rustclient_model::{PlayerIndex, SequenceId};
+use rustclient_model::{ExactMove, MoveSpeed, PlayerIndex, SequenceId};
 use rustclient_protocol::{Isaac, PlayerMovement, ServerUpdate, SessionCodec};
 
 fn frame(cipher: &mut Isaac, opcode: u16, payload: &[u8]) -> Vec<u8> {
@@ -126,6 +126,27 @@ fn local_sequence_and_facing(sequence: u16, delay: u8, facing: u16) -> Vec<u8> {
     ])
 }
 
+fn local_step_with_exact_move(direction: u8) -> Vec<u8> {
+    let mut writer = BitWriter::default();
+    writer.bits(1, 1);
+    writer.bits(1, 1); // pending update mask
+    writer.bits(1, 2); // ordinary step, which exact move must suppress
+    writer.bits(u32::from(direction), 3);
+    writer.align();
+    skip_all_external(&mut writer);
+
+    writer.finish(&[
+        0x01, 0x02, // extended mask 0x200
+        129, // readByteSub => -1
+        0,   // readByte => 0
+        2,   // readByte => 2
+        129, // readByteAdd => 1
+        0, 133, // readUnsignedShortAdd => 5
+        0, 10, // readUnsignedShort => 10
+        128, 4, // readUnsignedShortAddLE => 1024
+    ])
+}
+
 fn initialized_codec(server: &mut Isaac) -> SessionCodec {
     let mut codec = SessionCodec::new(
         Isaac::new([0; 4]),
@@ -150,6 +171,10 @@ fn player_update(codec: &mut SessionCodec, server: &mut Isaac, payload: &[u8]) -
     updates.pop().unwrap()
 }
 
+fn local<'a>(update: &'a rustclient_model::PlayerInfoUpdate) -> &'a rustclient_model::PlayerUpdate {
+    update.player(PlayerIndex::new(1)).expect("local player update")
+}
+
 #[test]
 fn player_info_keeps_four_pass_state_across_step_and_run_ticks() {
     let mut server = Isaac::new([0; 4]);
@@ -158,21 +183,27 @@ fn player_info_keeps_four_pass_state_across_step_and_run_ticks() {
     let ServerUpdate::PlayerInfo(step) = player_update(&mut codec, &mut server, &local_step(7)) else {
         panic!("expected player info");
     };
+    let step = local(&step);
     assert_eq!(
-        step.local_movement,
+        step.movement,
         Some(PlayerMovement::Step { direction: 7 })
     );
+    assert_eq!(step.movement_speed, Some(MoveSpeed::Walk));
+    assert_eq!((step.tile.x, step.tile.y, step.tile.plane.get()), (3222, 3219, 0));
 
     let ServerUpdate::PlayerInfo(run) = player_update(&mut codec, &mut server, &local_run(13)) else {
         panic!("expected player info");
     };
+    let run = local(&run);
     assert_eq!(
-        run.local_movement,
+        run.movement,
         Some(PlayerMovement::Run {
             delta_x: 0,
             delta_y: 2,
         })
     );
+    assert_eq!(run.movement_speed, Some(MoveSpeed::Walk));
+    assert_eq!((run.tile.x, run.tile.y, run.tile.plane.get()), (3222, 3221, 0));
 }
 
 #[test]
@@ -184,14 +215,16 @@ fn player_info_decodes_signed_relative_teleport_and_plane_delta() {
     let ServerUpdate::PlayerInfo(update) = player_update(&mut codec, &mut server, &payload) else {
         panic!("expected player info");
     };
+    let update = local(&update);
     assert_eq!(
-        update.local_movement,
+        update.movement,
         Some(PlayerMovement::Teleport {
             plane_delta: 2,
             delta_x: -7,
             delta_y: 11,
         })
     );
+    assert_eq!((update.tile.x, update.tile.y, update.tile.plane.get()), (3214, 3229, 2));
 }
 
 #[test]
@@ -203,12 +236,11 @@ fn pending_mask_begins_only_after_all_four_bit_passes() {
     let ServerUpdate::PlayerInfo(update) = player_update(&mut codec, &mut server, &payload) else {
         panic!("expected player info");
     };
-    assert_eq!(update.local_facing, Some(768));
-    assert_eq!(
-        update.local_sequence,
-        Some(Some(SequenceId::new(1234)))
-    );
-    assert_eq!(update.local_sequence_delay, Some(3));
+    let update = local(&update);
+    assert_eq!(update.facing, Some(768));
+    assert_eq!(update.sequence, Some(Some(SequenceId::new(1234))));
+    assert_eq!(update.sequence_delay, Some(3));
+    assert_eq!(update.movement, None);
 }
 
 #[test]
@@ -220,6 +252,33 @@ fn sequence_mask_preserves_explicit_65535_clear() {
     let ServerUpdate::PlayerInfo(update) = player_update(&mut codec, &mut server, &payload) else {
         panic!("expected player info");
     };
-    assert_eq!(update.local_sequence, Some(None));
-    assert_eq!(update.local_sequence_delay, Some(0));
+    let update = local(&update);
+    assert_eq!(update.sequence, Some(None));
+    assert_eq!(update.sequence_delay, Some(0));
+}
+
+#[test]
+fn exact_move_mask_suppresses_deferred_ordinary_path_movement() {
+    let mut server = Isaac::new([0; 4]);
+    let mut codec = initialized_codec(&mut server);
+
+    let payload = local_step_with_exact_move(4);
+    let ServerUpdate::PlayerInfo(update) = player_update(&mut codec, &mut server, &payload) else {
+        panic!("expected player info");
+    };
+    let update = local(&update);
+    assert_eq!(update.movement, None);
+    assert_eq!(
+        update.exact_move,
+        Some(ExactMove {
+            start_delta_x: -1,
+            start_delta_y: 0,
+            end_delta_x: 2,
+            end_delta_y: 1,
+            start_delay: 5,
+            end_delay: 10,
+            direction: 1024,
+        })
+    );
+    assert_eq!((update.tile.x, update.tile.y), (3222, 3218));
 }
