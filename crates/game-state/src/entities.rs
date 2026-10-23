@@ -1,8 +1,8 @@
 //! Authoritative semantic entities: live players and NPCs in the active session.
 
 use rustclient_model::{
-    NpcDefinitionId, NpcIndex, NpcInfoUpdate, Plane, PlayerAppearance, PlayerIndex,
-    PlayerInfoUpdate, PlayerMovement, SequenceId, WorldTile,
+    NpcDefinitionId, NpcIndex, NpcInfoUpdate, PlayerAppearance, PlayerIndex, PlayerInfoUpdate,
+    PlayerMovement, SequenceId, WorldTile,
 };
 use std::collections::BTreeMap;
 
@@ -129,62 +129,47 @@ impl WorldEntitiesState {
     }
 
     pub fn apply_player_info(&mut self, update: &PlayerInfoUpdate) {
-        let Some(local_idx) = self.local_player_index else {
-            return;
-        };
-        let player = self
-            .players
-            .entry(local_idx)
-            .or_insert_with(|| PlayerEntity {
-                index: local_idx,
-                tile: WorldTile::new(0, 0, Plane::MIN),
-                orientation: 0,
-                appearance: None,
-                sequence: None,
-                animation_cycle: 0,
-            });
+        for removal in &update.removals {
+            self.players.remove(removal);
+        }
 
-        if let Some(movement) = &update.local_movement {
-            match movement {
-                PlayerMovement::Step { direction } => {
-                    let (dx, dy) = direction_to_delta(*direction);
-                    player.tile =
-                        WorldTile::new(player.tile.x + dx, player.tile.y + dy, player.tile.plane);
-                    player.orientation = direction_to_orientation(*direction);
-                }
-                PlayerMovement::Run { delta_x, delta_y } => {
-                    player.tile = WorldTile::new(
-                        player.tile.x + i32::from(*delta_x),
-                        player.tile.y + i32::from(*delta_y),
-                        player.tile.plane,
-                    );
-                    player.orientation = delta_to_orientation(*delta_x, *delta_y);
-                }
-                PlayerMovement::Teleport {
-                    plane_delta,
-                    delta_x,
-                    delta_y,
-                } => {
-                    let plane_value = player.tile.plane.get().wrapping_add(*plane_delta) & 3;
-                    let plane = Plane::new(plane_value).unwrap_or(Plane::MIN);
-                    player.tile = WorldTile::new(
-                        (player.tile.x + delta_x).rem_euclid(16_384),
-                        (player.tile.y + delta_y).rem_euclid(16_384),
-                        plane,
-                    );
+        for change in &update.players {
+            let player = self
+                .players
+                .entry(change.index)
+                .or_insert_with(|| PlayerEntity {
+                    index: change.index,
+                    tile: change.tile,
+                    orientation: 0,
+                    appearance: None,
+                    sequence: None,
+                    animation_cycle: 0,
+                });
+
+            player.tile = change.tile;
+            if let Some(movement) = change.movement {
+                match movement {
+                    PlayerMovement::Step { direction } => {
+                        player.orientation = direction_to_orientation(direction);
+                    }
+                    PlayerMovement::Run { delta_x, delta_y } => {
+                        player.orientation = delta_to_orientation(delta_x, delta_y);
+                    }
+                    PlayerMovement::Teleport { .. } => {}
                 }
             }
+            if let Some(appearance) = &change.appearance {
+                player.appearance = Some(appearance.clone());
+            }
+            if let Some(sequence) = change.sequence {
+                player.sequence = sequence;
+                player.animation_cycle = 0;
+            }
+            if let Some(facing) = change.facing {
+                player.orientation = facing;
+            }
         }
-        if let Some(appearance) = &update.local_appearance {
-            player.appearance = Some(appearance.clone());
-        }
-        if let Some(sequence) = update.local_sequence {
-            player.sequence = sequence;
-            player.animation_cycle = 0;
-        }
-        if let Some(facing) = update.local_facing {
-            player.orientation = facing;
-        }
+
         self.generation = self.generation.wrapping_add(1);
     }
 
