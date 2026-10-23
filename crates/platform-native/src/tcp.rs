@@ -74,8 +74,11 @@ impl NativeTcp {
     }
 }
 impl ByteStream for NativeTcp {
-    async fn receive(&mut self, bytes: &mut [u8]) -> Result<usize, TransportError> {
-        loop {
+    fn receive(
+        &mut self,
+        bytes: &mut [u8],
+    ) -> impl Future<Output = Result<usize, TransportError>> {
+        let result = (|| loop {
             self.check()?;
             match self.stream.read(bytes) {
                 Ok(n) => return Ok(n),
@@ -88,26 +91,30 @@ impl ByteStream for NativeTcp {
                     ) => {}
                 Err(_) => return Err(TransportError::Closed),
             }
-        }
+        })();
+        std::future::ready(result)
     }
-    async fn send(&mut self, bytes: &[u8]) -> Result<(), TransportError> {
-        let mut offset = 0;
-        while offset < bytes.len() {
-            self.check()?;
-            match self.stream.write(&bytes[offset..]) {
-                Ok(0) => return Err(TransportError::Closed),
-                Ok(n) => offset += n,
-                Err(e)
-                    if matches!(
-                        e.kind(),
-                        std::io::ErrorKind::TimedOut
-                            | std::io::ErrorKind::WouldBlock
-                            | std::io::ErrorKind::Interrupted
-                    ) => {}
-                Err(_) => return Err(TransportError::Closed),
+    fn send(&mut self, bytes: &[u8]) -> impl Future<Output = Result<(), TransportError>> {
+        let result = (|| {
+            let mut offset = 0;
+            while offset < bytes.len() {
+                self.check()?;
+                match self.stream.write(&bytes[offset..]) {
+                    Ok(0) => return Err(TransportError::Closed),
+                    Ok(n) => offset += n,
+                    Err(e)
+                        if matches!(
+                            e.kind(),
+                            std::io::ErrorKind::TimedOut
+                                | std::io::ErrorKind::WouldBlock
+                                | std::io::ErrorKind::Interrupted
+                        ) => {}
+                    Err(_) => return Err(TransportError::Closed),
+                }
             }
-        }
-        Ok(())
+            Ok(())
+        })();
+        std::future::ready(result)
     }
 }
 
