@@ -137,10 +137,10 @@ fn local_step_with_exact_move(direction: u8) -> Vec<u8> {
 
     writer.finish(&[
         0x01, 0x02, // extended mask 0x200
-        129, // readByteSub => -1
-        0,   // readByte => 0
-        2,   // readByte => 2
-        129, // readByteAdd => 1
+        129,  // readByteSub => -1
+        0,    // readByte => 0
+        2,    // readByte => 2
+        129,  // readByteAdd => 1
         0, 133, // readUnsignedShortAdd => 5
         0, 10, // readUnsignedShort => 10
         128, 4, // readUnsignedShortAddLE => 1024
