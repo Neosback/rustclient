@@ -136,7 +136,14 @@ impl Flames {
         }
         if let Some(rune) = rune {
             let width = usize::try_from(rune.image.width()).unwrap_or(0);
-            for (i, pixel) in rune.image.pixels().chunks_exact(4).enumerate() {
+            for (i, pixel) in rune
+                .image
+                .pixels()
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .enumerate()
+            {
                 if pixel[3] != 0 && width != 0 {
                     let x = i % width + usize::from(rune.offset[0]) + 16;
                     let y = i / width + usize::from(rune.offset[1]) + 16;
