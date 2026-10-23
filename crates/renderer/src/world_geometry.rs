@@ -84,7 +84,7 @@ impl GeometryGpu {
         let mut used = 0;
 
         for (alpha, indices) in [(true, &geometry.transparent), (false, &geometry.opaque)] {
-            for triangle in indices.chunks_exact(3) {
+            for triangle in indices.as_chunks::<3>().0 {
                 let first = triangle[0] as usize;
                 let group = geometry.models.partition_point(|span| span.end <= first);
                 let group = geometry
