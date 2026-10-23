@@ -61,8 +61,8 @@ winit = "0.30.13"
 unsafe_code = "deny"
 
 [workspace.lints.clippy]
-all = "warn"
-pedantic = "warn"
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
 # Rust 1.99 promoted this style-only assertion suggestion into the pedantic set.
 # Preserve the repository's existing assertion style while keeping all other warnings denied in CI.
 assert_is_empty = "allow"
