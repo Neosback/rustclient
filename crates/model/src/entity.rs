@@ -104,9 +104,16 @@ impl ActorSequenceSlot {
 /// Player movement update decoded from player info.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PlayerMovement {
+    /// One-tile movement using the revision's canonical 0..=7 compass direction.
     Step { direction: u8 },
-    Run { direction1: u8, direction2: u8 },
-    Teleport { delta_x: i32, delta_y: i32 },
+    /// Two-tile movement. Revision 240 encodes this as one 4-bit vector, not two steps.
+    Run { delta_x: i8, delta_y: i8 },
+    /// Plane-relative movement. X/Y are added with the client's 14-bit world wrapping rules.
+    Teleport {
+        plane_delta: u8,
+        delta_x: i32,
+        delta_y: i32,
+    },
 }
 
 /// Consolidated player info update for one tick.
