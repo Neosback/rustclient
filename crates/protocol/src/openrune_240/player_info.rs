@@ -5,11 +5,11 @@
 //! only after those passes are complete do byte-aligned pending update masks begin.
 
 use crate::{ProtocolError, Result, openrune_240::bit_reader::BitReader, wire::Reader};
-use rustclient_model::{MoveSpeed, PlayerIndex, PlayerUpdate};
 pub use rustclient_model::{
     ExactMove, Gender, ItemDefinitionId, KitId, MovementSequences, PlayerAppearance,
     PlayerInfoUpdate, PlayerMovement, SequenceId, SlotContent, WorldTile,
 };
+use rustclient_model::{MoveSpeed, PlayerIndex, PlayerUpdate};
 
 const PLAYER_CAPACITY: usize = 2048;
 const INITIAL_GPI_BITS: usize = 30 + 2046 * 18;
