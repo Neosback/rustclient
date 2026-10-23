@@ -6,6 +6,10 @@ struct Memory {
     output: Vec<u8>,
     chunk: usize,
 }
+#[allow(
+    clippy::unused_async_trait_impl,
+    reason = "test transport implements the shared async ByteStream contract"
+)]
 impl ByteStream for Memory {
     async fn receive(&mut self, bytes: &mut [u8]) -> std::result::Result<usize, TransportError> {
         let n = bytes.len().min(self.chunk).min(self.input.len());
