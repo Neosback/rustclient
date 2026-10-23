@@ -178,8 +178,9 @@ impl WorldEntitiesState {
         if let Some(appearance) = &update.local_appearance {
             player.appearance = Some(appearance.clone());
         }
-        if let Some(seq) = update.local_sequence {
-            player.sequence = Some(seq);
+        if let Some(sequence) = update.local_sequence {
+            player.sequence = sequence;
+            player.animation_cycle = 0;
         }
         if let Some(facing) = update.local_facing {
             player.orientation = facing;
