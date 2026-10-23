@@ -7,22 +7,22 @@ use super::player_appearance::{decode_appearance, sequence_id};
 use crate::{ProtocolError, Result, wire::Reader};
 use rustclient_model::{ExactMove, MoveSpeed, PlayerAppearance, SequenceChange};
 
-const KNOWN: u32 = 0x000001
-    | 0x000002
-    | 0x000004
-    | 0x000008
-    | 0x000010
-    | 0x000020
-    | 0x000040
-    | 0x000080
-    | 0x000100
-    | 0x000200
-    | 0x000400
-    | 0x000800
-    | 0x001000
-    | 0x002000
-    | 0x004000
-    | 0x010000;
+const KNOWN: u32 = 0x0000_0001
+    | 0x0000_0002
+    | 0x0000_0004
+    | 0x0000_0008
+    | 0x0000_0010
+    | 0x0000_0020
+    | 0x0000_0040
+    | 0x0000_0080
+    | 0x0000_0100
+    | 0x0000_0200
+    | 0x0000_0400
+    | 0x0000_0800
+    | 0x0000_1000
+    | 0x0000_2000
+    | 0x0000_4000
+    | 0x0001_0000;
 
 #[derive(Default)]
 pub(super) struct Extended {
