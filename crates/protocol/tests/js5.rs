@@ -5,6 +5,10 @@ struct Memory {
     input: VecDeque<u8>,
     output: Vec<u8>,
 }
+#[allow(
+    clippy::unused_async_trait_impl,
+    reason = "test transport implements the shared async ByteStream contract"
+)]
 impl ByteStream for Memory {
     async fn receive(&mut self, out: &mut [u8]) -> Result<usize, TransportError> {
         let n = out.len().min(self.input.len()).min(3);
