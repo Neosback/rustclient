@@ -74,10 +74,7 @@ impl NativeTcp {
     }
 }
 impl ByteStream for NativeTcp {
-    fn receive(
-        &mut self,
-        bytes: &mut [u8],
-    ) -> impl Future<Output = Result<usize, TransportError>> {
+    fn receive(&mut self, bytes: &mut [u8]) -> impl Future<Output = Result<usize, TransportError>> {
         let result = (|| loop {
             self.check()?;
             match self.stream.read(bytes) {
