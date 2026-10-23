@@ -8,16 +8,22 @@ struct Memory {
     chunk: usize,
 }
 impl ByteStream for Memory {
-    async fn receive(&mut self, bytes: &mut [u8]) -> std::result::Result<usize, TransportError> {
+    fn receive(
+        &mut self,
+        bytes: &mut [u8],
+    ) -> impl Future<Output = std::result::Result<usize, TransportError>> {
         let n = bytes.len().min(self.chunk).min(self.input.len());
         for b in &mut bytes[..n] {
             *b = self.input.pop_front().unwrap();
         }
-        Ok(n)
+        std::future::ready(Ok(n))
     }
-    async fn send(&mut self, bytes: &[u8]) -> std::result::Result<(), TransportError> {
+    fn send(
+        &mut self,
+        bytes: &[u8],
+    ) -> impl Future<Output = std::result::Result<(), TransportError>> {
         self.output.extend_from_slice(bytes);
-        Ok(())
+        std::future::ready(Ok(()))
     }
 }
 fn entropy() -> LoginEntropy {
