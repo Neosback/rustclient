@@ -147,6 +147,37 @@ fn local_step_with_exact_move(direction: u8) -> Vec<u8> {
     ])
 }
 
+fn local_step_with_speeds(
+    direction: u8,
+    temporary: Option<i8>,
+    persistent: Option<i8>,
+) -> Vec<u8> {
+    assert!(temporary.is_some() || persistent.is_some());
+
+    let mut writer = BitWriter::default();
+    writer.bits(1, 1);
+    writer.bits(1, 1); // pending update mask
+    writer.bits(1, 2);
+    writer.bits(u32::from(direction), 3);
+    writer.align();
+    skip_all_external(&mut writer);
+
+    let mut mask = 0u16;
+    let mut body = Vec::new();
+    if let Some(speed) = temporary {
+        mask |= 16_384;
+        body.push(speed.cast_unsigned().wrapping_neg());
+    }
+    if let Some(speed) = persistent {
+        mask |= 2048;
+        body.push(speed.cast_unsigned().wrapping_add(128));
+    }
+
+    let mut masks = vec![1, (mask >> 8).to_le_bytes()[0]];
+    masks.extend_from_slice(&body);
+    writer.finish(&masks)
+}
+
 fn external_spawn(index_x: u16, index_y: u16) -> Vec<u8> {
     let mut writer = BitWriter::default();
 
@@ -263,6 +294,44 @@ fn player_info_keeps_four_pass_state_across_step_and_run_ticks() {
         (run.tile.x, run.tile.y, run.tile.plane.get()),
         (3222, 3221, 0)
     );
+}
+
+#[test]
+fn persistent_and_temporary_movement_speeds_follow_reference_precedence() {
+    let mut server = Isaac::new([0; 4]);
+    let mut codec = initialized_codec(&mut server);
+
+    let ServerUpdate::PlayerInfo(persistent) = player_update(
+        &mut codec,
+        &mut server,
+        &local_step_with_speeds(4, None, Some(2)),
+    ) else {
+        panic!("expected player info");
+    };
+    assert_eq!(local(&persistent).movement_speed, Some(MoveSpeed::Run));
+
+    let ServerUpdate::PlayerInfo(inherited) =
+        player_update(&mut codec, &mut server, &local_step(4))
+    else {
+        panic!("expected player info");
+    };
+    assert_eq!(local(&inherited).movement_speed, Some(MoveSpeed::Run));
+
+    let ServerUpdate::PlayerInfo(temporary) = player_update(
+        &mut codec,
+        &mut server,
+        &local_step_with_speeds(4, Some(0), None),
+    ) else {
+        panic!("expected player info");
+    };
+    assert_eq!(local(&temporary).movement_speed, Some(MoveSpeed::Crawl));
+
+    let ServerUpdate::PlayerInfo(restored) =
+        player_update(&mut codec, &mut server, &local_step(4))
+    else {
+        panic!("expected player info");
+    };
+    assert_eq!(local(&restored).movement_speed, Some(MoveSpeed::Run));
 }
 
 #[test]
