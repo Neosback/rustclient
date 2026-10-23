@@ -9,7 +9,7 @@ column-major storage and a separate alpha plane.
 Behavioral evidence: RustOSRS gitlink
 `854a3962164ad401d21064a5f207f86869ea69b4`, cache `encode/store.rs`,
 `encode/reference_table.rs`, `transport.rs`, `decode/sprite.rs`; RuneLite-melxin
-revision 235 checkout `1ad572d7dcdbc0fb67a4a00f0c2f959d5ab25abc`,
+revision 235 checkout (since removed from `references/`; see RustClient Git history) `1ad572d7dcdbc0fb67a4a00f0c2f959d5ab25abc`,
 `AbstractFont.java` and `LoginScreenAnimation.java`.
 
 `live-graphics-defaults.bin` is the 85-byte decoded index 17/group 3/file 0 from

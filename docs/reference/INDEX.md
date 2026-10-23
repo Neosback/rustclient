@@ -10,16 +10,17 @@ revision is evidence, not a compatibility declaration.
 
 | Source | Location | Use and limits |
 | --- | --- | --- |
-| RuneLite / deob 235 | `references/RuneLite-melxin/` | Primary executable client behavior: model transforms, normal merging, offsets, skinning, scene order, camera, widgets, scripts, menus. Plugin ergonomics and feature ideas. `buildSrc/.../Dependencies.kt` explicitly declares 235; recheck layouts changed by 240. |
+| RuneLite / deob 240 (rl-suite) | `references/rl-suite-240/` | Primary executable client behavior at revision 240: deobfuscated client sources with stable `classXX` names plus 93 API-derived names (model transforms, scene order, camera, widgets, scripts, menus, actor movement). Original obfuscated names are in `@ObfuscatedName`. Same input jar as `gamepacks/osrs-240`. |
+| open-runelite 240 | `references/open-runelite-rev-240/` | RuneLite API and client at 240: GPU plugin and shaders (depth, culling, reverse-Z), `runelite-api` types, plugin ergonomics. No upstream commit recorded; needs an external `injected-client` jar. Not a declaration of OpenRune 240.2 compatibility. |
 | RuneLite-injected 240 binary | `references/gamepacks/osrs-240/injected-client-1.12.39.jar` | Official RuneLite download; publisher SHA-256 and major revision verified. Additional 240 client-behavior evidence with injected transformations. Not an untouched vanilla input. See [provenance](gamepack-240.json). |
 | rsprox | `references/rsprox-master/` | **Both client and server packet tables/codecs**, byte transforms, framing and proxy diagnostics. Supplied OSRS modules reach 235, not 240. `incoming` means client-to-server; `outgoing` means server-to-client. |
 | OpenRune development server | `/Users/tylercovalt/Desktop/OpenRune Project/OpenRune-Server` | Actual server behavior and cache for the target. Pins `net.rsprot:osrs-240-*` `1.0.0-ALPHA-20260825`; those source JARs provide exact 240 wire evidence. See existing protocol fixture provenance. |
 | OpenRune FileStore | `/Users/tylercovalt/Documents/OpenRune-FileStore-main` | Cache definition/opcode, container and model decoder research. Verify individual 240 layouts against actual cache and deob; presence of a codec does not prove every 240 format is supported. External local source, not yet vendored. |
 | RustOSRS | `references/rustosrs/` | Pinned Rust cache/scene/rendering research, coordinate conventions, model offsets, transforms, neighboring normal merges and Reference GPU oracle. Port semantic rules into RustClient; do not adopt editor enhancements as OSRS behavior. |
 
-The separate RuneLite and rsprox copies are vendored Git trees, not submodules.
-Their exact versions are the trees in the RustClient commit; `cargo run -p xtask
--- references status` reports and checks all three in-repository sources.
+The separate RuneLite 240, rl-suite and rsprox copies are vendored Git trees, not
+submodules. Their exact versions are the trees in the RustClient commit; `cargo run
+-p xtask -- references status` reports and checks all four in-repository sources.
 `references sync` initializes only the RustOSRS submodule and then checks all
 sources; it never downloads or advances the vendored copies.
 
@@ -30,11 +31,12 @@ entire server/FileStore checkout. Work remains independent of those local paths.
 
 The original supplied copies remain available at:
 
-- RuneLite: `/Users/tylercovalt/Documents/ChatGPT/RSPSi-resources/RuneLite-melxin`
+- open-runelite 240: `/Users/tylercovalt/Documents/open-runelite-rev-240`
+- rl-suite output: `/Users/tylercovalt/Documents/Java Deob/decompiled/rl-suite-240`; tool: `/Users/tylercovalt/Documents/rl-suite-main` (also holds revision 235-240 packet tables under `data/`)
 - rsprox: `/Users/tylercovalt/Documents/rsprox-master`
 - RustOSRS: `/Users/tylercovalt/Documents/RustOSRS`
 
-Older checkpoints cite RuneLite and OpenRune bundled inside `references/rustosrs/`.
+The RuneLite 235 tree (`references/RuneLite-melxin`) was removed from the repository and remains in Git history. Older checkpoints cite RuneLite 235 and OpenRune bundled inside `references/rustosrs/`.
 Those citations remain valid for their recorded snapshot. New research should use
 the source map above and record the specific files/revision used.
 
