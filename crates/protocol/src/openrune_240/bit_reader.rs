@@ -82,17 +82,6 @@ impl<'a> BitReader<'a> {
     pub const fn bits_remaining(&self) -> usize {
         (self.bytes.len() * 8).saturating_sub(self.bit_offset)
     }
-
-    /// Slice of remaining bytes starting at current aligned byte offset.
-    #[must_use]
-    pub fn remaining_bytes(&self) -> &'a [u8] {
-        let offset = self.byte_offset();
-        if offset < self.bytes.len() {
-            &self.bytes[offset..]
-        } else {
-            &[]
-        }
-    }
 }
 
 #[cfg(test)]
