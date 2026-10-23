@@ -1,5 +1,13 @@
 //! Immutable scene asset assembly and disposable CPU mesh projection.
 #![forbid(unsafe_code)]
+#![allow(
+    clippy::manual_midpoint,
+    reason = "deob-derived curve solving preserves the reference floating-point operation order"
+)]
+#![allow(
+    clippy::chunks_exact_to_as_chunks,
+    reason = "scene topology is expressed as fixed-width complete records and intentionally keeps reference chunk iteration"
+)]
 mod animation;
 mod collision;
 mod color;
