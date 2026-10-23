@@ -62,3 +62,8 @@ unsafe_code = "deny"
 [workspace.lints.clippy]
 all = "warn"
 pedantic = "warn"
+# Rust 1.99 introduced style-only lints across pre-existing code. Keep CI focused on
+# behavioral warnings until those migrations are handled deliberately outside protocol work.
+chunks_exact_to_as_chunks = "allow"
+manual_midpoint = "allow"
+assert_is_empty = "allow"
