@@ -4,16 +4,12 @@
 //! low-resolution player indices are decoded in four bitstream passes with variable skip counts;
 //! only after those passes are complete do byte-aligned pending update masks begin.
 
-use crate::{
-    ProtocolError, Result,
-    openrune_240::bit_reader::BitReader,
-    wire::Reader,
-};
+use crate::{ProtocolError, Result, openrune_240::bit_reader::BitReader, wire::Reader};
+use rustclient_model::PlayerIndex;
 pub use rustclient_model::{
     Gender, ItemDefinitionId, KitId, MovementSequences, PlayerAppearance, PlayerInfoUpdate,
     PlayerMovement, SequenceId, SlotContent, WorldTile,
 };
-use rustclient_model::PlayerIndex;
 
 const PLAYER_CAPACITY: usize = 2048;
 const INITIAL_GPI_BITS: usize = 30 + 2046 * 18;
@@ -89,7 +85,9 @@ impl PlayerInfoDecoder {
     pub(crate) fn new(local_player: PlayerIndex) -> Self {
         Self {
             local_player,
-            slots: (0..PLAYER_CAPACITY).map(|_| PlayerSlot::default()).collect(),
+            slots: (0..PLAYER_CAPACITY)
+                .map(|_| PlayerSlot::default())
+                .collect(),
             active_indices: Vec::with_capacity(PLAYER_CAPACITY - 1),
             empty_indices: Vec::with_capacity(PLAYER_CAPACITY - 1),
             pending_update_indices: Vec::with_capacity(PLAYER_CAPACITY - 1),
@@ -161,7 +159,10 @@ impl PlayerInfoDecoder {
     /// Decode one revision-240 `PLAYER_INFO` payload using persistent GPI state.
     /// # Errors
     /// Rejects malformed bit passes, impossible player transitions, invalid masks, or trailing data.
-    #[expect(clippy::too_many_lines, reason = "four GPI passes intentionally mirror revision 240")]
+    #[expect(
+        clippy::too_many_lines,
+        reason = "four GPI passes intentionally mirror revision 240"
+    )]
     pub(crate) fn decode(&mut self, payload: &[u8]) -> Result<PlayerInfoUpdate> {
         if !self.initialized {
             return Err(ProtocolError::new(
@@ -481,7 +482,10 @@ impl PlayerInfoDecoder {
             .map_err(|_| ProtocolError::new("player info", "invalid local player index"))
     }
 
-    #[expect(clippy::too_many_lines, reason = "mask order mirrors PlayerUpdateManager.method2946")]
+    #[expect(
+        clippy::too_many_lines,
+        reason = "mask order mirrors PlayerUpdateManager.method2946"
+    )]
     fn decode_update_mask(
         &mut self,
         reader: &mut Reader<'_>,
