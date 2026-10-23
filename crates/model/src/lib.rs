@@ -30,10 +30,10 @@ pub use coords::{
     RegionTile, SceneTile, WorldFinePoint, WorldTile,
 };
 pub use entity::{
-    APPEARANCE_SLOTS, ActorSequenceSlot, COLOR_SLOTS, Gender, KIT_PARTS, KIT_SLOT,
-    MovementSequences, NewNpc, NpcAttributeUpdate, NpcInfoUpdate, NpcMovement, NpcProperty,
-    PlayerAppearance, PlayerInfoUpdate, PlayerMovement, PlayerTrackingGrid, RemotePlayerUpdate,
-    SequenceChange, SlotContent,
+    APPEARANCE_SLOTS, ActorSequenceSlot, COLOR_SLOTS, ExactMove, Gender, KIT_PARTS, KIT_SLOT,
+    MoveSpeed, MovementSequences, NewNpc, NpcAttributeUpdate, NpcInfoUpdate, NpcMovement,
+    NpcProperty, PlayerAppearance, PlayerInfoUpdate, PlayerMovement, PlayerTrackingGrid,
+    RemotePlayerUpdate, SequenceChange, SlotContent,
 };
 pub use ids::{
     FloorOverlayId, FloorUnderlayId, FontId, InterfaceId, InventoryId, InventorySlot,

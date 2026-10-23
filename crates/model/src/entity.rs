@@ -113,6 +113,40 @@ impl ActorSequenceSlot {
     }
 }
 
+/// Traversal speed carried by revision-240 player path entries.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub enum MoveSpeed {
+    Stationary,
+    Crawl,
+    #[default]
+    Walk,
+    Run,
+}
+impl MoveSpeed {
+    #[must_use]
+    pub const fn from_wire(value: i8) -> Option<Self> {
+        match value {
+            -1 => Some(Self::Stationary),
+            0 => Some(Self::Crawl),
+            1 => Some(Self::Walk),
+            2 => Some(Self::Run),
+            _ => None,
+        }
+    }
+}
+
+/// Forced movement block decoded from the revision-240 player update mask.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct ExactMove {
+    pub start_delta_x: i8,
+    pub start_delta_y: i8,
+    pub end_delta_x: i8,
+    pub end_delta_y: i8,
+    pub start_delay: u16,
+    pub end_delay: u16,
+    pub direction: u16,
+}
+
 /// Player movement update decoded from player info.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PlayerMovement {
@@ -141,6 +175,10 @@ pub enum SequenceChange {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct PlayerInfoUpdate {
     pub local_movement: Option<PlayerMovement>,
+    /// Effective traversal speed for this tick, or the persistent speed when it changed.
+    pub local_movement_speed: Option<MoveSpeed>,
+    /// Forced movement authored by the server for the local player.
+    pub local_exact_move: Option<ExactMove>,
     pub local_appearance: Option<PlayerAppearance>,
     pub local_sequence: SequenceChange,
     pub local_sequence_delay: u8,
@@ -210,6 +248,10 @@ pub enum RemotePlayerUpdate {
         sequence: SequenceChange,
         delay: u8,
         facing: Option<u16>,
+        /// Effective traversal speed for the deferred movement associated with this update.
+        movement_speed: Option<MoveSpeed>,
+        /// Forced movement block, when present.
+        exact_move: Option<ExactMove>,
     },
 }
 impl RemotePlayerUpdate {
@@ -276,7 +318,7 @@ pub enum NpcProperty {
 
 #[cfg(test)]
 mod tracking_tests {
-    use super::PlayerTrackingGrid;
+    use super::{MoveSpeed, PlayerTrackingGrid};
     #[test]
     fn tracking_grid_requires_nonzero_bounded_tile_extent() {
         assert!(PlayerTrackingGrid::new(0, 1).is_none());
@@ -287,5 +329,14 @@ mod tracking_tests {
             PlayerTrackingGrid::new(8192, 256).unwrap().extent(),
             2_097_152
         );
+    }
+
+    #[test]
+    fn movement_speed_wire_ids_match_revision_240() {
+        assert_eq!(MoveSpeed::from_wire(-1), Some(MoveSpeed::Stationary));
+        assert_eq!(MoveSpeed::from_wire(0), Some(MoveSpeed::Crawl));
+        assert_eq!(MoveSpeed::from_wire(1), Some(MoveSpeed::Walk));
+        assert_eq!(MoveSpeed::from_wire(2), Some(MoveSpeed::Run));
+        assert_eq!(MoveSpeed::from_wire(127), None);
     }
 }

@@ -113,7 +113,7 @@ fn mix(v: &mut [W<u32>; 8]) {
 /// Encrypt complete eight-byte blocks, retaining the protocol's unencrypted tail.
 pub(crate) fn xtea(bytes: &mut [u8], key: [u32; 4]) {
     let k = key.map(W);
-    for block in bytes.chunks_exact_mut(8) {
+    for block in bytes.as_chunks_mut::<8>().0 {
         let mut a = W(u32::from_be_bytes(
             block[..4].try_into().expect("four-byte block"),
         ));

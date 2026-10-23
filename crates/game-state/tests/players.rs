@@ -60,6 +60,8 @@ fn remote_visibility_retains_appearance_reincarnates_indexes_and_replays_atomica
                 sequence: SequenceChange::Unchanged,
                 delay: 0,
                 facing: Some(1024),
+                movement_speed: None,
+                exact_move: None,
             },
         ]),
         remote(vec![RemotePlayerUpdate::Move {
