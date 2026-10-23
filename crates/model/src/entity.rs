@@ -121,7 +121,9 @@ pub enum PlayerMovement {
 pub struct PlayerInfoUpdate {
     pub local_movement: Option<PlayerMovement>,
     pub local_appearance: Option<PlayerAppearance>,
-    pub local_sequence: Option<SequenceId>,
+    /// `None` means no sequence mask; `Some(None)` explicitly clears the action sequence.
+    pub local_sequence: Option<Option<SequenceId>>,
+    pub local_sequence_delay: Option<u8>,
     pub local_facing: Option<u16>,
 }
 
