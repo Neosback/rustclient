@@ -44,15 +44,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let pixels = sprite.image.pixels();
                 let rgba = pixels.as_chunks::<4>().0;
                 let opaque = rgba.iter().filter(|p| p[3] != 0).count();
-                let total: [u32; 3] = rgba.iter().filter(|p| p[3] != 0).fold(
-                    [0; 3],
-                    |mut sum, p| {
-                        for (sum, channel) in sum.iter_mut().zip(p) {
-                            *sum += u32::from(*channel);
-                        }
-                        sum
-                    },
-                );
+                let total: [u32; 3] =
+                    rgba.iter()
+                        .filter(|p| p[3] != 0)
+                        .fold([0; 3], |mut sum, p| {
+                            for (sum, channel) in sum.iter_mut().zip(p) {
+                                *sum += u32::from(*channel);
+                            }
+                            sum
+                        });
                 let mean = total.map(|sum| sum / u32::try_from(opaque).unwrap_or(1).max(1));
                 println!(
                     "sprite {id}: canvas {:?} offset {:?} image {}x{} opaque pixels {opaque} mean rgb {mean:?}",
