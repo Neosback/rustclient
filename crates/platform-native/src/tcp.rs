@@ -74,6 +74,10 @@ impl NativeTcp {
     }
 }
 impl ByteStream for NativeTcp {
+    #[allow(
+        clippy::unused_async_trait_impl,
+        reason = "ByteStream keeps one async interface across native and web transports"
+    )]
     async fn receive(&mut self, bytes: &mut [u8]) -> Result<usize, TransportError> {
         loop {
             self.check()?;
@@ -90,6 +94,10 @@ impl ByteStream for NativeTcp {
             }
         }
     }
+    #[allow(
+        clippy::unused_async_trait_impl,
+        reason = "ByteStream keeps one async interface across native and web transports"
+    )]
     async fn send(&mut self, bytes: &[u8]) -> Result<(), TransportError> {
         let mut offset = 0;
         while offset < bytes.len() {
