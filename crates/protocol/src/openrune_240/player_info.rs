@@ -5,10 +5,10 @@
 //! only after those passes are complete do byte-aligned pending update masks begin.
 
 use crate::{ProtocolError, Result, openrune_240::bit_reader::BitReader, wire::Reader};
-use rustclient_model::PlayerIndex;
+use rustclient_model::{MoveSpeed, PlayerIndex, PlayerUpdate};
 pub use rustclient_model::{
-    Gender, ItemDefinitionId, KitId, MovementSequences, PlayerAppearance, PlayerInfoUpdate,
-    PlayerMovement, SequenceId, SlotContent, WorldTile,
+    ExactMove, Gender, ItemDefinitionId, KitId, MovementSequences, PlayerAppearance,
+    PlayerInfoUpdate, PlayerMovement, SequenceId, SlotContent, WorldTile,
 };
 
 const PLAYER_CAPACITY: usize = 2048;
@@ -47,7 +47,7 @@ struct PlayerSlot {
     region: u32,
     coord: PlayerCoord,
     path_speed: i8,
-    pending_movement: bool,
+    pending_movement: Option<PlayerMovement>,
     pending_speed: i8,
     appearance: Option<PlayerAppearance>,
 }
@@ -60,7 +60,7 @@ impl Default for PlayerSlot {
             region: 0,
             coord: PlayerCoord::default(),
             path_speed: 1,
-            pending_movement: false,
+            pending_movement: None,
             pending_speed: 1,
             appearance: None,
         }
@@ -105,8 +105,7 @@ impl PlayerInfoDecoder {
                 "truncated GPI prefix",
             ));
         }
-        let local = usize::try_from(self.local_player.get())
-            .map_err(|_| ProtocolError::new("initial player info", "invalid local player index"))?;
+        let local = self.local_index()?;
         if !(1..PLAYER_CAPACITY).contains(&local) {
             return Err(ProtocolError::new(
                 "initial player info",
@@ -150,19 +149,12 @@ impl PlayerInfoDecoder {
             ));
         }
         self.initialized = true;
-
-        let plane = rustclient_model::Plane::new(local_coord.plane)
-            .ok_or_else(|| ProtocolError::new("initial player info", "invalid local plane"))?;
-        Ok(WorldTile::new(local_coord.x, local_coord.y, plane))
+        coord_tile(local_coord, "initial player info")
     }
 
     /// Decode one revision-240 `PLAYER_INFO` payload using persistent GPI state.
     /// # Errors
     /// Rejects malformed bit passes, impossible player transitions, invalid masks, or trailing data.
-    #[expect(
-        clippy::too_many_lines,
-        reason = "four GPI passes intentionally mirror revision 240"
-    )]
     pub(crate) fn decode(&mut self, payload: &[u8]) -> Result<PlayerInfoUpdate> {
         if !self.initialized {
             return Err(ProtocolError::new(
@@ -180,8 +172,8 @@ impl PlayerInfoDecoder {
         self.decode_active_pass(&mut bits, &active, true, &mut output)?;
 
         let empty = self.empty_indices.clone();
-        self.decode_empty_pass(&mut bits, &empty, true)?;
-        self.decode_empty_pass(&mut bits, &empty, false)?;
+        self.decode_empty_pass(&mut bits, &empty, true, &mut output)?;
+        self.decode_empty_pass(&mut bits, &empty, false, &mut output)?;
 
         self.rebuild_index_tables();
         bits.byte_align();
@@ -210,9 +202,7 @@ impl PlayerInfoDecoder {
             ));
         }
 
-        for slot in &mut self.slots {
-            slot.pending_movement = false;
-        }
+        self.finalize_movements(&mut output)?;
         Ok(output)
     }
 
@@ -240,12 +230,7 @@ impl PlayerInfoDecoder {
                 self.read_active_player_update(bits, index, output)?;
             }
         }
-        if skip != 0 {
-            return Err(ProtocolError::new(
-                "player info bitstream",
-                "active-player skip count crossed pass boundary",
-            ));
-        }
+        ensure_skip_exhausted(skip, "active-player")?;
         bits.byte_align();
         Ok(())
     }
@@ -255,6 +240,7 @@ impl PlayerInfoDecoder {
         bits: &mut BitReader<'_>,
         indices: &[usize],
         flagged: bool,
+        output: &mut PlayerInfoUpdate,
     ) -> Result<()> {
         let mut skip = 0usize;
         for &index in indices {
@@ -269,16 +255,11 @@ impl PlayerInfoDecoder {
             if bits.read_bits(1)? == 0 {
                 skip = read_skip_count(bits)?;
                 self.slots[index].flags |= 2;
-            } else if self.read_external_player_update(bits, index)? {
+            } else if self.read_external_player_update(bits, index, output)? {
                 self.slots[index].flags |= 2;
             }
         }
-        if skip != 0 {
-            return Err(ProtocolError::new(
-                "player info bitstream",
-                "external-player skip count crossed pass boundary",
-            ));
-        }
+        ensure_skip_exhausted(skip, "external-player")?;
         bits.byte_align();
         Ok(())
     }
@@ -295,89 +276,87 @@ impl PlayerInfoDecoder {
         }
 
         match bits.read_bits(2)? {
-            0 => {
-                if has_mask {
-                    self.slots[index].pending_movement = false;
-                } else {
-                    if index == self.local_index()? {
-                        return Err(ProtocolError::new(
-                            "player info bitstream",
-                            "local player cannot leave high resolution",
-                        ));
-                    }
-                    let region = self.slots[index].coord.region();
-                    self.slots[index].region = region;
-                    self.slots[index].active = false;
-                    if bits.read_bits(1)? != 0 {
-                        let _ = self.read_external_player_update(bits, index)?;
-                    }
-                }
-            }
+            0 => self.read_remove_or_mask_only(bits, index, has_mask, output)?,
             1 => {
                 let direction = bits.read_bits_u8(3)?;
-                let (dx, dy) = step_delta(direction);
-                self.apply_move(index, dx, dy);
-                if index == self.local_index()? {
-                    output.local_movement = Some(PlayerMovement::Step { direction });
-                }
+                self.apply_move(index, PlayerMovement::Step { direction });
             }
             2 => {
                 let direction = bits.read_bits_u8(4)?;
-                let (dx, dy) = run_delta(direction);
-                self.apply_move(index, i32::from(dx), i32::from(dy));
-                if index == self.local_index()? {
-                    output.local_movement = Some(PlayerMovement::Run {
-                        delta_x: dx,
-                        delta_y: dy,
-                    });
-                }
+                let (delta_x, delta_y) = run_delta(direction);
+                self.apply_move(index, PlayerMovement::Run { delta_x, delta_y });
             }
-            3 => {
-                if bits.read_bits(1)? == 0 {
-                    let packed = bits.read_bits(12)?;
-                    let plane_delta = ((packed >> 10) & 3).to_le_bytes()[0];
-                    let mut dx = i32::try_from((packed >> 5) & 31).unwrap_or_default();
-                    let mut dy = i32::try_from(packed & 31).unwrap_or_default();
-                    if dx > 15 {
-                        dx -= 32;
-                    }
-                    if dy > 15 {
-                        dy -= 32;
-                    }
-                    let slot = &mut self.slots[index];
-                    slot.coord.plane = slot.coord.plane.wrapping_add(plane_delta) & 3;
-                    slot.coord.x += dx;
-                    slot.coord.y += dy;
-                    slot.pending_movement = true;
-                    slot.pending_speed = slot.path_speed;
-                    if index == self.local_index()? {
-                        output.local_movement = Some(PlayerMovement::Teleport {
-                            plane_delta,
-                            delta_x: dx,
-                            delta_y: dy,
-                        });
-                    }
-                } else {
-                    let packed = bits.read_bits(30)?;
-                    let plane_delta = ((packed >> 28) & 3).to_le_bytes()[0];
-                    let dx = i32::try_from((packed >> 14) & 16_383).unwrap_or_default();
-                    let dy = i32::try_from(packed & 16_383).unwrap_or_default();
-                    let slot = &mut self.slots[index];
-                    slot.coord.plane = slot.coord.plane.wrapping_add(plane_delta) & 3;
-                    slot.coord.x = (slot.coord.x + dx) & 16_383;
-                    slot.coord.y = (slot.coord.y + dy) & 16_383;
-                    slot.pending_movement = true;
-                    slot.pending_speed = slot.path_speed;
-                    if index == self.local_index()? {
-                        output.local_movement = Some(PlayerMovement::Teleport {
-                            plane_delta,
-                            delta_x: dx,
-                            delta_y: dy,
-                        });
-                    }
-                }
-            }
+            3 => self.read_teleport(bits, index)?,
             _ => unreachable!(),
+        }
+        Ok(())
+    }
+
+    fn read_remove_or_mask_only(
+        &mut self,
+        bits: &mut BitReader<'_>,
+        index: usize,
+        has_mask: bool,
+        output: &mut PlayerInfoUpdate,
+    ) -> Result<()> {
+        if has_mask {
+            self.slots[index].pending_movement = None;
+            return Ok(());
+        }
+        if index == self.local_index()? {
+            return Err(ProtocolError::new(
+                "player info bitstream",
+                "local player cannot leave high resolution",
+            ));
+        }
+
+        self.slots[index].region = self.slots[index].coord.region();
+        self.slots[index].active = false;
+        self.slots[index].pending_movement = None;
+        output.removals.push(model_index(index)?);
+        if bits.read_bits(1)? != 0 {
+            let _ = self.read_external_player_update(bits, index, output)?;
+        }
+        Ok(())
+    }
+
+    fn read_teleport(&mut self, bits: &mut BitReader<'_>, index: usize) -> Result<()> {
+        if bits.read_bits(1)? == 0 {
+            let packed = bits.read_bits(12)?;
+            let plane_delta = ((packed >> 10) & 3).to_le_bytes()[0];
+            let mut delta_x = i32::try_from((packed >> 5) & 31).unwrap_or_default();
+            let mut delta_y = i32::try_from(packed & 31).unwrap_or_default();
+            if delta_x > 15 {
+                delta_x -= 32;
+            }
+            if delta_y > 15 {
+                delta_y -= 32;
+            }
+            let slot = &mut self.slots[index];
+            slot.coord.plane = slot.coord.plane.wrapping_add(plane_delta) & 3;
+            slot.coord.x += delta_x;
+            slot.coord.y += delta_y;
+            slot.pending_movement = Some(PlayerMovement::Teleport {
+                plane_delta,
+                delta_x,
+                delta_y,
+            });
+            slot.pending_speed = slot.path_speed;
+        } else {
+            let packed = bits.read_bits(30)?;
+            let plane_delta = ((packed >> 28) & 3).to_le_bytes()[0];
+            let delta_x = i32::try_from((packed >> 14) & 16_383).unwrap_or_default();
+            let delta_y = i32::try_from(packed & 16_383).unwrap_or_default();
+            let slot = &mut self.slots[index];
+            slot.coord.plane = slot.coord.plane.wrapping_add(plane_delta) & 3;
+            slot.coord.x = (slot.coord.x + delta_x) & 16_383;
+            slot.coord.y = (slot.coord.y + delta_y) & 16_383;
+            slot.pending_movement = Some(PlayerMovement::Teleport {
+                plane_delta,
+                delta_x,
+                delta_y,
+            });
+            slot.pending_speed = slot.path_speed;
         }
         Ok(())
     }
@@ -386,35 +365,10 @@ impl PlayerInfoDecoder {
         &mut self,
         bits: &mut BitReader<'_>,
         index: usize,
+        output: &mut PlayerInfoUpdate,
     ) -> Result<bool> {
         match bits.read_bits(2)? {
-            0 => {
-                if bits.read_bits(1)? != 0 {
-                    let _ = self.read_external_player_update(bits, index)?;
-                }
-                let local_x = bits.read_bits(13)?;
-                let local_y = bits.read_bits(13)?;
-                if bits.read_bits(1)? == 1 {
-                    self.pending_update_indices.push(index);
-                }
-                if self.slots[index].active {
-                    return Err(ProtocolError::new(
-                        "player info bitstream",
-                        "external spawn targeted an active player",
-                    ));
-                }
-                let region = self.slots[index].region;
-                let region_x = (region >> 14) & 255;
-                let region_y = region & 255;
-                self.slots[index].coord = PlayerCoord {
-                    plane: ((region >> 28) & 3).to_le_bytes()[0],
-                    x: i32::try_from((region_x << 13) + local_x).unwrap_or_default(),
-                    y: i32::try_from((region_y << 13) + local_y).unwrap_or_default(),
-                };
-                self.slots[index].active = true;
-                self.slots[index].pending_movement = false;
-                Ok(true)
-            }
+            0 => self.read_external_spawn(bits, index, output),
             1 => {
                 let plane_delta = bits.read_bits_u8(2)?;
                 let region = self.slots[index].region;
@@ -430,9 +384,9 @@ impl PlayerInfoDecoder {
                 let plane = (((region >> 28) & 3) + u32::from(plane_delta)) & 3;
                 let mut x = i32::try_from((region >> 14) & 255).unwrap_or_default();
                 let mut y = i32::try_from(region & 255).unwrap_or_default();
-                let (dx, dy) = step_delta(direction);
-                x = (x + dx).rem_euclid(256);
-                y = (y + dy).rem_euclid(256);
+                let (delta_x, delta_y) = step_delta(direction);
+                x = (x + delta_x).rem_euclid(256);
+                y = (y + delta_y).rem_euclid(256);
                 self.slots[index].region = pack_region(
                     plane.to_le_bytes()[0],
                     u32::try_from(x).unwrap_or_default(),
@@ -443,12 +397,12 @@ impl PlayerInfoDecoder {
             3 => {
                 let packed = bits.read_bits(18)?;
                 let plane_delta = (packed >> 16) & 3;
-                let dx = (packed >> 8) & 255;
-                let dy = packed & 255;
+                let delta_x = (packed >> 8) & 255;
+                let delta_y = packed & 255;
                 let region = self.slots[index].region;
                 let plane = (((region >> 28) & 3) + plane_delta) & 3;
-                let x = (((region >> 14) & 255) + dx) & 255;
-                let y = ((region & 255) + dy) & 255;
+                let x = (((region >> 14) & 255) + delta_x) & 255;
+                let y = ((region & 255) + delta_y) & 255;
                 self.slots[index].region = pack_region(plane.to_le_bytes()[0], x, y);
                 Ok(false)
             }
@@ -456,11 +410,62 @@ impl PlayerInfoDecoder {
         }
     }
 
-    fn apply_move(&mut self, index: usize, dx: i32, dy: i32) {
+    fn read_external_spawn(
+        &mut self,
+        bits: &mut BitReader<'_>,
+        index: usize,
+        output: &mut PlayerInfoUpdate,
+    ) -> Result<bool> {
+        if bits.read_bits(1)? != 0 {
+            let _ = self.read_external_player_update(bits, index, output)?;
+        }
+        let local_x = bits.read_bits(13)?;
+        let local_y = bits.read_bits(13)?;
+        if bits.read_bits(1)? == 1 {
+            self.pending_update_indices.push(index);
+        }
+        if self.slots[index].active {
+            return Err(ProtocolError::new(
+                "player info bitstream",
+                "external spawn targeted an active player",
+            ));
+        }
+
+        let region = self.slots[index].region;
+        let region_x = (region >> 14) & 255;
+        let region_y = region & 255;
+        self.slots[index].coord = PlayerCoord {
+            plane: ((region >> 28) & 3).to_le_bytes()[0],
+            x: i32::try_from((region_x << 13) + local_x).unwrap_or_default(),
+            y: i32::try_from((region_y << 13) + local_y).unwrap_or_default(),
+        };
+        self.slots[index].active = true;
+        self.slots[index].pending_movement = None;
+
+        let appearance = self.slots[index].appearance.clone();
+        let speed = move_speed(self.slots[index].path_speed)?;
+        let change = self.ensure_change(output, index)?;
+        change.spawned = true;
+        change.appearance = appearance;
+        change.movement_speed = Some(speed);
+        Ok(true)
+    }
+
+    fn apply_move(&mut self, index: usize, movement: PlayerMovement) {
         let slot = &mut self.slots[index];
-        slot.coord.x += dx;
-        slot.coord.y += dy;
-        slot.pending_movement = true;
+        match movement {
+            PlayerMovement::Step { direction } => {
+                let (delta_x, delta_y) = step_delta(direction);
+                slot.coord.x += delta_x;
+                slot.coord.y += delta_y;
+            }
+            PlayerMovement::Run { delta_x, delta_y } => {
+                slot.coord.x += i32::from(delta_x);
+                slot.coord.y += i32::from(delta_y);
+            }
+            PlayerMovement::Teleport { .. } => unreachable!(),
+        }
+        slot.pending_movement = Some(movement);
         slot.pending_speed = slot.path_speed;
     }
 
@@ -477,14 +482,47 @@ impl PlayerInfoDecoder {
         }
     }
 
+    fn finalize_movements(&mut self, output: &mut PlayerInfoUpdate) -> Result<()> {
+        for index in 1..PLAYER_CAPACITY {
+            let Some(movement) = self.slots[index].pending_movement.take() else {
+                continue;
+            };
+            let speed = move_speed(self.slots[index].pending_speed)?;
+            let change = self.ensure_change(output, index)?;
+            change.movement = Some(movement);
+            change.movement_speed = Some(speed);
+        }
+        Ok(())
+    }
+
+    fn ensure_change<'a>(
+        &self,
+        output: &'a mut PlayerInfoUpdate,
+        index: usize,
+    ) -> Result<&'a mut PlayerUpdate> {
+        let player_index = model_index(index)?;
+        let tile = coord_tile(self.slots[index].coord, "player info")?;
+        if let Some(position) = output
+            .players
+            .iter()
+            .position(|change| change.index == player_index)
+        {
+            output.players[position].tile = tile;
+            return Ok(&mut output.players[position]);
+        }
+        let position = output.players.len();
+        output.players.push(PlayerUpdate::new(player_index, tile));
+        Ok(&mut output.players[position])
+    }
+
     fn local_index(&self) -> Result<usize> {
         usize::try_from(self.local_player.get())
             .map_err(|_| ProtocolError::new("player info", "invalid local player index"))
     }
 
-    #[expect(
+    #[allow(
         clippy::too_many_lines,
-        reason = "mask order mirrors PlayerUpdateManager.method2946"
+        reason = "mask order intentionally mirrors PlayerUpdateManager.method2946"
     )]
     fn decode_update_mask(
         &mut self,
@@ -493,7 +531,6 @@ impl PlayerInfoDecoder {
         mask: u32,
         output: &mut PlayerInfoUpdate,
     ) -> Result<()> {
-        let local = index == self.local_index()?;
         let mut temporary_speed = None;
 
         if mask & 4 != 0 {
@@ -506,13 +543,13 @@ impl PlayerInfoDecoder {
                 .collect();
             let appearance = decode_appearance(&appearance_bytes)?;
             self.slots[index].appearance = Some(appearance.clone());
-            if local {
-                output.local_appearance = Some(appearance);
-            }
+            self.ensure_change(output, index)?.appearance = Some(appearance);
         }
 
         if mask & 16_384 != 0 {
-            let speed = reader.i8_neg()?;
+            let raw = reader.i8_neg()?;
+            let speed = if raw == 127 { -1 } else { raw };
+            let _ = move_speed(speed)?;
             temporary_speed = Some(speed);
             self.slots[index].pending_speed = speed;
         }
@@ -528,9 +565,7 @@ impl PlayerInfoDecoder {
 
         if mask & 128 != 0 {
             let facing = reader.u16()?;
-            if local {
-                output.local_facing = Some(facing);
-            }
+            self.ensure_change(output, index)?.facing = Some(facing);
         }
 
         if mask & 16 != 0 {
@@ -539,10 +574,9 @@ impl PlayerInfoDecoder {
                 id => Some(SequenceId::new(u32::from(id))),
             };
             let delay = reader.u8_add()?;
-            if local {
-                output.local_sequence = Some(sequence);
-                output.local_sequence_delay = Some(delay);
-            }
+            let change = self.ensure_change(output, index)?;
+            change.sequence = Some(sequence);
+            change.sequence_delay = Some(delay);
         }
 
         if mask & 32 != 0 {
@@ -565,39 +599,17 @@ impl PlayerInfoDecoder {
         }
 
         if mask & 64 != 0 {
-            let hit_count = usize::from(reader.u8_neg()?);
-            for _ in 0..hit_count {
-                let hit_type = reader.u_short_smart()?;
-                if hit_type == 32_767 {
-                    for _ in 0..4 {
-                        let _ = reader.u_short_smart()?;
-                    }
-                } else if hit_type != 32_766 {
-                    let _ = reader.u_short_smart()?;
-                }
-                let _ = reader.u_short_smart()?;
-            }
-
-            let health_count = usize::from(reader.u8_neg()?);
-            for _ in 0..health_count {
-                let _ = reader.u_short_smart()?;
-                let value = reader.u_short_smart()?;
-                if value != 32_767 {
-                    let _ = reader.u_short_smart()?;
-                    let _ = reader.u8()?;
-                    if value > 0 {
-                        let _ = reader.u8_add()?;
-                    }
-                }
-            }
+            skip_hitsplats_and_healthbars(reader)?;
         }
 
         if mask & 2048 != 0 {
             let speed = reader.i8_add()?;
+            let semantic_speed = move_speed(speed)?;
             self.slots[index].path_speed = speed;
             if temporary_speed.is_none() {
                 self.slots[index].pending_speed = speed;
             }
+            self.ensure_change(output, index)?.movement_speed = Some(semantic_speed);
         }
 
         if mask & 2 != 0 {
@@ -624,14 +636,17 @@ impl PlayerInfoDecoder {
         }
 
         if mask & 512 != 0 {
-            let _ = reader.i8_sub()?;
-            let _ = reader.u8()?;
-            let _ = reader.u8()?;
-            let _ = reader.i8_add()?;
-            let _ = reader.u16_add()?;
-            let _ = reader.u16()?;
-            let _ = reader.u16_add_le()?;
-            self.slots[index].pending_movement = false;
+            let exact_move = ExactMove {
+                start_delta_x: reader.i8_sub()?,
+                start_delta_y: reader.u8()?.cast_signed(),
+                end_delta_x: reader.u8()?.cast_signed(),
+                end_delta_y: reader.i8_add()?,
+                start_delay: reader.u16_add()?,
+                end_delay: reader.u16()?,
+                direction: reader.u16_add_le()?,
+            };
+            self.slots[index].pending_movement = None;
+            self.ensure_change(output, index)?.exact_move = Some(exact_move);
         }
 
         if mask & 8 != 0 {
@@ -645,6 +660,34 @@ impl PlayerInfoDecoder {
 
         Ok(())
     }
+}
+
+fn ensure_skip_exhausted(skip: usize, kind: &str) -> Result<()> {
+    if skip == 0 {
+        Ok(())
+    } else {
+        Err(ProtocolError::new(
+            "player info bitstream",
+            format!("{kind} skip count crossed pass boundary"),
+        ))
+    }
+}
+
+fn model_index(index: usize) -> Result<PlayerIndex> {
+    let index = u32::try_from(index)
+        .map_err(|_| ProtocolError::new("player info", "player index overflow"))?;
+    Ok(PlayerIndex::new(index))
+}
+
+fn coord_tile(coord: PlayerCoord, stage: &'static str) -> Result<WorldTile> {
+    let plane = rustclient_model::Plane::new(coord.plane)
+        .ok_or_else(|| ProtocolError::new(stage, "invalid player plane"))?;
+    Ok(WorldTile::new(coord.x, coord.y, plane))
+}
+
+fn move_speed(value: i8) -> Result<MoveSpeed> {
+    MoveSpeed::from_wire(value)
+        .ok_or_else(|| ProtocolError::new("player info masks", "invalid movement speed"))
 }
 
 fn pack_region(plane: u8, x: u32, y: u32) -> u32 {
@@ -716,6 +759,35 @@ fn skip_cstring(reader: &mut Reader<'_>) -> Result<()> {
             return Ok(());
         }
     }
+}
+
+fn skip_hitsplats_and_healthbars(reader: &mut Reader<'_>) -> Result<()> {
+    let hit_count = usize::from(reader.u8_neg()?);
+    for _ in 0..hit_count {
+        let hit_type = reader.u_short_smart()?;
+        if hit_type == 32_767 {
+            for _ in 0..4 {
+                let _ = reader.u_short_smart()?;
+            }
+        } else if hit_type != 32_766 {
+            let _ = reader.u_short_smart()?;
+        }
+        let _ = reader.u_short_smart()?;
+    }
+
+    let health_count = usize::from(reader.u8_neg()?);
+    for _ in 0..health_count {
+        let _ = reader.u_short_smart()?;
+        let value = reader.u_short_smart()?;
+        if value != 32_767 {
+            let _ = reader.u_short_smart()?;
+            let _ = reader.u8()?;
+            if value > 0 {
+                let _ = reader.u8_add()?;
+            }
+        }
+    }
+    Ok(())
 }
 
 fn decode_appearance(bytes: &[u8]) -> Result<PlayerAppearance> {
@@ -813,5 +885,14 @@ mod tests {
     fn initial_gpi_size_matches_revision_240_layout() {
         assert_eq!(INITIAL_GPI_BITS, 36_858);
         assert_eq!(INITIAL_GPI_BYTES, 4608);
+    }
+
+    #[test]
+    fn movement_speed_ids_match_revision_240_enum() {
+        assert_eq!(move_speed(-1).unwrap(), MoveSpeed::Stationary);
+        assert_eq!(move_speed(0).unwrap(), MoveSpeed::Crawl);
+        assert_eq!(move_speed(1).unwrap(), MoveSpeed::Walk);
+        assert_eq!(move_speed(2).unwrap(), MoveSpeed::Run);
+        assert!(move_speed(127).is_err());
     }
 }
