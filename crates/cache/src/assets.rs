@@ -84,7 +84,7 @@ impl BitmapFont {
         advances.copy_from_slice(&metrics[..256]);
         for glyph in &mut glyphs {
             let mut pixels = glyph.image.pixels().to_vec();
-            for pixel in pixels.chunks_exact_mut(4) {
+            for pixel in pixels.as_chunks_mut::<4>().0 {
                 if pixel[3] != 0 {
                     pixel.copy_from_slice(&[255; 4]);
                 }
