@@ -85,3 +85,14 @@ UpdateStatV2, UpdateRunEnergy, UpdateRunWeight; buttons IfButtonX) and its
 GameClientProtId table. Script container grammar was checked against the local
 240 deob `class57.method1304` / `class328.method8684`, including six footer
 counts and long operands. The cache script fixture is synthetic, not a cache dump.
+
+### Gameframe review continuation
+
+MESSAGE_GAME and chat filter vectors follow pinned rsprox `protocol/osrs-240`
+`MessageGameDecoder`, `ChatFilterSettingsDecoder` and
+`ChatFilterSettingsPrivateChatDecoder`; reboot status follows
+`UpdateRebootTimerV2Decoder`. Revision-240 deob evidence includes `class309` array
+operand handling, `class179` child lookup by parameters, `class75` sprite setters,
+`class191` key listeners and `class73`/`class47` device options. OpenRune script
+7109 supplies its master-volume variable to device option 19. Synthetic fixtures
+contain no live account data. See SPEC-0018 for the current semantic owner mapping.

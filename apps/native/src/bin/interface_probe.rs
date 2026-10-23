@@ -18,6 +18,20 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     for group in groups {
         let definition =
             CacheProfile::OpenRune240.load_interface(&cache, InterfaceId::new(group))?;
+        if std::env::var_os("RUSTCLIENT_WIDGET_DIAGNOSTICS").is_some() {
+            for w in definition.widgets().values() {
+                println!(
+                    "component {:?} parent {:?} hidden {} actions {:?} listeners {:?}",
+                    w.id, w.parent, w.hidden, w.actions, w.listeners
+                );
+                if std::env::var_os("RUSTCLIENT_WIDGET_GEOMETRY").is_some() {
+                    println!(
+                        "  geometry content {:?} layout {:?} body {:?}",
+                        w.content, w.layout, w.body
+                    );
+                }
+            }
+        }
         let listeners: usize = definition
             .widgets()
             .values()

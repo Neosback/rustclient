@@ -64,13 +64,27 @@ pub(super) fn decode_appearance(bytes: &[u8]) -> Result<PlayerAppearance> {
     };
 
     // Name string (terminated with 0)
-    while r.u8()? != 0 {}
+    let mut display_name = String::new();
+    loop {
+        let byte = r.u8()?;
+        if byte == 0 {
+            break;
+        }
+        if display_name.len() >= 320 {
+            return Err(crate::ProtocolError::new(
+                "appearance",
+                "display name limit",
+            ));
+        }
+        display_name.push(crate::wire::decode_cp1252(byte));
+    }
 
     let combat_level = r.u8()?;
     let skill_level = r.u16()?;
     let hidden = r.u8()? == 1;
 
     Ok(PlayerAppearance {
+        display_name,
         gender,
         slots,
         colors,

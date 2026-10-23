@@ -82,7 +82,14 @@ pub fn decode_sprites(bytes: &[u8], source: Source) -> Result<Vec<Sprite>> {
                 .get(usize::from(index))
                 .ok_or_else(|| source.error("sprite", "palette index out of range"))?;
             if let Some(alpha) = &alpha {
-                color[3] = alpha[p];
+                // Palette index 0 stays as authored. A painted pixel is opaque unless the plane
+                // blends it: some packers write an all-zero plane for flat icons, which the
+                // reference tools (RuneLite's `SpriteLoader`) draw as opaque.
+                color[3] = if index != 0 && alpha[p] == 0 {
+                    255
+                } else {
+                    alpha[p]
+                };
             }
             rgba.extend_from_slice(&color);
         }
@@ -109,4 +116,37 @@ fn plane(r: &mut Reader<'_>, width: usize, height: usize, vertical: bool) -> Res
         }
     }
     Ok(result)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{GroupId, IndexId};
+
+    /// One-frame 2x1 sprite, one palette colour, with an alpha plane.
+    fn sprite_with_alpha(indices: [u8; 2], alpha: [u8; 2]) -> Vec<u8> {
+        let mut bytes = vec![2, indices[0], indices[1], alpha[0], alpha[1]];
+        bytes.extend([0x11, 0x22, 0x33]);
+        bytes.extend([0, 2, 0, 1, 1]); // canvas 2x1, palette length 2
+        bytes.extend([0, 0, 0, 0, 0, 2, 0, 1]); // offset x/y, width, height
+        bytes.extend([0, 1]); // frame count
+        bytes
+    }
+
+    #[test]
+    fn painted_pixels_with_an_empty_alpha_plane_are_opaque() {
+        let source = Source::group(IndexId(8), GroupId(1));
+        let sprites = decode_sprites(&sprite_with_alpha([1, 0], [0, 0]), source).unwrap();
+        let pixels = sprites[0].image.pixels();
+        assert_eq!(pixels[..4], [0x11, 0x22, 0x33, 255], "painted");
+        assert_eq!(pixels[4..], [0, 0, 0, 0], "index zero stays transparent");
+    }
+
+    #[test]
+    fn partially_blended_alpha_is_kept() {
+        let source = Source::group(IndexId(8), GroupId(1));
+        let sprites = decode_sprites(&sprite_with_alpha([1, 1], [90, 255]), source).unwrap();
+        let pixels = sprites[0].image.pixels();
+        assert_eq!([pixels[3], pixels[7]], [90, 255]);
+    }
 }

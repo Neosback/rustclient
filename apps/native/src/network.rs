@@ -25,6 +25,10 @@ pub(super) struct ConnectionOptions {
     pub public_key: PathBuf,
     pub cache_dir: PathBuf,
 }
+#[expect(
+    clippy::large_enum_variant,
+    reason = "inline bounded operations avoid a heap allocation for every server packet"
+)]
 pub(super) enum NetworkEvent {
     Progress(&'static str),
     Operation(u64, u64, SemanticOperation),
@@ -55,6 +59,7 @@ impl ConnectionHandle {
 pub(super) fn spawn(
     options: ConnectionOptions,
     credentials: Credentials,
+    window: rustclient_model::WindowMetrics,
     generation: u64,
     proxy: EventLoopProxy<LoadEvent>,
 ) -> Result<ConnectionHandle, String> {
@@ -67,9 +72,14 @@ pub(super) fn spawn(
             let emit = |event| {
                 let _ = proxy.send_event(LoadEvent::Network(generation, event));
             };
-            if let Err((category, error)) =
-                run(&options, credentials, &worker_cancel, &receiver, &emit)
-                && !worker_cancel.is_cancelled()
+            if let Err((category, error)) = run(
+                &options,
+                credentials,
+                window,
+                &worker_cancel,
+                &receiver,
+                &emit,
+            ) && !worker_cancel.is_cancelled()
             {
                 emit(NetworkEvent::Failed(category, error));
             }
@@ -127,6 +137,7 @@ fn prepare(
 fn open_session(
     options: &ConnectionOptions,
     credentials: Credentials,
+    window: rustclient_model::WindowMetrics,
     cancel: &ConnectionCancellation,
     emit: &impl Fn(NetworkEvent),
 ) -> Result<(NativeTcp, ConnectionDecoder), Failure> {
@@ -149,6 +160,7 @@ fn open_session(
             credentials,
             entropy: LoginEntropy::new(*entropy),
             crcs: &crcs,
+            window,
         },
         || cancel.is_cancelled(),
         |s| emit(NetworkEvent::Progress(s)),
@@ -172,8 +184,11 @@ fn open_session(
         stream.send(
             &decoder
                 .encode(ClientIntent::WindowStatus {
-                    width: 765,
-                    height: 503,
+                    mode: window.mode,
+                    width: u16::try_from(window.canvas.width)
+                        .map_err(|_| failure(LoginFailure::Protocol, "window width".into()))?,
+                    height: u16::try_from(window.canvas.height)
+                        .map_err(|_| failure(LoginFailure::Protocol, "window height".into()))?,
                 })
                 .map_err(|e| failure(LoginFailure::Protocol, e.to_string()))?,
         ),
@@ -184,12 +199,13 @@ fn open_session(
 fn run(
     options: &ConnectionOptions,
     credentials: Credentials,
+    window: rustclient_model::WindowMetrics,
     cancel: &ConnectionCancellation,
     actions: &Receiver<Outbound>,
     emit: &impl Fn(NetworkEvent),
 ) -> Result<(), Failure> {
     let failure = |category, error: String| (category, error);
-    let (mut stream, mut decoder) = open_session(options, credentials, cancel, emit)?;
+    let (mut stream, mut decoder) = open_session(options, credentials, window, cancel, emit)?;
     let bootstrap_deadline = Instant::now() + Duration::from_secs(15);
     let mut next_heartbeat = Instant::now() + Duration::from_secs(5);
     let mut bytes = [0; 16384];
@@ -243,9 +259,15 @@ fn run(
             {
                 continue;
             }
-            let encoded = decoder
-                .encode(action.intent)
-                .map_err(|e| failure(LoginFailure::Protocol, e.to_string()))?;
+            let encoded = match decoder.encode(action.intent) {
+                Ok(encoded) => encoded,
+                // Encoding validates before cipher advancement. A rejected local action
+                // must not tear down an otherwise healthy server session.
+                Err(error) => {
+                    eprintln!("outbound action rejected: {error}");
+                    continue;
+                }
+            };
             stream.deadline_after(Duration::from_secs(2));
             pollster::block_on(stream.send(&encoded))
                 .map_err(|e| failure(LoginFailure::Disconnected, e.to_string()))?;

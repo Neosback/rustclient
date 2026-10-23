@@ -63,3 +63,30 @@ unsafe_code = "deny"
 [workspace.lints.clippy]
 all = "warn"
 pedantic = "warn"
+
+# Optimize the measured CPU gameplay hot paths while retaining dev assertions/symbols.
+# Third-party crates (wgpu, naga, image decoders) dominate frame time in debug builds.
+[profile.dev.package."*"]
+opt-level = 2
+[profile.dev.package.rustclient-native]
+opt-level = 2
+[profile.dev.package.rustclient-application]
+opt-level = 2
+[profile.dev.package.rustclient-client-script]
+opt-level = 2
+[profile.dev.package.rustclient-game-ui]
+opt-level = 2
+[profile.dev.package.rustclient-scene]
+opt-level = 2
+[profile.dev.package.rustclient-renderer]
+opt-level = 2
+[profile.dev.package.rustclient-cache]
+opt-level = 2
+[profile.dev.package.rustclient-game-state]
+opt-level = 2
+[profile.dev.package.rustclient-model]
+opt-level = 2
+[profile.dev.package.rustclient-protocol]
+opt-level = 2
+[profile.dev.package.rustclient-platform-native]
+opt-level = 2

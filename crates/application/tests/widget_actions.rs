@@ -59,7 +59,7 @@ fn widget_actions_reject_reused_children_changed_items_and_revoked_permissions()
             parent: widget,
             parent_child: None,
             index: 0,
-            allow_sparse: false,
+            reject_replace: false,
             body: WidgetBody::Rectangle {
                 color: 0,
                 filled: true,

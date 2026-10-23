@@ -1,6 +1,40 @@
 //! Source-neutral live interface changes and script values.
 use crate::{InterfaceId, WidgetId};
 
+/// Selected game layout, independent of the host window's fullscreen state.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum WindowMode {
+    Fixed,
+    #[default]
+    Resizable,
+}
+/// Logical pixels in a host content area or drawable game canvas.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CanvasSize {
+    pub width: u32,
+    pub height: u32,
+}
+/// Host content and game canvas are distinct coordinate spaces in fixed mode.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct WindowMetrics {
+    pub mode: WindowMode,
+    pub available: CanvasSize,
+    pub canvas: CanvasSize,
+}
+impl Default for WindowMetrics {
+    fn default() -> Self {
+        let size = CanvasSize {
+            width: 765,
+            height: 503,
+        };
+        Self {
+            mode: WindowMode::Resizable,
+            available: size,
+            canvas: size,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InterfaceMountKind {
     Modal,
@@ -50,14 +84,22 @@ pub enum WidgetProperty {
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum InterfaceUpdate {
+    Window(WindowMetrics),
+    DefaultWindowMode(WindowMode),
+    Viewport(crate::ViewportSettings),
     Setting {
         key: ClientSetting,
         value: bool,
     },
+    /// Integer device preference (`GetDeviceOption`/`SetDeviceOption` ids without a bool owner).
+    DevicePreference {
+        id: u8,
+        value: i32,
+    },
     CreateChild {
         parent: WidgetId,
         parent_child: Option<u32>,
-        allow_sparse: bool,
+        reject_replace: bool,
         index: u32,
         body: crate::WidgetBody,
     },
@@ -135,6 +177,10 @@ pub enum ClientSetting {
     TapToDrop,
     FollowerOpsLowPriority,
     MouseCamera,
+    /// Game option 1: roofs removed from the scene.
+    RoofsHidden,
+    /// Device option 6: boolean sound-effect synthesis preference (default on).
+    SoundEffectQuality,
 }
 impl ClientSetting {
     #[must_use]
@@ -147,6 +193,8 @@ impl ClientSetting {
             Self::TapToDrop => 4,
             Self::FollowerOpsLowPriority => 5,
             Self::MouseCamera => 6,
+            Self::RoofsHidden => 7,
+            Self::SoundEffectQuality => 8,
         }
     }
 }

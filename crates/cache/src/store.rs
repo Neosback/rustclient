@@ -208,6 +208,27 @@ impl<S: ReadOnlyBlobs> Cache<S> {
         self.group_files_policy(index, group, false, &mut Vec::new())
     }
 
+    /// Decode every frame of the sprite group whose name hash matches `name`.
+    ///
+    /// Map-scene tiles are one named group of many frames rather than one group per sprite.
+    ///
+    /// # Errors
+    /// Fails on corrupted sprite payloads. An absent group yields no frames.
+    pub fn named_sprites(&self, name: &str) -> Result<Vec<crate::Sprite>> {
+        let Some(group) = self
+            .tables
+            .get(&IndexId(8))
+            .and_then(|table| table.named_group(name))
+            .map(|row| row.id)
+        else {
+            return Ok(Vec::new());
+        };
+        let Some((_, bytes)) = self.group_files(IndexId(8), group)?.into_iter().next() else {
+            return Ok(Vec::new());
+        };
+        crate::sprite::decode_sprites(&bytes, Source::group(IndexId(8), group))
+    }
+
     /// Read and decode a single indexed sprite group from index 8.
     ///
     /// # Errors

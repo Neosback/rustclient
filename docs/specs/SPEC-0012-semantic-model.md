@@ -252,3 +252,21 @@ and ItemDefinitionId. ItemStack preserves a quantity of zero (a placeholder)
 separately from absence. InventoryUpdate expresses replacement, ordered patches
 and removal; limits and session ownership belong to game-state, encodings to the
 profile. These internal semantic types do not extend the versioned plugin API.
+
+
+### Input and visible-player lifetime continuation
+
+`PlayerInstanceId` identifies a visible incarnation independently of reusable
+`PlayerIndex`. `PlayerTrackingGrid` validates positive dimensions and a checked
+world extent; the selected protocol profile supplies those dimensions.
+`RemotePlayerUpdate` expresses outside-view tracking/region shifts, promotion,
+demotion, movement and attributes in order. Appearance has one owner, transferring
+between visible and outside records. Grid/offset/facing validation and lifetime
+serial allocation are atomic across a player batch. Packet bits and sentinel
+coordinates do not enter these types.
+
+`WidgetDrag` is a committed override for optional parent address, dead zone,
+client-cycle threshold and scrollbar behavior. `WidgetKey` names semantic keys;
+revision script codes remain in the cache profile. A held pointer's original grab
+offset and temporary drag origin are presentation metadata, not another widget
+position owner. Action animation delay is independent of movement animation time.

@@ -128,11 +128,14 @@ impl GameState {
                     return Ok(OperationCommit::new(None, StateDelta::default()));
                 }
                 scene.cycle = current;
+                let reboot_active = self.entities.reboot_cycles() != 0;
                 self.entities.advance_cycles(cycles);
                 return Ok(OperationCommit::new(
                     Some(SemanticEvent::ClientCyclesAdvanced { previous, current }),
                     StateDelta::client_cycle(
-                        !self.entities.players().is_empty() || !self.entities.npcs().is_empty(),
+                        reboot_active
+                            || !self.entities.players().is_empty()
+                            || !self.entities.npcs().is_empty(),
                     ),
                 ));
             }

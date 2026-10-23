@@ -74,7 +74,7 @@ fn dynamic_widget_lifecycle_has_one_property_owner_atomic_failures_and_exact_rep
             InterfaceUpdate::CreateChild {
                 parent: widget,
                 parent_child,
-                allow_sparse: false,
+                reject_replace: false,
                 index,
                 body: container(),
             },

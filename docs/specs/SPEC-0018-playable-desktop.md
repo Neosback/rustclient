@@ -153,7 +153,7 @@ variables/settings and server skill/energy/weight updates participate in schema
 token, like the existing scenery generation; it is excluded from fingerprints.
 
 The explicit OpenRune cache adapter treats stale decoded-size hints for config
-archives 5 (inventories), 10 (items) and 14 (varbits) as advisory, as it already
+archives 5 (inventories), 10 (items), 11 (parameters) and 14 (varbits) as advisory, as it already
 does for the object repack. CRC, stored-version and bounded decompression checks
 remain required. This policy does not apply to the ordinary osrs-240 profile.
 
@@ -168,3 +168,116 @@ retained by the same owner as the synchronization baseline. Server packets updat
 both; VARP_SYNC restores effective values, and reset/session shutdown clear both.
 The baseline participates in schema 10 because it affects future observable state.
 Synchronization and baseline-only changes produce explicit committed events.
+
+## Gameframe review continuation
+
+### Desktop input and transition corrections
+
+The existing interface state owner retains script-authored drag parents, dead
+zones, delays and scrollbar behavior. These properties use the ordinary runtime
+mutation, group/session reset, interface delta and replay paths; fingerprint schema
+13 includes them. Pointer capture is disposable, bound to the interface lifetime,
+and cancels on focus loss or shutdown. Drag coordinates are the clamped widget
+origin relative to its drag parent, including parent scroll and the original grab
+offset. Platform key/text events reach visible cache-authored key listeners with
+profile-translated key/character arguments. Gameplay text never edits credentials.
+Map asset loading preserves the authenticated gameframe, with a loading overlay;
+it must never present the title or credential form for an active session.
+
+Evidence: revision-240 `sources-semantic/classQI.java` (1301–1304),
+`classPQ.java` (drag limits/coordinates), and `classBB.java` (event arguments).
+Acceptance requires focused drag/event/reset contracts plus the workspace checks
+and a separately recorded live input review. World-map drawing and remote-player
+updating remain compatibility gaps until their complete cache/semantic paths and
+live evidence exist; a black content widget is not successful world-map support.
+
+### Remote player tracking
+
+GameState owns visible players and out-of-view tracking records. Exactly one record
+owns an index's position, appearance and remembered facing at a time. Promotions
+move cached appearance into a visible actor; demotions retain appearance/facing
+while replacing exact position with the coarse tracking region. The profile
+supplies region/grid dimensions and translated offsets; domain code performs
+checked movement and wrapping without embedding a revision's bit layout. Initial
+tracking, coarse shifts, promotions, demotions, movement and properties are ordered
+semantic updates. Validate the whole batch before mutation. New visible incarnations
+have typed instance identity so interpolation cannot reuse a departed actor's path.
+All tracking fields and action playback participate in fingerprint schema 13,
+replay, entity deltas and session reset. Low-resolution wire flags/list order stay
+in the decoder; it does not keep a second authoritative position/appearance cache.
+
+TSPS `client/game/sync/PlayerSyncManager.ts` and widget input controllers provide
+additional lifecycle evidence; selected rsprot 240 codecs remain authoritative for
+wire layout. RustOSRS provides rendering evidence. These repositories are read-only
+references, never Cargo/runtime dependencies. Full combat/spot effects, instanced
+world views and the complete world map remain separately tracked compatibility work.
+
+The normal desktop gameframe has one presentation path: cache-authored widgets
+and scripts. Handwritten chat, tabs and minimap chrome must not be composed over
+it or receive invisible hit targets. Script geometry queries use local aligned
+widget bounds even for hidden widgets; visible layout indexes dynamic children
+once per build. Native FPS counts presented frames and memory reports process
+RSS, sampled once per second outside GameState.
+
+GameState owns bounded incoming game-message history (100 per channel, 4096
+total), local message identity and arrival cycle. Server MESSAGE_GAME packets
+become typed chat operations; script history queries and notifications read that
+owner. Player appearance retains the server display name. Session boundaries
+clear both. Invalid messages reject atomically. These fields and the chat event
+and delta participate in fingerprint schema 11 and ordinary semantic replay.
+Private/public player chat, social lists and outgoing chat remain later coverage.
+
+Revision adapters normalize array operands, widget type/alignment operands and
+parameter stack types before shared execution. The OpenRune adapter maps the
+selected-tab client variable to the existing GameState tab owner, and the master
+volume device option to the existing master-volume variable. No competing live
+copy of those settings is introduced. Unsupported other device options fail with
+context. Audio playback is outside this checkpoint.
+### Window and game canvas contract
+
+The interface owner retains typed fixed/resizable mode, host content extent and
+the drawable game canvas extent. Platform resize inputs and script mode changes
+commit through interface updates. The profile selects the canvas caps; layout,
+script geometry, asset discovery, hit testing and action validation use the same
+committed canvas. Fixed mode is top aligned and horizontally centered; resizable
+mode uses available content within profile caps. DPI converts logical pixels to
+physical pixels once, without stretching game sprites. Fullscreen changes host
+content extent through the platform adapter and preserves the selected game mode.
+Canvas changes schedule resize listeners; window status packets report the same
+mode and extent. Session cleanup resets these fields and native composition
+reasserts current host metrics. The title form keeps its own centered 765×503
+coordinate space. Evidence: RuneLite 235 GameEngine.resizeCanvas,
+MouseHandler.setWindowedMode, Client.resizeGame and class70.alignWidgetSize.
+
+
+
+### Widget input/lifecycle continuation
+
+One topmost interactive widget owns a primary press; underlying tracks or dismiss
+layers do not receive that same click. Drag thresholds count client cycles.
+Server drag-depth permissions select the ancestor coordinate space before a
+script's explicit parent; absent both, the drag is free. Clamp the top-left origin
+using the original grab offset, then include parent scroll for script coordinates.
+Temporary drag origins affect the widget and its descendants in the shared
+paint/hit-test layout without committing a second widget position.
+
+Resize callbacks are deferred until after the current batch's load/server scripts,
+on initial layout and changed extents. This initializes the script-owned camera
+settings. Committed characters and named keys reach visible authored listeners;
+title credential input does not consume gameplay typing. The selected cache
+profile supplies the All Settings close hook that restores chat's listener.
+Menus clamp to the committed game canvas. Hover text and red/yellow click crosses
+are disposable feedback and cannot intercept pointer input.
+
+Authenticated map loading keeps the gameframe visible, with a loading message,
+while scene resources rebuild. It must not project the login form for a plane
+change. World-map content and complete actor scheduling/blending are still
+compatibility work; these input/lifecycle changes do not establish their completion.
+
+
+The logout script instruction sets the reference client's disconnect/reconnect
+hint. With RustClient's current always-end-on-transport-failure policy, that hint
+has no additional observable state. It must allow the authored operation listener
+to finish, followed by the validated logout button request; server confirmation
+then ends the session. A future automatic reconnect policy must model that hint
+explicitly before changing this behavior.

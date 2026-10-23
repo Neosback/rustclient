@@ -1,5 +1,6 @@
 //! Explicit OSRS/OpenRune 240 binary and archive adapter.
 mod animation;
+pub mod db_tables;
 pub mod definitions;
 mod dependencies;
 pub mod entity_assets;
@@ -96,6 +97,8 @@ impl CacheProfile {
         let models = load_models(cache, model_ids, &mut digest)?;
         progress("texture sprites");
         let (texture_colors, textures) = dependencies::textures(cache, &mut digest)?;
+        let map_scenes = cache.named_sprites("mapscene")?;
+        let map_dots = cache.named_sprites("mapdots")?;
         progress("sequence and frame dependencies");
         let mut wanted: BTreeSet<SequenceId> =
             objects.values().filter_map(|d| d.animation).collect();
@@ -116,6 +119,8 @@ impl CacheProfile {
             objects,
             models,
             texture_colors,
+            map_scenes,
+            map_dots,
             textures,
             sequences,
             frames,
@@ -359,3 +364,5 @@ fn hash_file(digest: &mut Sha256, source: Source, bytes: &[u8]) {
 
 #[cfg(test)]
 mod tests;
+
+mod script_widgets;

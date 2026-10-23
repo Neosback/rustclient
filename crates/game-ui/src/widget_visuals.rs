@@ -8,8 +8,15 @@ use std::collections::BTreeMap;
 pub struct WidgetVisualAssets {
     pub images: BTreeMap<UiImageId, Image>,
     pub fonts: BTreeMap<FontId, BitmapFont>,
-    pub sprite_offsets: BTreeMap<SpriteId, [u16; 2]>,
+    /// Untrimmed canvas and trim offset; widget geometry scales the canvas, not the trimmed image.
+    pub sprite_frames: BTreeMap<SpriteId, SpriteFrame>,
     pub failures: Vec<String>,
+}
+/// Cache frame geometry: the reference client scales and tiles the full canvas.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SpriteFrame {
+    pub canvas: [u32; 2],
+    pub offset: [u32; 2],
 }
 #[expect(
     clippy::cast_precision_loss,
@@ -21,26 +28,36 @@ fn f(n: i32) -> f32 {
 /// Project only cache/script-authored widgets in painter order.
 /// # Errors
 /// Reports incomplete assets/layout; never substitutes a bank-specific layout.
-#[expect(
-    clippy::too_many_lines,
-    reason = "painter-ordered widget grammar keeps each primitive together"
-)]
 pub fn project_widgets(
     state: &GameState,
     definitions: &BTreeMap<InterfaceId, InterfaceDefinition>,
     assets: &WidgetVisualAssets,
     frame: &mut UiFrame,
 ) -> Result<crate::widgets::WidgetTree, String> {
+    project_widgets_with_drag(state, definitions, assets, frame, None)
+}
+/// Project a drag through the same layout used by pointer hit testing.
+/// # Errors
+/// Reports incomplete assets or an invalid layout.
+#[expect(clippy::too_many_lines, reason = "painter-ordered widget grammar")]
+pub fn project_widgets_with_drag(
+    state: &GameState,
+    definitions: &BTreeMap<InterfaceId, InterfaceDefinition>,
+    assets: &WidgetVisualAssets,
+    frame: &mut UiFrame,
+    dragged: Option<crate::pointer::DraggedWidget>,
+) -> Result<crate::widgets::WidgetTree, String> {
     use crate::widgets::{WidgetBounds, WidgetTree, resolve_widget};
-    let tree = WidgetTree::build(
+    frame.world_viewport = None;
+    frame.minimap_sprite = None;
+    frame.compass_sprite = None;
+    frame.canvas = Some(state.interfaces().window().canvas);
+    frame.viewport_settings = state.interfaces().viewport();
+    let tree = WidgetTree::build_with_drag(
         state.interfaces(),
         definitions,
-        WidgetBounds {
-            x: 0,
-            y: 0,
-            width: 765,
-            height: 503,
-        },
+        WidgetBounds::canvas(state.interfaces()),
+        dragged,
     )
     .map_err(|e| e.to_string())?;
     for node in &tree.nodes {
@@ -51,11 +68,17 @@ pub fn project_widgets(
         if clip.width <= 0. || clip.height <= 0. {
             continue;
         }
+        if widget.content == WidgetContent::WorldViewport {
+            frame.world_viewport = Some(rect);
+            continue;
+        }
         if widget.content == WidgetContent::Minimap {
+            frame.minimap_sprite = mask_sprite(&widget.body);
             frame.image(UiImageId::Minimap, rect, clip);
             continue;
         }
         if widget.content == WidgetContent::Compass {
+            frame.compass_sprite = mask_sprite(&widget.body);
             frame.image(UiImageId::Compass, rect, clip);
             continue;
         }
@@ -116,42 +139,33 @@ pub fn project_widgets(
             } => {
                 if let Some(image) = assets.images.get(&UiImageId::Sprite(sprite.get())) {
                     let first = frame.quads.len();
-                    if tiled {
-                        let w = i32::try_from(image.width())
-                            .map_err(|_| "sprite width")?
-                            .max(1);
-                        let h = i32::try_from(image.height())
-                            .map_err(|_| "sprite height")?
-                            .max(1);
-                        let mut count = 0;
-                        for y in (0..node.bounds.height.max(0))
-                            .step_by(usize::try_from(h).map_err(|_| "sprite height")?)
-                        {
-                            for x in (0..node.bounds.width.max(0))
-                                .step_by(usize::try_from(w).map_err(|_| "sprite width")?)
-                            {
-                                count += 1;
-                                if count > 16_384 {
-                                    return Err("tiled sprite limit".into());
-                                }
-                                frame.image_tinted(
-                                    UiImageId::Sprite(sprite.get()),
-                                    Rect::new(rect.x + f(x), rect.y + f(y), f(w), f(h)),
-                                    clip,
-                                    [255, 255, 255, 255 - transparency],
-                                );
-                            }
-                        }
-                    } else {
+                    let image_size = [image.width(), image.height()];
+                    let sprite_frame =
+                        assets
+                            .sprite_frames
+                            .get(&sprite)
+                            .copied()
+                            .unwrap_or(SpriteFrame {
+                                canvas: image_size,
+                                offset: [0; 2],
+                            });
+                    let placement = sprite_placement(sprite_frame, image_size, rect, flip, tiled)?;
+                    let clip = placement
+                        .clip
+                        .map_or(clip, |bounds| intersect(clip, bounds));
+                    for placed in &placement.sprites {
                         frame.image_tinted(
                             UiImageId::Sprite(sprite.get()),
-                            rect,
+                            placed.rect,
                             clip,
                             [255, 255, 255, 255 - transparency],
                         );
+                        if let Some(q) = frame.quads.last_mut() {
+                            q.rotation = angle;
+                            q.rotation_center = Some(placed.pivot);
+                        }
                     }
                     for q in &mut frame.quads[first..] {
-                        q.rotation = angle;
                         if flip[0] {
                             q.uv.x = 1.;
                             q.uv.width = -1.;
@@ -240,6 +254,139 @@ pub fn project_widgets(
     }
     Ok(tree)
 }
+fn mask_sprite(body: &WidgetBody) -> Option<SpriteId> {
+    match body {
+        WidgetBody::Sprite { sprite, .. } => *sprite,
+        _ => None,
+    }
+}
+/// A sprite expanded onto its untrimmed canvas; pixels outside the trimmed image are transparent.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CanvasImage {
+    pub pixels: Vec<u8>,
+    pub size: [u32; 2],
+}
+impl WidgetVisualAssets {
+    /// The reference `copyNormalized`: minimap and compass masks are read on the full canvas.
+    #[must_use]
+    pub fn canvas_image(&self, id: SpriteId) -> Option<CanvasImage> {
+        let image = self.images.get(&UiImageId::Sprite(id.get()))?;
+        let frame = self.sprite_frames.get(&id).copied().unwrap_or(SpriteFrame {
+            canvas: [image.width(), image.height()],
+            offset: [0; 2],
+        });
+        let size = [
+            frame.canvas[0].max(image.width() + frame.offset[0]),
+            frame.canvas[1].max(image.height() + frame.offset[1]),
+        ];
+        let stride = usize::try_from(size[0]).ok()? * 4;
+        let mut pixels = vec![0_u8; stride * usize::try_from(size[1]).ok()?];
+        let row_len = usize::try_from(image.width()).ok()? * 4;
+        for row in 0..usize::try_from(image.height()).ok()? {
+            let destination = (usize::try_from(frame.offset[1]).ok()? + row) * stride
+                + usize::try_from(frame.offset[0]).ok()? * 4;
+            pixels[destination..destination + row_len]
+                .copy_from_slice(&image.pixels()[row * row_len..(row + 1) * row_len]);
+        }
+        Some(CanvasImage { pixels, size })
+    }
+}
+/// One trimmed sprite image destination and the canvas centre it rotates about.
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct PlacedSprite {
+    rect: Rect,
+    pivot: [f32; 2],
+}
+#[derive(Debug, PartialEq)]
+struct SpritePlacement {
+    sprites: Vec<PlacedSprite>,
+    /// Tiling never draws outside the widget; scaled sprites are clipped by the node alone.
+    clip: Option<Rect>,
+}
+fn intersect(a: Rect, b: Rect) -> Rect {
+    let x = a.x.max(b.x);
+    let y = a.y.max(b.y);
+    Rect::new(
+        x,
+        y,
+        (a.x + a.width).min(b.x + b.width) - x,
+        (a.y + a.height).min(b.y + b.height) - y,
+    )
+}
+/// Reference `Widget` type-5 placement: a sprite is its untrimmed canvas. Without tiling the
+/// canvas is scaled to the widget; with tiling it repeats unscaled. The trimmed image keeps its
+/// canvas offset, mirrored when the sprite is flipped.
+#[expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_precision_loss,
+    clippy::cast_sign_loss,
+    reason = "sprite dimensions are bounded by the cache image limit; tile counts are checked first"
+)]
+fn sprite_placement(
+    sprite: SpriteFrame,
+    image: [u32; 2],
+    bounds: Rect,
+    flip: [bool; 2],
+    tiled: bool,
+) -> Result<SpritePlacement, String> {
+    let canvas = [
+        sprite.canvas[0].max(image[0]).max(1),
+        sprite.canvas[1].max(image[1]).max(1),
+    ];
+    let offset = [
+        if flip[0] {
+            canvas[0].saturating_sub(sprite.offset[0] + image[0])
+        } else {
+            sprite.offset[0]
+        },
+        if flip[1] {
+            canvas[1].saturating_sub(sprite.offset[1] + image[1])
+        } else {
+            sprite.offset[1]
+        },
+    ];
+    let canvas_f = [canvas[0] as f32, canvas[1] as f32];
+    let place = |origin: [f32; 2], scale: [f32; 2]| PlacedSprite {
+        rect: Rect::new(
+            origin[0] + offset[0] as f32 * scale[0],
+            origin[1] + offset[1] as f32 * scale[1],
+            image[0] as f32 * scale[0],
+            image[1] as f32 * scale[1],
+        ),
+        pivot: [
+            origin[0] + canvas_f[0] * scale[0] / 2.,
+            origin[1] + canvas_f[1] * scale[1] / 2.,
+        ],
+    };
+    if !tiled {
+        let scale = [bounds.width / canvas_f[0], bounds.height / canvas_f[1]];
+        return Ok(SpritePlacement {
+            sprites: vec![place([bounds.x, bounds.y], scale)],
+            clip: None,
+        });
+    }
+    let columns = (bounds.width.max(0.) / canvas_f[0]).ceil();
+    let rows = (bounds.height.max(0.) / canvas_f[1]).ceil();
+    if columns * rows > 16_384. {
+        return Err("tiled sprite limit".into());
+    }
+    let mut sprites = Vec::with_capacity((columns * rows) as usize);
+    for row in 0..rows as u32 {
+        for column in 0..columns as u32 {
+            sprites.push(place(
+                [
+                    bounds.x + column as f32 * canvas_f[0],
+                    bounds.y + row as f32 * canvas_f[1],
+                ],
+                [1.; 2],
+            ));
+        }
+    }
+    Ok(SpritePlacement {
+        sprites,
+        clip: Some(bounds),
+    })
+}
 fn rgba(color: u32, alpha: u8) -> [u8; 4] {
     let [_, r, g, b] = color.to_be_bytes();
     [r, g, b, alpha]
@@ -306,5 +453,110 @@ fn draw_text(
         );
         frame.image_tinted(UiImageId::WidgetGlyph(id, byte), rect, clip, color);
         x += i32::from(font.advances[usize::from(byte)]);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const FRAME: SpriteFrame = SpriteFrame {
+        canvas: [10, 8],
+        offset: [2, 1],
+    };
+
+    #[test]
+    fn scaling_applies_to_the_canvas_and_keeps_the_trim_offset_proportional() {
+        let placement = sprite_placement(
+            FRAME,
+            [6, 4],
+            Rect::new(100., 50., 20., 16.),
+            [false; 2],
+            false,
+        )
+        .unwrap();
+        // The canvas is stretched 2x, so the 2,1 offset and 6x4 image double with it.
+        assert_eq!(placement.sprites[0].rect, Rect::new(104., 52., 12., 8.));
+        assert!(
+            placement.sprites[0]
+                .pivot
+                .iter()
+                .zip([110., 58.])
+                .all(|(a, b)| (a - b).abs() < 1e-4)
+        );
+        assert_eq!(placement.clip, None);
+    }
+
+    #[test]
+    fn unscaled_sprite_lands_on_its_offset() {
+        let placement =
+            sprite_placement(FRAME, [6, 4], Rect::new(0., 0., 10., 8.), [false; 2], false).unwrap();
+        assert_eq!(placement.sprites[0].rect, Rect::new(2., 1., 6., 4.));
+    }
+
+    #[test]
+    fn flipping_mirrors_the_offset_inside_the_canvas() {
+        let placement = sprite_placement(
+            FRAME,
+            [6, 4],
+            Rect::new(0., 0., 10., 8.),
+            [true, true],
+            false,
+        )
+        .unwrap();
+        assert_eq!(placement.sprites[0].rect, Rect::new(2., 3., 6., 4.));
+    }
+
+    #[test]
+    fn tiling_repeats_unscaled_canvases_and_clips_to_the_widget() {
+        let bounds = Rect::new(0., 0., 25., 8.);
+        let placement = sprite_placement(FRAME, [6, 4], bounds, [false; 2], true).unwrap();
+        let origins: Vec<_> = placement.sprites.iter().map(|s| s.rect.x).collect();
+        assert_eq!(origins, [2., 12., 22.]);
+        assert_eq!(placement.clip, Some(bounds));
+    }
+
+    #[test]
+    fn canvas_image_pads_the_trimmed_pixels_with_transparency() {
+        let mut assets = WidgetVisualAssets::default();
+        let id = SpriteId::new(7);
+        let image = rustclient_cache::Image::new(
+            1,
+            1,
+            vec![9, 8, 7, 255],
+            rustclient_cache::Source::group(
+                rustclient_cache::IndexId(8),
+                rustclient_cache::GroupId(7),
+            ),
+        )
+        .unwrap();
+        assets.images.insert(UiImageId::Sprite(7), image);
+        assets.sprite_frames.insert(
+            id,
+            SpriteFrame {
+                canvas: [3, 2],
+                offset: [1, 1],
+            },
+        );
+        let canvas = assets.canvas_image(id).unwrap();
+        assert_eq!(canvas.size, [3, 2]);
+        assert_eq!(canvas.pixels.iter().filter(|b| **b != 0).count(), 4);
+        assert_eq!(&canvas.pixels[(3 + 1) * 4..(3 + 1) * 4 + 4], [9, 8, 7, 255]);
+    }
+
+    #[test]
+    fn missing_frame_metadata_degrades_to_the_image() {
+        let placement = sprite_placement(
+            SpriteFrame {
+                canvas: [0, 0],
+                offset: [0, 0],
+            },
+            [6, 4],
+            Rect::new(0., 0., 12., 8.),
+            [false; 2],
+            false,
+        )
+        .unwrap();
+        assert_eq!(placement.sprites[0].rect, Rect::new(0., 0., 12., 8.));
     }
 }

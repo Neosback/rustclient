@@ -78,3 +78,47 @@ pub(crate) fn light(packed: i32, light: i32) -> i32 {
         _ => (packed & 0xff80) + ((packed & 127) * light / 128).clamp(2, 126),
     }
 }
+
+/// Reference `Rasterizer3D_colorPalette[hsl16]` at the default 0.8 brightness: quantised byte
+/// channels, then brightened. Minimap tiles are painted with palette entries, not GPU shading.
+#[expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "reference palette truncates each channel to a byte"
+)]
+pub(crate) fn palette_rgb(hsl: i32) -> u32 {
+    fn channel(p: f64, q: f64, mut t: f64) -> f64 {
+        if t > 1. {
+            t -= 1.;
+        }
+        if t < 0. {
+            t += 1.;
+        }
+        if 6. * t < 1. {
+            p + (q - p) * 6. * t
+        } else if 2. * t < 1. {
+            q
+        } else if 3. * t < 2. {
+            p + (q - p) * (2. / 3. - t) * 6.
+        } else {
+            p
+        }
+    }
+    let hue = f64::from((hsl >> 10) & 63) / 64. + 0.007_812_5;
+    let saturation = f64::from((hsl >> 7) & 7) / 8. + 0.0625;
+    let lightness = f64::from(hsl & 127) / 128.;
+    let q = if lightness < 0.5 {
+        lightness * (1. + saturation)
+    } else {
+        lightness + saturation - lightness * saturation
+    };
+    let p = 2. * lightness - q;
+    let byte = |value: f64| {
+        let quantised = f64::from((value * 256.) as i32 as u32) / 256.;
+        ((quantised.powf(0.8) * 256.) as u32).min(255)
+    };
+    let rgb = (byte(channel(p, q, hue + 1. / 3.)) << 16)
+        | (byte(channel(p, q, hue)) << 8)
+        | byte(channel(p, q, hue - 1. / 3.));
+    rgb.max(1)
+}

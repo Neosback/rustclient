@@ -204,6 +204,7 @@ fn decode_map_anchor(payload: &[u8]) -> Result<rustclient_model::MapAnchor> {
 #[derive(Debug, Clone, Copy)]
 pub enum ClientIntent {
     WindowStatus {
+        mode: rustclient_model::WindowMode,
         width: u16,
         height: u16,
     },
@@ -277,8 +278,21 @@ impl ClientIntent {
                     ],
                 )
             }
-            Self::WindowStatus { width, height } => {
-                let mut p = vec![2];
+            Self::WindowStatus {
+                mode,
+                width,
+                height,
+            } => {
+                if width == 0 || height == 0 || width > 7680 || height > 2160 {
+                    return Err(ProtocolError::new(
+                        "window status",
+                        "canvas dimensions outside profile bounds",
+                    ));
+                }
+                let mut p = vec![match mode {
+                    rustclient_model::WindowMode::Fixed => 1,
+                    rustclient_model::WindowMode::Resizable => 2,
+                }];
                 p.extend_from_slice(&width.to_be_bytes());
                 p.extend_from_slice(&height.to_be_bytes());
                 (44, p)
@@ -302,6 +316,8 @@ use super::{
 /// Profile-decoded updates, without exposing wire IDs to application semantics.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ServerUpdate {
+    GameMessage(rustclient_model::GameMessage),
+    ChatFilters([Option<u8>; 3]),
     Interface(rustclient_model::InterfaceUpdate),
     Script(rustclient_model::ScriptRequest),
     PlayerStatus(rustclient_model::PlayerStatusUpdate),
@@ -314,6 +330,7 @@ pub enum ServerUpdate {
     },
     PlayerInfo(PlayerInfoUpdate),
     NpcInfo(NpcInfoUpdate),
+    ResetActorAnimations,
     LocationAnim(LocAnimUpdate),
     Tick,
     LoggedOut,
@@ -395,15 +412,33 @@ impl SessionCodec {
         while let Some(packet) = self.framer.next_packet()? {
             self.framed_packets = self.framed_packets.saturating_add(1);
             let update = match packet.opcode {
-                19 | 63 | 120 => ServerUpdate::PlayerStatus(super::scripts::status(
+                18 | 76 => {
+                    let values = match (packet.opcode, packet.payload.as_slice()) {
+                        (18, [trade, public]) if *trade <= 2 && *public <= 4 => {
+                            [Some(*public), None, Some(*trade)]
+                        }
+                        (76, [private]) if *private <= 2 => [None, Some(*private), None],
+                        _ => {
+                            return Err(ProtocolError::new(
+                                "chat settings",
+                                "invalid filter payload",
+                            ));
+                        }
+                    };
+                    ServerUpdate::ChatFilters(values)
+                }
+                73 => ServerUpdate::GameMessage(super::chat::decode(&packet.payload)?),
+                19 | 63 | 66 | 120 => ServerUpdate::PlayerStatus(super::scripts::status(
                     packet.opcode,
                     &packet.payload,
                 )?),
                 10 => ServerUpdate::Script(super::scripts::decode(&packet.payload)?),
                 39 if self.awaiting_rebuild => {
                     let bootstrap = decode_bootstrap(&packet)?;
+                    let tracking = self.players.bootstrap(&packet.payload)?;
                     self.awaiting_rebuild = false;
-                    ServerUpdate::InitialPlacement(bootstrap)
+                    emit(ServerUpdate::InitialPlacement(bootstrap));
+                    ServerUpdate::PlayerInfo(tracking)
                 }
                 39 => {
                     let map_anchor = decode_map_anchor(&packet.payload)?;
@@ -420,6 +455,7 @@ impl SessionCodec {
                     let update = self.players.decode(&packet.payload)?;
                     ServerUpdate::PlayerInfo(update)
                 }
+                58 => ServerUpdate::ResetActorAnimations,
                 111 => {
                     self.npcs.set_origin(&packet.payload)?;
                     ServerUpdate::Deferred
@@ -445,7 +481,19 @@ impl SessionCodec {
                 )?),
                 68 | 94 | 100 | 127 => ServerUpdate::Variable(decode_variable(&packet)?),
                 92 => ServerUpdate::Tick,
-                26 | 37 | 56 => ServerUpdate::LoggedOut,
+                56 => {
+                    let [reason] = packet.payload.as_slice() else {
+                        return Err(ProtocolError::new(
+                            "server logout",
+                            "invalid reason payload",
+                        ));
+                    };
+                    return Err(ProtocolError::new(
+                        "server logout",
+                        format!("reason code {reason}"),
+                    ));
+                }
+                26 | 37 => ServerUpdate::LoggedOut,
                 _ => ServerUpdate::Deferred,
             };
             let is_logout = update == ServerUpdate::LoggedOut;

@@ -87,7 +87,9 @@ The world projection decodes the normal 104×104 window around the server's map
 anchor. Camera input, cached scenery, variable-driven location changes, textures,
 entity assets and gameframe work are present; full reference parity is unverified.
 F5 recreates GPU resources from retained CPU assets. Instances, complete entity
-movement/animation selection, interactions, widgets and scripts remain unfinished.
+movement/animation selection and full visual parity remain unfinished. Cache widgets,
+bounded scripts and banking now have integration evidence; see the
+[playable desktop checkpoint](docs/plan/PLAYABLE-desktop.md) for manual gaps.
 The original [spawn-scene checkpoint](docs/plan/SPAWN-scene.md) describes the earlier
 static slice; [SPEC-0016](docs/specs/SPEC-0016-reference-scenery-parity.md) and
 [SPEC-0017](docs/specs/SPEC-0017-gameframe-entities.md) define later work.
@@ -98,9 +100,16 @@ Capture fixed-camera GPU frames and verify byte-identical reconstruction from th
 cargo run -p rustclient-native --bin scene_probe -- "/Users/tylercovalt/Desktop/OpenRune Project/OpenRune-Server/.data/cache/LIVE" target/scene-captures
 ```
 
+The title bar shows FPS and resident memory (MiB RSS). The development launcher
+optimizes the gameplay hot paths while retaining debug assertions and symbols.
+Set `RUSTCLIENT_FRAME_TIMINGS=1` for timing summaries. The normal gameframe comes
+from cache definitions and scripts, including the chatbox.
+
 The headless `login_probe` binary accepts cache/public-key paths and exactly two
 stdin lines (username and password), never a password command-line argument. It
 checks localhost:43594, runs an eight-second session and explicitly disconnects.
+Add `--walk-and-bank` for the disposable 10-coin bank loop, or `--verify-bank`
+for a separate-login persistence check; see the checkpoint for fixture setup.
 
 ## Run the offline title preview
 

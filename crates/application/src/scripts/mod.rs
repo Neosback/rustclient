@@ -1,5 +1,11 @@
 //! Script scheduling and semantic host bindings; never an alternate state store.
+mod arrays;
+mod database;
+#[cfg(test)]
+mod input_tests;
 mod queries;
+#[cfg(test)]
+mod test_support;
 mod visuals;
 mod widgets;
 use rustclient_cache::{Cache, CacheProfile, script::Script, widget::InterfaceDefinition};
@@ -15,6 +21,15 @@ use std::{
     sync::Arc,
 };
 pub use visuals::{WidgetAssetRequest, load_widget_visuals};
+/// Reference `queueSoundEffect` capacity.
+const SOUND_EFFECT_LIMIT: usize = 50;
+/// A synthesized sound effect requested by `SOUND_SYNTH`, for the audio adapter to mix.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SoundEffectRequest {
+    pub id: u32,
+    pub loops: u32,
+    pub delay: u32,
+}
 type Result<T> = std::result::Result<T, String>;
 pub struct ClientScripts<S> {
     pub cache: Cache<S>,
@@ -24,9 +39,12 @@ pub struct ClientScripts<S> {
     enums: BTreeMap<u32, rustclient_cache::osrs240::script_tables::ScriptEnum>,
     items: BTreeMap<ItemDefinitionId, rustclient_cache::world::ItemDefinition>,
     loaded_groups: BTreeSet<InterfaceId>,
+    layout_sizes: BTreeMap<WidgetAddress, [i32; 2]>,
     pub modifiers: [bool; 3],
     fonts: BTreeMap<FontId, rustclient_cache::BitmapFont>,
     effects: Vec<rustclient_protocol::ClientIntent>,
+    sound_effects: Vec<SoundEffectRequest>,
+    db: database::DbState,
     queue: VecDeque<(ScriptRequest, Option<WidgetAddress>)>,
 }
 impl<S: ReadOnlyBlobs> ClientScripts<S> {
@@ -40,9 +58,12 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
             enums: BTreeMap::new(),
             items: BTreeMap::new(),
             loaded_groups: BTreeSet::new(),
+            layout_sizes: BTreeMap::new(),
             modifiers: [false; 3],
             fonts: BTreeMap::new(),
             effects: Vec::new(),
+            sound_effects: Vec::new(),
+            db: database::DbState::default(),
             queue: VecDeque::new(),
         }
     }
@@ -51,6 +72,15 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
     /// Returns state/cache errors; script failures are explicit diagnostics in the result.
     pub fn commit(&mut self, state: &mut GameState, op: SemanticOperation) -> Result<Vec<String>> {
         let notification = match &op {
+            SemanticOperation::Interface(
+                InterfaceUpdate::Open(_)
+                | InterfaceUpdate::Close(_)
+                | InterfaceUpdate::Move { .. }
+                | InterfaceUpdate::Resync { .. },
+            ) => Some((WidgetListener::SubChange, None)),
+            SemanticOperation::GameMessage(_) | SemanticOperation::ChatFilters(_) => {
+                Some((WidgetListener::Chat, None))
+            }
             SemanticOperation::Scenery(rustclient_game_state::SceneryOperation::AdvanceCycles(
                 _,
             )) => Some((WidgetListener::Timer, None)),
@@ -70,12 +100,32 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
             }) => Some((WidgetListener::Variable, Some(id.get().cast_signed()))),
             _ => None,
         };
+        let previous_groups = matches!(
+            &op,
+            SemanticOperation::Interface(
+                InterfaceUpdate::Open(_)
+                    | InterfaceUpdate::Close(_)
+                    | InterfaceUpdate::Move { .. }
+                    | InterfaceUpdate::SetRoot(_)
+                    | InterfaceUpdate::Resync { .. }
+            )
+        )
+        .then(|| state.interfaces().groups());
         let commit = state.apply_operation(op).map_err(|e| e.to_string())?;
         if state.lifecycle() != rustclient_game_state::SessionLifecycle::Active {
             self.reset();
             return Ok(Vec::new());
         }
         self.synchronize(state)?;
+        if let Some(previous_groups) = previous_groups {
+            let current = state.interfaces().groups();
+            for group in previous_groups.difference(&current) {
+                if let Some((widget, request)) = self.profile.interface_close_script(*group) {
+                    self.enqueue(request, Some(widget))?;
+                }
+            }
+        }
+
         if !commit.delta().is_empty()
             && let Some((kind, id)) = notification
         {
@@ -128,10 +178,155 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
         }
         Ok((intents, errors))
     }
+    /// Run one widget listener for a pointer or wheel event.
+    ///
+    /// `None` when the widget has no such listener, so the caller can try the next widget under
+    /// the pointer. Script errors come back with the dispatch result like other listeners.
+    /// # Errors
+    /// Rejects unresolved widgets and malformed listener definitions.
+    pub fn dispatch_listener(
+        &mut self,
+        state: &mut GameState,
+        address: WidgetAddress,
+        kind: WidgetListener,
+        event: ListenerEvent,
+    ) -> Result<Option<ListenerOutcome>> {
+        let widget = rustclient_game_ui::widgets::resolve_widget(
+            state.interfaces(),
+            &self.interfaces,
+            address,
+        )
+        .map_err(|e| e.to_string())?;
+        let Some(args) = widget.listeners.get(&kind) else {
+            return Ok(None);
+        };
+        let Some(mut request) = request(args.clone())? else {
+            return Ok(None);
+        };
+        for arg in &mut request.arguments {
+            if let ScriptValue::Int(n) = arg {
+                *n = event_argument(self.profile, *n, address, event);
+            }
+        }
+        self.enqueue(request, Some(address))?;
+        let errors = self.drain(state);
+        let intents = std::mem::take(&mut self.effects);
+        Ok(Some(ListenerOutcome { intents, errors }))
+    }
+    /// The widget's scroll-wheel listener, run with the wheel rotation (negative scrolls up,
+    /// like Java's `getWheelRotation`).
+    /// # Errors
+    /// Rejects unresolved widgets and malformed listener definitions.
+    pub fn scroll_wheel(
+        &mut self,
+        state: &mut GameState,
+        address: WidgetAddress,
+        rotation: i32,
+    ) -> Result<Option<ListenerOutcome>> {
+        self.dispatch_listener(
+            state,
+            address,
+            WidgetListener::Scroll,
+            ListenerEvent {
+                mouse: [0, 0],
+                wheel: Some(rotation),
+                target: None,
+                ..ListenerEvent::default()
+            },
+        )
+    }
+    /// Deliver a key or committed character to visible cache-authored listeners.
+    /// # Errors
+    /// Rejects invalid layout or malformed listeners with their ordinary context.
+    pub fn keyboard(
+        &mut self,
+        state: &mut GameState,
+        key: Option<rustclient_model::WidgetKey>,
+        character: Option<char>,
+        pressed: bool,
+    ) -> Result<ListenerOutcome> {
+        let tree = rustclient_game_ui::widgets::WidgetTree::build(
+            state.interfaces(),
+            &self.interfaces,
+            rustclient_game_ui::widgets::WidgetBounds::canvas(state.interfaces()),
+        )
+        .map_err(|e| e.to_string())?;
+        let code = key.map_or(-1, |key| self.profile.script_key(key));
+        let event = ListenerEvent {
+            key: Some([
+                code,
+                character.map_or(0, |ch| i32::try_from(u32::from(ch)).unwrap_or(0)),
+            ]),
+            ..ListenerEvent::default()
+        };
+        let mut result = ListenerOutcome::default();
+        for node in tree.nodes {
+            let kinds: &[WidgetListener] = if pressed {
+                if key.is_some() {
+                    &[WidgetListener::Key, WidgetListener::KeyPress]
+                } else {
+                    &[WidgetListener::Key]
+                }
+            } else {
+                &[WidgetListener::KeyRelease]
+            };
+            for kind in kinds {
+                if let Some(outcome) = self.dispatch_listener(state, node.address, *kind, event)? {
+                    result.errors.extend(outcome.errors);
+                    result.intents.extend(outcome.intents);
+                }
+            }
+        }
+        Ok(result)
+    }
     pub fn reset(&mut self) {
         self.loaded_groups.clear();
+        self.layout_sizes.clear();
         self.queue.clear();
         self.effects.clear();
+        self.sound_effects.clear();
+        self.db.reset();
+    }
+    /// Sound effects requested since the last call, in script order.
+    pub fn take_sound_effects(&mut self) -> Vec<SoundEffectRequest> {
+        std::mem::take(&mut self.sound_effects)
+    }
+    /// Drain validated outbound effects produced by load/timer/server scripts.
+    pub fn take_intents(&mut self) -> Vec<rustclient_protocol::ClientIntent> {
+        std::mem::take(&mut self.effects)
+    }
+    /// Deliver deferred resize listeners after this cycle's network and load scripts.
+    /// The size cache is disposable layout metadata, never widget state.
+    /// # Errors
+    /// Rejects incomplete layouts or malformed resize listeners.
+    pub fn resize_widgets(&mut self, state: &mut GameState) -> Result<Vec<String>> {
+        let tree = rustclient_game_ui::widgets::WidgetTree::build(
+            state.interfaces(),
+            &self.interfaces,
+            rustclient_game_ui::widgets::WidgetBounds::canvas(state.interfaces()),
+        )
+        .map_err(|e| e.to_string())?;
+        let mut sizes = BTreeMap::new();
+        for node in tree.nodes {
+            let size = [node.bounds.width, node.bounds.height];
+            sizes.insert(node.address, size);
+            if self.layout_sizes.get(&node.address) == Some(&size) {
+                continue;
+            }
+            let widget = rustclient_game_ui::widgets::resolve_widget(
+                state.interfaces(),
+                &self.interfaces,
+                node.address,
+            )
+            .map_err(|e| e.to_string())?;
+            if let Some(args) = widget.listeners.get(&WidgetListener::Resize)
+                && let Some(request) = request(args.clone())?
+            {
+                self.enqueue(request, Some(node.address))?;
+            }
+        }
+        self.layout_sizes = sizes;
+        Ok(self.drain(state))
     }
     /// Schedule server calls and widget listeners in arrival order.
     /// # Errors
@@ -148,6 +343,8 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
     pub fn synchronize(&mut self, state: &GameState) -> Result<()> {
         let current = state.interfaces().groups();
         self.loaded_groups.retain(|g| current.contains(g));
+        self.layout_sizes
+            .retain(|address, _| current.contains(&address.widget.interface));
         for group in current
             .difference(&self.loaded_groups)
             .copied()
@@ -213,27 +410,37 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
         );
         let mut pending = Vec::new();
         for address in addresses {
-            let effective = rustclient_game_ui::widgets::resolve_widget(
-                state.interfaces(),
-                &self.interfaces,
-                address,
-            )
-            .map_err(|e| e.to_string())?;
-            if let Some(args) = effective.listeners.get(&kind) {
-                let triggers = state
-                    .interfaces()
-                    .runtime()
-                    .get(&address)
-                    .and_then(|r| r.triggers.get(&kind))
-                    .map_or_else(
-                        || match kind {
-                            WidgetListener::Inventory => effective.inventory_triggers.as_slice(),
-                            WidgetListener::Variable => effective.variable_triggers.as_slice(),
-                            WidgetListener::Stat => effective.stat_triggers.as_slice(),
-                            _ => &[],
-                        },
-                        Vec::as_slice,
-                    );
+            let runtime = state.interfaces().runtime().get(&address);
+            let base = self
+                .interfaces
+                .get(&address.widget.interface)
+                .and_then(|group| group.widgets().get(&address.widget));
+            let args = runtime.and_then(|r| r.listeners.get(&kind)).map_or_else(
+                || {
+                    if address.child.is_none() {
+                        base.and_then(|w| w.listeners.get(&kind))
+                    } else {
+                        None
+                    }
+                },
+                Option::as_ref,
+            );
+            if let Some(args) = args {
+                let triggers = runtime.and_then(|r| r.triggers.get(&kind)).map_or_else(
+                    || {
+                        if address.child.is_none() {
+                            base.map_or(&[][..], |w| match kind {
+                                WidgetListener::Inventory => w.inventory_triggers.as_slice(),
+                                WidgetListener::Variable => w.variable_triggers.as_slice(),
+                                WidgetListener::Stat => w.stat_triggers.as_slice(),
+                                _ => &[],
+                            })
+                        } else {
+                            &[]
+                        }
+                    },
+                    Vec::as_slice,
+                );
                 if triggers.is_empty() || changed.is_none_or(|c| triggers.contains(&c)) {
                     pending.push((address, args.clone()));
                 }
@@ -281,6 +488,47 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
         errors
     }
 }
+/// What a listener run produced: network intents from the script and any script errors.
+#[derive(Debug, Default)]
+pub struct ListenerOutcome {
+    pub intents: Vec<rustclient_protocol::ClientIntent>,
+    pub errors: Vec<String>,
+}
+/// The pointer state a widget listener sees. Coordinates are relative to the widget the
+/// reference measures them from: the widget itself, or its parent for drag listeners.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct ListenerEvent {
+    /// Profile key code and Unicode character, replacing the key event placeholders.
+    pub key: Option<[i32; 2]>,
+    pub mouse: [i32; 2],
+    /// Wheel rotation, which replaces the second pointer coordinate for scroll listeners.
+    pub wheel: Option<i32>,
+    /// The widget a drag was released over.
+    pub target: Option<WidgetAddress>,
+}
+/// Resolve one listener argument placeholder for an event: `-2147483647` is the pointer x,
+/// `-2147483646` the pointer y (or the wheel rotation), `-2147483642/-2147483641` the drop target.
+fn event_argument(
+    profile: rustclient_cache::CacheProfile,
+    argument: i32,
+    address: WidgetAddress,
+    event: ListenerEvent,
+) -> i32 {
+    match argument {
+        -2_147_483_647 => event.mouse[0],
+        -2_147_483_646 => event.wheel.unwrap_or(event.mouse[1]),
+        -2_147_483_642 => event
+            .target
+            .map_or(-1, |t| profile.script_widget_number(t.widget)),
+        -2_147_483_641 => event
+            .target
+            .and_then(|t| t.child)
+            .map_or(-1, u32::cast_signed),
+        -2_147_483_640 => event.key.map_or(0, |key| key[0]),
+        -2_147_483_639 => event.key.map_or(0, |key| key[1]),
+        n => profile.listener_argument(n, Some(address), 0),
+    }
+}
 fn request(mut args: Vec<ScriptValue>) -> Result<Option<ScriptRequest>> {
     if args.is_empty() {
         return Ok(None);
@@ -322,17 +570,90 @@ impl<S: ReadOnlyBlobs> Host for ScriptHost<'_, S> {
         s: &mut Stacks,
         context: &mut Context,
     ) -> Result<()> {
-        if widgets::instruction(self, op, n, s, context)? || queries::instruction(self, op, n, s)? {
+        if widgets::instruction(self, op, n, s, context)?
+            || arrays::instruction(self, op, s)?
+            || database::instruction(self, op, s)?
+            || queries::instruction(self, op, n, s)?
+        {
             return Ok(());
         }
         Err(format!("unsupported required instruction {op:?}"))
     }
 }
 impl<S: ReadOnlyBlobs> ScriptHost<'_, S> {
+    fn set_client_variable(&mut self, id: rustclient_model::VarpId, value: i32) -> Result<()> {
+        let commit = self
+            .state
+            .apply_operation(SemanticOperation::Scenery(
+                rustclient_game_state::SceneryOperation::SetClientVariable { id, value },
+            ))
+            .map_err(|e| e.to_string())?;
+        if !commit.delta().is_empty() {
+            self.resources.notify(
+                self.state,
+                WidgetListener::Variable,
+                Some(id.get().cast_signed()),
+            )?;
+        }
+        Ok(())
+    }
     fn apply(&mut self, update: InterfaceUpdate) -> Result<()> {
         self.state
             .apply_operation(SemanticOperation::Interface(update))
             .map(|_| ())
             .map_err(|e| e.to_string())
+    }
+}
+
+#[cfg(test)]
+mod wheel_tests {
+    use super::*;
+    use rustclient_model::{InterfaceId, WidgetId};
+
+    fn address() -> WidgetAddress {
+        WidgetAddress::component(WidgetId {
+            interface: InterfaceId::new(161),
+            component: 9,
+        })
+    }
+
+    #[test]
+    fn the_wheel_placeholder_carries_the_rotation_and_others_resolve_normally() {
+        let profile = rustclient_cache::CacheProfile::OpenRune240;
+        let widget = ((161_u32 << 16) | 9).cast_signed();
+        for rotation in [-3, 0, 5] {
+            let event = ListenerEvent {
+                wheel: Some(rotation),
+                ..ListenerEvent::default()
+            };
+            assert_eq!(
+                event_argument(profile, -2_147_483_646, address(), event),
+                rotation
+            );
+        }
+        let event = ListenerEvent::default();
+        assert_eq!(
+            event_argument(profile, -2_147_483_645, address(), event),
+            widget
+        );
+        assert_eq!(event_argument(profile, 7, address(), event), 7);
+    }
+
+    #[test]
+    fn pointer_placeholders_carry_the_widget_relative_position() {
+        let profile = rustclient_cache::CacheProfile::OpenRune240;
+        let event = ListenerEvent {
+            mouse: [31, 7],
+            ..ListenerEvent::default()
+        };
+        assert_eq!(
+            event_argument(profile, -2_147_483_647, address(), event),
+            31
+        );
+        assert_eq!(event_argument(profile, -2_147_483_646, address(), event), 7);
+        assert_eq!(
+            event_argument(profile, -2_147_483_642, address(), event),
+            -1
+        );
     }
 }

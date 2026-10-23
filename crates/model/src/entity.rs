@@ -46,6 +46,7 @@ pub struct MovementSequences {
 /// Authoritative player appearance and equipment representation.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PlayerAppearance {
+    pub display_name: String,
     pub gender: Gender,
     pub slots: [SlotContent; APPEARANCE_SLOTS],
     pub colors: [u8; COLOR_SLOTS],
@@ -58,6 +59,7 @@ pub struct PlayerAppearance {
 impl Default for PlayerAppearance {
     fn default() -> Self {
         Self {
+            display_name: String::new(),
             gender: Gender::Male,
             slots: [SlotContent::Empty; APPEARANCE_SLOTS],
             colors: [0; COLOR_SLOTS],
@@ -141,7 +143,87 @@ pub struct PlayerInfoUpdate {
     pub local_movement: Option<PlayerMovement>,
     pub local_appearance: Option<PlayerAppearance>,
     pub local_sequence: SequenceChange,
+    pub local_sequence_delay: u8,
     pub local_facing: Option<u16>,
+    pub remote: Vec<RemotePlayerUpdate>,
+}
+
+/// Dimensions of the server's coarse out-of-view player tracking grid, in tiles.
+/// Profiles choose dimensions; semantic state owns positions within the grid.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PlayerTrackingGrid {
+    region_size: u32,
+    region_count: u32,
+}
+impl PlayerTrackingGrid {
+    #[must_use]
+    pub fn new(region_size: u32, region_count: u32) -> Option<Self> {
+        let extent = region_size.checked_mul(region_count)?;
+        (region_size > 0 && region_count > 0 && extent <= i32::MAX.cast_unsigned()).then_some(
+            Self {
+                region_size,
+                region_count,
+            },
+        )
+    }
+    #[must_use]
+    pub const fn region_size(self) -> u32 {
+        self.region_size
+    }
+    #[must_use]
+    pub const fn region_count(self) -> u32 {
+        self.region_count
+    }
+    #[must_use]
+    pub const fn extent(self) -> u32 {
+        self.region_size * self.region_count
+    }
+}
+
+/// Ordered changes to non-local player visibility, tracking and appearance.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RemotePlayerUpdate {
+    Track {
+        index: crate::PlayerIndex,
+        grid: PlayerTrackingGrid,
+        region: crate::WorldTile,
+    },
+    Shift {
+        index: crate::PlayerIndex,
+        regions: crate::TileOffset,
+        plane_delta: u8,
+    },
+    Enter {
+        index: crate::PlayerIndex,
+        offset: crate::TileOffset,
+    },
+    Leave {
+        index: crate::PlayerIndex,
+    },
+    Move {
+        index: crate::PlayerIndex,
+        movement: Option<PlayerMovement>,
+    },
+    Attributes {
+        index: crate::PlayerIndex,
+        appearance: Option<PlayerAppearance>,
+        sequence: SequenceChange,
+        delay: u8,
+        facing: Option<u16>,
+    },
+}
+impl RemotePlayerUpdate {
+    #[must_use]
+    pub const fn index(&self) -> crate::PlayerIndex {
+        match self {
+            Self::Track { index, .. }
+            | Self::Shift { index, .. }
+            | Self::Enter { index, .. }
+            | Self::Leave { index }
+            | Self::Move { index, .. }
+            | Self::Attributes { index, .. } => *index,
+        }
+    }
 }
 
 /// Newly spawned or high-resolution NPC.
@@ -190,4 +272,20 @@ pub enum NpcProperty {
     Facing(u16),
     Name(Option<String>),
     Actions(crate::ActionMask),
+}
+
+#[cfg(test)]
+mod tracking_tests {
+    use super::PlayerTrackingGrid;
+    #[test]
+    fn tracking_grid_requires_nonzero_bounded_tile_extent() {
+        assert!(PlayerTrackingGrid::new(0, 1).is_none());
+        assert!(PlayerTrackingGrid::new(1, 0).is_none());
+        assert!(PlayerTrackingGrid::new(u32::MAX, 2).is_none());
+        assert!(PlayerTrackingGrid::new(i32::MAX.cast_unsigned(), 2).is_none());
+        assert_eq!(
+            PlayerTrackingGrid::new(8192, 256).unwrap().extent(),
+            2_097_152
+        );
+    }
 }

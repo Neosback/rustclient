@@ -4,6 +4,7 @@ use rustclient_model::{Plane, SceneAssetId, TextureId, WorldTile};
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct SceneVertex {
+    /// XYZ fine units; W retains the authored face priority for CPU ordering.
     pub position: [i16; 4],
     pub abhsl: u32,
     pub texture_uv: [u16; 4],
@@ -25,6 +26,8 @@ pub struct SceneGeometry {
     pub vertices: Vec<SceneVertex>,
     pub opaque: Vec<u32>,
     pub transparent: Vec<u32>,
+    /// Non-overlapping vertex spans, one per emitted model, used for face ordering.
+    pub models: Vec<std::ops::Range<usize>>,
     /// Ordered vertex spans emitted for the same posed models submitted to the GPU.
     pub picks: Vec<PickRange>,
 }
@@ -42,6 +45,36 @@ pub struct WorldMesh {
     pub textures: std::collections::BTreeMap<TextureId, rustclient_cache::world::TextureAsset>,
 }
 impl SceneGeometry {
+    /// Empty every list but keep allocations for per-cycle rebuilds.
+    pub fn clear(&mut self) {
+        self.vertices.clear();
+        self.opaque.clear();
+        self.transparent.clear();
+        self.picks.clear();
+        self.models.clear();
+    }
+    pub(crate) fn model_triangle(
+        &mut self,
+        points: [[i32; 3]; 3],
+        colors: [i32; 3],
+        uv: [[f32; 2]; 3],
+        face: rustclient_cache::world::ModelFace,
+    ) -> Result<()> {
+        if face.priority > 11 {
+            return Err(SceneError("face priority outside 0..11".into()));
+        }
+        let first = self.vertices.len();
+        let alpha = if face.alpha == -2 {
+            0
+        } else {
+            face.alpha.cast_unsigned()
+        };
+        self.triangle(points, colors, face.texture, uv, alpha, face.bias)?;
+        for vertex in &mut self.vertices[first..] {
+            vertex.position[3] = i16::from(face.priority);
+        }
+        Ok(())
+    }
     #[expect(
         clippy::cast_possible_truncation,
         reason = "UVs use reference truncated and clamped signed 8.8"

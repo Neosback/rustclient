@@ -6,6 +6,8 @@ mod color;
 pub mod item_icon;
 pub use collision::CollisionMap;
 pub mod entity_mesh;
+pub mod motion;
+pub use motion::ActorMotion;
 mod inputs;
 mod lighting;
 pub mod minimap;
@@ -156,3 +158,5 @@ impl SceneAsset {
 
 #[cfg(test)]
 mod tests;
+
+mod seams;

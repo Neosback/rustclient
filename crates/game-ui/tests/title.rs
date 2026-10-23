@@ -69,11 +69,13 @@ fn username_limit_counts_characters_and_backspace_respects_utf8() {
 fn same_title_hit_geometry_is_used_after_resize_and_hidpi_transform() {
     for viewport in [
         TitleViewport {
+            canvas_width: 765,
             physical_width: 765,
             physical_height: 503,
             scale: 1.,
         },
         TitleViewport {
+            canvas_width: 765,
             physical_width: 1800,
             physical_height: 1100,
             scale: 2.,

@@ -44,6 +44,19 @@ pub struct TileOffset {
 /// Session-local lifetime identity, distinct from a reusable NPC protocol index.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct NpcInstanceId(u64);
+/// One visible incarnation of a reusable player index.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct PlayerInstanceId(u64);
+impl PlayerInstanceId {
+    #[must_use]
+    pub const fn new(value: u64) -> Self {
+        Self(value)
+    }
+    #[must_use]
+    pub const fn get(self) -> u64 {
+        self.0
+    }
+}
 impl NpcInstanceId {
     #[must_use]
     pub const fn new(value: u64) -> Self {

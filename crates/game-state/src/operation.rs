@@ -14,6 +14,9 @@ use crate::state::{GameState, LifecycleError, SessionLifecycle, TickAdvanceError
 /// details have already been translated away. They are not committed events.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SemanticOperation {
+    GameMessage(rustclient_model::GameMessage),
+    ChatFilterText(String),
+    ChatFilters([Option<u8>; 3]),
     Scenery(crate::SceneryOperation),
     PlayerStatus(rustclient_model::PlayerStatusUpdate),
     Inventory(rustclient_model::InventoryUpdate),
@@ -22,6 +25,8 @@ pub enum SemanticOperation {
     UpdatePlayers(rustclient_model::PlayerInfoUpdate),
     /// Authoritative NPC info tick update.
     UpdateNpcs(rustclient_model::NpcInfoUpdate),
+    /// Clear server-controlled action animations while retaining locomotion and appearance.
+    ResetActorAnimations,
     /// Select or unselect active gameframe tab.
     SelectGameFrameTab(Option<usize>),
     /// Change non-secret pre-session title navigation/feedback.
@@ -51,6 +56,7 @@ pub enum SemanticOperation {
 /// Failure while validating or applying one semantic operation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OperationError {
+    Chat(crate::ChatError),
     /// Entity transition validation failed.
     EntityUpdate(crate::EntityUpdateError),
     Scenery(crate::SceneryError),
@@ -69,6 +75,7 @@ pub enum OperationError {
 impl fmt::Display for OperationError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Chat(error) => error.fmt(formatter),
             Self::EntityUpdate(error) => error.fmt(formatter),
             Self::Scenery(error) => error.fmt(formatter),
             Self::Inventory(error) => error.fmt(formatter),
@@ -84,6 +91,7 @@ impl fmt::Display for OperationError {
 impl std::error::Error for OperationError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
+            Self::Chat(error) => Some(error),
             Self::EntityUpdate(error) => Some(error),
             Self::Scenery(error) => Some(error),
             Self::Inventory(error) => Some(error),
@@ -151,11 +159,57 @@ impl GameState {
     /// Returns [`OperationError`] when the requested operation is invalid for
     /// the current state. Failed operations leave authoritative state unchanged
     /// and therefore produce no [`OperationCommit`].
+    #[expect(
+        clippy::too_many_lines,
+        reason = "explicit semantic transition dispatch"
+    )]
     pub fn apply_operation(
         &mut self,
         operation: SemanticOperation,
     ) -> Result<OperationCommit, OperationError> {
         match operation {
+            SemanticOperation::ChatFilterText(text) => {
+                self.require_active()?;
+                if text.len() > 4096 {
+                    return Err(OperationError::Chat(crate::ChatError));
+                }
+                let changed = self.chat.filter_text != text;
+                self.chat.filter_text = text;
+                Ok(if changed {
+                    OperationCommit::new(Some(SemanticEvent::ChatSettingsChanged), StateDelta::CHAT)
+                } else {
+                    OperationCommit::new(None, StateDelta::default())
+                })
+            }
+            SemanticOperation::ChatFilters(values) => {
+                self.require_active()?;
+                if values
+                    .into_iter()
+                    .zip([4, 2, 2])
+                    .any(|(value, max)| value.is_some_and(|v| v > max))
+                {
+                    return Err(OperationError::Chat(crate::ChatError));
+                }
+                let next = std::array::from_fn(|i| values[i].unwrap_or(self.chat.filters[i]));
+                let changed = self.chat.filters != next;
+                self.chat.filters = next;
+                Ok(if changed {
+                    OperationCommit::new(Some(SemanticEvent::ChatSettingsChanged), StateDelta::CHAT)
+                } else {
+                    OperationCommit::new(None, StateDelta::default())
+                })
+            }
+            SemanticOperation::GameMessage(message) => {
+                self.require_active()?;
+                let id = self
+                    .chat
+                    .push(message, self.scenery.cycle())
+                    .map_err(OperationError::Chat)?;
+                Ok(OperationCommit::new(
+                    Some(SemanticEvent::ChatMessageAdded(id)),
+                    StateDelta::CHAT,
+                ))
+            }
             SemanticOperation::PlayerStatus(update) => {
                 self.require_active()?;
                 let changed = self
@@ -173,6 +227,14 @@ impl GameState {
             SemanticOperation::Interface(update) => self.apply_interface(update),
             SemanticOperation::UpdatePlayers(update) => self.apply_update_players(&update),
             SemanticOperation::UpdateNpcs(update) => self.apply_update_npcs(&update),
+            SemanticOperation::ResetActorAnimations => {
+                self.require_active()?;
+                Ok(if self.entities.reset_animations() {
+                    OperationCommit::new(Some(SemanticEvent::EntitiesUpdated), StateDelta::ENTITIES)
+                } else {
+                    OperationCommit::new(None, StateDelta::default())
+                })
+            }
             SemanticOperation::SelectGameFrameTab(tab) => self.apply_select_tab(tab),
             SemanticOperation::RebuildMap(anchor) => {
                 let placement = self

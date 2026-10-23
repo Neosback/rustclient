@@ -2,75 +2,10 @@ use super::{Result, ScriptHost};
 use rustclient_cache::script::Opcode;
 use rustclient_client_script::{Context, Stacks};
 use rustclient_model::{
-    FontId, InterfaceUpdate, ItemDefinitionId, PositionMode, ScriptValue, SizeMode, SpriteId,
-    WidgetAddress, WidgetBody, WidgetListener, WidgetOperation, WidgetProperty,
+    FontId, InterfaceUpdate, ItemDefinitionId, ScriptValue, SpriteId, WidgetAddress, WidgetBody,
+    WidgetListener, WidgetOpKeys, WidgetOperation, WidgetProperty,
 };
 use rustclient_platform::ReadOnlyBlobs;
-fn size(n: i32) -> Result<SizeMode> {
-    match n {
-        0 => Ok(SizeMode::Absolute),
-        1 => Ok(SizeMode::ParentMinus),
-        2 => Ok(SizeMode::Proportional),
-        4 => Ok(SizeMode::Aspect),
-        _ => Err("unsupported widget size alignment".into()),
-    }
-}
-fn position(n: i32) -> Result<PositionMode> {
-    match n {
-        0 => Ok(PositionMode::Start),
-        1 => Ok(PositionMode::Center),
-        2 => Ok(PositionMode::End),
-        3 => Ok(PositionMode::ProportionalStart),
-        4 => Ok(PositionMode::ProportionalCenter),
-        5 => Ok(PositionMode::ProportionalEnd),
-        _ => Err("unsupported widget position alignment".into()),
-    }
-}
-fn default_body(kind: i32) -> Result<WidgetBody> {
-    match kind {
-        0 => Ok(WidgetBody::Container {
-            scroll_size: [0; 2],
-            no_click_through: false,
-        }),
-        3 => Ok(WidgetBody::Rectangle {
-            color: 0,
-            filled: false,
-            transparency: 0,
-        }),
-        4 => Ok(WidgetBody::Text {
-            font: None,
-            text: String::new(),
-            line_height: 0,
-            alignment: [0; 2],
-            shadowed: false,
-            color: 0,
-        }),
-        5 => Ok(WidgetBody::Sprite {
-            sprite: None,
-            angle: 0,
-            tiled: false,
-            transparency: 0,
-            outline: 0,
-            shadow: 0,
-            flip: [false; 2],
-        }),
-        6 => Ok(WidgetBody::Model {
-            model: None,
-            offset: [0; 2],
-            angles: [0; 3],
-            zoom: 100,
-            sequence: None,
-            orthographic: false,
-            sizing: [0; 3],
-        }),
-        9 => Ok(WidgetBody::Line {
-            width: 1,
-            color: 0,
-            reversed: false,
-        }),
-        _ => Err(format!("unsupported dynamic widget type {kind}")),
-    }
-}
 #[expect(
     clippy::too_many_lines,
     clippy::many_single_char_names,
@@ -97,16 +32,55 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
     let active = usize::from(n == 1);
     let (op, explicit) = op.widget();
     match op {
+        Opcode::CcFindByParameters => {
+            let second_type = s.int()?;
+            let first_type = s.int()?;
+            let second_value = pop_value(h.resources.profile, s, second_type)?;
+            let second_param = s.int()?;
+            let first_value = pop_value(h.resources.profile, s, first_type)?;
+            let first_param = s.int()?;
+            let parent = h.resources.profile.script_widget(s.int()?)?;
+            let mut filters = Vec::new();
+            for (parameter, value) in [(first_param, first_value), (second_param, second_value)] {
+                if let Ok(parameter) = u32::try_from(parameter) {
+                    let default = h
+                        .resources
+                        .profile
+                        .parameter_default(&h.resources.cache, parameter)
+                        .map_err(|e| e.to_string())?;
+                    filters.push((parameter, value, default));
+                }
+            }
+            let found = h
+                .state
+                .interfaces()
+                .runtime()
+                .iter()
+                .find(|(address, runtime)| {
+                    address.widget == parent
+                        && address.child.is_some()
+                        && filters.iter().all(|(parameter, value, default)| {
+                            Some(runtime.parameters.get(parameter).unwrap_or(default))
+                                == value.as_ref()
+                        })
+                })
+                .map(|(address, _)| *address);
+            s.integers.push(i32::from(found.is_some()));
+            if let Some(address) = found {
+                c.active[active] = Some(address);
+            }
+            return Ok(true);
+        }
         CcCreate => {
-            let [parent, kind, index, allow_sparse] = s.ints()?;
+            let [parent, kind, index, reject_replace] = s.ints()?;
             let parent = h.resources.profile.script_widget(parent)?;
             let index = u32::try_from(index).map_err(|_| "negative child index")?;
             h.apply(InterfaceUpdate::CreateChild {
                 parent,
                 parent_child: None,
-                allow_sparse: allow_sparse != 0,
+                reject_replace: reject_replace != 0,
                 index,
-                body: default_body(kind)?,
+                body: h.resources.profile.script_widget_body(kind)?,
             })?;
             c.active[active] = Some(WidgetAddress {
                 widget: parent,
@@ -147,8 +121,8 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
                 parent: current.widget,
                 parent_child,
                 index,
-                allow_sparse: true,
-                body: default_body(kind)?,
+                reject_replace: false,
+                body: h.resources.profile.script_widget_body(kind)?,
             })?;
             c.active[active] = Some(WidgetAddress {
                 widget: current.widget,
@@ -274,12 +248,8 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
     } else {
         match op {
             CcSetparam => {
-                let value = match param_type.ok_or("parameter type")? {
-                    0 => ScriptValue::Int(s.int()?),
-                    1 => ScriptValue::Long(s.long()?),
-                    2 => ScriptValue::Text(s.text()?),
-                    _ => return Err("unsupported widget parameter type".into()),
-                };
+                let value = pop_value(h.resources.profile, s, param_type.ok_or("parameter type")?)?
+                    .ok_or("absent widget parameter type")?;
                 let param = u32::try_from(s.int()?).map_err(|_| "parameter identity")?;
                 runtime.parameters.insert(param, value);
             }
@@ -300,16 +270,29 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
                 }
                 return Ok(true);
             }
+            Opcode::CcSetsecondarygraphic => {
+                runtime.secondary_sprite = u32::try_from(s.int()?).ok().map(SpriteId::new);
+            }
+            Opcode::CcDiscardRetiredFlag => {
+                s.int()?;
+                return Ok(true);
+            }
             CcSetposition => {
                 let [x, y, a, b] = s.ints()?;
                 layout.offset = [x, y];
-                layout.position_mode = [position(a)?, position(b)?];
+                layout.position_mode = [
+                    h.resources.profile.script_widget_position(a)?,
+                    h.resources.profile.script_widget_position(b)?,
+                ];
                 runtime.layout = Some(layout);
             }
             CcSetsize => {
                 let [x, y, a, b] = s.ints()?;
                 layout.size = [x, y];
-                layout.size_mode = [size(a)?, size(b)?];
+                layout.size_mode = [
+                    h.resources.profile.script_widget_size(a)?,
+                    h.resources.profile.script_widget_size(b)?,
+                ];
                 runtime.layout = Some(layout);
             }
             CcSethide => runtime.hidden = Some(s.int()? == 1),
@@ -480,34 +463,67 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
             CcSettargetverb => {
                 s.text()?;
             }
+            // Slot arguments are 1-based for numbered operations, as in the reference client.
+            Opcode::CcSetopkey | Opcode::CcSetoptkey => {
+                let [key, modifier] = s.ints()?;
+                let slot = op_key_slot(s, op == Opcode::CcSetoptkey)?;
+                // Reference bytes are truncating casts of the script integers.
+                runtime.op_keys.entry(slot).or_default().keys =
+                    vec![(low_byte(key), low_byte(modifier))];
+            }
+            Opcode::CcSetopkeyrate | Opcode::CcSetoptkeyrate => {
+                let target = op == Opcode::CcSetoptkeyrate;
+                // The reference pops the target variant's pair in the opposite order.
+                let [first, second] = s.ints()?;
+                let rate = if target {
+                    [second, first]
+                } else {
+                    [first, second]
+                };
+                let slot = op_key_slot(s, target)?;
+                runtime.op_keys.entry(slot).or_default().rate = Some(rate);
+            }
+            Opcode::CcSetopkeyignoreheld | Opcode::CcSetoptkeyignoreheld => {
+                let slot = op_key_slot(s, op == Opcode::CcSetoptkeyignoreheld)?;
+                runtime.op_keys.entry(slot).or_default().ignore_held = true;
+            }
             CcSetdraggable => {
-                s.ints::<2>()?;
-            }
-            CcSetdragdeadtime | CcSetdragdeadzone | CcSetdraggablebehavior => {
-                s.int()?;
-            }
-            CcGetx | CcGety | CcGetwidth | CcGetheight => {
-                let tree = rustclient_game_ui::widgets::WidgetTree::build(
+                let [parent, child] = s.ints()?;
+                let parent = h.resources.profile.script_widget(parent)?;
+                let target = WidgetAddress {
+                    widget: parent,
+                    child: u32::try_from(child).ok(),
+                };
+                let present = rustclient_game_ui::widgets::resolve_widget(
                     h.state.interfaces(),
                     &h.resources.interfaces,
-                    rustclient_game_ui::widgets::WidgetBounds {
-                        x: 0,
-                        y: 0,
-                        width: 765,
-                        height: 503,
-                    },
+                    target,
+                )
+                .is_ok();
+                drag_config(&mut runtime, &widget).parent = present.then_some(target);
+            }
+            CcSetdragdeadtime | CcSetdragdeadzone | CcSetdraggablebehavior => {
+                let value = s.int()?;
+                let drag = drag_config(&mut runtime, &widget);
+                match op {
+                    CcSetdragdeadtime => drag.threshold = value,
+                    CcSetdragdeadzone => drag.zone = value,
+                    _ => drag.scrollbar = value == 1,
+                }
+            }
+            CcGetx | CcGety | CcGetwidth | CcGetheight => {
+                let bounds = rustclient_game_ui::widgets::widget_bounds(
+                    h.state.interfaces(),
+                    &h.resources.interfaces,
+                    address,
+                    rustclient_game_ui::widgets::WidgetBounds::canvas(h.state.interfaces()),
                 )
                 .map_err(|e| e.to_string())?;
-                let bounds = tree
-                    .nodes
-                    .iter()
-                    .find(|w| w.address == address)
-                    .map(|w| w.bounds);
                 s.integers.push(match op {
-                    CcGetx => bounds.map_or(layout.offset[0], |b| b.x),
-                    CcGety => bounds.map_or(layout.offset[1], |b| b.y),
-                    CcGetwidth => bounds.map_or(layout.size[0], |b| b.width),
-                    _ => bounds.map_or(layout.size[1], |b| b.height),
+                    CcGetx => bounds.x,
+                    CcGety => bounds.y,
+                    CcGetwidth => bounds.width,
+                    _ => bounds.height,
                 });
                 return Ok(true);
             }
@@ -597,6 +613,31 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
     })?;
     Ok(true)
 }
+/// The reference stores key codes as truncated bytes.
+fn low_byte(value: i32) -> u8 {
+    u8::try_from(value & 0xFF).unwrap_or_default()
+}
+/// Pops the 1-based operation slot (`0..=9`), or selects the target slot for `t` variants.
+fn drag_config<'a>(
+    runtime: &'a mut rustclient_model::WidgetRuntime,
+    widget: &rustclient_model::WidgetDefinition,
+) -> &'a mut rustclient_model::WidgetDrag {
+    runtime.drag.get_or_insert(rustclient_model::WidgetDrag {
+        parent: None,
+        zone: i32::from(widget.drag_zone),
+        threshold: i32::from(widget.drag_threshold),
+        scrollbar: widget.scrollbar,
+    })
+}
+fn op_key_slot(s: &mut Stacks, target: bool) -> Result<u8> {
+    if target {
+        return Ok(WidgetOpKeys::TARGET_SLOT);
+    }
+    u8::try_from(s.int()? - 1)
+        .ok()
+        .filter(|slot| *slot < WidgetOpKeys::TARGET_SLOT)
+        .ok_or_else(|| "operation key slot".into())
+}
 fn is_widget(op: Opcode) -> bool {
     format!("{op:?}").starts_with("Cc")
 }
@@ -609,6 +650,14 @@ fn listener(op: Opcode) -> Option<WidgetListener> {
         CcSetontargetleave, CcSetontimer, CcSetonvartransmit,
     };
     Some(match op {
+        Opcode::CcSetonfriendtransmit => WidgetListener::Friend,
+        Opcode::CcSetonclantransmit => WidgetListener::Clan,
+        Opcode::CcSetondialogabort => WidgetListener::DialogAbort,
+        Opcode::CcSetonstocktransmit => WidgetListener::Stock,
+        Opcode::CcSetonkeypress => WidgetListener::KeyPress,
+        Opcode::CcSetonkeyrelease => WidgetListener::KeyRelease,
+        Opcode::CcSetonclansettingstransmit => WidgetListener::ClanSettings,
+        Opcode::CcSetonclanchanneltransmit => WidgetListener::ClanChannel,
         CcSetonkey => WidgetListener::Key,
         CcSetonresize => WidgetListener::Resize,
         CcSetonsubchange => WidgetListener::SubChange,
@@ -633,4 +682,42 @@ fn listener(op: Opcode) -> Option<WidgetListener> {
         CcSetonscrollwheel => WidgetListener::Scroll,
         _ => return None,
     })
+}
+
+pub(super) fn pop_value(
+    profile: rustclient_cache::CacheProfile,
+    stacks: &mut Stacks,
+    kind: i32,
+) -> Result<Option<ScriptValue>> {
+    use rustclient_cache::osrs240::scripts::ScriptValueType;
+    Ok(match profile.script_value_type(kind)? {
+        Some(ScriptValueType::Integer) => Some(ScriptValue::Int(stacks.int()?)),
+        Some(ScriptValueType::Long) => Some(ScriptValue::Long(stacks.long()?)),
+        Some(ScriptValueType::Text) => Some(ScriptValue::Text(stacks.text()?)),
+        None => None,
+    })
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn stacks(ints: &[i32]) -> Stacks {
+        let mut s = Stacks::default();
+        s.integers.extend_from_slice(ints);
+        s
+    }
+
+    #[test]
+    fn operation_key_slots_are_one_based_and_target_variants_use_the_eleventh() {
+        assert_eq!(op_key_slot(&mut stacks(&[1]), false), Ok(0));
+        assert_eq!(op_key_slot(&mut stacks(&[10]), false), Ok(9));
+        assert!(op_key_slot(&mut stacks(&[0]), false).is_err());
+        assert!(op_key_slot(&mut stacks(&[11]), false).is_err());
+        let mut untouched = stacks(&[3]);
+        assert_eq!(
+            op_key_slot(&mut untouched, true),
+            Ok(WidgetOpKeys::TARGET_SLOT)
+        );
+        assert_eq!(untouched.integers, [3], "target variants pop no slot");
+    }
 }

@@ -6,6 +6,7 @@ pub struct ContextMenu<A: Copy = WorldAction> {
     bounds: Option<Rect>,
     entries: Vec<(String, Option<A>)>,
     selected: Option<usize>,
+    canvas: Rect,
 }
 impl<A: Copy> Default for ContextMenu<A> {
     fn default() -> Self {
@@ -13,6 +14,7 @@ impl<A: Copy> Default for ContextMenu<A> {
             bounds: None,
             entries: Vec::new(),
             selected: None,
+            canvas: Rect::new(0., 0., 765., 503.),
         }
     }
 }
@@ -30,7 +32,14 @@ impl<A: Copy> ContextMenu<A> {
         clippy::cast_precision_loss,
         reason = "at most six menu entries and bounded logical font widths"
     )]
-    pub fn open(&mut self, x: f32, y: f32, entries: Vec<(String, A)>, assets: &TitleAssets) {
+    pub fn open(
+        &mut self,
+        x: f32,
+        y: f32,
+        entries: Vec<(String, A)>,
+        assets: &TitleAssets,
+        canvas: rustclient_model::CanvasSize,
+    ) {
         self.close();
         if entries.is_empty() || !x.is_finite() || !y.is_finite() {
             return;
@@ -51,11 +60,17 @@ impl<A: Copy> ContextMenu<A> {
             .unwrap_or(0)
             .max(font.width("Choose Option"))
             + 10) as f32;
-        let width = width.clamp(80., 765.);
-        let height = (22. + self.entries.len() as f32 * 16.).min(503.);
+        self.canvas = Rect::new(
+            0.,
+            0.,
+            canvas.width.max(1) as f32,
+            canvas.height.max(1) as f32,
+        );
+        let width = width.max(80.).min(self.canvas.width);
+        let height = (22. + self.entries.len() as f32 * 16.).min(self.canvas.height);
         self.bounds = Some(Rect::new(
-            x.clamp(0., 765. - width),
-            y.clamp(0., 503. - height),
+            x.clamp(0., self.canvas.width - width),
+            y.clamp(0., self.canvas.height - height),
             width,
             height,
         ));
@@ -110,7 +125,7 @@ impl<A: Copy> ContextMenu<A> {
         let Some(bounds) = self.bounds else {
             return;
         };
-        let clip = Rect::new(0., 0., 765., 503.);
+        let clip = self.canvas;
         frame.fill_rect(bounds, [0, 0, 0, 255], clip);
         frame.fill_rect(
             Rect::new(

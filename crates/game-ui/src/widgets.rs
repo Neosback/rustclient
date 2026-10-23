@@ -31,6 +31,16 @@ pub struct WidgetBounds {
 }
 impl WidgetBounds {
     #[must_use]
+    pub fn canvas(state: &InterfaceState) -> Self {
+        let size = state.window().canvas;
+        Self {
+            x: 0,
+            y: 0,
+            width: size.width.cast_signed(),
+            height: size.height.cast_signed(),
+        }
+    }
+    #[must_use]
     #[expect(
         clippy::cast_precision_loss,
         reason = "layout bounds are explicitly limited to f32 integer precision"
@@ -84,14 +94,25 @@ impl WidgetTree {
     /// Hidden ancestors prune their descendants. No listeners run here.
     /// # Errors
     /// Rejects missing assets, excessive depth/nodes, invalid extents or overflow.
-    #[expect(
-        clippy::too_many_lines,
-        reason = "single-pass layout construction keeps validation beside each node"
-    )]
     pub fn build(
         state: &InterfaceState,
         assets: &BTreeMap<InterfaceId, InterfaceDefinition>,
         viewport: WidgetBounds,
+    ) -> Result<Self, WidgetLayoutError> {
+        Self::build_with_drag(state, assets, viewport, None)
+    }
+    /// Build the same layout with a disposable drag origin inherited by descendants.
+    /// # Errors
+    /// Uses the ordinary layout bounds and overflow checks.
+    #[expect(
+        clippy::too_many_lines,
+        reason = "single-pass layout validation and construction"
+    )]
+    pub fn build_with_drag(
+        state: &InterfaceState,
+        assets: &BTreeMap<InterfaceId, InterfaceDefinition>,
+        viewport: WidgetBounds,
+        dragged: Option<crate::pointer::DraggedWidget>,
     ) -> Result<Self, WidgetLayoutError> {
         if viewport.width < 0
             || viewport.height < 0
@@ -114,6 +135,18 @@ impl WidgetTree {
             viewport,
             0,
         )?;
+        let mut dynamic_children = BTreeMap::<WidgetAddress, Vec<WidgetAddress>>::new();
+        for (address, runtime) in state.runtime() {
+            if address.child.is_some() {
+                dynamic_children
+                    .entry(WidgetAddress {
+                        widget: address.widget,
+                        child: runtime.parent_child,
+                    })
+                    .or_default()
+                    .push(*address);
+            }
+        }
         let mut nodes = Vec::new();
         while let Some(task) = tasks.pop() {
             if nodes.len() >= LIMIT || task.depth >= 128 {
@@ -127,7 +160,11 @@ impl WidgetTree {
             if widget.hidden {
                 continue;
             }
-            let bounds = place(&widget, task.origin, task.parent_size)?;
+            let mut bounds = place(&widget, task.origin, task.parent_size)?;
+            if let Some(dragged) = dragged.filter(|dragged| dragged.address == task.address) {
+                bounds.x = checked(i64::from(dragged.origin[0]))?;
+                bounds.y = checked(i64::from(dragged.origin[1]))?;
+            }
             let clip = task.clip.intersection(bounds);
             let (child_size, scroll_y) =
                 if let WidgetBody::Container { scroll_size, .. } = widget.body {
@@ -182,11 +219,12 @@ impl WidgetTree {
                     checked(i64::from(bounds.y) - i64::from(scroll_y))?,
                 ];
                 {
-                    for (address, _) in state.runtime().iter().rev().filter(|(a, v)| {
-                        a.widget == widget.id
-                            && a.child.is_some()
-                            && v.parent_child == task.address.child
-                    }) {
+                    for address in dynamic_children
+                        .get(&task.address)
+                        .into_iter()
+                        .flatten()
+                        .rev()
+                    {
                         tasks.push(Task {
                             address: *address,
                             origin,
@@ -215,6 +253,68 @@ impl WidgetTree {
         Ok(Self { nodes })
     }
 }
+/// Resolve widget-local aligned geometry, including hidden/detached components.
+/// Script geometry queries inspect the widget, not only visible paint nodes.
+/// # Errors
+/// Rejects invalid/missing definitions, cyclic ancestry or coordinate overflow.
+pub fn widget_bounds(
+    state: &InterfaceState,
+    assets: &BTreeMap<InterfaceId, InterfaceDefinition>,
+    address: WidgetAddress,
+    viewport: WidgetBounds,
+) -> Result<WidgetBounds, WidgetLayoutError> {
+    let mut ancestry = Vec::new();
+    let mut next = Some(address);
+    while let Some(address) = next {
+        if ancestry.len() >= 128 || ancestry.iter().any(|(a, _)| *a == address) {
+            return Err(WidgetLayoutError::LimitExceeded);
+        }
+        let widget = resolve_widget(state, assets, address)?;
+        next = parent_address(state, address, &widget);
+        ancestry.push((address, widget));
+    }
+    let mut parent = [viewport.width, viewport.height];
+    let mut bounds = viewport;
+    for (_, widget) in ancestry.iter().rev() {
+        bounds = place(widget, [0, 0], parent)?;
+        parent = [bounds.width, bounds.height];
+        if let WidgetBody::Container { scroll_size, .. } = widget.body {
+            for axis in 0..2 {
+                if scroll_size[axis] != 0 {
+                    parent[axis] = checked(i64::from(scroll_size[axis]))?;
+                }
+            }
+        }
+    }
+    Ok(bounds)
+}
+
+/// Logical ancestry includes dynamic children and mounted interface roots.
+#[must_use]
+pub fn parent_address(
+    state: &InterfaceState,
+    address: WidgetAddress,
+    widget: &WidgetDefinition,
+) -> Option<WidgetAddress> {
+    if address.child.is_some() {
+        Some(WidgetAddress {
+            widget: address.widget,
+            child: state
+                .runtime()
+                .get(&address)
+                .and_then(|runtime| runtime.parent_child),
+        })
+    } else if let Some(parent) = widget.parent {
+        Some(WidgetAddress::component(parent))
+    } else {
+        state
+            .mounts()
+            .iter()
+            .find(|(_, mount)| mount.interface == address.widget.interface)
+            .map(|(parent, _)| WidgetAddress::component(*parent))
+    }
+}
+
 fn push_group(
     tasks: &mut Vec<Task>,
     assets: &BTreeMap<InterfaceId, InterfaceDefinition>,

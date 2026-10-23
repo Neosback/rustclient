@@ -1,7 +1,7 @@
 //! Validate menu selections against the current displayed widget projection and permissions.
 use rustclient_cache::widget::InterfaceDefinition;
 use rustclient_game_state::GameState;
-use rustclient_game_ui::widgets::{WidgetBounds, WidgetTree, resolve_widget};
+use rustclient_game_ui::widgets::{WidgetTree, resolve_widget};
 use rustclient_model::{InterfaceId, WidgetAction, WidgetAddress, WidgetOperation};
 use rustclient_protocol::ClientIntent;
 use std::collections::BTreeMap;
@@ -66,12 +66,7 @@ pub fn validate_widget_action(
     let tree = WidgetTree::build(
         state.interfaces(),
         assets,
-        WidgetBounds {
-            x: 0,
-            y: 0,
-            width: 765,
-            height: 503,
-        },
+        rustclient_game_ui::widgets::WidgetBounds::canvas(state.interfaces()),
     )
     .map_err(|e| e.to_string())?;
     if !tree

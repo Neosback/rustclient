@@ -157,6 +157,7 @@ fn mesh_batches(
                 scene,
                 catalog,
                 state.entities(),
+                &rustclient_scene::ActorMotion::default(),
                 &std::collections::BTreeMap::new(),
                 &mut geometry,
             )?;

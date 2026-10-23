@@ -25,7 +25,11 @@ impl core::fmt::Display for InterfaceError {
 impl std::error::Error for InterfaceError {}
 #[derive(Debug, Default)]
 pub struct InterfaceState {
+    window: rustclient_model::WindowMetrics,
+    default_window_mode: rustclient_model::WindowMode,
+    viewport: rustclient_model::ViewportSettings,
     settings: BTreeMap<rustclient_model::ClientSetting, bool>,
+    device_preferences: BTreeMap<u8, i32>,
     epoch: u64,
     root: Option<InterfaceId>,
     mounts: BTreeMap<WidgetId, InterfaceMount>,
@@ -34,6 +38,18 @@ pub struct InterfaceState {
     client_variables: BTreeMap<u32, rustclient_model::ScriptValue>,
 }
 impl InterfaceState {
+    #[must_use]
+    pub const fn window(&self) -> rustclient_model::WindowMetrics {
+        self.window
+    }
+    #[must_use]
+    pub const fn default_window_mode(&self) -> rustclient_model::WindowMode {
+        self.default_window_mode
+    }
+    #[must_use]
+    pub const fn viewport(&self) -> rustclient_model::ViewportSettings {
+        self.viewport
+    }
     /// Disposable invalidation token, excluded from semantic fingerprints.
     #[must_use]
     pub const fn epoch(&self) -> u64 {
@@ -77,6 +93,10 @@ impl InterfaceState {
         &self.client_variables
     }
     #[must_use]
+    pub const fn device_preferences(&self) -> &BTreeMap<u8, i32> {
+        &self.device_preferences
+    }
+    #[must_use]
     pub const fn settings(&self) -> &BTreeMap<rustclient_model::ClientSetting, bool> {
         &self.settings
     }
@@ -86,9 +106,49 @@ impl InterfaceState {
     )]
     pub(crate) fn apply(&mut self, update: InterfaceUpdate) -> Result<bool, InterfaceError> {
         match update {
+            InterfaceUpdate::Window(value) => {
+                if [
+                    value.available.width,
+                    value.available.height,
+                    value.canvas.width,
+                    value.canvas.height,
+                ]
+                .into_iter()
+                .any(|n| !(1..=16_384).contains(&n))
+                    || value.canvas.width > value.available.width
+                    || value.canvas.height > value.available.height
+                {
+                    return Err(InterfaceError::InvalidRange);
+                }
+                let changed = self.window != value;
+                self.window = value;
+                Ok(changed)
+            }
+            InterfaceUpdate::DefaultWindowMode(value) => {
+                let changed = self.default_window_mode != value;
+                self.default_window_mode = value;
+                Ok(changed)
+            }
+            InterfaceUpdate::Viewport(value) => {
+                if value.fov.contains(&0)
+                    || value.zoom.contains(&0)
+                    || value.clamp.contains(&0)
+                    || value.clamp[0] > value.clamp[1]
+                    || value.clamp[2] > value.clamp[3]
+                {
+                    return Err(InterfaceError::InvalidRange);
+                }
+                let changed = self.viewport != value;
+                self.viewport = value;
+                Ok(changed)
+            }
             InterfaceUpdate::Setting { key, value } => {
                 let changed = self.settings.get(&key) != Some(&value);
                 self.settings.insert(key, value);
+                Ok(changed)
+            }
+            InterfaceUpdate::DevicePreference { id, value } => {
+                let changed = self.device_preferences.insert(id, value) != Some(value);
                 Ok(changed)
             }
             InterfaceUpdate::ClientVariable { id, value } => {
@@ -108,7 +168,7 @@ impl InterfaceState {
             InterfaceUpdate::CreateChild {
                 parent,
                 parent_child,
-                allow_sparse,
+                reject_replace,
                 index,
                 body,
             } => {
@@ -119,13 +179,9 @@ impl InterfaceState {
                 if index >= 16_384 || self.runtime.len() >= 16_384 {
                     return Err(InterfaceError::LimitExceeded);
                 }
-                if !allow_sparse
-                    && index > 0
-                    && !self.runtime.contains_key(&rustclient_model::WidgetAddress {
-                        widget: parent,
-                        child: Some(index - 1),
-                    })
-                {
+                // Reference cc_create grows the child array to any index; its fourth
+                // operand only forbids replacing an occupied slot.
+                if reject_replace && self.runtime.contains_key(&address) {
                     return Err(InterfaceError::InvalidRange);
                 }
                 if parent_child == Some(index)
@@ -361,7 +417,11 @@ impl InterfaceState {
                 }
                 resync_events = Some(candidate);
             }
-            InterfaceUpdate::Setting { .. }
+            InterfaceUpdate::Viewport(_)
+            | InterfaceUpdate::Window(_)
+            | InterfaceUpdate::DefaultWindowMode(_)
+            | InterfaceUpdate::Setting { .. }
+            | InterfaceUpdate::DevicePreference { .. }
             | InterfaceUpdate::CloneChild { .. }
             | InterfaceUpdate::CreateChild { .. }
             | InterfaceUpdate::DeleteChild(_)
@@ -498,7 +558,13 @@ fn valid_value(value: &rustclient_model::ScriptValue) -> bool {
     }
 }
 fn valid_runtime(value: &rustclient_model::WidgetRuntime) -> bool {
-    value.text.as_ref().is_none_or(|s| s.len() <= 16_384)
+    value.drag.is_none_or(|drag| {
+        drag.parent.is_none_or(|parent| {
+            parent.widget.interface.get() < 65535
+                && parent.widget.component < 65535
+                && parent.child.is_none_or(|child| child < 65535)
+        })
+    }) && value.text.as_ref().is_none_or(|s| s.len() <= 16_384)
         && value.parameters.len() <= 4096
         && value.parameters.values().all(valid_value)
         && value
@@ -514,6 +580,10 @@ fn valid_runtime(value: &rustclient_model::WidgetRuntime) -> bool {
             .all(|v| v.len() <= 128 && v.iter().all(valid_value))
         && value.triggers.len() <= 64
         && value.triggers.values().all(|v| v.len() <= 4096)
+        && value.op_keys.len() <= 11
+        && value.op_keys.iter().all(|(slot, keys)| {
+            *slot <= rustclient_model::WidgetOpKeys::TARGET_SLOT && keys.keys.len() <= 5
+        })
         && match &value.body {
             Some(rustclient_model::WidgetBody::Text { text, .. }) => text.len() <= 16_384,
             _ => true,

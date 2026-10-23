@@ -344,3 +344,33 @@ inventory operations validate before mutation. No-op updates emit no event;
 new/removal/reuse, sequence delay, visibility, names and container contents replay
 through the same gateway. Exact schema 8 golden vectors reside in the contract
 tests alongside replay and malformed-operation checks.
+
+## Current desktop continuation fingerprint
+
+Schema 11 adds bounded server game-message history/filter state, player display
+names, reboot countdown/message and script-authored viewport properties. They
+mutate through ordinary operations, emit explicit deltas/events, reset at session
+boundaries and participate in replay. Earlier schema sections above are historical
+checkpoints; exact current regression vectors live in `game-state`'s fingerprint
+contract tests. Interface topology epochs remain disposable invalidation tokens.
+
+
+## Current input/entity continuation: fingerprint schema 13
+
+Schema 13 covers the committed fixed/resizable window metrics and defaults,
+numeric device preferences, script-authored widget drag configuration (including
+an optional parent address), player action slot frame/cycle/delay, and remote
+player tracking. The entity owner retains the player lifetime serial, visible
+instance identities, profile-supplied tracking grid dimensions and outside-view
+region/appearance/orientation. They reset at session boundaries and replay through
+ordinary operations; rejected player batches leave the entire prior state intact.
+`ResetActorAnimations` clears player and NPC action slots with an entities delta;
+an already clear collection is a no-op. Input capture, layout extents, temporary
+drag display origins, interpolation queues, click crosses and GPU sorting remain
+disposable projections outside the canonical fingerprint.
+
+Current exact state vectors: inactive `4547667724600293240`, revision 240 at tick 5
+`2727580851940192160`, revision 240.2 at tick 5 `3773900769062229405`.
+The reference commit stream is `13725348769846276724`; empty stream is
+`10220152073364718933`. Authentication/placement state is `5742575929545608436`.
+Executable contract tests remain the source for these anchors.

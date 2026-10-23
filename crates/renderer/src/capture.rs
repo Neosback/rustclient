@@ -49,7 +49,14 @@ pub async fn capture_ui_with_images(
     }
     let format = wgpu::TextureFormat::Rgba8UnormSrgb;
     let mut ui = UiGpu::with_images(&device, &queue, format, assets, images)?;
-    ui.prepare(&queue, frame, flames, &[], &[], viewport)?;
+    ui.prepare(
+        &device,
+        &queue,
+        frame,
+        flames,
+        crate::ui::DynamicImages::default(),
+        viewport,
+    )?;
     let texture = target(&device, width, height, format);
     let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
     let stride = (width * 4).div_ceil(256) * 256;

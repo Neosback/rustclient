@@ -11,12 +11,13 @@ pub mod entity;
 pub mod ids;
 mod interaction;
 pub use interaction::{
-    ActionMask, ActionSlot, NpcInstanceId, TileOffset, WorldAction, WorldTarget,
+    ActionMask, ActionSlot, NpcInstanceId, PlayerInstanceId, TileOffset, WorldAction, WorldTarget,
 };
 mod interface;
 pub use interface::{
-    ClientSetting, InterfaceMount, InterfaceMountKind, InterfaceUpdate, ScriptRequest, ScriptValue,
-    WidgetAction, WidgetEventRange, WidgetOperation, WidgetPermissions, WidgetProperty,
+    CanvasSize, ClientSetting, InterfaceMount, InterfaceMountKind, InterfaceUpdate, ScriptRequest,
+    ScriptValue, WidgetAction, WidgetEventRange, WidgetOperation, WidgetPermissions,
+    WidgetProperty, WindowMetrics, WindowMode,
 };
 mod inventory;
 pub use inventory::{InventorySlotUpdate, InventoryUpdate, ItemStack};
@@ -31,7 +32,8 @@ pub use coords::{
 pub use entity::{
     APPEARANCE_SLOTS, ActorSequenceSlot, COLOR_SLOTS, Gender, KIT_PARTS, KIT_SLOT,
     MovementSequences, NewNpc, NpcAttributeUpdate, NpcInfoUpdate, NpcMovement, NpcProperty,
-    PlayerAppearance, PlayerInfoUpdate, PlayerMovement, SequenceChange, SlotContent,
+    PlayerAppearance, PlayerInfoUpdate, PlayerMovement, PlayerTrackingGrid, RemotePlayerUpdate,
+    SequenceChange, SlotContent,
 };
 pub use ids::{
     FloorOverlayId, FloorUnderlayId, FontId, InterfaceId, InventoryId, InventorySlot,
@@ -50,8 +52,8 @@ pub use scene::{MapAnchor, SceneAssetId, SceneDescriptor};
 
 mod widget;
 pub use widget::{
-    PositionMode, SizeMode, WidgetAddress, WidgetBody, WidgetContent, WidgetDefinition,
-    WidgetLayout, WidgetListener, WidgetRuntime,
+    PositionMode, SizeMode, WidgetAddress, WidgetBody, WidgetContent, WidgetDefinition, WidgetDrag,
+    WidgetKey, WidgetLayout, WidgetListener, WidgetOpKeys, WidgetRuntime,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -60,9 +62,43 @@ pub struct SkillValues {
     pub current: u16,
     pub invisible: u16,
 }
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PlayerStatusUpdate {
-    Skill { id: SkillId, values: SkillValues },
+    Reboot {
+        cycles: u32,
+        message: Option<String>,
+    },
+    Skill {
+        id: SkillId,
+        values: SkillValues,
+    },
     RunEnergy(u16),
     RunWeight(i16),
+}
+
+/// Server-provided game message, before local history identity is assigned.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GameMessage {
+    pub channel: ids::ChatChannelId,
+    pub sender: String,
+    pub text: String,
+}
+
+/// Script-authored projection factors, camera distances and aspect constraints.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ViewportSettings {
+    pub follow_height: u32,
+    pub fov: [u16; 2],
+    pub zoom: [u16; 2],
+    pub clamp: [u16; 4],
+}
+impl Default for ViewportSettings {
+    fn default() -> Self {
+        Self {
+            follow_height: 50,
+            fov: [256, 205],
+            zoom: [256, 320],
+            clamp: [1, 32767, 1, 32767],
+        }
+    }
 }

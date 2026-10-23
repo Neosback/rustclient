@@ -1,11 +1,24 @@
 use super::{Result, ScriptHost};
-use rustclient_cache::script::Opcode;
+use rustclient_cache::{osrs240::scripts::ScriptOption, script::Opcode};
 use rustclient_client_script::Stacks;
-use rustclient_game_state::{SceneryOperation, SemanticOperation};
+use rustclient_game_state::SemanticOperation;
 use rustclient_model::{
     ClientSetting, FontId, InterfaceUpdate, InventoryId, ScriptValue, SkillId, VarpId,
 };
 use rustclient_platform::ReadOnlyBlobs;
+fn script_option<S: ReadOnlyBlobs>(
+    h: &ScriptHost<'_, S>,
+    device: bool,
+    option: i32,
+) -> Result<ScriptOption> {
+    Ok(if device {
+        h.resources.profile.device_option(option)?
+    } else {
+        h.resources
+            .profile
+            .game_option(option, |id| h.state.scenery().variable(id))?
+    })
+}
 fn id(n: i32) -> Result<u32> {
     u32::try_from(n).map_err(|_| "negative definition ID".into())
 }
@@ -31,11 +44,243 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
         ViewportGeteffectivesize,
     };
     let number = match op {
+        Opcode::SetDeviceOption | Opcode::SetGameOption => {
+            let [option, value] = s.ints()?;
+            match script_option(h, op == Opcode::SetDeviceOption, option)? {
+                ScriptOption::Volume(variable) => {
+                    if !(0..=100).contains(&value) {
+                        return Err("master volume percentage range".into());
+                    }
+                    h.set_client_variable(variable, value)?;
+                }
+                ScriptOption::Number { id, .. } => {
+                    h.apply(InterfaceUpdate::DevicePreference { id, value })?;
+                }
+                ScriptOption::Flag { setting, .. } => h.apply(InterfaceUpdate::Setting {
+                    key: setting,
+                    value: value == 1,
+                })?,
+            }
+            None
+        }
+        Opcode::GetDeviceOption | Opcode::GetGameOption => {
+            let option = s.int()?;
+            Some(
+                match script_option(h, op == Opcode::GetDeviceOption, option)? {
+                    ScriptOption::Volume(variable) => h.state.scenery().variable(variable),
+                    ScriptOption::Number { id, default } => h
+                        .state
+                        .interfaces()
+                        .device_preferences()
+                        .get(&id)
+                        .copied()
+                        .unwrap_or(default),
+                    ScriptOption::Flag { setting, default } => i32::from(
+                        h.state
+                            .interfaces()
+                            .settings()
+                            .get(&setting)
+                            .copied()
+                            .unwrap_or(default),
+                    ),
+                },
+            )
+        }
+        Opcode::SoundSynth => {
+            let [id, loops, delay] = s.ints()?;
+            // Reference `queueSoundEffect`: zero loops is a no-op and the queue is bounded.
+            if loops != 0 && h.resources.sound_effects.len() < super::SOUND_EFFECT_LIMIT {
+                h.resources.sound_effects.push(super::SoundEffectRequest {
+                    id: u32::try_from(id).map_err(|_| "negative sound effect id")?,
+                    loops: u32::try_from(loops).map_err(|_| "negative sound effect loops")?,
+                    delay: u32::try_from(delay).map_err(|_| "negative sound effect delay")?,
+                });
+            }
+            None
+        }
+        // The friend system is never populated by this client, which the reference reports as
+        // status 0 (not loaded), pushed as -2.
+        Opcode::FriendCount => Some(-2),
+        // No clan settings are ever received, so no listened or affined clan is selectable.
+        Opcode::ActiveclansettingsFindListened | Opcode::ActiveclansettingsFindAffined => {
+            if op == Opcode::ActiveclansettingsFindAffined {
+                s.int()?;
+            }
+            Some(0)
+        }
+        Opcode::Reboottimer => Some(h.state.entities().reboot_cycles().cast_signed()),
+        Opcode::Staffmodlevel => Some(h.state.authenticated_player().map_or(0, |p| {
+            if p.staff_level >= 2 {
+                i32::from(p.staff_level)
+            } else {
+                0
+            }
+        })),
+        Opcode::ChatSetmessagefilter => {
+            let filter = s.text()?.trim().to_lowercase();
+            h.state
+                .apply_operation(SemanticOperation::ChatFilterText(filter))
+                .map_err(|e| e.to_string())?;
+            None
+        }
+        Opcode::ChatGetmessagefilter => {
+            s.push_object(ScriptValue::Text(h.state.chat().filter_text().to_owned()));
+            None
+        }
+        Opcode::ChatGetfilterPublic => Some(i32::from(h.state.chat().filters()[0])),
+        Opcode::ChatGetfilterPrivate => Some(i32::from(h.state.chat().filters()[1])),
+        Opcode::ChatGetfilterTrade => Some(i32::from(h.state.chat().filters()[2])),
+        Opcode::CamSetfollowheight => {
+            let mut viewport = h.state.interfaces().viewport();
+            viewport.follow_height = s.int()?.max(0).cast_unsigned();
+            h.apply(InterfaceUpdate::Viewport(viewport))?;
+            None
+        }
+        Opcode::CamGetfollowheight => {
+            Some(h.state.interfaces().viewport().follow_height.cast_signed())
+        }
+        Opcode::ViewportSetfov | Opcode::ViewportSetzoom | Opcode::ViewportClampfov => {
+            let mut viewport = h.state.interfaces().viewport();
+            let profile = h.resources.profile;
+            match op {
+                Opcode::ViewportClampfov => {
+                    let values = s.ints::<4>()?;
+                    viewport.clamp = std::array::from_fn(|i| {
+                        profile.script_viewport_factor(
+                            values[i],
+                            false,
+                            if i % 2 == 0 { 1 } else { 32767 },
+                        )
+                    });
+                    viewport.clamp[1] = viewport.clamp[1].max(viewport.clamp[0]);
+                    viewport.clamp[3] = viewport.clamp[3].max(viewport.clamp[2]);
+                }
+                Opcode::ViewportSetfov => {
+                    viewport.fov = s
+                        .ints::<2>()?
+                        .map(|n| profile.script_viewport_factor(n, true, 256));
+                }
+                _ => {
+                    let [height, width] = s.ints()?;
+                    viewport.zoom = [
+                        profile.script_viewport_factor(height, false, 256),
+                        profile.script_viewport_factor(width, false, 320),
+                    ];
+                }
+            }
+            h.apply(InterfaceUpdate::Viewport(viewport))?;
+            None
+        }
+        Opcode::ViewportGetfov | Opcode::ViewportGetzoom => {
+            let viewport = h.state.interfaces().viewport();
+            s.integers.extend(if op == Opcode::ViewportGetfov {
+                viewport
+                    .fov
+                    .map(|n| h.resources.profile.script_viewport_units(n))
+            } else {
+                viewport.zoom.map(i32::from)
+            });
+            None
+        }
+        Opcode::ChatPlayername => {
+            let name = h
+                .state
+                .entities()
+                .local_player()
+                .and_then(|p| p.appearance.as_ref())
+                .map_or("", |p| p.display_name.as_str());
+            s.push_object(ScriptValue::Text(name.to_owned()));
+            None
+        }
+        Opcode::ChatGethistorylength => {
+            let channel = rustclient_model::ids::ChatChannelId::new(id(s.int()?)?);
+            Some(
+                i32::try_from(h.state.chat().channel(channel).count())
+                    .map_err(|_| "chat length")?,
+            )
+        }
+        Opcode::ChatGethistoryBytypeandline
+        | Opcode::ChatGethistoryexBytypeandline
+        | Opcode::ChatGethistoryByuid
+        | Opcode::ChatGethistoryexByuid => {
+            let entry = if matches!(
+                op,
+                Opcode::ChatGethistoryBytypeandline | Opcode::ChatGethistoryexBytypeandline
+            ) {
+                let [channel, line] = s.ints()?;
+                let channel = rustclient_model::ids::ChatChannelId::new(id(channel)?);
+                usize::try_from(line)
+                    .ok()
+                    .and_then(|line| h.state.chat().channel(channel).nth(line))
+            } else {
+                let uid = s.int()?.cast_unsigned();
+                h.state
+                    .chat()
+                    .entries()
+                    .iter()
+                    .find(|entry| entry.id == uid)
+            };
+            s.integers.push(entry.map_or(-1, |entry| {
+                if matches!(
+                    op,
+                    Opcode::ChatGethistoryByuid | Opcode::ChatGethistoryexByuid
+                ) {
+                    entry.message.channel.get().cast_signed()
+                } else {
+                    entry.id.cast_signed()
+                }
+            }));
+            s.integers.push(entry.map_or(0, |entry| {
+                (entry.cycle.get() & u64::from(u32::MAX))
+                    .try_into()
+                    .unwrap_or(0_u32)
+                    .cast_signed()
+            }));
+            for text in [
+                entry.map_or("", |e| e.message.sender.as_str()),
+                "",
+                entry.map_or("", |e| e.message.text.as_str()),
+            ] {
+                s.push_object(ScriptValue::Text(text.to_owned()));
+            }
+            s.integers.push(0); // Social relationship is absent until a social-list update is modeled.
+            if matches!(
+                op,
+                Opcode::ChatGethistoryexBytypeandline | Opcode::ChatGethistoryexByuid
+            ) {
+                s.push_object(ScriptValue::Text(String::new()));
+                s.integers.push(0);
+            }
+            None
+        }
+        Opcode::ChatGetnextuid | Opcode::ChatGetprevuid => {
+            let uid = s.int()?.cast_unsigned();
+            let entries = h.state.chat().entries();
+            let index = entries.iter().position(|e| e.id == uid);
+            Some(
+                index
+                    .and_then(|index| {
+                        if op == Opcode::ChatGetnextuid {
+                            index.checked_sub(1).and_then(|i| entries.get(i))
+                        } else {
+                            entries.get(index + 1)
+                        }
+                    })
+                    .map_or(-1, |e| e.id.cast_signed()),
+            )
+        }
         Opcode::DiscardMobileOffsets => {
             s.ints::<2>()?;
             None
         }
-        Opcode::DiscardMobileFlag => {
+        // Deob classTK.method10981 only sets the disconnect-vs-reconnect hint.
+        // RustClient currently ends every failed session (SPEC-0014), so there
+        // is no reconnect branch to suppress. Keep the session alive until the
+        // validated button request is sent and the server replies with logout.
+        Opcode::Logout => None,
+        // `Renderself` only drives a debug outline of the hovered actor in the reference (also
+        // reachable through `::renderself`); nothing is drawn here, so its flag is dropped.
+        Opcode::DiscardMobileFlag | Opcode::Renderself => {
             s.int()?;
             None
         }
@@ -129,19 +374,19 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
         GetVarp => Some(h.state.scenery().variable(VarpId::new(id(n)?))),
         SetVarp => {
             let value = s.int()?;
-            h.state
-                .apply_operation(SemanticOperation::Scenery(
-                    SceneryOperation::SetClientVariable {
-                        id: VarpId::new(id(n)?),
-                        value,
-                    },
-                ))
-                .map_err(|e| e.to_string())?;
+            h.set_client_variable(VarpId::new(id(n)?), value)?;
             None
         }
-        GetVarcInt => Some(match h.state.interfaces().client_variables().get(&id(n)?) {
-            Some(ScriptValue::Int(n)) => *n,
-            _ => -1,
+        GetVarcInt => Some(if h.resources.profile.is_gameframe_tab_variable(id(n)?) {
+            h.state
+                .selected_tab()
+                .and_then(|tab| i32::try_from(tab).ok())
+                .unwrap_or(-1)
+        } else {
+            match h.state.interfaces().client_variables().get(&id(n)?) {
+                Some(ScriptValue::Int(n)) => *n,
+                _ => -1,
+            }
         }),
         GetVarcString | GetVarcStringOld => {
             s.push_object(
@@ -155,8 +400,19 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
             None
         }
         SetVarcInt => {
-            let value = ScriptValue::Int(s.int()?);
-            h.apply(InterfaceUpdate::ClientVariable { id: id(n)?, value })?;
+            let value = s.int()?;
+            if h.resources.profile.is_gameframe_tab_variable(id(n)?) {
+                h.state
+                    .apply_operation(SemanticOperation::SelectGameFrameTab(
+                        usize::try_from(value).ok(),
+                    ))
+                    .map_err(|e| e.to_string())?;
+            } else {
+                h.apply(InterfaceUpdate::ClientVariable {
+                    id: id(n)?,
+                    value: ScriptValue::Int(value),
+                })?;
+            }
             None
         }
         SetVarcString | SetVarcStringOld => {
@@ -182,14 +438,7 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
                     value.cast_unsigned()
                 };
                 let next = (current.cast_unsigned() & !(mask << bit.low)) | (value << bit.low);
-                h.state
-                    .apply_operation(SemanticOperation::Scenery(
-                        SceneryOperation::SetClientVariable {
-                            id: bit.varp,
-                            value: next.cast_signed(),
-                        },
-                    ))
-                    .map_err(|e| e.to_string())?;
+                h.set_client_variable(bit.varp, next.cast_signed())?;
                 None
             }
         }
@@ -197,7 +446,36 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
             i32::try_from(h.state.scenery().cycle().get()).map_err(|_| "client cycle overflow")?,
         ),
         Clienttype | OnMobile => Some(0),
-        Getwindowmode => Some(2),
+        Getwindowmode => Some(
+            h.resources
+                .profile
+                .script_window_mode_value(h.state.interfaces().window().mode),
+        ),
+        Opcode::Getdefaultwindowmode => Some(
+            h.resources
+                .profile
+                .script_window_mode_value(h.state.interfaces().default_window_mode()),
+        ),
+        Opcode::Setwindowmode | Opcode::Setdefaultwindowmode => {
+            if let Ok(mode) = h.resources.profile.script_window_mode(s.int()?) {
+                if op == Opcode::Setdefaultwindowmode {
+                    h.apply(InterfaceUpdate::DefaultWindowMode(mode))?;
+                } else {
+                    let window = h
+                        .resources
+                        .profile
+                        .window_metrics(mode, h.state.interfaces().window().available);
+                    h.apply(InterfaceUpdate::Window(window))?;
+                }
+            }
+            None
+        }
+        Opcode::Getcanvassize => {
+            let canvas = h.state.interfaces().window().canvas;
+            s.integers
+                .extend([canvas.width.cast_signed(), canvas.height.cast_signed()]);
+            None
+        }
         MapMembers => Some(i32::from(
             h.state.authenticated_player().is_some_and(|p| p.member),
         )),
@@ -393,7 +671,34 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
         }
         GetVarclansetting | GetVarclan => Some(-1),
         ViewportGeteffectivesize => {
-            s.integers.extend([765, 503]);
+            let viewport = h
+                .resources
+                .interfaces
+                .values()
+                .flat_map(|g| g.widgets().values())
+                .find(|w| {
+                    w.content == rustclient_model::WidgetContent::WorldViewport
+                        && h.state.interfaces().groups().contains(&w.id.interface)
+                })
+                .map(|w| {
+                    rustclient_game_ui::widgets::widget_bounds(
+                        h.state.interfaces(),
+                        &h.resources.interfaces,
+                        rustclient_model::WidgetAddress::component(w.id),
+                        rustclient_game_ui::widgets::WidgetBounds::canvas(h.state.interfaces()),
+                    )
+                })
+                .transpose()
+                .map_err(|e| e.to_string())?;
+            let size = viewport.map_or([-1, -1], |bounds| {
+                rustclient_game_ui::viewport::viewport_shape(
+                    bounds.width,
+                    bounds.height,
+                    h.state.interfaces().viewport(),
+                )
+                .size
+            });
+            s.integers.extend(size);
             None
         }
         _ => return Ok(false),
@@ -418,4 +723,199 @@ fn base_level(experience: u32) -> i32 {
         }
     }
     126
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{super::ClientScripts, *};
+    use rustclient_game_state::GameState;
+    use rustclient_platform::MemoryBlobs;
+
+    use super::super::test_support::scripts;
+    fn state() -> GameState {
+        let mut state = GameState::new();
+        state
+            .apply_operation(SemanticOperation::BeginSession {
+                revision: rustclient_model::Revision::with_subrevision(240, 2),
+            })
+            .unwrap();
+        state
+    }
+    fn run(
+        scripts: &mut ClientScripts<MemoryBlobs>,
+        state: &mut GameState,
+        op: Opcode,
+        ints: &[i32],
+    ) -> Result<Vec<i32>> {
+        let mut stacks = Stacks::default();
+        stacks.integers.extend_from_slice(ints);
+        let mut host = ScriptHost {
+            resources: scripts,
+            state,
+        };
+        instruction(&mut host, op, 0, &mut stacks)?;
+        Ok(stacks.integers)
+    }
+
+    #[test]
+    fn game_option_1_is_the_roof_toggle_owned_by_interface_settings() {
+        let (mut scripts, mut state) = (scripts(), state());
+        let get = |s: &mut ClientScripts<_>, st: &mut GameState| {
+            run(s, st, Opcode::GetGameOption, &[1]).unwrap()
+        };
+        assert_eq!(get(&mut scripts, &mut state), [0]);
+        assert!(
+            run(&mut scripts, &mut state, Opcode::SetGameOption, &[1, 1])
+                .unwrap()
+                .is_empty()
+        );
+        assert_eq!(get(&mut scripts, &mut state), [1]);
+        assert_eq!(
+            state
+                .interfaces()
+                .settings()
+                .get(&ClientSetting::RoofsHidden),
+            Some(&true)
+        );
+        run(&mut scripts, &mut state, Opcode::SetGameOption, &[1, 0]).unwrap();
+        assert_eq!(get(&mut scripts, &mut state), [0]);
+    }
+
+    #[test]
+    fn device_option_6_defaults_on_and_is_a_boolean_setting() {
+        let (mut scripts, mut state) = (scripts(), state());
+        assert_eq!(
+            run(&mut scripts, &mut state, Opcode::GetDeviceOption, &[6]).unwrap(),
+            [1]
+        );
+        run(&mut scripts, &mut state, Opcode::SetDeviceOption, &[6, 0]).unwrap();
+        assert_eq!(
+            run(&mut scripts, &mut state, Opcode::GetDeviceOption, &[6]).unwrap(),
+            [0]
+        );
+        assert_eq!(
+            state
+                .interfaces()
+                .settings()
+                .get(&ClientSetting::SoundEffectQuality),
+            Some(&false)
+        );
+    }
+
+    #[test]
+    fn numeric_device_preferences_default_then_round_trip_without_changing_other_options() {
+        let (mut scripts, mut state) = (scripts(), state());
+        let get = |s: &mut ClientScripts<_>, st: &mut GameState, id: i32| {
+            run(s, st, Opcode::GetDeviceOption, &[id]).unwrap()
+        };
+        assert_eq!(get(&mut scripts, &mut state, 14), [25]);
+        assert_eq!(get(&mut scripts, &mut state, 26), [0]);
+        run(&mut scripts, &mut state, Opcode::SetDeviceOption, &[14, 70]).unwrap();
+        run(&mut scripts, &mut state, Opcode::SetDeviceOption, &[26, -3]).unwrap();
+        assert_eq!(get(&mut scripts, &mut state, 14), [70]);
+        assert_eq!(get(&mut scripts, &mut state, 26), [-3]);
+        assert_eq!(get(&mut scripts, &mut state, 5), [0]);
+        assert_eq!(
+            state.interfaces().device_preferences().get(&14),
+            Some(&70),
+            "preferences live in the interface state owner"
+        );
+    }
+
+    #[test]
+    fn renderself_consumes_its_flag_without_changing_state() {
+        let (mut scripts, mut state) = (scripts(), state());
+        let before = state.semantic_fingerprint();
+        assert!(
+            run(&mut scripts, &mut state, Opcode::Renderself, &[1])
+                .unwrap()
+                .is_empty()
+        );
+        assert!(run(&mut scripts, &mut state, Opcode::Renderself, &[]).is_err());
+        assert_eq!(state.semantic_fingerprint(), before);
+    }
+
+    #[test]
+    fn volume_options_keep_their_range_and_unknown_options_fail() {
+        let (mut scripts, mut state) = (scripts(), state());
+        run(&mut scripts, &mut state, Opcode::SetGameOption, &[7, 40]).unwrap();
+        assert_eq!(
+            run(&mut scripts, &mut state, Opcode::GetGameOption, &[7]).unwrap(),
+            [40]
+        );
+        assert!(run(&mut scripts, &mut state, Opcode::SetGameOption, &[7, 101]).is_err());
+        assert!(run(&mut scripts, &mut state, Opcode::SetDeviceOption, &[19, -1]).is_err());
+        assert!(run(&mut scripts, &mut state, Opcode::GetGameOption, &[2]).is_err());
+        assert!(run(&mut scripts, &mut state, Opcode::GetDeviceOption, &[99]).is_err());
+    }
+
+    #[test]
+    fn sound_synth_queues_bounded_requests_in_order() {
+        let (mut scripts, mut state) = (scripts(), state());
+        run(&mut scripts, &mut state, Opcode::SoundSynth, &[2266, 1, 0]).unwrap();
+        run(&mut scripts, &mut state, Opcode::SoundSynth, &[10, 0, 0]).unwrap();
+        run(&mut scripts, &mut state, Opcode::SoundSynth, &[3809, 2, 30]).unwrap();
+        assert_eq!(
+            scripts.take_sound_effects(),
+            [
+                super::super::SoundEffectRequest {
+                    id: 2266,
+                    loops: 1,
+                    delay: 0
+                },
+                super::super::SoundEffectRequest {
+                    id: 3809,
+                    loops: 2,
+                    delay: 30
+                },
+            ]
+        );
+        assert!(scripts.take_sound_effects().is_empty());
+        for _ in 0..60 {
+            run(&mut scripts, &mut state, Opcode::SoundSynth, &[1, 1, 0]).unwrap();
+        }
+        assert_eq!(scripts.take_sound_effects().len(), 50);
+        run(&mut scripts, &mut state, Opcode::SoundSynth, &[1, 1, 0]).unwrap();
+        scripts.reset();
+        assert!(scripts.take_sound_effects().is_empty());
+        assert!(run(&mut scripts, &mut state, Opcode::SoundSynth, &[-1, 1, 0]).is_err());
+    }
+
+    #[test]
+    fn friend_and_clan_queries_report_the_unloaded_social_state() {
+        let (mut scripts, mut state) = (scripts(), state());
+        assert_eq!(
+            run(&mut scripts, &mut state, Opcode::FriendCount, &[]).unwrap(),
+            [-2]
+        );
+        assert_eq!(
+            run(
+                &mut scripts,
+                &mut state,
+                Opcode::ActiveclansettingsFindAffined,
+                &[0]
+            )
+            .unwrap(),
+            [0]
+        );
+        assert_eq!(
+            run(
+                &mut scripts,
+                &mut state,
+                Opcode::ActiveclansettingsFindListened,
+                &[]
+            )
+            .unwrap(),
+            [0]
+        );
+        assert!(
+            run(
+                &mut scripts,
+                &mut state,
+                Opcode::ActiveclansettingsFindAffined,
+                &[]
+            )
+            .is_err()
+        );
+    }
 }

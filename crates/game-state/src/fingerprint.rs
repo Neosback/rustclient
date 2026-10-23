@@ -11,7 +11,7 @@ use crate::{GameState, OperationCommit, SemanticEvent, SessionLifecycle};
 ///
 /// Any change to field ordering, tags, integer encoding, or fingerprint
 /// algorithm that changes canonical output must increment this version.
-pub const SEMANTIC_FINGERPRINT_VERSION: u16 = 10;
+pub const SEMANTIC_FINGERPRINT_VERSION: u16 = 13;
 
 const FNV_OFFSET_BASIS: u64 = 0xCBF2_9CE4_8422_2325;
 const FNV_PRIME: u64 = 0x0000_0100_0000_01B3;
@@ -125,6 +125,22 @@ impl GameState {
         write_optional_revision(&mut fingerprint, self.session_revision());
         write_optional_tick(&mut fingerprint, self.current_tick());
         write_title(&mut fingerprint, self.title_screen());
+        fingerprint.write_bytes(&self.chat().filters());
+        fingerprint.write_u32(
+            u32::try_from(self.chat().filter_text().len()).expect("bounded chat filter"),
+        );
+        fingerprint.write_bytes(self.chat().filter_text().as_bytes());
+        fingerprint.write_u32(self.chat().next_id());
+        fingerprint.write_u32(u32::try_from(self.chat().entries().len()).expect("bounded chat"));
+        for entry in self.chat().entries() {
+            fingerprint.write_u32(entry.id);
+            fingerprint.write_u64(entry.cycle.get());
+            fingerprint.write_u32(entry.message.channel.get());
+            for text in [&entry.message.sender, &entry.message.text] {
+                fingerprint.write_u32(u32::try_from(text.len()).expect("bounded message"));
+                fingerprint.write_bytes(text.as_bytes());
+            }
+        }
         match self.authenticated_player() {
             None => fingerprint.write_u8(0),
             Some(player) => {
@@ -200,6 +216,23 @@ impl GameState {
             fingerprint.write_u32(value.cast_unsigned());
         }
         let entities = self.entities();
+        fingerprint.write_u64(entities.player_serial);
+        fingerprint.write_u64(entities.outside_players.len() as u64);
+        for (index, player) in &entities.outside_players {
+            fingerprint.write_u32(index.get());
+            fingerprint.write_u32(player.grid.region_size());
+            fingerprint.write_u32(player.grid.region_count());
+            fingerprint.write_u32(player.region.x.cast_unsigned());
+            fingerprint.write_u32(player.region.y.cast_unsigned());
+            fingerprint.write_u8(player.region.plane.get());
+            fingerprint.write_u16(player.orientation);
+            write_appearance(&mut fingerprint, player.appearance.as_ref());
+        }
+        fingerprint.write_u32(entities.reboot_cycles());
+        fingerprint.write_u32(
+            u32::try_from(entities.reboot_message().len()).expect("bounded reboot message"),
+        );
+        fingerprint.write_bytes(entities.reboot_message().as_bytes());
         fingerprint.write_bytes(&entities.run_energy().to_le_bytes());
         fingerprint.write_bytes(&entities.run_weight().to_le_bytes());
         fingerprint.write_u64(entities.skills().len() as u64);
@@ -222,6 +255,15 @@ impl GameState {
                 .to_le_bytes(),
         );
         for (idx, player) in entities.players() {
+            fingerprint.write_u64(player.instance.get());
+            match player.tracking_grid {
+                None => fingerprint.write_u8(0),
+                Some(grid) => {
+                    fingerprint.write_u8(1);
+                    fingerprint.write_u32(grid.region_size());
+                    fingerprint.write_u32(grid.region_count());
+                }
+            }
             fingerprint.write_u32(idx.get());
             fingerprint.write_bytes(&player.tile.x.to_le_bytes());
             fingerprint.write_bytes(&player.tile.y.to_le_bytes());
@@ -235,7 +277,16 @@ impl GameState {
                 crate::Locomotion::Turn => 3,
             });
             write_appearance(&mut fingerprint, player.appearance.as_ref());
-            match player.sequence {
+            fingerprint.write_u32(player.sequence.cycle.cast_unsigned());
+            fingerprint.write_u32(player.sequence.delay.cast_unsigned());
+            match player.sequence.frame {
+                None => fingerprint.write_u8(0),
+                Some(frame) => {
+                    fingerprint.write_u8(1);
+                    fingerprint.write_u32(frame);
+                }
+            }
+            match player.sequence.sequence {
                 None => fingerprint.write_u8(0),
                 Some(seq) => {
                     fingerprint.write_u8(1);
@@ -342,6 +393,8 @@ fn write_appearance(
             }
         }
     }
+    f.write_u32(u32::try_from(a.display_name.len()).expect("bounded display name"));
+    f.write_bytes(a.display_name.as_bytes());
     f.write_u8(a.combat_level);
     f.write_u16(a.skill_level);
     f.write_u8(u8::from(a.hidden));
@@ -514,6 +567,11 @@ fn write_event(fingerprint: &mut StableFingerprint64, event: SemanticEvent) {
             fingerprint.write_u32(id.get());
             fingerprint.write_u32(previous.cast_unsigned());
             fingerprint.write_u32(current.cast_unsigned());
+        }
+        SemanticEvent::ChatSettingsChanged => fingerprint.write_u8(19),
+        SemanticEvent::ChatMessageAdded(id) => {
+            fingerprint.write_u8(18);
+            fingerprint.write_u32(id);
         }
         SemanticEvent::InterfacesChanged => fingerprint.write_u8(15),
         SemanticEvent::InventoryChanged(id) => {

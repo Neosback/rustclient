@@ -553,7 +553,22 @@ pub enum Opcode {
     IfSetparam,
     Min,
     Max,
+    DbFindWithCount,
+    DbFindnext,
+    DbGetfield,
+    DbGetfieldcount,
+    DbFindallWithCount,
+    DbGetrowtable,
+    DbGetrow,
+    DbFindFilterWithCount,
+    DbFind,
+    DbFindall,
+    DbFindFilter,
     ArrayLength,
+    ArraySort,
+    ArrayIndexOf,
+    ArrayLastIndexOf,
+    ArrayCount,
     CcClone,
     CcCreateNested,
     CcCreateSibling,
@@ -562,10 +577,29 @@ pub enum Opcode {
     IfSettargetpriority,
     DiscardMobileOffsets,
     DiscardMobileFlag,
+    CcSetonkeypress,
+    IfSetonkeypress,
+    CcSetonkeyrelease,
+    IfSetonkeyrelease,
+    CcSetsecondarygraphic,
+    IfSetsecondarygraphic,
+    CcDiscardRetiredFlag,
+    IfDiscardRetiredFlag,
+    CcFindByParameters,
+    SetDeviceOption,
+    GetDeviceOption,
+    SetGameOption,
+    GetGameOption,
     Unsupported(u16),
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ArrayInitialValue {
+    Integer(i32),
+    Text,
 }
 #[derive(Debug, Clone)]
 pub struct Instruction {
+    pub array_default: Option<ArrayInitialValue>,
     pub opcode: Opcode,
     pub integer: i32,
     pub text: Option<String>,
@@ -590,6 +624,10 @@ impl Opcode {
     )]
     pub const fn widget(self) -> (Self, bool) {
         match self {
+            Self::IfDiscardRetiredFlag => (Self::CcDiscardRetiredFlag, true),
+            Self::IfSetsecondarygraphic => (Self::CcSetsecondarygraphic, true),
+            Self::IfSetonkeypress => (Self::CcSetonkeypress, true),
+            Self::IfSetonkeyrelease => (Self::CcSetonkeyrelease, true),
             Self::IfSetposition => (Self::CcSetposition, true),
             Self::IfSetsize => (Self::CcSetsize, true),
             Self::IfSethide => (Self::CcSethide, true),

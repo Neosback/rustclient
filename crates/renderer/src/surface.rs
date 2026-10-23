@@ -273,6 +273,24 @@ impl SurfaceRenderer {
         world.update_dynamic(&self.device, &self.queue, geometry)
     }
 
+    /// Replace live entity geometry; scenery and static buffers are untouched.
+    /// # Errors
+    /// Rejects mismatched scene identity and device allocation limits.
+    pub fn set_world_entities(
+        &mut self,
+        asset: rustclient_model::SceneAssetId,
+        geometry: &rustclient_scene::SceneGeometry,
+    ) -> Result<(), RenderError> {
+        let world = self
+            .world
+            .as_mut()
+            .ok_or(RenderError::World("scene is not uploaded"))?;
+        if world.asset != asset {
+            return Err(RenderError::World("entity geometry asset mismatch"));
+        }
+        world.update_entities(&self.device, &self.queue, geometry)
+    }
+
     /// Render committed world geometry with a disposable camera and UI overlay.
     /// # Errors
     /// Returns missing/mismatched resources or surface validation failures.
@@ -286,8 +304,7 @@ impl SurfaceRenderer {
         camera: GameplayCameraController,
         cycle: rustclient_model::ClientCycle,
         frame: &UiFrame,
-        minimap_pixels: &[u8],
-        compass_pixels: &[u8],
+        images: crate::ui::DynamicImages<'_>,
         scale: f64,
         before_present: impl FnOnce(),
     ) -> Result<FrameOutcome, RenderError> {
@@ -306,17 +323,35 @@ impl SurfaceRenderer {
                 "GPU scene does not match authoritative asset reference",
             ));
         }
-        world.prepare(&self.queue, camera, scale, (cycle.get() & 127) as u32);
+        let viewport = TitleViewport {
+            canvas_width: frame.canvas.map_or(765, |s| s.width),
+            physical_width: self.config.width,
+            physical_height: self.config.height,
+            scale,
+        };
+        let bounds = frame.world_viewport.map(|mut r| {
+            r.x += viewport.origin_x();
+            r
+        });
+        world.prepare_viewport(
+            &self.queue,
+            camera,
+            scale,
+            (cycle.get() & 127) as u32,
+            bounds,
+            frame.viewport_settings,
+        );
         self.ui
             .as_mut()
             .ok_or(RenderError::Ui("title fonts unavailable"))?
             .prepare(
+                &self.device,
                 &self.queue,
                 frame,
                 &[],
-                minimap_pixels,
-                compass_pixels,
+                images,
                 TitleViewport {
+                    canvas_width: frame.canvas.map_or(765, |s| s.width),
                     physical_width: self.config.width,
                     physical_height: self.config.height,
                     scale,
@@ -359,6 +394,7 @@ impl SurfaceRenderer {
             return Ok(FrameOutcome::RecreateRequired);
         }
         let viewport = TitleViewport {
+            canvas_width: frame.canvas.map_or(765, |s| s.width),
             physical_width: self.config.width,
             physical_height: self.config.height,
             scale,
@@ -366,7 +402,14 @@ impl SurfaceRenderer {
         self.ui
             .as_mut()
             .ok_or(RenderError::Ui("title assets not uploaded"))?
-            .prepare(&self.queue, frame, flames, &[], &[], viewport)?;
+            .prepare(
+                &self.device,
+                &self.queue,
+                frame,
+                flames,
+                crate::ui::DynamicImages::default(),
+                viewport,
+            )?;
         self.render_frame(
             ClearColor {
                 r: 0.,

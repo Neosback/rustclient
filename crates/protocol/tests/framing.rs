@@ -93,7 +93,24 @@ fn initial_gpi_and_footer_become_typed_placement_only_once() {
     );
     let mut updates = Vec::new();
     codec.receive(&bytes, |u| updates.push(u)).unwrap();
-    assert_eq!(updates, vec![ServerUpdate::InitialPlacement(p)]);
+    assert_eq!(updates.len(), 2);
+    assert_eq!(updates[0], ServerUpdate::InitialPlacement(p));
+    let ServerUpdate::PlayerInfo(tracking) = &updates[1] else {
+        panic!("placement must precede remote tracking")
+    };
+    assert_eq!(tracking.remote.len(), 2046);
+    assert!(
+        tracking
+            .remote
+            .iter()
+            .all(|update| matches!(update, rustclient_model::RemotePlayerUpdate::Track { .. }))
+    );
+    assert!(
+        !tracking
+            .remote
+            .iter()
+            .any(|update| update.index() == rustclient_model::PlayerIndex::new(1))
+    );
     assert!(!codec.awaiting_initial_rebuild());
     let mut rebuilt = Vec::new();
     codec

@@ -2,7 +2,7 @@
 
 use rustclient_model::{
     NpcDefinitionId, NpcIndex, NpcInfoUpdate, Plane, PlayerAppearance, PlayerIndex,
-    PlayerInfoUpdate, PlayerMovement, SequenceId, WorldTile,
+    PlayerInfoUpdate, PlayerMovement, WorldTile,
 };
 use std::collections::BTreeMap;
 
@@ -13,6 +13,7 @@ pub enum EntityUpdateError {
     InvalidMovement,
     PositionOverflow,
     InvalidNpcBatch,
+    InvalidPlayerBatch,
 }
 impl core::fmt::Display for EntityUpdateError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
@@ -20,6 +21,7 @@ impl core::fmt::Display for EntityUpdateError {
             Self::MissingLocalPlayer => "entity update requires a placed local player",
             Self::InvalidMovement => "invalid entity movement direction or plane change",
             Self::InvalidNpcBatch => "invalid, stale or excessive NPC batch",
+            Self::InvalidPlayerBatch => "invalid, stale or excessive player batch",
             Self::PositionOverflow => "entity movement exceeds world coordinate range",
         })
     }
@@ -39,10 +41,12 @@ pub enum Locomotion {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PlayerEntity {
     pub index: PlayerIndex,
+    pub instance: rustclient_model::PlayerInstanceId,
+    pub tracking_grid: Option<rustclient_model::PlayerTrackingGrid>,
     pub tile: WorldTile,
     pub orientation: u16,
     pub appearance: Option<PlayerAppearance>,
-    pub sequence: Option<SequenceId>,
+    pub sequence: rustclient_model::ActorSequenceSlot,
     pub animation_cycle: u32,
     pub locomotion: Locomotion,
 }
@@ -70,7 +74,11 @@ pub struct WorldEntitiesState {
     pub npcs: BTreeMap<NpcIndex, NpcEntity>,
     pub generation: u64,
     pub(crate) npc_serial: u64,
+    pub(crate) player_serial: u64,
+    pub(crate) outside_players: BTreeMap<PlayerIndex, crate::players::TrackedPlayer>,
     skills: BTreeMap<rustclient_model::SkillId, rustclient_model::SkillValues>,
+    reboot_cycles: u32,
+    reboot_message: String,
     energy: u16,
     weight: i16,
 }
@@ -108,6 +116,14 @@ pub const fn direction_to_orientation(direction: u8) -> u16 {
 
 impl WorldEntitiesState {
     #[must_use]
+    pub const fn reboot_cycles(&self) -> u32 {
+        self.reboot_cycles
+    }
+    #[must_use]
+    pub fn reboot_message(&self) -> &str {
+        &self.reboot_message
+    }
+    #[must_use]
     pub const fn skills(
         &self,
     ) -> &BTreeMap<rustclient_model::SkillId, rustclient_model::SkillValues> {
@@ -127,6 +143,18 @@ impl WorldEntitiesState {
     ) -> Result<bool, EntityUpdateError> {
         use rustclient_model::PlayerStatusUpdate;
         Ok(match update {
+            PlayerStatusUpdate::Reboot { cycles, message } => {
+                if cycles > 65535 || message.as_ref().is_some_and(|s| s.len() > 4096) {
+                    return Err(EntityUpdateError::InvalidMovement);
+                }
+                let changed = self.reboot_cycles != cycles
+                    || message.as_ref().is_some_and(|s| *s != self.reboot_message);
+                self.reboot_cycles = cycles;
+                if let Some(message) = message {
+                    self.reboot_message = message;
+                }
+                changed
+            }
             PlayerStatusUpdate::Skill { id, values } => {
                 if id.get() >= 256 {
                     return Err(EntityUpdateError::InvalidMovement);
@@ -182,8 +210,10 @@ impl WorldEntitiesState {
     }
 
     pub(crate) fn advance_cycles(&mut self, cycles: u32) {
+        self.reboot_cycles = self.reboot_cycles.saturating_sub(cycles);
         for player in self.players.values_mut() {
             player.animation_cycle = player.animation_cycle.wrapping_add(cycles);
+            player.sequence.advance_cycles(cycles);
         }
         for npc in self.npcs.values_mut() {
             npc.animation_cycle = npc.animation_cycle.wrapping_add(cycles);
@@ -195,6 +225,14 @@ impl WorldEntitiesState {
         &self,
         update: &PlayerInfoUpdate,
     ) -> Result<(), EntityUpdateError> {
+        self.validate_remote_players(&update.remote)?;
+        if update
+            .local_appearance
+            .as_ref()
+            .is_some_and(|a| a.display_name.len() > 320)
+        {
+            return Err(EntityUpdateError::InvalidMovement);
+        }
         let player = self
             .local_player()
             .ok_or(EntityUpdateError::MissingLocalPlayer)?;
@@ -239,10 +277,12 @@ impl WorldEntitiesState {
             .entry(local_idx)
             .or_insert_with(|| PlayerEntity {
                 index: local_idx,
+                instance: rustclient_model::PlayerInstanceId::new(0),
+                tracking_grid: None,
                 tile: WorldTile::new(0, 0, Plane::MIN),
                 orientation: 0,
                 appearance: None,
-                sequence: None,
+                sequence: rustclient_model::ActorSequenceSlot::default(),
                 animation_cycle: 0,
                 locomotion: Locomotion::Idle,
             });
@@ -297,16 +337,37 @@ impl WorldEntitiesState {
             player.appearance = Some(appearance.clone());
         }
         if let rustclient_model::SequenceChange::Set(seq) = update.local_sequence {
-            if player.sequence != seq {
-                player.animation_cycle = 0;
+            if seq.is_none() {
+                player.sequence.clear();
+            } else {
+                player
+                    .sequence
+                    .set_sequence(seq, i32::from(update.local_sequence_delay));
             }
-            player.sequence = seq;
         }
         if let Some(facing) = update.local_facing {
             player.orientation = facing;
         }
         self.generation = self.generation.wrapping_add(1);
-        *player != previous
+        let local_changed = *player != previous;
+        self.apply_remote_players(&update.remote) || local_changed
+    }
+
+    pub(crate) fn reset_animations(&mut self) -> bool {
+        let mut changed = false;
+        for slot in self
+            .players
+            .values_mut()
+            .map(|p| &mut p.sequence)
+            .chain(self.npcs.values_mut().map(|n| &mut n.sequence))
+        {
+            changed |= *slot != rustclient_model::ActorSequenceSlot::default();
+            slot.clear();
+        }
+        if changed {
+            self.generation = self.generation.wrapping_add(1);
+        }
+        changed
     }
 
     pub(crate) fn validate_npc_info(

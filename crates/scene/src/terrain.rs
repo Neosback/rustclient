@@ -60,16 +60,7 @@ pub(crate) fn build(
         let plane = Plane::new(p).expect("bounded plane");
         let shadows = super::locations::shadows(asset, plane, width, height, inputs)?;
         let light = lighting(asset, plane, &shadows, width, height)?;
-        let mut floors = vec![None; width * height];
-        for x in 0..width {
-            for y in 0..height {
-                floors[x * height + y] = asset
-                    .tile(plane, origin.x + x as i32, origin.y + y as i32)
-                    .and_then(|t| t.underlay)
-                    .and_then(|id| asset.assets.underlays.get(&id))
-                    .map(|m| color::underlay(m.rgb));
-            }
-        }
+        let floors = underlay_floors(asset, plane, width, height);
         for x in 1..width.saturating_sub(1) {
             for y in 1..height.saturating_sub(1) {
                 let wx = origin.x + x as i32;
@@ -83,32 +74,8 @@ pub(crate) fn build(
                 if tile.underlay.is_none() && tile.overlay.is_none() {
                     continue;
                 }
-                let mut sums = [0; 5];
-                // Sliding-window add(x+5), remove(x-5): exactly [x-4,x+5].
-                for bx in x.saturating_sub(4)..=(x + 5).min(width - 1) {
-                    for by in y.saturating_sub(4)..=(y + 5).min(height - 1) {
-                        if let Some(f) = floors[bx * height + by] {
-                            for (sum, v) in sums.iter_mut().zip([
-                                f.hue,
-                                f.saturation,
-                                f.lightness,
-                                f.multiplier,
-                                1,
-                            ]) {
-                                *sum += v;
-                            }
-                        }
-                    }
-                }
-                let underlay = if tile.underlay.is_some() && sums[3] != 0 && sums[4] != 0 {
-                    color::pack(
-                        sums[0] * 256 / sums[3],
-                        sums[1] / sums[4],
-                        sums[2] / sums[4],
-                    )
-                } else {
-                    -2
-                };
+                let underlay =
+                    blended_underlay(&floors, width, height, x, y, tile.underlay.is_some());
                 let overlay = tile
                     .overlay
                     .map(|o| {
@@ -204,6 +171,65 @@ pub(crate) fn build(
         }
     }
     Ok(())
+}
+/// Per-tile underlay HSL terms for one plane, indexed `x * height + y`.
+#[expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    reason = "bounded 192-tile reference terrain coordinates"
+)]
+pub(crate) fn underlay_floors(
+    asset: &SceneAsset,
+    plane: Plane,
+    width: usize,
+    height: usize,
+) -> Vec<Option<color::UnderlayHsl>> {
+    let origin = asset.descriptor.origin();
+    let mut floors = vec![None; width * height];
+    for x in 0..width {
+        for y in 0..height {
+            floors[x * height + y] = asset
+                .tile(plane, origin.x + x as i32, origin.y + y as i32)
+                .and_then(|t| t.underlay)
+                .and_then(|id| asset.assets.underlays.get(&id))
+                .map(|m| color::underlay(m.rgb));
+        }
+    }
+    floors
+}
+/// The reference floor blend over the window `[x-4, x+5]` by `[y-4, y+5]`; `-2` when the tile
+/// has no underlay to paint.
+pub(crate) fn blended_underlay(
+    floors: &[Option<color::UnderlayHsl>],
+    width: usize,
+    height: usize,
+    x: usize,
+    y: usize,
+    has_underlay: bool,
+) -> i32 {
+    let mut sums = [0; 5];
+    // Sliding-window add(x+5), remove(x-5): exactly [x-4,x+5].
+    for bx in x.saturating_sub(4)..=(x + 5).min(width - 1) {
+        for by in y.saturating_sub(4)..=(y + 5).min(height - 1) {
+            if let Some(f) = floors[bx * height + by] {
+                for (sum, v) in
+                    sums.iter_mut()
+                        .zip([f.hue, f.saturation, f.lightness, f.multiplier, 1])
+                {
+                    *sum += v;
+                }
+            }
+        }
+    }
+    if has_underlay && sums[3] != 0 && sums[4] != 0 {
+        color::pack(
+            sums[0] * 256 / sums[3],
+            sums[1] / sums[4],
+            sums[2] / sums[4],
+        )
+    } else {
+        -2
+    }
 }
 fn vertex(code: u8, h: [i32; 4]) -> Result<(u8, u8, i32)> {
     Ok(match code {

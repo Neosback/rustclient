@@ -8,6 +8,8 @@ use rustclient_model::{GameTick, Revision, SceneDescriptor};
 /// does not change observable state may commit without producing an event.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SemanticEvent {
+    ChatMessageAdded(u32),
+    ChatSettingsChanged,
     InterfacesChanged,
     InventoryChanged(rustclient_model::InventoryId),
     ClientCyclesAdvanced {
@@ -95,9 +97,15 @@ impl StateDelta {
                 | 128
                 | 256
                 | 512
+                | 2048
                 | 1024
                 | if title_changed { 4 } else { 0 },
         }
+    }
+    pub(crate) const CHAT: Self = Self { changed: 2048 };
+    #[must_use]
+    pub const fn chat_changed(self) -> bool {
+        self.changed & 2048 != 0
     }
     pub(crate) const INTERFACE: Self = Self { changed: 1024 };
     #[must_use]

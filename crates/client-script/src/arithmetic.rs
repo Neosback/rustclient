@@ -136,6 +136,44 @@ pub(super) fn instruction(op: Opcode, s: &mut Stacks) -> Result<bool> {
                     .unwrap_or(-1),
             )
         }
+        Opcode::StringIndexofChar => {
+            let code = s.int()?;
+            let text = s.text()?;
+            Some(
+                char::from_u32(code.cast_unsigned())
+                    .and_then(|ch| text.find(ch))
+                    .and_then(|offset| i32::try_from(text[..offset].encode_utf16().count()).ok())
+                    .unwrap_or(-1),
+            )
+        }
+        Opcode::CharIsprintable
+        | Opcode::CharIsalphanumeric
+        | Opcode::CharIsalpha
+        | Opcode::CharIsnumeric => {
+            let value = s.int()?;
+            let ch = char::from_u32(value.cast_unsigned());
+            Some(i32::from(ch.is_some_and(|ch| match op {
+                Opcode::CharIsalphanumeric => ch.is_ascii_alphanumeric(),
+                Opcode::CharIsalpha => ch.is_ascii_alphabetic(),
+                Opcode::CharIsnumeric => ch.is_ascii_digit(),
+                _ => {
+                    (' '..='~').contains(&ch)
+                        || ('\u{a0}'..='\u{ff}').contains(&ch)
+                        || matches!(ch, '€' | 'Œ' | '—' | 'œ' | 'Ÿ')
+                }
+            })))
+        }
+        Opcode::AppendChar => {
+            let value = s.int()?;
+            let mut text = s.text()?;
+            if text.len() > 65_532 {
+                return Err("string allocation limit".into());
+            }
+            let ch = char::from_u32(value.cast_unsigned() & 65535).unwrap_or('\u{fffd}');
+            text.push(ch);
+            s.push_object(ScriptValue::Text(text));
+            None
+        }
         Compare => {
             let b = s.text()?;
             let a = s.text()?;

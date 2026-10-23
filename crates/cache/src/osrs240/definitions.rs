@@ -71,6 +71,8 @@ pub fn object(bytes: &[u8], id: ObjectDefinitionId, source: Source) -> Result<Ob
         model_clipped: false,
         random_start: true,
         int1: -1,
+        map_scene: None,
+        map_icon: None,
         ambient: 0,
         contrast: 0,
         decoration_displacement: 16,
@@ -149,9 +151,11 @@ pub fn object(bytes: &[u8], id: ObjectDefinitionId, source: Source) -> Result<Ob
                     out.retextures.push((from, to));
                 }
             }
-            42 | 61 | 68 | 82 => {
+            42 | 61 => {
                 r.u16()?;
             }
+            68 => out.map_scene = Some(u32::from(r.u16()?)),
+            82 => out.map_icon = Some(u32::from(r.u16()?)),
             62 => out.mirrored = true,
             65..=67 => out.scale[usize::from(op - 65)] = r.u16()?,
             70..=72 => {
@@ -602,7 +606,13 @@ pub fn item(bytes: &[u8], id: ItemDefinitionId, source: Source) -> Result<ItemDe
                 r.take(15)?;
                 r.string()?;
             }
-            12 | 44 | 51..=54 => {
+            // Revision 240 stores the inventory model as a 32-bit id; opcode 1 is the legacy form.
+            44 => {
+                let model = r.u32()?;
+                out.icon_model =
+                    (model != u32::MAX && model != 65535).then_some(ModelId::new(model));
+            }
+            12 | 51..=54 => {
                 r.u32()?;
             }
             13 => out.equip_slot = Some(r.u8()?),

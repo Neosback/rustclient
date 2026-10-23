@@ -1,7 +1,8 @@
 //! Scene geometry generation for live player and NPC entities.
 
 use crate::{
-    Result, SceneAsset, SceneError, SceneGeometry, animation::BakedAnimation, lighting::Light,
+    ActorMotion, Result, SceneAsset, SceneError, SceneGeometry, animation::BakedAnimation,
+    lighting::Light,
 };
 use rustclient_cache::{
     osrs240::{
@@ -57,7 +58,7 @@ impl EntityCatalog {
             }
         };
         for player in entities.players().values() {
-            if let Some(sequence) = player.sequence {
+            if let Some(sequence) = player.sequence.sequence {
                 want_sequence(sequence, &mut self.requested_sequences);
             }
             let Some(appearance) = &player.appearance else {
@@ -170,6 +171,64 @@ impl EntityCatalog {
         self.npcs.get(&target)
     }
 
+    /// One-line account of why live actors are or are not drawable, for the dev diagnostics.
+    ///
+    /// It repeats the skip conditions of the geometry build, so a count that stays below the
+    /// entity totals names the stage (appearance, definition, models) that drops them.
+    #[must_use]
+    pub fn report(
+        &self,
+        asset: &SceneAsset,
+        entities: &WorldEntitiesState,
+        variables: &BTreeMap<VarpId, i32>,
+    ) -> String {
+        let players = entities.players();
+        let with_appearance = players
+            .values()
+            .filter(|player| player.appearance.is_some())
+            .count();
+        let player_bases = players
+            .values()
+            .filter_map(|player| player.appearance.as_ref())
+            .filter(|appearance| {
+                build_player_base(appearance, &asset.sources().kits, &self.items, |id| {
+                    self.model(asset, id)
+                })
+                .is_some()
+            })
+            .count();
+        let npcs = entities.npcs();
+        let loaded = npcs
+            .values()
+            .filter(|npc| self.npcs.contains_key(&npc.definition_id))
+            .count();
+        let mut resolved = 0_usize;
+        let mut npc_bases = 0_usize;
+        let mut missing_models = BTreeSet::new();
+        for npc in npcs.values() {
+            let Some(def) = self.resolve_npc(asset, npc.definition_id, variables) else {
+                continue;
+            };
+            resolved += 1;
+            if build_npc_base(def, |id| self.model(asset, id)).is_some() {
+                npc_bases += 1;
+            } else {
+                missing_models.extend(def.models.iter().map(|id| id.get()));
+            }
+        }
+        format!(
+            "players {}/{with_appearance} appearance/{player_bases} drawable; npcs {}/{loaded} \
+             defined/{resolved} resolved/{npc_bases} drawable; kits {} items {} models {}; \
+             undrawable npc model ids {:?}",
+            players.len(),
+            npcs.len(),
+            asset.sources().kits.len(),
+            self.items.len(),
+            self.models.len(),
+            missing_models.iter().take(8).collect::<Vec<_>>(),
+        )
+    }
+
     fn model<'a>(&'a self, asset: &'a SceneAsset, id: ModelId) -> Option<&'a StaticModel> {
         self.models
             .get(&id)
@@ -214,16 +273,26 @@ pub fn build_entities_geometry(
     asset: &SceneAsset,
     catalog: &EntityCatalog,
     entities: &WorldEntitiesState,
+    motion: &ActorMotion,
     variables: &BTreeMap<VarpId, i32>,
     geometry: &mut SceneGeometry,
 ) -> Result<()> {
     for player in entities.players().values() {
-        build_player(asset, catalog, player, geometry)?;
+        let position = motion
+            .player(player.index)
+            .unwrap_or_else(|| corner(player.tile));
+        build_player(asset, catalog, player, position, geometry)?;
     }
     for npc in entities.npcs().values() {
-        build_npc(asset, catalog, npc, variables, geometry)?;
+        let position = motion.npc(npc.index).unwrap_or_else(|| corner(npc.tile));
+        build_npc(asset, catalog, npc, position, variables, geometry)?;
     }
     Ok(())
+}
+
+/// Footprint corner of a tile in world units.
+fn corner(tile: rustclient_model::WorldTile) -> [i32; 2] {
+    [tile.x * 128, tile.y * 128]
 }
 
 /// Apply the sequence pose selected by `cycle`: a cached-model (skeletal) animation when the
@@ -237,34 +306,38 @@ fn pose_model(
     model: &mut StaticModel,
     sequence: Option<SequenceId>,
     cycle: u32,
-) -> Result<()> {
+    action: bool,
+) -> Result<bool> {
     let Some(sequence) = sequence else {
-        return Ok(());
+        return Ok(true);
     };
     let Some(sequence) = catalog
         .sequences
         .get(&sequence)
         .or_else(|| asset.sources().sequences.get(&sequence))
     else {
-        return Ok(());
+        return Ok(true);
     };
     if let Some(animation) = sequence.skeletal {
         let Some(animation) = catalog.cached_animations.get(&animation) else {
-            return Ok(());
+            return Ok(true);
         };
-        let Some(frame) = crate::animation::skeletal_frame(sequence, u64::from(cycle), None) else {
-            return Ok(());
+        let Some(frame) =
+            crate::animation::actor_skeletal_frame(sequence, u64::from(cycle), action)
+        else {
+            return Ok(false);
         };
-        return crate::animation::pose_skeletal(
+        crate::animation::pose_skeletal(
             animation,
             frame,
             &mut model.vertices,
             &mut model.faces,
             &model.skeletal_weights,
-        );
+        )?;
+        return Ok(true);
     }
-    let Ok(Some(index)) = crate::animation::frame_index(sequence, u64::from(cycle), None) else {
-        return Ok(());
+    let Some(index) = crate::animation::actor_frame(sequence, u64::from(cycle), action)? else {
+        return Ok(false);
     };
     if let Some(frame) = sequence
         .frames
@@ -281,13 +354,14 @@ fn pose_model(
             0,
         )?;
     }
-    Ok(())
+    Ok(true)
 }
 
 fn build_player(
     asset: &SceneAsset,
     catalog: &EntityCatalog,
     player: &PlayerEntity,
+    position: [i32; 2],
     geometry: &mut SceneGeometry,
 ) -> Result<()> {
     let Some(appearance) = &player.appearance else {
@@ -314,14 +388,33 @@ fn build_player(
         rustclient_game_state::Locomotion::Run => movement.run.or(movement.walk).or(movement.idle),
         rustclient_game_state::Locomotion::Turn => movement.turn.or(movement.idle),
     };
-    let sequence = player.sequence.or(base);
-    pose_model(asset, catalog, &mut model, sequence, player.animation_cycle)?;
+    let (sequence, cycle, action) =
+        if player.sequence.sequence.is_some() && player.sequence.delay == 0 {
+            (
+                player.sequence.sequence,
+                player.sequence.cycle.max(0).cast_unsigned(),
+                true,
+            )
+        } else {
+            (base, player.animation_cycle, false)
+        };
+    if !pose_model(asset, catalog, &mut model, sequence, cycle, action)? {
+        pose_model(
+            asset,
+            catalog,
+            &mut model,
+            base,
+            player.animation_cycle,
+            false,
+        )?;
+    }
 
     emit_model(
         asset,
         &model,
         Placement {
-            tile: player.tile,
+            position,
+            plane: player.tile.plane,
             size: 1,
             orientation: player.orientation,
         },
@@ -334,6 +427,7 @@ fn build_npc(
     asset: &SceneAsset,
     catalog: &EntityCatalog,
     npc: &NpcEntity,
+    position: [i32; 2],
     variables: &BTreeMap<VarpId, i32>,
     geometry: &mut SceneGeometry,
 ) -> Result<()> {
@@ -350,12 +444,18 @@ fn build_npc(
         rustclient_game_state::Locomotion::Turn => def.turn_left_sequence.or(def.idle_sequence),
         rustclient_game_state::Locomotion::Idle => def.idle_sequence,
     };
-    let (sequence, cycle) = if npc.sequence.sequence.is_some() && npc.sequence.delay == 0 {
-        (npc.sequence.sequence, npc.sequence.cycle.cast_unsigned())
+    let (sequence, cycle, action) = if npc.sequence.sequence.is_some() && npc.sequence.delay == 0 {
+        (
+            npc.sequence.sequence,
+            npc.sequence.cycle.max(0).cast_unsigned(),
+            true,
+        )
     } else {
-        (base, npc.animation_cycle)
+        (base, npc.animation_cycle, false)
     };
-    pose_model(asset, catalog, &mut model, sequence, cycle)?;
+    if !pose_model(asset, catalog, &mut model, sequence, cycle, action)? {
+        pose_model(asset, catalog, &mut model, base, npc.animation_cycle, false)?;
+    }
     // The reference scales the animated model, so bone translations stay in unscaled units.
     if def.scale_width != 128 || def.scale_height != 128 {
         let (width, height) = (i32::from(def.scale_width), i32::from(def.scale_height));
@@ -369,7 +469,8 @@ fn build_npc(
         asset,
         &model,
         Placement {
-            tile: npc.tile,
+            position,
+            plane: npc.tile.plane,
             size: def.size.max(1),
             orientation: npc.orientation,
         },
@@ -394,14 +495,16 @@ fn build_npc(
 }
 
 #[derive(Clone, Copy)]
-struct Placement {
-    tile: rustclient_model::WorldTile,
+pub(crate) struct Placement {
+    /// South-west corner of the footprint in world units (tile centres are `tile * 128`).
+    pub(crate) position: [i32; 2],
+    pub(crate) plane: rustclient_model::Plane,
     /// Footprint edge in tiles; the model is centred on the whole footprint.
-    size: u8,
-    orientation: u16,
+    pub(crate) size: u8,
+    pub(crate) orientation: u16,
 }
 
-fn emit_model(
+pub(crate) fn emit_model(
     asset: &SceneAsset,
     model: &StaticModel,
     placement: Placement,
@@ -409,16 +512,17 @@ fn emit_model(
     geometry: &mut SceneGeometry,
 ) -> Result<()> {
     let Placement {
-        tile,
+        position,
+        plane,
         size,
         orientation,
     } = placement;
     let origin = asset.descriptor().origin();
     let half_footprint = i32::from(size) * 64;
-    let center_fine_x = (tile.x - origin.x) * 128 + half_footprint;
-    let center_fine_z = (tile.y - origin.y) * 128 + half_footprint;
+    let center_fine_x = position[0] - origin.x * 128 + half_footprint;
+    let center_fine_z = position[1] - origin.y * 128 + half_footprint;
     let ground_height = asset
-        .ground_height(tile.plane, [center_fine_x, center_fine_z])
+        .ground_height(plane, [center_fine_x, center_fine_z])
         .unwrap_or(0);
 
     let normals = crate::lighting::calculate(&model.vertices, &model.faces);
@@ -430,6 +534,7 @@ fn emit_model(
         .map(|(i, &f)| crate::lighting::bake_lit(f, i, &normals, &merged, light))
         .collect();
 
+    let first = geometry.vertices.len();
     for (index, &face) in model.faces.iter().enumerate() {
         let Some(face_colors) = colors[index] else {
             continue;
@@ -453,18 +558,16 @@ fn emit_model(
             let rot = rotate_y(orig, orientation);
             [
                 center_fine_x + rot.x,
-                ground_height - rot.y,
+                ground_height + rot.y,
                 center_fine_z + rot.z,
             ]
         });
 
-        let alpha = if face.alpha == -2 {
-            0
-        } else {
-            face.alpha.cast_unsigned()
-        };
+        geometry.model_triangle(points, face_colors, uv, face)?;
+    }
 
-        geometry.triangle(points, face_colors, face.texture, uv, alpha, face.bias)?;
+    if geometry.vertices.len() > first {
+        geometry.models.push(first..geometry.vertices.len());
     }
 
     Ok(())

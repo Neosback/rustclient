@@ -54,6 +54,13 @@ pub enum Array {
     Integers(Vec<i32>),
     Strings(Vec<String>),
 }
+/// Which result an array search produces.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ArraySearch {
+    First,
+    Last,
+    Count,
+}
 #[derive(Default)]
 pub struct Stacks {
     pub integers: Vec<i32>,
@@ -80,6 +87,120 @@ impl Stacks {
         self.objects.push(object);
     }
 
+    fn array(&self, object: &Object) -> Result<Option<&Array>> {
+        match object {
+            Object::Null => Ok(None),
+            Object::Array(id) => self
+                .arrays
+                .get(*id)
+                .map(Some)
+                .ok_or_else(|| "array handle".into()),
+            Object::Text(_) => Err("expected array".into()),
+        }
+    }
+    /// Sorts `keys` ascending over its whole length, applying the same permutation to the
+    /// matching prefix of `companion` (reference opcode 8000). Equal keys keep their order,
+    /// where the reference quicksort leaves ties unspecified.
+    ///
+    /// # Errors
+    /// Returns an error for a null or non-array `keys`, a companion shorter than `keys`, or
+    /// an invalid array handle.
+    pub fn sort_array(&mut self, keys: &Object, companion: &Object) -> Result<()> {
+        let Object::Array(key_id) = keys else {
+            return Err("sort requires an array".into());
+        };
+        let key_id = *key_id;
+        let length = match self.array(keys)?.ok_or("sort requires an array")? {
+            Array::Integers(a) => a.len(),
+            Array::Strings(a) => a.len(),
+        };
+        if length <= 1 {
+            return Ok(());
+        }
+        let order = self.sort_order(key_id)?;
+        if let Some(Array::Integers(a)) = self.arrays.get_mut(key_id) {
+            let sorted: Vec<i32> = order.iter().map(|&i| a[i]).collect();
+            *a = sorted;
+        } else if let Some(Array::Strings(a)) = self.arrays.get_mut(key_id) {
+            let sorted: Vec<String> = order.iter().map(|&i| std::mem::take(&mut a[i])).collect();
+            *a = sorted;
+        }
+        let Object::Array(companion_id) = companion else {
+            return Ok(());
+        };
+        let companion_length = match self.arrays.get(*companion_id).ok_or("array handle")? {
+            Array::Integers(a) => a.len(),
+            Array::Strings(a) => a.len(),
+        };
+        if companion_length < length {
+            return Err("sort companion shorter than keys".into());
+        }
+        match self.arrays.get_mut(*companion_id) {
+            Some(Array::Integers(a)) => {
+                let head: Vec<i32> = order.iter().map(|&i| a[i]).collect();
+                a[..length].copy_from_slice(&head);
+            }
+            Some(Array::Strings(a)) => {
+                let head: Vec<String> = order.iter().map(|&i| a[i].clone()).collect();
+                a[..length].clone_from_slice(&head);
+            }
+            None => return Err("array handle".into()),
+        }
+        Ok(())
+    }
+    fn sort_order(&self, id: usize) -> Result<Vec<usize>> {
+        let mut order: Vec<usize>;
+        match self.arrays.get(id).ok_or("array handle")? {
+            Array::Integers(a) => {
+                order = (0..a.len()).collect();
+                order.sort_by_key(|&i| a[i]);
+            }
+            // Java `String.compareTo` orders by UTF-16 code unit.
+            Array::Strings(a) => {
+                order = (0..a.len()).collect();
+                order.sort_by(|&x, &y| a[x].encode_utf16().cmp(a[y].encode_utf16()));
+            }
+        }
+        Ok(order)
+    }
+    /// Searches `from..to` of `array` for `value` (reference opcodes 8005–8007). A negative
+    /// `from` starts at zero and an out-of-range or negative `to` runs to the end. A null array
+    /// finds nothing: `-1` for the index searches and `0` for the count.
+    ///
+    /// # Errors
+    /// Returns an error when the value type does not match the array element type.
+    pub fn search_array(
+        &self,
+        array: &Object,
+        value: &ScriptValue,
+        range: [i32; 2],
+        mode: ArraySearch,
+    ) -> Result<i32> {
+        let Some(array) = self.array(array)? else {
+            return Ok(if mode == ArraySearch::Count { 0 } else { -1 });
+        };
+        let (length, hit): (usize, Box<dyn Fn(usize) -> bool>) = match (array, value) {
+            (Array::Integers(a), ScriptValue::Int(v)) => (a.len(), Box::new(|i| a[i] == *v)),
+            (Array::Strings(a), ScriptValue::Text(v)) => (a.len(), Box::new(|i| a[i] == *v)),
+            _ => return Err("array search value type".into()),
+        };
+        let from = usize::try_from(range[0]).unwrap_or(0);
+        let to = usize::try_from(range[1])
+            .ok()
+            .filter(|to| *to <= length)
+            .unwrap_or(length);
+        let mut hits = (from..to).filter(|&i| hit(i));
+        let found = match mode {
+            ArraySearch::First => hits.next(),
+            ArraySearch::Last => hits.next_back(),
+            ArraySearch::Count => {
+                return i32::try_from(hits.count()).map_err(|_| "array count".into());
+            }
+        };
+        found.map_or(Ok(-1), |i| {
+            i32::try_from(i).map_err(|_| "array index".into())
+        })
+    }
     /// # Errors
     /// Returns an error when the integer stack is empty.
     pub fn int(&mut self) -> Result<i32> {
@@ -416,15 +537,19 @@ pub fn execute(
                     if size > 5000 || stacks.arrays.len() >= 4096 {
                         return Err("array allocation limit".into());
                     }
-                    let slot = index(n >> 16)?;
-                    let kind = n & 65535;
+                    let slot = index(n)?;
                     let target = frame.objects.get_mut(slot).ok_or("array local index")?;
                     let id = stacks.arrays.len();
-                    stacks.arrays.push(if kind == 115 {
-                        Array::Strings(vec![String::new(); size])
-                    } else {
-                        Array::Integers(vec![if kind == 105 || kind == 49 { 0 } else { -1 }; size])
-                    });
+                    stacks.arrays.push(
+                        match ins.array_default.ok_or("missing semantic array default")? {
+                            rustclient_cache::script::ArrayInitialValue::Text => {
+                                Array::Strings(vec![String::new(); size])
+                            }
+                            rustclient_cache::script::ArrayInitialValue::Integer(value) => {
+                                Array::Integers(vec![value; size])
+                            }
+                        },
+                    );
                     *target = Object::Array(id);
                 }
                 GetArrayInt => {

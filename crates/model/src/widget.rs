@@ -77,6 +77,8 @@ pub enum WidgetBody {
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum WidgetListener {
+    KeyPress,
+    KeyRelease,
     Key,
     Resize,
     SubChange,
@@ -106,6 +108,23 @@ pub enum WidgetListener {
     Drag,
     DragComplete,
     Scroll,
+}
+/// Platform-independent navigation keys delivered to cache-authored interfaces.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WidgetKey {
+    Enter,
+    Backspace,
+    Tab,
+    Escape,
+    Left,
+    Right,
+    Up,
+    Down,
+    Delete,
+    Home,
+    End,
+    PageUp,
+    PageDown,
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WidgetDefinition {
@@ -142,9 +161,36 @@ impl WidgetAddress {
         }
     }
 }
+/// Keyboard bindings for one widget operation slot (`if_setopkey` family).
+///
+/// Slots `0..=9` are the numbered operations and slot [`WidgetOpKeys::TARGET_SLOT`] is the
+/// target operation. This is semantic state only; key delivery belongs to input handling.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct WidgetOpKeys {
+    /// `(key, modifier)` byte pairs exactly as scripts supply them.
+    pub keys: Vec<(u8, u8)>,
+    /// Key-repeat `[initial, repeat]` values set by `if_setopkeyrate`.
+    pub rate: Option<[i32; 2]>,
+    /// Set by `if_setopkeyignoreheld`: held keys do not trigger the operation.
+    pub ignore_held: bool,
+}
+impl WidgetOpKeys {
+    /// Slot used by the `t` (target operation) variants.
+    pub const TARGET_SLOT: u8 = 10;
+}
+/// Only mutable overrides; immutable defaults remain in the cache definition.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct WidgetDrag {
+    pub parent: Option<WidgetAddress>,
+    pub zone: i32,
+    pub threshold: i32,
+    pub scrollbar: bool,
+}
 /// Only mutable overrides; immutable defaults remain in the cache definition.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct WidgetRuntime {
+    pub drag: Option<WidgetDrag>,
+    pub secondary_sprite: Option<SpriteId>,
     pub target_priority: Option<crate::WidgetOperation>,
     pub text: Option<String>,
     pub parent_child: Option<u32>,
@@ -158,4 +204,6 @@ pub struct WidgetRuntime {
     pub listeners: BTreeMap<WidgetListener, Option<Vec<ScriptValue>>>,
     pub triggers: BTreeMap<WidgetListener, Vec<i32>>,
     pub item: Option<(crate::ItemDefinitionId, u32)>,
+    /// Per-slot key bindings; empty until a script binds a key.
+    pub op_keys: BTreeMap<u8, WidgetOpKeys>,
 }

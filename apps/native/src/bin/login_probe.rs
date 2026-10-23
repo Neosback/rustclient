@@ -1,4 +1,8 @@
 //! Headless native bootstrap diagnostic. Credentials are accepted only on bounded stdin.
+#[path = "login_probe/entity_review.rs"]
+mod entity_review;
+#[path = "login_probe/interfaces.rs"]
+mod interfaces;
 #[path = "login_probe/journey.rs"]
 mod journey;
 use rustclient_application::{ConnectionDecoder, ConnectionInput};
@@ -39,7 +43,10 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     let travel = args
         .get(2)
         .is_some_and(|s| s == "--walk-and-bank" || s == "--verify-bank");
-    if args.len() != 2 && !(args.len() == 3 && travel) {
+    let review = args.get(2).is_some_and(|s| s == "--review-interfaces");
+    let entities = args.get(2).is_some_and(|s| s == "--review-entities");
+    let sample_walk = args.get(2).is_some_and(|s| s == "--walk-sample");
+    if args.len() != 2 && !(args.len() == 3 && (travel || review || entities || sample_walk)) {
         return Err(
             "usage: login_probe CACHE_DIR PUBLIC_KEY (two stdin lines: username, password)".into(),
         );
@@ -70,6 +77,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
             credentials,
             entropy: LoginEntropy::new(*entropy),
             crcs: &crcs,
+            window: rustclient_model::WindowMetrics::default(),
         },
         || cancel.is_cancelled(),
         |s| println!("{s}"),
@@ -91,15 +99,28 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
             .get()
     );
     pollster::block_on(stream.send(&decoder.encode(ClientIntent::WindowStatus {
+        mode: rustclient_model::WindowMode::Resizable,
         width: 765,
         height: 503,
     })?))?;
     let mut bytes = [0; 16384];
-    let end = Instant::now() + Duration::from_secs(if travel { 240 } else { 8 });
+    let end = Instant::now()
+        + Duration::from_secs(if travel {
+            240
+        } else if entities || review {
+            12
+        } else {
+            8
+        });
     let mut journey = travel.then(|| journey::Journey::new(args[0].clone().into(), verify));
     let mut next_cycle = Instant::now();
     let mut next_heartbeat = Instant::now() + Duration::from_secs(5);
     let mut reported = false;
+    let mut interface_review = interfaces::Review::default();
+    let mut entity_review = entity_review::Review::default();
+    let mut walked_sample = false;
+    let mut logout_sent = false;
+    let mut reported_window = state.interfaces().window();
     while Instant::now() < end {
         stream.deadline_after(Duration::from_millis(200));
         match pollster::block_on(stream.receive(&mut bytes)) {
@@ -126,13 +147,16 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
                     return Err(error.into());
                 }
                 if !connected {
+                    if sample_walk {
+                        break;
+                    }
                     return Err("server logout".into());
                 }
             }
             Err(TransportError::Timeout) => {}
             Err(e) => return Err(e.into()),
         }
-        if journey.is_some() && Instant::now() >= next_cycle {
+        if (journey.is_some() || review) && Instant::now() >= next_cycle {
             for error in scripts.commit(
                 &mut state,
                 SemanticOperation::Scenery(rustclient_game_state::SceneryOperation::AdvanceCycles(
@@ -148,6 +172,52 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
             if journey.completed() {
                 break;
             }
+        }
+        if review {
+            for error in scripts.resize_widgets(&mut state)? {
+                eprintln!("widget resize: {error}");
+            }
+            interface_review.step(&mut state, &mut scripts, &mut decoder, &mut stream)?;
+        }
+        for intent in scripts.take_intents() {
+            stream.deadline_after(Duration::from_secs(2));
+            pollster::block_on(stream.send(&decoder.encode(intent)?))?;
+        }
+        let window = state.interfaces().window();
+        if window != reported_window {
+            stream.deadline_after(Duration::from_secs(2));
+            pollster::block_on(stream.send(&decoder.encode(ClientIntent::WindowStatus {
+                mode: window.mode,
+                width: window.canvas.width.try_into()?,
+                height: window.canvas.height.try_into()?,
+            })?))?;
+            reported_window = window;
+        }
+        if sample_walk
+            && !logout_sent
+            && walked_sample
+            && state.current_tick().is_some_and(|tick| tick.get() >= 8)
+        {
+            logout_sent =
+                entity_review::logout(&mut state, &mut scripts, &mut decoder, &mut stream)?;
+        }
+        entity_review.observe(&state);
+        if sample_walk
+            && !walked_sample
+            && state.current_tick().is_some_and(|tick| tick.get() >= 3)
+            && let Some(player) = state.entities().local_player()
+        {
+            let destination = rustclient_model::WorldTile::new(
+                player.tile.x + 1,
+                player.tile.y,
+                player.tile.plane,
+            );
+            stream.deadline_after(Duration::from_secs(2));
+            pollster::block_on(stream.send(&decoder.encode(ClientIntent::Walk {
+                destination,
+                invert_run: false,
+            })?))?;
+            walked_sample = true;
         }
         if !reported && let Some(placement) = state.initial_placement() {
             println!("initial placement {placement:?}");
@@ -165,11 +235,79 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     if !reported {
         return Err("no initial placement received".into());
     }
+    entity_review.report(entities)?;
+    if review {
+        if !interface_review.price_opened {
+            return Err("guide prices did not mount interface 464".into());
+        }
+        println!(
+            "review mounted interfaces: {:?}",
+            state.interfaces().groups()
+        );
+        let before = state.interfaces().client_variables().clone();
+        for character in "hello".chars() {
+            let result = scripts.keyboard(&mut state, None, Some(character), true)?;
+            for error in result.errors {
+                eprintln!("key listener: {error}");
+            }
+        }
+        for (id, value) in state.interfaces().client_variables() {
+            if before.get(id) != Some(value) {
+                println!("typed input varc {id}: {value:?}");
+            }
+        }
+        if state.interfaces().client_variables().get(&335)
+            != Some(&rustclient_model::ScriptValue::Text("hello".into()))
+        {
+            return Err("cache chat key listener did not retain typed input".into());
+        }
+        let result = scripts.keyboard(
+            &mut state,
+            Some(rustclient_model::WidgetKey::Backspace),
+            None,
+            true,
+        )?;
+        if !result.errors.is_empty()
+            || state.interfaces().client_variables().get(&335)
+                != Some(&rustclient_model::ScriptValue::Text("hell".into()))
+        {
+            return Err("cache chat key listener did not handle backspace".into());
+        }
+        println!("chat typing and backspace verified through cache listeners");
+    }
     println!(
         "bootstrap smoke passed; {} complete game packets framed; tick {}",
         decoder.framed_packets(),
         state.current_tick().ok_or("missing session time")?.get()
     );
+    if std::env::var_os("RUSTCLIENT_WIDGET_DIAGNOSTICS").is_some() {
+        println!(
+            "root {:?} mounts {:?}",
+            state.interfaces().root(),
+            state.interfaces().mounts()
+        );
+        let tree = rustclient_game_ui::widgets::WidgetTree::build(
+            state.interfaces(),
+            &scripts.interfaces,
+            rustclient_game_ui::widgets::WidgetBounds {
+                x: 0,
+                y: 0,
+                width: 765,
+                height: 503,
+            },
+        )?;
+        for node in tree.nodes {
+            let w = rustclient_game_ui::widgets::resolve_widget(
+                state.interfaces(),
+                &scripts.interfaces,
+                node.address,
+            )?;
+            println!(
+                "node {:?} bounds {:?} clip {:?} content {:?} body {:?}",
+                node.address, node.bounds, node.clip, w.content, w.body
+            );
+        }
+    }
     state.apply_operation(SemanticOperation::EndSession)?;
     drop(stream);
     println!("disconnected; authenticated state cleared");

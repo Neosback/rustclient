@@ -10,10 +10,12 @@ pub use interfaces::{InterfaceError, InterfaceState};
 mod inventory;
 pub use inventory::{InventoryError, InventoryState};
 mod entities;
+mod players;
 pub use entities::{
     EntityUpdateError, Locomotion, NpcEntity, PlayerEntity, WorldEntitiesState, direction_to_delta,
     direction_to_orientation,
 };
+pub use players::TrackedPlayer;
 
 mod commit;
 mod fingerprint;
@@ -37,3 +39,6 @@ pub use title::{LoginFailure, LoginStatus, TitleInformation, TitleScreen, TitleT
 
 mod connection;
 pub use connection::{AuthenticatedPlayer, ConnectionStateError, InitialPlacement};
+
+mod chat;
+pub use chat::{ChatEntry, ChatError, ChatState};

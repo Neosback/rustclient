@@ -46,6 +46,21 @@ and renderer rebuild. No invented player model or local movement authority.
 
 ## Bounds and failures
 
+Static scenery, animated scenery and actors share one transparency order. Opaque
+draws complete first; transparent models are merged far to near across resident
+geometry streams with stable source/emission ties. Faces within a model retain
+their authored priority and original ordinal. The twelve-queue priority preparation
+uses the `(1,2)`, `(3,4)`, `(6,8)` average-depth thresholds and exhausts priority 10
+before 11. Opaque faces participate in those thresholds; only transparent faces
+enter the blend pass. Alpha draws retain strict depth testing with writes disabled.
+Authored depth bias and face priority remain distinct: priority is an ordering
+rule, never an invented global depth offset. Face ordering reuses its scratch
+storage between frames. RustOSRS `osrs-render/src/gpu/mod.rs` and `priority.rs`
+are the evidence, with the independent threshold-crossing fixture recorded in
+source-manifest.json. Structural ordering contracts do not satisfy ADR-0004's
+visual acceptance. Exact zone/level ordering and coplanar material acceptance
+remain part of that gate.
+
 Validate binary section lengths/counts, selectors/indexes, recursive dependency
 closure, morph cycles, pose layouts and projection budgets. Decode errors identify
 source and stage; unsupported required formats fail the relevant gate explicitly.

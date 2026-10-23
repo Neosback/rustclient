@@ -27,6 +27,7 @@ pub(super) fn run(options: &super::options::Options) -> Result<(), String> {
     let mut ui = TitleUi::new(TitlePreferences::default());
     let mut frame = UiFrame::default();
     let viewport = TitleViewport {
+        canvas_width: 765,
         physical_width: 765,
         physical_height: 503,
         scale: 1.,
@@ -63,6 +64,7 @@ pub(super) fn run(options: &super::options::Options) -> Result<(), String> {
         viewport,
     )?;
     let hidpi = TitleViewport {
+        canvas_width: 765,
         physical_width: 1800,
         physical_height: 1100,
         scale: 2.,

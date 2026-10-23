@@ -138,3 +138,5 @@ mod tests {
 }
 
 semantic_id!(SkillId, "Skill definition identity.");
+
+semantic_id!(ChatChannelId, "Semantic incoming message channel.");

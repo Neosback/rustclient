@@ -1,8 +1,58 @@
 //! Native widget composition, input routing and background CPU asset decoding.
 use crate::{LoadEvent, NativeApp, network};
+use rustclient_game_ui::gameframe::{GameplayPointer, gameplay_pointer};
 use rustclient_game_ui::widgets::resolve_widget;
-use rustclient_model::{WidgetAction, WidgetBody, WidgetContent};
+use rustclient_model::{WidgetAction, WidgetBody, WidgetContent, WidgetListener};
 impl NativeApp {
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "finite logical window extents are clamped before conversion"
+    )]
+    pub(super) fn synchronize_window(&mut self) {
+        let Some(window) = &self.window else {
+            return;
+        };
+        let size = window.inner_size();
+        if size.width == 0 || size.height == 0 {
+            return;
+        }
+        let available = rustclient_model::CanvasSize {
+            width: (f64::from(size.width) / window.scale_factor())
+                .floor()
+                .clamp(765., 16_384.) as u32,
+            height: (f64::from(size.height) / window.scale_factor())
+                .floor()
+                .clamp(503., 16_384.) as u32,
+        };
+        let metrics = self
+            .widget_cache_profile
+            .window_metrics(self.state.interfaces().window().mode, available);
+        if metrics != self.state.interfaces().window() {
+            self.widget_menu.close();
+            self.context_menu.close();
+            self.apply(Some(rustclient_game_state::SemanticOperation::Interface(
+                rustclient_model::InterfaceUpdate::Window(metrics),
+            )));
+            self.request_widget_assets();
+        }
+        if self.reported_window != Some(metrics)
+            && let Some(connection) = &self.connection
+        {
+            match connection.send(network::Outbound {
+                map_epoch: self.map_epoch,
+                interface_epoch: None,
+                intent: rustclient_protocol::ClientIntent::WindowStatus {
+                    mode: metrics.mode,
+                    width: u16::try_from(metrics.canvas.width).expect("profile canvas cap"),
+                    height: u16::try_from(metrics.canvas.height).expect("profile canvas cap"),
+                },
+            }) {
+                Ok(()) => self.reported_window = Some(metrics),
+                Err(e) => eprintln!("window status: {e}"),
+            }
+        }
+    }
     pub(super) fn request_widget_assets(&mut self) {
         if self.widget_loading || self.state.authenticated_player().is_none() {
             return;
@@ -104,9 +154,15 @@ impl NativeApp {
             }
             let widget = resolve_widget(self.state.interfaces(), &scripts.interfaces, node.address)
                 .map_err(|e| e.to_string())?;
+            if widget.content == WidgetContent::Compass {
+                if let Some(camera) = &mut self.scene.camera {
+                    camera.set_yaw(0);
+                }
+                return Ok(true);
+            }
             if matches!(
                 widget.content,
-                WidgetContent::WorldViewport | WidgetContent::Minimap | WidgetContent::Compass
+                WidgetContent::WorldViewport | WidgetContent::Minimap
             ) {
                 return Ok(false);
             }
@@ -118,7 +174,13 @@ impl NativeApp {
             if !entries.is_empty() {
                 if right {
                     if let Some(assets) = &self.assets {
-                        self.widget_menu.open(x, y, entries, assets);
+                        self.widget_menu.open(
+                            x,
+                            y,
+                            entries,
+                            assets,
+                            self.state.interfaces().window().canvas,
+                        );
                         self.context_menu.close();
                     }
                 } else if let Some((_, action)) = entries.first() {
@@ -142,6 +204,7 @@ impl NativeApp {
         let Some(scripts) = &self.scripts else {
             return Ok(false);
         };
+        let mut listener = None;
         for node in self.widget_tree.nodes.iter().rev() {
             if !node.bounds.rect().contains(x, y) || !node.clip.rect().contains(x, y) {
                 continue;
@@ -175,7 +238,40 @@ impl NativeApp {
                 self.apply(Some(op));
                 return Ok(true);
             }
+            if widget.listeners.contains_key(&WidgetListener::Scroll)
+                && (widget.content != WidgetContent::WorldViewport || self.pointer_over_world(x, y))
+            {
+                listener = Some(node.address);
+                break;
+            }
         }
-        Ok(false)
+        let Some(address) = listener else {
+            return Ok(false);
+        };
+        // Java reports wheel-up as a negative rotation; `delta` already carries that sign.
+        let rotation = delta.signum();
+        let scripts = self
+            .scripts
+            .as_mut()
+            .ok_or("widget definitions are loading")?;
+        let Some(outcome) = scripts.scroll_wheel(&mut self.state, address, rotation)? else {
+            return Ok(false);
+        };
+        for error in outcome.errors {
+            eprintln!("widget scroll listener: {error}");
+        }
+        self.send_script_intents(outcome.intents);
+        Ok(true)
+    }
+    pub(super) fn pointer_over_world(&self, x: f32, y: f32) -> bool {
+        matches!(
+            gameplay_pointer(
+                &self.frame,
+                self.minimap_mask.as_ref().map(|(_, mask)| mask),
+                x,
+                y,
+            ),
+            GameplayPointer::World
+        )
     }
 }

@@ -25,6 +25,7 @@ const KNOWN: u32 = 0x10
 pub(super) struct Extended {
     pub appearance: Option<PlayerAppearance>,
     pub sequence: SequenceChange,
+    pub sequence_delay: u8,
     pub facing: Option<u16>,
 }
 pub(super) fn decode_extended(r: &mut Reader<'_>) -> Result<Extended> {
@@ -104,7 +105,7 @@ pub(super) fn decode_extended(r: &mut Reader<'_>) -> Result<Extended> {
         let lo = r.u8()?.wrapping_sub(128);
         let hi = r.u8()?;
         out.sequence = SequenceChange::Set(sequence_id(u16::from_le_bytes([lo, hi])));
-        r.u8()?;
+        out.sequence_delay = r.u8()?.wrapping_sub(128);
     }
     if mask & 0x400 != 0 {
         r.take(8)?;

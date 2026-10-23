@@ -70,6 +70,7 @@ pub struct GameState {
     authenticated: Option<AuthenticatedPlayer>,
     placement: Option<InitialPlacement>,
     scene: Option<SceneDescriptor>,
+    pub(crate) chat: crate::ChatState,
     pub(crate) scenery: crate::SceneryState,
     pub(crate) interfaces: crate::InterfaceState,
     pub(crate) inventories: crate::InventoryState,
@@ -78,6 +79,10 @@ pub struct GameState {
 }
 
 impl GameState {
+    #[must_use]
+    pub const fn chat(&self) -> &crate::ChatState {
+        &self.chat
+    }
     /// Construct an inactive authoritative state root.
     #[must_use]
     pub fn new() -> Self {
@@ -89,6 +94,7 @@ impl GameState {
             authenticated: None,
             placement: None,
             scene: None,
+            chat: crate::ChatState::default(),
             scenery: crate::SceneryState::default(),
             entities: crate::WorldEntitiesState::default(),
             inventories: crate::InventoryState::default(),
@@ -207,14 +213,17 @@ impl GameState {
                 auth.player,
                 crate::PlayerEntity {
                     index: auth.player,
+                    instance: rustclient_model::PlayerInstanceId::new(1),
+                    tracking_grid: None,
                     tile: placement.position,
                     orientation: 0,
                     appearance: None,
-                    sequence: None,
+                    sequence: rustclient_model::ActorSequenceSlot::default(),
                     animation_cycle: 0,
                     locomotion: crate::Locomotion::Idle,
                 },
             );
+            self.entities.player_serial = 1;
         }
         Ok(())
     }
@@ -284,6 +293,7 @@ impl GameState {
         self.authenticated = None;
         self.placement = None;
         self.scene = None;
+        self.chat = crate::ChatState::default();
         self.scenery = crate::SceneryState::default();
         self.entities = crate::WorldEntitiesState::default();
         self.inventories = crate::InventoryState::default();
@@ -313,6 +323,7 @@ impl GameState {
         self.authenticated = None;
         self.placement = None;
         self.scene = None;
+        self.chat = crate::ChatState::default();
         self.scenery = crate::SceneryState::default();
         self.entities = crate::WorldEntitiesState::default();
         self.inventories = crate::InventoryState::default();

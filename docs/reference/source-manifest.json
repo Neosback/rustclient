@@ -110,6 +110,10 @@
         {
           "path": "engine/game/src/main/kotlin/org/rsmod/game/entity/npc/NpcInfoProtocol.kt",
           "sha256": "9723d655183b5b9cfb166cbdd502fe1a97d326be11e672cf38ec5d7004874cdc"
+        },
+        {
+          "path": "content/interfaces/equipment/src/main/kotlin/org/rsmod/content/interfaces/equipment/prices/GuidePriceScript.kt",
+          "sha256": "55cdafc2f78e1eef9ddd1f10dba11edb9491f03378fd6f5f1bd5d660d03f5fd7"
         }
       ],
       "git_commit": "abc80a8d76d68912f96819680f8aae279a586514"
@@ -131,6 +135,67 @@
           "sha256": "4f56127e43cda1bd9fcfcd096ea5ef3b0a04defb01a2622c7617d25703d5c070"
         }
       ]
+    },
+    {
+      "id": "tsps-client-input-sync",
+      "root": "/Users/tylercovalt/Documents/tsps-main",
+      "files": [
+        {
+          "path": "client/game/widgets/WidgetInputController.ts",
+          "sha256": "65721ca92db0f47beb85abcfa78f677b13b7692b4d31388bcf777c7eb2b86dcf"
+        },
+        {
+          "path": "client/game/widgets/input/widgetClickInput.ts",
+          "sha256": "9082a748abbf0a0f4c661fd35227123d6424813106ee78946f8f7fec1669aa0e"
+        },
+        {
+          "path": "client/game/widgets/input/widgetDragInput.ts",
+          "sha256": "064f913bbdfc40cefbb3d29110fcda00091df0cb5feba4ede63d5ccd5ba09821"
+        },
+        {
+          "path": "client/game/widgets/input/widgetReleaseInput.ts",
+          "sha256": "eb8fb7b47182f2dcad8180b03976a0eb84f089677dba10afff884223f2f480e1"
+        },
+        {
+          "path": "client/game/widgets/interaction/widgetDragHelpers.ts",
+          "sha256": "1a080d25338f0db4ac2892e02ec0cb749c63c7a6b3ac01a3042b0ee553d28e1b"
+        },
+        {
+          "path": "client/game/sync/PlayerSyncManager.ts",
+          "sha256": "918a38e52ea8545c2c7095e2164a0e89ea1ae5217183285e00c6d70934cf0670"
+        },
+        {
+          "path": "client/game/PlayerAnimController.ts",
+          "sha256": "a31041f0fe2eedb5d337b21222d16165e54f7e89f0c629ae8f041a204ed193cb"
+        }
+      ]
+    },
+    {
+      "id": "rustosrs-render-continuation",
+      "root": "references/rustosrs",
+      "files": [
+        {
+          "path": "crates/osrs-render/src/priority.rs",
+          "sha256": "fe534f512fe00377b2866b35ef2c79800ad6c77e67435c53acc5ba6ebe6349a8"
+        },
+        {
+          "path": "crates/osrs-render/src/gpu/mod.rs",
+          "sha256": "cdc443d380e76e111be4f1926d7ac3c162674e0ad9419b5d9e45418645dc4663"
+        },
+        {
+          "path": "crates/osrs-render/src/gpu/scene.wgsl",
+          "sha256": "a92d221c0e60e44be4d17ad9da7d3da91e00f4bbd04377fa3c0457d59ab34a81"
+        },
+        {
+          "path": "reference-fixtures/priority/all_0_11_threshold_crossing.input.json",
+          "sha256": "e2cbcb96808897f017ffff983825419baf900f395e1cd5cfcc621163b7ef3809"
+        },
+        {
+          "path": "reference-fixtures/priority/all_0_11_threshold_crossing.expected.json",
+          "sha256": "773a8f503cd998944f79b1195f034a5c64bb8504d9e1fee471e9ecf2808ba787"
+        }
+      ],
+      "git_commit": "854a3962164ad401d21064a5f207f86869ea69b4"
     }
   ],
   "rsprot_source_artifacts": [

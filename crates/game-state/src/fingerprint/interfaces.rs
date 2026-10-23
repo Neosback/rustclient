@@ -1,6 +1,10 @@
 use super::StableFingerprint64;
 use crate::InterfaceState;
 use rustclient_model::{InterfaceId, InterfaceMountKind, WidgetId, WidgetPermissions};
+/// Tag introducing the optional per-widget key-binding section.
+const OP_KEYS_SECTION: u8 = 0xA5;
+/// Tag introducing the optional device-preference section.
+const DEVICE_PREFERENCES_SECTION: u8 = 0xA6;
 fn widget(f: &mut StableFingerprint64, id: WidgetId) {
     f.write_u32(id.interface.get());
     f.write_u32(id.component);
@@ -24,11 +28,42 @@ fn permissions(f: &mut StableFingerprint64, p: WidgetPermissions) {
     f.write_u8(u8::from(p.crm_target));
     f.write_u8(u8::from(p.script_trigger));
 }
+#[expect(clippy::too_many_lines, reason = "canonical interface field order")]
 pub(super) fn write(f: &mut StableFingerprint64, state: &InterfaceState) {
+    let window = state.window();
+    for mode in [window.mode, state.default_window_mode()] {
+        f.write_u8(match mode {
+            rustclient_model::WindowMode::Fixed => 0,
+            rustclient_model::WindowMode::Resizable => 1,
+        });
+    }
+    for size in [window.available, window.canvas] {
+        f.write_u32(size.width);
+        f.write_u32(size.height);
+    }
+    let viewport = state.viewport();
+    f.write_u32(viewport.follow_height);
+    for value in viewport
+        .fov
+        .into_iter()
+        .chain(viewport.zoom)
+        .chain(viewport.clamp)
+    {
+        f.write_u16(value);
+    }
     f.write_u64(state.settings().len() as u64);
     for (key, value) in state.settings() {
         f.write_u8(key.tag());
         f.write_u8(u8::from(*value));
+    }
+    // Optional section: no stored preferences encode as nothing so earlier anchors stay valid.
+    if !state.device_preferences().is_empty() {
+        f.write_u8(DEVICE_PREFERENCES_SECTION);
+        f.write_u64(state.device_preferences().len() as u64);
+        for (id, value) in state.device_preferences() {
+            f.write_u8(*id);
+            f.write_u32(value.cast_unsigned());
+        }
     }
     group(f, state.root());
     f.write_u64(u64::try_from(state.mounts().len()).expect("bounded mounts"));
@@ -44,6 +79,7 @@ pub(super) fn write(f: &mut StableFingerprint64, state: &InterfaceState) {
     f.write_u64(state.runtime().len() as u64);
     for (address, value) in state.runtime() {
         widget(f, address.widget);
+        option(f, value.secondary_sprite, |f, id| f.write_u32(id.get()));
         option(f, value.target_priority, |f, op| f.write_u8(op.index()));
         option(f, value.text.as_deref(), string);
         option(f, value.parent_child, StableFingerprint64::write_u32);
@@ -90,6 +126,15 @@ pub(super) fn write(f: &mut StableFingerprint64, state: &InterfaceState) {
             }
         });
         option(f, value.data_text.as_deref(), string);
+        option(f, value.drag, |f, drag| {
+            option(f, drag.parent, |f, address| {
+                widget(f, address.widget);
+                option(f, address.child, StableFingerprint64::write_u32);
+            });
+            f.write_u32(drag.zone.cast_unsigned());
+            f.write_u32(drag.threshold.cast_unsigned());
+            f.write_u8(u8::from(drag.scrollbar));
+        });
         option(f, value.item, |f, (id, n)| {
             f.write_u32(id.get());
             f.write_u32(n);
@@ -110,6 +155,25 @@ pub(super) fn write(f: &mut StableFingerprint64, state: &InterfaceState) {
             f.write_u64(triggers.len() as u64);
             for n in triggers {
                 f.write_u32(n.cast_unsigned());
+            }
+        }
+        // Appended section: absent bindings encode as nothing so earlier anchors stay valid.
+        if !value.op_keys.is_empty() {
+            f.write_u8(OP_KEYS_SECTION);
+            f.write_u64(value.op_keys.len() as u64);
+            for (slot, keys) in &value.op_keys {
+                f.write_u8(*slot);
+                f.write_u64(keys.keys.len() as u64);
+                for (key, modifier) in &keys.keys {
+                    f.write_u8(*key);
+                    f.write_u8(*modifier);
+                }
+                option(f, keys.rate, |f, rate| {
+                    for n in rate {
+                        f.write_u32(n.cast_unsigned());
+                    }
+                });
+                f.write_u8(u8::from(keys.ignore_held));
             }
         }
     }
@@ -181,6 +245,8 @@ fn listener(f: &mut StableFingerprint64, v: rustclient_model::WidgetListener) {
         Release, Resize, Scroll, Stat, Stock, SubChange, TargetEnter, TargetLeave, Timer, Variable,
     };
     f.write_u8(match v {
+        rustclient_model::WidgetListener::KeyPress => 29,
+        rustclient_model::WidgetListener::KeyRelease => 30,
         Key => 18,
         Resize => 19,
         SubChange => 20,

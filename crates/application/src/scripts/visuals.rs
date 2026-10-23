@@ -19,12 +19,7 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
         let tree = rustclient_game_ui::widgets::WidgetTree::build(
             state.interfaces(),
             &self.interfaces,
-            rustclient_game_ui::widgets::WidgetBounds {
-                x: 0,
-                y: 0,
-                width: 765,
-                height: 503,
-            },
+            rustclient_game_ui::widgets::WidgetBounds::canvas(state.interfaces()),
         )
         .map_err(|e| e.to_string())?;
         let mut request = WidgetAssetRequest::default();
@@ -69,7 +64,13 @@ pub fn load_widget_visuals<S: ReadOnlyBlobs>(
     for id in &request.sprites {
         match cache.sprite(id.get()) {
             Ok(Some(sprite)) => {
-                assets.sprite_offsets.insert(*id, sprite.offset);
+                assets.sprite_frames.insert(
+                    *id,
+                    rustclient_game_ui::widget_visuals::SpriteFrame {
+                        canvas: sprite.canvas.map(u32::from),
+                        offset: sprite.offset.map(u32::from),
+                    },
+                );
                 assets
                     .images
                     .insert(UiImageId::Sprite(id.get()), sprite.image);
@@ -77,6 +78,16 @@ pub fn load_widget_visuals<S: ReadOnlyBlobs>(
             Ok(None) => assets.failures.push(format!("missing widget sprite {id}")),
             Err(e) => assets.failures.push(e.to_string()),
         }
+    }
+    match cache.named_sprites("cross") {
+        Ok(frames) => {
+            for (index, sprite) in frames.into_iter().take(8).enumerate() {
+                if let Ok(index) = u8::try_from(index) {
+                    assets.images.insert(UiImageId::Cross(index), sprite.image);
+                }
+            }
+        }
+        Err(e) => assets.failures.push(e.to_string()),
     }
     for id in &request.fonts {
         match profile.load_widget_font(cache, *id) {

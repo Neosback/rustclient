@@ -88,6 +88,27 @@ pub(super) fn decode(bytes: &[u8]) -> Result<ScriptRequest> {
 
 pub(super) fn status(op: u16, bytes: &[u8]) -> Result<rustclient_model::PlayerStatusUpdate> {
     use rustclient_model::{PlayerStatusUpdate, SkillId, SkillValues};
+    if op == 66 {
+        let mut r = Reader::new(bytes, "reboot timer");
+        let message = text(&mut r)?;
+        let a = r.u8()?;
+        let b = r.u8()?;
+        if r.offset != bytes.len() {
+            return Err(ProtocolError::new("reboot timer", "trailing bytes"));
+        }
+        return Ok(PlayerStatusUpdate::Reboot {
+            cycles: u32::from(u16::from_be_bytes([a, b.wrapping_sub(128)])),
+            message: if message.is_empty() {
+                None
+            } else {
+                Some(if message == "\u{18}" {
+                    String::new()
+                } else {
+                    message
+                })
+            },
+        });
+    }
     match (op, bytes) {
         (19, [a, b]) => Ok(PlayerStatusUpdate::RunWeight(i16::from_be_bytes([*a, *b]))),
         (120, [a, b]) => {

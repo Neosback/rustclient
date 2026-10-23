@@ -8,6 +8,12 @@ struct TransparentTriangle {
     center: Vec3,
     indices: [u32; 3],
     ordinal: usize,
+    priority: u8,
+    alpha: bool,
+}
+struct AlphaModel {
+    center: Vec3,
+    faces: Vec<TransparentTriangle>,
 }
 pub(crate) struct GeometryGpu {
     vertices: wgpu::Buffer,
@@ -16,7 +22,11 @@ pub(crate) struct GeometryGpu {
     capacities: [u64; 3],
     opaque_count: u32,
     transparent_count: u32,
-    triangles: Vec<TransparentTriangle>,
+    models: Vec<AlphaModel>,
+    model_order: Vec<usize>,
+    model_groups: Vec<Option<usize>>,
+    face_depths: Vec<super::face_priority::FaceDepth>,
+    face_order: Vec<usize>,
     sorted: Vec<TransparentTriangle>,
     order: Vec<u32>,
 }
@@ -46,35 +56,97 @@ impl GeometryGpu {
             capacities: data.map(|d| d.len().max(4) as u64),
             opaque_count: 0,
             transparent_count: 0,
-            triangles: Vec::new(),
+            models: Vec::new(),
+            model_order: Vec::new(),
+            model_groups: Vec::new(),
+            face_depths: Vec::new(),
+            face_order: Vec::new(),
             sorted: Vec::new(),
             order: Vec::new(),
         };
         this.metadata(geometry)?;
         Ok(this)
     }
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "bounded model face count used for centroid averaging"
+    )]
     fn metadata(&mut self, geometry: &SceneGeometry) -> Result<(), RenderError> {
         self.opaque_count = u32::try_from(geometry.opaque.len())
             .map_err(|_| RenderError::World("opaque index count"))?;
         self.transparent_count = u32::try_from(geometry.transparent.len())
             .map_err(|_| RenderError::World("alpha index count"))?;
-        self.triangles.clear();
-        for (ordinal, triangle) in geometry.transparent.chunks_exact(3).enumerate() {
-            let mut center = Vec3::ZERO;
-            for &index in triangle {
-                let vertex = geometry
-                    .vertices
-                    .get(index as usize)
-                    .ok_or(RenderError::World("alpha vertex index"))?;
-                center += point(vertex);
+        for model in &mut self.models {
+            model.faces.clear();
+        }
+        self.model_groups.clear();
+        self.model_groups.resize(geometry.models.len(), None);
+        let mut used = 0;
+
+        for (alpha, indices) in [(true, &geometry.transparent), (false, &geometry.opaque)] {
+            for triangle in indices.chunks_exact(3) {
+                let first = triangle[0] as usize;
+                let group = geometry.models.partition_point(|span| span.end <= first);
+                let group = geometry
+                    .models
+                    .get(group)
+                    .filter(|span| span.contains(&first))
+                    .map(|_| group);
+                let model = if let Some(group) = group {
+                    if let Some(model) = self.model_groups[group] {
+                        model
+                    } else if alpha {
+                        let model = self.reserve_model(used);
+                        used += 1;
+                        self.model_groups[group] = Some(model);
+                        model
+                    } else {
+                        continue;
+                    }
+                } else if alpha {
+                    let model = self.reserve_model(used);
+                    used += 1;
+                    model
+                } else {
+                    continue;
+                };
+                let mut center = Vec3::ZERO;
+                for &index in triangle {
+                    let vertex = geometry
+                        .vertices
+                        .get(index as usize)
+                        .ok_or(RenderError::World("alpha vertex index"))?;
+                    center += point(vertex);
+                }
+                let priority = u8::try_from(geometry.vertices[first].position[3])
+                    .ok()
+                    .filter(|p| *p <= 11)
+                    .ok_or(RenderError::World("face priority"))?;
+                self.models[model].faces.push(TransparentTriangle {
+                    center: center / 3.,
+                    indices: [triangle[0], triangle[1], triangle[2]],
+                    ordinal: first / 3,
+                    priority,
+                    alpha,
+                });
             }
-            self.triangles.push(TransparentTriangle {
-                center: center / 3.,
-                indices: [triangle[0], triangle[1], triangle[2]],
-                ordinal,
-            });
+        }
+        for model in self.models.iter_mut().take(used) {
+            // Emission order, not opacity-pass order, resolves equal face depths.
+            model.faces.sort_unstable_by_key(|face| face.ordinal);
+            model.center =
+                model.faces.iter().map(|face| face.center).sum::<Vec3>() / model.faces.len() as f32;
         }
         Ok(())
+    }
+    fn reserve_model(&mut self, index: usize) -> usize {
+        if index == self.models.len() {
+            self.models.push(AlphaModel {
+                center: Vec3::ZERO,
+                faces: Vec::new(),
+            });
+        }
+        index
     }
     pub fn update(
         &mut self,
@@ -116,14 +188,50 @@ impl GeometryGpu {
         }
         self.metadata(geometry)
     }
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "reference face preparation truncates projected depth to integer buckets"
+    )]
     pub fn sort(&mut self, queue: &wgpu::Queue, eye: Vec3, direction: Vec3) {
-        self.sorted.clear();
-        self.sorted.extend_from_slice(&self.triangles);
-        self.sorted.sort_unstable_by(|a, b| {
-            let a_depth = (a.center - eye).dot(direction);
-            let b_depth = (b.center - eye).dot(direction);
-            b_depth.total_cmp(&a_depth).then(a.ordinal.cmp(&b.ordinal))
+        self.model_order.clear();
+        self.model_order.extend(
+            self.models
+                .iter()
+                .enumerate()
+                .filter(|(_, model)| !model.faces.is_empty())
+                .map(|(index, _)| index),
+        );
+        self.model_order.sort_unstable_by(|&a, &b| {
+            self.models[b]
+                .center
+                .distance_squared(eye)
+                .total_cmp(&self.models[a].center.distance_squared(eye))
+                .then(a.cmp(&b))
         });
+        self.sorted.clear();
+        for &model in &self.model_order {
+            let model = &self.models[model];
+            self.face_depths.clear();
+            for (index, face) in model.faces.iter().enumerate() {
+                self.face_depths.push(super::face_priority::FaceDepth {
+                    index,
+                    priority: face.priority,
+                    depth: (face.center - eye).dot(direction) as i32,
+                });
+            }
+            super::face_priority::order(&mut self.face_depths, &mut self.face_order);
+            for &index in &self.face_order {
+                let face = model.faces[index];
+                if face.alpha {
+                    // Models remain contiguous in the shared stream merge, preserving
+                    // the priority order inside each model.
+                    self.sorted.push(TransparentTriangle {
+                        center: model.center,
+                        ..face
+                    });
+                }
+            }
+        }
         self.order.clear();
         for t in &self.sorted {
             self.order.extend_from_slice(&t.indices);
@@ -143,6 +251,15 @@ impl GeometryGpu {
             pass.set_index_buffer(buffer.slice(..), wgpu::IndexFormat::Uint32);
             pass.draw_indexed(0..count, 0, 0..1);
         }
+    }
+    pub fn alpha_depth(&self, index: u32, eye: Vec3, _direction: Vec3) -> Option<f32> {
+        let triangle = self.sorted.get(usize::try_from(index).ok()?)?;
+        Some(triangle.center.distance_squared(eye))
+    }
+    pub fn draw_alpha(&self, pass: &mut wgpu::RenderPass<'_>, indices: core::ops::Range<u32>) {
+        pass.set_vertex_buffer(0, self.vertices.slice(..));
+        pass.set_index_buffer(self.transparent.slice(..), wgpu::IndexFormat::Uint32);
+        pass.draw_indexed(indices, 0, 0..1);
     }
 }
 fn point(vertex: &SceneVertex) -> Vec3 {

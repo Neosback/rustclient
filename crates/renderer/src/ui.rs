@@ -13,10 +13,81 @@ const ATLAS_WIDTH: u32 = 2048;
 const ATLAS_HEIGHT: u32 = 2048;
 const MAX_QUADS: usize = 32768;
 
-pub const MINIMAP_WIDTH: u32 = 156;
-pub const MINIMAP_HEIGHT: u32 = 156;
-pub const COMPASS_WIDTH: u32 = 33;
-pub const COMPASS_HEIGHT: u32 = 33;
+/// Largest widget-sized dynamic image (minimap or compass) accepted from the application.
+const MAX_DYNAMIC_SIDE: u32 = 1024;
+
+/// CPU pixels for a script-sized dynamic widget image; empty pixels keep the previous upload.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct DynamicImage<'a> {
+    pub pixels: &'a [u8],
+    pub width: u32,
+    pub height: u32,
+}
+/// Both script-sized widget images supplied for one frame.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct DynamicImages<'a> {
+    pub minimap: DynamicImage<'a>,
+    pub compass: DynamicImage<'a>,
+}
+impl DynamicImage<'_> {
+    fn valid(self) -> bool {
+        self.pixels.is_empty()
+            || (self.width > 0
+                && self.height > 0
+                && self.width <= MAX_DYNAMIC_SIDE
+                && self.height <= MAX_DYNAMIC_SIDE
+                && u64::from(self.width) * u64::from(self.height) * 4 == self.pixels.len() as u64)
+    }
+}
+/// A texture recreated only when the widget-authored dimensions change.
+struct DynamicTexture {
+    texture: wgpu::Texture,
+    bind: wgpu::BindGroup,
+    size: [u32; 2],
+    label: &'static str,
+}
+impl DynamicTexture {
+    fn new(
+        device: &wgpu::Device,
+        layout: &wgpu::BindGroupLayout,
+        sampler: &wgpu::Sampler,
+        label: &'static str,
+    ) -> Self {
+        let texture = texture(device, 1, 1, label);
+        let bind = bind(device, layout, sampler, &texture);
+        Self {
+            texture,
+            bind,
+            size: [1, 1],
+            label,
+        }
+    }
+    fn upload(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        layout: &wgpu::BindGroupLayout,
+        sampler: &wgpu::Sampler,
+        image: DynamicImage<'_>,
+    ) -> u32 {
+        if image.pixels.is_empty() {
+            return 0;
+        }
+        if self.size != [image.width, image.height] {
+            self.texture = texture(device, image.width, image.height, self.label);
+            self.bind = bind(device, layout, sampler, &self.texture);
+            self.size = [image.width, image.height];
+        }
+        upload(
+            queue,
+            &self.texture,
+            image.width,
+            image.height,
+            image.pixels,
+        );
+        image.width * image.height * 4
+    }
+}
 
 // Must match shaders/ui.wgsl. Vertex attributes are likewise declared here once.
 const IMAGE_GROUP: u32 = 0;
@@ -70,12 +141,10 @@ pub(crate) struct UiGpu {
     atlas: wgpu::BindGroup,
     flames: wgpu::BindGroup,
     flame_texture: wgpu::Texture,
-    minimap: wgpu::BindGroup,
-    minimap_texture: wgpu::Texture,
-    minimap_size: [u32; 2],
-    compass_size: [u32; 2],
-    compass: wgpu::BindGroup,
-    compass_texture: wgpu::Texture,
+    layout: wgpu::BindGroupLayout,
+    sampler: wgpu::Sampler,
+    minimap: DynamicTexture,
+    compass: DynamicTexture,
     regions: BTreeMap<UiImageId, Region>,
     vertex_buffer: wgpu::Buffer,
     vertices: Vec<Vertex>,
@@ -91,10 +160,6 @@ impl UiGpu {
     ) -> Result<Self, RenderError> {
         Self::with_images(device, queue, format, assets, &BTreeMap::new())
     }
-    #[expect(
-        clippy::too_many_lines,
-        reason = "one-time pipeline and buffer construction"
-    )]
     pub(crate) fn with_images(
         device: &wgpu::Device,
         queue: &wgpu::Queue,
@@ -176,34 +241,10 @@ impl UiGpu {
             Flames::HEIGHT,
             "title dynamic flames",
         );
-        let minimap_size = assets
-            .gameframe
-            .as_ref()
-            .map_or([MINIMAP_WIDTH, MINIMAP_HEIGHT], |g| {
-                [g.minimap_mask.image.width(), g.minimap_mask.image.height()]
-            });
-        let compass_size = assets
-            .gameframe
-            .as_ref()
-            .map_or([COMPASS_WIDTH, COMPASS_HEIGHT], |g| {
-                [g.compass_mask.image.width(), g.compass_mask.image.height()]
-            });
-        let minimap_texture = texture(
-            device,
-            minimap_size[0],
-            minimap_size[1],
-            "gameframe dynamic minimap",
-        );
-        let compass_texture = texture(
-            device,
-            compass_size[0],
-            compass_size[1],
-            "gameframe dynamic compass",
-        );
         let atlas = bind(device, &layout, &sampler, &atlas_texture);
         let flames = bind(device, &layout, &sampler, &flame_texture);
-        let minimap = bind(device, &layout, &sampler, &minimap_texture);
-        let compass = bind(device, &layout, &sampler, &compass_texture);
+        let minimap = DynamicTexture::new(device, &layout, &sampler, "widget dynamic minimap");
+        let compass = DynamicTexture::new(device, &layout, &sampler, "widget dynamic compass");
         let vertex_buffer = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("title reusable quad vertices"),
             size: (MAX_QUADS * 6 * std::mem::size_of::<Vertex>()) as u64,
@@ -215,12 +256,10 @@ impl UiGpu {
             atlas,
             flames,
             flame_texture,
+            layout,
+            sampler,
             minimap,
-            minimap_texture,
-            minimap_size,
-            compass_size,
             compass,
-            compass_texture,
             regions,
             vertex_buffer,
             vertices: Vec::with_capacity(MAX_QUADS * 6),
@@ -234,24 +273,18 @@ impl UiGpu {
     )]
     pub(crate) fn prepare(
         &mut self,
+        device: &wgpu::Device,
         queue: &wgpu::Queue,
         frame: &UiFrame,
         flame_pixels: &[u8],
-        minimap_pixels: &[u8],
-        compass_pixels: &[u8],
+        images: DynamicImages<'_>,
         viewport: TitleViewport,
     ) -> Result<(), RenderError> {
         if (!flame_pixels.is_empty()
             && flame_pixels.len()
                 != usize::try_from(Flames::WIDTH * Flames::HEIGHT * 4).unwrap_or(0))
-            || (!minimap_pixels.is_empty()
-                && minimap_pixels.len()
-                    != usize::try_from(self.minimap_size[0] * self.minimap_size[1] * 4)
-                        .unwrap_or(0))
-            || (!compass_pixels.is_empty()
-                && compass_pixels.len()
-                    != usize::try_from(self.compass_size[0] * self.compass_size[1] * 4)
-                        .unwrap_or(0))
+            || !images.minimap.valid()
+            || !images.compass.valid()
             || frame.quads.len() > MAX_QUADS
             || !viewport.scale.is_finite()
             || viewport.scale <= 0.
@@ -273,26 +306,12 @@ impl UiGpu {
             );
             self.stats.dynamic_upload_bytes += Flames::WIDTH * Flames::HEIGHT * 4;
         }
-        if !minimap_pixels.is_empty() {
-            upload(
-                queue,
-                &self.minimap_texture,
-                self.minimap_size[0],
-                self.minimap_size[1],
-                minimap_pixels,
-            );
-            self.stats.dynamic_upload_bytes += self.minimap_size[0] * self.minimap_size[1] * 4;
-        }
-        if !compass_pixels.is_empty() {
-            upload(
-                queue,
-                &self.compass_texture,
-                self.compass_size[0],
-                self.compass_size[1],
-                compass_pixels,
-            );
-            self.stats.dynamic_upload_bytes += self.compass_size[0] * self.compass_size[1] * 4;
-        }
+        self.stats.dynamic_upload_bytes +=
+            self.minimap
+                .upload(device, queue, &self.layout, &self.sampler, images.minimap);
+        self.stats.dynamic_upload_bytes +=
+            self.compass
+                .upload(device, queue, &self.layout, &self.sampler, images.compass);
         for quad in &frame.quads {
             let (source, region, width, height) = match quad.image {
                 UiImageId::Flames => (
@@ -311,22 +330,22 @@ impl UiGpu {
                     Region {
                         x: 0,
                         y: 0,
-                        width: self.minimap_size[0],
-                        height: self.minimap_size[1],
+                        width: self.minimap.size[0],
+                        height: self.minimap.size[1],
                     },
-                    self.minimap_size[0],
-                    self.minimap_size[1],
+                    self.minimap.size[0],
+                    self.minimap.size[1],
                 ),
                 UiImageId::Compass => (
                     DrawSource::Compass,
                     Region {
                         x: 0,
                         y: 0,
-                        width: self.compass_size[0],
-                        height: self.compass_size[1],
+                        width: self.compass.size[0],
+                        height: self.compass.size[1],
                     },
-                    self.compass_size[0],
-                    self.compass_size[1],
+                    self.compass.size[0],
+                    self.compass.size[1],
                 ),
                 _ => {
                     let region = self
@@ -375,8 +394,8 @@ impl UiGpu {
                 match draw.source {
                     DrawSource::Atlas => &self.atlas,
                     DrawSource::Flames => &self.flames,
-                    DrawSource::Minimap => &self.minimap,
-                    DrawSource::Compass => &self.compass,
+                    DrawSource::Minimap => &self.minimap.bind,
+                    DrawSource::Compass => &self.compass.bind,
                 },
                 &[],
             );
@@ -643,7 +662,9 @@ fn add_rotated_quad(
     viewport: TitleViewport,
 ) {
     let rect = quad.rect;
-    let center = [rect.x + rect.width / 2., rect.y + rect.height / 2.];
+    let center = quad
+        .rotation_center
+        .unwrap_or([rect.x + rect.width / 2., rect.y + rect.height / 2.]);
     let radians = f32::from(quad.rotation) * std::f32::consts::TAU / 65_536.;
     let (sin, cos) = radians.sin_cos();
     let tint = [
@@ -748,6 +769,7 @@ mod tests {
             tint: [255; 4],
             clip: Rect::new(0., 0., 765., 503.),
             rotation: 0,
+            rotation_center: None,
         };
         let region = Region {
             x: 0,
@@ -756,6 +778,7 @@ mod tests {
             height: 20,
         };
         let viewport = TitleViewport {
+            canvas_width: 765,
             physical_width: 1800,
             physical_height: 1100,
             scale: 2.,

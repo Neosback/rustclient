@@ -81,6 +81,10 @@ pub struct ObjectDefinition {
     pub model_clipped: bool,
     pub random_start: bool,
     pub int1: i32,
+    /// Minimap tile sprite (`mapscene` frame) drawn in place of the object's wall colours.
+    pub map_scene: Option<u32>,
+    /// Minimap icon (`mapfunction` sprite) drawn over the object's tile.
+    pub map_icon: Option<u32>,
 
     pub ambient: i16,
     pub contrast: i16,
@@ -209,6 +213,10 @@ pub struct WorldAssets {
     pub models: BTreeMap<ModelId, StaticModel>,
     /// Packed HSL average colors, as supplied by texture definitions.
     pub texture_colors: BTreeMap<TextureId, u16>,
+    /// Frames of the `mapscene` sprite group, indexed by `ObjectDefinition::map_scene`.
+    pub map_scenes: Vec<crate::Sprite>,
+    /// Frames of the `mapdots` sprite group: item, NPC, player, friend, team and so on.
+    pub map_dots: Vec<crate::Sprite>,
     pub textures: BTreeMap<TextureId, TextureAsset>,
     pub sequences: BTreeMap<SequenceId, SequenceAsset>,
     pub frames: BTreeMap<u32, LegacyFrame>,

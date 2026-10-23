@@ -25,6 +25,8 @@ pub enum UiImageId {
     Sprite(u32),
     WidgetGlyph(rustclient_model::FontId, u8),
     ItemIcon(rustclient_model::ItemDefinitionId),
+    /// One frame of the click-cross animation (yellow 0-3, red 4-7).
+    Cross(u8),
     /// Dynamic rotating minimap circle texture.
     Minimap,
     /// Dynamic rotating compass texture.
@@ -76,11 +78,21 @@ pub struct Quad {
     pub clip: Rect,
     /// Clockwise sprite rotation; a full turn is 65,536 units.
     pub rotation: u16,
+    /// Logical rotation pivot; the quad centre when absent.
+    pub rotation_center: Option<[f32; 2]>,
 }
 
 /// Reusable CPU projection buffer. Contains no credential secrets.
 #[derive(Debug, Default)]
 pub struct UiFrame {
+    /// Authenticated game canvas; title frames retain the title coordinate space.
+    pub canvas: Option<rustclient_model::CanvasSize>,
+    /// Cache-authored world viewport in the same logical coordinates as UI quads.
+    pub world_viewport: Option<Rect>,
+    pub viewport_settings: rustclient_model::ViewportSettings,
+    /// Mask sprites authored on the minimap and compass widgets; absent when not laid out.
+    pub minimap_sprite: Option<rustclient_model::SpriteId>,
+    pub compass_sprite: Option<rustclient_model::SpriteId>,
     /// Painter-ordered commands.
     pub quads: Vec<Quad>,
 }
@@ -93,6 +105,7 @@ impl UiFrame {
             tint: [255; 4],
             clip,
             rotation: 0,
+            rotation_center: None,
         });
     }
 
@@ -104,6 +117,7 @@ impl UiFrame {
             tint,
             clip,
             rotation: 0,
+            rotation_center: None,
         });
     }
 
@@ -115,6 +129,8 @@ impl UiFrame {
 /// Native and browser must apply this same logical/DPI transform to input/output.
 #[derive(Debug, Clone, Copy)]
 pub struct TitleViewport {
+    /// Drawable logical canvas width (765 for the title/fixed game).
+    pub canvas_width: u32,
     /// Physical framebuffer width.
     pub physical_width: u32,
     /// Physical framebuffer height.
@@ -130,7 +146,8 @@ impl TitleViewport {
         reason = "window coordinates are intentionally projected to f32"
     )]
     pub fn origin_x(self) -> f32 {
-        ((f64::from(self.physical_width) / self.scale - 765.) / 2.).floor() as f32
+        ((f64::from(self.physical_width) / self.scale - f64::from(self.canvas_width)) / 2.).floor()
+            as f32
     }
     /// Convert a physical pointer coordinate into title-local logical coordinates.
     #[must_use]

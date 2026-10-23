@@ -3,6 +3,10 @@ use rustclient_game_state::{AuthenticatedPlayer, InitialPlacement, SemanticOpera
 use rustclient_model::TickSpan;
 use rustclient_protocol::{LoginSession, Result, ServerProfile, ServerUpdate, SessionCodec};
 /// Narrow connection decoder, storing only wire phase/ciphers rather than game truth.
+#[expect(
+    clippy::large_enum_variant,
+    reason = "frequent semantic packets stay inline instead of allocating one box per packet"
+)]
 pub enum ConnectionInput {
     Operation(SemanticOperation),
     Script(rustclient_model::ScriptRequest),
@@ -76,6 +80,12 @@ impl ConnectionDecoder {
     ) -> Result<bool> {
         let mut connected = true;
         self.codec.receive(bytes, |update| match update {
+            ServerUpdate::ChatFilters(values) => deliver(ConnectionInput::Operation(
+                SemanticOperation::ChatFilters(values),
+            )),
+            ServerUpdate::GameMessage(message) => deliver(ConnectionInput::Operation(
+                SemanticOperation::GameMessage(message),
+            )),
             ServerUpdate::InitialPlacement(p) => deliver(ConnectionInput::Operation(
                 SemanticOperation::EstablishInitialPlacement(InitialPlacement {
                     position: p.position,
@@ -99,6 +109,9 @@ impl ConnectionDecoder {
             )),
             ServerUpdate::NpcInfo(info) => deliver(ConnectionInput::Operation(
                 SemanticOperation::UpdateNpcs(info),
+            )),
+            ServerUpdate::ResetActorAnimations => deliver(ConnectionInput::Operation(
+                SemanticOperation::ResetActorAnimations,
             )),
             ServerUpdate::LocationAnim(anim) => {
                 deliver(ConnectionInput::Operation(SemanticOperation::Scenery(
