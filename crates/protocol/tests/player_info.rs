@@ -147,11 +147,7 @@ fn local_step_with_exact_move(direction: u8) -> Vec<u8> {
     ])
 }
 
-fn local_step_with_speeds(
-    direction: u8,
-    temporary: Option<i8>,
-    persistent: Option<i8>,
-) -> Vec<u8> {
+fn local_step_with_speeds(direction: u8, temporary: Option<i8>, persistent: Option<i8>) -> Vec<u8> {
     assert!(temporary.is_some() || persistent.is_some());
 
     let mut writer = BitWriter::default();
@@ -326,8 +322,7 @@ fn persistent_and_temporary_movement_speeds_follow_reference_precedence() {
     };
     assert_eq!(local(&temporary).movement_speed, Some(MoveSpeed::Crawl));
 
-    let ServerUpdate::PlayerInfo(restored) =
-        player_update(&mut codec, &mut server, &local_step(4))
+    let ServerUpdate::PlayerInfo(restored) = player_update(&mut codec, &mut server, &local_step(4))
     else {
         panic!("expected player info");
     };
