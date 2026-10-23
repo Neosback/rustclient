@@ -137,14 +137,66 @@ fn local_step_with_exact_move(direction: u8) -> Vec<u8> {
 
     writer.finish(&[
         0x01, 0x02, // extended mask 0x200
-        129,  // readByteSub => -1
-        0,    // readByte => 0
-        2,    // readByte => 2
-        129,  // readByteAdd => 1
+        129, // readByteSub => -1
+        0,   // readByte => 0
+        2,   // readByte => 2
+        129, // readByteAdd => 1
         0, 133, // readUnsignedShortAdd => 5
         0, 10, // readUnsignedShort => 10
         128, 4, // readUnsignedShortAddLE => 1024
     ])
+}
+
+fn external_spawn(index_x: u16, index_y: u16) -> Vec<u8> {
+    let mut writer = BitWriter::default();
+
+    // Pass 1: the local active player has no update and no additional active player to skip.
+    writer.bits(0, 1);
+    writer.bits(0, 2);
+    writer.align();
+
+    // Passes 2 and 3 have no matching indices after a fresh login rebuild.
+    writer.align();
+    writer.align();
+
+    // Pass 4: player index 2 becomes high resolution.
+    writer.bits(1, 1);
+    writer.bits(0, 2); // external-player spawn
+    writer.bits(0, 1); // no recursive region update
+    writer.bits(u32::from(index_x), 13);
+    writer.bits(u32::from(index_y), 13);
+    writer.bits(0, 1); // no pending mask
+
+    // Index 3 plus 2044 following empty slots consume the remainder of this pass.
+    writer.bits(0, 1);
+    writer.bits(3, 2);
+    writer.bits(2044, 11);
+    writer.finish(&[])
+}
+
+fn external_remove() -> Vec<u8> {
+    let mut writer = BitWriter::default();
+
+    // Pass 1 has no unflagged active players after the previous tick.
+    writer.align();
+
+    // Pass 2: local player unchanged, remote index 2 leaves high resolution.
+    writer.bits(0, 1);
+    writer.bits(0, 2);
+    writer.bits(1, 1);
+    writer.bits(0, 1); // no pending mask
+    writer.bits(0, 2); // removal
+    writer.bits(0, 1); // no immediate low-resolution region update
+    writer.align();
+
+    // Pass 3: all remaining empty indices retain their low-resolution state.
+    writer.bits(0, 1);
+    writer.bits(3, 2);
+    writer.bits(2044, 11);
+    writer.align();
+
+    // Pass 4 has no unflagged empty indices.
+    writer.finish(&[])
 }
 
 fn initialized_codec(server: &mut Isaac) -> SessionCodec {
@@ -211,6 +263,33 @@ fn player_info_keeps_four_pass_state_across_step_and_run_ticks() {
         (run.tile.x, run.tile.y, run.tile.plane.get()),
         (3222, 3221, 0)
     );
+}
+
+#[test]
+fn external_player_spawn_and_removal_rebuild_active_empty_tables() {
+    let mut server = Isaac::new([0; 4]);
+    let mut codec = initialized_codec(&mut server);
+
+    let ServerUpdate::PlayerInfo(spawn) =
+        player_update(&mut codec, &mut server, &external_spawn(3225, 3216))
+    else {
+        panic!("expected player info");
+    };
+    let remote = spawn
+        .player(PlayerIndex::new(2))
+        .expect("spawned remote player");
+    assert!(remote.spawned);
+    assert_eq!((remote.tile.x, remote.tile.y), (3225, 3216));
+    assert_eq!(remote.movement_speed, Some(MoveSpeed::Walk));
+    assert!(spawn.removals.is_empty());
+
+    let ServerUpdate::PlayerInfo(removal) =
+        player_update(&mut codec, &mut server, &external_remove())
+    else {
+        panic!("expected player info");
+    };
+    assert_eq!(removal.removals, [PlayerIndex::new(2)]);
+    assert!(removal.player(PlayerIndex::new(2)).is_none());
 }
 
 #[test]
