@@ -21,7 +21,7 @@ impl ConnectionDecoder {
         };
         (
             Self {
-                codec: SessionCodec::new(login.incoming, login.outgoing),
+                codec: SessionCodec::new(login.incoming, login.outgoing, login.player),
             },
             operation,
         )
