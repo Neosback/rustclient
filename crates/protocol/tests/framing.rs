@@ -83,7 +83,11 @@ fn initial_gpi_and_footer_become_typed_placement_only_once() {
     assert_eq!(p.area, None);
     let mut cipher = Isaac::new([0; 4]);
     let bytes = frame(&mut cipher, 39, &payload, true);
-    let mut codec = SessionCodec::new(Isaac::new([0; 4]), Isaac::new([0; 4]));
+    let mut codec = SessionCodec::new(
+        Isaac::new([0; 4]),
+        Isaac::new([0; 4]),
+        rustclient_model::PlayerIndex::new(1),
+    );
     let mut updates = Vec::new();
     codec.receive(&bytes, |u| updates.push(u)).unwrap();
     assert_eq!(updates, vec![ServerUpdate::InitialPlacement(p)]);
