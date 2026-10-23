@@ -1,5 +1,5 @@
 use crate::{Isaac, ProtocolError, Result, openrune_240::lengths::LENGTHS};
-use rustclient_model::{Plane, WorldAreaId, WorldTile};
+use rustclient_model::{Plane, PlayerIndex, WorldAreaId, WorldTile};
 use std::collections::VecDeque;
 
 /// A complete bounded desktop game packet. Payload decoding remains profile-owned.
@@ -202,7 +202,7 @@ impl ClientIntent {
 use super::{
     loc_anim::{LocAnimUpdate, decode_loc_anim_specific},
     npc_info::{NpcInfoUpdate, decode_npc_info},
-    player_info::{PlayerInfoUpdate, decode_player_info},
+    player_info::{PlayerInfoDecoder, PlayerInfoUpdate},
 };
 
 /// Profile-decoded updates, without exposing wire IDs to application semantics.
@@ -250,15 +250,17 @@ fn decode_variable(packet: &GamePacket) -> Result<VariableUpdate> {
 pub struct SessionCodec {
     framer: GameFramer,
     outgoing: Isaac,
+    player_info: PlayerInfoDecoder,
     awaiting_rebuild: bool,
     framed_packets: u64,
 }
 impl SessionCodec {
     #[must_use]
-    pub fn new(incoming: Isaac, outgoing: Isaac) -> Self {
+    pub fn new(incoming: Isaac, outgoing: Isaac, local_player: PlayerIndex) -> Self {
         Self {
             framer: GameFramer::new(incoming),
             outgoing,
+            player_info: PlayerInfoDecoder::new(local_player),
             awaiting_rebuild: true,
             framed_packets: 0,
         }
@@ -286,6 +288,13 @@ impl SessionCodec {
             let update = match packet.opcode {
                 39 if self.awaiting_rebuild => {
                     let bootstrap = decode_bootstrap(&packet)?;
+                    let gpi_position = self.player_info.initialize_from_rebuild(&packet.payload)?;
+                    if gpi_position != bootstrap.position {
+                        return Err(ProtocolError::new(
+                            "initial player info",
+                            "GPI local position disagrees with rebuild placement",
+                        ));
+                    }
                     self.awaiting_rebuild = false;
                     ServerUpdate::InitialPlacement(bootstrap)
                 }
@@ -295,13 +304,7 @@ impl SessionCodec {
                         "subsequent or instanced rebuild is not implemented",
                     ));
                 }
-                91 => {
-                    let update = decode_player_info(
-                        &packet.payload,
-                        WorldTile::new(0, 0, rustclient_model::Plane::MIN),
-                    )?;
-                    ServerUpdate::PlayerInfo(update)
-                }
+                91 => ServerUpdate::PlayerInfo(self.player_info.decode(&packet.payload)?),
                 150 => {
                     let update = decode_npc_info(&packet.payload, false)?;
                     ServerUpdate::NpcInfo(update)
