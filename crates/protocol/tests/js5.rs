@@ -6,16 +6,19 @@ struct Memory {
     output: Vec<u8>,
 }
 impl ByteStream for Memory {
-    async fn receive(&mut self, out: &mut [u8]) -> Result<usize, TransportError> {
+    fn receive(
+        &mut self,
+        out: &mut [u8],
+    ) -> impl Future<Output = Result<usize, TransportError>> {
         let n = out.len().min(self.input.len()).min(3);
         for v in &mut out[..n] {
             *v = self.input.pop_front().unwrap();
         }
-        Ok(n)
+        std::future::ready(Ok(n))
     }
-    async fn send(&mut self, bytes: &[u8]) -> Result<(), TransportError> {
+    fn send(&mut self, bytes: &[u8]) -> impl Future<Output = Result<(), TransportError>> {
         self.output.extend_from_slice(bytes);
-        Ok(())
+        std::future::ready(Ok(()))
     }
 }
 fn master() -> Memory {
