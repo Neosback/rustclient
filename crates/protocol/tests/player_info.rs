@@ -20,7 +20,7 @@ fn frame(cipher: &mut Isaac, opcode: u16, payload: &[u8]) -> Vec<u8> {
 
 fn bootstrap() -> Vec<u8> {
     let mut bytes = vec![0; 4608];
-    let packed = (3221_u32 << 14) | 3218;
+    let packed = (3221_u32 << 14) | 0x0c92;
     bytes[..4].copy_from_slice(&(packed << 2).to_be_bytes());
     for value in [402_u16, 65_535, 402] {
         let [lo, hi] = value.to_le_bytes();
