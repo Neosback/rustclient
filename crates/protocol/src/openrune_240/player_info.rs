@@ -220,14 +220,7 @@ impl PlayerInfoDecoder {
         match bits.read_bits(2)? {
             0 => {
                 if bits.read_bits(1)? != 0 {
-                    self.low(
-                        bits,
-                        index,
-                        extended,
-                        has_extended,
-                        remote,
-                        depth + 1,
-                    )?;
+                    self.low(bits, index, extended, has_extended, remote, depth + 1)?;
                 }
                 let x = bits.read_bits_i32(13)?;
                 let y = bits.read_bits_i32(13)?;
@@ -377,8 +370,7 @@ fn movement(bits: &mut BitReader<'_>, kind: u32) -> Result<Option<PlayerMovement
                 plane_delta: ((packed >> 28) & 3).to_le_bytes()[0],
                 delta_x: i32::try_from((packed >> 14) & 16_383)
                     .map_err(|_| error("teleport x delta"))?,
-                delta_y: i32::try_from(packed & 16_383)
-                    .map_err(|_| error("teleport y delta"))?,
+                delta_y: i32::try_from(packed & 16_383).map_err(|_| error("teleport y delta"))?,
             })
         }
     })
@@ -518,7 +510,10 @@ mod tests {
                 129, 0, 2, 129, 0, 133, 0, 10, 128, 4,
             ])
             .unwrap();
-        assert_eq!(update.local_movement, Some(PlayerMovement::Step { direction: 4 }));
+        assert_eq!(
+            update.local_movement,
+            Some(PlayerMovement::Step { direction: 4 })
+        );
         assert_eq!(update.local_movement_speed, Some(MoveSpeed::Walk));
         assert_eq!(
             update.local_exact_move,
