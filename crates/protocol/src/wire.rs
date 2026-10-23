@@ -93,10 +93,58 @@ impl<'a> Reader<'a> {
     pub fn u8(&mut self) -> Result<u8> {
         Ok(self.take(1)?[0])
     }
+    pub fn u8_add(&mut self) -> Result<u8> {
+        Ok(self.u8()?.wrapping_sub(128))
+    }
+    pub fn u8_neg(&mut self) -> Result<u8> {
+        Ok(self.u8()?.wrapping_neg())
+    }
+    pub fn u8_sub(&mut self) -> Result<u8> {
+        Ok(128_u8.wrapping_sub(self.u8()?))
+    }
+    pub fn i8_add(&mut self) -> Result<i8> {
+        Ok(self.u8()?.wrapping_sub(128).cast_signed())
+    }
+    pub fn i8_neg(&mut self) -> Result<i8> {
+        Ok(self.u8()?.wrapping_neg().cast_signed())
+    }
+    pub fn i8_sub(&mut self) -> Result<i8> {
+        Ok(128_u8.wrapping_sub(self.u8()?).cast_signed())
+    }
     pub fn u16(&mut self) -> Result<u16> {
         Ok(u16::from_be_bytes(self.take(2)?.try_into().map_err(
             |_| ProtocolError::new(self.stage, "short integer"),
         )?))
+    }
+    pub fn u16_le(&mut self) -> Result<u16> {
+        Ok(u16::from_le_bytes(self.take(2)?.try_into().map_err(
+            |_| ProtocolError::new(self.stage, "short integer"),
+        )?))
+    }
+    pub fn u16_add(&mut self) -> Result<u16> {
+        let bytes = self.take(2)?;
+        Ok((u16::from(bytes[0]) << 8) | u16::from(bytes[1].wrapping_sub(128)))
+    }
+    pub fn u16_add_le(&mut self) -> Result<u16> {
+        let bytes = self.take(2)?;
+        Ok(u16::from(bytes[0].wrapping_sub(128)) | (u16::from(bytes[1]) << 8))
+    }
+    pub fn u32_me(&mut self) -> Result<u32> {
+        let bytes = self.take(4)?;
+        Ok((u32::from(bytes[1]) << 24)
+            | (u32::from(bytes[0]) << 16)
+            | (u32::from(bytes[3]) << 8)
+            | u32::from(bytes[2]))
+    }
+    pub fn u_short_smart(&mut self) -> Result<u16> {
+        let Some(&first) = self.bytes.get(self.offset) else {
+            return Err(ProtocolError::new(self.stage, "truncated smart integer"));
+        };
+        if first < 128 {
+            Ok(u16::from(self.u8()?))
+        } else {
+            Ok(self.u16()?.wrapping_sub(32768))
+        }
     }
 }
 pub(crate) fn cp1252(ch: char) -> Option<u8> {
@@ -119,4 +167,32 @@ pub(crate) fn string(out: &mut Vec<u8>, s: &str) -> Result<()> {
     }
     out.push(0);
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn revision_240_byte_transforms_match_buffer_semantics() {
+        let mut r = Reader::new(&[0x85, 0xfb, 0x7b, 0x12, 0xb4, 0xb4, 0x12], "test");
+        assert_eq!(r.u8_add().unwrap(), 5);
+        assert_eq!(r.u8_neg().unwrap(), 5);
+        assert_eq!(r.u8_sub().unwrap(), 5);
+        assert_eq!(r.u16_add().unwrap(), 0x1234);
+        assert_eq!(r.u16_add_le().unwrap(), 0x1234);
+    }
+
+    #[test]
+    fn revision_240_middle_endian_int_matches_deob() {
+        let mut r = Reader::new(&[0x22, 0x11, 0x44, 0x33], "test");
+        assert_eq!(r.u32_me().unwrap(), 0x1122_3344);
+    }
+
+    #[test]
+    fn unsigned_short_smart_uses_one_or_two_bytes() {
+        let mut r = Reader::new(&[127, 0x80, 0x80], "test");
+        assert_eq!(r.u_short_smart().unwrap(), 127);
+        assert_eq!(r.u_short_smart().unwrap(), 128);
+    }
 }
