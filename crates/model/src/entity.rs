@@ -139,6 +139,18 @@ pub enum PlayerMovement {
     },
 }
 
+/// Forced movement block decoded from the revision-240 player update mask.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct ExactMove {
+    pub start_delta_x: i8,
+    pub start_delta_y: i8,
+    pub end_delta_x: i8,
+    pub end_delta_y: i8,
+    pub start_delay: u16,
+    pub end_delay: u16,
+    pub direction: u16,
+}
+
 /// One high-resolution player change emitted by the revision-specific decoder.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PlayerUpdate {
@@ -147,9 +159,11 @@ pub struct PlayerUpdate {
     pub tile: WorldTile,
     /// Present only when ordinary path movement survives all pending update masks.
     pub movement: Option<PlayerMovement>,
+    /// Effective traversal speed for this movement, or the persistent speed when it changed.
     pub movement_speed: Option<MoveSpeed>,
     /// True when a low-resolution player became high-resolution in this packet.
     pub spawned: bool,
+    pub exact_move: Option<ExactMove>,
     pub appearance: Option<PlayerAppearance>,
     /// `None` means no sequence mask; `Some(None)` explicitly clears the action sequence.
     pub sequence: Option<Option<SequenceId>>,
@@ -166,6 +180,7 @@ impl PlayerUpdate {
             movement: None,
             movement_speed: None,
             spawned: false,
+            exact_move: None,
             appearance: None,
             sequence: None,
             sequence_delay: None,
