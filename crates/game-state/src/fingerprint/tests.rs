@@ -19,11 +19,11 @@ fn run_operations(operations: &[SemanticOperation]) -> (GameState, CommitStreamF
 }
 
 #[test]
-fn state_fingerprint_v20_has_exact_regression_vectors() {
+fn state_fingerprint_v21_has_exact_regression_vectors() {
     let mut state = GameState::new();
     assert_eq!(
         state.semantic_fingerprint().get(),
-        5_092_491_086_113_233_193
+        3_094_163_186_163_296_736
     );
 
     state
@@ -35,7 +35,7 @@ fn state_fingerprint_v20_has_exact_regression_vectors() {
 
     assert_eq!(
         state.semantic_fingerprint().get(),
-        14_214_931_201_378_875_851
+        554_307_659_947_588_184
     );
 }
 
@@ -90,12 +90,12 @@ fn state_fingerprint_distinguishes_revision_identity() {
     );
     assert_eq!(
         subrevision.semantic_fingerprint().get(),
-        17_766_590_312_683_697_926
+        1_413_217_368_128_697_397
     );
 }
 
 #[test]
-fn npc_path_acceleration_policy_participates_in_canonical_state() {
+fn npc_path_policy_and_catch_up_participate_in_canonical_state() {
     use rustclient_model::{
         ActionMask, ActorSequenceSlot, NpcDefinitionId, NpcIndex, NpcInstanceId,
         PathAccelerationPolicy, Plane, WorldTile,
@@ -134,6 +134,16 @@ fn npc_path_acceleration_policy_participates_in_canonical_state() {
     let standard = state_with_policy(PathAccelerationPolicy::STANDARD);
     let early = state_with_policy(PathAccelerationPolicy::EARLY);
     assert_ne!(standard.semantic_fingerprint(), early.semantic_fingerprint());
+
+    let mut with_debt = state_with_policy(PathAccelerationPolicy::STANDARD);
+    with_debt
+        .entities
+        .npcs
+        .get_mut(&rustclient_model::NpcIndex::new(1))
+        .expect("fixture NPC exists")
+        .path_queue
+        .increment_catch_up();
+    assert_ne!(standard.semantic_fingerprint(), with_debt.semantic_fingerprint());
 }
 
 #[test]
@@ -155,7 +165,7 @@ fn equivalent_observable_state_has_equivalent_fingerprint() {
 }
 
 #[test]
-fn commit_stream_fingerprint_v20_has_exact_regression_vector() {
+fn commit_stream_fingerprint_v21_has_exact_regression_vector() {
     let operations = [
         BEGIN_240,
         SemanticOperation::AdvanceTick(TickSpan::new(2)),
@@ -164,10 +174,10 @@ fn commit_stream_fingerprint_v20_has_exact_regression_vector() {
     ];
     let (_, fingerprint) = run_operations(&operations);
 
-    assert_eq!(fingerprint.get(), 9_863_075_099_439_442_415);
+    assert_eq!(fingerprint.get(), 9_983_457_437_690_578_604);
     assert_eq!(
         CommitStreamFingerprintBuilder::new().finish().get(),
-        13_062_764_562_572_928_674
+        13_686_929_825_952_982_349
     );
 }
 
