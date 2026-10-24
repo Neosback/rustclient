@@ -3,7 +3,7 @@ use crate::player_movement::{apply_movement, apply_traversal, exact_movement, mo
 use crate::{EntityUpdateError as Error, Locomotion, PlayerEntity, WorldEntitiesState};
 use rustclient_model::{
     ActorSequenceSlot, Plane, PlayerAppearance, PlayerIndex, PlayerInstanceId, PlayerTrackingGrid,
-    RemotePlayerUpdate as Update, SequenceId, SequencePolicy, TileOffset, WorldTile,
+    RemotePlayerUpdate as Update, SequenceId, SequencePolicy, SequenceTiming, TileOffset, WorldTile,
 };
 use std::collections::BTreeMap;
 
@@ -142,6 +142,7 @@ impl WorldEntitiesState {
         updates: &[Update],
         cycle: rustclient_model::ClientCycle,
         sequence_policies: &[(SequenceId, SequencePolicy)],
+        sequence_timings: &[(SequenceId, SequenceTiming)],
     ) -> bool {
         let mut changed = false;
         for update in updates {
@@ -192,6 +193,7 @@ impl WorldEntitiesState {
                                 orientation: player.orientation,
                                 appearance: player.appearance,
                                 sequence: ActorSequenceSlot::default(),
+                                sequence_timing_resolved: false,
                                 animation_cycle: 0,
                                 locomotion: Locomotion::Idle,
                             },
@@ -254,10 +256,12 @@ impl WorldEntitiesState {
                         }
                         changed |= crate::sequence_scheduler::apply_change(
                             &mut player.sequence,
+                            &mut player.sequence_timing_resolved,
                             *sequence,
                             i32::from(*delay),
                             player.path_queue.backlog(),
                             sequence_policies,
+                            sequence_timings,
                         );
                     }
                 }
