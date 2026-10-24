@@ -11,7 +11,7 @@ use crate::{GameState, OperationCommit, SemanticEvent, SessionLifecycle};
 ///
 /// Any change to field ordering, tags, integer encoding, or fingerprint
 /// algorithm that changes canonical output must increment this version.
-pub const SEMANTIC_FINGERPRINT_VERSION: u16 = 17;
+pub const SEMANTIC_FINGERPRINT_VERSION: u16 = 18;
 
 const FNV_OFFSET_BASIS: u64 = 0xCBF2_9CE4_8422_2325;
 const FNV_PRIME: u64 = 0x0000_0100_0000_01B3;
@@ -272,6 +272,7 @@ impl GameState {
             fingerprint.write_u16(player.orientation);
             write_speed(&mut fingerprint, player.path_speed);
             write_speed(&mut fingerprint, player.movement_speed);
+            write_actor_path(&mut fingerprint, player.path_queue);
             match player.exact_move {
                 None => fingerprint.write_u8(0),
                 Some(exact) => {
@@ -342,6 +343,7 @@ impl GameState {
                     write_speed(&mut fingerprint, path.speed);
                 }
             }
+            write_actor_path(&mut fingerprint, npc.path_queue);
             match npc.exact_move {
                 None => fingerprint.write_u8(0),
                 Some(exact) => {
@@ -407,6 +409,14 @@ fn write_speed(fingerprint: &mut StableFingerprint64, speed: rustclient_model::M
         MoveSpeed::Walk => 2,
         MoveSpeed::Run => 3,
     });
+}
+
+fn write_actor_path(fingerprint: &mut StableFingerprint64, path: crate::ActorPathQueue) {
+    fingerprint.write_u8(path.len());
+    for entry in path.iter() {
+        write_tile(fingerprint, entry.target);
+        write_speed(fingerprint, entry.speed);
+    }
 }
 
 fn write_sequence_scheduler(
