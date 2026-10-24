@@ -10,6 +10,7 @@ pub mod player_model;
 mod script_opcodes;
 pub mod script_tables;
 pub mod scripts;
+pub mod sequence_policy;
 mod terrain;
 pub mod widgets;
 use crate::{
@@ -329,7 +330,7 @@ fn load_objects<S: ReadOnlyBlobs>(
         model_ids.extend(object.models.iter().map(|m| m.id));
         objects.insert(typed, object);
     }
-    Ok((objects, model_ids))
+    Ok(objects, model_ids)
 }
 fn load_models<S: ReadOnlyBlobs>(
     cache: &Cache<S>,
