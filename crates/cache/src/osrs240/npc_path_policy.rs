@@ -26,3 +26,29 @@ pub fn resolve<S: ReadOnlyBlobs>(
     let bytes = cache.config_file(9, id.get(), profile == CacheProfile::OpenRune240)?;
     definitions::npc_path_acceleration(&bytes, id, source)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn source() -> Source {
+        Source {
+            index: IndexId(2),
+            group: Some(GroupId(9)),
+            file: Some(FileId(1)),
+        }
+    }
+
+    #[test]
+    fn opcode_109_selects_early_backlog_thresholds() {
+        let id = NpcDefinitionId::new(1);
+        assert_eq!(
+            definitions::npc_path_acceleration(&[0], id, source()).unwrap(),
+            PathAccelerationPolicy::STANDARD
+        );
+        assert_eq!(
+            definitions::npc_path_acceleration(&[109, 0], id, source()).unwrap(),
+            PathAccelerationPolicy::EARLY
+        );
+    }
+}
