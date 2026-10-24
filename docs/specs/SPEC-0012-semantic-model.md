@@ -17,6 +17,7 @@ This specification owns:
 - deterministic game-tick ordinals,
 - integer game-space orientation/angles,
 - revision-neutral sequence scheduling policy shared between definition adapters and live actor schedulers,
+- revision-neutral path acceleration policy shared between definition adapters and live actor schedulers,
 - conversion and range behavior for those values.
 
 It does not own server networking, packet layouts, cache binary formats, renderer transforms, plugin ABI types, or the full `ServerProfile` configuration.
@@ -45,6 +46,7 @@ Reference code is evidence only. This specification and RustClient tests define 
 9. Renderer coordinates, matrices, quaternions, and GPU types do not enter this crate.
 10. Revision-specific packet/cache behavior stays outside the semantic model.
 11. Sequence definition adapters resolve revision-specific defaults before constructing `SequencePolicy`; live actor scheduling does not interpret cache opcodes or unresolved sentinels.
+12. Path-definition adapters resolve revision-specific acceleration selectors before constructing `PathAccelerationPolicy`; live actor scheduling does not interpret cache opcode numbers.
 
 ## Coordinate taxonomy
 
@@ -203,6 +205,21 @@ The transitional unpolicy `set_sequence` path is not the target runtime schedule
 
 Policy resolution must occur before authoritative action scheduling. Rendering-oriented asynchronous animation loading is not sufficient for this decision because replacement priority and restart semantics are observable at packet-application time.
 
+## Path acceleration policy
+
+`PathAccelerationPolicy` is the revision-neutral set of definition-derived backlog thresholds needed by ordinary actor path scheduling. It contains:
+
+- `step_six_after`, the backlog value that must be exceeded before the scheduler raises its base step from four to six fine units;
+- `step_eight_after`, the backlog value that must be exceeded before the scheduler raises the step to eight fine units.
+
+Both comparisons are strict `>` comparisons. The type deliberately does not encode NPC identity, cache opcode numbers, revision identity, traversal mode, turn state, or blocked-cycle catch-up state.
+
+A revision-specific definition adapter resolves those source details before constructing `PathAccelerationPolicy`. For revision 240, for example, the cache adapter maps the NPC-definition branch selector to either the standard or earlier backlog thresholds; the semantic scheduler consumes only the resolved thresholds.
+
+Traversal scaling such as run/crawl, turn-slowing, action movement gates, snap distance, and blocked-cycle catch-up remain separate scheduling inputs. Keeping them separate prevents one cache-definition flag from becoming an opaque movement-mode enum.
+
+If a definition-derived path policy is required for correct future movement but is unavailable, authoritative scheduling must not invent a revision-specific default merely to make progress. The owning orchestration layer must resolve it or retain the state as explicitly unresolved.
+
 ## Orientation
 
 `LocOrientation` validates ordinary object/location orientation `0..=3`.
@@ -247,6 +264,9 @@ Do not micro-optimize field widths by leaking revision-specific limits into sema
 - `SequencePolicy` contains only resolved semantic scheduling inputs and no cache/parser types,
 - revision adapters can project decoded definition metadata into `SequencePolicy` without adding a dependency from `crates/model` back to cache,
 - action assignment tests cover same-id restart modes, replacement priority, assignment-time backlog capture, clear behavior, and missing active policy,
+- `PathAccelerationPolicy` contains only resolved strict backlog thresholds and no revision/cache/NPC-specific selector,
+- revision adapters can project definition-derived path acceleration into `PathAccelerationPolicy` without adding a dependency from `crates/model` back to cache,
+- live actor scheduling treats an unavailable required path policy as unresolved rather than interpreting cache opcodes or guessing a revision-specific threshold,
 - the model crate depends on no RustClient subsystem.
 
 ## Non-goals
@@ -258,88 +278,3 @@ Do not micro-optimize field widths by leaking revision-specific limits into sema
 - renderer coordinate transforms,
 - widget/client-script semantics,
 - plugin ABI serialization,
-- choosing every future supported revision.
-
-## Bootstrap identity primitives
-
-`ServerProfileId(u32)` is the semantic identity allocated by the canonical protocol
-profile registry. It contains no address or wire behavior; `Revision` remains a
-separate compatibility identity. `WorldAreaId(u32)` names the server's semantic map
-area; its geometry is interpreted by the profile. Neither wrapper infers defaults
-or reserves absence sentinels. GameState owns optional session presence. The map-area field is optional: a profile
-translates the main-world sentinel to absence; sentinel bytes never become IDs.
-
-## Immutable scene references
-
-`SceneAssetId([u8;32])` is the SHA-256 identity supplied by the immutable asset catalog. `SceneDescriptor` pairs it with checked nonempty world bounds and a selected plane. It supports exclusive containment; it contains no GPU/camera information. `FloorUnderlayId` and `FloorOverlayId` are separate definition identities. Scene selection is optional session-owned `GameState` data; its content resides in the immutable application asset catalog (SPEC-0015).
-
-## Playable desktop entity updates
-
-Player movement includes typed step/run changes and teleport deltas with an
-explicit plane change. `SequenceChange` distinguishes an omitted update from an
-assigned sequence and an explicit clear; profile sentinel values never become
-semantic sequence IDs. Wire lists, skip counts and mask layouts stay in protocol.
-
-NPC batches include a typed map-anchor TileOffset origin, ordered properties,
-action visibility, movement and sequence delay. Runtime NpcInstanceId identifies
-a spawned lifetime independently of a reusable NpcIndex. WorldTarget captures
-that lifetime plus the base and resolved definition; location targets capture
-the typed LocationKey and definitions. WorldAction adds a SceneDescriptor and a
-checked ActionSlot in 0..5. ActionMask governs those five independent slots.
-These values carry no wire opcodes or renderer handles. ActorSequenceSlot consumes
-delay before advancing its cycle with explicit wrapping playback arithmetic.
-
-InventoryId and InventorySlot distinguish container identity from slot position
-and ItemDefinitionId. ItemStack preserves a quantity of zero (a placeholder)
-separately from absence. InventoryUpdate expresses replacement, ordered patches
-and removal; limits and session ownership belong to game-state, encodings to the
-profile. These internal semantic types do not extend the versioned plugin API.
-
-
-### Input and visible-player lifetime continuation
-
-`PlayerInstanceId` identifies a visible incarnation independently of reusable
-`PlayerIndex`. `PlayerTrackingGrid` validates positive dimensions and a checked
-world extent; the selected protocol profile supplies those dimensions.
-`RemotePlayerUpdate` expresses outside-view tracking/region shifts, promotion,
-demotion, movement and attributes in order. Appearance has one owner, transferring
-between visible and outside records. Grid/offset/facing validation and lifetime
-serial allocation are atomic across a player batch. Packet bits and sentinel
-coordinates do not enter these types.
-
-`WidgetDrag` is a committed override for optional parent address, dead zone,
-client-cycle threshold and scrollbar behavior. `WidgetKey` names semantic keys;
-revision script codes remain in the cache profile. A held pointer's original grab
-offset and temporary drag origin are presentation metadata, not another widget
-position owner. Action animation delay is independent of movement animation time.
-
-### Traversal and forced movement
-
-MoveSpeed expresses path behavior: Crawl, Walk, Run, or immediate placement
-(Stationary). Protocol enum IDs and reset sentinels remain in the profile.
-PlayerInfoUpdate distinguishes a persistent path-speed change from a one-entry
-speed override. Remote movement carries its effective override with the movement;
-attributes change the persistent default separately. This avoids observable
-intermediate locomotion changes while applying a single player batch.
-
-WrappedTeleport carries offsets, plane delta and a positive checked grid extent.
-The profile supplies its wrapping dimensions; GameState performs checked Euclidean
-wrapping. It is distinct from a signed relative teleport that does not wrap.
-ExactMove requests signed tile offsets from the newly updated network coordinate,
-client-cycle start/end delays and a direction. GameState validates and normalizes
-it to an immutable ExactMovement with absolute world tiles and client cycles.
-Invalid intervals, directions, coordinate or cycle overflow reject the entire
-player batch. Neither the packet decoder nor a draw projection advances semantic
-coordinates or stores a second persistent traversal default.
-
-## NPC and location animation continuation (2026-10-23)
-
-NpcMovement preserves one adjacent TileOffset and an optional second adjacent
-step in source order, with typed MoveSpeed. Crawl/Walk carry one step; Run
-carries two. Collapsing two directions into an endpoint loses bent and closed
-paths. NpcProperty::ExactMove uses the shared relative trajectory request.
-LocationAnimationPlacement preserves shape/orientation independently of the
-cached object identity. AnimationStart optionally carries that placement;
-sequence absence explicitly stops animation. Shape 22 is FloorDecoration;
-shapes 9 through 21 are GameObject. Wire sentinels/coordinate layouts remain
-inside the revision adapter.
