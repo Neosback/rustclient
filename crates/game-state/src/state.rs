@@ -217,6 +217,7 @@ impl GameState {
                     tracking_grid: None,
                     path_speed: rustclient_model::MoveSpeed::Walk,
                     movement_speed: rustclient_model::MoveSpeed::Walk,
+                    path_queue: crate::ActorPathQueue::default(),
                     exact_move: None,
                     tile: placement.position,
                     orientation: 0,
