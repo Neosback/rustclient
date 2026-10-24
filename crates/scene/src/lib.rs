@@ -16,7 +16,7 @@ mod color;
 pub mod item_icon;
 pub use collision::CollisionMap;
 pub mod entity_mesh;
-pub mod motion;
+mod motion;
 mod authoritative_motion;
 pub use authoritative_motion::ActorMotion;
 mod inputs;
