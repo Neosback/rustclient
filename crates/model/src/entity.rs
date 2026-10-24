@@ -278,6 +278,9 @@ pub struct PlayerInfoUpdate {
     pub local_appearance: Option<PlayerAppearance>,
     pub local_sequence: SequenceChange,
     pub local_sequence_delay: u8,
+    /// Resolved scheduling definitions attached by application orchestration after protocol decode.
+    /// An empty table preserves compatibility with direct semantic fixtures that have no cache.
+    pub sequence_policies: Vec<(SequenceId, SequencePolicy)>,
     pub local_facing: Option<u16>,
     pub remote: Vec<RemotePlayerUpdate>,
 }
@@ -395,6 +398,9 @@ pub struct NpcInfoUpdate {
     pub new_npcs: Vec<NewNpc>,
     pub movements: Vec<NpcMovement>,
     pub removals: Vec<crate::NpcIndex>,
+    /// Resolved scheduling definitions attached by application orchestration after protocol decode.
+    /// An empty table preserves compatibility with direct semantic fixtures that have no cache.
+    pub sequence_policies: Vec<(SequenceId, SequencePolicy)>,
 }
 
 /// Server-authored changes to a visible NPC, applied in packet block order.
