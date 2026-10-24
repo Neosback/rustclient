@@ -1,7 +1,9 @@
 //! Shared action-sequence assignment and movement gating for authoritative actor state.
 
 use crate::{ActorPathEntry, ActorPathQueue};
-use rustclient_model::{ActorSequenceSlot, SequenceChange, SequenceId, SequencePolicy};
+use rustclient_model::{
+    ActorSequenceSlot, SequenceChange, SequenceId, SequencePolicy, SequenceTiming,
+};
 
 fn policy(
     policies: &[(SequenceId, SequencePolicy)],
@@ -10,6 +12,10 @@ fn policy(
     policies
         .iter()
         .find_map(|(candidate, policy)| (*candidate == id).then_some(*policy))
+}
+
+fn has_timing(timings: &[(SequenceId, SequenceTiming)], id: SequenceId) -> bool {
+    timings.iter().any(|(candidate, _)| *candidate == id)
 }
 
 /// Result of attempting to consume the oldest authoritative actor path request.
@@ -44,16 +50,9 @@ pub(crate) fn movement_blocked(slot: ActorSequenceSlot) -> bool {
 /// Consume one already-reached oldest path request if the active action policy allows progress.
 ///
 /// This is deliberately the authoritative *consumption* transition, not a timer that assumes one
-/// tile is reached per client cycle. The future fine-position scheduler must call this only after
-/// it has actually reached (or stock-snapped to) the oldest target. On consumption, revision-240
-/// `field1476` semantics decrement the pre-action remainder while it is still positive.
-#[cfg_attr(
-    not(test),
-    allow(
-        dead_code,
-        reason = "the authoritative fine-position checkpoint will call this exact transition"
-    )
-)]
+/// tile is reached per client cycle. The fine-position scheduler calls this only after it actually
+/// reaches (or stock-snaps to) the oldest target. On consumption, revision-240 `field1476`
+/// semantics decrement the pre-action remainder while it is still positive.
 pub(crate) fn consume_oldest_path_entry(
     queue: &mut ActorPathQueue,
     slot: &mut ActorSequenceSlot,
@@ -73,53 +72,79 @@ pub(crate) fn consume_oldest_path_entry(
     PathConsumption::Consumed(entry)
 }
 
-/// Apply a player sequence field, using resolved definition policy when application supplied it.
-///
-/// Empty policy tables remain supported for direct semantic fixtures and unfinished adapters; that
-/// path deliberately uses the transitional unpolicy setter. Resolved assignments capture the
-/// actor's real bounded queued-path backlog at the instant a different sequence is accepted.
+/// Apply a player sequence field, using resolved definition policy/timing when application supplied
+/// them. Timing resolution belongs to the accepted active action, not merely to a sequence id that
+/// happened to exist in the shared timing registry earlier in the session.
 pub(crate) fn apply_change(
     slot: &mut ActorSequenceSlot,
+    timing_resolved: &mut bool,
     change: SequenceChange,
     delay: i32,
     path_backlog: u32,
     policies: &[(SequenceId, SequencePolicy)],
+    timings: &[(SequenceId, SequenceTiming)],
 ) -> bool {
     let previous = *slot;
+    let previous_timing = *timing_resolved;
     match change {
         SequenceChange::Unchanged => {}
-        SequenceChange::Set(None) => slot.clear(),
+        SequenceChange::Set(None) => {
+            slot.clear();
+            *timing_resolved = false;
+        }
         SequenceChange::Set(Some(id)) => {
+            let before_id = slot.sequence;
             if let Some(policy) = policy(policies, id) {
                 slot.assign_sequence(Some((id, policy)), delay, path_backlog);
             } else {
                 slot.set_sequence(Some(id), delay);
             }
+            if slot.sequence == Some(id) {
+                if has_timing(timings, id) {
+                    *timing_resolved = true;
+                } else if before_id != Some(id) {
+                    *timing_resolved = false;
+                }
+            }
         }
     }
-    *slot != previous
+    *slot != previous || *timing_resolved != previous_timing
 }
 
 /// Apply an NPC sequence property, sharing the exact same arbitration as players.
 pub(crate) fn apply_sequence(
     slot: &mut ActorSequenceSlot,
+    timing_resolved: &mut bool,
     sequence: Option<SequenceId>,
     delay: i32,
     path_backlog: u32,
     policies: &[(SequenceId, SequencePolicy)],
+    timings: &[(SequenceId, SequenceTiming)],
 ) -> bool {
     let previous = *slot;
+    let previous_timing = *timing_resolved;
     match sequence {
-        None => slot.clear(),
+        None => {
+            slot.clear();
+            *timing_resolved = false;
+        }
         Some(id) => {
+            let before_id = slot.sequence;
             if let Some(policy) = policy(policies, id) {
                 slot.assign_sequence(Some((id, policy)), delay, path_backlog);
             } else {
                 slot.set_sequence(Some(id), delay);
             }
+            if slot.sequence == Some(id) {
+                if has_timing(timings, id) {
+                    *timing_resolved = true;
+                } else if before_id != Some(id) {
+                    *timing_resolved = false;
+                }
+            }
         }
     }
-    *slot != previous
+    *slot != previous || *timing_resolved != previous_timing
 }
 
 #[cfg(test)]
@@ -129,7 +154,8 @@ mod tests {
     };
     use crate::ActorPathQueue;
     use rustclient_model::{
-        ActorSequenceSlot, MoveSpeed, Plane, SequenceChange, SequenceId, SequencePolicy, WorldTile,
+        ActorSequenceSlot, MoveSpeed, Plane, SequenceChange, SequenceId, SequencePolicy,
+        SequenceTiming, WorldTile,
     };
 
     const fn policy(restart_mode: u8, priority: u8) -> SequencePolicy {
@@ -162,23 +188,64 @@ mod tests {
         let low = SequenceId::new(2);
         let policies = [(high, policy(2, 8)), (low, policy(2, 3))];
         let mut slot = ActorSequenceSlot::default();
+        let mut timing_resolved = false;
         assert!(apply_change(
             &mut slot,
+            &mut timing_resolved,
             SequenceChange::Set(Some(high)),
             0,
             4,
-            &policies
+            &policies,
+            &[]
         ));
         assert_eq!(slot.path_backlog_at_assignment, 4);
         assert!(!apply_change(
             &mut slot,
+            &mut timing_resolved,
             SequenceChange::Set(Some(low)),
             0,
             7,
-            &policies
+            &policies,
+            &[]
         ));
         assert_eq!(slot.sequence, Some(high));
         assert_eq!(slot.path_backlog_at_assignment, 4);
+    }
+
+    #[test]
+    fn accepted_assignment_binds_supplied_timing_but_rejected_replacement_preserves_it() {
+        let high = SequenceId::new(1);
+        let low = SequenceId::new(2);
+        let policies = [(high, policy(2, 8)), (low, policy(2, 3))];
+        let timings = [(
+            high,
+            SequenceTiming::Legacy {
+                frame_delays: vec![2],
+                frame_step: None,
+            },
+        )];
+        let mut slot = ActorSequenceSlot::default();
+        let mut timing_resolved = false;
+        assert!(apply_change(
+            &mut slot,
+            &mut timing_resolved,
+            SequenceChange::Set(Some(high)),
+            0,
+            0,
+            &policies,
+            &timings,
+        ));
+        assert!(timing_resolved);
+        assert!(!apply_change(
+            &mut slot,
+            &mut timing_resolved,
+            SequenceChange::Set(Some(low)),
+            0,
+            0,
+            &policies,
+            &[],
+        ));
+        assert!(timing_resolved);
     }
 
     #[test]
@@ -186,10 +253,27 @@ mod tests {
         let id = SequenceId::new(3);
         let policies = [(id, policy(1, 5))];
         let mut slot = ActorSequenceSlot::default();
-        assert!(apply_sequence(&mut slot, Some(id), 2, 5, &policies));
+        let mut timing_resolved = false;
+        assert!(apply_sequence(
+            &mut slot,
+            &mut timing_resolved,
+            Some(id),
+            2,
+            5,
+            &policies,
+            &[]
+        ));
         slot.cycle = 7;
         slot.frame = Some(4);
-        assert!(apply_sequence(&mut slot, Some(id), 6, 1, &policies));
+        assert!(apply_sequence(
+            &mut slot,
+            &mut timing_resolved,
+            Some(id),
+            6,
+            1,
+            &policies,
+            &[]
+        ));
         assert_eq!(slot.cycle, 0);
         assert_eq!(slot.frame, Some(0));
         assert_eq!(slot.delay, 6);
