@@ -28,7 +28,7 @@ impl fmt::Display for LifecycleError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter.write_str(match self {
             Self::AlreadyActive => "game session is already active",
-            Self::NotActive => "no semantic game session is active",
+            Self::NotActive => "no game session is active",
         })
     }
 }
@@ -316,7 +316,7 @@ impl GameState {
     /// # Errors
     ///
     /// Returns [`LifecycleError::NotActive`] when no session is active. Failed
-    /// transitions leave the state unchanged.
+    /// transitions leave authoritative state unchanged.
     pub(crate) fn end_session(&mut self) -> Result<(), LifecycleError> {
         if self.lifecycle == SessionLifecycle::Inactive {
             return Err(LifecycleError::NotActive);
@@ -348,7 +348,7 @@ impl GameState {
     ///
     /// Returns [`TickAdvanceError::InactiveSession`] when no session is active,
     /// or [`TickAdvanceError::Overflow`] when the tick ordinal would overflow.
-    /// Failed transitions leave the state unchanged.
+    /// Failed transitions leave authoritative state unchanged.
     pub(crate) fn advance_tick(
         &mut self,
         span: TickSpan,
