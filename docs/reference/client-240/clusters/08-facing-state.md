@@ -1,14 +1,14 @@
 # 08 - actor facing state
 
-Status: **specified** for the revision-240 facing-state representation and target classification only. This does not claim the full turning scheduler is implemented or verified.
+Status: **specified** for the revision-240 facing-state representation and target classification only. The ordinary turn mutator is now independently traced in cluster 03 / `classKN.method6539`; this shard still does not claim full facing-target retention or Rust parity.
 
 ## Scope
 
-This cluster owns `classBZ`, `classLU`, and `classLJ`. It names the state object carried by `Actor.field1461`, the facing mode, and the entity target kind. `Actor`, `classDC`, and `classEB` are read-only evidence and remain owned by their existing shards.
+This cluster owns `classBZ`, `classLU`, and `classLJ`. It names the state object carried by `Actor.field1461`, the facing mode, and the entity target kind. `Actor`, `classDC`, `classEB`, `classBT`, and `classKN` are read-only evidence and remain owned by their existing shards.
 
-`classLV` is deliberately left generic. Revision 240 proves that it is selected from the low three bits of the facing header and has two enum values, but the inspected consumers do not yet prove what changes between those values. Naming it would encode a guess.
+`classLV` is deliberately left generic. Revision 240 proves that it is selected from the low three bits of the facing header and has two enum values, but the inspected consumers do not yet prove a safe semantic name for the difference between those values.
 
-Observed external referrers during this shard include `Actor`, `classDC`, and `classEB`.
+Observed external referrers during this shard include `Actor`, `classDC`, `classEB`, and `classKN` through the later desired/current orientation lifecycle.
 
 ## Mapping
 
@@ -16,7 +16,7 @@ Observed external referrers during this shard include `Actor`, `classDC`, and `c
 | --- | --- | --- |
 | `classBZ` | `ActorFacingState` | `Actor.field1461`; `classEB.method3820` resolves it into desired orientation |
 | `classBZ.field624` | `mode` | `Actor.method3162`, `method3165`, `method3163` classify angle/area/entity modes |
-| `classBZ.field622` | `snap` | `Actor.method3236`; `classEB.method3820` snaps current orientation to desired orientation when allowed |
+| `classBZ.field622` | `snap` | `Actor.method3236`; `classEB.method3820` can snap current orientation to desired orientation when allowed |
 | `classBZ.field623` | `targetKind` | `classEB.method3820` chooses NPC/player/world-entity storage from it |
 | `classBZ.field631` | `targetIndex` | `Actor.method3252`; lookup key in `classEB.method3820` |
 | `classBZ.field633` | `fallbackAngle` | used by `classEB.method3820` when the entity target is absent |
@@ -68,7 +68,9 @@ Those primitive names are already established by the buffer/framing shard. The e
 4. If none of those yields a facing angle and the actor has a path, the path heading can become the desired orientation.
 5. Otherwise the prior desired orientation is retained.
 
-When `snap` is set, `classEB.method3820` may copy desired orientation into current orientation immediately when the actor's turn rate is positive. This flag is therefore semantic actor state, not a rendering-only concern.
+When `snap` is set, `classEB.method3820` may copy desired orientation into current orientation immediately when the actor's turn rate is positive. This flag is semantic actor state, not a rendering-only concern.
+
+After desired-facing resolution and movement/safety-reset work, `classKN.method6539` owns the ordinary current-orientation turn step. That method advances current orientation by `turnRate` toward desired orientation with 2048-angle wrap handling and can select the authored idle turn-left/right pose. Cluster 03 already owns those symbols, so they are referenced here rather than duplicated.
 
 The target-kind values are exact from storage selection in `classEB.method3820`:
 
@@ -81,7 +83,17 @@ The target-kind values are exact from storage selection in `classEB.method3820`:
 
 `classBZ` is embedded in actor/player-info state rather than allocated for every facing update. `classDC.method2891` resets it while resetting the durable player-info slot. Packet decoding mutates the stored intent; `classEB.method3820` later resolves that intent into `Actor.field1493` desired orientation during actor-cycle processing.
 
-This separation matters for the Rust port: packet-time facing intent and client-cycle orientation mutation are different phases.
+The relevant runtime order is:
+
+```text
+packet decode -> retained facing intent
+classEB.method3820 -> desired orientation
+Actor.method3284 / method3280 -> movement + safety reset
+classKN.method6539 -> ordinary current-orientation turn step
+classKB.method6491 -> animation advancement
+```
+
+This separation matters for the Rust port: packet-time facing intent, desired-orientation resolution and current-orientation mutation are different phases.
 
 ## RustClient ownership
 
@@ -89,7 +101,8 @@ Do not port `ActorFacingState` one-for-one as a Java-shaped object.
 
 - Header bits, smart reads, enum ordinals and sentinels belong in `protocol::openrune_240`.
 - Normalized facing intent, target identity, explicit angle/area and fallback state belong in `game-state::entities` / actor movement semantics.
-- Target lookup is semantic `GameState` work.
+- Target lookup and ordinary turn stepping are semantic `GameState` work.
+- NPC definition-authored turn rate belongs in cache-derived policy.
 - Scene/renderer code consumes committed actor orientation and must not own facing authority.
 
 A useful Rust shape is a typed facing intent enum such as `None | Angle | Area | Entity`, with the low-three-bit behavior retained separately until its meaning is proven.
@@ -102,17 +115,20 @@ RuneLite API methods such as `Actor.getInteracting()` and `Actor.isInteracting()
 
 - `classBZ.copyFrom` copies only the payload selected by the source mode. Do not normalize it into an unconditional struct copy without proving stale inactive fields are irrelevant.
 - Area width/height are packed as four-bit values. Preserve the encoded values rather than silently forcing a minimum dimension.
-- A missing entity target does not automatically mean 'face nothing'; `fallbackAngle`, actor cleanup state, and path heading participate in the fallback chain.
+- A missing entity target does not automatically mean 'face nothing'; `fallbackAngle`, actor cleanup state, path heading and retained desired orientation participate in the fallback chain.
 - The `classLV` value is intentionally unresolved. Do not infer names such as tracking/locked/forced from its two values yet.
+- Do not duplicate `classKN.method6539` or the Actor turn fields into this mapping shard; cluster 03 already owns them.
 
 No ambiguous Vineflower labelled-break or collapsed-switch construct was needed for these conclusions, so a secondary decompiler was not required for this shard.
 
 ## Handover
 
 - `classLV`: determine the semantic difference between its two values before naming it or `classBZ.field625`.
-- Existing actor-motion ownership: `classEB.method3820`, Actor desired/current orientation, turn rate, directional pose selection and target-disappearance cleanup remain outside this shard.
-- Next facing work should trace the ordinary turn mutator after `classEB.method3820`, especially turn-rate stepping and turn-left/right/walk pose selection.
+- Full facing-target retention: preserve entity/area/secondary/control state through the protocol-to-GameState boundary instead of collapsing everything to an optional angle.
+- Target cleanup: trace the remaining `field1473` lifecycle and target-disappearance paths before assigning a semantic name.
+- Turn-rate writers: cluster 03 proves constructor/default behavior and NPC definition projection; audit any remaining reachable writers before treating turn rate as globally immutable.
+- Ordinary smooth turning itself is **closed as a source-location question**: `classKN.method6539` is the exact owner.
 
 ## Verification
 
-Not run in this session by explicit user instruction. No `verify.sh`, tests, Clippy, CI or build gate was executed.
+Not run in this session by explicit user instruction. No `verify.sh`, tests, Clippy, CI, compilation or build gate was executed.
