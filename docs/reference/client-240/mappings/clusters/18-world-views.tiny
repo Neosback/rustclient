@@ -1,0 +1,12 @@
+tiny	2	0	semantic	readable
+c	classCL	WorldViewManager
+	f	I	field779	worldViewCount
+	f	LIterableHashTable;	field782	worldViews
+	f	LWorldView;	field785	rootWorldView
+	m	(IIIILclassEX;I)LWorldView;	method1575	createWorldView
+	m	(IS)LWorldView;	method1584	getWorldViewById
+	m	(III)LWorldView;	method1590	getWorldViewAt
+	m	(I)LWorldView;	method1588	getRootWorldView
+	m	(III)LWorldView;	method1572	createRootWorldView
+	m	(LWorldView;)V	method1580	removeWorldView
+	m	(I)V	method1615	resetWorldViews
