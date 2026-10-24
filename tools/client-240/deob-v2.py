@@ -22,6 +22,8 @@ CACHE_DEFAULT = ROOT / ".cache/client-240/deob-v2"
 TOOLCHAIN = HERE / "toolchain.py"
 EVIDENCE_JAVA = HERE / "java/Client240Evidence.java"
 INPUTS = HERE / "inputs.json"
+PASS_MANIFEST = HERE / "deob-passes.json"
+WORKBENCH_RENDERER = HERE / "render-workbench.py"
 VENDOR = Path(os.environ.get("CLIENT240_TOOLS", HERE / "vendor")).resolve()
 ASM = os.pathsep.join(
     str(VENDOR / f"tiny_deps/{name}")
@@ -211,6 +213,47 @@ def command_dossier(args: argparse.Namespace, java: str, cache: Path) -> int:
     return 0
 
 
+def command_plan(_args: argparse.Namespace, _java: str, _cache: Path) -> int:
+    policy = json.loads(PASS_MANIFEST.read_text(encoding="utf-8"))
+    print(f"behavioral authority: {policy['behavioral_authority']}")
+    print("\nviews:")
+    for view in policy["views"]:
+        authority = " [BEHAVIORAL AUTHORITY]" if view.get("behavioral_authority") else ""
+        print(f"  {view['id']}{authority}: {view['purpose']}")
+    print("\npasses:")
+    grouped: dict[str, list[dict[str, object]]] = {}
+    for item in policy["passes"]:
+        grouped.setdefault(str(item["stage"]), []).append(item)
+    for stage, items in grouped.items():
+        print(f"  [{stage}]")
+        for item in items:
+            default = "default" if item.get("default") else "opt-in"
+            print(
+                f"    {item['id']}: {item['safety']}; {item['status']}; {default}; "
+                f"input={item['input_view']}"
+            )
+    return 0
+
+
+def command_workbench(args: argparse.Namespace, _java: str, cache: Path) -> int:
+    if not WORKBENCH_RENDERER.is_file():
+        raise RuntimeError(f"workbench renderer not installed: {WORKBENCH_RENDERER}")
+    output = safe_output(Path(args.out).resolve()) if args.out else safe_output(cache / "workbench/index.html")
+    run(
+        [
+            sys.executable,
+            str(WORKBENCH_RENDERER),
+            "--cache",
+            str(cache),
+            "--passes",
+            str(PASS_MANIFEST),
+            "--out",
+            str(output),
+        ]
+    )
+    return 0
+
+
 def parser() -> argparse.ArgumentParser:
     cli = argparse.ArgumentParser(description=__doc__)
     cli.add_argument(
@@ -222,22 +265,25 @@ def parser() -> argparse.ArgumentParser:
     cli.add_argument(
         "--skip-toolchain-check",
         action="store_true",
-        help="skip pinned hash/tool presence check; runtime discovery still requires JDK 17+",
+        help="skip pinned hash/tool presence check; runtime discovery still requires JDK 17+ for bytecode commands",
     )
     sub = cli.add_subparsers(dest="command", required=True)
 
+    plan = sub.add_parser("plan", help="show evidence views, pass safety, status, and default policy")
+    plan.set_defaults(func=command_plan, needs_runtime=False)
+
     index = sub.add_parser("index", help="build bytecode evidence index without decompiling")
     index.add_argument("--jar", choices=("original", "semantic", "both"), default="both")
-    index.set_defaults(func=command_index)
+    index.set_defaults(func=command_index, needs_runtime=True)
 
     audit = sub.add_parser("audit", help="compare original and semantic methods by obfuscated identity")
     audit.add_argument("--out", help="output TSV below the client-240 cache root")
-    audit.set_defaults(func=command_audit)
+    audit.set_defaults(func=command_audit, needs_runtime=True)
 
     refs = sub.add_parser("refs", help="query exact bytecode class reference sets")
     refs.add_argument("classes", nargs="+")
     refs.add_argument("--jar", default="semantic", help="original, semantic, or a jar path")
-    refs.set_defaults(func=command_refs)
+    refs.set_defaults(func=command_refs, needs_runtime=True)
 
     dossier = sub.add_parser("dossier", help="assemble drift, references, and dual-decompiler evidence")
     dossier.add_argument("classes", nargs="+")
@@ -248,7 +294,11 @@ def parser() -> argparse.ArgumentParser:
         action="store_true",
         help="do not render the original jar; bytecode drift evidence is still retained",
     )
-    dossier.set_defaults(func=command_dossier)
+    dossier.set_defaults(func=command_dossier, needs_runtime=True)
+
+    workbench = sub.add_parser("workbench", help="render offline searchable HTML from generated evidence")
+    workbench.add_argument("--out", help="HTML output path below the client-240 cache root")
+    workbench.set_defaults(func=command_workbench, needs_runtime=False)
     return cli
 
 
@@ -256,9 +306,11 @@ def main() -> int:
     args = parser().parse_args()
     try:
         cache = safe_output(Path(args.cache).resolve() / "root.marker").parent
-        if not args.skip_toolchain_check:
-            toolchain_check()
-        java, _javap = runtime()
+        java = ""
+        if args.needs_runtime:
+            if not args.skip_toolchain_check:
+                toolchain_check()
+            java, _javap = runtime()
         return args.func(args, java, cache)
     except (OSError, RuntimeError, subprocess.CalledProcessError, KeyError, ValueError) as error:
         print(f"client-240 deob-v2: {error}", file=sys.stderr)
