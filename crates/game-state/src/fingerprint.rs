@@ -181,7 +181,7 @@ impl GameState {
         );
         for (key, value) in scenery.locations() {
             write_location_key(&mut fingerprint, *key);
-            write_location_override(&mut fingerprint, *value);
+            write_one_location_override(&mut fingerprint, *value);
         }
 
         match self.selected_tab() {
