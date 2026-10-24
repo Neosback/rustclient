@@ -253,13 +253,12 @@ impl WorldEntitiesState {
                         npc.definition_id = *id;
                     }
                     NpcProperty::Sequence { sequence, delay } => {
-                        let previous = npc.sequence;
-                        if sequence.is_none() {
-                            npc.sequence.clear();
-                        } else {
-                            npc.sequence.set_sequence(*sequence, delay.cast_signed());
-                        }
-                        changed |= npc.sequence != previous;
+                        changed |= crate::sequence_scheduler::apply_sequence(
+                            &mut npc.sequence,
+                            *sequence,
+                            delay.cast_signed(),
+                            &update.sequence_policies,
+                        );
                     }
                     NpcProperty::Facing(angle) => {
                         changed |= npc.orientation != *angle;
