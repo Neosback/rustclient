@@ -1,0 +1,333 @@
+{
+  "schema": 1,
+  "purpose": "Declarative pass and view policy for the revision-240 bytecode-first deobfuscation workbench.",
+  "behavioral_authority": "original-exact",
+  "rules": {
+    "original_is_behavioral_truth": true,
+    "decompiler_output_is_presentation_only": true,
+    "automated_name_proposals_never_write_mappings": true,
+    "references_tree_is_read_only": true,
+    "analysis_transforms_never_replace_original_evidence": true
+  },
+  "sources": {
+    "rl-suite": {
+      "repository": "Tonic-Box/rl-suite",
+      "role": "design reference unless code licensing is clarified",
+      "use": [
+        "analyze-before-apply pass planning",
+        "decoder confidence model",
+        "hierarchy-aware remapping",
+        "virtual method families",
+        "revision packet profiles",
+        "audit reporting"
+      ],
+      "do_not_import_as_authority": [
+        "packet-handler control-flow normalization",
+        "ConstantDynamic materialization"
+      ]
+    },
+    "devious-client": {
+      "repository": "melxin/devious-client",
+      "license": "BSD-2-Clause",
+      "role": "algorithm and implementation reference with attribution where code is reused",
+      "use": [
+        "control-flow graph construction",
+        "symbolic execution and value provenance",
+        "modular arithmetic and multiplier analysis",
+        "packet discovery",
+        "cross-revision mapping",
+        "constant-parameter analysis",
+        "expression ordering"
+      ],
+      "do_not_import": [
+        "parallel custom bytecode IR",
+        "destructive dead-code removal as behavioral evidence",
+        "exception-removal passes as behavioral evidence"
+      ]
+    }
+  },
+  "safety_classes": {
+    "evidence-only": "Reads bytecode and emits facts without changing the analyzed archive.",
+    "identity-safe": "Changes names or metadata presentation only; instruction shape is unchanged.",
+    "analysis-equivalent": "Changes instruction representation and is intended to preserve behavior, but original bytecode remains authoritative.",
+    "analysis-only": "Improves readability by changing behaviorally relevant representation such as control flow, exception regions, or initialization timing.",
+    "excluded-destructive": "Not allowed in an authoritative research view because information is removed or rewritten beyond a safe identity overlay."
+  },
+  "views": [
+    {
+      "id": "original-exact",
+      "title": "Original exact",
+      "purpose": "Behavioral authority: the shipped revision-240 injected gamepack with no readability transforms.",
+      "behavioral_authority": true,
+      "allowed_safety": ["evidence-only"]
+    },
+    {
+      "id": "identity",
+      "title": "Identity overlay",
+      "purpose": "Stable semantic and readable symbol identity without treating transformed control flow as truth.",
+      "behavioral_authority": false,
+      "allowed_safety": ["evidence-only", "identity-safe"]
+    },
+    {
+      "id": "analysis-normalized",
+      "title": "Analysis normalized",
+      "purpose": "Optional easier-to-read bytecode for research. Every transform is recorded and linked back to original-exact.",
+      "behavioral_authority": false,
+      "allowed_safety": ["evidence-only", "identity-safe", "analysis-equivalent", "analysis-only"]
+    },
+    {
+      "id": "readable",
+      "title": "Readable symbols",
+      "purpose": "Evidence-backed tiny-v2 names applied as a presentation layer over an explicitly selected bytecode view.",
+      "behavioral_authority": false,
+      "allowed_safety": ["evidence-only", "identity-safe"]
+    },
+    {
+      "id": "presentation",
+      "title": "Presentation",
+      "purpose": "Vineflower, CFR, graphs, tables, and the static workbench. Never behavioral authority.",
+      "behavioral_authority": false,
+      "allowed_safety": ["evidence-only", "identity-safe", "analysis-equivalent", "analysis-only"]
+    }
+  ],
+  "passes": [
+    {
+      "id": "bytecode-index",
+      "stage": "evidence",
+      "safety": "evidence-only",
+      "status": "implemented",
+      "default": true,
+      "input_view": "original-exact",
+      "output": "TSV class/member/method evidence index",
+      "inspiration": "local Client240Evidence"
+    },
+    {
+      "id": "reference-graph",
+      "stage": "evidence",
+      "safety": "evidence-only",
+      "status": "implemented",
+      "default": true,
+      "input_view": "original-exact",
+      "output": "exact incoming/outgoing JVM reference edges",
+      "inspiration": "local Client240Evidence"
+    },
+    {
+      "id": "transform-drift-audit",
+      "stage": "evidence",
+      "safety": "evidence-only",
+      "status": "implemented",
+      "default": true,
+      "input_view": "original-exact + semantic",
+      "output": "original-versus-semantic method drift flags",
+      "inspiration": "local Client240Evidence"
+    },
+    {
+      "id": "decoder-evidence",
+      "stage": "semantic-analysis",
+      "safety": "evidence-only",
+      "status": "planned",
+      "default": true,
+      "input_view": "original-exact",
+      "output": "per-field encoder/decoder candidates with stated/proven/inferred confidence and cited sites",
+      "inspiration": "rl-suite DecoderTable + devious ModArith",
+      "policy": "Only modular-inverse read/write pairs are PROVEN. One-sided candidates remain INFERRED and are annotation-only."
+    },
+    {
+      "id": "cfg-evidence",
+      "stage": "semantic-analysis",
+      "safety": "evidence-only",
+      "status": "planned",
+      "default": true,
+      "input_view": "original-exact",
+      "output": "basic blocks, edges, dominators, exception edges, loops, switch edges",
+      "inspiration": "devious ControlFlowGraph reimplemented on ASM"
+    },
+    {
+      "id": "symbolic-flow-evidence",
+      "stage": "semantic-analysis",
+      "safety": "evidence-only",
+      "status": "planned",
+      "default": true,
+      "input_view": "original-exact",
+      "output": "stack/local value provenance, field-flow, argument-flow, constant propagation evidence",
+      "inspiration": "devious Execution/Frame/InstructionContext concepts reimplemented on ASM analysis"
+    },
+    {
+      "id": "packet-discovery",
+      "stage": "protocol",
+      "safety": "evidence-only",
+      "status": "planned",
+      "default": true,
+      "input_view": "original-exact",
+      "output": "packet type, length, opcode/read sequence, handler and ISAAC/framing evidence",
+      "inspiration": "devious packet finders + rl-suite revision packet profiles"
+    },
+    {
+      "id": "cross-revision-mapper",
+      "stage": "mapping",
+      "safety": "evidence-only",
+      "status": "planned",
+      "default": true,
+      "input_view": "original-exact",
+      "output": "ranked class/member correspondences with independent feature scores and ambiguity",
+      "inspiration": "devious mapper/updater + local canonical fingerprints",
+      "policy": "Proposals only. No score may write a tiny-v2 mapping directly."
+    },
+    {
+      "id": "stable-symbol-overlay",
+      "stage": "identity",
+      "safety": "identity-safe",
+      "status": "implemented-upstream",
+      "default": true,
+      "input_view": "semantic",
+      "output": "classXX/fieldN/methodN stable research symbols",
+      "inspiration": "rl-suite semantic artifact"
+    },
+    {
+      "id": "hierarchy-renamer",
+      "stage": "identity",
+      "safety": "identity-safe",
+      "status": "planned",
+      "default": true,
+      "input_view": "identity",
+      "output": "hierarchy-consistent names and collision checks",
+      "inspiration": "rl-suite HierarchyAwareRemapper"
+    },
+    {
+      "id": "virtual-family-renamer",
+      "stage": "identity",
+      "safety": "identity-safe",
+      "status": "planned",
+      "default": true,
+      "input_view": "identity",
+      "output": "one naming decision propagated across the complete virtual override family",
+      "inspiration": "rl-suite VirtualMethodFamilies + devious VirtualMethods"
+    },
+    {
+      "id": "readable-tiny-overlay",
+      "stage": "identity",
+      "safety": "identity-safe",
+      "status": "implemented",
+      "default": true,
+      "input_view": "identity",
+      "output": "evidence-backed readable names",
+      "inspiration": "local tiny-v2 mapping shards"
+    },
+    {
+      "id": "multiplier-normalize",
+      "stage": "normalization",
+      "safety": "analysis-equivalent",
+      "status": "planned",
+      "default": false,
+      "input_view": "analysis-normalized",
+      "output": "optional decoded arithmetic presentation",
+      "inspiration": "rl-suite decoder normalization + devious multiplication deobfuscation",
+      "policy": "Normalize only PROVEN pairs by default; retain a sidecar trace to the original instruction range."
+    },
+    {
+      "id": "cfg-simplify",
+      "stage": "normalization",
+      "safety": "analysis-equivalent",
+      "status": "planned",
+      "default": false,
+      "input_view": "analysis-normalized",
+      "output": "optional structured branch cleanup for presentation",
+      "inspiration": "devious control-flow deobfuscation",
+      "policy": "Never replace the exact CFG in evidence or behavior docs."
+    },
+    {
+      "id": "packet-handler-normalize",
+      "stage": "normalization",
+      "safety": "analysis-only",
+      "status": "present-in-pinned-semantic-input",
+      "default": false,
+      "input_view": "analysis-normalized",
+      "output": "flattened packet-handler presentation",
+      "inspiration": "rl-suite PacketHandlerNormalizer",
+      "policy": "Forbidden as the sole source for packet/update-cycle behavior."
+    },
+    {
+      "id": "condy-concat-materialize",
+      "stage": "normalization",
+      "safety": "analysis-only",
+      "status": "present-in-pinned-semantic-input",
+      "default": false,
+      "input_view": "analysis-normalized",
+      "output": "decompiler-friendly ConstantDynamic string concatenation",
+      "inspiration": "rl-suite CondyConcatNormalizer",
+      "policy": "Original initialization semantics remain authoritative."
+    },
+    {
+      "id": "unused-member-evidence",
+      "stage": "semantic-analysis",
+      "safety": "evidence-only",
+      "status": "planned",
+      "default": true,
+      "input_view": "original-exact",
+      "output": "reachability/use evidence without deleting members",
+      "inspiration": "rl-suite UnusedMemberMarker + devious unused-member analyses"
+    },
+    {
+      "id": "remove-unused-members",
+      "stage": "destructive",
+      "safety": "excluded-destructive",
+      "status": "excluded",
+      "default": false,
+      "input_view": "none",
+      "output": "none",
+      "inspiration": "devious unused class/field/method passes",
+      "policy": "Deletion hides evidence and is unnecessary for research readability."
+    },
+    {
+      "id": "remove-runtime-exceptions",
+      "stage": "destructive",
+      "safety": "excluded-destructive",
+      "status": "excluded",
+      "default": false,
+      "input_view": "none",
+      "output": "none",
+      "inspiration": "legacy/devious exception cleanup patterns",
+      "policy": "Exception behavior is observable behavior and remains visible."
+    },
+    {
+      "id": "vineflower-render",
+      "stage": "presentation",
+      "safety": "evidence-only",
+      "status": "implemented",
+      "default": true,
+      "input_view": "explicitly selected",
+      "output": "Vineflower Java rendering",
+      "inspiration": "local pinned Vineflower"
+    },
+    {
+      "id": "cfr-render",
+      "stage": "presentation",
+      "safety": "evidence-only",
+      "status": "implemented",
+      "default": true,
+      "input_view": "explicitly selected",
+      "output": "CFR Java rendering",
+      "inspiration": "local pinned CFR"
+    },
+    {
+      "id": "decompiler-ensemble",
+      "stage": "presentation",
+      "safety": "evidence-only",
+      "status": "implemented",
+      "default": true,
+      "input_view": "original-exact + semantic",
+      "output": "side-by-side decompiler manifest and disagreement evidence",
+      "inspiration": "local decompile-ensemble.py"
+    },
+    {
+      "id": "html-workbench",
+      "stage": "presentation",
+      "safety": "evidence-only",
+      "status": "implemented",
+      "default": true,
+      "input_view": "all evidence views",
+      "output": "offline searchable research UI",
+      "inspiration": "local render-workbench.py"
+    }
+  ]
+}
