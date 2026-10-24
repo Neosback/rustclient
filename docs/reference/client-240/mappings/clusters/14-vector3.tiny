@@ -1,0 +1,16 @@
+tiny	2	0	semantic	readable
+c	classUZ	Vector3f
+	f	F	field6425	x
+	f	F	field6423	y
+	f	F	field6424	z
+	m	(LclassUZ;FFFI)V	method11802	set
+	m	(I)F	method11844	length
+	m	(I)V	method11817	normalize
+	m	(LclassUZ;I)V	method11822	add
+	m	(LclassUZ;I)V	method11834	subtract
+	m	(LclassUZ;LclassUZ;S)F	method11835	dot
+	m	(LclassUZ;I)V	method11839	cross
+	m	(FI)V	method11846	scale
+	m	(LclassUZ;FB)V	method11827	addScaled
+	m	(B)Z	method11816	isNearlyZero
+	m	(I)V	method11797	releaseToPool

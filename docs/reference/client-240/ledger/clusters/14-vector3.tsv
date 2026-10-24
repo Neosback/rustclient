@@ -1,0 +1,15 @@
+classUZ	classUZ	uz	Vector3f	class	T4	B	Revision-240 mutable three-component float vector: constructors, set/add/subtract/cross/dot/length/normalize bodies all agree on one x/y/z tuple; projectile target resolution consumes it as scene-space x/height/z	model math + scene projection	14-vector3
+classUZ.field6425	classUZ	al	x	field	T4	B	First constructor component; classNG.method7883 stores resolved horizontal x here and Projectile.method1228 reads it as the first horizontal trajectory coordinate	model math + scene	14-vector3
+classUZ.field6423	classUZ	aa	y	field	T4	B	Second constructor component; classNG.method7883 stores resolved terrain/entity height here and Projectile.method1228 uses it as the vertical trajectory coordinate	model math + scene	14-vector3
+classUZ.field6424	classUZ	ao	z	field	T4	B	Third constructor component; classNG.method7883 stores resolved horizontal world/scene y here and Projectile.method1228 reads it as the second horizontal trajectory coordinate	model math + scene	14-vector3
+classUZ.method11802	classUZ	lq	set	method	T4	B	Writes all three vector components directly; multiple copy/cross/transform helpers delegate to this canonical setter	model math	14-vector3
+classUZ.method11844	classUZ	ak	length	method	T4	B	Returns sqrt(x*x + y*y + z*z)	model math	14-vector3
+classUZ.method11817	classUZ	aq	normalize	method	T4	B	Computes reciprocal length and scales x/y/z by it	model math	14-vector3
+classUZ.method11822	classUZ	ad	add	method	T4	B	Adds another vector component-wise	model math	14-vector3
+classUZ.method11834	classUZ	aw	subtract	method	T4	B	Subtracts another vector component-wise	model math	14-vector3
+classUZ.method11835	classUZ	sv	dot	method	T4	B	Returns x1*x2 + y1*y2 + z1*z2	model math	14-vector3
+classUZ.method11839	classUZ	ai	cross	method	T4	B	Replaces this vector with the three-component cross product against the supplied vector	model math	14-vector3
+classUZ.method11846	classUZ	av	scale	method	T4	B	Multiplies all components by one scalar	model math	14-vector3
+classUZ.method11827	classUZ	au	addScaled	method	T4	B	Adds suppliedVector * scalar component-wise	model math	14-vector3
+classUZ.method11816	classUZ	ay	isNearlyZero	method	T4	B	Tests each component within +/- 9.765625E-4, preserving the stock epsilon	model math	14-vector3
+classUZ.method11797	classUZ	ac	releaseToPool	method	T4	B	Returns this vector to the bounded static pool when capacity remains; Projectile/classNG release temporary resolved positions through this path	model math allocation policy	14-vector3
