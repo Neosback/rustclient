@@ -256,6 +256,33 @@ Keep separate:
 2. authoritative actor playback state;
 3. downstream model posing/projection state.
 
+### `classFL.java` / `classAAV.java`: temporary model overrides
+
+Cluster 11 establishes two independent actor/model mechanisms:
+
+- `classFL` → `ModelColorOverride`: hue, saturation, luminance and amount applied only while the actor's half-open color window is active;
+- `classAAV` → `TransparencyTransition`: cycle-based transparency sampling with persistent post-end value and the exact future-schedule current-value carry-forward branch.
+
+Player and NPC model construction applies the temporary color payload after animation composition, then samples transparency and writes it into the already API-mapped `Model.transparency` state. These are model-projection consequences of authoritative actor state, not renderer-owned timers.
+
+### overhead text lifetime
+
+The seed API already names `Actor.overheadText` and `Actor.overheadCycle`. Cluster 11 closes the cycle lifetime:
+
+- NPC simple overhead text starts at `100` cycles;
+- player simple/public overhead text starts at `150` cycles;
+- top-level `client.method2173` decrements positive counters after actor updates and clears the text exactly when the counter reaches zero;
+- `Actor.method3279` is RuneLite `OverheadTextChanged` observability, not the state mutation.
+
+### NPC model/chathead override selection
+
+NPC override state is not one slot:
+
+- `NPC.chatheadOverrides` is fed by the mask-`524288` family;
+- `NPC.modelOverrides` is fed by the mask-`33554432` / mask-`1048576` families.
+
+World-model assembly can select the local player's composition, a prepared alternate `PlayerComposition`, or the normal `NPCComposition` override path according to `NpcOverrides` flags. The remaining generic override fields stay unnamed until stronger evidence justifies narrower names.
+
 ## Required actor semantic state
 
 ### Position/path
@@ -305,14 +332,22 @@ Do not replace these with one aggregate animation cycle counter; the source dist
 
 ### Effects and overhead state
 
-Important remaining gaps:
+The following actor-attached effect families are now source-specified for this naming phase:
 
-- actor spot-animation slots;
-- hitsplats;
-- health bars/headbars;
-- overhead text and color/effect/expiry state;
-- temporary tint/color/texture/transparency overrides;
-- freeze/reset/customization fields present in 240 masks.
+- keyed actor spot-animation slots and their add/remove/advance/repeat lifetime;
+- hitsplat insertion, definition-driven replacement and absolute expiry;
+- health-bar definition arbitration plus bounded timestamped update history and expiry;
+- overhead text plus cycle countdown/clear behavior;
+- temporary `ModelColorOverride` payload with `[startCycle, endCycle)` activation;
+- `TransparencyTransition` sampling and persistent end value;
+- animation-freeze window packet feeds into the canonical cluster-07 scheduler;
+- separate NPC chathead and world-model override slots/model-selection behavior.
+
+Still open here:
+
+- final semantic names for the packed player public-chat presentation/filter fields;
+- full player `ColorTextureOverride[]` / `PlayerComposition` cache invalidation and model-rebuild consequences;
+- generic `NpcOverrides` fields whose behavior is known but whose narrow names are not yet justified.
 
 ## Exact cycle ordering established so far
 
@@ -336,7 +371,9 @@ Do not reorder turn advancement ahead of movement. Direction-sensitive path pose
 
 Do not advance an action on the same cycle that its positive delay is decremented to zero.
 
-Effect expiration and every plugin-visible callback ordering point are not yet fully closed by this document.
+For later model projection, player/NPC model construction composes animation state first, then applies the active temporary HSL color payload, then samples/writes actor transparency. Separately, the top-level client cycle decrements Player/NPC overhead counters after actor updates and clears text when the counter reaches zero.
+
+Plugin callback ordering is only claimed where a source trace explicitly separates the injected callback from committed stock-shaped state.
 
 ## Exact-movement invariants already established
 
@@ -363,7 +400,7 @@ Known examples:
 - player outside-view tracking/lifecycle differs structurally from NPC synchronization;
 - NPC morphs can change definition-derived animation/size/model data at runtime.
 
-Shared orientation math, turn stepping, path traversal, exact trajectory timing, action restart policy, legacy/cached playback advancement, and finite-loop completion should not have independent player/NPC implementations unless exact evidence proves a difference.
+Shared orientation math, turn stepping, path traversal, exact trajectory timing, action restart policy, legacy/cached playback advancement, finite-loop completion, hitsplat/health-bar lifetime, and common temporary actor override sampling should not have independent player/NPC implementations unless exact evidence proves a difference.
 
 ## Port boundary
 
@@ -386,37 +423,43 @@ Shared orientation math, turn stepping, path traversal, exact trajectory timing,
 - ordinary smooth-turn mutation;
 - target cleanup behavior only to the extent its arming semantics are proven/required;
 - authoritative sequence assignment, delay, playback position, loop count, and terminal lifetime;
-- effect scheduler state and validated cycle transitions/expiration.
+- spot/hitsplat/health-bar scheduler state and validated cycle transitions/expiration;
+- overhead text/countdown state;
+- temporary color-override timing/payload and transparency-transition state;
+- animation-freeze windows;
+- NPC chathead/world-model override selection state.
 
 ### Cache owns
 
 - sequence definitions and authored timing/policy fields;
 - NPC turn-rate opcode 103;
 - player/NPC definition/model dependencies;
-- spot/hitsplat/headbar definitions.
+- spot/hitsplat/headbar definitions;
+- immutable appearance/color/texture/model inputs used by player/NPC composition.
 
 ### Scene owns
 
 - deriving the pose for committed actor state at a cycle;
 - applying legacy/cached-model animation data to geometry;
+- selecting/composing the NPC model from committed override state;
+- applying active actor HSL override and sampled transparency to the constructed model;
 - model composition/transforms and geometry preparation;
 - render interpolation that does not mutate semantic truth.
 
 ### Renderer owns
 
-GPU resources/passes/draw ordering only after scene projection has produced the required geometry/material semantics.
+GPU resources/passes/draw ordering only after scene projection has produced the required geometry/material semantics. It does not own actor effect lifetime counters.
 
 ## Next source traces
 
-Facing/turning and core action/pose sequence advancement are sufficiently closed for this naming phase. `Actor.field1473` remains a deferred stable-symbol provenance gap rather than an active blocker.
+Facing/turning, core action/pose advancement, actor spot animations, hitsplats/health bars, overhead lifetime, temporary color/transparency state, freeze mask feeds, and NPC override selection are sufficiently closed for this naming phase. `Actor.field1473` remains a deferred stable-symbol provenance gap rather than an active blocker.
 
 Continue in this order:
 
-1. trace actor spot-animation add/remove/repeat/advance semantics and corresponding player/NPC update-mask fields;
-2. trace hitsplat/headbar add/remove/expiry helpers and replacement priority rules;
-3. trace overhead/tint/freeze/customization mask consumers and expiry/application sites;
-4. trace `Player`/`PlayerComposition` model assembly invalidation rules;
-5. preserve full typed facing-target state and exact sequence-policy state during later implementation work, reopening unresolved symbols only when concrete parity evidence requires it.
+1. trace `Player` / `PlayerComposition` appearance customization and exact model-cache invalidation/rebuild rules, including per-equipment `ColorTextureOverride[]` consequences;
+2. trace world `GraphicsObject` and `Projectile` lifetime/trajectory/animation behavior and their zone-packet feeds;
+3. return to region rebuild/base-shift and remaining scene/model P0 dependencies once the actor model invalidation boundary is closed;
+4. preserve the now-specified typed facing, sequence, spot, hitsplat/health, overhead and override state during later Rust implementation, reopening generic symbols only when concrete parity evidence requires it.
 
 Only widen the turn-rate writer census if a newly traced reachable subsystem demonstrates a direct mutation outside actor default and NPC definition projection.
 
@@ -426,6 +469,9 @@ Each trace should update the stable-symbol research ledger before implementation
 
 - `docs/plan/PLAYER-UPDATING-240.md`
 - `docs/plan/NPC-ANIMATION-240.md`
+- `docs/reference/client-240/clusters/09-spot-animation.md`
+- `docs/reference/client-240/clusters/10-hitsplats-healthbars.md`
+- `docs/reference/client-240/clusters/11-overhead-overrides.md`
 - `docs/reference/rs240-port/FACING-TURNING.md`
 - `docs/reference/rs240-port/SEQUENCE-SCHEDULER.md`
 - `docs/reference/source-manifest.json`
