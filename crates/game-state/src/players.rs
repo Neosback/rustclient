@@ -182,6 +182,7 @@ impl WorldEntitiesState {
                                 tracking_grid: Some(player.grid),
                                 path_speed: player.path_speed,
                                 movement_speed: player.path_speed,
+                                path_queue: crate::ActorPathQueue::default(),
                                 exact_move: None,
                                 tile: WorldTile::new(
                                     player.region.x + offset.x,
@@ -244,13 +245,18 @@ impl WorldEntitiesState {
                         if let Some(exact) = exact_move {
                             let next = exact_movement(player.tile, cycle, *exact)
                                 .expect("validated exact movement");
-                            changed |= player.exact_move != Some(next);
+                            changed |= !player.path_queue.is_empty()
+                                || player.sequence.path_backlog_at_assignment != 0
+                                || player.exact_move != Some(next);
+                            player.path_queue.clear();
+                            player.sequence.path_backlog_at_assignment = 0;
                             player.exact_move = Some(next);
                         }
                         changed |= crate::sequence_scheduler::apply_change(
                             &mut player.sequence,
                             *sequence,
                             i32::from(*delay),
+                            player.path_queue.backlog(),
                             sequence_policies,
                         );
                     }
