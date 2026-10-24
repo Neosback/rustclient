@@ -5,6 +5,8 @@
 
 #![forbid(unsafe_code)]
 
+mod actor_path;
+pub use actor_path::{ACTOR_PATH_CAPACITY, ActorPathEntry, ActorPathQueue};
 mod interfaces;
 pub use interfaces::{InterfaceError, InterfaceState};
 mod inventory;
