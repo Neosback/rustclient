@@ -16,6 +16,7 @@ This specification owns:
 - revision identity,
 - deterministic game-tick ordinals,
 - integer game-space orientation/angles,
+- revision-neutral sequence scheduling policy shared between definition adapters and live actor schedulers,
 - conversion and range behavior for those values.
 
 It does not own server networking, packet layouts, cache binary formats, renderer transforms, plugin ABI types, or the full `ServerProfile` configuration.
@@ -43,6 +44,7 @@ Reference code is evidence only. This specification and RustClient tests define 
 8. Game ticks are ordinal semantic steps; real-time tick duration belongs to runtime/profile policy.
 9. Renderer coordinates, matrices, quaternions, and GPU types do not enter this crate.
 10. Revision-specific packet/cache behavior stays outside the semantic model.
+11. Sequence definition adapters resolve revision-specific defaults before constructing `SequencePolicy`; live actor scheduling does not interpret cache opcodes or unresolved sentinels.
 
 ## Coordinate taxonomy
 
@@ -164,6 +166,22 @@ A server profile will combine a `Revision` with protocol/cache/login/extension/r
 
 Tick arithmetic is checked. This layer does not assume that one tick is exactly 600 ms or any other duration; private servers may intentionally configure different timing.
 
+## Sequence scheduling policy
+
+`SequencePolicy` is the revision-neutral set of definition-derived inputs needed by the live actor action scheduler. It contains:
+
+- `restart_mode`, controlling what a same-sequence assignment does to existing playback state,
+- `replacement_priority`, used when deciding whether a different action sequence may replace the active one,
+- `movement_gate_with_backlog`, used while movement queued before the action assignment remains outstanding,
+- `movement_gate_without_backlog`, used after that assignment-time movement backlog has been exhausted,
+- `max_loops`, carrying the finite loop limit supplied by the definition.
+
+The model deliberately does not define cache opcode numbers or unresolved cache defaults. A revision-specific definition adapter must resolve those details before projecting a `SequencePolicy`.
+
+The numeric restart and movement-gate modes remain compact semantic values until cross-revision evidence justifies stable named enums. Consumers must not reinterpret those values as revision-240 cache opcodes.
+
+`SequencePolicy` does not own a `SequenceId`, frame data, playback counters, or actor state. Those belong to the definition/playback/runtime objects that use the policy.
+
 ## Orientation
 
 `LocOrientation` validates ordinary object/location orientation `0..=3`.
@@ -205,6 +223,8 @@ Do not micro-optimize field widths by leaking revision-specific limits into sema
 - revision parse/display behavior is tested,
 - game-tick arithmetic is checked,
 - integer orientation behavior has deterministic tests,
+- `SequencePolicy` contains only resolved semantic scheduling inputs and no cache/parser types,
+- revision adapters can project decoded definition metadata into `SequencePolicy` without adding a dependency from `crates/model` back to cache,
 - the model crate depends on no RustClient subsystem.
 
 ## Non-goals
@@ -217,87 +237,3 @@ Do not micro-optimize field widths by leaking revision-specific limits into sema
 - widget/client-script semantics,
 - plugin ABI serialization,
 - choosing every future supported revision.
-
-## Bootstrap identity primitives
-
-`ServerProfileId(u32)` is the semantic identity allocated by the canonical protocol
-profile registry. It contains no address or wire behavior; `Revision` remains a
-separate compatibility identity. `WorldAreaId(u32)` names the server's semantic map
-area; its geometry is interpreted by the profile. Neither wrapper infers defaults
-or reserves absence sentinels. GameState owns optional session presence. The map-area field is optional: a profile
-translates the main-world sentinel to absence; sentinel bytes never become IDs.
-
-## Immutable scene references
-
-`SceneAssetId([u8;32])` is the SHA-256 identity supplied by the immutable asset catalog. `SceneDescriptor` pairs it with checked nonempty world bounds and a selected plane. It supports exclusive containment; it contains no GPU/camera information. `FloorUnderlayId` and `FloorOverlayId` are separate definition identities. Scene selection is optional session-owned `GameState` data; its content resides in the immutable application asset catalog (SPEC-0015).
-
-## Playable desktop entity updates
-
-Player movement includes typed step/run changes and teleport deltas with an
-explicit plane change. `SequenceChange` distinguishes an omitted update from an
-assigned sequence and an explicit clear; profile sentinel values never become
-semantic sequence IDs. Wire lists, skip counts and mask layouts stay in protocol.
-
-NPC batches include a typed map-anchor TileOffset origin, ordered properties,
-action visibility, movement and sequence delay. Runtime NpcInstanceId identifies
-a spawned lifetime independently of a reusable NpcIndex. WorldTarget captures
-that lifetime plus the base and resolved definition; location targets capture
-the typed LocationKey and definitions. WorldAction adds a SceneDescriptor and a
-checked ActionSlot in 0..5. ActionMask governs those five independent slots.
-These values carry no wire opcodes or renderer handles. ActorSequenceSlot consumes
-delay before advancing its cycle with explicit wrapping playback arithmetic.
-
-InventoryId and InventorySlot distinguish container identity from slot position
-and ItemDefinitionId. ItemStack preserves a quantity of zero (a placeholder)
-separately from absence. InventoryUpdate expresses replacement, ordered patches
-and removal; limits and session ownership belong to game-state, encodings to the
-profile. These internal semantic types do not extend the versioned plugin API.
-
-
-### Input and visible-player lifetime continuation
-
-`PlayerInstanceId` identifies a visible incarnation independently of reusable
-`PlayerIndex`. `PlayerTrackingGrid` validates positive dimensions and a checked
-world extent; the selected protocol profile supplies those dimensions.
-`RemotePlayerUpdate` expresses outside-view tracking/region shifts, promotion,
-demotion, movement and attributes in order. Appearance has one owner, transferring
-between visible and outside records. Grid/offset/facing validation and lifetime
-serial allocation are atomic across a player batch. Packet bits and sentinel
-coordinates do not enter these types.
-
-`WidgetDrag` is a committed override for optional parent address, dead zone,
-client-cycle threshold and scrollbar behavior. `WidgetKey` names semantic keys;
-revision script codes remain in the cache profile. A held pointer's original grab
-offset and temporary drag origin are presentation metadata, not another widget
-position owner. Action animation delay is independent of movement animation time.
-
-### Traversal and forced movement
-
-MoveSpeed expresses path behavior: Crawl, Walk, Run, or immediate placement
-(Stationary). Protocol enum IDs and reset sentinels remain in the profile.
-PlayerInfoUpdate distinguishes a persistent path-speed change from a one-entry
-speed override. Remote movement carries its effective override with the movement;
-attributes change the persistent default separately. This avoids observable
-intermediate locomotion changes while applying a single player batch.
-
-WrappedTeleport carries offsets, plane delta and a positive checked grid extent.
-The profile supplies its wrapping dimensions; GameState performs checked Euclidean
-wrapping. It is distinct from a signed relative teleport that does not wrap.
-ExactMove requests signed tile offsets from the newly updated network coordinate,
-client-cycle start/end delays and a direction. GameState validates and normalizes
-it to an immutable ExactMovement with absolute world tiles and client cycles.
-Invalid intervals, directions, coordinate or cycle overflow reject the entire
-player batch. Neither the packet decoder nor a draw projection advances semantic
-coordinates or stores a second persistent traversal default.
-
-## NPC and location animation continuation (2026-10-23)
-
-NpcMovement preserves one adjacent TileOffset and an optional second adjacent
-step in source order, with typed MoveSpeed. Crawl/Walk carry one step; Run
-carries two. Collapsing two directions into an endpoint loses bent and closed
-paths. NpcProperty::ExactMove uses the shared relative trajectory request.
-LocationAnimationPlacement preserves shape/orientation independently of the
-cached object identity. AnimationStart optionally carries that placement;
-sequence absence explicitly stops animation. Shape 22 is FloorDecoration;
-shapes 9 through 21 are GameObject. Wire sentinels/coordinate layouts remain
-inside the revision adapter.
