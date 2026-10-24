@@ -26,8 +26,9 @@ pub(crate) enum ActorMovementCycle {
 pub(crate) fn advance_players(entities: &mut WorldEntitiesState) {
     for player in entities.players.values_mut() {
         if player.exact_move.is_some() {
-            // Both forced-movement phases reset revision-240 Actor.field1452 every client cycle.
-            player.path_queue.reset_catch_up();
+            // Exact-movement phase timing is not authoritative yet. `exact_move` can remain
+            // attached after its active interval, so resetting catch-up from presence alone would
+            // over-reset field1452. The forced-movement scheduler will own that exact reset point.
             continue;
         }
         advance_actor_cycle(
@@ -40,7 +41,8 @@ pub(crate) fn advance_players(entities: &mut WorldEntitiesState) {
 
     for npc in entities.npcs.values_mut() {
         if npc.exact_move.is_some() {
-            npc.path_queue.reset_catch_up();
+            // See the player branch above: preserve debt until exact client-cycle timing is owned
+            // by GameState rather than guessing from a potentially stale trajectory marker.
             continue;
         }
         if npc.path_queue.is_empty() {
