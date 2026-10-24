@@ -99,7 +99,9 @@ pub(crate) fn apply_movement(
         player.locomotion,
         player.orientation,
         player.movement_speed,
+        player.path_queue,
         player.exact_move,
+        player.sequence.path_backlog_at_assignment,
     );
     player.movement_speed = speed.unwrap_or(player.path_speed);
     let locomotion = match movement {
@@ -115,6 +117,14 @@ pub(crate) fn apply_movement(
     player.tile = move_tile(player.tile, movement).expect("validated player movement");
     if movement.is_some() {
         player.exact_move = None;
+        if player.movement_speed == MoveSpeed::Stationary {
+            player.path_queue.clear();
+            player.sequence.path_backlog_at_assignment = 0;
+        } else {
+            player
+                .path_queue
+                .enqueue(player.tile, player.movement_speed);
+        }
     }
     let direction = match movement {
         Some(PlayerMovement::Step { direction }) => Some(direction),
@@ -132,7 +142,9 @@ pub(crate) fn apply_movement(
             player.locomotion,
             player.orientation,
             player.movement_speed,
+            player.path_queue,
             player.exact_move,
+            player.sequence.path_backlog_at_assignment,
         )
 }
 pub(crate) fn apply_traversal(player: &mut PlayerEntity, persistent: Option<MoveSpeed>) -> bool {
