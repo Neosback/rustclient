@@ -5,10 +5,18 @@ c	classQR	AnimationSequence
 	f	LAnimation;	field5597	definition
 	f	I	field5600	frame
 	f	I	field5602	frameCycle
+	f	I	field5599	loopCount
+	f	I	field5598	unreadyCycles
 	m	(LclassQR;II)V	method9770	setSequence
 	m	(LclassQR;I)V	method9765	clearSequence
 	m	(B)LAnimation;	method9775	getDefinition
 	m	(I)Z	method9772	hasDefinition
+	m	(B)I	method9799	getUnreadyCycles
+	m	(I)I	method9784	getLoopCount
+	m	(LclassQR;I)V	method9791	resetPlaybackState
+	m	(I)V	method9793	resetLoopCount
+	m	(IIII)V	method9811	setLegacyPlaybackState
+	m	(III)V	method9812	setCachedPlaybackState
 c	classQH	AnimationFreezeWindow
 	f	I	field5538	startCycle
 	f	I	field5536	endCycle
