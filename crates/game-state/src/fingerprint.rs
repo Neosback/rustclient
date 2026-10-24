@@ -11,7 +11,7 @@ use crate::{GameState, OperationCommit, SemanticEvent, SessionLifecycle};
 ///
 /// Any change to field ordering, tags, integer encoding, or fingerprint
 /// algorithm that changes canonical output must increment this version.
-pub const SEMANTIC_FINGERPRINT_VERSION: u16 = 22;
+pub const SEMANTIC_FINGERPRINT_VERSION: u16 = 23;
 
 const FNV_OFFSET_BASIS: u64 = 0xCBF2_9CE4_8422_2325;
 const FNV_PRIME: u64 = 0x0000_0100_0000_01B3;
@@ -270,6 +270,7 @@ impl GameState {
             fingerprint.write_bytes(&player.tile.y.to_le_bytes());
             fingerprint.write_u8(player.tile.plane.get());
             fingerprint.write_u16(player.orientation);
+            fingerprint.write_u16(player.current_orientation);
             write_speed(&mut fingerprint, player.path_speed);
             write_speed(&mut fingerprint, player.movement_speed);
             write_actor_path(&mut fingerprint, player.path_queue, player.tile);
@@ -333,6 +334,7 @@ impl GameState {
             fingerprint.write_bytes(&npc.tile.y.to_le_bytes());
             fingerprint.write_u8(npc.tile.plane.get());
             fingerprint.write_u16(npc.orientation);
+            fingerprint.write_u16(npc.current_orientation);
             match npc.path {
                 None => fingerprint.write_u8(0),
                 Some(path) => {
