@@ -1,131 +1,112 @@
 # Revision 240 actor path queue implementation checkpoint
 
-Status: bounded queue retention, action movement gates, ordinary player and cache-resolved NPC fine-position scheduling, ordinary blocked-cycle catch-up, and ordinary actor position projection are authoritative; forced movement and facing-dependent speed remain incomplete.
+Status: bounded path retention, ordinary player/NPC fine scheduling, action gates, blocked-cycle catch-up, exact/forced movement, and actor position projection are authoritative. The main remaining path-scheduler gap is facing/turning-dependent movement and directional locomotion.
 
-This checkpoint updates the implementation status described in `MOVEMENT-FACING.md` without changing that document's exact revision-240 source findings. Older mismatch notes that players had no bounded queue, NPCs retained only the latest request, NPC fine scheduling was disconnected, or `field1452` catch-up was absent are superseded here and by `NPC-PATH-ACCELERATION.md` / `ACTOR-CATCH-UP.md`.
+This checkpoint supersedes older mismatch notes in `MOVEMENT-FACING.md` that describe missing bounded queues, disconnected NPC fine scheduling, missing `field1452`, or projection-owned forced movement. Exact source findings in that document remain evidence.
 
-## Implemented semantic state
+## Authoritative semantic state
 
-`game-state::ActorPathQueue` is authoritative live actor state shared by players and NPCs.
+`game-state::ActorPathQueue` is live actor movement state shared by players and NPCs.
 
-- Capacity is 9 active entries, matching the observable active depth of the revision-240 `Actor` queue.
-- New requests are inserted at the front.
-- The oldest surviving request is at the tail.
-- `pop_oldest` removes that tail entry, matching the stock scheduler's `field1471 - 1` consumption order.
+- Capacity is 9 active entries.
+- New requests are inserted at the front; the oldest active request is consumed from the tail.
 - Saturation drops the previous oldest request when a tenth request is inserted.
-- Each entry retains a target `WorldTile` and semantic `MoveSpeed`.
-- The queue owns a lazily initialized authoritative world fine-position cursor.
-- For NPCs, it also retains the definition-resolved `PathAccelerationPolicy` used by future ordinary path cycles.
-- It retains signed `catch_up_cycles`, the authoritative revision-240 `field1452` equivalent.
-- The complete ordered queue, effective fine position, retained acceleration policy and catch-up debt participate in semantic fingerprint schema v21.
+- Each entry retains target `WorldTile` plus semantic `MoveSpeed`.
+- The queue owns the authoritative world fine-position cursor used by ordinary and forced movement.
+- NPC queues retain the definition-resolved `PathAccelerationPolicy` required by future ordinary cycles.
+- The queue retains signed `catch_up_cycles`, the revision-240 `field1452` equivalent.
 
-The existing player/NPC `tile` fields remain the server-confirmed/network endpoint. Fine position is separate scheduler state: a packet can move the confirmed endpoint immediately while the actor cursor advances toward queued targets over client cycles.
+The player/NPC `tile` field remains the server-confirmed/network endpoint. Fine position is separate client-cycle state. The fine cursor is normalized to the south-west footprint corner (`tile * 128`); omitting the constant fixed-footprint centre offset leaves deltas, equality and the 288-unit snap threshold unchanged.
 
-The fine cursor is normalized to the south-west footprint corner (`tile * 128`) instead of storing the stock actor-size centre offset. For a fixed actor footprint that omitted offset is constant on both current and target coordinates, so movement deltas, target equality and the 288-unit snap threshold are unchanged while the shared scheduler avoids depending on actor definition size.
+Semantic fingerprint schema v22 includes effective fine position, ordered queue entries, NPC acceleration policy, catch-up debt and the active action timing that can gate forced interpolation.
 
-## Player update behavior
+## Packet-time path behavior
 
 For visible players:
 
-- ordinary non-stationary movement first initializes the fine cursor from the **pre-packet** actor tile, then appends the newly confirmed endpoint with its effective traversal speed;
-- `MoveSpeed::Stationary` clears queued requests, resets the fine cursor directly to the confirmed tile, resets action/path remainder and hard-resets catch-up debt;
-- exact/forced movement clears queued requests and resets the action/path remainder while preserving the current fine cursor and catch-up debt until the exact scheduler owns the real active-cycle reset point;
-- player visibility index reuse creates fresh empty queue/fine-position/catch-up state with the new actor instance.
+- ordinary non-stationary movement initializes a missing fine cursor from the pre-packet tile, then queues the confirmed endpoint;
+- `MoveSpeed::Stationary` clears the queue, places the fine cursor at the confirmed tile and hard-resets path/action catch-up state;
+- exact movement clears queued requests and the `field1476`-style action/path remainder while preserving the current fine cursor until the forced client-cycle phase runs;
+- visibility index reuse creates fresh path/fine/catch-up state.
 
-This ordering matters. Initializing the cursor after overwriting `player.tile` would make a newly queued move begin at its destination and disappear instantly.
+For NPCs, ordered one-step/two-step requests are retained in the same bounded queue. Definition-derived acceleration policy is resolved before GameState and survives normal queue clears/resets for that NPC lifetime.
 
-## NPC definition-derived acceleration
+## Definition-derived NPC acceleration
 
-Revision 240 does not always use the player backlog thresholds for NPCs. Exact source evidence is recorded in `NPC-PATH-ACCELERATION.md`.
+Revision 240 uses `NPCComposition.field5325` to choose backlog thresholds. Exact evidence is recorded in `NPC-PATH-ACCELERATION.md`.
 
-`NPCComposition.field5325` defaults true. Definition opcode 109 sets it false. `Actor.method3284` uses that value to choose between:
+- default / no opcode 109: backlog `> 2` -> step 6, `> 3` -> step 8;
+- opcode 109: backlog `> 1` -> step 6, `> 2` -> step 8.
 
-- standard: backlog `> 2` -> step 6 and `> 3` -> step 8;
-- early: backlog `> 1` -> step 6 and `> 2` -> step 8.
+The cache adapter projects this into revision-neutral `PathAccelerationPolicy`; protocol remains cache-free. A direct NPC fixture without required policy stays unresolved instead of assuming one branch.
 
-The cache adapter resolves that source-specific selector into revision-neutral `PathAccelerationPolicy`. Application orchestration attaches policies for spawned NPC definitions and definition-change masks before `GameState` mutation. Protocol decoding remains cache-free.
+## Authoritative ordinary cycle
 
-NPC lifecycle rules are explicit:
+Movement is evaluated before action playback advances for that same client cycle.
 
-- spawn stores the resolved definition policy when available;
-- normal path enqueue, clear and reset retain it;
-- a definition-change mask replaces the retained policy along with `definition_id`;
-- despawn/reuse cannot inherit another NPC's policy;
-- direct semantic fixtures with no resolved policy remain unresolved rather than silently assuming player thresholds.
+For an ordinary queued target:
 
-## Authoritative ordinary actor cycle scheduler
+1. evaluate opcode-9/opcode-10 action movement gate;
+2. if blocked, increment `catch_up_cycles` without moving;
+3. compute oldest target and fine-coordinate gap;
+4. gap `> 288` snaps and consumes without spending catch-up debt;
+5. otherwise choose base step 4 and apply player/NPC backlog thresholds;
+6. positive catch-up debt with backlog `> 1` forces base step 8 and spends one debt cycle;
+7. run doubles and crawl halves the base step;
+8. approach target on each axis;
+9. on target equality, consume the oldest request and decrement the positive `field1476`-style remainder.
 
-`game-state::actor_movement` advances ordinary queued players and cache-resolved NPCs from the same client-cycle transition that advances action delays.
+An empty ordinary queue resets catch-up debt. Generic queue `clear` preserves debt because stock queue-clear helpers do not universally reset `field1452`; `reset_to` is a hard placement and clears it.
 
-For each client cycle, movement is evaluated before that cycle decrements the action's explicit delay. That preserves the revision-240 ordering where an action with a non-zero delay does not yet apply its normal path gate.
+## Authoritative forced/exact cycle
 
-For an ordinary queued path:
+`SceneryState` remains the single `ClientCycle` clock. For each inner cycle, `WorldEntitiesState` passes the exact cycle into `game-state::actor_movement` before sequence playback advances.
 
-1. the opcode-9/opcode-10 action gate is checked;
-2. if that gate blocks, fine position and queue remain unchanged and `catch_up_cycles` increments by one;
-3. the oldest queued target is converted to fine coordinates;
-4. if the maximum axis gap is greater than 288 fine units, the actor snaps to the target and the oldest entry is consumed **without spending catch-up debt**;
-5. otherwise the base step is 4 fine units;
-6. backlog thresholds from the actor's resolved acceleration policy can raise that step to 6 or 8;
-7. after ordinary backlog/turn-speed choices, positive catch-up debt with backlog greater than one forces base step 8 and spends exactly one debt cycle;
-8. authored `Run` then doubles the step and `Crawl` halves it;
-9. each axis approaches the target by at most that final step;
-10. target equality invokes the shared authoritative consumption transition.
+If an actor has an active forced trajectory:
 
-Players use `PathAccelerationPolicy::STANDARD`. NPCs use their resolved definition policy. A cache-unresolved NPC does not advance through the authoritative ordinary scheduler because guessing would make future state definition-dependent without the definition evidence.
+- while `current <= start`, approach the forced start coordinate using the stock remaining-cycle divisor;
+- while `start < current <= end`, interpolate start to end only when the revision-240 forced action gate permits it;
+- exact end always permits interpolation;
+- cached-model actions bypass the legacy frame-boundary test;
+- a zero-delay legacy action requires `current_frame_cycle + 1 > current_frame_delay`;
+- unresolved required timing holds position rather than guessing;
+- every active forced cycle resets `catch_up_cycles` and applies the authored orientation;
+- once `current > end`, clear the trajectory and resume ordinary scheduling in that same cycle.
 
-An empty ordinary path resets catch-up debt to zero. Immediate/hard placement through `ActorPathQueue::reset_to` also resets it. Generic `ActorPathQueue::clear` deliberately preserves it because exact revision-240 queue-clear helpers do not universally reset `field1452`.
-
-The shared consumption transition removes the oldest entry and decrements the positive `field1476`-style pre-action remainder. The opcode-9/opcode-10 gate/decrement behavior is therefore reached by real player and NPC target completion.
-
-`ACTOR-CATCH-UP.md` records the exact increment/decrement/reset evidence and the distinction between ordinary catch-up and the still-deferred forced-movement reset timing.
-
-## Ordinary actor projection migration
-
-`crates/scene/src/authoritative_motion.rs` fronts the older disposable motion projector.
-
-For ordinary players and cache-resolved ordinary NPCs, `ActorMotion` copies position from `ActorPathQueue::fine_position(...)` during scene observation. Existing geometry/camera/minimap consumers therefore receive GameState position without owning a second ordinary path scheduler.
-
-The legacy `scene::motion` implementation is still used for disposable pose/turn state and forced/exact movement. It also remains a fallback for deliberately unresolved direct NPC fixtures. Its independently walked ordinary coordinate is no longer the connected cache-resolved actor-position authority.
-
-Exact/forced movement is the deliberate exception: until its frame-boundary gate and interpolation move into GameState, the facade delegates an actively forced actor's drawn position to the legacy projector.
+`FORCED-MOVEMENT.md` records the full evidence and timing boundary.
 
 ## Action-sequence interaction
 
-When a different action sequence is accepted through the resolved `SequencePolicy` path, `ActorSequenceSlot::assign_sequence` receives the actor's real current queue length. That initializes the revision-240 `field1476`-style pre-action remainder.
+A different accepted action captures the actor's real queue length into the mutable revision-240 `field1476` equivalent (`path_backlog_at_assignment`, retained historical Rust name).
 
-Same-ID restart modes do not replace that remainder. Stationary/reset and exact-movement paths reset it to zero.
+- active action + non-zero delay does not apply the ordinary path gate yet;
+- delay zero + positive remainder uses `movement_gate_with_backlog`;
+- delay zero + zero remainder uses `movement_gate_without_backlog`;
+- gate value 0 blocks ordinary progress and accrues catch-up debt;
+- real target consumption decrements the positive remainder.
 
-`game-state::sequence_scheduler` implements the exact movement-gate choice used by revision 240:
+Resolved `SequenceTiming` is retained separately from `SequencePolicy`. It provides legacy frame delays/rewind or cached-model classification for authoritative forced movement. The active timing resolution and data participate in fingerprint v22 because they change future movement.
 
-- no active action: path progress is allowed;
-- an active action with non-zero explicit delay: path progress is allowed;
-- active action, delay zero, positive pre-action remainder: use `movement_gate_with_backlog` (sequence opcode 9);
-- active action, delay zero, zero remainder: use `movement_gate_without_backlog` (sequence opcode 10);
-- gate value `0` blocks normal path progress;
-- unresolved legacy sequence policy does not invent a blocking decision.
+## Projection boundary
 
-A blocked ordinary actor cycle now increments catch-up debt while leaving fine position, queue and `field1476` remainder unchanged. Once movement becomes allowed, debt can force base step 8 while backlog remains greater than one. Reaching/snapping a target independently decrements the positive `field1476` remainder; catch-up debt and pre-action remainder are different live counters.
+`crates/scene/src/authoritative_motion.rs` fronts the older disposable pose/turn projector.
 
-The Rust field is still named `path_backlog_at_assignment` from the earlier assignment checkpoint, but its runtime meaning now matches the mutable remaining `field1476` counter. A later model-cleanup checkpoint can rename it without changing behavior.
+- all player translation, ordinary or forced, comes from GameState fine position;
+- forced NPC translation comes from GameState fine position even when ordinary NPC acceleration policy is absent;
+- cache-resolved ordinary NPC translation also comes from GameState;
+- only deliberately unresolved ordinary NPC fixtures can use the legacy position fallback.
 
-## Forced-movement boundary
+The legacy scene implementation may still own disposable pose/turn state. It is no longer the connected actor-position authority.
 
-Exact revision-240 evidence shows both forced/exact phases reset `field1452` on every active forced cycle. RustClient intentionally does **not** reset catch-up merely because `exact_move.is_some()`.
-
-The current trajectory marker can remain stored beyond its active interval, while `WorldEntitiesState::advance_cycles` does not yet receive the exact per-inner-cycle forced phase. Resetting from marker presence would therefore erase debt for too long and create incorrect future ordinary movement.
-
-The authoritative forced-movement checkpoint must port interpolation, the legacy action-frame boundary gate, exact client-cycle phase ownership, and the matching catch-up reset together.
-
-## Deliberately not implemented here
+## Remaining movement gaps
 
 This checkpoint does **not** claim parity for:
 
-- authoritative exact/forced-movement interpolation or its active-cycle catch-up reset, because the legacy action-frame boundary gate is still outstanding;
-- turn-slowing from desired/current orientation mismatch;
+- separate desired/current actor orientation and target-following state;
+- turn rate and turn-in-place semantics;
+- turning slowdown before backlog/catch-up acceleration;
 - directional walk/run/crawl sequence selection;
-- desired/current orientation and moving facing targets;
-- ordinary scene-bound safety reset behavior beyond already modeled explicit reset paths;
-- removal of legacy pose/turn and forced-movement projection.
+- scene-bound safety reset behavior beyond modeled explicit hard resets;
+- complete cached-model action playback/completion semantics.
 
-Those behaviors remain specified by `MOVEMENT-FACING.md`, `SEQUENCE-SCHEDULER.md`, and `ACTOR-CATCH-UP.md`. The next smallest movement dependency is authoritative exact/forced movement because it closes the remaining positional projection exception and the remaining `field1452` reset site.
+The next smallest movement checkpoint should move facing/turning into GameState, because position ownership for both ordinary and forced movement is now closed.
