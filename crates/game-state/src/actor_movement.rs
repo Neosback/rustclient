@@ -1,11 +1,12 @@
 //! Authoritative per-client-cycle actor fine-position scheduling.
 //!
-//! Ordinary queued player and resolved-NPC movement lives in `GameState`. Forced/exact movement
-//! still has a legacy action-frame gate that is deliberately left in the scene projection until
-//! that remaining revision-240 dependency is implemented here too.
+//! Ordinary queued and exact/forced player/NPC translation lives in `GameState`. Scene motion is
+//! a disposable pose/turn projection and must not own a second positional scheduler.
 
-use crate::{ActorFinePosition, ActorPathQueue, WorldEntitiesState};
-use rustclient_model::{ActorSequenceSlot, MoveSpeed, PathAccelerationPolicy, WorldTile};
+use crate::{ActorFinePosition, ActorPathQueue, ExactMovement, WorldEntitiesState};
+use rustclient_model::{
+    ActorSequenceSlot, ClientCycle, MoveSpeed, PathAccelerationPolicy, SequenceTiming, WorldTile,
+};
 
 const SNAP_FINE_UNITS: i64 = 288;
 
@@ -16,19 +17,34 @@ pub(crate) enum ActorMovementCycle {
     Moving,
     Consumed,
     Snapped,
+    ForcedApproach,
+    ForcedInterpolated,
+    ForcedHeld,
 }
 
-/// Advance all ordinary visible actors by one authoritative client cycle.
+/// Advance all visible actors by one authoritative client cycle.
 ///
-/// The historical function name is retained to keep the existing entity-cycle call site small;
-/// this now advances players plus NPCs whose definition-derived acceleration policy was resolved.
-/// Movement is evaluated before the action-sequence delay is decremented for the same cycle.
-pub(crate) fn advance_players(entities: &mut WorldEntitiesState) {
+/// Exact movement owns position before ordinary queued movement. Movement observes action delay and
+/// legacy frame-boundary state before playback advances later in the same cycle.
+pub(crate) fn advance_players(entities: &mut WorldEntitiesState, current_cycle: ClientCycle) {
+    let timings = &entities.sequence_timings;
     for player in entities.players.values_mut() {
-        if player.exact_move.is_some() {
-            // Exact-movement phase timing is not authoritative yet. `exact_move` can remain
-            // attached after its active interval, so resetting catch-up from presence alone would
-            // over-reset field1452. The forced-movement scheduler will own that exact reset point.
+        let timing = player
+            .sequence
+            .sequence
+            .filter(|_| player.sequence_timing_resolved)
+            .and_then(|id| timings.get(&id));
+        if advance_forced_cycle(
+            &mut player.path_queue,
+            &player.sequence,
+            timing,
+            &mut player.exact_move,
+            &mut player.orientation,
+            player.tile,
+            current_cycle,
+        )
+        .is_some()
+        {
             continue;
         }
         advance_actor_cycle(
@@ -40,9 +56,22 @@ pub(crate) fn advance_players(entities: &mut WorldEntitiesState) {
     }
 
     for npc in entities.npcs.values_mut() {
-        if npc.exact_move.is_some() {
-            // See the player branch above: preserve debt until exact client-cycle timing is owned
-            // by GameState rather than guessing from a potentially stale trajectory marker.
+        let timing = npc
+            .sequence
+            .sequence
+            .filter(|_| npc.sequence_timing_resolved)
+            .and_then(|id| timings.get(&id));
+        if advance_forced_cycle(
+            &mut npc.path_queue,
+            &npc.sequence,
+            timing,
+            &mut npc.exact_move,
+            &mut npc.orientation,
+            npc.tile,
+            current_cycle,
+        )
+        .is_some()
+        {
             continue;
         }
         if npc.path_queue.is_empty() {
@@ -58,6 +87,70 @@ pub(crate) fn advance_players(entities: &mut WorldEntitiesState) {
         };
         advance_actor_cycle(&mut npc.path_queue, &mut npc.sequence, npc.tile, policy);
     }
+}
+
+/// Advance the active revision-240 forced trajectory, returning `None` only when no forced phase
+/// owns this cycle. An expired trajectory is cleared and ordinary scheduling resumes immediately.
+fn advance_forced_cycle(
+    path: &mut ActorPathQueue,
+    sequence: &ActorSequenceSlot,
+    timing: Option<&SequenceTiming>,
+    exact_move: &mut Option<ExactMovement>,
+    orientation: &mut u16,
+    fallback_tile: WorldTile,
+    current_cycle: ClientCycle,
+) -> Option<ActorMovementCycle> {
+    let exact = (*exact_move)?;
+    let current = current_cycle.get();
+    let start_cycle = exact.starts_at.get();
+    let end_cycle = exact.ends_at.get();
+
+    if current > end_cycle {
+        *exact_move = None;
+        return None;
+    }
+
+    path.ensure_position(fallback_tile);
+    path.reset_catch_up();
+    *orientation = exact.direction;
+
+    let start = ActorFinePosition::from_tile(exact.start);
+    if current <= start_cycle {
+        let remaining = start_cycle.saturating_sub(current).max(1);
+        let divisor = i64::try_from(remaining).unwrap_or(i64::MAX);
+        let mut position = path.fine_position(fallback_tile);
+        position.x += (start.x - position.x) / divisor;
+        position.y += (start.y - position.y) / divisor;
+        path.set_fine_position(position);
+        return Some(ActorMovementCycle::ForcedApproach);
+    }
+
+    let at_exact_end = current == end_cycle;
+    if !crate::sequence_playback::forced_interpolation_allowed(
+        *sequence,
+        timing,
+        at_exact_end,
+    ) {
+        return Some(ActorMovementCycle::ForcedHeld);
+    }
+
+    let end = ActorFinePosition::from_tile(exact.end);
+    let duration = end_cycle - start_cycle;
+    debug_assert!(duration > 0, "approach phase owns zero-duration exact movement");
+    let elapsed = current - start_cycle;
+    let interpolate = |from: i64, to: i64| {
+        let duration = i128::from(duration);
+        let elapsed = i128::from(elapsed);
+        i64::try_from(
+            (i128::from(from) * (duration - elapsed) + i128::from(to) * elapsed) / duration,
+        )
+        .expect("convex exact-movement interpolation fits fine coordinate")
+    };
+    path.set_fine_position(ActorFinePosition {
+        x: interpolate(start.x, end.x),
+        y: interpolate(start.y, end.y),
+    });
+    Some(ActorMovementCycle::ForcedInterpolated)
 }
 
 fn consume_reached_entry(path: &mut ActorPathQueue, sequence: &mut ActorSequenceSlot) {
@@ -136,11 +229,11 @@ fn advance_actor_cycle(
 
 #[cfg(test)]
 mod tests {
-    use super::{ActorMovementCycle, advance_actor_cycle};
-    use crate::{ActorFinePosition, ActorPathQueue};
+    use super::{ActorMovementCycle, advance_actor_cycle, advance_forced_cycle};
+    use crate::{ActorFinePosition, ActorPathQueue, ExactMovement};
     use rustclient_model::{
-        ActorSequenceSlot, MoveSpeed, PathAccelerationPolicy, Plane, SequenceId, SequencePolicy,
-        WorldTile,
+        ActorSequenceSlot, ClientCycle, MoveSpeed, PathAccelerationPolicy, Plane, SequenceId,
+        SequencePolicy, SequenceTiming, WorldTile,
     };
 
     fn tile(x: i32, y: i32) -> WorldTile {
@@ -155,6 +248,121 @@ mod tests {
             movement_gate_without_backlog: without_backlog,
             max_loops: 99,
         }
+    }
+
+    fn exact() -> ExactMovement {
+        ExactMovement {
+            start: tile(1, 0),
+            end: tile(3, 0),
+            starts_at: ClientCycle::new(2),
+            ends_at: ClientCycle::new(4),
+            direction: 512,
+        }
+    }
+
+    #[test]
+    fn forced_approach_and_interpolation_use_authoritative_fine_position() {
+        let mut path = ActorPathQueue::default();
+        path.ensure_position(tile(0, 0));
+        path.increment_catch_up();
+        let sequence = ActorSequenceSlot::default();
+        let mut movement = Some(exact());
+        let mut orientation = 0;
+
+        assert_eq!(
+            advance_forced_cycle(
+                &mut path,
+                &sequence,
+                None,
+                &mut movement,
+                &mut orientation,
+                tile(0, 0),
+                ClientCycle::new(2),
+            ),
+            Some(ActorMovementCycle::ForcedApproach)
+        );
+        assert_eq!(path.fine_position(tile(0, 0)).x, 128);
+        assert_eq!(path.catch_up_cycles(), 0);
+        assert_eq!(orientation, 512);
+
+        assert_eq!(
+            advance_forced_cycle(
+                &mut path,
+                &sequence,
+                None,
+                &mut movement,
+                &mut orientation,
+                tile(0, 0),
+                ClientCycle::new(3),
+            ),
+            Some(ActorMovementCycle::ForcedInterpolated)
+        );
+        assert_eq!(path.fine_position(tile(0, 0)).x, 256);
+    }
+
+    #[test]
+    fn legacy_zero_delay_action_holds_until_frame_boundary_but_end_cycle_wins() {
+        let mut path = ActorPathQueue::default();
+        path.reset_to(tile(1, 0));
+        let mut sequence = ActorSequenceSlot::default();
+        sequence.assign_sequence(Some((SequenceId::new(1), policy(1, 1))), 0, 0);
+        sequence.frame = Some(0);
+        sequence.cycle = 0;
+        let timing = SequenceTiming::Legacy {
+            frame_delays: vec![5],
+            frame_step: None,
+        };
+        let mut movement = Some(exact());
+        let mut orientation = 0;
+
+        assert_eq!(
+            advance_forced_cycle(
+                &mut path,
+                &sequence,
+                Some(&timing),
+                &mut movement,
+                &mut orientation,
+                tile(0, 0),
+                ClientCycle::new(3),
+            ),
+            Some(ActorMovementCycle::ForcedHeld)
+        );
+        assert_eq!(path.fine_position(tile(0, 0)).x, 128);
+
+        assert_eq!(
+            advance_forced_cycle(
+                &mut path,
+                &sequence,
+                Some(&timing),
+                &mut movement,
+                &mut orientation,
+                tile(0, 0),
+                ClientCycle::new(4),
+            ),
+            Some(ActorMovementCycle::ForcedInterpolated)
+        );
+        assert_eq!(path.fine_position(tile(0, 0)).x, 384);
+    }
+
+    #[test]
+    fn expired_forced_marker_is_removed_and_releases_ordinary_scheduler() {
+        let mut path = ActorPathQueue::default();
+        let sequence = ActorSequenceSlot::default();
+        let mut movement = Some(exact());
+        let mut orientation = 0;
+        assert_eq!(
+            advance_forced_cycle(
+                &mut path,
+                &sequence,
+                None,
+                &mut movement,
+                &mut orientation,
+                tile(0, 0),
+                ClientCycle::new(5),
+            ),
+            None
+        );
+        assert_eq!(movement, None);
     }
 
     #[test]
@@ -247,7 +455,6 @@ mod tests {
         );
         assert_eq!(path.catch_up_cycles(), 2);
 
-        // Non-zero sequence delay bypasses the action path gate for this cycle.
         sequence.delay = 1;
         assert_eq!(
             advance_actor_cycle(
