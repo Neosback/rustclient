@@ -11,7 +11,7 @@ use crate::{GameState, OperationCommit, SemanticEvent, SessionLifecycle};
 ///
 /// Any change to field ordering, tags, integer encoding, or fingerprint
 /// algorithm that changes canonical output must increment this version.
-pub const SEMANTIC_FINGERPRINT_VERSION: u16 = 18;
+pub const SEMANTIC_FINGERPRINT_VERSION: u16 = 19;
 
 const FNV_OFFSET_BASIS: u64 = 0xCBF2_9CE4_8422_2325;
 const FNV_PRIME: u64 = 0x0000_0100_0000_01B3;
@@ -272,7 +272,7 @@ impl GameState {
             fingerprint.write_u16(player.orientation);
             write_speed(&mut fingerprint, player.path_speed);
             write_speed(&mut fingerprint, player.movement_speed);
-            write_actor_path(&mut fingerprint, player.path_queue);
+            write_actor_path(&mut fingerprint, player.path_queue, player.tile);
             match player.exact_move {
                 None => fingerprint.write_u8(0),
                 Some(exact) => {
@@ -343,7 +343,7 @@ impl GameState {
                     write_speed(&mut fingerprint, path.speed);
                 }
             }
-            write_actor_path(&mut fingerprint, npc.path_queue);
+            write_actor_path(&mut fingerprint, npc.path_queue, npc.tile);
             match npc.exact_move {
                 None => fingerprint.write_u8(0),
                 Some(exact) => {
@@ -411,7 +411,14 @@ fn write_speed(fingerprint: &mut StableFingerprint64, speed: rustclient_model::M
     });
 }
 
-fn write_actor_path(fingerprint: &mut StableFingerprint64, path: crate::ActorPathQueue) {
+fn write_actor_path(
+    fingerprint: &mut StableFingerprint64,
+    path: crate::ActorPathQueue,
+    fallback: rustclient_model::WorldTile,
+) {
+    let fine = path.fine_position(fallback);
+    fingerprint.write_bytes(&fine.x.to_le_bytes());
+    fingerprint.write_bytes(&fine.y.to_le_bytes());
     fingerprint.write_u8(path.len());
     for entry in path.iter() {
         write_tile(fingerprint, entry.target);
@@ -620,8 +627,7 @@ fn write_event(fingerprint: &mut StableFingerprint64, event: SemanticEvent) {
         } => {
             fingerprint.write_u8(10);
             write_location_key(fingerprint, key);
-            write_location_override(fingerprint, previous);
-            write_location_override(fingerprint, current);
+            write_location_override(fingerprint, previous, current);
         }
         SemanticEvent::MapRebuilt(placement) => {
             fingerprint.write_u8(13);
@@ -701,7 +707,15 @@ fn write_location_key(f: &mut StableFingerprint64, key: rustclient_model::Locati
         rustclient_model::LocationLayer::FloorDecoration => 3,
     });
 }
-fn write_location_override(f: &mut StableFingerprint64, value: crate::LocationOverride) {
+fn write_location_override(
+    f: &mut StableFingerprint64,
+    previous: crate::LocationOverride,
+    current: crate::LocationOverride,
+) {
+    write_one_location_override(f, previous);
+    write_one_location_override(f, current);
+}
+fn write_one_location_override(f: &mut StableFingerprint64, value: crate::LocationOverride) {
     use rustclient_model::LocationChange;
     match value.change {
         LocationChange::Inherit => f.write_u8(0),
