@@ -1,0 +1,25 @@
+tiny	2	0	semantic	readable
+c	classBZ	ActorFacingState
+	f	LclassLU;	field624	mode
+	f	Z	field622	snap
+	f	LclassLJ;	field623	targetKind
+	f	I	field631	targetIndex
+	f	I	field633	fallbackAngle
+	f	I	field627	angle
+	f	I	field628	areaX
+	f	I	field630	areaY
+	f	I	field629	areaWidth
+	f	I	field632	areaHeight
+	m	(B)V	method1378	reset
+	m	(LclassBZ;I)V	method1380	copyFrom
+	m	(ILPacketBuffer;B)V	method1384	decode
+c	classLU	FacingMode
+	f	LclassLU;	field4226	ANGLE
+	f	LclassLU;	field4224	AREA
+	f	LclassLU;	field4225	NONE
+	f	LclassLU;	field4223	ENTITY
+c	classLJ	FacingTargetKind
+	f	LclassLJ;	field4174	PLAYER
+	f	LclassLJ;	field4175	NPC
+	f	LclassLJ;	field4173	WORLD_ENTITY
+	f	LclassLJ;	field4172	NONE

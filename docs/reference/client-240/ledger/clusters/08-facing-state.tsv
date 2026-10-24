@@ -1,0 +1,24 @@
+classBZ	classBZ	bz	ActorFacingState	class	T4	B	Actor.field1461 stores this object; classEB.method3820 resolves its angle, area and entity-target modes into Actor.field1493 desired orientation	game-state::entities	08-facing-state
+classBZ.field624	classBZ	af	mode	field	T4	B	Actor.method3162/3165/3163 distinguish classLU constants for explicit angle, area and entity facing; classBZ.method1384 decodes the mode from header bits 3..5	protocol::openrune_240 + game-state::entities	08-facing-state
+classBZ.field622	classBZ	ae	snap	field	T4	B	Actor.method3236 returns this flag; classEB.method3820 copies desired orientation into current orientation when it is set and turnRate is positive	game-state::entities	08-facing-state
+classBZ.field623	classBZ	ab	targetKind	field	T4	B	classEB.method3820 selects NPC, player or world-entity lookup from this enum; NONE suppresses entity-target facing	game-state::entities	08-facing-state
+classBZ.field631	classBZ	ag	targetIndex	field	T4	B	Actor.method3252 returns it; classEB.method3820 uses it as the indexed NPC/player/world-entity lookup key	game-state::entities	08-facing-state
+classBZ.field633	classBZ	as	fallbackAngle	field	T4	B	Actor.method3256 returns it; classEB.method3820 uses it when an entity target cannot be resolved	game-state::entities	08-facing-state
+classBZ.field627	classBZ	al	angle	field	T4	B	Actor.method3270 returns it and Actor.method3162 tests it against -1; classEB.method3820 consumes it as the explicit facing angle	game-state::entities	08-facing-state
+classBZ.field628	classBZ	ax	areaX	field	T4	B	Actor.method3258 returns it; classEB.method3820 converts it from world tile coordinates to local fine coordinates when resolving area facing	game-state::entities	08-facing-state
+classBZ.field630	classBZ	ac	areaY	field	T4	B	Actor.method3260 returns it; classEB.method3820 converts it from world tile coordinates to local fine coordinates when resolving area facing	game-state::entities	08-facing-state
+classBZ.field629	classBZ	aa	areaWidth	field	T4	B	Actor.method3263 returns it; classEB.method3820 uses width-1 to derive the opposite X edge before taking the area center	game-state::entities	08-facing-state
+classBZ.field632	classBZ	ao	areaHeight	field	T4	B	Actor.method3266 returns it; classEB.method3820 uses height-1 to derive the opposite Y edge before taking the area center	game-state::entities	08-facing-state
+classBZ.method1378	classBZ	az	reset	method	T4	B	Method body restores default mode/target/snap and -1-style sentinels; classDC.method2891 invokes it while resetting a player-info slot	game-state::entities	08-facing-state
+classBZ.method1380	classBZ	af	copyFrom	method	T4	B	Method body copies shared flags and only the payload fields selected by the source facing mode	game-state::entities	08-facing-state
+classBZ.method1384	classBZ	ae	decode	method	T4	B	Actor.method3231 delegates the facing update to this method; it decodes behavior bits 0..2, mode bits 3..5, snap bit 6, then a mode-specific smart payload	protocol::openrune_240	08-facing-state
+classLU	classLU	lu	FacingMode	class	T4	B	Actor.method3162/3165/3163 use three constants as explicit-angle, area and entity facing modes; classBZ constructor uses the fourth as the default no-facing mode	game-state::entities	08-facing-state
+classLU.field4226	classLU	ae	ANGLE	field	T4	B	Actor.method3162 returns true only for this mode with a non--1 classBZ.field627 explicit angle	game-state::entities	08-facing-state
+classLU.field4224	classLU	af	AREA	field	T4	B	Actor.method3165 returns true only for this mode with a non--1 classBZ.field628 area origin	game-state::entities	08-facing-state
+classLU.field4225	classLU	ab	NONE	field	T4	B	classBZ constructor and reset select this mode while all facing payloads are reset	game-state::entities	08-facing-state
+classLU.field4223	classLU	az	ENTITY	field	T4	B	Actor.method3163 returns true only for this mode when targetKind is non-NONE and targetIndex is non--1	game-state::entities	08-facing-state
+classLJ	classLJ	lj	FacingTargetKind	class	T4	B	classEB.method3820 branches on this enum to select NPC, player or world-entity target storage	game-state::entities	08-facing-state
+classLJ.field4174	classLJ	ae	PLAYER	field	T4	B	classEB.method3820 resolves this kind from WorldView.field1692 player storage	game-state::entities	08-facing-state
+classLJ.field4175	classLJ	af	NPC	field	T4	B	classEB.method3820 resolves this kind from WorldView.field1696 NPC storage	game-state::entities	08-facing-state
+classLJ.field4173	classLJ	ab	WORLD_ENTITY	field	T4	B	classEB.method3820 resolves this kind from WorldView.field1698 world-entity storage	game-state::entities	08-facing-state
+classLJ.field4172	classLJ	az	NONE	field	T4	B	classBZ constructor/reset selects this value and Actor.method3163 rejects it as an entity target	game-state::entities	08-facing-state
