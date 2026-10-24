@@ -40,6 +40,7 @@ pub(crate) fn advance_players(entities: &mut WorldEntitiesState, current_cycle: 
             timing,
             &mut player.exact_move,
             &mut player.orientation,
+            &mut player.current_orientation,
             player.tile,
             current_cycle,
         )
@@ -67,6 +68,7 @@ pub(crate) fn advance_players(entities: &mut WorldEntitiesState, current_cycle: 
             timing,
             &mut npc.exact_move,
             &mut npc.orientation,
+            &mut npc.current_orientation,
             npc.tile,
             current_cycle,
         )
@@ -97,6 +99,7 @@ fn advance_forced_cycle(
     timing: Option<&SequenceTiming>,
     exact_move: &mut Option<ExactMovement>,
     orientation: &mut u16,
+    current_orientation: &mut u16,
     fallback_tile: WorldTile,
     current_cycle: ClientCycle,
 ) -> Option<ActorMovementCycle> {
@@ -124,6 +127,10 @@ fn advance_forced_cycle(
         path.set_fine_position(position);
         return Some(ActorMovementCycle::ForcedApproach);
     }
+
+    // Revision 240 snaps current body rotation to the authored forced direction throughout the
+    // interpolation phase, even on a cycle where the legacy action-frame gate holds position.
+    *current_orientation = *orientation;
 
     let at_exact_end = current == end_cycle;
     if !crate::sequence_playback::forced_interpolation_allowed(
@@ -261,13 +268,14 @@ mod tests {
     }
 
     #[test]
-    fn forced_approach_and_interpolation_use_authoritative_fine_position() {
+    fn forced_approach_preserves_current_orientation_then_interpolation_snaps_it() {
         let mut path = ActorPathQueue::default();
         path.ensure_position(tile(0, 0));
         path.increment_catch_up();
         let sequence = ActorSequenceSlot::default();
         let mut movement = Some(exact());
         let mut orientation = 0;
+        let mut current_orientation = 1024;
 
         assert_eq!(
             advance_forced_cycle(
@@ -276,6 +284,7 @@ mod tests {
                 None,
                 &mut movement,
                 &mut orientation,
+                &mut current_orientation,
                 tile(0, 0),
                 ClientCycle::new(2),
             ),
@@ -284,6 +293,7 @@ mod tests {
         assert_eq!(path.fine_position(tile(0, 0)).x, 128);
         assert_eq!(path.catch_up_cycles(), 0);
         assert_eq!(orientation, 512);
+        assert_eq!(current_orientation, 1024);
 
         assert_eq!(
             advance_forced_cycle(
@@ -292,12 +302,14 @@ mod tests {
                 None,
                 &mut movement,
                 &mut orientation,
+                &mut current_orientation,
                 tile(0, 0),
                 ClientCycle::new(3),
             ),
             Some(ActorMovementCycle::ForcedInterpolated)
         );
         assert_eq!(path.fine_position(tile(0, 0)).x, 256);
+        assert_eq!(current_orientation, 512);
     }
 
     #[test]
@@ -314,6 +326,7 @@ mod tests {
         };
         let mut movement = Some(exact());
         let mut orientation = 0;
+        let mut current_orientation = 1024;
 
         assert_eq!(
             advance_forced_cycle(
@@ -322,12 +335,14 @@ mod tests {
                 Some(&timing),
                 &mut movement,
                 &mut orientation,
+                &mut current_orientation,
                 tile(0, 0),
                 ClientCycle::new(3),
             ),
             Some(ActorMovementCycle::ForcedHeld)
         );
         assert_eq!(path.fine_position(tile(0, 0)).x, 128);
+        assert_eq!(current_orientation, 512);
 
         assert_eq!(
             advance_forced_cycle(
@@ -336,12 +351,14 @@ mod tests {
                 Some(&timing),
                 &mut movement,
                 &mut orientation,
+                &mut current_orientation,
                 tile(0, 0),
                 ClientCycle::new(4),
             ),
             Some(ActorMovementCycle::ForcedInterpolated)
         );
         assert_eq!(path.fine_position(tile(0, 0)).x, 384);
+        assert_eq!(current_orientation, 512);
     }
 
     #[test]
@@ -350,6 +367,7 @@ mod tests {
         let sequence = ActorSequenceSlot::default();
         let mut movement = Some(exact());
         let mut orientation = 0;
+        let mut current_orientation = 1024;
         assert_eq!(
             advance_forced_cycle(
                 &mut path,
@@ -357,12 +375,15 @@ mod tests {
                 None,
                 &mut movement,
                 &mut orientation,
+                &mut current_orientation,
                 tile(0, 0),
                 ClientCycle::new(5),
             ),
             None
         );
         assert_eq!(movement, None);
+        assert_eq!(orientation, 0);
+        assert_eq!(current_orientation, 1024);
     }
 
     #[test]
