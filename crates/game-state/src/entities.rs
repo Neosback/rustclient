@@ -44,6 +44,7 @@ pub struct PlayerEntity {
     pub tracking_grid: Option<rustclient_model::PlayerTrackingGrid>,
     pub path_speed: rustclient_model::MoveSpeed,
     pub movement_speed: rustclient_model::MoveSpeed,
+    pub path_queue: crate::ActorPathQueue,
     pub exact_move: Option<crate::ExactMovement>,
     pub tile: WorldTile,
     pub orientation: u16,
@@ -62,6 +63,7 @@ pub struct NpcEntity {
     pub tile: WorldTile,
     /// Latest ordered server path request; the tile remains its confirmed endpoint.
     pub path: Option<crate::npcs::NpcPath>,
+    pub path_queue: crate::ActorPathQueue,
     pub exact_move: Option<crate::ExactMovement>,
     pub orientation: u16,
     pub sequence: rustclient_model::ActorSequenceSlot,
@@ -268,6 +270,7 @@ impl WorldEntitiesState {
                 tracking_grid: None,
                 path_speed: rustclient_model::MoveSpeed::Walk,
                 movement_speed: rustclient_model::MoveSpeed::Walk,
+                path_queue: crate::ActorPathQueue::default(),
                 exact_move: None,
                 tile: WorldTile::new(0, 0, Plane::MIN),
                 orientation: 0,
@@ -299,6 +302,8 @@ impl WorldEntitiesState {
             };
         }
         if let Some(exact) = update.local_exact_move {
+            player.path_queue.clear();
+            player.sequence.path_backlog_at_assignment = 0;
             player.exact_move = Some(
                 crate::player_movement::exact_movement(player.tile, cycle, exact)
                     .expect("validated exact movement"),
@@ -311,6 +316,7 @@ impl WorldEntitiesState {
             &mut player.sequence,
             update.local_sequence,
             i32::from(update.local_sequence_delay),
+            player.path_queue.backlog(),
             &update.sequence_policies,
         );
         if let Some(facing) = update.local_facing {
