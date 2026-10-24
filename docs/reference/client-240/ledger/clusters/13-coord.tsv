@@ -1,0 +1,12 @@
+classKY	classKY	ky	Coord	class	T4	B	Revision-240 packed coordinate type: constructor decodes plane from bits 28..29, x from bits 14..27 and y from bits 0..13; method6623 reverses that layout	game-state::coordinates + protocol/profile boundaries	13-coord
+classKY.field4053	classKY	af	x	field	T4	B	classKY(int) stores bits 14..27 here; method6686 prints it as the first world coordinate and method6623 packs it into bits 14..27	game-state::coordinates	13-coord
+classKY.field4054	classKY	ae	y	field	T4	B	classKY(int) stores bits 0..13 here; method6686 prints it as the second world coordinate and method6623 packs it into bits 0..13	game-state::coordinates	13-coord
+classKY.field4055	classKY	az	plane	field	T4	B	classKY(int) stores bits 28..29 here and uses -1 as the invalid sentinel; method6674 tests that sentinel	game-state::coordinates	13-coord
+classKY.method6623	classKY	az	pack	method	T4	B	Returns plane << 28 | x << 14 | y, the inverse of the packed-coordinate constructor	protocol/profile helpers + game-state::coordinates	13-coord
+classKY.method6626	classKY	af	unpackPlane	method	T4	B	Returns packedValue >> 28, matching the coordinate constructor's plane extraction	protocol/profile helpers	13-coord
+classKY.method6640	classKY	ab	unpackY	method	T4	B	Returns packedValue & 16383, matching the coordinate constructor's y extraction	protocol/profile helpers	13-coord
+classKY.method6649	classKY	ax	tileToLocalBase	method	T4	B	Returns tile << 7; Projectile uses it when applying coordinate deltas in local-unit space	game-state::coordinates + scene	13-coord
+classKY.method6652	classKY	ac	localToTile	method	T4	B	Returns local >> 7, the inverse scale of tileToLocalBase for local-unit coordinates	game-state::coordinates + scene	13-coord
+classKY.method6656	classKY	aa	tileToLocalCenter	method	T4	B	Returns 64 + (tile << 7), the center of a 128-unit tile; classNG.method7883 uses it for non-entity projectile targets	game-state::coordinates + scene	13-coord
+classKY.method6674	classKY	aq	isValid	method	T4	B	Returns plane != -1, preserving the packed-coordinate invalid sentinel	game-state::coordinates	13-coord
+classKY.method6663	classKY	cz	packCoord	method	T4	B	Returns -1 for an invalid coordinate, otherwise delegates to the same plane/x/y packed layout	protocol/profile helpers + game-state::coordinates	13-coord

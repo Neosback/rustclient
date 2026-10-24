@@ -1,0 +1,13 @@
+tiny	2	0	semantic	readable
+c	classKY	Coord
+	f	I	field4053	x
+	f	I	field4054	y
+	f	I	field4055	plane
+	m	(IIII)I	method6623	pack
+	m	(II)I	method6626	unpackPlane
+	m	(II)I	method6640	unpackY
+	m	(II)I	method6649	tileToLocalBase
+	m	(IB)I	method6652	localToTile
+	m	(II)I	method6656	tileToLocalCenter
+	m	(I)Z	method6674	isValid
+	m	(LclassKY;I)I	method6663	packCoord
