@@ -307,20 +307,21 @@ impl WorldEntitiesState {
         if let Some(appearance) = &update.local_appearance {
             player.appearance = Some(appearance.clone());
         }
-        if let rustclient_model::SequenceChange::Set(seq) = update.local_sequence {
-            if seq.is_none() {
-                player.sequence.clear();
-            } else {
-                player
-                    .sequence
-                    .set_sequence(seq, i32::from(update.local_sequence_delay));
-            }
-        }
+        crate::sequence_scheduler::apply_change(
+            &mut player.sequence,
+            update.local_sequence,
+            i32::from(update.local_sequence_delay),
+            &update.sequence_policies,
+        );
         if let Some(facing) = update.local_facing {
             player.orientation = facing;
         }
         let local_changed = *player != previous;
-        let changed = self.apply_remote_players(&update.remote, cycle) || local_changed;
+        let changed = self.apply_remote_players(
+            &update.remote,
+            cycle,
+            &update.sequence_policies,
+        ) || local_changed;
         if changed {
             self.generation = self.generation.wrapping_add(1);
         }
