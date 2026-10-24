@@ -1,0 +1,6 @@
+classJC	classJC	jc	ZoneUpdateType	class	T4	B	Closed marker family passed into classTI.method10892 to select one zone-local update decoder; exact packet dispatch identifies several members directly	protocol::openrune_240::zone	16-zone-updates
+classJC.field3119	classJC	az	LOC_ADD_CHANGE	field	T2	A	client packet dispatch maps classJJ.LOC_ADD_CHANGE_V2 directly to classTI.method10892(classJC.field3119)	protocol::openrune_240::zone	16-zone-updates
+classJC.field3130	classJC	ab	LOC_ANIM	field	T2	A	client packet dispatch maps classJJ.LOC_ANIM directly to classTI.method10892(classJC.field3130)	protocol::openrune_240::zone	16-zone-updates
+classJC.field3128	classJC	ao	LOC_DEL	field	T2	A	client packet dispatch maps classJJ.LOC_DEL directly to classTI.method10892(classJC.field3128)	protocol::openrune_240::zone	16-zone-updates
+classJC.field3122	classJC	as	LOC_MERGE	field	T2	A	client packet dispatch maps classJJ.LOC_MERGE directly to classTI.method10892(classJC.field3122)	protocol::openrune_240::zone	16-zone-updates
+classJC.field3133	classJC	ad	MAP_ANIM	field	T2	A	client packet dispatch maps classJJ.MAP_ANIM directly to classTI.method10892(classJC.field3133); its marker length 6 agrees with the revision-240 server packet table	protocol::openrune_240::zone	16-zone-updates

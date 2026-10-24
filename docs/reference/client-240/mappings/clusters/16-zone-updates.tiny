@@ -1,0 +1,7 @@
+tiny	2	0	semantic	readable
+c	classJC	ZoneUpdateType
+	f	LclassJC;	field3119	LOC_ADD_CHANGE
+	f	LclassJC;	field3130	LOC_ANIM
+	f	LclassJC;	field3128	LOC_DEL
+	f	LclassJC;	field3122	LOC_MERGE
+	f	LclassJC;	field3133	MAP_ANIM
