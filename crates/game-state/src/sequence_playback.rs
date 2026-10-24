@@ -96,10 +96,11 @@ pub(crate) fn advance_one(slot: &mut ActorSequenceSlot, timing: Option<&Sequence
         slot.clear();
         return;
     };
-    if usize::try_from(looped)
-        .ok()
-        .is_none_or(|index| index >= frame_delays.len())
-    {
+    let Ok(looped_index) = usize::try_from(looped) else {
+        slot.clear();
+        return;
+    };
+    if looped_index >= frame_delays.len() {
         slot.clear();
         return;
     }
