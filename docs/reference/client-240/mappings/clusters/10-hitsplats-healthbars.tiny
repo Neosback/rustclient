@@ -1,0 +1,20 @@
+tiny	2	0	semantic	readable
+c	classPW	HitsplatDefinition
+	f	I	field5446	duration
+	f	I	field5458	replacementMode
+	f	[I	field5453	transforms
+	f	I	field5460	transformVarbit
+	f	I	field5461	transformVarp
+	m	(B)LclassPW;	method9378	transform
+c	classCO	ActorHealthBar
+	f	LclassNV;	field1174	updates
+	f	LHealthBarConfig;	field1175	definition
+	m	(IIIIB)V	method2549	putUpdate
+	m	(II)LclassCV;	method2552	getActiveUpdate
+	m	()LHealthBarConfig;	method2560	getDefinition
+c	classCV	HealthBarUpdate
+	f	I	field1298	cycle
+	f	I	field1295	cycleOffset
+	f	I	field1297	healthRatio
+	m	(IIIII)V	method2676	set
+	m	()I	method2685	getHealthRatio
