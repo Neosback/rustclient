@@ -6,7 +6,7 @@ This document connects the already-audited revision-240 player/NPC wire behavior
 
 ## Why this runtime slice matters
 
-Player and NPC packet framing is substantially understood. The larger parity risk now sits downstream: committed movement, facing, sequence and effect state must produce the same cycle-by-cycle actor behavior as the 240 client.
+Player and NPC packet framing is substantially understood. The larger parity risk sits downstream: committed movement, facing, sequence and effect state must produce the same cycle-by-cycle actor behavior as the 240 client.
 
 A decoder can be byte-perfect while visible movement is still wrong if the actor scheduler chooses the wrong locomotion sequence, restarts an action incorrectly, blocks path progress on the wrong frame, turns at the wrong rate, or completes exact movement at a different cycle. Treat packet decode and actor scheduling as separate contracts.
 
@@ -44,7 +44,7 @@ This class is useful evidence for lifecycle and ordering, but RustClient should 
 
 ### `Actor.java`: shared movement scheduler
 
-`Actor.method3284` owns the shared movement stage identified by the current audit. It covers:
+`Actor.method3284` owns the shared movement stage. It covers:
 
 - approach toward a future exact-movement start;
 - interpolation during forced/exact movement;
@@ -63,11 +63,11 @@ Actor.method3284(actor)               // movement + locomotion selection
 Actor.method3280(world, actor)        // scene-bound safety reset
 ```
 
-`Actor.field1473` remains deliberately unnamed. In `Actor` itself it is initialized/reset to `false`; the exact consumer behavior is known, but the focused actor/player/NPC plus semantic-`client.java` audit did not recover an arming assignment. That provenance gap is now deferred rather than kept as the first runtime research task.
+`Actor.field1473` remains deliberately unnamed. In `Actor` itself it is initialized/reset to `false`; the exact consumer behavior is known, but the focused actor/player/NPC plus semantic-`client.java` audit did not recover an arming assignment. That provenance gap is deferred rather than kept as an active runtime blocker.
 
 ### `classKN.java`: outer actor-cycle and smooth turning
 
-`classKN.method6539` is the exact ordinary turning owner that older notes had left unresolved.
+`classKN.method6539` is the exact ordinary turning owner.
 
 Its order is:
 
@@ -143,39 +143,118 @@ This is enough to prevent a duplicate packet-local turn-rate source in RustClien
 
 `classCU.method2672` covers same-sequence reassignment and action priority behavior.
 
-Required concepts already established:
+Exact requirements:
 
-- assigning the same action ID is not always a no-op;
-- restart mode 1 restarts playback/delay state;
-- restart mode 2 resets loop-count-related state without the same full restart;
-- action replacement is subject to authored priority arbitration.
+- same ID + restart mode `1`: reset frame/frameCycle/loopCount and reapply action delay;
+- same ID + restart mode `2`: reset only loopCount;
+- other same-ID restart modes leave playback state unchanged;
+- different-ID replacement is rejected when new `Animation.field5119` priority is lower than the current definition's priority;
+- successful replacement captures current path remainder/backlog into `Actor.field1476` for later movement/action gating.
 
 These are definition-driven semantic policies and should enter the actor semantic gateway using decoded sequence metadata.
 
+### `classQR.java`: active sequence controller
+
+Cluster 07 now closes the two formerly ambiguous counters:
+
+- `field5599` -> `loopCount`;
+- `field5598` -> `unreadyCycles`.
+
+`loopCount` increments when legacy or cached-model playback crosses the definition end and attempts to loop. It is compared against `Animation.field5122`, the opcode-8 maximum-loop value.
+
+`unreadyCycles` is not playback age. `classRD.method9980` resets it to zero while `Animation.method8820` reports the required animation assets ready and increments it only while those assets are not ready. `classKB.method6491` uses it for the bounded idle-pose fallback path.
+
+Legacy state is `(frame, frameCycle, loopCount)`. Cached-model state is `(frame/time, loopCount)`; cached advancement does not mutate legacy frameCycle.
+
+### `classRD.java` / `classEJ.java`: exact playback advancement
+
+`classRD.method9980` is the common advancement helper and implements the full legacy frame-list path. `classEJ.method3922` implements cached-model/Maya advancement.
+
+For legacy animation:
+
+```text
+frameCycle += advanceAmount
+while frameCycle > frameLengths[frame]:
+    frameCycle -= frameLengths[frame]
+    frame += 1
+
+    if frame reaches end:
+        loopCount += 1
+        frame -= frameStep
+        terminal if loopCount >= maxLoops
+        terminal if loop-back frame is invalid
+```
+
+The strict `>` boundary is compatibility-sensitive.
+
+For cached-model animation:
+
+```text
+for each effective advance cycle:
+    frame/time += 1
+
+    if frame/time reaches cached duration:
+        loopCount += 1
+        frame/time -= frameStep
+        terminal if loopCount >= maxLoops
+        terminal if loop-back time is invalid
+```
+
+Both paths return common result flags. The important actor-scheduler bits are:
+
+- bit `1`: crossed the end / loop boundary;
+- bit `2`: terminal completion;
+- bit `4`: advanced at least one frame/time step;
+- bit `8`: definition entered with `frameStep == -1`.
+
 ### `classKB.java`: action/pose advancement owner
 
-`classKB.method6491` runs after ordinary turning in `classKN.method6539` and is the next high-priority source trace. It advances the actor's action, pose/locomotion and related animation controllers, handles freeze-window state, and participates in completion/clear behavior.
+`classKB.method6491` is now traced for the core action/pose lifetime path rather than remaining an open source-location question.
 
-The next naming wave should trace this routine together with `classQR` and the relevant `Animation` definition fields, separating:
+Its important behavior is:
 
-- legacy frame-array advancement;
-- cached-model animation time advancement;
-- loop/replay counters and frame-step behavior;
-- action delay/hold rules;
-- completion/clear transitions;
-- any callback/injection-only frame-event surfaces.
+1. evaluate the special action/path delay-one hold;
+2. process animation-freeze start transitions and controller snapshots;
+3. establish the actor frozen state;
+4. when not frozen, advance the active pose controller;
+5. maintain an idle fallback pose while active pose animation resources are unready;
+6. process actor spot-animation controllers outside the pose/action freeze gate;
+7. unless the action was held, decrement positive action delay;
+8. do not advance the action on the same cycle that positive delay was consumed;
+9. when not frozen and delay was already zero, advance the action controller;
+10. clear the action sequence when advancement returns terminal bit `2`.
 
-Do not merge these into scene-side model posing. Authoritative playback lifetime belongs in GameState; application of the selected frame/time to model geometry belongs downstream.
+Terminal completion is slot-specific:
+
+- pose controller: reset playback state and keep sequence assigned;
+- idle fallback controller: reset playback state and keep sequence assigned;
+- action controller: clear sequence.
+
+Freeze is also not global: pose/action scheduling and ordinary body turning are suppressed, but the spot-animation loop still executes inside `classKB.method6491`.
+
+The canonical exact detail is in `SEQUENCE-SCHEDULER.md` and cluster 07; do not duplicate a second sequence lifetime algorithm in scene/model code.
 
 ### `Animation.java`: sequence definition inputs
 
-The semantic `Animation` class is the API-derived sequence definition class in this 240 artifact. The actor scheduler needs authored policy/timing data; geometry posing belongs in scene/cache preparation.
+The semantic `Animation` class supplies immutable timing/policy data.
+
+Scheduler-critical fields now established include:
+
+- opcode `1`: legacy frame lengths/IDs;
+- opcode `2` -> `field5132` / `frameStep`;
+- opcode `5` -> `field5119` replacement priority;
+- opcode `8` -> `field5122` maximum loops, default `99`;
+- opcode `9` -> `field5129` preexisting-path movement gate;
+- opcode `10` -> `field5117` post-remainder movement gate;
+- opcode `11` -> `field5120` / restart mode;
+- opcode `13` -> cached-model animation identity;
+- opcode `15` -> cached-model range/duration inputs.
 
 Keep separate:
 
-1. sequence-definition fields;
+1. immutable sequence-definition policy/timing;
 2. authoritative actor playback state;
-3. projection/pose state.
+3. downstream model posing/projection state.
 
 ## Required actor semantic state
 
@@ -211,16 +290,18 @@ Do not give the unresolved cleanup latch a Rust semantic field solely from `Acto
 - selected semantic locomotion sequence/mode;
 - movement speed derived from traversal/path scheduling.
 
-### Action sequence
+### Action/sequence playback
 
 - optional sequence ID;
-- assignment/start cycle and delay;
-- frame/cached-animation time state;
-- iteration/loop count;
-- restart mode policy;
-- replacement priority policy;
-- movement-blocking/catch-up state;
-- completion/clear state.
+- action/start delay;
+- legacy `{frame, frameCycle}` or cached-model `{time}` playback position;
+- loopCount;
+- max-loop/restart/replacement policy from immutable definition data;
+- movement-blocking/catch-up interaction state;
+- unreadyCycles only where resource-fallback compatibility requires it;
+- slot-specific terminal behavior: restart pose/fallback, clear action.
+
+Do not replace these with one aggregate animation cycle counter; the source distinguishes them observably.
 
 ### Effects and overhead state
 
@@ -235,7 +316,7 @@ Important remaining gaps:
 
 ## Exact cycle ordering established so far
 
-For the movement/facing/animation path traced here, the exact order is now:
+For the movement/facing/action path traced here, the order is now:
 
 1. resolve desired facing via `classEB.method3820`;
 2. run forced/ordinary movement and locomotion selection via `Actor.method3284`;
@@ -243,10 +324,17 @@ For the movement/facing/animation path traced here, the exact order is now:
 4. if animations are not frozen, advance current orientation toward desired in `classKN.method6539`;
 5. perform idle left/right turn-pose selection inside that same turn block;
 6. when already aligned, consume pending target cleanup if armed;
-7. advance actor animations through `classKB.method6491`;
-8. perform actor end-of-cycle cleanup.
+7. enter `classKB.method6491`;
+8. evaluate action hold/freeze windows;
+9. advance pose/fallback controllers when allowed;
+10. process spot-animation controllers;
+11. decrement or advance action according to delay/freeze state;
+12. clear action on terminal completion;
+13. perform actor end-of-cycle cleanup.
 
 Do not reorder turn advancement ahead of movement. Direction-sensitive path pose selection in `Actor.method3284` sees the desired/current values as they existed before the ordinary turn step for that cycle.
+
+Do not advance an action on the same cycle that its positive delay is decremented to zero.
 
 Effect expiration and every plugin-visible callback ordering point are not yet fully closed by this document.
 
@@ -275,7 +363,7 @@ Known examples:
 - player outside-view tracking/lifecycle differs structurally from NPC synchronization;
 - NPC morphs can change definition-derived animation/size/model data at runtime.
 
-Shared orientation math, turn stepping, path traversal, exact trajectory timing and action restart policy should not have independent player/NPC implementations unless exact evidence proves a difference.
+Shared orientation math, turn stepping, path traversal, exact trajectory timing, action restart policy, legacy/cached playback advancement, and finite-loop completion should not have independent player/NPC implementations unless exact evidence proves a difference.
 
 ## Port boundary
 
@@ -297,12 +385,12 @@ Shared orientation math, turn stepping, path traversal, exact trajectory timing 
 - turn rate and turn-cycle counter;
 - ordinary smooth-turn mutation;
 - target cleanup behavior only to the extent its arming semantics are proven/required;
-- action/locomotion/effect scheduler state;
-- validated cycle transitions and expiration.
+- authoritative sequence assignment, delay, playback position, loop count, and terminal lifetime;
+- effect scheduler state and validated cycle transitions/expiration.
 
 ### Cache owns
 
-- sequence definitions and authored policy fields;
+- sequence definitions and authored timing/policy fields;
 - NPC turn-rate opcode 103;
 - player/NPC definition/model dependencies;
 - spot/hitsplat/headbar definitions.
@@ -310,7 +398,7 @@ Shared orientation math, turn stepping, path traversal, exact trajectory timing 
 ### Scene owns
 
 - deriving the pose for committed actor state at a cycle;
-- legacy/cached-model animation application and blending;
+- applying legacy/cached-model animation data to geometry;
 - model composition/transforms and geometry preparation;
 - render interpolation that does not mutate semantic truth.
 
@@ -320,16 +408,15 @@ GPU resources/passes/draw ordering only after scene projection has produced the 
 
 ## Next source traces
 
-Facing/turning is sufficiently closed for this naming phase: the ordinary turn mutator, apply policy and normal NPC turn-rate source are established, while `Actor.field1473` is retained as a deferred stable-symbol provenance gap rather than an active blocker.
+Facing/turning and core action/pose sequence advancement are sufficiently closed for this naming phase. `Actor.field1473` remains a deferred stable-symbol provenance gap rather than an active blocker.
 
 Continue in this order:
 
-1. complete action-sequence advancement/completion in `classKB.method6491`, `classQR` and `Animation`, including legacy versus cached-model timing, loops, delays, holds and clear conditions;
-2. trace actor spot-animation add/remove/advance helpers and corresponding player/NPC mask fields;
-3. trace hitsplat/headbar add/remove/expiry helpers and replacement priority rules;
-4. trace overhead/tint/freeze/customization mask consumers and expiry/application sites;
-5. trace `Player`/`PlayerComposition` model assembly invalidation rules;
-6. preserve full typed facing-target state as implementation work proceeds, reopening `Actor.field1473` only if concrete parity evidence requires its arming semantics.
+1. trace actor spot-animation add/remove/repeat/advance semantics and corresponding player/NPC update-mask fields;
+2. trace hitsplat/headbar add/remove/expiry helpers and replacement priority rules;
+3. trace overhead/tint/freeze/customization mask consumers and expiry/application sites;
+4. trace `Player`/`PlayerComposition` model assembly invalidation rules;
+5. preserve full typed facing-target state and exact sequence-policy state during later implementation work, reopening unresolved symbols only when concrete parity evidence requires it.
 
 Only widen the turn-rate writer census if a newly traced reachable subsystem demonstrates a direct mutation outside actor default and NPC definition projection.
 
@@ -340,6 +427,7 @@ Each trace should update the stable-symbol research ledger before implementation
 - `docs/plan/PLAYER-UPDATING-240.md`
 - `docs/plan/NPC-ANIMATION-240.md`
 - `docs/reference/rs240-port/FACING-TURNING.md`
+- `docs/reference/rs240-port/SEQUENCE-SCHEDULER.md`
 - `docs/reference/source-manifest.json`
 - `crates/protocol/tests/fixtures/PROVENANCE.md`
 
@@ -347,4 +435,4 @@ Do not call actor parity complete until the remaining shared runtime behaviors a
 
 ## Verification
 
-No `verify.sh`, tests, Clippy, CI, compilation or workspace gate was run as part of this naming/research wave.
+No `verify.sh`, tests, Clippy, CI, compilation, mapping regeneration, or workspace gate was run as part of this naming/research wave.
