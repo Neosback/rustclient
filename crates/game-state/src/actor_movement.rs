@@ -1,11 +1,11 @@
 //! Authoritative per-client-cycle actor fine-position scheduling.
 //!
-//! This checkpoint moves normal queued player movement and forced-movement coordinates into
-//! `GameState`. Directional pose selection, turn-rate slowdown, catch-up counters and the alternate
-//! NPC acceleration mode remain separate follow-up work.
+//! This checkpoint moves ordinary queued player movement into `GameState`. Forced/exact movement
+//! still has a legacy action-frame gate that is deliberately left in the scene projection until
+//! that remaining revision-240 dependency is implemented here too.
 
-use crate::{ActorFinePosition, ActorPathQueue, ExactMovement, WorldEntitiesState};
-use rustclient_model::{ActorSequenceSlot, ClientCycle, MoveSpeed, WorldTile};
+use crate::{ActorFinePosition, ActorPathQueue, WorldEntitiesState};
+use rustclient_model::{ActorSequenceSlot, MoveSpeed, WorldTile};
 
 const SNAP_FINE_UNITS: i64 = 288;
 
@@ -16,21 +16,24 @@ pub(crate) enum ActorMovementCycle {
     Moving,
     Consumed,
     Snapped,
-    Exact,
+    ExactPending,
 }
 
 /// Advance all visible players by one authoritative client cycle.
 ///
-/// Movement is evaluated before the sequence delay is decremented for the same cycle. This matches
-/// the revision-240 gate predicate: an action whose explicit delay is still non-zero cannot block
-/// queued movement yet.
-pub(crate) fn advance_players(entities: &mut WorldEntitiesState, cycle: ClientCycle) {
+/// Movement is evaluated before the action-sequence delay is decremented for the same cycle. This
+/// preserves the revision-240 predicate that an action with a non-zero explicit delay does not yet
+/// block normal queued movement.
+pub(crate) fn advance_players(entities: &mut WorldEntitiesState) {
     for player in entities.players.values_mut() {
+        if player.exact_move.is_some() {
+            // Forced movement owns position while active. Keeping ordinary queue progression frozen
+            // here avoids conflicting with its still-unported legacy frame-boundary gate.
+            continue;
+        }
         advance_actor_cycle(
             &mut player.path_queue,
             &mut player.sequence,
-            player.exact_move,
-            cycle,
             player.tile,
         );
     }
@@ -39,21 +42,8 @@ pub(crate) fn advance_players(entities: &mut WorldEntitiesState, cycle: ClientCy
 fn advance_actor_cycle(
     path: &mut ActorPathQueue,
     sequence: &mut ActorSequenceSlot,
-    exact: Option<ExactMovement>,
-    cycle: ClientCycle,
     fallback_tile: WorldTile,
 ) -> ActorMovementCycle {
-    if let Some(exact) = exact {
-        if cycle <= exact.ends_at {
-            advance_exact(path, exact, cycle, fallback_tile);
-            return ActorMovementCycle::Exact;
-        }
-        // A zero-duration exact move can be authored for the packet's current cycle and therefore
-        // finish before the next `AdvanceCycles` operation. Preserve its terminal position instead
-        // of letting a lazily initialized cursor start from the confirmed endpoint.
-        path.set_fine_position(ActorFinePosition::from_tile(exact.end));
-    }
-
     if path.is_empty() {
         path.ensure_position(fallback_tile);
         return ActorMovementCycle::Idle;
@@ -79,6 +69,8 @@ fn advance_actor_cycle(
         return ActorMovementCycle::Snapped;
     }
 
+    // This is the stock normal acceleration branch without turn-slowing, the blocked-cycle
+    // catch-up counter, or the alternate NPC-definition thresholds. Those are explicit follow-ups.
     let mut step = if path.len() > 3 {
         8_i64
     } else if path.len() > 2 {
@@ -108,47 +100,12 @@ fn advance_actor_cycle(
     }
 }
 
-fn advance_exact(
-    path: &mut ActorPathQueue,
-    exact: ExactMovement,
-    cycle: ClientCycle,
-    fallback_tile: WorldTile,
-) {
-    path.ensure_position(fallback_tile);
-    let mut position = path.fine_position(fallback_tile);
-    let start = ActorFinePosition::from_tile(exact.start);
-    let end = ActorFinePosition::from_tile(exact.end);
-
-    if cycle <= exact.starts_at {
-        let remaining = exact.starts_at.get().saturating_sub(cycle.get()).max(1);
-        let remaining = i64::try_from(remaining).unwrap_or(i64::MAX);
-        position.x += (start.x - position.x) / remaining;
-        position.y += (start.y - position.y) / remaining;
-    } else if exact.starts_at == exact.ends_at {
-        position = start;
-    } else if cycle >= exact.ends_at {
-        position = end;
-    } else {
-        let duration = i128::from(exact.ends_at.get() - exact.starts_at.get());
-        let elapsed = i128::from(cycle.get() - exact.starts_at.get());
-        let interpolate = |a: i64, b: i64| {
-            i64::try_from(
-                (i128::from(a) * (duration - elapsed) + i128::from(b) * elapsed) / duration,
-            )
-            .expect("convex fine-coordinate interpolation stays in i64 range")
-        };
-        position.x = interpolate(start.x, end.x);
-        position.y = interpolate(start.y, end.y);
-    }
-    path.set_fine_position(position);
-}
-
 #[cfg(test)]
 mod tests {
     use super::{ActorMovementCycle, advance_actor_cycle};
-    use crate::{ActorFinePosition, ActorPathQueue, ExactMovement};
+    use crate::{ActorFinePosition, ActorPathQueue};
     use rustclient_model::{
-        ActorSequenceSlot, ClientCycle, MoveSpeed, Plane, SequenceId, SequencePolicy, WorldTile,
+        ActorSequenceSlot, MoveSpeed, Plane, SequenceId, SequencePolicy, WorldTile,
     };
 
     fn tile(x: i32, y: i32) -> WorldTile {
@@ -172,13 +129,7 @@ mod tests {
         path.enqueue(tile(1, 0), MoveSpeed::Walk);
         let mut sequence = ActorSequenceSlot::default();
         assert_eq!(
-            advance_actor_cycle(
-                &mut path,
-                &mut sequence,
-                None,
-                ClientCycle::new(1),
-                tile(1, 0),
-            ),
+            advance_actor_cycle(&mut path, &mut sequence, tile(1, 0)),
             ActorMovementCycle::Moving
         );
         assert_eq!(
@@ -195,16 +146,13 @@ mod tests {
         path.enqueue(tile(4, 0), MoveSpeed::Walk);
         let mut sequence = ActorSequenceSlot::default();
         assert_eq!(
-            advance_actor_cycle(
-                &mut path,
-                &mut sequence,
-                None,
-                ClientCycle::new(1),
-                tile(4, 0),
-            ),
+            advance_actor_cycle(&mut path, &mut sequence, tile(4, 0)),
             ActorMovementCycle::Snapped
         );
-        assert_eq!(path.fine_position(tile(0, 0)), ActorFinePosition::from_tile(tile(4, 0)));
+        assert_eq!(
+            path.fine_position(tile(0, 0)),
+            ActorFinePosition::from_tile(tile(4, 0))
+        );
         assert!(path.is_empty());
     }
 
@@ -216,16 +164,13 @@ mod tests {
         let mut sequence = ActorSequenceSlot::default();
         sequence.assign_sequence(Some((SequenceId::new(10), policy(0, 1))), 0, 1);
         assert_eq!(
-            advance_actor_cycle(
-                &mut path,
-                &mut sequence,
-                None,
-                ClientCycle::new(1),
-                tile(1, 0),
-            ),
+            advance_actor_cycle(&mut path, &mut sequence, tile(1, 0)),
             ActorMovementCycle::Blocked
         );
-        assert_eq!(path.fine_position(tile(9, 9)), ActorFinePosition::from_tile(tile(0, 0)));
+        assert_eq!(
+            path.fine_position(tile(9, 9)),
+            ActorFinePosition::from_tile(tile(0, 0))
+        );
         assert_eq!(sequence.path_backlog_at_assignment, 1);
     }
 
@@ -235,38 +180,19 @@ mod tests {
         path.ensure_position(tile(0, 0));
         path.enqueue(tile(1, 0), MoveSpeed::Run);
         let mut sequence = ActorSequenceSlot::default();
-        advance_actor_cycle(
-            &mut path,
-            &mut sequence,
-            None,
-            ClientCycle::new(1),
-            tile(1, 0),
-        );
+        advance_actor_cycle(&mut path, &mut sequence, tile(1, 0));
         assert_eq!(path.fine_position(tile(0, 0)).x, 8);
     }
 
     #[test]
-    fn exact_move_interpolates_from_the_authoritative_cursor() {
+    fn backlog_acceleration_uses_stock_normal_thresholds() {
         let mut path = ActorPathQueue::default();
         path.ensure_position(tile(0, 0));
-        let exact = ExactMovement {
-            start: tile(1, 0),
-            end: tile(3, 0),
-            starts_at: ClientCycle::new(2),
-            ends_at: ClientCycle::new(4),
-            direction: 0,
-        };
+        for x in 1..=4 {
+            path.enqueue(tile(x, 0), MoveSpeed::Walk);
+        }
         let mut sequence = ActorSequenceSlot::default();
-        assert_eq!(
-            advance_actor_cycle(
-                &mut path,
-                &mut sequence,
-                Some(exact),
-                ClientCycle::new(1),
-                tile(0, 0),
-            ),
-            ActorMovementCycle::Exact
-        );
-        assert_eq!(path.fine_position(tile(0, 0)).x, 128);
+        advance_actor_cycle(&mut path, &mut sequence, tile(4, 0));
+        assert_eq!(path.fine_position(tile(0, 0)).x, 8);
     }
 }
