@@ -201,6 +201,7 @@ impl WorldEntitiesState {
                         origin.plane,
                     ),
                     path: None,
+                    path_queue: crate::ActorPathQueue::default(),
                     exact_move: None,
                     orientation: npc.orientation,
                     sequence: rustclient_model::ActorSequenceSlot::default(),
@@ -227,6 +228,10 @@ impl WorldEntitiesState {
             npc.locomotion = locomotion;
             if let Some(movement) = movement {
                 let path = path(npc, movement).expect("validated NPC path");
+                npc.path_queue.enqueue(path.first, movement.speed);
+                if let Some(second) = path.second {
+                    npc.path_queue.enqueue(second, movement.speed);
+                }
                 npc.tile = path.endpoint();
                 npc.path = Some(path);
                 npc.exact_move = None;
@@ -245,7 +250,11 @@ impl WorldEntitiesState {
                         let exact =
                             crate::player_movement::exact_movement(npc.tile, cycle, *request)
                                 .expect("validated NPC exact movement");
-                        changed |= npc.exact_move != Some(exact);
+                        changed |= !npc.path_queue.is_empty()
+                            || npc.sequence.path_backlog_at_assignment != 0
+                            || npc.exact_move != Some(exact);
+                        npc.path_queue.clear();
+                        npc.sequence.path_backlog_at_assignment = 0;
                         npc.exact_move = Some(exact);
                     }
                     NpcProperty::Definition(id) => {
@@ -257,6 +266,7 @@ impl WorldEntitiesState {
                             &mut npc.sequence,
                             *sequence,
                             delay.cast_signed(),
+                            npc.path_queue.backlog(),
                             &update.sequence_policies,
                         );
                     }
