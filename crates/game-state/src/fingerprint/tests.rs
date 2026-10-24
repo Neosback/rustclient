@@ -19,11 +19,11 @@ fn run_operations(operations: &[SemanticOperation]) -> (GameState, CommitStreamF
 }
 
 #[test]
-fn state_fingerprint_v21_has_exact_regression_vectors() {
+fn state_fingerprint_v22_has_exact_regression_vectors() {
     let mut state = GameState::new();
     assert_eq!(
         state.semantic_fingerprint().get(),
-        3_094_163_186_163_296_736
+        14_004_924_912_801_453_135
     );
 
     state
@@ -35,7 +35,7 @@ fn state_fingerprint_v21_has_exact_regression_vectors() {
 
     assert_eq!(
         state.semantic_fingerprint().get(),
-        554_307_659_947_588_184
+        18_310_109_310_675_007_821
     );
 }
 
@@ -90,7 +90,7 @@ fn state_fingerprint_distinguishes_revision_identity() {
     );
     assert_eq!(
         subrevision.semantic_fingerprint().get(),
-        1_413_217_368_128_697_397
+        4_132_266_560_656_612_196
     );
 }
 
@@ -121,6 +121,7 @@ fn npc_path_policy_and_catch_up_participate_in_canonical_state() {
                 exact_move: None,
                 orientation: 0,
                 sequence: ActorSequenceSlot::default(),
+                sequence_timing_resolved: false,
                 name: None,
                 actions: ActionMask::ALL,
                 locomotion: crate::Locomotion::Idle,
@@ -147,6 +148,68 @@ fn npc_path_policy_and_catch_up_participate_in_canonical_state() {
 }
 
 #[test]
+fn active_sequence_timing_resolution_participates_in_canonical_state() {
+    use rustclient_model::{
+        ActionMask, ActorSequenceSlot, NpcDefinitionId, NpcIndex, NpcInstanceId,
+        PathAccelerationPolicy, Plane, SequenceId, SequencePolicy, SequenceTiming, WorldTile,
+    };
+
+    fn state_with_timing(timing: Option<SequenceTiming>) -> GameState {
+        let mut state = GameState::new();
+        state
+            .apply_operation(BEGIN_240)
+            .expect("inactive state can begin a session");
+        let sequence_id = SequenceId::new(7);
+        let policy = SequencePolicy {
+            restart_mode: 2,
+            replacement_priority: 5,
+            movement_gate_with_backlog: 1,
+            movement_gate_without_backlog: 1,
+            max_loops: 99,
+        };
+        let mut sequence = ActorSequenceSlot::default();
+        sequence.assign_sequence(Some((sequence_id, policy)), 0, 0);
+        let mut path_queue = crate::ActorPathQueue::default();
+        path_queue.set_acceleration_policy(Some(PathAccelerationPolicy::STANDARD));
+        state.entities.npcs.insert(
+            NpcIndex::new(1),
+            crate::NpcEntity {
+                index: NpcIndex::new(1),
+                instance: NpcInstanceId::new(1),
+                definition_id: NpcDefinitionId::new(1),
+                tile: WorldTile::new(3200, 3200, Plane::MIN),
+                path: None,
+                path_queue,
+                exact_move: None,
+                orientation: 0,
+                sequence,
+                sequence_timing_resolved: timing.is_some(),
+                name: None,
+                actions: ActionMask::ALL,
+                locomotion: crate::Locomotion::Idle,
+                animation_cycle: 0,
+            },
+        );
+        state.entities.npc_serial = 1;
+        if let Some(timing) = timing {
+            state.entities.sequence_timings.insert(sequence_id, timing);
+        }
+        state
+    }
+
+    let unresolved = state_with_timing(None);
+    let legacy = state_with_timing(Some(SequenceTiming::Legacy {
+        frame_delays: vec![2, 3],
+        frame_step: Some(2),
+    }));
+    let cached = state_with_timing(Some(SequenceTiming::CachedModel {
+        range: Some((0, 5)),
+    }));
+    assert_ne!(unresolved.semantic_fingerprint(), legacy.semantic_fingerprint());
+    assert_ne!(legacy.semantic_fingerprint(), cached.semantic_fingerprint());
+}
+
+#[test]
 fn equivalent_observable_state_has_equivalent_fingerprint() {
     let initial = GameState::new().semantic_fingerprint();
     let mut state = GameState::new();
@@ -165,7 +228,7 @@ fn equivalent_observable_state_has_equivalent_fingerprint() {
 }
 
 #[test]
-fn commit_stream_fingerprint_v21_has_exact_regression_vector() {
+fn commit_stream_fingerprint_v22_has_exact_regression_vector() {
     let operations = [
         BEGIN_240,
         SemanticOperation::AdvanceTick(TickSpan::new(2)),
@@ -174,10 +237,10 @@ fn commit_stream_fingerprint_v21_has_exact_regression_vector() {
     ];
     let (_, fingerprint) = run_operations(&operations);
 
-    assert_eq!(fingerprint.get(), 9_983_457_437_690_578_604);
+    assert_eq!(fingerprint.get(), 5_559_884_698_701_515_121);
     assert_eq!(
         CommitStreamFingerprintBuilder::new().finish().get(),
-        13_686_929_825_952_982_349
+        11_814_434_035_812_821_324
     );
 }
 
