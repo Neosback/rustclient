@@ -6,10 +6,10 @@ c	classDF	PlayerInfoDecoder
 	f	[I	field1416	inactivePlayerIndices
 	f	I	field1417	activePlayerCount
 	f	I	field1418	inactivePlayerCount
-	m	(Lxs;)V	method3006	initializePlayerInfo
-	m	(Lxs;)V	method3015	decodePlayerMovement
-	m	(Lxs;I)I	method3019	readSkipCount
-	m	(Ldf;Lxs;III)V	method3050	decodeExtendedPlayerUpdate
+	m	(LPacketBuffer;)V	method3006	initializePlayerInfo
+	m	(LPacketBuffer;)V	method3015	decodePlayerMovement
+	m	(LPacketBuffer;I)I	method3019	readSkipCount
+	m	(LclassDF;LPacketBuffer;III)V	method3050	decodeExtendedPlayerUpdate
 c	classDC	PlayerInfoSlot
 	f	I	field1379	packedRegion
 	f	LclassKY;	field1380	coord
@@ -20,8 +20,8 @@ c	classDC	PlayerInfoSlot
 	f	I	field1381	playerIndex
 	f	Ljava/util/ArrayList;	field1387	representedPlayers
 	m	(II)V	method2891	reset
-	m	(Lct;I)V	method2901	attachPlayer
-	m	(Ldc;Lgt;)V	method2923	applyTraversal
+	m	(LPlayer;I)V	method2901	attachPlayer
+	m	(LclassDC;LclassGT;)V	method2923	applyTraversal
 	m	(III)V	method2930	applyActionSequence
 c	classKY	Coord
 	f	I	field4053	x
