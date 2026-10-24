@@ -1,6 +1,6 @@
 # Revision 240 actor facing and turning
 
-Status: desired/current orientation, desired-facing resolution and the ordinary smooth-turn mutator are now traced from exact revision-240 client evidence. Rich packet facing intent is still not fully retained in RustClient, so this is a source/ownership record rather than a parity claim.
+Status: desired/current orientation, desired-facing resolution and the ordinary smooth-turn mutator are now traced from exact revision-240 client evidence. Rich packet facing intent is still not fully retained in RustClient, so this is a source/ownership record rather than a parity claim. The remaining `Actor.field1473` arming provenance is explicitly deferred after a focused source audit; its consumer behavior remains documented under the stable symbol.
 
 This document narrows the facing/turning work that remains after authoritative ordinary and forced actor translation. It supersedes the older ambiguity in `MOVEMENT-FACING.md` about whether the client keeps one orientation value or two, and supersedes the earlier statement that the ordinary smooth-turn mutator had not yet been located.
 
@@ -34,7 +34,9 @@ This document narrows the facing/turning work that remains after authoritative o
 - `references/rl-suite-240/sources-semantic/classDC.java`
   - `classDC.method2933`: player facing block decode/propagation
 - `references/rl-suite-240/sources-semantic/classDF.java`, `classAS.java`, `Player.java`, `NPC.java`
-  - checked in this writer-audit slice for direct turn-rate and pending-target-cleanup writes
+  - checked in the writer-audit slice for direct turn-rate and pending-target-cleanup writes
+- `references/rl-suite-240/sources-semantic/client.java`
+  - exact-field audit of the semantic top-level dispatcher found `field1473` only in consumer/clear-to-false paths and no `field1473 = true` assignment
 
 Confidence is **B**: the stock/injected revision-240 control flow is direct and internally consistent. Independent exact-wire confirmation is still required where packet selector/sentinel details matter.
 
@@ -271,17 +273,18 @@ Do not model every desired-orientation change as an immediate current-orientatio
 
 ## 9. Pending target-cleanup latch
 
-`Actor.field1473` remains intentionally unnamed. The consumer behavior is exact, but this writer-audit slice did not find the operation that sets it to `true` in the normal actor/player/NPC synchronization corpus.
-
-Known lifecycle:
+`Actor.field1473` remains intentionally unnamed. The consumer behavior is exact:
 
 - constructor/reset paths initialize or restore it to `false`;
 - `classEB.method3820` checks it when an entity target can no longer be resolved and no fallback angle is available; when set, retained entity-target state is cleared and the flag is reset;
 - `classKN.method6539` checks it once current orientation equals desired orientation; when set, retained target state is cleared and the flag is reset;
-- `Actor.method3248` delegates the target reset to `classBZ.method1388`;
-- `Player`, `NPC`, `classDF`, `classDC`, `classAS`, and `classGA` do not directly assign this field in the inspected exact-240 sources.
+- `Actor.method3248` delegates the target reset to `classBZ.method1388`.
 
-This proves a pending-cleanup role but not the event that arms the latch. Naming it from consumers alone would obscure a compatibility-sensitive writer that still needs to be located. Keep the stable symbol `Actor.field1473` in port notes until that writer is pinned.
+The focused writer audit did not find an arming assignment in the normal actor/player/NPC synchronization path. It also inspected the semantic `client.java` dispatcher by exact field name: every located `field1473` assignment there was `false`, paired with the already-known cleanup consumers; no `field1473 = true` assignment was found.
+
+The injected interaction-change mechanism is a different state path. `Actor.method3285` sets `Actor.field1481` pending event flags, and `Actor.method3224` invokes that event hook before copying facing state. That does not establish an arming source for `field1473`.
+
+Therefore the safe conclusion is deliberately limited: the latch has proven cleanup consumers, but its arming provenance is not recovered from the inspected semantic source path. This does **not** prove the writer does not exist elsewhere, nor classify the missing writer as stock, injected, indirect, or decompiler-lost. Keep the stable symbol and do not add a guessed Rust boolean. Re-open the census only if implementation/parity evidence makes this behavior observable and necessary.
 
 ## 10. Path-derived orientation and directional locomotion
 
@@ -363,7 +366,7 @@ Protocol owns revision-240 facing selector/byte decoding.
 - turn rate and turn-cycle counter;
 - resolved live facing source/target identity;
 - per-cycle smooth-turn advancement;
-- target cleanup semantics.
+- proven target cleanup behavior when/if the arming state is represented.
 
 Cache owns definition-authored NPC turn rate and movement sequence IDs.
 
@@ -373,16 +376,16 @@ Entity targets should use actor instance identity where possible so an index reu
 
 ## 14. Remaining compatibility work
 
-The ordinary turn mutator and the normal NPC turn-rate source are no longer open research items. Remaining facing work is narrower:
+The ordinary turn mutator, facing apply policy, and normal NPC turn-rate source are no longer open research items. Remaining facing work is narrower:
 
 1. retain full typed player/NPC/area/entity facing intent instead of collapsing it to an optional angle;
 2. preserve the established `FacingApplyPolicy` separately from `FacingMode`;
-3. locate the writer that arms `Actor.field1473` before naming or implementing its cleanup latch semantics;
-4. route directional idle-turn/walk/run/crawl sequence availability through cache-derived policy;
-5. migrate any remaining visual-only turn projector to authoritative current orientation only after semantic state reaches the scene boundary;
-6. perform a wider write-site census only if another reachable subsystem proves it can mutate actor turn rate outside constructor/default and NPC definition projection.
+3. route directional idle-turn/walk/run/crawl sequence availability through cache-derived policy;
+4. migrate any remaining visual-only turn projector to authoritative current orientation only after semantic state reaches the scene boundary;
+5. keep `Actor.field1473` as an unresolved stable-symbol compatibility note rather than blocking broader actor-runtime research; re-open only if observable parity requires it;
+6. perform a wider turn-rate write-site census only if another reachable subsystem proves it can mutate actor turn rate outside constructor/default and NPC definition projection.
 
-Do not re-open the desired/current split or invent a second turning algorithm. The exact ordinary step owner is `classKN.method6539`.
+Do not re-open the desired/current split or invent a second turning algorithm. The exact ordinary step owner is `classKN.method6539`. The next shared actor-runtime research priority is action-sequence advancement/completion, followed by actor spot-animation lifecycle.
 
 ## Verification
 
