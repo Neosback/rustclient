@@ -64,15 +64,15 @@ impl ActorMotion {
             .or_else(|| self.legacy.player(index))
     }
 
-    /// Drawn rotation and movement pose of a player, for scene-internal model projection.
+    /// Drawn rotation and movement pose of a player.
     #[must_use]
-    pub(crate) fn player_pose(&self, index: PlayerIndex) -> Option<ActorPose> {
+    pub fn player_pose(&self, index: PlayerIndex) -> Option<ActorPose> {
         self.legacy.player_pose(index)
     }
 
-    /// Drawn rotation and movement pose of an NPC, for scene-internal model projection.
+    /// Drawn rotation and movement pose of an NPC.
     #[must_use]
-    pub(crate) fn npc_pose(&self, index: NpcIndex) -> Option<ActorPose> {
+    pub fn npc_pose(&self, index: NpcIndex) -> Option<ActorPose> {
         self.legacy.npc_pose(index)
     }
 
