@@ -39,7 +39,7 @@ pub struct ActorPathEntry {
     pub speed: MoveSpeed,
 }
 
-/// Bounded newest-first queue plus the authoritative fine-position scheduler cursor.
+/// Bounded newest-first queue plus authoritative ordinary-movement scheduler state.
 ///
 /// New entries are inserted at index zero. The scheduler consumes the oldest active entry from
 /// the tail. When full, inserting another request drops the previous oldest entry, matching the
@@ -55,6 +55,9 @@ pub struct ActorPathQueue {
     /// Definition-derived ordinary backlog acceleration. Players use the shared standard policy
     /// directly; NPCs retain their resolved definition policy here so later cycles need no cache.
     acceleration_policy: Option<PathAccelerationPolicy>,
+    /// Revision-240 `Actor.field1452`: cycles of action-gated movement debt waiting to be repaid.
+    /// Positive debt can force an ordinary backlog greater than one to base step eight.
+    catch_up_cycles: i32,
 }
 
 impl Default for ActorPathQueue {
@@ -64,6 +67,7 @@ impl Default for ActorPathQueue {
             len: 0,
             fine_position: None,
             acceleration_policy: None,
+            catch_up_cycles: 0,
         }
     }
 }
@@ -87,6 +91,12 @@ impl ActorPathQueue {
     #[must_use]
     pub const fn acceleration_policy(self) -> Option<PathAccelerationPolicy> {
         self.acceleration_policy
+    }
+
+    /// Outstanding revision-240 action-blocked movement catch-up cycles.
+    #[must_use]
+    pub const fn catch_up_cycles(self) -> i32 {
+        self.catch_up_cycles
     }
 
     /// Current authoritative fine position, falling back to the actor's confirmed tile only until
@@ -133,6 +143,25 @@ impl ActorPathQueue {
         self.acceleration_policy = policy;
     }
 
+    pub(crate) fn increment_catch_up(&mut self) {
+        self.catch_up_cycles = self.catch_up_cycles.wrapping_add(1);
+    }
+
+    /// Spend one positive catch-up cycle. Non-positive wrapped values are deliberately left alone,
+    /// matching the stock client's signed `> 0` test.
+    pub(crate) fn spend_catch_up(&mut self) -> bool {
+        if self.catch_up_cycles > 0 {
+            self.catch_up_cycles -= 1;
+            true
+        } else {
+            false
+        }
+    }
+
+    pub(crate) fn reset_catch_up(&mut self) {
+        self.catch_up_cycles = 0;
+    }
+
     pub(crate) fn enqueue(&mut self, target: WorldTile, speed: MoveSpeed) {
         let active = usize::from(self.len);
         let next_len = (active + 1).min(ACTOR_PATH_CAPACITY);
@@ -152,17 +181,20 @@ impl ActorPathQueue {
         entry
     }
 
-    /// Clear path requests while retaining the current fine position and definition policy. Forced
-    /// movement uses this form because its approach phase begins from the current sub-tile position.
+    /// Clear path requests while retaining the current fine position, definition policy and
+    /// catch-up debt. Stock queue-clear helpers do not universally reset `field1452`; forced
+    /// movement clears the debt when its client-cycle phase actually runs.
     pub(crate) fn clear(&mut self) {
         self.entries = [None; ACTOR_PATH_CAPACITY];
         self.len = 0;
     }
 
-    /// Clear path requests and place the scheduler cursor immediately at the supplied tile.
+    /// Clear path requests and immediately place the scheduler cursor at the supplied tile.
+    /// Hard placement also resets revision-240 `field1452`.
     pub(crate) fn reset_to(&mut self, tile: WorldTile) {
         self.clear();
         self.fine_position = Some(ActorFinePosition::from_tile(tile));
+        self.reset_catch_up();
     }
 }
 
@@ -193,6 +225,16 @@ mod tests {
         assert_eq!(queue.acceleration_policy(), Some(PathAccelerationPolicy::EARLY));
         queue.reset_to(tile(4));
         assert_eq!(queue.acceleration_policy(), Some(PathAccelerationPolicy::EARLY));
+    }
+
+    #[test]
+    fn ordinary_clear_preserves_catch_up_but_hard_reset_clears_it() {
+        let mut queue = ActorPathQueue::default();
+        queue.increment_catch_up();
+        queue.clear();
+        assert_eq!(queue.catch_up_cycles(), 1);
+        queue.reset_to(tile(4));
+        assert_eq!(queue.catch_up_cycles(), 0);
     }
 
     #[test]
