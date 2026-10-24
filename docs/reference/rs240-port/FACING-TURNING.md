@@ -22,7 +22,7 @@ This document narrows the facing/turning work that remains after authoritative o
 - `references/rl-suite-240/sources-semantic/classLU.java`
   - primary facing payload selector mapping
 - `references/rl-suite-240/sources-semantic/classLV.java`
-  - secondary facing behavior selector; exact semantic names remain unresolved
+  - secondary facing apply policy
 - `references/rl-suite-240/sources-semantic/classLJ.java`
   - facing target-kind mapping
 - `references/rl-suite-240/sources-semantic/classBT.java`
@@ -33,6 +33,8 @@ This document narrows the facing/turning work that remains after authoritative o
   - opcode 103 supplies the NPC turn-rate value; constructor default is 32
 - `references/rl-suite-240/sources-semantic/classDC.java`
   - `classDC.method2933`: player facing block decode/propagation
+- `references/rl-suite-240/sources-semantic/classDF.java`, `classAS.java`, `Player.java`, `NPC.java`
+  - checked in this writer-audit slice for direct turn-rate and pending-target-cleanup writes
 
 Confidence is **B**: the stock/injected revision-240 control flow is direct and internally consistent. Independent exact-wire confirmation is still required where packet selector/sentinel details matter.
 
@@ -122,7 +124,7 @@ The existing cluster-03 readable names `turnCycles`, `turnRate` and `updateActor
 For NPCs, `classGA.method5325` copies `NPCComposition.field5297` into the actor. In the exact revision-240 NPC definition decoder:
 
 ```text
-var34 = 32        // constructor/decode default
+var34 = 32        // definition decode default
 opcode 103:
     var34 = readUnsignedShort()
 ...
@@ -131,7 +133,18 @@ field5297 = var34
 
 So NPC turn rate is definition-authored and opcode-103-backed. RustClient should retain it in cache/definition data rather than hard-code 32 for every NPC.
 
-The player/default actor path still requires care around any writers that can replace the constructor value. Do not infer additional overrides merely from the field name.
+### Writer audit in the actor/synchronization corpus
+
+This slice checked the direct actor, player, NPC, player-info and NPC-info paths rather than inferring writers from the field name:
+
+- `Actor` initializes `field1470` to semantic `32` and otherwise consumes it in movement/turning logic.
+- `classGA.method5325` is the direct NPC runtime writer found in the selected corpus; it projects `NPCComposition.field5297` into `Actor.field1470`.
+- `classAS.method661` calls `classGA.method5325` for NPCs and then has a special zero-turn-rate consequence: if the resulting turn rate is `0`, current orientation is set to `0`. It does not independently author the turn-rate value.
+- `Player`, `NPC`, `classDF`, and `classDC` contain no direct `field1470` write in the inspected exact-240 sources.
+
+That closes the normal player/NPC synchronization path without pretending to be a whole-archive bytecode reference census. If another subsystem later exposes a reachable direct writer, add it to this record rather than weakening the established constructor/NPC-definition ownership.
+
+For the Rust port, the safe current model is therefore: actor default policy supplies `32`; NPC definition projection may replace it, including with `0`; no packet-local player/NPC movement decoder should invent a second turn-rate value.
 
 ## 5. Forced movement writes desired/current differently by phase
 
@@ -195,7 +208,7 @@ RustClient still does not retain enough typed facing-source state to reproduce e
 
 `classBZ.method1384(flag, buffer)` decodes three independent fields from the facing control byte:
 
-- bits `0..2`: secondary behavior (`classLV`);
+- bits `0..2`: `FacingApplyPolicy` (`classLV`);
 - bits `3..5`: primary payload mode (`classLU`);
 - bit `6`: boolean control flag.
 
@@ -207,6 +220,13 @@ The primary selector mapping is exact:
 | 1 | `field4224` | 2 | coordinate/area target |
 | 2 | `field4226` | 0 | explicit angle |
 | 3 | `field4225` | 1 | no primary payload |
+
+The low-three-bit `classLV` values are behaviorally established as:
+
+- `field4233`: `BYPASS_MOVEMENT_GATE`;
+- `field4232`: `MOVEMENT_GATED`.
+
+For explicit-angle and area facing, `field4233` bypasses the path-movement eligibility gate. The gated policy can defer facing while movement is active; explicit-angle facing has the additional catch-up-cycle exception documented in cluster 08.
 
 ### Entity target
 
@@ -235,7 +255,7 @@ The payload retains one smart angle.
 
 ### No primary payload
 
-No primary payload follows. Secondary behavior/control state still participates in facing lifecycle and must not be replaced with a guessed angle.
+No primary payload follows. Secondary policy/control state still participates in facing lifecycle and must not be replaced with a guessed angle.
 
 ## 8. Control-flag snap behavior
 
@@ -249,7 +269,21 @@ This packet/source-driven snap occurs before the ordinary `classKN.method6539` t
 
 Do not model every desired-orientation change as an immediate current-orientation change merely because this explicit snap case exists.
 
-## 9. Path-derived orientation and directional locomotion
+## 9. Pending target-cleanup latch
+
+`Actor.field1473` remains intentionally unnamed. The consumer behavior is exact, but this writer-audit slice did not find the operation that sets it to `true` in the normal actor/player/NPC synchronization corpus.
+
+Known lifecycle:
+
+- constructor/reset paths initialize or restore it to `false`;
+- `classEB.method3820` checks it when an entity target can no longer be resolved and no fallback angle is available; when set, retained entity-target state is cleared and the flag is reset;
+- `classKN.method6539` checks it once current orientation equals desired orientation; when set, retained target state is cleared and the flag is reset;
+- `Actor.method3248` delegates the target reset to `classBZ.method1388`;
+- `Player`, `NPC`, `classDF`, `classDC`, `classAS`, and `classGA` do not directly assign this field in the inspected exact-240 sources.
+
+This proves a pending-cleanup role but not the event that arms the latch. Naming it from consumers alone would obscure a compatibility-sensitive writer that still needs to be located. Keep the stable symbol `Actor.field1473` in port notes until that writer is pinned.
+
+## 10. Path-derived orientation and directional locomotion
 
 For an ordinary queued target, `Actor.method3284` computes the wrapped signed angular difference:
 
@@ -290,7 +324,7 @@ A final step of at most 2 can replace the walk-direction sequence with the match
 - left: `field1453`;
 - right: `field1454`.
 
-## 10. Turning slowdown ordering
+## 11. Turning slowdown ordering
 
 For the standard acceleration branch (`NPCComposition.field5325 == true`, and players), the initial ordinary movement step is reduced from 4 to 2 when all of the following are true:
 
@@ -312,13 +346,13 @@ run/crawl traversal scaling applies last
 
 The alternate NPC acceleration branch does not run this turning-slowdown test.
 
-## 11. Freeze behavior
+## 12. Freeze behavior
 
 `classKN.method6539` skips the ordinary smooth-turn block when `Actor.field1466` (`animationsFrozen` in cluster 03) is active. It still advances the later actor-animation routine and performs end-of-cycle cleanup.
 
 That means a Rust implementation must not advance current orientation from the ordinary turn rate during the frozen state merely because desired orientation changed earlier in the cycle.
 
-## 12. Semantic ownership
+## 13. Semantic ownership
 
 Protocol owns revision-240 facing selector/byte decoding.
 
@@ -337,16 +371,16 @@ Scene/renderer consumes committed current orientation for projection. It must no
 
 Entity targets should use actor instance identity where possible so an index reused after despawn cannot redirect an old facing target onto a different actor instance.
 
-## 13. Remaining compatibility work
+## 14. Remaining compatibility work
 
-The ordinary turn mutator itself is no longer an open research item. Remaining facing work is narrower:
+The ordinary turn mutator and the normal NPC turn-rate source are no longer open research items. Remaining facing work is narrower:
 
 1. retain full typed player/NPC/area/entity facing intent instead of collapsing it to an optional angle;
-2. establish the exact semantic meaning of the two `classLV` secondary behavior values;
-3. trace every materially reachable writer of turn rate beyond constructor/default and NPC definition projection;
-4. preserve exact target-disappearance and pending-target cleanup lifecycle;
-5. route directional idle-turn/walk/run/crawl sequence availability through cache-derived policy;
-6. migrate any remaining visual-only turn projector to authoritative current orientation only after semantic state reaches the scene boundary.
+2. preserve the established `FacingApplyPolicy` separately from `FacingMode`;
+3. locate the writer that arms `Actor.field1473` before naming or implementing its cleanup latch semantics;
+4. route directional idle-turn/walk/run/crawl sequence availability through cache-derived policy;
+5. migrate any remaining visual-only turn projector to authoritative current orientation only after semantic state reaches the scene boundary;
+6. perform a wider write-site census only if another reachable subsystem proves it can mutate actor turn rate outside constructor/default and NPC definition projection.
 
 Do not re-open the desired/current split or invent a second turning algorithm. The exact ordinary step owner is `classKN.method6539`.
 
