@@ -1,13 +1,25 @@
 //! `OpenRune` 240.2 desktop adapter, pinned to `RSProt` 1.0.0-ALPHA-20260825.
 //! See SPEC-0014 and tests/fixtures/PROVENANCE.md for exact evidence and scope.
+mod actions;
 pub(crate) mod bit_reader;
 pub(crate) mod game;
+mod info_fields;
+mod interfaces;
+mod inventory;
 pub(crate) mod js5;
 mod lengths;
 pub(crate) mod loc_anim;
 pub(crate) mod login;
+mod npc_extended;
 pub(crate) mod npc_info;
+mod player_appearance;
+mod player_extended;
+#[allow(
+    clippy::too_many_lines,
+    reason = "the rev-240 GPI decoder intentionally mirrors the deob's ordered bitstream state machine"
+)]
 pub(crate) mod player_info;
+mod scripts;
 use crate::{ProtocolError, Result};
 pub(crate) const REVISION: rustclient_model::Revision =
     rustclient_model::Revision::with_subrevision(240, 2);
@@ -30,3 +42,5 @@ pub fn login_checksums(tables: impl IntoIterator<Item = (u8, u32)>) -> Result<[u
     }
     Ok(crcs)
 }
+
+mod chat;

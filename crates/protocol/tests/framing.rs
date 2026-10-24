@@ -1,3 +1,6 @@
+use rustclient_model::{
+    InventoryId, InventorySlot, InventorySlotUpdate, InventoryUpdate, ItemDefinitionId, ItemStack,
+};
 use rustclient_protocol::{
     GameFramer, GamePacket, Isaac, ServerProfile, ServerUpdate, SessionCodec, decode_bootstrap,
     login_checksums,
@@ -90,8 +93,40 @@ fn initial_gpi_and_footer_become_typed_placement_only_once() {
     );
     let mut updates = Vec::new();
     codec.receive(&bytes, |u| updates.push(u)).unwrap();
-    assert_eq!(updates, vec![ServerUpdate::InitialPlacement(p)]);
+    assert_eq!(updates.len(), 2);
+    assert_eq!(updates[0], ServerUpdate::InitialPlacement(p));
+    let ServerUpdate::PlayerInfo(tracking) = &updates[1] else {
+        panic!("placement must precede remote tracking")
+    };
+    assert_eq!(tracking.remote.len(), 2046);
+    assert!(
+        tracking
+            .remote
+            .iter()
+            .all(|update| matches!(update, rustclient_model::RemotePlayerUpdate::Track { .. }))
+    );
+    assert!(
+        !tracking
+            .remote
+            .iter()
+            .any(|update| update.index() == rustclient_model::PlayerIndex::new(1))
+    );
     assert!(!codec.awaiting_initial_rebuild());
+    let mut rebuilt = Vec::new();
+    codec
+        .receive(&frame(&mut cipher, 39, &payload[4608..], true), |update| {
+            rebuilt.push(update);
+        })
+        .unwrap();
+    assert_eq!(
+        rebuilt,
+        vec![ServerUpdate::RebuildMap {
+            map_anchor: rustclient_model::MapAnchor { x: 3216, y: 3216 }
+        }]
+    );
+
+    inventory_stream(&mut cipher, &mut codec);
+
     assert!(
         codec
             .receive(&frame(&mut cipher, 39, &[0; 6], true), |_| {})
@@ -144,4 +179,46 @@ fn profile_registry_and_archive_absence_are_explicit() {
     assert_eq!(crcs[16], 0);
     assert_eq!(crcs[22], 22);
     assert!(login_checksums((0_u8..22).map(|i| (i, 0))).is_err());
+}
+
+fn inventory_stream(cipher: &mut Isaac, codec: &mut SessionCodec) {
+    let mut inventory_bytes = frame(
+        cipher,
+        74,
+        &[255, 255, 255, 255, 0, 93, 0, 1, 127, 3, 228],
+        true,
+    );
+    inventory_bytes.extend(frame(
+        cipher,
+        23,
+        &[255, 255, 255, 255, 0, 93, 0, 0, 0],
+        true,
+    ));
+    inventory_bytes.extend(frame(cipher, 14, &[93, 0], false));
+    let mut inventory_updates = Vec::new();
+    for byte in inventory_bytes {
+        codec
+            .receive(&[byte], |update| inventory_updates.push(update))
+            .unwrap();
+    }
+    assert_eq!(
+        inventory_updates,
+        vec![
+            ServerUpdate::Inventory(InventoryUpdate::Replace {
+                id: InventoryId::new(93),
+                slots: vec![Some(ItemStack {
+                    item: ItemDefinitionId::new(995),
+                    amount: 1
+                })]
+            }),
+            ServerUpdate::Inventory(InventoryUpdate::Patch {
+                id: InventoryId::new(93),
+                slots: vec![InventorySlotUpdate {
+                    slot: InventorySlot::new(0),
+                    stack: None
+                }]
+            }),
+            ServerUpdate::Inventory(InventoryUpdate::Remove(InventoryId::new(93))),
+        ]
+    );
 }

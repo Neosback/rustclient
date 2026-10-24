@@ -14,6 +14,94 @@ fn descriptor() -> SceneDescriptor {
     )
     .unwrap()
 }
+
+#[test]
+fn action_animation_delay_is_independent_of_locomotion_and_server_reset_is_replayable() {
+    use rustclient_model::{
+        NewNpc, NpcAttributeUpdate, NpcDefinitionId, NpcIndex, NpcInfoUpdate, NpcProperty,
+        PlayerInfoUpdate, PlayerMovement, SequenceChange, SequenceId,
+    };
+    let mut state = GameState::new();
+    let mut replay = Vec::new();
+    for operation in [
+        authenticate(),
+        placement(),
+        SemanticOperation::UpdatePlayers(PlayerInfoUpdate {
+            local_sequence: SequenceChange::Set(Some(SequenceId::new(10))),
+            local_sequence_delay: 3,
+            ..Default::default()
+        }),
+        SemanticOperation::UpdateNpcs(NpcInfoUpdate {
+            new_npcs: vec![NewNpc {
+                index: NpcIndex::new(1),
+                definition_id: NpcDefinitionId::new(1),
+                delta_x: 0,
+                delta_y: 0,
+                orientation: 0,
+            }],
+            attributes: vec![NpcAttributeUpdate {
+                index: NpcIndex::new(1),
+                changes: vec![NpcProperty::Sequence {
+                    sequence: Some(SequenceId::new(10)),
+                    delay: 3,
+                }],
+            }],
+            ..Default::default()
+        }),
+        SemanticOperation::Scenery(rustclient_game_state::SceneryOperation::AdvanceCycles(5)),
+        SemanticOperation::UpdatePlayers(PlayerInfoUpdate {
+            local_movement: Some(PlayerMovement::Step { direction: 4 }),
+            ..Default::default()
+        }),
+    ] {
+        let commit = state.apply_operation(operation.clone()).unwrap();
+        replay.push(ReplayEnvelope::new(operation, commit));
+    }
+    let player = state.entities().local_player().unwrap();
+    assert_eq!(
+        (
+            player.sequence.delay,
+            player.sequence.cycle,
+            player.animation_cycle
+        ),
+        (0, 2, 0)
+    );
+    let tile = player.tile;
+    let operation = SemanticOperation::ResetActorAnimations;
+    let commit = state.apply_operation(operation.clone()).unwrap();
+    assert!(commit.delta().entities_changed());
+    replay.push(ReplayEnvelope::new(operation, commit));
+    assert!(
+        state
+            .entities()
+            .players()
+            .values()
+            .all(|p| !p.sequence.is_active())
+    );
+    assert!(
+        state
+            .entities()
+            .npcs()
+            .values()
+            .all(|n| !n.sequence.is_active())
+    );
+    assert_eq!(state.entities().local_player().unwrap().tile, tile);
+    assert!(
+        state
+            .apply_operation(SemanticOperation::ResetActorAnimations)
+            .unwrap()
+            .delta()
+            .is_empty()
+    );
+    let mut replayed = GameState::new();
+    for entry in replay {
+        replayed.apply_operation(entry.operation().clone()).unwrap();
+    }
+    assert_eq!(
+        state.semantic_fingerprint(),
+        replayed.semantic_fingerprint()
+    );
+}
 fn authenticate() -> SemanticOperation {
     SemanticOperation::AuthenticateSession {
         revision: Revision::with_subrevision(240, 2),
@@ -118,4 +206,117 @@ fn every_scene_descriptor_field_participates_in_fingerprints() {
             .unwrap();
         assert!(seen.insert(state.semantic_fingerprint()));
     }
+}
+
+#[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "one semantic replay contract with malformed boundary cases"
+)]
+fn movement_map_rebuild_cycles_and_appearance_replay_through_the_same_gateway() {
+    use rustclient_game_state::{Locomotion, SceneryOperation};
+    use rustclient_model::{
+        MapAnchor, PlayerAppearance, PlayerInfoUpdate, PlayerMovement, SequenceChange, SequenceId,
+    };
+    let mut state = GameState::new();
+    let mut recorded = Vec::new();
+    let mut appearance = PlayerAppearance::default();
+    appearance.movement_sequences.walk = Some(SequenceId::new(819));
+    let next = SceneDescriptor::new(
+        descriptor().id(),
+        WorldTile::new(3176, 3168, Plane::MIN),
+        104,
+        104,
+    )
+    .unwrap();
+    for operation in [
+        authenticate(),
+        placement(),
+        SemanticOperation::InstallScene(descriptor()),
+        SemanticOperation::UpdatePlayers(PlayerInfoUpdate {
+            local_movement: Some(PlayerMovement::Step { direction: 4 }),
+            local_appearance: Some(appearance),
+            ..Default::default()
+        }),
+        SemanticOperation::Scenery(SceneryOperation::AdvanceCycles(3)),
+        SemanticOperation::RebuildMap(MapAnchor { x: 3224, y: 3216 }),
+        SemanticOperation::InstallScene(next),
+        SemanticOperation::UpdatePlayers(PlayerInfoUpdate {
+            local_sequence: SequenceChange::Set(None),
+            ..Default::default()
+        }),
+    ] {
+        let commit = state.apply_operation(operation.clone()).unwrap();
+        recorded.push(ReplayEnvelope::new(operation, commit));
+    }
+    let player = state.entities().local_player().unwrap();
+    assert_eq!(player.tile, WorldTile::new(3222, 3218, Plane::MIN));
+    assert_eq!(player.locomotion, Locomotion::Idle);
+    assert_eq!(state.initial_placement().unwrap().map_anchor.x, 3224);
+    assert_eq!(state.loaded_scene(), Some(next));
+    assert_eq!(player.orientation, 1536);
+    let plane_update = SemanticOperation::UpdatePlayers(PlayerInfoUpdate {
+        local_movement: Some(PlayerMovement::Teleport {
+            delta_x: 0,
+            delta_y: 0,
+            plane_delta: 1,
+        }),
+        ..Default::default()
+    });
+    let plane_commit = state.apply_operation(plane_update.clone()).unwrap();
+    assert!(plane_commit.delta().scene_changed());
+    assert_eq!(state.loaded_scene(), None);
+    assert_eq!(
+        state.initial_placement().unwrap().map_anchor.plane,
+        Plane::new(1).unwrap()
+    );
+    recorded.push(ReplayEnvelope::new(plane_update, plane_commit));
+    let mut replay = GameState::new();
+    replay.replay_envelopes(&recorded).unwrap();
+    assert_eq!(replay.semantic_fingerprint(), state.semantic_fingerprint());
+    let before = state.semantic_fingerprint();
+    assert!(
+        state
+            .apply_operation(SemanticOperation::UpdatePlayers(PlayerInfoUpdate {
+                local_movement: Some(PlayerMovement::Step { direction: 8 }),
+                ..Default::default()
+            }))
+            .is_err()
+    );
+    assert_eq!(before, state.semantic_fingerprint());
+    assert!(
+        state
+            .apply_operation(SemanticOperation::UpdatePlayers(PlayerInfoUpdate {
+                local_movement: Some(PlayerMovement::Teleport {
+                    delta_x: i32::MAX,
+                    delta_y: 0,
+                    plane_delta: 0
+                }),
+                ..Default::default()
+            }))
+            .is_err()
+    );
+    assert_eq!(before, state.semantic_fingerprint());
+    let mut changed = state
+        .entities()
+        .local_player()
+        .unwrap()
+        .appearance
+        .clone()
+        .unwrap();
+    changed.colors[0] = 1;
+    state
+        .apply_operation(SemanticOperation::UpdatePlayers(PlayerInfoUpdate {
+            local_appearance: Some(changed),
+            ..Default::default()
+        }))
+        .unwrap();
+    assert_ne!(before, state.semantic_fingerprint());
+    state
+        .apply_operation(SemanticOperation::EndSession)
+        .unwrap();
+    assert_eq!(
+        state.semantic_fingerprint(),
+        GameState::new().semantic_fingerprint()
+    );
 }

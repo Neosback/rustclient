@@ -4,7 +4,7 @@ use crate::{
     wire::{Reader, exact, read, send, string},
 };
 use num_bigint::BigUint;
-use rustclient_model::PlayerIndex;
+use rustclient_model::{PlayerIndex, WindowMetrics, WindowMode};
 use rustclient_platform::ByteStream;
 use sha2::{Digest, Sha256};
 use std::fmt::Write;
@@ -106,11 +106,14 @@ pub struct LoginAttempt<'a> {
     pub credentials: Credentials,
     pub entropy: LoginEntropy,
     pub crcs: &'a [u32; 23],
+    /// Host window mode and drawable canvas at the moment of login.
+    pub window: WindowMetrics,
 }
 
 /// Perform the profile's desktop password login using an injected connection.
 /// # Errors
 /// Returns stage-specific malformed/rejected/cancelled diagnostics without secrets.
+#[expect(clippy::too_many_lines, reason = "bounded login state machine")]
 pub async fn authenticate(
     stream: &mut impl ByteStream,
     attempt: LoginAttempt<'_>,
@@ -123,6 +126,7 @@ pub async fn authenticate(
         credentials,
         entropy,
         crcs,
+        window,
     } = attempt;
     if cancelled() {
         return Err(ProtocolError::new("login", "cancelled"));
@@ -145,7 +149,16 @@ pub async fn authenticate(
     if cancelled() {
         return Err(ProtocolError::new("login", "cancelled"));
     }
-    let packet = encode(profile, key, &credentials, &entropy, seed, session_id, crcs)?;
+    let packet = encode(
+        profile,
+        key,
+        &credentials,
+        &entropy,
+        seed,
+        session_id,
+        crcs,
+        window,
+    )?;
     drop(credentials);
     send(stream, &packet, "login request").await?;
     drop(packet);
@@ -158,6 +171,49 @@ pub async fn authenticate(
         }
         let response = read::<1>(stream, "login response").await?[0];
         match response {
+            29 => {
+                let len = usize::from(u16::from_be_bytes(
+                    read::<2>(stream, "login message length").await?,
+                ));
+                if !(3..=1024).contains(&len) {
+                    return Err(ProtocolError::new("login message", "message length limit"));
+                }
+                let mut bytes = vec![0; len];
+                exact(stream, &mut bytes, "login message").await?;
+                let mut reader = Reader::new(&bytes, "login message");
+                let mut lines = Vec::new();
+                for _ in 0..3 {
+                    let mut line = String::new();
+                    loop {
+                        let byte = reader.u8()?;
+                        if byte == 0 {
+                            break;
+                        }
+                        let ch = crate::wire::decode_cp1252(byte);
+                        if !ch.is_control() {
+                            line.push(ch);
+                        }
+                    }
+                    lines.push(line);
+                }
+                if reader.offset != bytes.len() {
+                    return Err(ProtocolError::new(
+                        "login message",
+                        "trailing message bytes",
+                    ));
+                }
+                return Err(ProtocolError::new(
+                    "authentication",
+                    if lines
+                        .first()
+                        .is_some_and(|line| line.starts_with("That name is too long."))
+                    {
+                        "account name exceeds the server limit (response 29)"
+                    } else {
+                        "server rejected the account details (response 29)"
+                    },
+                ));
+            }
             2 => {
                 let session = login_success(stream, incoming, outgoing).await?;
                 progress("Authenticated; receiving initial state");
@@ -228,6 +284,10 @@ async fn login_success(
     })
 }
 
+#[expect(
+    clippy::too_many_arguments,
+    reason = "every input of the login block is explicit so tests can fix it exactly"
+)]
 fn encode(
     profile: ServerProfile,
     key: &PublicKey,
@@ -236,6 +296,7 @@ fn encode(
     seed: [u32; 4],
     session: [u8; 8],
     crcs: &[u32; 23],
+    window: WindowMetrics,
 ) -> Result<Zeroizing<Vec<u8>>> {
     let mut rsa = Zeroizing::new(vec![1]);
     for word in seed {
@@ -255,11 +316,50 @@ fn encode(
     if encrypted.first().is_some_and(|v| v & 128 != 0) {
         encrypted.insert(0, 0);
     }
+    let mut body = login_body(credentials, entropy, crcs, window)?;
+    xtea(&mut body, seed);
+    let mut payload = Zeroizing::new(Vec::new());
+    payload.extend_from_slice(&u32::from(profile.revision().major()).to_be_bytes());
+    payload
+        .extend_from_slice(&u32::from(profile.revision().subrevision().unwrap_or(0)).to_be_bytes());
+    payload.extend_from_slice(&0_u32.to_be_bytes());
+    payload.extend_from_slice(&[1, 0, 0]);
+    payload.extend_from_slice(
+        &u16::try_from(encrypted.len())
+            .map_err(|_| ProtocolError::new("RSA", "length overflow"))?
+            .to_be_bytes(),
+    );
+    payload.extend_from_slice(&encrypted);
+    payload.extend_from_slice(&body);
+    let mut packet = Zeroizing::new(vec![16]);
+    packet.extend_from_slice(
+        &u16::try_from(payload.len())
+            .map_err(|_| ProtocolError::new("login encode", "payload length limit"))?
+            .to_be_bytes(),
+    );
+    packet.extend_from_slice(&payload);
+    Ok(packet)
+}
+/// Plaintext login block that the profile then XTEA-encrypts with the session seed.
+fn login_body(
+    credentials: &Credentials,
+    entropy: &LoginEntropy,
+    crcs: &[u32; 23],
+    window: WindowMetrics,
+) -> Result<Zeroizing<Vec<u8>>> {
     let mut body = Zeroizing::new(Vec::new());
     string(&mut body, credentials.username.trim())?;
-    body.push(2);
-    body.extend_from_slice(&765_u16.to_be_bytes());
-    body.extend_from_slice(&503_u16.to_be_bytes());
+    // The login flag byte is (resizable << 1 | low detail), unlike the in-game
+    // window status where fixed is 1 and resizable is 2.
+    body.push(match window.mode {
+        WindowMode::Fixed => 0,
+        WindowMode::Resizable => 2,
+    });
+    for extent in [window.canvas.width, window.canvas.height] {
+        let extent = u16::try_from(extent)
+            .map_err(|_| ProtocolError::new("login request", "window canvas exceeds wire range"))?;
+        body.extend_from_slice(&extent.to_be_bytes());
+    }
     body.extend_from_slice(&entropy.0[16..]);
     body.push(0);
     body.extend_from_slice(&[0; 5]); // site settings, affiliate, deep links
@@ -311,28 +411,7 @@ fn encode(
             _ => [b, a, d, c],
         });
     }
-    xtea(&mut body, seed);
-    let mut payload = Zeroizing::new(Vec::new());
-    payload.extend_from_slice(&u32::from(profile.revision().major()).to_be_bytes());
-    payload
-        .extend_from_slice(&u32::from(profile.revision().subrevision().unwrap_or(0)).to_be_bytes());
-    payload.extend_from_slice(&0_u32.to_be_bytes());
-    payload.extend_from_slice(&[1, 0, 0]);
-    payload.extend_from_slice(
-        &u16::try_from(encrypted.len())
-            .map_err(|_| ProtocolError::new("RSA", "length overflow"))?
-            .to_be_bytes(),
-    );
-    payload.extend_from_slice(&encrypted);
-    payload.extend_from_slice(&body);
-    let mut packet = Zeroizing::new(vec![16]);
-    packet.extend_from_slice(
-        &u16::try_from(payload.len())
-            .map_err(|_| ProtocolError::new("login encode", "payload length limit"))?
-            .to_be_bytes(),
-    );
-    packet.extend_from_slice(&payload);
-    Ok(packet)
+    Ok(body)
 }
 fn rejected(code: u8) -> ProtocolError {
     let detail = match code {

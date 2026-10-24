@@ -48,6 +48,11 @@ macro_rules! semantic_id {
 
 semantic_id!(ObjectDefinitionId, "Object/location definition identity.");
 semantic_id!(NpcDefinitionId, "NPC definition identity.");
+semantic_id!(InventoryId, "Runtime inventory container identity.");
+semantic_id!(
+    InventorySlot,
+    "Zero-based slot within an inventory container."
+);
 semantic_id!(ItemDefinitionId, "Item definition identity.");
 semantic_id!(KitId, "Identity kit definition identity.");
 semantic_id!(ModelId, "Model resource identity.");
@@ -57,8 +62,23 @@ semantic_id!(SequenceId, "Animation sequence identity.");
 semantic_id!(SpotAnimationId, "Spot-animation/graphics identity.");
 semantic_id!(VarpId, "Varp identity.");
 semantic_id!(VarbitId, "Varbit identity.");
-semantic_id!(WidgetId, "Widget/component identity.");
+/// Semantic component address, without revision-specific packed encoding.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct WidgetId {
+    pub interface: InterfaceId,
+    pub component: u32,
+}
+impl WidgetId {
+    #[must_use]
+    pub const fn new(interface: InterfaceId, component: u32) -> Self {
+        Self {
+            interface,
+            component,
+        }
+    }
+}
 semantic_id!(InterfaceId, "Top-level interface identity.");
+semantic_id!(FontId, "Bitmap font resource identity.");
 semantic_id!(ScriptId, "Client-script identity.");
 semantic_id!(RegionId, "Cache/map-region identity.");
 semantic_id!(FloorUnderlayId, "Terrain underlay definition identity.");
@@ -116,3 +136,7 @@ mod tests {
         );
     }
 }
+
+semantic_id!(SkillId, "Skill definition identity.");
+
+semantic_id!(ChatChannelId, "Semantic incoming message channel.");

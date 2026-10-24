@@ -37,6 +37,8 @@ pub struct CameraInput {
 /// Logical viewport shared by projection and pointer queries.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CameraViewport {
+    inset: [i32; 2],
+    zoom: i32,
     width: i32,
     height: i32,
 }
@@ -44,16 +46,34 @@ impl CameraViewport {
     #[must_use]
     pub fn new(width: i32, height: i32) -> Self {
         Self {
-            width: width.clamp(1, 16_384),
-            height: height.clamp(1, 16_384),
+            width,
+            height,
+            inset: [0; 2],
+            zoom: 0,
+        }
+        .with_settings(rustclient_model::ViewportSettings::default())
+    }
+    #[must_use]
+    pub fn with_settings(self, settings: rustclient_model::ViewportSettings) -> Self {
+        let shape = rustclient_game_ui::viewport::viewport_shape(self.width, self.height, settings);
+        Self {
+            width: shape.size[0],
+            height: shape.size[1],
+            inset: shape.inset,
+            zoom: shape.zoom,
         }
     }
     #[must_use]
+    pub const fn inset(self) -> [i32; 2] {
+        self.inset
+    }
+    #[must_use]
+    pub const fn size(self) -> [i32; 2] {
+        [self.width, self.height]
+    }
+    #[must_use]
     pub fn zoom(self) -> i32 {
-        let factor = 256 + (205 - 256) * (self.height - 334).clamp(0, 100) / 100;
-        // Default aspect bounds are 1..32767, so ordinary desktop viewports
-        // never acquire the script-configurable letterbox bars.
-        self.height * factor / 334
+        self.zoom
     }
 }
 /// Explicit integer output, before float GPU projection.
@@ -67,6 +87,7 @@ pub struct ReferenceCameraPose {
 /// Disposable camera state; retained independently of GPU resource recreation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct GameplayCameraController {
+    follow_height: i32,
     focal: [i32; 3],
     yaw: i32,
     pitch: i32,
@@ -82,6 +103,7 @@ impl GameplayCameraController {
     pub fn new(target: CameraTarget) -> Self {
         let target = target.bounded();
         Self {
+            follow_height: 50,
             focal: [target.x, target.height - 50, target.z],
             yaw: 0,
             pitch: 128,
@@ -92,6 +114,10 @@ impl GameplayCameraController {
             zoom_height: 256,
             zoom_width: 320,
         }
+    }
+    /// Script-authored vertical camera offset in scene fine units.
+    pub fn set_follow_height(&mut self, height: u32) {
+        self.follow_height = i32::try_from(height.min(32767)).unwrap_or(32767);
     }
     /// Current camera yaw in OSRS integer units (0..2047).
     #[must_use]
@@ -119,6 +145,14 @@ impl GameplayCameraController {
         self.yaw = i32::from(yaw & 2047);
         self.yaw_velocity = 0;
     }
+    /// Move the disposable camera into a newly loaded map while retaining the
+    /// user's yaw, pitch and zoom preferences.
+    pub fn recenter(&mut self, target: CameraTarget) {
+        let target = target.bounded();
+        self.focal = [target.x, target.height - self.follow_height, target.z];
+        self.yaw_velocity = 0;
+        self.pitch_velocity = 0;
+    }
     /// Advance exactly one 20 ms client cycle.
     #[expect(
         clippy::manual_midpoint,
@@ -137,7 +171,7 @@ impl GameplayCameraController {
             self.focal[0] += (target.x - self.focal[0]) / 16;
             self.focal[2] += (target.z - self.focal[2]) / 16;
         }
-        self.focal[1] = target.height - 50;
+        self.focal[1] = target.height - self.follow_height;
         let distance = target.terrain_drop.saturating_mul(192).clamp(32768, 98048);
         let divisor = if distance > self.terrain_distance {
             24
@@ -230,6 +264,41 @@ impl GameplayCameraController {
         let translation =
             Mat4::from_translation(-Vec3::from_array(pose.position.map(|v| v as f32)));
         scale * projection * Mat4::from_rotation_x(pitch) * Mat4::from_rotation_y(yaw) * translation
+    }
+    /// Scene-local fine-unit ray through a logical pointer, using the exact
+    /// world rendering matrix. No GPU readback or semantic mutation is involved.
+    #[must_use]
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "bounded logical viewport dimensions"
+    )]
+    pub fn pointer_ray(
+        self,
+        viewport: CameraViewport,
+        pointer: [f32; 2],
+    ) -> Option<([f32; 3], [f32; 3])> {
+        let [x, y] = [
+            pointer[0] - viewport.inset[0] as f32,
+            pointer[1] - viewport.inset[1] as f32,
+        ];
+        if !x.is_finite()
+            || !y.is_finite()
+            || x < 0.
+            || y < 0.
+            || x >= viewport.width as f32
+            || y >= viewport.height as f32
+        {
+            return None;
+        }
+        let inverse = self.matrix(viewport).inverse();
+        let ndc = [
+            2. * x / viewport.width as f32 - 1.,
+            1. - 2. * y / viewport.height as f32,
+        ];
+        let near = inverse.project_point3(Vec3::new(ndc[0], ndc[1], 1.));
+        let far = inverse.project_point3(Vec3::new(ndc[0], ndc[1], 0.01));
+        let direction = (far - near).try_normalize()?;
+        Some((near.to_array(), direction.to_array()))
     }
 }
 #[expect(

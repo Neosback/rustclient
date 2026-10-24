@@ -2,60 +2,82 @@
   "purpose": "Research provenance only. No Cargo or runtime dependency. Selected files, not a full external checkout pin.",
   "sources": [
     {
-      "id": "runelite-235",
-      "root": "references/RuneLite-melxin",
+      "id": "rl-suite-240",
+      "root": "references/rl-suite-240",
       "files": [
         {
-          "path": "buildSrc/src/main/kotlin/Dependencies.kt",
-          "sha256": "951cd1b6737a65d220c80d00b9ffccaeccab0b82c05b30dd4c16680f484781b3"
+          "path": "README.md",
+          "sha256": "99399a619b9b99ebe2a3d8c915c64a7f96fdaa082e418316df807e81cceb8cfc"
         },
         {
-          "path": "deobfuscator/deobfuscator.gradle.kts",
-          "sha256": "e67b7b86144be557cf11a7b07dbb3a6de3f47f9555568ebcb47ee14c552e40cb"
+          "path": "semantic-1.12.39.tsv",
+          "sha256": "87e21fca67804fabc8e3f434b1367992f87d3c9a0ff7594650a73a3d92fe681f"
         },
         {
-          "path": "runescape-client/src/main/java/Skeleton.java",
-          "sha256": "6e84f19dee5c2f0ddc611caf538a7d76d1e91f13f8b3da19148fcff136ef111d"
+          "path": "injected-client-1.12.39-deob-semantic.audit.json",
+          "sha256": "9ada3500027c58f70e29c25b5f062da5e2971de542bfeb45d9afdd7d426f2d76"
         },
         {
-          "path": "runescape-client/src/main/java/class134.java",
-          "sha256": "ab31d372c4365c957667f49711d99a0b155bba910d312155f17a2543206ecee3"
+          "path": "sources-semantic/Actor.java",
+          "sha256": "c0ba7a962d1e7c092379e64183dcad40a40cf41eef79ea984499f92e842494fd"
         },
         {
-          "path": "runescape-client/src/main/java/class136.java",
-          "sha256": "21d9ce1a96c6e3ef99fe677172ac51da5b58afee71eee19f65a2e2389690722b"
+          "path": "sources-semantic/Scene.java",
+          "sha256": "3ecf8221c7cade02cdcf8cff00774319cb626c40db07937a9c190ff96b23757e"
         },
         {
-          "path": "runescape-client/src/main/java/class139.java",
-          "sha256": "2aa1d4e5365c941da0d154be9ff077667d8d4bd9e523c7279842d21d5d6e737c"
+          "path": "sources-semantic/Script.java",
+          "sha256": "ffb289bcc4b76b91a1ee854e66be735c0af2510fa12b73ee92a9c34bbabfd79c"
         },
         {
-          "path": "runescape-client/src/main/java/class140.java",
-          "sha256": "bbb36aeab2e3b02f19329806b057db7fd53a1a809b13022187ec949b04f4cc64"
+          "path": "sources-semantic/ScriptEvent.java",
+          "sha256": "707925bbc01cff20797ee4572f3aaaa20a096b2b08d804b74516af65fd4125f0"
         },
         {
-          "path": "runescape-client/src/main/java/class141.java",
-          "sha256": "90dcd90fe6a4c486a62c6958bffa0ea1872a270f4ddda74c5c15ccf972768773"
+          "path": "sources-semantic/Model.java",
+          "sha256": "04a00105dbaf8bee8923ab235f8d23717ffeb0626896b69dddb053647f420080"
         },
         {
-          "path": "runescape-client/src/main/java/class146.java",
-          "sha256": "d66fd15b543ecf184f71d9dd173951b8d84750609a034cf95211f84db0327156"
+          "path": "sources-semantic/ModelData.java",
+          "sha256": "1784248266a4835691bfc8c12ac281a6da412b89667667cf8adcdb78237d3ab7"
+        }
+      ]
+    },
+    {
+      "id": "open-runelite-240",
+      "root": "references/open-runelite-rev-240",
+      "files": [
+        {
+          "path": "args.txt",
+          "sha256": "313f1d375986cc628c4ac1f22309bcb0ebd0e51f79bf79e587c48bd3428dd011"
         },
         {
-          "path": "runescape-client/src/main/java/TransformationMatrix.java",
-          "sha256": "e0beafa0a7282cc9d82911c3cbaa174d236a2353736ed9bf186e8b838fec46c6"
+          "path": "gradle.properties",
+          "sha256": "772d0ce92b584fe8505701639f9c5b70ad5618d59db9dbf1c73a61a971280a77"
         },
         {
-          "path": "runescape-client/src/main/java/Model.java",
-          "sha256": "683ce1514b3fae43c5a4e2ba2f029ac79d1711ee39f8a90571cf8c42f5cf66b2"
+          "path": "runelite-api/src/main/java/net/runelite/api/coords/WorldPoint.java",
+          "sha256": "5dbf07459a5be64f52f2b4802c96d1b557d23eb846436401e5664c9d1bdca5f9"
         },
         {
-          "path": "runescape-client/src/main/java/ModelData.java",
-          "sha256": "109cf564713fecfe15f91c62e5f8bf69f9707d9df0acd25c2af08b60fb4ca94a"
+          "path": "runelite-api/src/main/java/net/runelite/api/coords/LocalPoint.java",
+          "sha256": "78886d16cfd293e07ee00533636182d9b7670633f575aadafe5b224023ff0850"
         },
         {
-          "path": "runescape-client/src/main/java/SequenceDefinition.java",
-          "sha256": "d415018661f8e4e59a5dceae840b6bef6933b74790149b41b7d93bbc4b0b2928"
+          "path": "runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPlugin.java",
+          "sha256": "9508b008327ed496d320e5f315706d8a1462e9181a6e8a91e9d6940a214849d9"
+        },
+        {
+          "path": "runelite-client/src/main/java/net/runelite/client/plugins/gpu/SceneUploader.java",
+          "sha256": "a8ee331ba88e72448285c63e73f2fe9f052e969e8ce9099414b603518e5b191a"
+        },
+        {
+          "path": "runelite-client/src/main/resources/net/runelite/client/plugins/gpu/vert.glsl",
+          "sha256": "847dd6c2ad7330eda248d94b48bbe834574a1182ebc7773d4a2737f0f704fce3"
+        },
+        {
+          "path": "runelite-client/src/main/resources/net/runelite/client/plugins/gpu/frag.glsl",
+          "sha256": "ea6b6f1160d2b0fb82cc72040a55467e5640255d865ae35bc702ce3fd57e1066"
         }
       ]
     },
@@ -88,6 +110,10 @@
         {
           "path": "engine/game/src/main/kotlin/org/rsmod/game/entity/npc/NpcInfoProtocol.kt",
           "sha256": "9723d655183b5b9cfb166cbdd502fe1a97d326be11e672cf38ec5d7004874cdc"
+        },
+        {
+          "path": "content/interfaces/equipment/src/main/kotlin/org/rsmod/content/interfaces/equipment/prices/GuidePriceScript.kt",
+          "sha256": "55cdafc2f78e1eef9ddd1f10dba11edb9491f03378fd6f5f1bd5d660d03f5fd7"
         }
       ],
       "git_commit": "abc80a8d76d68912f96819680f8aae279a586514"
@@ -109,6 +135,67 @@
           "sha256": "4f56127e43cda1bd9fcfcd096ea5ef3b0a04defb01a2622c7617d25703d5c070"
         }
       ]
+    },
+    {
+      "id": "tsps-client-input-sync",
+      "root": "/Users/tylercovalt/Documents/tsps-main",
+      "files": [
+        {
+          "path": "client/game/widgets/WidgetInputController.ts",
+          "sha256": "65721ca92db0f47beb85abcfa78f677b13b7692b4d31388bcf777c7eb2b86dcf"
+        },
+        {
+          "path": "client/game/widgets/input/widgetClickInput.ts",
+          "sha256": "9082a748abbf0a0f4c661fd35227123d6424813106ee78946f8f7fec1669aa0e"
+        },
+        {
+          "path": "client/game/widgets/input/widgetDragInput.ts",
+          "sha256": "064f913bbdfc40cefbb3d29110fcda00091df0cb5feba4ede63d5ccd5ba09821"
+        },
+        {
+          "path": "client/game/widgets/input/widgetReleaseInput.ts",
+          "sha256": "eb8fb7b47182f2dcad8180b03976a0eb84f089677dba10afff884223f2f480e1"
+        },
+        {
+          "path": "client/game/widgets/interaction/widgetDragHelpers.ts",
+          "sha256": "1a080d25338f0db4ac2892e02ec0cb749c63c7a6b3ac01a3042b0ee553d28e1b"
+        },
+        {
+          "path": "client/game/sync/PlayerSyncManager.ts",
+          "sha256": "918a38e52ea8545c2c7095e2164a0e89ea1ae5217183285e00c6d70934cf0670"
+        },
+        {
+          "path": "client/game/PlayerAnimController.ts",
+          "sha256": "a31041f0fe2eedb5d337b21222d16165e54f7e89f0c629ae8f041a204ed193cb"
+        }
+      ]
+    },
+    {
+      "id": "rustosrs-render-continuation",
+      "root": "references/rustosrs",
+      "files": [
+        {
+          "path": "crates/osrs-render/src/priority.rs",
+          "sha256": "fe534f512fe00377b2866b35ef2c79800ad6c77e67435c53acc5ba6ebe6349a8"
+        },
+        {
+          "path": "crates/osrs-render/src/gpu/mod.rs",
+          "sha256": "cdc443d380e76e111be4f1926d7ac3c162674e0ad9419b5d9e45418645dc4663"
+        },
+        {
+          "path": "crates/osrs-render/src/gpu/scene.wgsl",
+          "sha256": "a92d221c0e60e44be4d17ad9da7d3da91e00f4bbd04377fa3c0457d59ab34a81"
+        },
+        {
+          "path": "reference-fixtures/priority/all_0_11_threshold_crossing.input.json",
+          "sha256": "e2cbcb96808897f017ffff983825419baf900f395e1cd5cfcc621163b7ef3809"
+        },
+        {
+          "path": "reference-fixtures/priority/all_0_11_threshold_crossing.expected.json",
+          "sha256": "773a8f503cd998944f79b1195f034a5c64bb8504d9e1fee471e9ecf2808ba787"
+        }
+      ],
+      "git_commit": "854a3962164ad401d21064a5f207f86869ea69b4"
     }
   ],
   "rsprot_source_artifacts": [

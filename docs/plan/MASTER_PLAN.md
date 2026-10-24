@@ -307,6 +307,13 @@ Typed pointer/keyboard/menu input becomes semantic intents. Introduce `UserGestu
 
 # CP11 - Plugin ABI/runtime
 
+**Implemented (native slice + JS-host proof):** WIT `0.1.0` package, manifest validation,
+capability-mediated host with fault isolation, Wasmtime 49 component runtime, `hello-overlay`
+sample and native overlay projection. The same component transpiles with `jco` and passes the
+JS-host smoke (`scripts/check-plugin-web.sh`), including config persistence. See
+[CP11-plugin-slice.md](CP11-plugin-slice.md). Browser worker integration (CP11.8) and SDK
+ergonomics (CP11.9) remain open.
+
 ## CP11.1 WIT package structure
 ## CP11.2 Manifest/package format
 ## CP11.3 PluginHost lifecycle state machine

@@ -8,14 +8,16 @@
 mod capture;
 mod surface;
 mod ui;
-pub use capture::capture_ui;
-pub use ui::UiStats;
+pub use capture::{capture_ui, capture_ui_with_images};
+pub use ui::{DynamicImage, DynamicImages, UiStats};
 
 pub use surface::{
     ClearColor, FrameOutcome, RenderError, RendererInitError, SurfaceRenderer, SurfaceSize,
 };
 
 mod camera;
+mod face_priority;
+mod transparency;
 mod world;
 mod world_geometry;
 mod world_target;

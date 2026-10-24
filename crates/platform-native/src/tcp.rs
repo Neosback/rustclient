@@ -92,7 +92,8 @@ impl ByteStream for NativeTcp {
                     ) => {}
                 Err(_) => return Err(TransportError::Closed),
             }
-        }
+        })();
+        std::future::ready(result)
     }
     #[allow(
         clippy::unused_async_trait_impl,
@@ -114,8 +115,9 @@ impl ByteStream for NativeTcp {
                     ) => {}
                 Err(_) => return Err(TransportError::Closed),
             }
-        }
-        Ok(())
+            Ok(())
+        })();
+        std::future::ready(result)
     }
 }
 

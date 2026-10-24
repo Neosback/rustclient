@@ -106,6 +106,64 @@ fn quarter(p: &mut ModelPoint, turn: u8) {
         _ => (p.x, p.z),
     };
 }
+/// Actor movement loops indefinitely. Action playback honors the authored maximum
+/// loop count and then falls back to the actor's movement sequence.
+pub(crate) fn actor_frame(
+    sequence: &SequenceAsset,
+    elapsed: u64,
+    action: bool,
+) -> Result<Option<usize>> {
+    if sequence.frames.is_empty()
+        || sequence.frames.len() != sequence.delays.len()
+        || sequence.delays.contains(&0)
+    {
+        return Err(SceneError("invalid actor sequence frame delays".into()));
+    }
+    let duration: u64 = sequence.delays.iter().map(|&d| u64::from(d)).sum();
+    let elapsed = if action {
+        if elapsed > duration {
+            let Some(step) = sequence
+                .frame_step
+                .map(usize::from)
+                .filter(|&n| n > 0 && n <= sequence.frames.len())
+            else {
+                return Ok(None);
+            };
+            let repeat: u64 = sequence.delays[sequence.frames.len() - step..]
+                .iter()
+                .map(|&d| u64::from(d))
+                .sum();
+            if (elapsed - duration - 1) / repeat + 1 >= u64::from(sequence.max_loops) {
+                return Ok(None);
+            }
+        }
+        elapsed
+    } else {
+        elapsed % (duration + 1)
+    };
+    frame_index(sequence, elapsed, None)
+}
+pub(crate) fn actor_skeletal_frame(
+    sequence: &SequenceAsset,
+    elapsed: u64,
+    action: bool,
+) -> Option<i32> {
+    let (start, end) = sequence.range.unwrap_or((0, 0));
+    let length = u64::from(end.saturating_sub(start));
+    if length == 0 {
+        return Some(0);
+    }
+    if !action {
+        return i32::try_from(elapsed % length).ok();
+    }
+    if elapsed >= length {
+        let step = u64::from(sequence.frame_step?).min(length);
+        if step == 0 || (elapsed - length) / step + 1 >= u64::from(sequence.max_loops) {
+            return None;
+        }
+    }
+    skeletal_frame(sequence, elapsed, None)
+}
 #[expect(
     clippy::many_single_char_names,
     reason = "reference XYZ rotations and sine/cosine arithmetic"
@@ -219,6 +277,31 @@ pub(crate) fn pose(
 mod tests {
     use super::*;
     use rustclient_model::SequenceId;
+    #[test]
+    fn actor_idle_loops_and_finite_actions_resume_movement_after_their_last_loop() {
+        let mut sequence = SequenceAsset {
+            id: rustclient_model::SequenceId::new(1),
+            frames: vec![1, 2],
+            delays: vec![2, 3],
+            frame_step: None,
+            max_loops: 1,
+            restart: 2,
+            skeletal: None,
+            range: None,
+        };
+        assert_eq!(actor_frame(&sequence, 6, false).unwrap(), Some(0));
+        assert_eq!(actor_frame(&sequence, 11, false).unwrap(), Some(1));
+        assert_eq!(actor_frame(&sequence, 5, true).unwrap(), Some(1));
+        assert_eq!(actor_frame(&sequence, 6, true).unwrap(), None);
+        sequence.frame_step = Some(1);
+        sequence.max_loops = 2;
+        assert_eq!(actor_frame(&sequence, 8, true).unwrap(), Some(1));
+        assert_eq!(actor_frame(&sequence, 9, true).unwrap(), None);
+        sequence.range = Some((10, 15));
+        assert_eq!(actor_skeletal_frame(&sequence, 5, false), Some(0));
+        assert_eq!(actor_skeletal_frame(&sequence, 5, true), Some(4));
+        assert_eq!(actor_skeletal_frame(&sequence, 6, true), None);
+    }
     #[test]
     fn delayed_boundaries_loopback_and_random_start_are_explicit() {
         let seq = SequenceAsset {

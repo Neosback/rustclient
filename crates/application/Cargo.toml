@@ -6,6 +6,7 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+rustclient-client-script = { path = "../client-script" }
 rustclient-scene = { path = "../scene" }
 rustclient-protocol = { path = "../protocol" }
 rustclient-game-state = { path = "../game-state" }

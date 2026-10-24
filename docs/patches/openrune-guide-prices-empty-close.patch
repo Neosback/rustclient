@@ -1,0 +1,10 @@
+--- a/content/interfaces/equipment/src/main/kotlin/org/rsmod/content/interfaces/equipment/prices/GuidePriceScript.kt
++++ b/content/interfaces/equipment/src/main/kotlin/org/rsmod/content/interfaces/equipment/prices/GuidePriceScript.kt
+@@ -223,6 +223,7 @@
+ 
+     private fun Player.closeGuide() {
+         val tempInv = invMap["inv.tradeoffer"] ?: return
++        if (tempInv.isEmpty()) return
+         val result = invMoveAll(from = tempInv, into = inv)
+         check(result.success) { "Could not move `tempInv` into `inv`: $tempInv" }
+     }

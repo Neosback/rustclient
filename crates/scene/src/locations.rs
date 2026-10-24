@@ -13,18 +13,43 @@ pub(crate) fn build(
     let d = asset.descriptor;
     let origin = d.origin();
     let locations = effective_locations(asset, inputs);
+    let is_dynamic = |loc: &StaticLocation| {
+        asset
+            .assets
+            .objects
+            .get(&loc.object)
+            .is_some_and(|def| def.animation.is_some() || def.morphs.is_some())
+    };
+    // A pose-only rebuild runs every client cycle; wall thickness is only consulted
+    // on tiles that hold a posed location, so index just those tiles.
+    let dynamic_tiles: Option<std::collections::BTreeSet<_>> = dynamic.then(|| {
+        locations
+            .iter()
+            .filter(|loc| is_dynamic(loc))
+            .map(|loc| loc.tile)
+            .collect()
+    });
     let mut walls = BTreeMap::new();
     {
         for loc in &locations {
             if loc.shape <= 3
+                && dynamic_tiles
+                    .as_ref()
+                    .is_none_or(|tiles| tiles.contains(&loc.tile))
                 && let Some(def) = asset.assets.objects.get(&loc.object)
             {
                 walls.insert(loc.tile, def.decoration_displacement);
             }
         }
     }
+    let mut prepared = Vec::new();
+    let mut prepared_vertices = 0_usize;
     {
         for loc in &locations {
+            // Unknown objects fall through so the explicit missing-object error stays.
+            if dynamic && asset.assets.objects.contains_key(&loc.object) && !is_dynamic(loc) {
+                continue;
+            }
             if loc.tile.x < origin.x
                 || loc.tile.y < origin.y
                 || i64::from(loc.tile.x) >= i64::from(origin.x) + i64::from(d.width())
@@ -53,16 +78,38 @@ pub(crate) fn build(
             let requests = placement_requests(loc.shape, rotation, thickness);
             let mut selected = false;
             for (shape, orientation, offset) in requests {
-                selected |= place(asset, mesh, loc, def, shape, orientation, offset, inputs)?;
+                if let Some(model) = prepare(asset, loc, def, shape, orientation, offset, inputs)? {
+                    selected = true;
+                    prepared_vertices += model.model.vertices.len();
+                    if prepared_vertices > 3_000_000 {
+                        return Err(SceneError("prepared scenery allocation limit".into()));
+                    }
+                    prepared.push(model);
+                }
             }
             if !selected {
                 mesh.stats.no_model += 1;
             }
         }
     }
+    super::seams::merge(&mut prepared)?;
+    for model in prepared {
+        let first = mesh.geometry.vertices.len();
+        let target = model.target;
+        emit(mesh, model)?;
+        if mesh.geometry.vertices.len() > first {
+            mesh.geometry
+                .models
+                .push(first..mesh.geometry.vertices.len());
+            mesh.geometry.picks.push(crate::PickRange {
+                vertices: first..mesh.geometry.vertices.len(),
+                target,
+            });
+        }
+    }
     Ok(())
 }
-fn resolve<'a>(
+pub(crate) fn resolve<'a>(
     asset: &'a SceneAsset,
     mut def: &'a ObjectDefinition,
     inputs: &crate::SceneryInputs,
@@ -107,9 +154,9 @@ fn resolve<'a>(
     }
     Ok(Some(def))
 }
-struct InstanceModel {
-    vertices: Vec<ModelPoint>,
-    faces: Vec<rustclient_cache::world::ModelFace>,
+pub(crate) struct InstanceModel {
+    pub vertices: Vec<ModelPoint>,
+    pub faces: Vec<rustclient_cache::world::ModelFace>,
     textures: Vec<[u32; 3]>,
     skins: Vec<Option<u8>>,
 }
@@ -184,26 +231,34 @@ fn construct(
     }
     Ok((!model.vertices.is_empty()).then_some(model))
 }
-#[expect(
-    clippy::too_many_arguments,
-    reason = "validated reference placement inputs"
-)]
+pub(crate) struct PreparedModel {
+    pub model: InstanceModel,
+    pub normals: crate::lighting::Normals,
+    pub merged: Vec<Option<crate::lighting::Normal>>,
+    pub points: Vec<ModelPoint>,
+    pub loc: StaticLocation,
+    pub size: [u8; 2],
+    pub mergeable: bool,
+    pub ambient: i16,
+    pub contrast: i16,
+    colors: Vec<Option<[i32; 3]>>,
+    target: rustclient_model::WorldTarget,
+}
 #[expect(
     clippy::too_many_lines,
     reason = "single reference construction/pose/contour/upload sequence; split after structural parity"
 )]
-fn place(
+fn prepare(
     asset: &SceneAsset,
-    mesh: &mut WorldMesh,
     loc: &StaticLocation,
     def: &ObjectDefinition,
     shape: u8,
     orientation: u8,
     offset: [i32; 2],
     inputs: &crate::SceneryInputs,
-) -> Result<bool> {
+) -> Result<Option<PreparedModel>> {
     let Some(mut model) = construct(asset, def, shape, orientation)? else {
-        return Ok(false);
+        return Ok(None);
     };
     let size = if loc.orientation.get() & 1 != 0 {
         [def.size[1], def.size[0]]
@@ -226,7 +281,7 @@ fn place(
     let mut normals = crate::lighting::calculate(&model.vertices, &model.faces);
     let base_normals = &normals;
     let empty_merged = vec![None; model.vertices.len()];
-    let mut colors: Vec<_> = model
+    let colors: Vec<_> = model
         .faces
         .iter()
         .enumerate()
@@ -316,18 +371,59 @@ fn place(
         }
     }
     let merged = vec![None; model.vertices.len()];
-    if def.non_flat_shading && def.animation.is_none() {
-        colors = model
-            .faces
-            .iter()
-            .enumerate()
-            .map(|(i, &f)| {
-                crate::lighting::bake(f, i, &normals, &merged, def.ambient, def.contrast)
-            })
-            .collect();
-    }
+    let points = model
+        .vertices
+        .iter()
+        .map(|&point| {
+            let p = if loc.shape == 11 {
+                rotate_diagonal(point)
+            } else {
+                point
+            };
+            ModelPoint::new(
+                center[0] + p.x + offset[0] - asset.descriptor.origin().x * 128,
+                p.y - base,
+                center[1] + p.z + offset[1] - asset.descriptor.origin().y * 128,
+            )
+        })
+        .collect();
+    Ok(Some(PreparedModel {
+        model,
+        normals,
+        merged,
+        points,
+        loc: *loc,
+        size,
+        mergeable: def.non_flat_shading && def.animation.is_none() && def.morphs.is_none(),
+        ambient: def.ambient,
+        contrast: def.contrast,
+        colors,
+        target: rustclient_model::WorldTarget::Location {
+            key: location_key(loc),
+            definition: loc.object,
+            resolved: def.id,
+        },
+    }))
+}
+fn emit(mesh: &mut WorldMesh, prepared: PreparedModel) -> Result<()> {
+    let PreparedModel {
+        model,
+        normals,
+        merged,
+        points,
+        mergeable,
+        ambient,
+        contrast,
+        colors,
+        ..
+    } = prepared;
     for (index, &face) in model.faces.iter().enumerate() {
-        let Some(colors) = colors[index] else {
+        let color = if mergeable {
+            crate::lighting::bake(face, index, &normals, &merged, ambient, contrast)
+        } else {
+            colors[index]
+        };
+        let Some(colors) = color else {
             mesh.stats.hidden_faces += 1;
             continue;
         };
@@ -344,28 +440,13 @@ fn place(
             [[0.; 2]; 3]
         };
         let points = face.vertices.map(|v| {
-            let p = model.vertices[v as usize];
-            let p = if loc.shape == 11 {
-                rotate_diagonal(p)
-            } else {
-                p
-            };
-            [
-                center[0] + p.x + offset[0] - asset.descriptor.origin().x * 128,
-                p.y - base,
-                center[1] + p.z + offset[1] - asset.descriptor.origin().y * 128,
-            ]
+            let p = points[v as usize];
+            [p.x, p.y, p.z]
         });
-        let alpha = if face.alpha == -2 {
-            0
-        } else {
-            face.alpha.cast_unsigned()
-        };
-        mesh.geometry
-            .triangle(points, colors, face.texture, uv, alpha, face.bias)?;
+        mesh.geometry.model_triangle(points, colors, uv, face)?;
         mesh.stats.model_triangles += 1;
     }
-    Ok(true)
+    Ok(())
 }
 pub(crate) fn transform(
     mut p: ModelPoint,
@@ -546,7 +627,9 @@ pub(crate) fn shadows(
     Ok(shadows)
 }
 
-pub(crate) fn location_key(loc: &StaticLocation) -> rustclient_model::LocationKey {
+/// Canonical semantic address for a decoded location placement.
+#[must_use]
+pub fn location_key(loc: &StaticLocation) -> rustclient_model::LocationKey {
     use rustclient_model::LocationLayer;
     let layer = match loc.shape {
         0..=3 => LocationLayer::Boundary,

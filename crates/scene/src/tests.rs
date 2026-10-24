@@ -36,6 +36,8 @@ fn assets() -> WorldAssets {
         objects: BTreeMap::new(),
         models: BTreeMap::new(),
         texture_colors: BTreeMap::new(),
+        map_scenes: Vec::new(),
+        map_dots: Vec::new(),
         textures: BTreeMap::new(),
         sequences: BTreeMap::new(),
         frames: BTreeMap::new(),
@@ -53,6 +55,9 @@ fn scene(assets: WorldAssets) -> SceneAsset {
 }
 fn definition() -> ObjectDefinition {
     ObjectDefinition {
+        name: None,
+        actions: Default::default(),
+        collision: ObjectCollision::Geometry,
         id: ObjectDefinitionId::new(1),
         models: vec![ModelReference {
             id: ModelId::new(1),
@@ -72,6 +77,8 @@ fn definition() -> ObjectDefinition {
         model_clipped: false,
         random_start: true,
         int1: 1,
+        map_scene: None,
+        map_icon: None,
         ambient: 0,
         contrast: 0,
         decoration_displacement: 16,
@@ -267,4 +274,161 @@ fn committed_variables_and_location_removal_control_morph_projection() {
     let removed =
         build_mesh_with_inputs(&a, a.descriptor(), spawn, &state.scenery().into()).unwrap();
     assert!(removed.dynamic.vertices.is_empty());
+}
+fn minimap_tile_colors(shape: u8) -> Vec<[u8; 3]> {
+    let mut a = assets();
+    a.overlays.insert(
+        FloorOverlayId::new(0),
+        FloorMaterial {
+            rgb: 0x00dd_2222,
+            texture: None,
+            secondary: None,
+            visible: true,
+            hide_underlay: false,
+        },
+    );
+    a.squares[0].tiles[65].overlay = Some(TerrainOverlay {
+        id: FloorOverlayId::new(0),
+        shape,
+        rotation: 0,
+    });
+    let scene = SceneAsset::new(a, WorldTile::new(0, 0, Plane::MIN), 3, 3).unwrap();
+    let image = minimap::build_scene_minimap(&scene, Plane::MIN);
+    // Tile (1, 1) occupies pixel columns 4..8 and rows 4..8 of the 12x12 image.
+    (4..8)
+        .flat_map(|y| (4..8).map(move |x| (x, y)))
+        .map(|(x, y)| {
+            let i = (y * image.width + x) * 4;
+            [image.rgba[i], image.rgba[i + 1], image.rgba[i + 2]]
+        })
+        .collect()
+}
+#[test]
+fn minimap_overlay_shapes_follow_the_reference_numbering() {
+    // Cache shape 0 is the full-square overlay: every pixel is the overlay colour.
+    let full = minimap_tile_colors(0);
+    assert!(full.iter().all(|c| *c == full[0]));
+    assert!(
+        full[0][0] > full[0][1],
+        "overlay is red-dominant: {:?}",
+        full[0]
+    );
+    // Cache shape 1 splits the tile between overlay and underlay.
+    let split = minimap_tile_colors(1);
+    assert!(split.iter().any(|c| *c == full[0]));
+    assert!(split.iter().any(|c| *c != full[0]));
+}
+#[test]
+fn minimap_palette_matches_the_reference_default_brightness() {
+    assert_eq!(
+        color::palette_rgb(0),
+        1,
+        "black is nudged off the transparent pixel"
+    );
+    let grass = color::palette_rgb(color::light(color::pack(88, 120, 100), 96));
+    let [r, g, b] = [(grass >> 16) & 255, (grass >> 8) & 255, grass & 255];
+    assert!(g > r && g > b, "green hue stays green: {grass:06x}");
+}
+fn minimap_pixel(image: &minimap::MinimapImage, x: usize, y: usize) -> [u8; 4] {
+    let at = (y * image.width + x) * 4;
+    image.rgba[at..at + 4].try_into().unwrap()
+}
+fn wall(assets: &mut WorldAssets, interactive: bool) {
+    let mut object = definition();
+    object.int1 = i32::from(interactive);
+    assets.objects.insert(ObjectDefinitionId::new(1), object);
+    assets.squares[0].locations.push(StaticLocation {
+        object: ObjectDefinitionId::new(1),
+        tile: WorldTile::new(0, 0, Plane::MIN),
+        shape: 0,
+        orientation: LocOrientation::new(0).unwrap(),
+    });
+}
+#[test]
+fn minimap_walls_are_pale_and_interactive_objects_red() {
+    for (interactive, expected) in [(false, [0xEE; 3]), (true, [0xEE, 0, 0])] {
+        let mut assets = assets();
+        wall(&mut assets, interactive);
+        let image = minimap::build_scene_minimap(&scene(assets), Plane::MIN);
+        // Tile (0, 0) is the bottom-left tile of the 2x2 scene; rotation 0 is its west column.
+        for y in 4..8 {
+            let [r, g, b, a] = minimap_pixel(&image, 0, y);
+            assert_eq!([r, g, b, a], [expected[0], expected[1], expected[2], 255]);
+        }
+    }
+}
+#[test]
+fn minimap_hides_bridged_tiles_and_shows_the_bridge_deck_instead() {
+    let tile = |plane: usize| plane * 4096 + 64 + 1;
+    let mut assets = assets();
+    assets.squares[0].tiles[tile(0)].settings = 24;
+    let hidden = minimap::build_scene_minimap(&scene(assets), Plane::MIN);
+    assert_eq!(minimap_pixel(&hidden, 4, 0)[3], 0, "bridge-covered tile");
+    let mut assets = self::assets();
+    assets.squares[0].tiles[tile(0)].settings = 24;
+    assets.squares[0].tiles[tile(1)].settings = 8;
+    let shown = minimap::build_scene_minimap(&scene(assets), Plane::MIN);
+    assert_eq!(minimap_pixel(&shown, 4, 0)[3], 255, "bridge deck above");
+}
+#[test]
+fn minimap_map_scene_sprites_replace_the_object_and_honour_the_canvas_offset() {
+    use rustclient_cache::{Image, Source, Sprite};
+    let mut assets = assets();
+    let mut object = definition();
+    object.map_scene = Some(0);
+    assets.objects.insert(ObjectDefinitionId::new(1), object);
+    assets.squares[0].locations.push(StaticLocation {
+        object: ObjectDefinitionId::new(1),
+        tile: WorldTile::new(0, 0, Plane::MIN),
+        shape: 10,
+        orientation: LocOrientation::new(0).unwrap(),
+    });
+    let red = [255, 0, 0, 255].repeat(4);
+    assets.map_scenes.push(Sprite {
+        id: rustclient_model::SpriteId::new(0),
+        frame: 0,
+        canvas: [4, 4],
+        offset: [1, 1],
+        image: Image::new(
+            2,
+            2,
+            red,
+            Source::group(rustclient_cache::IndexId(8), rustclient_cache::GroupId(0)),
+        )
+        .unwrap(),
+    });
+    let image = minimap::build_scene_minimap(&scene(assets), Plane::MIN);
+    assert_eq!(minimap_pixel(&image, 1, 5), [255, 0, 0, 255]);
+    assert_eq!(minimap_pixel(&image, 2, 6), [255, 0, 0, 255]);
+    assert_ne!(minimap_pixel(&image, 0, 4), [255, 0, 0, 255]);
+    assert_ne!(minimap_pixel(&image, 3, 7), [255, 0, 0, 255]);
+}
+#[test]
+fn entity_models_stand_on_the_ground_with_their_tops_above_it() {
+    use crate::entity_mesh::{Placement, emit_model};
+    let scene = scene(with_model());
+    let model = &scene.sources().models[&ModelId::new(1)];
+    let mut geometry = SceneGeometry::default();
+    emit_model(
+        &scene,
+        model,
+        Placement {
+            position: [0, 0],
+            plane: Plane::MIN,
+            size: 1,
+            orientation: 0,
+        },
+        lighting::Light::entity(64, 850),
+        &mut geometry,
+    )
+    .unwrap();
+    let ground = scene.ground_height(Plane::MIN, [64, 64]).unwrap();
+    let heights: Vec<i32> = geometry
+        .vertices
+        .iter()
+        .map(|vertex| i32::from(vertex.position[1]))
+        .collect();
+    // The model's apex is 128 units above its base and the scene's y axis points down.
+    assert_eq!(heights.iter().copied().max(), Some(ground));
+    assert_eq!(heights.iter().copied().min(), Some(ground - 128));
 }

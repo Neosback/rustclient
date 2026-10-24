@@ -82,9 +82,12 @@ renderer recreation checks, format/check/strict Clippy/tests and wasm compilatio
 - Pinned RustOSRS gitlink: `git ls-tree HEAD references/rustosrs`.
 - `references/rustosrs/crates/osrs-cache/src/encode/{store,reference_table}.rs`
   and `decode/sprite.rs`: JS5 and sprite behavior.
-- RuneLite 235: `runescape-client/.../{HttpResponse,HealthBarUpdate,class358,
-  LoginScreenAnimation,AbstractFont}.java` in the user-supplied RuneLite-melxin
-  checkout. Record the exact checkout SHA with generated fixture provenance.
+- RuneLite 235 (historical): `runescape-client/.../{HttpResponse,HealthBarUpdate,class358,
+  LoginScreenAnimation,AbstractFont}.java` in the former `references/RuneLite-melxin`
+  tree, now removed and available from RustClient Git history. New verification should
+  use the revision-240 `references/rl-suite-240` sources (stable `classXX` names, with
+  the original name in `@ObfuscatedName`) and record the file SHA-256 in
+  `docs/reference/source-manifest.json`.
 - LIVE title asset hashes/metadata are recorded by the inspection command.
 
 Reference source remains evidence, never a RustClient dependency or edit target.

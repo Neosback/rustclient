@@ -12,6 +12,7 @@ use rustclient_protocol::{
 use std::{
     io::Read,
     path::PathBuf,
+    sync::mpsc::{self, Receiver, SyncSender},
     time::{Duration, Instant},
 };
 use winit::event_loop::EventLoopProxy;
@@ -24,34 +25,67 @@ pub(super) struct ConnectionOptions {
     pub public_key: PathBuf,
     pub cache_dir: PathBuf,
 }
+#[expect(
+    clippy::large_enum_variant,
+    reason = "inline bounded operations avoid a heap allocation for every server packet"
+)]
 pub(super) enum NetworkEvent {
     Progress(&'static str),
-    Operation(SemanticOperation),
+    Operation(u64, u64, SemanticOperation),
+    Script(u64, rustclient_model::ScriptRequest),
     Failed(LoginFailure, String),
+}
+pub(super) struct ConnectionHandle {
+    cancel: ConnectionCancellation,
+    actions: SyncSender<Outbound>,
+}
+pub(super) struct Outbound {
+    pub map_epoch: u64,
+    pub interface_epoch: Option<u64>,
+    pub intent: ClientIntent,
+}
+impl ConnectionHandle {
+    pub fn cancel(self) {
+        self.cancel.cancel();
+    }
+    pub fn send(&self, action: Outbound) -> Result<(), String> {
+        self.actions.try_send(action).map_err(|e| match e {
+            mpsc::TrySendError::Full(_) => "server action queue is full".into(),
+            mpsc::TrySendError::Disconnected(_) => "server connection is closed".into(),
+        })
+    }
 }
 /// One worker owns each transport and its cipher state. Stale generations are ignored by the app.
 pub(super) fn spawn(
     options: ConnectionOptions,
     credentials: Credentials,
+    window: rustclient_model::WindowMetrics,
     generation: u64,
     proxy: EventLoopProxy<LoadEvent>,
-) -> Result<ConnectionCancellation, String> {
+) -> Result<ConnectionHandle, String> {
     let cancel = ConnectionCancellation::default();
     let worker_cancel = cancel.clone();
+    let (actions, receiver) = mpsc::sync_channel(32);
     std::thread::Builder::new()
         .name("server-connection".into())
         .spawn(move || {
             let emit = |event| {
                 let _ = proxy.send_event(LoadEvent::Network(generation, event));
             };
-            if let Err((category, error)) = run(&options, credentials, &worker_cancel, &emit)
-                && !worker_cancel.is_cancelled()
+            if let Err((category, error)) = run(
+                &options,
+                credentials,
+                window,
+                &worker_cancel,
+                &receiver,
+                &emit,
+            ) && !worker_cancel.is_cancelled()
             {
                 emit(NetworkEvent::Failed(category, error));
             }
         })
         .map_err(|_| "could not start connection worker".to_owned())?;
-    Ok(cancel)
+    Ok(ConnectionHandle { cancel, actions })
 }
 type Failure = (LoginFailure, String);
 fn prepare(
@@ -100,12 +134,13 @@ fn prepare(
     drop(js5);
     Ok((key, crcs))
 }
-fn run(
+fn open_session(
     options: &ConnectionOptions,
     credentials: Credentials,
+    window: rustclient_model::WindowMetrics,
     cancel: &ConnectionCancellation,
     emit: &impl Fn(NetworkEvent),
-) -> Result<(), Failure> {
+) -> Result<(NativeTcp, ConnectionDecoder), Failure> {
     let failure = |category, error: String| (category, error);
     emit(NetworkEvent::Progress("Checking cache compatibility"));
     let (key, crcs) = prepare(options, cancel)?;
@@ -125,6 +160,7 @@ fn run(
             credentials,
             entropy: LoginEntropy::new(*entropy),
             crcs: &crcs,
+            window,
         },
         || cancel.is_cancelled(),
         |s| emit(NetworkEvent::Progress(s)),
@@ -143,16 +179,39 @@ fn run(
     })?;
     drop(entropy);
     let (mut decoder, authenticated) = ConnectionDecoder::new(options.profile, login);
-    emit(NetworkEvent::Operation(authenticated));
-    pollster::block_on(stream.send(&decoder.encode(ClientIntent::WindowStatus {
-        width: 765,
-        height: 503,
-    })))
+    emit(NetworkEvent::Operation(0, 0, authenticated));
+    pollster::block_on(
+        stream.send(
+            &decoder
+                .encode(ClientIntent::WindowStatus {
+                    mode: window.mode,
+                    width: u16::try_from(window.canvas.width)
+                        .map_err(|_| failure(LoginFailure::Protocol, "window width".into()))?,
+                    height: u16::try_from(window.canvas.height)
+                        .map_err(|_| failure(LoginFailure::Protocol, "window height".into()))?,
+                })
+                .map_err(|e| failure(LoginFailure::Protocol, e.to_string()))?,
+        ),
+    )
     .map_err(|e| failure(LoginFailure::Disconnected, e.to_string()))?;
+    Ok((stream, decoder))
+}
+fn run(
+    options: &ConnectionOptions,
+    credentials: Credentials,
+    window: rustclient_model::WindowMetrics,
+    cancel: &ConnectionCancellation,
+    actions: &Receiver<Outbound>,
+    emit: &impl Fn(NetworkEvent),
+) -> Result<(), Failure> {
+    let failure = |category, error: String| (category, error);
+    let (mut stream, mut decoder) = open_session(options, credentials, window, cancel, emit)?;
     let bootstrap_deadline = Instant::now() + Duration::from_secs(15);
     let mut next_heartbeat = Instant::now() + Duration::from_secs(5);
     let mut bytes = [0; 16384];
     let mut last_received = Instant::now();
+    let mut map_epoch = 0_u64;
+    let mut interface_epoch = 0_u64;
     loop {
         if cancel.is_cancelled() {
             return Ok(());
@@ -168,7 +227,19 @@ fn run(
             Ok(n) => {
                 last_received = Instant::now();
                 let connected = decoder
-                    .receive(&bytes[..n], |op| emit(NetworkEvent::Operation(op)))
+                    .receive_inputs(&bytes[..n], |input| {
+                        let op=match input {rustclient_application::ConnectionInput::Operation(op)=>op,rustclient_application::ConnectionInput::Script(request)=>{interface_epoch=interface_epoch.wrapping_add(1);emit(NetworkEvent::Script(interface_epoch,request));return;}};
+                        if matches!(&op,SemanticOperation::Interface(_)|SemanticOperation::Inventory(_)){interface_epoch=interface_epoch.wrapping_add(1);}
+                        if matches!(
+                            op,
+                            SemanticOperation::EstablishInitialPlacement(_)
+                                | SemanticOperation::RebuildMap(_)
+                        ) || matches!(&op, SemanticOperation::UpdatePlayers(update)
+                            if matches!(update.local_movement, Some(rustclient_model::PlayerMovement::Teleport { plane_delta: 1..=3, .. }))) {
+                            map_epoch = map_epoch.wrapping_add(1);
+                        }
+                        emit(NetworkEvent::Operation(map_epoch, interface_epoch, op));
+                    })
                     .map_err(|e| failure(LoginFailure::Protocol, e.to_string()))?;
                 if !connected {
                     return Err(failure(
@@ -179,6 +250,27 @@ fn run(
             }
             Err(TransportError::Timeout) => {}
             Err(e) => return Err(failure(LoginFailure::Disconnected, e.to_string())),
+        }
+        for action in actions.try_iter().take(32) {
+            if map_epoch != action.map_epoch
+                || action
+                    .interface_epoch
+                    .is_some_and(|epoch| epoch != interface_epoch)
+            {
+                continue;
+            }
+            let encoded = match decoder.encode(action.intent) {
+                Ok(encoded) => encoded,
+                // Encoding validates before cipher advancement. A rejected local action
+                // must not tear down an otherwise healthy server session.
+                Err(error) => {
+                    eprintln!("outbound action rejected: {error}");
+                    continue;
+                }
+            };
+            stream.deadline_after(Duration::from_secs(2));
+            pollster::block_on(stream.send(&encoded))
+                .map_err(|e| failure(LoginFailure::Disconnected, e.to_string()))?;
         }
         if last_received.elapsed() > Duration::from_secs(15) {
             return Err(failure(
@@ -194,8 +286,14 @@ fn run(
         }
         if Instant::now() >= next_heartbeat {
             stream.deadline_after(Duration::from_secs(2));
-            pollster::block_on(stream.send(&decoder.encode(ClientIntent::KeepAlive)))
-                .map_err(|e| failure(LoginFailure::Disconnected, e.to_string()))?;
+            pollster::block_on(
+                stream.send(
+                    &decoder
+                        .encode(ClientIntent::KeepAlive)
+                        .map_err(|e| failure(LoginFailure::Protocol, e.to_string()))?,
+                ),
+            )
+            .map_err(|e| failure(LoginFailure::Disconnected, e.to_string()))?;
             next_heartbeat = Instant::now() + Duration::from_secs(5);
         }
     }

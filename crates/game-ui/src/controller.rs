@@ -29,6 +29,7 @@ pub struct TitleUi {
     password: Zeroizing<String>,
     online: bool,
     submission: bool,
+    pub(crate) submitted_password_length: usize,
     focus: Focus,
     preferences: TitlePreferences,
     hover: Option<(f32, f32)>,
@@ -52,6 +53,7 @@ impl TitleUi {
             password: Zeroizing::new(String::new()),
             online: false,
             submission: false,
+            submitted_password_length: 0,
             focus: Focus::Username,
             preferences,
             hover: None,
@@ -205,6 +207,7 @@ impl TitleUi {
             self.focus = Focus::Password;
             LoginStatus::PasswordRequired
         } else if self.online {
+            self.submitted_password_length = self.password.chars().count();
             self.submission = true;
             LoginStatus::Connecting
         } else {

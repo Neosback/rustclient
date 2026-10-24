@@ -21,10 +21,14 @@ rustclient-game-ui = { path = "../../crates/game-ui" }
 rustclient-game-state = { path = "../../crates/game-state" }
 rustclient-input = { path = "../../crates/input" }
 rustclient-platform-native = { path = "../../crates/platform-native" }
+rustclient-plugin-api = { path = "../../crates/plugin-api" }
+rustclient-plugin-host = { path = "../../crates/plugin-host" }
+rustclient-plugin-runtime-native = { path = "../../crates/plugin-runtime-native" }
 
 pollster.workspace = true
 rustclient-renderer = { path = "../../crates/renderer" }
 winit.workspace = true
+sysinfo = { version = "0.39.6", default-features = false, features = ["system"] }
 
 [lints]
 workspace = true

@@ -11,6 +11,8 @@ use std::collections::{BTreeMap, BTreeSet};
 /// Read-only validated JS5 cache. No GPU or filesystem ownership.
 pub struct Cache<S> {
     source: S,
+    config_warnings: std::cell::RefCell<Vec<String>>,
+    config_files: std::cell::RefCell<BTreeMap<u32, BTreeMap<FileId, Vec<u8>>>>,
     data: StorageKey,
     data_len: u64,
     tables: BTreeMap<IndexId, ReferenceTable>,
@@ -43,6 +45,8 @@ impl<S: ReadOnlyBlobs> Cache<S> {
         }
         let mut cache = Self {
             source,
+            config_warnings: std::cell::RefCell::default(),
+            config_files: std::cell::RefCell::default(),
             data,
             data_len,
             tables: BTreeMap::new(),
@@ -92,6 +96,33 @@ impl<S: ReadOnlyBlobs> Cache<S> {
         &self.tables
     }
 
+    pub(crate) fn config_file(&self, group: u32, id: u32, advisory: bool) -> Result<Vec<u8>> {
+        if !self.config_files.borrow().contains_key(&group) {
+            let files = self
+                .group_files_policy(
+                    IndexId(2),
+                    GroupId(group),
+                    advisory,
+                    &mut self.config_warnings.borrow_mut(),
+                )?
+                .into_iter()
+                .collect();
+            self.config_files.borrow_mut().insert(group, files);
+        }
+        self.config_files
+            .borrow()
+            .get(&group)
+            .and_then(|files| files.get(&FileId(id)))
+            .cloned()
+            .ok_or_else(|| {
+                Source {
+                    index: IndexId(2),
+                    group: Some(GroupId(group)),
+                    file: Some(FileId(id)),
+                }
+                .error("definition", "missing file")
+            })
+    }
     fn raw_group(&self, index: IndexId, group: GroupId) -> Result<Option<Vec<u8>>> {
         let context = Source::group(index, group);
         let index_key = index_key(index, context)?;
@@ -175,6 +206,27 @@ impl<S: ReadOnlyBlobs> Cache<S> {
     /// Fails on absent groups, corrupt chains, CRC/version mismatch or malformed payloads.
     pub fn group_files(&self, index: IndexId, group: GroupId) -> Result<Vec<(FileId, Vec<u8>)>> {
         self.group_files_policy(index, group, false, &mut Vec::new())
+    }
+
+    /// Decode every frame of the sprite group whose name hash matches `name`.
+    ///
+    /// Map-scene tiles are one named group of many frames rather than one group per sprite.
+    ///
+    /// # Errors
+    /// Fails on corrupted sprite payloads. An absent group yields no frames.
+    pub fn named_sprites(&self, name: &str) -> Result<Vec<crate::Sprite>> {
+        let Some(group) = self
+            .tables
+            .get(&IndexId(8))
+            .and_then(|table| table.named_group(name))
+            .map(|row| row.id)
+        else {
+            return Ok(Vec::new());
+        };
+        let Some((_, bytes)) = self.group_files(IndexId(8), group)?.into_iter().next() else {
+            return Ok(Vec::new());
+        };
+        crate::sprite::decode_sprites(&bytes, Source::group(IndexId(8), group))
     }
 
     /// Read and decode a single indexed sprite group from index 8.

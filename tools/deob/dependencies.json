@@ -1,0 +1,66 @@
+[
+  {
+    "coordinate": "org.ow2.asm:asm:9.0",
+    "sha256": "0df97574914aee92fd349d0cb4e00f3345d45b2c239e0bb50f0a90ead47888e0"
+  },
+  {
+    "coordinate": "org.ow2.asm:asm-util:9.0",
+    "sha256": "2af6e7d01e0862e75193f3c01a06a689b0a245947e29f38eb683633391519bb6"
+  },
+  {
+    "coordinate": "org.ow2.asm:asm-tree:9.0",
+    "sha256": "e2c25f332eb95861883a8568e45aac5e77d140d0fe961ae8eb9a474ec876e00d"
+  },
+  {
+    "coordinate": "org.ow2.asm:asm-analysis:9.0",
+    "sha256": "2d46de6df856a4daac9aa534459ab7287eb80584e9109850405e5b302dc9c2a6"
+  },
+  {
+    "coordinate": "com.google.guava:guava:30.1.1-jre",
+    "sha256": "44ce229ce26d880bf3afc362bbfcec34d7e6903d195bbb1db9f3b6e0d9834f06"
+  },
+  {
+    "coordinate": "com.google.code.gson:gson:2.8.6",
+    "sha256": "c8fb4839054d280b3033f800d1f5a97de2f028eb8ba2eb458ad287e536f3f25f"
+  },
+  {
+    "coordinate": "org.slf4j:slf4j-api:1.7.32",
+    "sha256": "3624f8474c1af46d75f98bc097d7864a323c81b3808aa43689a6e1c601c027be"
+  },
+  {
+    "coordinate": "org.slf4j:slf4j-simple:1.7.32",
+    "sha256": "d2fdd7b73ca2019a2062d145a0d86179a58f98c8c3e35ca7c735a27b3b5621c3"
+  },
+  {
+    "coordinate": "org.jetbrains:annotations:22.0.0",
+    "sha256": "9f45f5d5184d50a777742389a7a6e6a5b0bf90b316919774d8336f94776c31b2"
+  },
+  {
+    "coordinate": "org.projectlombok:lombok:1.18.30",
+    "sha256": "14151b47582d570b4de16a147ece3bdbd19ace4aee5bde3a5578c87db9ecb998"
+  },
+  {
+    "coordinate": "net.runelite:fernflower:07082019",
+    "sha256": "542ab3cc0697b3b459ec513ea4445ca877a875f651e5ace688bd9d2c7447e2a0"
+  },
+  {
+    "coordinate": "com.google.code.findbugs:jsr305:3.0.2",
+    "sha256": "766ad2a0783f2687962c8ad74ceecc38a28b9f72a2d085ee438b7813e928d0c7"
+  },
+  {
+    "coordinate": "org.bouncycastle:bcprov-jdk15on:1.52",
+    "sha256": "0dc4d181e4d347893c2ddbd2e6cd5d7287fc651c03648fa64b2341c7366b1773"
+  },
+  {
+    "coordinate": "org.json:json:20231013",
+    "sha256": "0f18192df289114e17aa1a0d0a7f8372cc9f5c7e4f7e39adcf8906fe714fa7d3"
+  },
+  {
+    "coordinate": "org.vineflower:vineflower:1.11.1",
+    "sha256": "a615d07ddbbcd489369674f40e42df639c32be95410890b38f173d5c1e2ea39c"
+  },
+  {
+    "coordinate": "org.ow2.asm:asm-commons:9.0",
+    "sha256": "1b9090acb7e67bd4ed2f2cfb002063316d79cecace237bd07cc4f7f1b302092f"
+  }
+]

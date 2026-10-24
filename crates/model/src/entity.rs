@@ -46,6 +46,7 @@ pub struct MovementSequences {
 /// Authoritative player appearance and equipment representation.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PlayerAppearance {
+    pub display_name: String,
     pub gender: Gender,
     pub slots: [SlotContent; APPEARANCE_SLOTS],
     pub colors: [u8; COLOR_SLOTS],
@@ -58,6 +59,7 @@ pub struct PlayerAppearance {
 impl Default for PlayerAppearance {
     fn default() -> Self {
         Self {
+            display_name: String::new(),
             gender: Gender::Male,
             slots: [SlotContent::Empty; APPEARANCE_SLOTS],
             colors: [0; COLOR_SLOTS],
@@ -93,6 +95,16 @@ impl ActorSequenceSlot {
         }
     }
 
+    /// Advance action playback after consuming its explicit start delay.
+    pub fn advance_cycles(&mut self, cycles: u32) {
+        if self.sequence.is_none() {
+            return;
+        }
+        let delay = self.delay.max(0).cast_unsigned();
+        let consumed = cycles.min(delay);
+        self.delay -= consumed.cast_signed();
+        self.cycle = self.cycle.wrapping_add((cycles - consumed).cast_signed());
+    }
     pub fn clear(&mut self) {
         self.sequence = None;
         self.frame = None;
@@ -219,12 +231,59 @@ pub struct NpcMovement {
     pub index: crate::NpcIndex,
     pub delta_x: i32,
     pub delta_y: i32,
+    pub running: bool,
 }
 
 /// Consolidated NPC info tick update.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct NpcInfoUpdate {
+    /// Spawn origin relative to the current map anchor. None uses the local player.
+    pub origin: Option<crate::TileOffset>,
+    pub attributes: Vec<NpcAttributeUpdate>,
     pub new_npcs: Vec<NewNpc>,
     pub movements: Vec<NpcMovement>,
     pub removals: Vec<crate::NpcIndex>,
+}
+
+/// Server-authored changes to a visible NPC, applied in packet block order.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NpcAttributeUpdate {
+    pub index: crate::NpcIndex,
+    pub changes: Vec<NpcProperty>,
+}
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum NpcProperty {
+    Definition(crate::NpcDefinitionId),
+    Sequence {
+        sequence: Option<SequenceId>,
+        delay: u32,
+    },
+    Facing(u16),
+    Name(Option<String>),
+    Actions(crate::ActionMask),
+}
+
+#[cfg(test)]
+mod tracking_tests {
+    use super::{MoveSpeed, PlayerTrackingGrid};
+    #[test]
+    fn tracking_grid_requires_nonzero_bounded_tile_extent() {
+        assert!(PlayerTrackingGrid::new(0, 1).is_none());
+        assert!(PlayerTrackingGrid::new(1, 0).is_none());
+        assert!(PlayerTrackingGrid::new(u32::MAX, 2).is_none());
+        assert!(PlayerTrackingGrid::new(i32::MAX.cast_unsigned(), 2).is_none());
+        assert_eq!(
+            PlayerTrackingGrid::new(8192, 256).unwrap().extent(),
+            2_097_152
+        );
+    }
+
+    #[test]
+    fn movement_speed_wire_ids_match_revision_240() {
+        assert_eq!(MoveSpeed::from_wire(-1), Some(MoveSpeed::Stationary));
+        assert_eq!(MoveSpeed::from_wire(0), Some(MoveSpeed::Crawl));
+        assert_eq!(MoveSpeed::from_wire(1), Some(MoveSpeed::Walk));
+        assert_eq!(MoveSpeed::from_wire(2), Some(MoveSpeed::Run));
+        assert_eq!(MoveSpeed::from_wire(127), None);
+    }
 }

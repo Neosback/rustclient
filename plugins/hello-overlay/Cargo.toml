@@ -1,0 +1,21 @@
+[package]
+name = "hello-overlay"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+dlmalloc = { version = "0.2", features = ["global"] }
+spin = "0.10"
+wit-bindgen = { version = "0.63", default-features = false, features = ["macros", "realloc"] }
+
+# Detached from the client workspace: guests build for wasm32-wasip2, not the host triple.
+[workspace]
+
+[profile.release]
+opt-level = "s"
+lto = true
+strip = true

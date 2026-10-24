@@ -31,8 +31,16 @@ pub fn load_scene(
         .map_err(|e| e.to_string())?;
     let asset = SceneAsset::new(assets, origin, width, height).map_err(|e| e.to_string())?;
     progress("building terrain and location mesh");
-    let mesh =
-        build_mesh(&asset, asset.descriptor(), placement.position).map_err(|e| e.to_string())?;
+    let mesh = build_mesh(
+        &asset,
+        asset.descriptor(),
+        if asset.descriptor().contains(placement.position) {
+            placement.position
+        } else {
+            placement.map_anchor
+        },
+    )
+    .map_err(|e| e.to_string())?;
     Ok(LoadedScene {
         asset: std::sync::Arc::new(asset),
         mesh,
@@ -52,7 +60,11 @@ pub fn reproject_scene(
     let mesh = rustclient_scene::build_mesh_with_inputs(
         &asset,
         asset.descriptor(),
-        placement.position,
+        if asset.descriptor().contains(placement.position) {
+            placement.position
+        } else {
+            placement.map_anchor
+        },
         inputs,
     )
     .map_err(|e| e.to_string())?;

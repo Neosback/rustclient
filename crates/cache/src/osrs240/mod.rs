@@ -1,12 +1,17 @@
 //! Explicit OSRS/OpenRune 240 binary and archive adapter.
 mod animation;
+pub mod db_tables;
 pub mod definitions;
 mod dependencies;
 pub mod entity_assets;
 pub mod models;
 pub mod npc_model;
 pub mod player_model;
+mod script_opcodes;
+pub mod script_tables;
+pub mod scripts;
 mod terrain;
+pub mod widgets;
 use crate::{
     Cache, CacheProfile, FileId, GroupId, IndexId, Source,
     error::Result,
@@ -92,13 +97,16 @@ impl CacheProfile {
         let models = load_models(cache, model_ids, &mut digest)?;
         progress("texture sprites");
         let (texture_colors, textures) = dependencies::textures(cache, &mut digest)?;
+        let map_scenes = cache.named_sprites("mapscene")?;
+        let map_dots = cache.named_sprites("mapdots")?;
         progress("sequence and frame dependencies");
         let mut wanted: BTreeSet<SequenceId> =
             objects.values().filter_map(|d| d.animation).collect();
         for seq in [808, 819, 820, 821, 822, 823, 824] {
             wanted.insert(SequenceId::new(seq));
         }
-        let (sequences, frames, skeletons) = dependencies::animations(cache, &wanted, &mut digest)?;
+        let (sequences, frames, skeletons) =
+            dependencies::animations(cache, &wanted, &mut digest, self, &mut warnings)?;
         let wanted = objects
             .values()
             .filter_map(|d| d.morphs.as_ref().and_then(|m| m.varbit))
@@ -111,6 +119,8 @@ impl CacheProfile {
             objects,
             models,
             texture_colors,
+            map_scenes,
+            map_dots,
             textures,
             sequences,
             frames,
@@ -354,3 +364,5 @@ fn hash_file(digest: &mut Sha256, source: Source, bytes: &[u8]) {
 
 #[cfg(test)]
 mod tests;
+
+mod script_widgets;

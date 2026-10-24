@@ -11,6 +11,7 @@ use rustclient_model::{
     ItemDefinitionId, KitId, ModelId, NpcDefinitionId, ObjectDefinitionId, SequenceId, TextureId,
     VarbitId, VarpId,
 };
+use std::collections::BTreeMap;
 /// Decode a floor material definition.
 /// # Errors
 /// Returns error on corrupt payload or unsupported opcodes.
@@ -52,6 +53,9 @@ pub fn object(bytes: &[u8], id: ObjectDefinitionId, source: Source) -> Result<Ob
     let mut r = Reader::new(bytes, source);
     let mut out = ObjectDefinition {
         id,
+        name: None,
+        actions: Default::default(),
+        collision: crate::world::ObjectCollision::Geometry,
         models: Vec::new(),
         size: [1; 2],
         scale: [128; 3],
@@ -67,11 +71,14 @@ pub fn object(bytes: &[u8], id: ObjectDefinitionId, source: Source) -> Result<Ob
         model_clipped: false,
         random_start: true,
         int1: -1,
+        map_scene: None,
+        map_icon: None,
         ambient: 0,
         contrast: 0,
         decoration_displacement: 16,
     };
     let mut has_actions = false;
+    let mut solid = false;
     loop {
         let op = r.u8()?;
         match op {
@@ -96,18 +103,20 @@ pub fn object(bytes: &[u8], id: ObjectDefinitionId, source: Source) -> Result<Ob
                     });
                 }
             }
-            2 => r.string()?,
+            2 => out.name = Some(r.string_value()?),
             30..=34 => {
-                let begin = r.remaining();
-                r.string()?;
-                let end = r.remaining();
-                let start = bytes.len() - begin;
-                let finish = bytes.len() - end - 1;
-                has_actions |= &bytes[start..finish] != b"Hidden";
+                let action = r.string_value()?;
+                if !action.eq_ignore_ascii_case("hidden") {
+                    has_actions = true;
+                    out.actions[usize::from(op - 30)] = Some(action);
+                }
             }
             14 => out.size[0] = r.u8()?,
             15 => out.size[1] = r.u8()?,
-            17 | 18 | 27 | 73 | 74 | 90 | 94 => {}
+            17 => out.collision = crate::world::ObjectCollision::None,
+            27 => out.collision = crate::world::ObjectCollision::GeometryAndFloorDecoration,
+            74 => solid = true,
+            18 | 73 | 90 | 94 => {}
             22 => out.non_flat_shading = true,
             23 => out.model_clipped = true,
             64 => out.clipped = false,
@@ -142,9 +151,11 @@ pub fn object(bytes: &[u8], id: ObjectDefinitionId, source: Source) -> Result<Ob
                     out.retextures.push((from, to));
                 }
             }
-            42 | 61 | 68 | 82 => {
+            42 | 61 => {
                 r.u16()?;
             }
+            68 => out.map_scene = Some(u32::from(r.u16()?)),
+            82 => out.map_icon = Some(u32::from(r.u16()?)),
             62 => out.mirrored = true,
             65..=67 => out.scale[usize::from(op - 65)] = r.u16()?,
             70..=72 => {
@@ -224,6 +235,9 @@ pub fn object(bytes: &[u8], id: ObjectDefinitionId, source: Source) -> Result<Ob
     }
     if out.size.contains(&0) || out.scale.contains(&0) {
         return Err(source.error("object definition", "invalid dimensions or scale"));
+    }
+    if solid {
+        out.collision = crate::world::ObjectCollision::None;
     }
     if out.int1 < 0 {
         out.int1 = i32::from(
@@ -527,6 +541,16 @@ pub fn item(bytes: &[u8], id: ItemDefinitionId, source: Source) -> Result<ItemDe
     let mut r = Reader::new(bytes, source);
     let mut out = ItemDefinition {
         id,
+        icon_model: None,
+        icon_zoom: 2000,
+        icon_angles: [0; 3],
+        icon_offset: [0; 2],
+        stackable: false,
+        members: false,
+        inventory_actions: [None, None, None, None, Some("Drop".into())],
+        parameters: BTreeMap::new(),
+        placeholder: None,
+        placeholder_template: None,
         name: None,
         equip_slot: None,
         hides: [None; 2],
@@ -540,12 +564,24 @@ pub fn item(bytes: &[u8], id: ItemDefinitionId, source: Source) -> Result<ItemDe
         match op {
             0 => break,
             2 => out.name = Some(r.string_value()?),
-            3 | 30..=39 => r.string()?,
-            1 | 4..=8 | 75 | 90..=95 | 97..=99 | 110..=112 | 139 | 140 | 148 | 149 => {
+            1 => out.icon_model = Some(ModelId::new(u32::from(r.u16()?))),
+            4 => out.icon_zoom = r.u16()?,
+            5 => out.icon_angles[0] = r.u16()?,
+            6 => out.icon_angles[1] = r.u16()?,
+            7 => out.icon_offset[0] = i32::from(r.i16()?),
+            8 => out.icon_offset[1] = i32::from(r.i16()?),
+            95 => out.icon_angles[2] = r.u16()?,
+            11 => out.stackable = true,
+            16 => out.members = true,
+            149 => out.placeholder_template = Some(ItemDefinitionId::new(u32::from(r.u16()?))),
+            148 => out.placeholder = Some(ItemDefinitionId::new(u32::from(r.u16()?))),
+            35..=39 => out.inventory_actions[usize::from(op - 35)] = Some(r.string_value()?),
+            3 | 30..=34 => r.string()?,
+            75 | 90..=94 | 97..=99 | 110..=112 | 139 | 140 => {
                 r.u16()?;
             }
             // Flag opcodes without payload: stackability, tradeability, membership, market, unlock.
-            11 | 15 | 16 | 65 | 160 | 251 => {}
+            15 | 65 | 160 | 251 => {}
             42 | 113..=115 => {
                 r.u8()?;
             }
@@ -570,7 +606,13 @@ pub fn item(bytes: &[u8], id: ItemDefinitionId, source: Source) -> Result<ItemDe
                 r.take(15)?;
                 r.string()?;
             }
-            12 | 44 | 51..=54 => {
+            // Revision 240 stores the inventory model as a 32-bit id; opcode 1 is the legacy form.
+            44 => {
+                let model = r.u32()?;
+                out.icon_model =
+                    (model != u32::MAX && model != 65535).then_some(ModelId::new(model));
+            }
+            12 | 51..=54 => {
                 r.u32()?;
             }
             13 => out.equip_slot = Some(r.u8()?),
@@ -654,17 +696,15 @@ pub fn item(bytes: &[u8], id: ItemDefinitionId, source: Source) -> Result<ItemDe
                 }
             }
             249 => {
-                let count = r.u8()?;
-                for _ in 0..count {
+                for _ in 0..r.u8()? {
                     let kind = r.u8()?;
-                    r.u24()?;
-                    match kind {
-                        0 => {
-                            r.u32()?;
-                        }
-                        1 => r.string()?,
-                        _ => return Err(source.error("item parameters", "invalid parameter type")),
-                    }
+                    let key = r.u24()?;
+                    let value = match kind {
+                        0 => rustclient_model::ScriptValue::Int(r.u32()?.cast_signed()),
+                        1 => rustclient_model::ScriptValue::Text(r.string_value()?),
+                        _ => return Err(source.error("item parameters", "invalid type")),
+                    };
+                    out.parameters.insert(key, value);
                 }
             }
             op => return Err(source.error("item", format!("unsupported opcode {op}"))),

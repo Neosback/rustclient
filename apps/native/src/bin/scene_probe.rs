@@ -65,6 +65,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 texture.image.pixels(),
             )?;
         }
+        write_minimap_captures(&cache, &scene, &path)?;
         let target = rustclient_renderer::CameraTarget {
             x: (mesh.focus[0] * 128.) as i32,
             height: -(mesh.focus[1] * 128.) as i32,
@@ -155,4 +156,55 @@ fn placed_state(
     state.apply_operation(SemanticOperation::InstallScene(descriptor))?;
 
     Ok(state)
+}
+
+/// Compose the minimap and compass through both toplevel masks (fixed 1183/1184, resizable
+/// 1178/1179) at several yaws, so mask size and rotation handedness can be inspected as PNGs.
+fn write_minimap_captures(
+    cache: &Cache<DirectoryBlobs>,
+    scene: &rustclient_scene::SceneAsset,
+    directory: &std::path::Path,
+) -> Result<(), Box<dyn std::error::Error>> {
+    use rustclient_scene::minimap::{build_scene_minimap, compose_compass, compose_minimap};
+    let minimap = build_scene_minimap(scene, Plane::MIN);
+    let compass = cache.sprite(169)?.ok_or("compass sprite 169")?;
+    let focus = (3221.5, 3218.5);
+    for (name, mask_id, compass_mask_id) in [("fixed", 1183, 1184), ("resizable", 1178, 1179)] {
+        let mask = cache.sprite(mask_id)?.ok_or("minimap mask")?;
+        let compass_mask = cache.sprite(compass_mask_id)?.ok_or("compass mask")?;
+        for angle in [0_u16, 512, 1024] {
+            let pixels = compose_minimap(
+                mask.image.pixels(),
+                mask.image.width() as usize,
+                mask.image.height() as usize,
+                &minimap,
+                focus,
+                angle,
+            );
+            image::save_buffer(
+                directory.join(format!("minimap-{name}-{angle}.png")),
+                &pixels,
+                mask.image.width(),
+                mask.image.height(),
+                image::ColorType::Rgba8,
+            )?;
+            let pixels = compose_compass(
+                compass.image.pixels(),
+                compass.image.width() as usize,
+                compass.image.height() as usize,
+                compass_mask.image.pixels(),
+                compass_mask.image.width() as usize,
+                compass_mask.image.height() as usize,
+                angle,
+            );
+            image::save_buffer(
+                directory.join(format!("compass-{name}-{angle}.png")),
+                &pixels,
+                compass_mask.image.width(),
+                compass_mask.image.height(),
+                image::ColorType::Rgba8,
+            )?;
+        }
+    }
+    Ok(())
 }

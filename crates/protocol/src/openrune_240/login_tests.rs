@@ -1,4 +1,5 @@
 use super::*;
+use rustclient_model::CanvasSize;
 use rustclient_platform::TransportError;
 use std::collections::VecDeque;
 struct Memory {
@@ -11,16 +12,22 @@ struct Memory {
     reason = "test transport implements the shared async ByteStream contract"
 )]
 impl ByteStream for Memory {
-    async fn receive(&mut self, bytes: &mut [u8]) -> std::result::Result<usize, TransportError> {
+    fn receive(
+        &mut self,
+        bytes: &mut [u8],
+    ) -> impl Future<Output = std::result::Result<usize, TransportError>> {
         let n = bytes.len().min(self.chunk).min(self.input.len());
         for b in &mut bytes[..n] {
             *b = self.input.pop_front().unwrap();
         }
-        Ok(n)
+        std::future::ready(Ok(n))
     }
-    async fn send(&mut self, bytes: &[u8]) -> std::result::Result<(), TransportError> {
+    fn send(
+        &mut self,
+        bytes: &[u8],
+    ) -> impl Future<Output = std::result::Result<(), TransportError>> {
         self.output.extend_from_slice(bytes);
-        Ok(())
+        std::future::ready(Ok(()))
     }
 }
 fn entropy() -> LoginEntropy {
@@ -50,6 +57,7 @@ fn login_request_matches_independent_python_wire_fixture() {
         [1, 2, 3, 4],
         0x0102_0304_0506_0708_u64.to_be_bytes(),
         &crcs,
+        WindowMetrics::default(),
     )
     .unwrap();
     assert_eq!(
@@ -84,6 +92,7 @@ fn partial_success_consumes_exactly_34_bytes_and_optional_authenticator_cipher_w
                 credentials: credentials(),
                 entropy: entropy(),
                 crcs: &[0; 23],
+                window: WindowMetrics::default(),
             },
             || false,
             |_| {},
@@ -119,7 +128,8 @@ fn malformed_and_cancelled_challenges_fail_boundedly() {
                 key: &key(),
                 credentials: credentials(),
                 entropy: entropy(),
-                crcs: &[0; 23]
+                crcs: &[0; 23],
+                window: WindowMetrics::default(),
             },
             || false,
             |_| {}
@@ -142,4 +152,43 @@ fn credential_validation_and_public_key_parsing_do_not_echo_input() {
     assert!(!err.to_string().contains("private-marker"));
     assert!(PublicKey::parse("-----BEGIN PRIVATE KEY-----").is_err());
     assert!(PublicKey::parse(&"x".repeat(2049)).is_err());
+}
+
+fn window(mode: WindowMode, width: u32, height: u32) -> WindowMetrics {
+    let size = CanvasSize { width, height };
+    WindowMetrics {
+        mode,
+        available: size,
+        canvas: size,
+    }
+}
+#[test]
+fn login_block_carries_the_real_window_mode_and_canvas() {
+    let crcs = [0; 23];
+    for (metrics, expected) in [
+        (window(WindowMode::Fixed, 765, 503), [0, 2, 253, 1, 247]),
+        (window(WindowMode::Resizable, 1280, 720), [2, 5, 0, 2, 208]),
+    ] {
+        let body = login_body(&credentials(), &entropy(), &crcs, metrics).unwrap();
+        // Username is NUL-terminated, then the flag byte and both canvas extents.
+        let start = "fixture".len() + 1;
+        assert_eq!(&body[start..start + 5], expected);
+    }
+}
+#[test]
+fn oversized_canvas_is_rejected_before_encoding() {
+    let crcs = [0; 23];
+    assert!(
+        encode(
+            ServerProfile::OPENRUNE_240_2,
+            &key(),
+            &credentials(),
+            &entropy(),
+            [1, 2, 3, 4],
+            [0; 8],
+            &crcs,
+            window(WindowMode::Resizable, 70_000, 503),
+        )
+        .is_err()
+    );
 }

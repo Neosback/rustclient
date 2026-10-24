@@ -12,17 +12,28 @@ This directory contains pinned external source trees used as implementation evid
 
 The submodule gitlink is the single source of truth for the pinned reference commit.
 
-## Direct RuneLite and rsprox snapshots
+## Direct RuneLite 240 and rsprox snapshots
 
-`references/RuneLite-melxin` and `references/rsprox-master` are vendored trees
-recorded by the parent RustClient commit, not submodules. RuneLite declares OSRS
-235; the supplied rsprox OSRS modules reach 235 and include **both client and
-server** packet information. Cross-check revision changes against OpenRune's
-selected rsprot 240 sources. Neither copy is a declaration of 240 compatibility.
+`references/open-runelite-rev-240`, `references/rl-suite-240` and
+`references/rsprox-master` are vendored trees recorded by the parent RustClient
+commit, not submodules.
 
-OpenRune FileStore and the actual development server are additional local,
-read-only evidence. Their locations, purposes and selected file hashes are in
-[`docs/reference/INDEX.md`](../docs/reference/INDEX.md) and its source manifest.
+- `open-runelite-rev-240` is a RuneLite fork targeting revision 240 (`runelite-api`,
+  `runelite-client` including the GPU plugin and shaders, `cache`, and a
+  `runelite-agent`). The supplied checkout was not a Git repository, so no upstream
+  commit is recorded; the vendored tree is the pin. It expects an external
+  `injected-client` jar and its login RSA modulus is Jagex's, not OpenRune's.
+- `rl-suite-240` is the rl-suite 1.3.1 deobfuscation of the tracked gamepack
+  (input SHA-256 `25f42961...4f85`, identical to `gamepacks/osrs-240`), keeping only
+  the semantic-name Vineflower sources, the semantic map and the audit reports.
+  Class names are stable `classXX` names, not the old 235 names; every original
+  name is kept in `@ObfuscatedName`.
+- `rsprox-master` carries client and server packet information through OSRS 235.
+  Cross-check revision changes against OpenRune's selected rsprot 240 sources.
+
+The former RuneLite 235 tree (`references/RuneLite-melxin`) was removed; it remains
+in Git history. A copy also remains inside the pinned `references/rustosrs`
+submodule.
 
 ## Revision-240 client binary
 

@@ -224,20 +224,6 @@ impl TitleUi {
         cycle: u64,
         frame: &mut UiFrame,
     ) {
-        if status == LoginStatus::Connecting {
-            centered(
-                frame,
-                &assets.fonts[2],
-                2,
-                "Connecting to server...",
-                382,
-                231,
-                YELLOW,
-            );
-            centered(frame, &assets.fonts[1], 1, "Please wait", 382, 256, WHITE);
-            button(frame, assets, CANCEL, "Cancel");
-            return;
-        }
         let lines = login_lines(status);
         for (i, line) in lines.into_iter().enumerate() {
             centered(
@@ -250,7 +236,7 @@ impl TitleUi {
                 YELLOW,
             );
         }
-        self.fields(assets, cycle, frame);
+        self.fields(assets, cycle, status == LoginStatus::Connecting, frame);
         let prefs = self.preferences();
         checkbox(
             frame,
@@ -292,7 +278,7 @@ impl TitleUi {
             if self.hovered(HELP) { YELLOW } else { WHITE },
         );
     }
-    fn fields(&self, assets: &TitleAssets, cycle: u64, frame: &mut UiFrame) {
+    fn fields(&self, assets: &TitleAssets, cycle: u64, connecting: bool, frame: &mut UiFrame) {
         text(frame, &assets.fonts[2], 2, "Login: ", 272, 253, WHITE, CLIP);
         let field_clip = Rect::new(312., 238., 200., 18.);
         let mut username = self.displayed_username();
@@ -307,7 +293,11 @@ impl TitleUi {
             WHITE,
             field_clip,
         );
-        let password = self.masked_password();
+        let password = if connecting {
+            "*".repeat(self.submitted_password_length)
+        } else {
+            self.masked_password()
+        };
         text(
             frame,
             &assets.fonts[2],
@@ -329,7 +319,7 @@ impl TitleUi {
             WHITE,
             Rect::new(float(password_x), 254., float(512 - password_x), 18.),
         );
-        if cycle % 40 < 20 {
+        if cycle % 40 < 20 && !connecting {
             let (value, x, y) = if self.focused_username() {
                 (&username, 312, 253)
             } else {
@@ -349,6 +339,7 @@ impl TitleUi {
     }
 }
 fn title_chrome(assets: &TitleAssets, frame: &mut UiFrame) {
+    frame.canvas = None;
     frame.quads.clear();
     frame.image(UiImageId::Background, Rect::new(0., 0., 382., 503.), CLIP);
     frame.image(UiImageId::Background, Rect::new(382., 0., 382., 503.), CLIP);
@@ -464,7 +455,7 @@ fn centered(
     clippy::too_many_arguments,
     reason = "literal font projection parameters are explicit and independent"
 )]
-fn text(
+pub(crate) fn text(
     frame: &mut UiFrame,
     font: &BitmapFont,
     id: u8,

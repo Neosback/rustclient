@@ -1,5 +1,17 @@
 //! Stable references to immutable scene assets, independent of render representations.
-use crate::WorldTile;
+use crate::{Plane, WorldTile};
+/// World-space centre of a map window, independent of the player's current plane.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct MapAnchor {
+    pub x: i32,
+    pub y: i32,
+}
+impl MapAnchor {
+    #[must_use]
+    pub const fn on_plane(self, plane: Plane) -> WorldTile {
+        WorldTile::new(self.x, self.y, plane)
+    }
+}
 /// SHA-256 content identity allocated by the immutable scene asset catalog.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SceneAssetId([u8; 32]);

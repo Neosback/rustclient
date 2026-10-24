@@ -406,7 +406,6 @@ impl PlayerInfoDecoder {
                 self.slots[index].region = pack_region(plane.to_le_bytes()[0], x, y);
                 Ok(false)
             }
-            _ => unreachable!(),
         }
     }
 

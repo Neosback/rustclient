@@ -45,6 +45,7 @@ For execution-sized tasks and dependency ordering, see `docs/plan/MASTER_PLAN.md
 
 - [SPEC-0016: Reference GPU scenery and gameplay camera](SPEC-0016-reference-scenery-parity.md)
 - [SPEC-0017: Gameframe, entities and location animations](SPEC-0017-gameframe-entities.md)
+- [SPEC-0018: Playable desktop — walk and bank](SPEC-0018-playable-desktop.md)
 
 Current reference/revision decisions: [revision-240 integration guide](../reference/REVISION-240.md).
 Current delivery gaps: [revision-240 delivery plan](../plan/REVISION-240-delivery.md).

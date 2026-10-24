@@ -48,6 +48,13 @@ pub struct ModelReference {
     pub id: ModelId,
     pub shape: Option<u8>,
 }
+/// Movement participation decoded by the cache adapter, independent of opcode values.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ObjectCollision {
+    None,
+    Geometry,
+    GeometryAndFloorDecoration,
+}
 /// Render-relevant immutable definition; other verified fields are consumed by the adapter.
 #[derive(Debug)]
 #[expect(
@@ -56,6 +63,9 @@ pub struct ModelReference {
 )]
 pub struct ObjectDefinition {
     pub id: ObjectDefinitionId,
+    pub name: Option<String>,
+    pub actions: [Option<String>; 5],
+    pub collision: ObjectCollision,
     pub models: Vec<ModelReference>,
     pub size: [u8; 2],
     pub scale: [u16; 3],
@@ -71,6 +81,10 @@ pub struct ObjectDefinition {
     pub model_clipped: bool,
     pub random_start: bool,
     pub int1: i32,
+    /// Minimap tile sprite (`mapscene` frame) drawn in place of the object's wall colours.
+    pub map_scene: Option<u32>,
+    /// Minimap icon (`mapfunction` sprite) drawn over the object's tile.
+    pub map_icon: Option<u32>,
 
     pub ambient: i16,
     pub contrast: i16,
@@ -136,6 +150,16 @@ pub struct WearModels {
 /// Worn item appearance definition.
 #[derive(Debug, Clone)]
 pub struct ItemDefinition {
+    pub icon_model: Option<ModelId>,
+    pub icon_zoom: u16,
+    pub icon_angles: [u16; 3],
+    pub icon_offset: [i32; 2],
+    pub stackable: bool,
+    pub members: bool,
+    pub inventory_actions: [Option<String>; 5],
+    pub parameters: BTreeMap<u32, rustclient_model::ScriptValue>,
+    pub placeholder: Option<ItemDefinitionId>,
+    pub placeholder_template: Option<ItemDefinitionId>,
     pub id: ItemDefinitionId,
     pub name: Option<String>,
     pub equip_slot: Option<u8>,
@@ -145,6 +169,19 @@ pub struct ItemDefinition {
     pub recolors: Vec<(u16, u16)>,
     pub retextures: Vec<(Option<TextureId>, Option<TextureId>)>,
 }
+impl ItemDefinition {
+    /// Convert a placeholder definition back to its real item. A real item's
+    /// forward placeholder link does not make it a placeholder itself.
+    #[must_use]
+    pub fn unplaceholder(&self) -> ItemDefinitionId {
+        if self.placeholder_template.is_some() {
+            self.placeholder.unwrap_or(self.id)
+        } else {
+            self.id
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct ModelFace {
     pub vertices: [u32; 3],
@@ -176,6 +213,10 @@ pub struct WorldAssets {
     pub models: BTreeMap<ModelId, StaticModel>,
     /// Packed HSL average colors, as supplied by texture definitions.
     pub texture_colors: BTreeMap<TextureId, u16>,
+    /// Frames of the `mapscene` sprite group, indexed by `ObjectDefinition::map_scene`.
+    pub map_scenes: Vec<crate::Sprite>,
+    /// Frames of the `mapdots` sprite group: item, NPC, player, friend, team and so on.
+    pub map_dots: Vec<crate::Sprite>,
     pub textures: BTreeMap<TextureId, TextureAsset>,
     pub sequences: BTreeMap<SequenceId, SequenceAsset>,
     pub frames: BTreeMap<u32, LegacyFrame>,

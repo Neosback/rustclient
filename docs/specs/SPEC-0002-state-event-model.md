@@ -301,3 +301,76 @@ Passwords and network cipher/challenge state are absent from every semantic type
 ## Immutable scene selection (schema v4)
 
 `InstallScene(SceneDescriptor)` requires established placement inside the descriptor's bounds/plane, and rejects a second installation. It emits `SceneInstalled` (tag 6, payload encoded as above), with scene delta bit 16. Session boundaries reset the scene reference and invalidate the scene projection domain. No CPU mesh, GPU handle, camera or credential draft enters semantic state. Immutable CPU assets may be prepared before the operation, but presentation selects only the committed descriptor. Replay failures box their detailed mismatch payload so success-path `Result` values stay small.
+
+## Fingerprint schema: version 7 (SPEC-0018)
+
+The earlier v4 encoding description above is historical. Version 7 retains the
+v6 scene/scenery/entity/gameframe domains and additionally encodes full modeled
+player appearance (gender, ordered equipment/kit slots, colours, movement
+sequences, combat/skill levels and hidden flag), player/NPC animation cycles,
+and player locomotion (idle/walk/run/turn). Generation counters remain derived
+invalidation metadata and are excluded. Exact regression vectors live in the
+fingerprint contract tests.
+
+`MapRebuilt` uses event tag 13 with the current placement encoding. Ordinary
+rebuilds replace map selection, invalidate its scene, clear map-local location
+overrides and preserve variables and world entities. Scene installation validates
+against the current map anchor, since a teleport's confirmed player update can
+arrive after its rebuild. Confirmed plane changes invalidate the current scene
+and update the existing map selection's plane; entity deltas also mark the map
+selection/scene domains. Advancing client cycles advances entity playback through
+the same mutation gateway and marks the entity domain when entities exist.
+
+## Current fingerprint schema: version 8 (NPCs and inventories)
+
+Retains schema 7, with these canonical additions (integers little-endian):
+
+- After selected-tab encoding, inventories: u32 container count, ascending
+  InventoryId u32, u32 slot count, then slot-order option tags (u8 0/1), and
+  present item ID u32 and quantity u32. Empty containers are observable.
+- After NPC count, u64 lifetime allocation serial, even when no NPCs remain.
+  Each NPC begins with u64 instance ID before its existing index. After sequence
+  presence/ID, encode locomotion u8 (idle=0, walk=1, run=2, turn=3), name option
+  u8 and UTF-8 length u64/bytes when present, five action visibility u8 values,
+  frame option u8/u32, cycle i32 and delay i32. Existing NPC animation_cycle is
+  base locomotion playback; ActorSequenceSlot is action playback.
+- InventoryChanged uses event tag 14 followed by InventoryId u32. The inventory
+  delta boolean follows the gameframe boolean in each commit. StateDelta uses
+  bit 512 and session boundaries invalidate it.
+
+NPC lifetime serials are semantic identity allocation state and reset at session
+boundaries; projection generations remain excluded. Complete NPC batches and
+inventory operations validate before mutation. No-op updates emit no event;
+new/removal/reuse, sequence delay, visibility, names and container contents replay
+through the same gateway. Exact schema 8 golden vectors reside in the contract
+tests alongside replay and malformed-operation checks.
+
+## Current desktop continuation fingerprint
+
+Schema 11 adds bounded server game-message history/filter state, player display
+names, reboot countdown/message and script-authored viewport properties. They
+mutate through ordinary operations, emit explicit deltas/events, reset at session
+boundaries and participate in replay. Earlier schema sections above are historical
+checkpoints; exact current regression vectors live in `game-state`'s fingerprint
+contract tests. Interface topology epochs remain disposable invalidation tokens.
+
+
+## Current input/entity continuation: fingerprint schema 13
+
+Schema 13 covers the committed fixed/resizable window metrics and defaults,
+numeric device preferences, script-authored widget drag configuration (including
+an optional parent address), player action slot frame/cycle/delay, and remote
+player tracking. The entity owner retains the player lifetime serial, visible
+instance identities, profile-supplied tracking grid dimensions and outside-view
+region/appearance/orientation. They reset at session boundaries and replay through
+ordinary operations; rejected player batches leave the entire prior state intact.
+`ResetActorAnimations` clears player and NPC action slots with an entities delta;
+an already clear collection is a no-op. Input capture, layout extents, temporary
+drag display origins, interpolation queues, click crosses and GPU sorting remain
+disposable projections outside the canonical fingerprint.
+
+Current exact state vectors: inactive `4547667724600293240`, revision 240 at tick 5
+`2727580851940192160`, revision 240.2 at tick 5 `3773900769062229405`.
+The reference commit stream is `13725348769846276724`; empty stream is
+`10220152073364718933`. Authentication/placement state is `5742575929545608436`.
+Executable contract tests remain the source for these anchors.

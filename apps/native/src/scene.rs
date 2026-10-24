@@ -11,6 +11,12 @@ use rustclient_renderer::{CameraInput, CameraTarget, GameplayCameraController};
 use std::path::PathBuf;
 use winit::event_loop::EventLoopProxy;
 pub struct SceneView {
+    pub generation: u64,
+    /// Reused every client cycle; never aliases the animated-scenery geometry.
+    pub entity_geometry: rustclient_scene::SceneGeometry,
+    pub motion: rustclient_scene::ActorMotion,
+    /// At most one scenery pose request is outstanding, bounding queued geometry.
+    pub animator_in_flight: Option<rustclient_model::ClientCycle>,
     pub cache_dir: PathBuf,
     pub profile: CacheProfile,
     pub loading: bool,
@@ -27,6 +33,10 @@ pub struct SceneView {
 impl SceneView {
     pub fn new(options: &crate::options::Options) -> Self {
         Self {
+            generation: 0,
+            entity_geometry: rustclient_scene::SceneGeometry::default(),
+            motion: rustclient_scene::ActorMotion::default(),
+            animator_in_flight: None,
             cache_dir: options.cache_dir.clone(),
             profile: options.profile,
             loading: false,
@@ -42,6 +52,10 @@ impl SceneView {
         }
     }
     pub fn clear(&mut self) {
+        self.entity_geometry = rustclient_scene::SceneGeometry::default();
+        self.motion = rustclient_scene::ActorMotion::default();
+        self.animator_in_flight = None;
+        self.generation = self.generation.wrapping_add(1);
         self.entity_catalog = rustclient_scene::entity_mesh::EntityCatalog::default();
         self.entity_loader = None;
         self.loading = false;
@@ -51,6 +65,11 @@ impl SceneView {
         self.dynamic_cycle = rustclient_model::ClientCycle::ZERO;
         self.camera = None;
         self.input = CameraInput::default();
+    }
+    pub fn invalidate_map(&mut self) {
+        let camera = self.camera;
+        self.clear();
+        self.camera = camera;
     }
     pub fn start(
         &mut self,
@@ -176,10 +195,13 @@ impl SceneView {
         Ok(())
     }
     pub fn reset_camera(&mut self) {
-        self.camera = self
-            .loaded
-            .as_ref()
-            .map(|s| GameplayCameraController::new(target(s)));
+        if let Some(scene) = &self.loaded {
+            if let Some(camera) = &mut self.camera {
+                camera.recenter(target(scene));
+            } else {
+                self.camera = Some(GameplayCameraController::new(target(scene)));
+            }
+        }
     }
 }
 
@@ -218,11 +240,15 @@ pub fn target(scene: &LoadedScene) -> CameraTarget {
         terrain_drop: drop,
     }
 }
-pub fn player_target(scene: &LoadedScene, tile: rustclient_model::WorldTile) -> CameraTarget {
+/// Camera focus on a one-tile actor whose footprint corner is `position` (world units).
+pub fn player_target(
+    scene: &LoadedScene,
+    position: [i32; 2],
+    plane: rustclient_model::Plane,
+) -> CameraTarget {
     let origin = scene.asset.descriptor().origin();
-    let x = (tile.x - origin.x) * 128 + 64;
-    let z = (tile.y - origin.y) * 128 + 64;
-    let plane = tile.plane;
+    let x = position[0] - origin.x * 128 + 64;
+    let z = position[1] - origin.y * 128 + 64;
     let height = scene.asset.ground_height(plane, [x, z]).unwrap_or(0);
     let mut drop = 0;
     let tx = x / 128;

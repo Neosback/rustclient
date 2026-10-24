@@ -12,6 +12,10 @@ pub enum SceneryOperation {
         id: VarpId,
         value: i32,
     },
+    SetClientVariable {
+        id: VarpId,
+        value: i32,
+    },
     ResetVariables,
     /// Reapply the server values. Currently no client scripts modify local vars,
     /// so committed and server values are always synchronized.
@@ -62,12 +66,17 @@ impl Default for LocationOverride {
 pub struct SceneryState {
     cycle: ClientCycle,
     variables: BTreeMap<VarpId, i32>,
+    server_variables: BTreeMap<VarpId, i32>,
     locations: BTreeMap<LocationKey, LocationOverride>,
     /// Invalidation token derived from committed structural updates. Not semantic
     /// identity: fingerprints encode the values themselves, not mutation history.
     generation: u64,
 }
 impl SceneryState {
+    pub(crate) fn clear_map_locations(&mut self) {
+        self.locations.clear();
+        self.generation = self.generation.wrapping_add(1);
+    }
     #[must_use]
     pub const fn cycle(&self) -> ClientCycle {
         self.cycle
@@ -79,6 +88,10 @@ impl SceneryState {
     #[must_use]
     pub fn variable(&self, id: VarpId) -> i32 {
         *self.variables.get(&id).unwrap_or(&0)
+    }
+    #[must_use]
+    pub const fn server_variables(&self) -> &BTreeMap<VarpId, i32> {
+        &self.server_variables
     }
     #[must_use]
     pub const fn variables(&self) -> &BTreeMap<VarpId, i32> {
@@ -115,38 +128,25 @@ impl GameState {
                     return Ok(OperationCommit::new(None, StateDelta::default()));
                 }
                 scene.cycle = current;
+                let reboot_active = self.entities.reboot_cycles() != 0;
+                self.entities.advance_cycles(cycles);
                 return Ok(OperationCommit::new(
                     Some(SemanticEvent::ClientCyclesAdvanced { previous, current }),
-                    StateDelta::CLIENT_CYCLE,
+                    StateDelta::client_cycle(
+                        reboot_active
+                            || !self.entities.players().is_empty()
+                            || !self.entities.npcs().is_empty(),
+                    ),
                 ));
             }
             SceneryOperation::SetVariable { id, value } => {
-                let previous = scene.variable(id);
-                if value == previous {
-                    None
-                } else {
-                    if scene.variables.len() >= 16384 && !scene.variables.contains_key(&id) {
-                        return Err(SceneryError::Limit);
-                    }
-                    let generation = scene
-                        .generation
-                        .checked_add(1)
-                        .ok_or(SceneryError::Overflow)?;
-                    if value == 0 {
-                        scene.variables.remove(&id);
-                    } else {
-                        scene.variables.insert(id, value);
-                    }
-                    scene.generation = generation;
-                    Some(SemanticEvent::VariableChanged {
-                        id,
-                        previous,
-                        current: value,
-                    })
-                }
+                change_variable(scene, id, value, false)?
+            }
+            SceneryOperation::SetClientVariable { id, value } => {
+                change_variable(scene, id, value, true)?
             }
             SceneryOperation::ResetVariables => {
-                if scene.variables.is_empty() {
+                if scene.variables.is_empty() && scene.server_variables.is_empty() {
                     None
                 } else {
                     let generation = scene
@@ -154,11 +154,24 @@ impl GameState {
                         .checked_add(1)
                         .ok_or(SceneryError::Overflow)?;
                     scene.variables.clear();
+                    scene.server_variables.clear();
                     scene.generation = generation;
                     Some(SemanticEvent::VariablesReset)
                 }
             }
-            SceneryOperation::SynchronizeVariables => None,
+            SceneryOperation::SynchronizeVariables => {
+                if scene.variables == scene.server_variables {
+                    None
+                } else {
+                    let generation = scene
+                        .generation
+                        .checked_add(1)
+                        .ok_or(SceneryError::Overflow)?;
+                    scene.variables.clone_from(&scene.server_variables);
+                    scene.generation = generation;
+                    Some(SemanticEvent::VariablesSynchronized)
+                }
+            }
             SceneryOperation::ChangeLocation { key, change } => {
                 validate_key(key)?;
                 if let LocationChange::Replace(def) = change
@@ -234,4 +247,57 @@ fn layer(shape: u8) -> rustclient_model::LocationLayer {
         22 => LocationLayer::FloorDecoration,
         _ => LocationLayer::GameObject,
     }
+}
+
+fn change_variable(
+    scene: &mut SceneryState,
+    id: VarpId,
+    value: i32,
+    local: bool,
+) -> Result<Option<SemanticEvent>, SceneryError> {
+    let previous = scene.variable(id);
+    let server_previous = *scene.server_variables.get(&id).unwrap_or(&0);
+    let effective_changed = previous != value;
+    let server_changed = !local && server_previous != value;
+    if !effective_changed && !server_changed {
+        return Ok(None);
+    }
+    if value != 0
+        && ((scene.variables.len() >= 16_384 && !scene.variables.contains_key(&id))
+            || (!local
+                && scene.server_variables.len() >= 16_384
+                && !scene.server_variables.contains_key(&id)))
+    {
+        return Err(SceneryError::Limit);
+    }
+    let generation = scene
+        .generation
+        .checked_add(1)
+        .ok_or(SceneryError::Overflow)?;
+    if value == 0 {
+        scene.variables.remove(&id);
+    } else {
+        scene.variables.insert(id, value);
+    }
+    if !local {
+        if value == 0 {
+            scene.server_variables.remove(&id);
+        } else {
+            scene.server_variables.insert(id, value);
+        }
+    }
+    scene.generation = generation;
+    Ok(Some(if effective_changed {
+        SemanticEvent::VariableChanged {
+            id,
+            previous,
+            current: value,
+        }
+    } else {
+        SemanticEvent::ServerVariableChanged {
+            id,
+            previous: server_previous,
+            current: value,
+        }
+    }))
 }

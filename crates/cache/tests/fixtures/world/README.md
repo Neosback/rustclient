@@ -2,7 +2,7 @@
 
 The files here are synthetic grammar vectors authored by `generate.py`; they contain no game assets. Tests require neither the cache nor reference repositories.
 
-RustOSRS commit `854a3962164ad401d21064a5f207f86869ea69b4` supplies cache semantics, placement offsets, transform order and GPU geometry conventions. RuneLite-melxin 235 commit `1ad572d7dcdbc0fb67a4a00f0c2f959d5ab25abc` supplies the thirteen floor topology rows. The owned RustClient port uses +Y elevation and tile-relative GPU units. It does not claim shader/material parity with the editor: UV textures, baked smooth lighting, HSL blending, priority ordering and face bias are deferred.
+RustOSRS commit `854a3962164ad401d21064a5f207f86869ea69b4` supplies cache semantics, placement offsets, transform order and GPU geometry conventions. RuneLite-melxin 235 commit `1ad572d7dcdbc0fb67a4a00f0c2f959d5ab25abc` (the tree has since been removed from `references/` and remains in RustClient Git history) supplies the thirteen floor topology rows. The owned RustClient port uses +Y elevation and tile-relative GPU units. It does not claim shader/material parity with the editor: UV textures, baked smooth lighting, HSL blending, priority ordering and face bias are deferred.
 
 Reference file SHA-256 (read-only evidence):
 

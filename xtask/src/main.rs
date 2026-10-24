@@ -107,7 +107,14 @@ fn references_status() -> Result<(), String> {
     println!("  commit:   {actual}");
     println!("  origin:   {origin}");
     for (path, description) in [
-        ("references/RuneLite-melxin", "RuneLite/deob 235"),
+        (
+            "references/open-runelite-rev-240",
+            "open-runelite revision 240 (runelite-api, client, GPU plugin)",
+        ),
+        (
+            "references/rl-suite-240",
+            "rl-suite deobfuscated 240 client sources",
+        ),
         (
             "references/rsprox-master",
             "rsprox client/server packet evidence through OSRS 235",

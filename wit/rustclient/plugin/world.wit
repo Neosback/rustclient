@@ -1,5 +1,85 @@
-// Draft namespace reservation only. Do not treat this as ABI v1.
-package rustclient:plugin@0.0.0;
+// RustClient external plugin ABI.
+//
+// Canonical contract for cross-language plugins. Rust SDK types are adapted from this file;
+// they are not the contract. Interfaces are versioned by package version and are expected to
+// grow additively. Plugins are deny-by-default: the host exposes no sockets, files, renderer
+// handles, or internal state through this world.
+package rustclient:plugin@0.1.0;
 
+/// Host services a plugin may call when the matching capability is granted.
+interface host {
+    /// Severity accepted by the host log sink.
+    enum log-level {
+        trace,
+        debug,
+        info,
+        warn,
+        error,
+    }
+
+    /// Committed local player position, or none before a scene is loaded.
+    record player {
+        x: s32,
+        y: s32,
+        plane: u8,
+    }
+
+    /// Write one diagnostic line attributed to the calling plugin.
+    ///
+    /// Requires `storage.plugin`-independent diagnostics only; logging is always permitted but
+    /// rate-limited by the host.
+    log: func(level: log-level, message: string);
+
+    /// Read the committed local player position.
+    ///
+    /// Requires capability `game.read.players`.
+    player-position: func() -> option<player>;
+
+    /// Current committed gameplay tick.
+    tick: func() -> u64;
+
+    /// Read one plugin-local persisted value.
+    ///
+    /// Requires capability `storage.plugin`.
+    config-get: func(key: string) -> option<string>;
+
+    /// Persist one plugin-local value. The host coalesces writes per event batch.
+    ///
+    /// Requires capability `storage.plugin`.
+    config-set: func(key: string, value: string);
+}
+
+/// Guest entry points implemented by every plugin component.
+interface guest {
+    /// One overlay text command in logical interface pixels (765x503 reference space).
+    record overlay-line {
+        text: string,
+        x: u16,
+        y: u16,
+        argb: u32,
+    }
+
+    /// One committed-gameplay event. Batches keep ABI crossings proportional to ticks.
+    variant event {
+        started,
+        tick(u64),
+        stopped,
+    }
+
+    /// Called once after capability grants and before any event.
+    init: func();
+
+    /// Receive an event batch in committed order.
+    on-event: func(events: list<event>);
+
+    /// Overlay commands valid until the next `on-event`.
+    ///
+    /// Requires capability `ui.overlay`; hosts may ignore commands from other plugins' slots.
+    overlay: func() -> list<overlay-line>;
+}
+
+/// The complete plugin world.
 world plugin {
+    import host;
+    export guest;
 }

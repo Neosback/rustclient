@@ -14,11 +14,19 @@ use crate::state::{GameState, LifecycleError, SessionLifecycle, TickAdvanceError
 /// details have already been translated away. They are not committed events.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SemanticOperation {
+    GameMessage(rustclient_model::GameMessage),
+    ChatFilterText(String),
+    ChatFilters([Option<u8>; 3]),
     Scenery(crate::SceneryOperation),
+    PlayerStatus(rustclient_model::PlayerStatusUpdate),
+    Inventory(rustclient_model::InventoryUpdate),
+    Interface(rustclient_model::InterfaceUpdate),
     /// Authoritative player info tick update.
     UpdatePlayers(rustclient_model::PlayerInfoUpdate),
     /// Authoritative NPC info tick update.
     UpdateNpcs(rustclient_model::NpcInfoUpdate),
+    /// Clear server-controlled action animations while retaining locomotion and appearance.
+    ResetActorAnimations,
     /// Select or unselect active gameframe tab.
     SelectGameFrameTab(Option<usize>),
     /// Change non-secret pre-session title navigation/feedback.
@@ -35,6 +43,8 @@ pub enum SemanticOperation {
     },
     /// Establish the initial map/player placement after authentication.
     EstablishInitialPlacement(InitialPlacement),
+    /// Select a new ordinary map window, retaining confirmed world entities.
+    RebuildMap(rustclient_model::MapAnchor),
     /// Select a validated immutable scene after initial placement.
     InstallScene(SceneDescriptor),
     /// End the active semantic game session.
@@ -46,7 +56,12 @@ pub enum SemanticOperation {
 /// Failure while validating or applying one semantic operation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OperationError {
+    Chat(crate::ChatError),
+    /// Entity transition validation failed.
+    EntityUpdate(crate::EntityUpdateError),
     Scenery(crate::SceneryError),
+    Inventory(crate::InventoryError),
+    Interface(crate::InterfaceError),
     /// Authenticated bootstrap transition failed.
     Connection(ConnectionStateError),
     /// Title navigation requires an inactive session.
@@ -60,7 +75,11 @@ pub enum OperationError {
 impl fmt::Display for OperationError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Chat(error) => error.fmt(formatter),
+            Self::EntityUpdate(error) => error.fmt(formatter),
             Self::Scenery(error) => error.fmt(formatter),
+            Self::Inventory(error) => error.fmt(formatter),
+            Self::Interface(error) => error.fmt(formatter),
             Self::Connection(error) => error.fmt(formatter),
             Self::Title(error) => error.fmt(formatter),
             Self::Lifecycle(error) => error.fmt(formatter),
@@ -72,7 +91,11 @@ impl fmt::Display for OperationError {
 impl std::error::Error for OperationError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
+            Self::Chat(error) => Some(error),
+            Self::EntityUpdate(error) => Some(error),
             Self::Scenery(error) => Some(error),
+            Self::Inventory(error) => Some(error),
+            Self::Interface(error) => Some(error),
             Self::Connection(error) => Some(error),
             Self::Title(error) => Some(error),
             Self::Lifecycle(error) => Some(error),
@@ -136,15 +159,92 @@ impl GameState {
     /// Returns [`OperationError`] when the requested operation is invalid for
     /// the current state. Failed operations leave authoritative state unchanged
     /// and therefore produce no [`OperationCommit`].
+    #[expect(
+        clippy::too_many_lines,
+        reason = "explicit semantic transition dispatch"
+    )]
     pub fn apply_operation(
         &mut self,
         operation: SemanticOperation,
     ) -> Result<OperationCommit, OperationError> {
         match operation {
+            SemanticOperation::ChatFilterText(text) => {
+                self.require_active()?;
+                if text.len() > 4096 {
+                    return Err(OperationError::Chat(crate::ChatError));
+                }
+                let changed = self.chat.filter_text != text;
+                self.chat.filter_text = text;
+                Ok(if changed {
+                    OperationCommit::new(Some(SemanticEvent::ChatSettingsChanged), StateDelta::CHAT)
+                } else {
+                    OperationCommit::new(None, StateDelta::default())
+                })
+            }
+            SemanticOperation::ChatFilters(values) => {
+                self.require_active()?;
+                if values
+                    .into_iter()
+                    .zip([4, 2, 2])
+                    .any(|(value, max)| value.is_some_and(|v| v > max))
+                {
+                    return Err(OperationError::Chat(crate::ChatError));
+                }
+                let next = std::array::from_fn(|i| values[i].unwrap_or(self.chat.filters[i]));
+                let changed = self.chat.filters != next;
+                self.chat.filters = next;
+                Ok(if changed {
+                    OperationCommit::new(Some(SemanticEvent::ChatSettingsChanged), StateDelta::CHAT)
+                } else {
+                    OperationCommit::new(None, StateDelta::default())
+                })
+            }
+            SemanticOperation::GameMessage(message) => {
+                self.require_active()?;
+                let id = self
+                    .chat
+                    .push(message, self.scenery.cycle())
+                    .map_err(OperationError::Chat)?;
+                Ok(OperationCommit::new(
+                    Some(SemanticEvent::ChatMessageAdded(id)),
+                    StateDelta::CHAT,
+                ))
+            }
+            SemanticOperation::PlayerStatus(update) => {
+                self.require_active()?;
+                let changed = self
+                    .entities
+                    .status(update)
+                    .map_err(OperationError::EntityUpdate)?;
+                Ok(if changed {
+                    OperationCommit::new(Some(SemanticEvent::EntitiesUpdated), StateDelta::ENTITIES)
+                } else {
+                    OperationCommit::new(None, StateDelta::default())
+                })
+            }
             SemanticOperation::Scenery(op) => self.apply_scenery(op),
+            SemanticOperation::Inventory(update) => self.apply_inventory(update),
+            SemanticOperation::Interface(update) => self.apply_interface(update),
             SemanticOperation::UpdatePlayers(update) => self.apply_update_players(&update),
             SemanticOperation::UpdateNpcs(update) => self.apply_update_npcs(&update),
+            SemanticOperation::ResetActorAnimations => {
+                self.require_active()?;
+                Ok(if self.entities.reset_animations() {
+                    OperationCommit::new(Some(SemanticEvent::EntitiesUpdated), StateDelta::ENTITIES)
+                } else {
+                    OperationCommit::new(None, StateDelta::default())
+                })
+            }
             SemanticOperation::SelectGameFrameTab(tab) => self.apply_select_tab(tab),
+            SemanticOperation::RebuildMap(anchor) => {
+                let placement = self
+                    .rebuild_map(anchor)
+                    .map_err(OperationError::Connection)?;
+                Ok(OperationCommit::new(
+                    Some(SemanticEvent::MapRebuilt(placement)),
+                    StateDelta::MAP_REBUILD,
+                ))
+            }
             SemanticOperation::InstallScene(scene) => {
                 self.install_scene(scene)
                     .map_err(OperationError::Connection)?;
@@ -219,6 +319,60 @@ impl GameState {
         }
     }
 
+    fn apply_interface(
+        &mut self,
+        update: rustclient_model::InterfaceUpdate,
+    ) -> Result<OperationCommit, OperationError> {
+        self.require_active()?;
+        let topology = matches!(
+            &update,
+            rustclient_model::InterfaceUpdate::SetRoot(_)
+                | rustclient_model::InterfaceUpdate::Open(_)
+                | rustclient_model::InterfaceUpdate::Close(_)
+                | rustclient_model::InterfaceUpdate::Move { .. }
+                | rustclient_model::InterfaceUpdate::Resync { .. }
+                | rustclient_model::InterfaceUpdate::CloneChild { .. }
+                | rustclient_model::InterfaceUpdate::CreateChild { .. }
+                | rustclient_model::InterfaceUpdate::DeleteChild(_)
+                | rustclient_model::InterfaceUpdate::DeleteChildren(_)
+        );
+        if self
+            .interfaces
+            .apply(update)
+            .map_err(OperationError::Interface)?
+        {
+            if topology {
+                self.interfaces.invalidate();
+            }
+            Ok(OperationCommit::new(
+                Some(SemanticEvent::InterfacesChanged),
+                StateDelta::INTERFACE,
+            ))
+        } else {
+            Ok(OperationCommit::new(None, StateDelta::default()))
+        }
+    }
+
+    fn apply_inventory(
+        &mut self,
+        update: rustclient_model::InventoryUpdate,
+    ) -> Result<OperationCommit, OperationError> {
+        self.require_active()?;
+        let id = update.id();
+        if self
+            .inventories
+            .apply(update)
+            .map_err(OperationError::Inventory)?
+        {
+            Ok(OperationCommit::new(
+                Some(SemanticEvent::InventoryChanged(id)),
+                StateDelta::INVENTORY,
+            ))
+        } else {
+            Ok(OperationCommit::new(None, StateDelta::default()))
+        }
+    }
+
     fn require_active(&self) -> Result<(), OperationError> {
         if self.lifecycle() == SessionLifecycle::Active {
             Ok(())
@@ -232,7 +386,22 @@ impl GameState {
         update: &rustclient_model::PlayerInfoUpdate,
     ) -> Result<OperationCommit, OperationError> {
         self.require_active()?;
-        self.entities.apply_player_info(update);
+        self.entities
+            .validate_player_info(update)
+            .map_err(OperationError::EntityUpdate)?;
+        let previous_plane = self.entities.local_player().map(|p| p.tile.plane);
+        if !self.entities.apply_player_info(update) {
+            return Ok(OperationCommit::new(None, StateDelta::default()));
+        }
+        if let Some(player) = self.entities.local_player()
+            && Some(player.tile.plane) != previous_plane
+        {
+            self.change_map_plane(player.tile);
+            return Ok(OperationCommit::new(
+                Some(SemanticEvent::EntitiesUpdated),
+                StateDelta::PLAYER_PLANE,
+            ));
+        }
         Ok(OperationCommit::new(
             Some(SemanticEvent::EntitiesUpdated),
             StateDelta::ENTITIES,
@@ -244,17 +413,44 @@ impl GameState {
         update: &rustclient_model::NpcInfoUpdate,
     ) -> Result<OperationCommit, OperationError> {
         self.require_active()?;
-        let local_tile = self
-            .entities
-            .local_player()
-            .map(|p| p.tile)
-            .or_else(|| self.initial_placement().map(|p| p.position))
-            .unwrap_or(rustclient_model::WorldTile::new(
-                0,
-                0,
-                rustclient_model::Plane::MIN,
-            ));
-        self.entities.apply_npc_info(update, local_tile);
+        let local_tile =
+            self.entities
+                .local_player()
+                .map(|p| p.tile)
+                .ok_or(OperationError::EntityUpdate(
+                    crate::EntityUpdateError::MissingLocalPlayer,
+                ))?;
+        let origin = if let Some(offset) = update.origin {
+            let anchor = self
+                .initial_placement()
+                .ok_or(OperationError::Connection(
+                    ConnectionStateError::SceneRequiresPlacement,
+                ))?
+                .map_anchor;
+            rustclient_model::WorldTile::new(
+                anchor
+                    .x
+                    .checked_add(offset.x)
+                    .ok_or(OperationError::EntityUpdate(
+                        crate::EntityUpdateError::PositionOverflow,
+                    ))?,
+                anchor
+                    .y
+                    .checked_add(offset.y)
+                    .ok_or(OperationError::EntityUpdate(
+                        crate::EntityUpdateError::PositionOverflow,
+                    ))?,
+                local_tile.plane,
+            )
+        } else {
+            local_tile
+        };
+        self.entities
+            .validate_npc_info(update, origin)
+            .map_err(OperationError::EntityUpdate)?;
+        if !self.entities.apply_npc_info(update, origin) {
+            return Ok(OperationCommit::new(None, StateDelta::default()));
+        }
         Ok(OperationCommit::new(
             Some(SemanticEvent::EntitiesUpdated),
             StateDelta::ENTITIES,

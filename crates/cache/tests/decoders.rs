@@ -83,3 +83,68 @@ fn golden_multichunk_group_reconstructs_sparse_files() {
     assert!(split_files(&bad, &ids, SOURCE).is_err());
     assert!(split_files(&[0], &ids, SOURCE).is_err());
 }
+
+#[test]
+fn item_placeholder_links_only_convert_back_when_a_template_is_present() {
+    use rustclient_cache::osrs240::definitions::item;
+    use rustclient_model::ItemDefinitionId;
+    let source = Source::group(IndexId(2), GroupId(10));
+    // Normal coins has a forward link to its placeholder, but remains coins.
+    let normal = item(&[148, 0x38, 0x76, 0], ItemDefinitionId::new(995), source).unwrap();
+    assert_eq!(normal.placeholder, Some(ItemDefinitionId::new(14454)));
+    assert_eq!(normal.placeholder_template, None);
+    assert_eq!(normal.unplaceholder(), ItemDefinitionId::new(995));
+    let placeholder = item(
+        &[148, 3, 0xe3, 149, 0x38, 0x73, 0],
+        ItemDefinitionId::new(14454),
+        source,
+    )
+    .unwrap();
+    assert_eq!(
+        placeholder.placeholder_template,
+        Some(ItemDefinitionId::new(14451))
+    );
+    assert_eq!(placeholder.unplaceholder(), ItemDefinitionId::new(995));
+    let empty = item(&[0], ItemDefinitionId::new(1), source).unwrap();
+    assert_eq!(empty.unplaceholder(), ItemDefinitionId::new(1));
+    for length in 0..7 {
+        assert!(
+            item(
+                &[148, 3, 0xe3, 149, 0x38, 0x73, 0][..length],
+                ItemDefinitionId::new(14454),
+                source
+            )
+            .is_err()
+        );
+    }
+}
+
+#[test]
+fn item_inventory_model_uses_the_240_32_bit_opcode_with_legacy_and_absent_forms() {
+    use rustclient_cache::osrs240::definitions::item;
+    use rustclient_model::{ItemDefinitionId, ModelId};
+    let source = Source::group(IndexId(2), GroupId(10));
+    // Old school bond (13190) as stored in the live cache: model, offsets, zoom and rotation.
+    let bond = item(
+        &[
+            0x2c, 0, 0, 0x72, 0x1a, 0x4b, 0, 3, 7, 0, 3, 8, 0, 1, 4, 8, 0xfc, 5, 2, 0, 0,
+        ],
+        ItemDefinitionId::new(13190),
+        source,
+    )
+    .unwrap();
+    assert_eq!(bond.icon_model, Some(ModelId::new(29210)));
+    assert_eq!(bond.icon_zoom, 2300);
+    assert_eq!(bond.icon_angles, [512, 0, 0]);
+    assert_eq!(bond.icon_offset, [3, 1]);
+    let legacy = item(&[1, 0x15, 0x24, 0], ItemDefinitionId::new(4151), source).unwrap();
+    assert_eq!(legacy.icon_model, Some(ModelId::new(5412)));
+    let absent = item(
+        &[44, 0xff, 0xff, 0xff, 0xff, 0],
+        ItemDefinitionId::new(1),
+        source,
+    )
+    .unwrap();
+    assert_eq!(absent.icon_model, None);
+    assert!(item(&[44, 0, 0, 0x72], ItemDefinitionId::new(1), source).is_err());
+}

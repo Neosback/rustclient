@@ -19,17 +19,25 @@ pub(crate) struct WorldGpu {
     transparent_pipeline: wgpu::RenderPipeline,
     geometry: super::world_geometry::GeometryGpu,
     dynamic: super::world_geometry::GeometryGpu,
+    /// Live players/NPCs; rewritten per client cycle without touching scenery buffers.
+    entities: super::world_geometry::GeometryGpu,
+    transparent_runs: Vec<super::transparency::TransparentRun>,
     camera: wgpu::Buffer,
     bind: wgpu::BindGroup,
     pub target: super::world_target::WorldTarget,
     surface_format: wgpu::TextureFormat,
     size: SurfaceSize,
+    physical_viewport: [f32; 4],
     last_camera: Option<(GameplayCameraController, crate::CameraViewport, u32)>,
 }
 impl WorldGpu {
     #[expect(
         clippy::too_many_lines,
         reason = "GPU pipeline and immutable uploads are built together once per resource lifetime"
+    )]
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "physical viewport dimensions bounded by texture limits"
     )]
     pub fn new(
         device: &wgpu::Device,
@@ -137,6 +145,10 @@ impl WorldGpu {
         );
         let geometry = super::world_geometry::GeometryGpu::new(device, &mesh.geometry)?;
         let dynamic = super::world_geometry::GeometryGpu::new(device, &mesh.dynamic)?;
+        let entities = super::world_geometry::GeometryGpu::new(
+            device,
+            &rustclient_scene::SceneGeometry::default(),
+        )?;
         let target = super::world_target::WorldTarget::new(device, size, format);
         Ok(Self {
             asset: mesh.asset,
@@ -144,12 +156,15 @@ impl WorldGpu {
             transparent_pipeline,
             geometry,
             dynamic,
+            entities,
             camera,
             bind,
             target,
             surface_format: format,
             size,
+            physical_viewport: [0., 0., size.width as f32, size.height as f32],
             last_camera: None,
+            transparent_runs: Vec::new(),
         })
     }
     pub fn update_dynamic(
@@ -162,6 +177,16 @@ impl WorldGpu {
         self.last_camera = None;
         Ok(())
     }
+    pub fn update_entities(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        geometry: &rustclient_scene::SceneGeometry,
+    ) -> Result<(), RenderError> {
+        self.entities.update(device, queue, geometry)?;
+        self.last_camera = None;
+        Ok(())
+    }
     pub fn resize(&mut self, device: &wgpu::Device, size: SurfaceSize) {
         if self.size != size && !size.is_zero() {
             self.target = super::world_target::WorldTarget::new(device, size, self.surface_format);
@@ -169,11 +194,6 @@ impl WorldGpu {
             self.last_camera = None;
         }
     }
-    #[expect(
-        clippy::cast_precision_loss,
-        clippy::cast_possible_truncation,
-        reason = "physical viewport dimensions are bounded by GPU texture limits"
-    )]
     pub fn prepare(
         &mut self,
         queue: &wgpu::Queue,
@@ -181,10 +201,50 @@ impl WorldGpu {
         scale: f64,
         cycle: u32,
     ) {
-        let viewport = crate::CameraViewport::new(
-            (f64::from(self.size.width) / scale) as i32,
-            (f64::from(self.size.height) / scale) as i32,
+        self.prepare_viewport(
+            queue,
+            camera,
+            scale,
+            cycle,
+            None,
+            rustclient_model::ViewportSettings::default(),
         );
+    }
+    #[expect(
+        clippy::cast_precision_loss,
+        clippy::cast_possible_truncation,
+        reason = "bounded logical/physical viewport values converted for GPU projection"
+    )]
+    pub fn prepare_viewport(
+        &mut self,
+        queue: &wgpu::Queue,
+        mut camera: GameplayCameraController,
+        scale: f64,
+        cycle: u32,
+        bounds: Option<rustclient_game_ui::Rect>,
+        settings: rustclient_model::ViewportSettings,
+    ) {
+        camera.set_zoom(i32::from(settings.zoom[0]), i32::from(settings.zoom[1]));
+        let logical = bounds.unwrap_or(rustclient_game_ui::Rect::new(
+            0.,
+            0.,
+            (f64::from(self.size.width) / scale) as f32,
+            (f64::from(self.size.height) / scale) as f32,
+        ));
+        let viewport = crate::CameraViewport::new(logical.width as i32, logical.height as i32)
+            .with_settings(settings);
+        let inset = viewport.inset();
+        let size = viewport.size();
+        self.physical_viewport = [
+            ((logical.x + inset[0] as f32) * scale as f32).max(0.),
+            ((logical.y + inset[1] as f32) * scale as f32).max(0.),
+            (size[0] as f32 * scale as f32).min(self.size.width as f32),
+            (size[1] as f32 * scale as f32).min(self.size.height as f32),
+        ];
+        self.physical_viewport[2] =
+            self.physical_viewport[2].min(self.size.width as f32 - self.physical_viewport[0]);
+        self.physical_viewport[3] =
+            self.physical_viewport[3].min(self.size.height as f32 - self.physical_viewport[1]);
         if self.last_camera == Some((camera, viewport, cycle)) {
             return;
         }
@@ -205,6 +265,12 @@ impl WorldGpu {
         );
         self.geometry.sort(queue, eye, direction);
         self.dynamic.sort(queue, eye, direction);
+        self.entities.sort(queue, eye, direction);
+        let sources = [&self.geometry, &self.dynamic, &self.entities];
+        super::transparency::merge(
+            |source, index| sources[source].alpha_depth(index, eye, direction),
+            &mut self.transparent_runs,
+        );
         self.last_camera = Some((camera, viewport, cycle));
     }
     pub fn render_scene(&self, encoder: &mut wgpu::CommandEncoder) {
@@ -234,13 +300,21 @@ impl WorldGpu {
         self.draw(&mut pass);
     }
     pub fn draw(&self, pass: &mut wgpu::RenderPass<'_>) {
+        let [x, y, width, height] = self.physical_viewport;
+        if width <= 0. || height <= 0. {
+            return;
+        }
+        pass.set_viewport(x, y, width, height, 0., 1.);
         pass.set_bind_group(WORLD_GROUP, &self.bind, &[]);
         pass.set_pipeline(&self.opaque_pipeline);
         self.geometry.draw(pass, false);
         self.dynamic.draw(pass, false);
+        self.entities.draw(pass, false);
         pass.set_pipeline(&self.transparent_pipeline);
-        self.geometry.draw(pass, true);
-        self.dynamic.draw(pass, true);
+        let sources = [&self.geometry, &self.dynamic, &self.entities];
+        for run in &self.transparent_runs {
+            sources[run.source].draw_alpha(pass, run.indices.clone());
+        }
     }
 }
 fn pipeline(
