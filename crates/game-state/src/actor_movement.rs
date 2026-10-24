@@ -38,6 +38,14 @@ pub(crate) fn advance_players(entities: &mut WorldEntitiesState) {
     }
 }
 
+fn consume_reached_entry(path: &mut ActorPathQueue, sequence: &mut ActorSequenceSlot) {
+    let consumption = crate::sequence_scheduler::consume_oldest_path_entry(path, sequence);
+    debug_assert!(matches!(
+        consumption,
+        crate::sequence_scheduler::PathConsumption::Consumed(_)
+    ));
+}
+
 fn advance_actor_cycle(
     path: &mut ActorPathQueue,
     sequence: &mut ActorSequenceSlot,
@@ -61,10 +69,7 @@ fn advance_actor_cycle(
         .max((target.y - position.y).abs());
     if gap > SNAP_FINE_UNITS {
         path.set_fine_position(target);
-        debug_assert!(matches!(
-            crate::sequence_scheduler::consume_oldest_path_entry(path, sequence),
-            crate::sequence_scheduler::PathConsumption::Consumed(_)
-        ));
+        consume_reached_entry(path, sequence);
         return ActorMovementCycle::Snapped;
     }
 
@@ -89,10 +94,7 @@ fn advance_actor_cycle(
     path.set_fine_position(position);
 
     if position == target {
-        debug_assert!(matches!(
-            crate::sequence_scheduler::consume_oldest_path_entry(path, sequence),
-            crate::sequence_scheduler::PathConsumption::Consumed(_)
-        ));
+        consume_reached_entry(path, sequence);
         ActorMovementCycle::Consumed
     } else {
         ActorMovementCycle::Moving
