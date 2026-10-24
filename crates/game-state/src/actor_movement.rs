@@ -26,6 +26,8 @@ pub(crate) enum ActorMovementCycle {
 pub(crate) fn advance_players(entities: &mut WorldEntitiesState) {
     for player in entities.players.values_mut() {
         if player.exact_move.is_some() {
+            // Both forced-movement phases reset revision-240 Actor.field1452 every client cycle.
+            player.path_queue.reset_catch_up();
             continue;
         }
         advance_actor_cycle(
@@ -38,6 +40,14 @@ pub(crate) fn advance_players(entities: &mut WorldEntitiesState) {
 
     for npc in entities.npcs.values_mut() {
         if npc.exact_move.is_some() {
+            npc.path_queue.reset_catch_up();
+            continue;
+        }
+        if npc.path_queue.is_empty() {
+            // Empty-queue reset is definition-independent and must still happen for unresolved
+            // direct fixtures whose acceleration policy is intentionally absent.
+            npc.path_queue.ensure_position(npc.tile);
+            npc.path_queue.reset_catch_up();
             continue;
         }
         let Some(policy) = npc.path_queue.acceleration_policy() else {
@@ -64,10 +74,12 @@ fn advance_actor_cycle(
 ) -> ActorMovementCycle {
     if path.is_empty() {
         path.ensure_position(fallback_tile);
+        path.reset_catch_up();
         return ActorMovementCycle::Idle;
     }
     if crate::sequence_scheduler::movement_blocked(*sequence) {
         path.ensure_position(fallback_tile);
+        path.increment_catch_up();
         return ActorMovementCycle::Blocked;
     }
 
@@ -79,6 +91,7 @@ fn advance_actor_cycle(
         .abs()
         .max((target.y - position.y).abs());
     if gap > SNAP_FINE_UNITS {
+        // Stock method3284 snaps and consumes without spending field1452 catch-up debt.
         path.set_fine_position(target);
         consume_reached_entry(path, sequence);
         return ActorMovementCycle::Snapped;
@@ -92,6 +105,14 @@ fn advance_actor_cycle(
     } else {
         4_i64
     };
+    // Revision 240 checks catch-up after normal/definition backlog acceleration (and, in the full
+    // client, after turning slowdown). Positive debt with more than one queued target forces base
+    // step eight and spends exactly one cycle before traversal scaling.
+    if backlog > 1 && path.catch_up_cycles() > 0 {
+        step = 8;
+        let spent = path.spend_catch_up();
+        debug_assert!(spent);
+    }
     match entry.speed {
         MoveSpeed::Run => step *= 2,
         MoveSpeed::Crawl => step /= 2,
@@ -179,7 +200,7 @@ mod tests {
     }
 
     #[test]
-    fn action_gate_blocks_position_and_queue_progress() {
+    fn action_gate_blocks_position_and_accrues_catch_up_debt() {
         let mut path = ActorPathQueue::default();
         path.ensure_position(tile(0, 0));
         path.enqueue(tile(1, 0), MoveSpeed::Walk);
@@ -199,6 +220,84 @@ mod tests {
             ActorFinePosition::from_tile(tile(0, 0))
         );
         assert_eq!(sequence.path_backlog_at_assignment, 1);
+        assert_eq!(path.catch_up_cycles(), 1);
+    }
+
+    #[test]
+    fn positive_catch_up_forces_step_eight_and_spends_one_cycle() {
+        let mut path = ActorPathQueue::default();
+        path.ensure_position(tile(0, 0));
+        path.enqueue(tile(1, 0), MoveSpeed::Walk);
+        path.enqueue(tile(2, 0), MoveSpeed::Walk);
+        let mut sequence = ActorSequenceSlot::default();
+        sequence.assign_sequence(Some((SequenceId::new(10), policy(0, 1))), 0, 2);
+        advance_actor_cycle(
+            &mut path,
+            &mut sequence,
+            tile(2, 0),
+            PathAccelerationPolicy::STANDARD,
+        );
+        advance_actor_cycle(
+            &mut path,
+            &mut sequence,
+            tile(2, 0),
+            PathAccelerationPolicy::STANDARD,
+        );
+        assert_eq!(path.catch_up_cycles(), 2);
+
+        // Non-zero sequence delay bypasses the action path gate for this cycle.
+        sequence.delay = 1;
+        assert_eq!(
+            advance_actor_cycle(
+                &mut path,
+                &mut sequence,
+                tile(2, 0),
+                PathAccelerationPolicy::STANDARD,
+            ),
+            ActorMovementCycle::Moving
+        );
+        assert_eq!(path.fine_position(tile(0, 0)).x, 8);
+        assert_eq!(path.catch_up_cycles(), 1);
+    }
+
+    #[test]
+    fn snap_does_not_spend_catch_up_and_empty_next_cycle_resets_it() {
+        let mut path = ActorPathQueue::default();
+        path.ensure_position(tile(0, 0));
+        path.enqueue(tile(4, 0), MoveSpeed::Walk);
+        let mut sequence = ActorSequenceSlot::default();
+        sequence.assign_sequence(Some((SequenceId::new(10), policy(0, 1))), 0, 1);
+        advance_actor_cycle(
+            &mut path,
+            &mut sequence,
+            tile(4, 0),
+            PathAccelerationPolicy::STANDARD,
+        );
+        assert_eq!(path.catch_up_cycles(), 1);
+
+        sequence.delay = 1;
+        assert_eq!(
+            advance_actor_cycle(
+                &mut path,
+                &mut sequence,
+                tile(4, 0),
+                PathAccelerationPolicy::STANDARD,
+            ),
+            ActorMovementCycle::Snapped
+        );
+        assert_eq!(path.catch_up_cycles(), 1);
+        assert!(path.is_empty());
+
+        assert_eq!(
+            advance_actor_cycle(
+                &mut path,
+                &mut sequence,
+                tile(4, 0),
+                PathAccelerationPolicy::STANDARD,
+            ),
+            ActorMovementCycle::Idle
+        );
+        assert_eq!(path.catch_up_cycles(), 0);
     }
 
     #[test]
