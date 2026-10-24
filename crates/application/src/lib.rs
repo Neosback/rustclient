@@ -17,6 +17,9 @@ pub use title::{load_title, load_title_preferences, save_title_preferences};
 mod connection;
 pub use connection::{ConnectionDecoder, ConnectionInput};
 
+mod sequence_policy;
+pub use sequence_policy::SequencePolicyResolver;
+
 mod scene;
 pub use scene::{LoadedScene, load_scene, reproject_scene};
 
