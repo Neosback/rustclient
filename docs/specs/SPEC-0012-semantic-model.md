@@ -182,6 +182,27 @@ The numeric restart and movement-gate modes remain compact semantic values until
 
 `SequencePolicy` does not own a `SequenceId`, frame data, playback counters, or actor state. Those belong to the definition/playback/runtime objects that use the policy.
 
+### Action sequence assignment
+
+`ActorSequenceSlot` retains the policy for its active action sequence together with playback state, the iteration counter, and the count of movement entries that predated the accepted assignment.
+
+The assignment primitive consumes an already-resolved `(SequenceId, SequencePolicy)` and follows these revision-neutral scheduling rules established from the revision-240 evidence:
+
+1. Clearing the action removes the sequence, policy, playback counters, delay, and assignment-time movement backlog.
+2. Reassigning the same active sequence consults the active sequence's restart policy and returns before replacement-priority arbitration.
+3. Restart mode `1` resets frame/cycle/iteration playback state and reapplies the newly supplied delay, but does not recapture movement backlog.
+4. Restart mode `2` resets only the iteration counter. Frame, cycle, delay, and the captured movement backlog remain unchanged.
+5. Other restart modes leave playback unchanged.
+6. A different sequence is rejected when its replacement priority is lower than the active sequence's priority.
+7. An accepted different sequence fully resets playback, stores its resolved policy and delay, and captures the current movement backlog for later movement-gate decisions.
+8. If a legacy active slot has no retained policy, a different-id assignment must report `MissingCurrentPolicy` without mutation rather than guessing the priority result.
+
+`SequenceAssignmentOutcome` makes each result explicit so orchestration and tests can distinguish replacement, same-id restart, priority rejection, and unresolved legacy state.
+
+The transitional unpolicy `set_sequence` path is not the target runtime scheduler. It exists only while packet application is being connected to a policy resolver and deliberately clears any retained policy on a changed sequence so stale metadata cannot be used for later arbitration.
+
+Policy resolution must occur before authoritative action scheduling. Rendering-oriented asynchronous animation loading is not sufficient for this decision because replacement priority and restart semantics are observable at packet-application time.
+
 ## Orientation
 
 `LocOrientation` validates ordinary object/location orientation `0..=3`.
@@ -225,6 +246,7 @@ Do not micro-optimize field widths by leaking revision-specific limits into sema
 - integer orientation behavior has deterministic tests,
 - `SequencePolicy` contains only resolved semantic scheduling inputs and no cache/parser types,
 - revision adapters can project decoded definition metadata into `SequencePolicy` without adding a dependency from `crates/model` back to cache,
+- action assignment tests cover same-id restart modes, replacement priority, assignment-time backlog capture, clear behavior, and missing active policy,
 - the model crate depends on no RustClient subsystem.
 
 ## Non-goals
