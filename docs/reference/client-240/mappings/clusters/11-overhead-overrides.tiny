@@ -1,0 +1,18 @@
+tiny	2	0	semantic	readable
+c	classFL	ModelColorOverride
+	f	B	field2298	overrideHue
+	f	B	field2299	overrideSaturation
+	f	B	field2300	overrideLuminance
+	f	B	field2301	overrideAmount
+	m	(LclassFL;)V	method4843	copyFrom
+	m	(LclassFL;BBBB)V	method4850	set
+	m	(LclassFL;)V	method4856	clear
+	m	()Z	method4857	isActive
+c	classAAV	TransparencyTransition
+	f	I	field105	startCycle
+	f	I	field104	endCycle
+	f	B	field107	startTransparency
+	f	B	field106	endTransparency
+	f	B	field108	currentTransparency
+	m	(IIIBBZ)V	method271	setTransition
+	m	(I)B	method272	sample
