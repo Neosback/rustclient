@@ -254,6 +254,15 @@ pub struct SequenceAsset {
     pub delays: Vec<u16>,
     pub frame_step: Option<u16>,
     pub max_loops: u16,
+    /// Opcode 5. A different action sequence may replace the current one only when its
+    /// replacement priority is at least the active sequence's priority.
+    pub priority: u8,
+    /// Opcode 9 after the revision-240 constructor default is resolved. The actor scheduler
+    /// checks this while assignment-time path backlog remains outstanding.
+    pub movement_gate_with_backlog: u8,
+    /// Opcode 10 after the revision-240 constructor default is resolved. The actor scheduler
+    /// checks this after the assignment-time path backlog is exhausted.
+    pub movement_gate_without_backlog: u8,
     pub restart: u8,
     pub skeletal: Option<u32>,
     pub range: Option<(u16, u16)>,
