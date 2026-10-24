@@ -1,9 +1,10 @@
 //! Authoritative semantic entities: live players and NPCs in the active session.
 
 use rustclient_model::{
-    NpcDefinitionId, NpcIndex, Plane, PlayerAppearance, PlayerIndex, PlayerInfoUpdate, WorldTile,
+    NpcDefinitionId, NpcIndex, Plane, PlayerAppearance, PlayerIndex, PlayerInfoUpdate, SequenceId,
+    SequenceTiming, WorldTile,
 };
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 /// Invalid entity transition, rejected before any authoritative mutation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -50,6 +51,10 @@ pub struct PlayerEntity {
     pub orientation: u16,
     pub appearance: Option<PlayerAppearance>,
     pub sequence: rustclient_model::ActorSequenceSlot,
+    /// Whether definition timing for the currently active action was supplied when it became
+    /// active. The shared timing registry is immutable evidence; this bit prevents an unresolved
+    /// direct fixture from inheriting stale evidence for the same id from an older actor/action.
+    pub sequence_timing_resolved: bool,
     pub animation_cycle: u32,
     pub locomotion: Locomotion,
 }
@@ -67,6 +72,7 @@ pub struct NpcEntity {
     pub exact_move: Option<crate::ExactMovement>,
     pub orientation: u16,
     pub sequence: rustclient_model::ActorSequenceSlot,
+    pub sequence_timing_resolved: bool,
     pub name: Option<String>,
     pub actions: rustclient_model::ActionMask,
     pub locomotion: Locomotion,
@@ -83,6 +89,9 @@ pub struct WorldEntitiesState {
     pub(crate) npc_serial: u64,
     pub(crate) player_serial: u64,
     pub(crate) outside_players: BTreeMap<PlayerIndex, crate::players::TrackedPlayer>,
+    /// Immutable sequence timing evidence seen in cache-enriched entity updates. Live actors still
+    /// carry an explicit resolved bit, so registry history alone never resolves a new assignment.
+    pub(crate) sequence_timings: BTreeMap<SequenceId, SequenceTiming>,
     skills: BTreeMap<rustclient_model::SkillId, rustclient_model::SkillValues>,
     reboot_cycles: u32,
     reboot_message: String,
@@ -216,19 +225,51 @@ impl WorldEntitiesState {
         &self.npcs
     }
 
-    pub(crate) fn advance_cycles(&mut self, cycles: u32) {
+    pub(crate) fn merge_sequence_timings(&mut self, timings: &[(SequenceId, SequenceTiming)]) {
+        for (id, timing) in timings {
+            self.sequence_timings.insert(*id, timing.clone());
+        }
+    }
+
+    #[must_use]
+    pub(crate) fn sequence_timing(&self, id: SequenceId) -> Option<&SequenceTiming> {
+        self.sequence_timings.get(&id)
+    }
+
+    pub(crate) fn advance_cycles(&mut self, previous_cycle: rustclient_model::ClientCycle, cycles: u32) {
         self.reboot_cycles = self.reboot_cycles.saturating_sub(cycles);
-        // Movement must observe the action delay before that same cycle decrements it. Advancing
-        // one cycle at a time preserves that ordering while keeping the existing client-cycle API.
-        for _ in 0..cycles {
-            crate::actor_movement::advance_players(self);
+        // Movement must observe the action delay/frame boundary before that same cycle advances
+        // playback. The scenery clock remains the single ClientCycle authority.
+        for offset in 1..=cycles {
+            let current_cycle = previous_cycle
+                .checked_advance(offset)
+                .expect("scenery validated client-cycle advance");
+            crate::actor_movement::advance_players(self, current_cycle);
+
+            let timings = &self.sequence_timings;
             for player in self.players.values_mut() {
                 player.animation_cycle = player.animation_cycle.wrapping_add(1);
-                player.sequence.advance_cycles(1);
+                let timing = player
+                    .sequence
+                    .sequence
+                    .filter(|_| player.sequence_timing_resolved)
+                    .and_then(|id| timings.get(&id));
+                crate::sequence_playback::advance_one(&mut player.sequence, timing);
+                if player.sequence.sequence.is_none() {
+                    player.sequence_timing_resolved = false;
+                }
             }
             for npc in self.npcs.values_mut() {
                 npc.animation_cycle = npc.animation_cycle.wrapping_add(1);
-                npc.sequence.advance_cycles(1);
+                let timing = npc
+                    .sequence
+                    .sequence
+                    .filter(|_| npc.sequence_timing_resolved)
+                    .and_then(|id| timings.get(&id));
+                crate::sequence_playback::advance_one(&mut npc.sequence, timing);
+                if npc.sequence.sequence.is_none() {
+                    npc.sequence_timing_resolved = false;
+                }
             }
         }
     }
@@ -239,6 +280,10 @@ impl WorldEntitiesState {
         cycle: rustclient_model::ClientCycle,
     ) -> Result<(), EntityUpdateError> {
         self.validate_remote_players(&update.remote, cycle)?;
+        let timing_ids: BTreeSet<_> = update.sequence_timings.iter().map(|(id, _)| *id).collect();
+        if timing_ids.len() != update.sequence_timings.len() {
+            return Err(EntityUpdateError::InvalidPlayerBatch);
+        }
         if update
             .local_appearance
             .as_ref()
@@ -266,6 +311,7 @@ impl WorldEntitiesState {
         let Some(local_idx) = self.local_player_index else {
             return false;
         };
+        self.merge_sequence_timings(&update.sequence_timings);
         let player = self
             .players
             .entry(local_idx)
@@ -281,6 +327,7 @@ impl WorldEntitiesState {
                 orientation: 0,
                 appearance: None,
                 sequence: rustclient_model::ActorSequenceSlot::default(),
+                sequence_timing_resolved: false,
                 animation_cycle: 0,
                 locomotion: Locomotion::Idle,
             });
@@ -319,10 +366,12 @@ impl WorldEntitiesState {
         }
         crate::sequence_scheduler::apply_change(
             &mut player.sequence,
+            &mut player.sequence_timing_resolved,
             update.local_sequence,
             i32::from(update.local_sequence_delay),
             player.path_queue.backlog(),
             &update.sequence_policies,
+            &update.sequence_timings,
         );
         if let Some(facing) = update.local_facing {
             player.orientation = facing;
@@ -332,6 +381,7 @@ impl WorldEntitiesState {
             &update.remote,
             cycle,
             &update.sequence_policies,
+            &update.sequence_timings,
         ) || local_changed;
         if changed {
             self.generation = self.generation.wrapping_add(1);
@@ -341,14 +391,17 @@ impl WorldEntitiesState {
 
     pub(crate) fn reset_animations(&mut self) -> bool {
         let mut changed = false;
-        for slot in self
-            .players
-            .values_mut()
-            .map(|p| &mut p.sequence)
-            .chain(self.npcs.values_mut().map(|n| &mut n.sequence))
-        {
-            changed |= *slot != rustclient_model::ActorSequenceSlot::default();
-            slot.clear();
+        for player in self.players.values_mut() {
+            changed |= player.sequence != rustclient_model::ActorSequenceSlot::default()
+                || player.sequence_timing_resolved;
+            player.sequence.clear();
+            player.sequence_timing_resolved = false;
+        }
+        for npc in self.npcs.values_mut() {
+            changed |= npc.sequence != rustclient_model::ActorSequenceSlot::default()
+                || npc.sequence_timing_resolved;
+            npc.sequence.clear();
+            npc.sequence_timing_resolved = false;
         }
         if changed {
             self.generation = self.generation.wrapping_add(1);
