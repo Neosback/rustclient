@@ -38,6 +38,8 @@ The existing audit identifies two especially important behaviors:
 - `method2961`: exact/forced movement offsets are anchored after the new network coordinate is decoded; the forced-movement end becomes the actor path target.
 - `method2924`: immediate placement versus queued path movement/reset behavior. A position reset does not itself invent a new facing direction.
 
+The latest facing-writer audit also confirms that `classDC` propagates retained facing state but does not directly author `Actor.field1470` turn rate or arm `Actor.field1473`.
+
 This class is useful evidence for lifecycle and ordering, but RustClient should not copy its mixed networking/runtime responsibility.
 
 ### `Actor.java`: shared movement scheduler
@@ -60,6 +62,8 @@ Actor.method3297(world, actor)
 Actor.method3284(actor)               // movement + locomotion selection
 Actor.method3280(world, actor)        // scene-bound safety reset
 ```
+
+`Actor.field1473` remains deliberately unnamed. In `Actor` itself it is initialized/reset to `false`; the exact-240 actor class does not contain the still-missing operation that arms it.
 
 ### `classKN.java`: outer actor-cycle and smooth turning
 
@@ -90,6 +94,8 @@ The wrapped delta is `(desired - current) & 2047`. Delta above 1024 turns negati
 
 When the current pose is idle, turn-rate is positive, and either the turn lasts more than 25 cycles or the current step does not snap directly to target, the source prefers the matching idle rotate-left/right sequence and falls back to ordinary walk if that authored turn sequence is unavailable.
 
+When desired and current orientation are already equal, `method6539` also consumes `Actor.field1473`: if the latch is set, it clears retained entity-target state and resets the latch. This proves cleanup behavior, not the writer that armed it.
+
 ### `classEB.java`: desired-facing resolver
 
 `classEB.method3820` resolves the actor's desired orientation before movement each cycle.
@@ -106,6 +112,8 @@ Sources include:
 
 The packet-facing state itself lives in `classBZ`; packet-time intent and client-cycle orientation mutation are separate phases.
 
+If an entity target disappears, no fallback angle exists, and `Actor.field1473` is set, `method3820` clears the retained target and resets the latch. The normal player/NPC sync paths inspected in this wave do not directly set that latch.
+
 ### `classBT.java`: target-to-angle helper
 
 `classBT.method1244` converts actor-to-target coordinates, including cross-world-view transforms, to the 0..2047 orientation domain using `atan2`. Coincident positions return `-1`.
@@ -121,6 +129,15 @@ In the exact 240 NPC definition decoder:
 - the final value is stored in `field5297`.
 
 So NPC turn rate is definition-authored cache policy, not a universal hard-coded constant.
+
+The direct actor/synchronization writer audit further establishes:
+
+- `Actor` supplies semantic default `32`;
+- `classGA.method5325` is the direct NPC runtime writer in the inspected normal path;
+- `classAS.method661` calls that projection and, if the resulting rate is zero, sets current orientation to zero rather than inventing a different rate;
+- `Player`, `NPC`, `classDF`, and `classDC` contain no direct turn-rate write in the inspected sources.
+
+This is enough to prevent a duplicate packet-local turn-rate source in RustClient. A wider whole-archive write-site census should be done only if another reachable subsystem exposes a mutation outside this normal actor path.
 
 ### `classCU.java`: action assignment policy
 
@@ -164,9 +181,12 @@ Keep separate:
 - consecutive turning-cycle counter;
 - entity target identity and kind;
 - explicit face-coordinate/area/angle intent;
-- target-disappearance cleanup state;
+- `FacingApplyPolicy` (`MOVEMENT_GATED` versus `BYPASS_MOVEMENT_GATE`);
+- target-disappearance/alignment cleanup state;
 - packet/source-driven snap flag;
 - idle turn-left/right sequence inputs.
+
+Do not give the pending cleanup latch a semantic field name in Rust solely from `Actor.field1473` consumers. Its arming write still needs to be located.
 
 ### Locomotion
 
@@ -207,8 +227,9 @@ For the movement/facing/animation path traced here, the exact order is now:
 3. apply scene-bound safety reset via `Actor.method3280`;
 4. if animations are not frozen, advance current orientation toward desired in `classKN.method6539`;
 5. perform idle left/right turn-pose selection inside that same turn block;
-6. advance actor animations through `classKB.method6491`;
-7. perform actor end-of-cycle cleanup.
+6. when already aligned, consume pending target cleanup if armed;
+7. advance actor animations through `classKB.method6491`;
+8. perform actor end-of-cycle cleanup.
 
 Do not reorder turn advancement ahead of movement. Direction-sensitive path pose selection in `Actor.method3284` sees the desired/current values as they existed before the ordinary turn step for that cycle.
 
@@ -257,9 +278,10 @@ Shared orientation math, turn stepping, path traversal, exact trajectory timing 
 - entity lifecycle after decode;
 - current tile/path/trajectory;
 - desired/current orientation;
-- live facing target/intent;
+- live facing target/intent and apply policy;
 - turn rate and turn-cycle counter;
 - ordinary smooth-turn mutation;
+- target cleanup state once its arming semantics are proven;
 - action/locomotion/effect scheduler state;
 - validated cycle transitions and expiration.
 
@@ -283,15 +305,17 @@ GPU resources/passes/draw ordering only after scene projection has produced the 
 
 ## Next source traces
 
-The ordinary turn mutator is no longer an open item. Continue in this order:
+The ordinary turn mutator and normal NPC turn-rate source are no longer open items. Continue in this order:
 
-1. full typed facing-target retention and target-disappearance cleanup, including the unresolved `classLV` secondary behavior;
-2. remaining reachable turn-rate writers beyond constructor/default and NPC opcode 103;
+1. locate the writer that arms `Actor.field1473`; the direct Actor/Player/NPC/classDF/classDC/classAS/classGA synchronization corpus is now ruled out as the writer;
+2. preserve full typed facing-target state and target-disappearance/alignment cleanup once that latch writer is known;
 3. complete cached-model action advancement/completion and remaining legacy completion/event semantics;
 4. actor spot animation add/remove/advance helpers and corresponding player/NPC mask fields;
 5. hitsplat/headbar add/remove/expiry helpers and replacement priority rules;
 6. overhead/tint/freeze/customization mask consumers and expiry/application sites;
 7. `Player`/`PlayerComposition` model assembly invalidation rules.
+
+Only widen the turn-rate writer census if a newly traced reachable subsystem demonstrates a direct mutation outside actor default and NPC definition projection.
 
 Each trace should update the stable-symbol research ledger before implementation work.
 
