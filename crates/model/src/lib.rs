@@ -23,6 +23,7 @@ mod inventory;
 pub use inventory::{InventorySlotUpdate, InventoryUpdate, ItemStack};
 pub mod orientation;
 pub mod revision;
+mod sequence;
 pub mod time;
 
 pub use coords::{
@@ -43,6 +44,7 @@ pub use ids::{
 };
 pub use orientation::{JAU_FULL_TURN, JAU_QUARTER_TURN, JauAngle, LocOrientation, QuarterTurn};
 pub use revision::{REVISION_240, Revision, RevisionParseError};
+pub use sequence::SequencePolicy;
 pub use time::{ClientCycle, GameTick, TickSpan};
 mod scenery;
 pub use scenery::{
