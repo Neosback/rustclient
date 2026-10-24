@@ -1,12 +1,20 @@
-# Client-240 deob v2: bytecode-first research workbench
+# Client-240 deob v2: exact-bytecode deobfuscation workbench
 
-Status: implementation branch. This design extends the existing mapping and verification pipeline. It does not replace the tiny-v2 shards, symbol ledger, or rename-only proof.
+Status: implementation branch. This design extends the existing mapping and verification pipeline. It does not replace tiny-v2 mapping shards, the evidence ledger, or the rename-only proof.
 
-## Problem statement
+The goal is not merely to produce Java that looks cleaner. The goal is to make the revision-240 client **fully inspectable** while preserving a permanent route from every readable view back to the exact shipped bytecode.
+
+The core rule is simple:
+
+> **Original bytecode defines behavior. Semantic names identify it. Analysis passes explain it. Decompiled Java presents it. Human-reviewed mappings name it.**
+
+No later layer is allowed to silently replace an earlier authority.
+
+## Why the current pipeline needs another layer
 
 The existing client-240 workflow is strong at proving that a rename is mechanically safe, but weaker at proving that the evidence used to choose a name or describe behavior is faithful to the shipped gamepack.
 
-The current flow is effectively:
+The older research flow is effectively:
 
 ```text
 original injected jar
@@ -22,11 +30,11 @@ semantic jar
         `--> CFR only when a researcher notices suspicious source
 ```
 
-That has four failure modes.
+That flow has four important failure modes.
 
-### 1. The semantic jar is not the original control flow
+### 1. The semantic jar is not the exact original control flow
 
-The pinned semantic audit records deliberate transformations before the naming wave ever starts. For revision 240 it reports, among other changes:
+The pinned semantic audit records deliberate transformations before a naming wave starts. For revision 240 it reports, among other changes:
 
 - 329 packet-handler instructions removed;
 - 165 packet return jumps flattened;
@@ -35,161 +43,539 @@ The pinned semantic audit records deliberate transformations before the naming w
 - decoder normalization and unused-member marking;
 - structural symbol renaming.
 
-These transforms may be valid analysis transforms, but they mean the semantic jar cannot be the sole behavioral authority for protocol, player/NPC update, cycle, animation, or exception-sensitive behavior. A decompiler can only reconstruct the bytecode it is given.
+These are useful analysis transforms, but they make the semantic jar unsuitable as the sole behavioral authority for protocol framing, player/NPC update masks, movement cycles, animation behavior, exception-sensitive behavior, or any client quirk that depends on exact control flow.
 
-**v2 rule:** original gamepack bytecode is behavioral ground truth. The semantic jar is an identity/readability overlay. Any transformed method is explicitly surfaced before a researcher treats its decompiled Java as behavioral evidence.
+**v2 rule:** the original gamepack is permanent behavioral ground truth. The semantic jar is an identity/readability input. Any transformed method is surfaced before a researcher treats its reconstructed source as behavioral evidence.
 
-### 2. Decompiled Java is currently too close to being the data model
+### 2. Decompiled Java is too close to being the data model
 
-Class ownership is commonly discovered with source `grep`; carry-forward is based on a compact structure dump; ambiguous control flow is manually sent to CFR. This makes source text do jobs that bytecode metadata can do deterministically.
+Source `grep`, reconstructed labels, inferred expressions, and decompiler-generated source structure should not decide reference ownership or bytecode identity.
 
-Source `grep` can miss or distort:
+Source text can obscure:
 
 - descriptor-only dependencies;
-- inheritance/interface dependencies;
-- bootstrap handles and invokedynamic dependencies;
+- inheritance and interface edges;
+- bootstrap handles and invokedynamic references;
 - annotations and signatures;
-- subclass families whose source names do not match a word-boundary grep;
-- references hidden by a decompiler reconstruction;
-- references that a decompiler inlines or rewrites into higher-level syntax.
+- exception edges;
+- subclass families;
+- references hidden by expression reconstruction;
+- references in code a decompiler chooses to inline or restructure.
 
-**v2 rule:** reference sets, ownership boundaries, member identity, call edges, field edges, control-flow metrics, and fingerprints come from ASM over the jar. Decompiled source is presentation evidence only.
+**v2 rule:** reference sets, ownership boundaries, member identity, call edges, field edges, control-flow metrics, fingerprints, and future value-flow evidence come from bytecode analysis. Java source is presentation evidence.
 
-### 3. The second decompiler is reactive rather than systematic
+### 3. Decompiler disagreement is discovered too late
 
-Vineflower is the primary renderer and CFR is invoked only after a researcher notices a suspicious labelled break, collapsed switch, `$VF` marker, or other anomaly. That catches known-looking failures, not silent disagreements.
+Vineflower is currently the normal renderer and CFR is used when a researcher notices suspicious output. That detects obvious failures, not silent differences.
 
-**v2 rule:** a requested class can be rendered through both pinned decompilers and compared automatically. The workbench emits a dossier containing original-bytecode facts beside both source renderings and marks disagreement instead of silently selecting one.
+**v2 rule:** difficult classes can be rendered through both pinned decompilers, from both exact and transformed views, and shown beside bytecode evidence. Neither renderer is declared correct merely because its output looks cleaner.
 
-### 4. Cross-revision carry-forward has too little structural entropy
+### 4. Cross-revision carry-forward needs stronger structure
 
-`carry235.py` correctly refuses many ambiguous matches and already learned that member order is unreliable. Its 240-side dump, however, describes methods primarily with descriptor, access, instruction count, and invocation count. Distinct obfuscated methods can share those features.
+`carry235.py` already learned that field/method order is unreliable and moved toward unique normalized signatures. Descriptors, access, instruction count, and call count are still not enough entropy for difficult obfuscated methods.
 
-**v2 rule:** candidate matching can additionally consume a rename-invariant bytecode fingerprint built from canonical obfuscated identities, opcode classes, constants, member-reference identities, branch shape, switch shape, and exception-table shape. A mismatch is negative evidence. A fingerprint is never itself permission to assign a human-readable name.
+**v2 rule:** cross-revision candidates can consume rename-invariant bytecode fingerprints, CFG shape, value-flow signatures, constants, member-reference identities, decoder evidence, packet evidence, and virtual-family structure. These are proposal features only. No automated match may directly write a readable mapping.
 
-## Architecture
+---
+
+# Upstream design review
+
+Two existing projects contain valuable work that should inform this system:
+
+- `Tonic-Box/rl-suite`
+- `melxin/devious-client/deobfuscator`
+
+The correct approach is **selective adaptation**, not replacing this repository's toolchain with either project wholesale.
+
+## What to take from `Tonic-Box/rl-suite`
+
+`rl-suite` is especially useful because the pinned semantic artifact already comes from that lineage and its transform pipeline is close to the problems we are solving.
+
+### Adopt the architecture ideas
+
+1. **Analyze first, apply later**
+   - A pass first inspects untouched input and produces a plan.
+   - Mutation is a separate phase.
+   - This prevents one readability transform from contaminating the evidence another pass uses.
+
+2. **Decoder confidence**
+   - Preserve a distinction equivalent to `STATED`, `PROVEN`, and `INFERRED`.
+   - A read/write modular-inverse pair can be proven.
+   - A one-sided arithmetic pattern can be useful evidence without being treated as fact.
+   - Conflicting candidates should remain unresolved rather than being guessed.
+
+3. **Hierarchy-aware remapping**
+   - A rename must understand inherited members, owner resolution, collisions, and descriptors.
+   - Renaming must not be a string replacement over decompiled Java.
+
+4. **Virtual method families**
+   - One virtual method identity can span an interface/base/subclass override family.
+   - The family should be named coherently and reviewed as one behavioral contract.
+
+5. **Revision packet profiles**
+   - Packet identity and lengths are revision data, not timeless assumptions.
+   - Revision-specific packet tables should be first-class evidence alongside bytecode discovery.
+
+6. **Audit reporting**
+   - Every analysis transform should say what it inspected, what it changed, and why.
+   - The workbench should expose this per method, not hide it in build logs.
+
+### Keep these isolated from behavioral truth
+
+`rl-suite` also demonstrates why v2 needs separate views. Readability passes such as packet-handler normalization and ConstantDynamic materialization are useful, but they can alter control-flow shape, exception layout, or initialization timing.
+
+Those passes belong only in `analysis-normalized`. They never replace `original-exact`.
+
+### Code reuse boundary
+
+At the time this design was reviewed, a root license was not found in the `Tonic-Box/rl-suite` repository listing. Until licensing is explicitly clarified, this project treats `rl-suite` as a design and behavior reference rather than copying implementation code into RustClient.
+
+## What to take from `melxin/devious-client/deobfuscator`
+
+`devious-client` is the stronger source for deeper deobfuscation algorithms. Its deobfuscator contains mature ideas around control flow, symbolic execution, arithmetic, packets, and cross-revision mapping.
+
+Its repository carries a BSD 2-Clause license, so selective code reuse is possible when the license and attribution requirements are retained. Even so, direct copying is not automatically the best architecture.
+
+### Adapt these algorithms
+
+1. **Control-flow graph construction**
+   - basic blocks;
+   - normal branch edges;
+   - switch edges;
+   - exception edges;
+   - loop/back-edge analysis;
+   - future dominator/post-dominator information.
+
+2. **Symbolic execution and value provenance**
+   - model operand-stack and local-variable flow;
+   - trace values into method arguments, fields, comparisons, packet reads, and arithmetic;
+   - expose provenance as evidence instead of relying on decompiler expression shape.
+
+3. **Modular arithmetic analysis**
+   - detect field encoders/decoders;
+   - prove inverse pairs where possible;
+   - distinguish proven from inferred multipliers;
+   - optionally render a decoded analysis view while keeping original arithmetic visible.
+
+4. **Packet discovery**
+   - packet type discovery;
+   - packet length evidence;
+   - packet read ordering;
+   - handler association;
+   - C2S opcode/framing discovery;
+   - ISAAC-related call-path evidence.
+
+5. **Cross-revision mapping**
+   - class/member mapping from multiple independent features;
+   - method execution/call-shape matching;
+   - static-initializer structure;
+   - descriptor and signature compatibility;
+   - ambiguity reporting instead of forced one-to-one guesses.
+
+6. **Constant-parameter and expression analysis**
+   - identify parameters that are effectively constants at all relevant call sites;
+   - normalize expression evidence for comparison without claiming the normalized expression is original syntax.
+
+### Do not import the entire Devious bytecode model
+
+The Devious deobfuscator has its own classfile/instruction/execution abstraction. RustClient already pins ASM 9.6 and the v2 evidence layer is ASM-native.
+
+Bringing in the entire Devious IR would create two competing bytecode representations and duplicate:
+
+- class/member identity;
+- descriptors;
+- instructions;
+- CFG state;
+- value-flow state;
+- hierarchy resolution.
+
+Instead, port the useful algorithms onto ASM tree nodes and ASM analysis primitives. If a specific BSD-licensed implementation is copied rather than reimplemented, preserve attribution in the source and repository license documentation.
+
+### Do not make destructive cleanup part of authoritative research
+
+Passes that remove unused classes, unused fields, unused methods, runtime exceptions, or unreachable structures can make a jar nicer to inspect, but they also destroy evidence.
+
+For this project:
+
+- detect unused/reachable state;
+- annotate it;
+- filter it in presentation if useful;
+- do not delete it from the authoritative evidence corpus.
+
+## Comparison and decision matrix
+
+| Capability | Existing v2 | `rl-suite` | Devious deobfuscator | RustClient decision |
+| --- | --- | --- | --- | --- |
+| Exact original-bytecode authority | yes | semantic transform output is primary product | deob pipeline mutates a working model | keep v2 original-exact authority |
+| ASM-native model | yes | yes | custom bytecode model | stay ASM-native |
+| Analyze-before-transform pass plans | partial | strong | pass-oriented but different model | adopt explicitly |
+| Decoder confidence/evidence | not yet | strong | strong arithmetic analysis | combine concepts on original bytecode |
+| Hierarchy-aware rename | current remapper + planned v2 layer | strong | strong | add explicit hierarchy/virtual-family evidence |
+| Revision packet profiles | pinned TSVs | strong | packet discovery logic | use both profile data and bytecode discovery |
+| CFG evidence | metrics only | limited for our purpose | strong | port concept to ASM |
+| Symbolic value flow | not yet | limited | strong | port concept to ASM |
+| Modular arithmetic analysis | semantic jar contains normalization | DecoderTable | ModArith/multiplication passes | detect on exact view; normalize only in optional view |
+| Packet handler discovery | packet tables + manual tracing | revision normalization | strong packet finders | build evidence-only discovery |
+| Cross-revision mapper | canonical fingerprints + carry235 | structural rename support | strong updater/mappers | build ranked multi-feature mapper |
+| Dual decompiler | yes | not the central model | source output is downstream | keep Vineflower + CFR ensemble |
+| Original-vs-transformed drift | yes | audit transform counts | not our current invariant | keep and expand v2 drift audit |
+| Searchable research UI | now specified/implemented | no equivalent required | no equivalent required | keep local static workbench |
+
+---
+
+# Five-view architecture
+
+The rebuilt system has five explicit views. Every artifact and pass declares which view it consumes and produces.
 
 ```text
-                     +---------------------------+
-                     | original revision-240 jar |
-                     +-------------+-------------+
-                                   |
-                                   | ASM, no decompilation
-                                   v
-+----------------+      +----------+-----------+      +------------------+
-| semantic jar   |----->| evidence index /     |<-----| tiny-v2 mappings |
-| identity layer |      | original-vs-semantic |      | and name ledger  |
-+-------+--------+      | drift audit          |      +------------------+
-        |               +----------+-----------+
-        |                          |
-        |                          +--> exact bytecode reference graph
-        |                          +--> canonical symbol identities
-        |                          +--> method metrics/fingerprints
-        |                          +--> transformed-method warnings
-        |                          `--> cluster candidate sets
-        |
-        +-----------------------+
-                                v
-                   +------------+-------------+
-                   | decompiler ensemble       |
-                   | Vineflower + CFR          |
-                   +------------+-------------+
-                                |
-                                v
-                   human-readable research dossier
+                         READ-ONLY EVIDENCE
+
+              +----------------------------------+
+              | 1. original-exact                |
+              | shipped gamepack bytecode        |
+              | ONLY behavioral authority        |
+              +----------------+-----------------+
+                               |
+                identity links | ASM evidence
+                               v
+              +----------------------------------+
+              | 2. identity                      |
+              | obfuscated identity              |
+              | classXX / fieldN / methodN       |
+              | readable tiny-v2 overlay         |
+              +----------------+-----------------+
+                               |
+                 optional only |
+                               v
+              +----------------------------------+
+              | 3. analysis-normalized           |
+              | proven decoder presentation      |
+              | optional CFG cleanup              |
+              | packet/condy transforms if needed|
+              | NEVER behavioral authority       |
+              +----------------+-----------------+
+                               |
+                               v
+              +----------------------------------+
+              | 4. readable                      |
+              | evidence-backed names            |
+              | owner/family-aware symbol view   |
+              +----------------+-----------------+
+                               |
+                               v
+              +----------------------------------+
+              | 5. presentation                  |
+              | Vineflower | CFR | CFG | tables  |
+              | static HTML workbench            |
+              +----------------------------------+
 ```
 
-The architecture deliberately separates four concepts:
+## 1. `original-exact`
 
-1. **Identity:** stable semantic names plus `@ObfuscatedName` / `@ObfuscatedSignature` linkage.
-2. **Behavioral facts:** original bytecode, descriptors, constants, edges, branches, switches, exception regions.
-3. **Presentation:** Vineflower and CFR renderings.
-4. **Names:** evidence-backed tiny-v2 overlays and ledger rows.
+The immutable shipped gamepack is the answer to:
 
-A name never changes the behavioral index. A decompiler disagreement never changes bytecode facts.
+- what instructions execute;
+- what branches exist;
+- what exceptions can occur;
+- what order packet reads occur in;
+- what arithmetic actually happens;
+- what initialization timing exists;
+- what quirks the real client contains.
 
-## New tooling
+Only evidence-only passes may operate on this view.
 
-### `Client240Evidence.java`
+## 2. `identity`
 
-A repository-local ASM program that emits deterministic TSV evidence. It is intentionally separate from `Client240Tool.java` so the existing verified rename path is not destabilized while v2 is evaluated.
+This view answers:
 
-Planned commands:
+- which original obfuscated class/member corresponds to a stable research symbol;
+- which virtual family a method belongs to;
+- what readable name has been accepted;
+- what evidence ledger row supports that name.
+
+Renames may change names, never instruction behavior.
+
+## 3. `analysis-normalized`
+
+This is intentionally expendable. It may contain easier-to-read forms such as:
+
+- proven multiplier decoding;
+- optional CFG cleanup;
+- packet-handler normalization;
+- ConstantDynamic materialization.
+
+Every changed method must retain a route to the original method identity and a transform record.
+
+## 4. `readable`
+
+Readable names are applied as an overlay, not as a new behavioral source. A Java class is still not assumed to map one-for-one to a Rust type.
+
+## 5. `presentation`
+
+Presentation can include:
+
+- Vineflower source;
+- CFR source;
+- bytecode instruction facts;
+- CFG diagrams;
+- reference graphs;
+- value-flow traces;
+- packet read sequences;
+- decoder evidence;
+- cross-revision candidates;
+- transform warnings;
+- mapping evidence;
+- static HTML navigation.
+
+Presentation can be regenerated at any time.
+
+---
+
+# Pass safety model
+
+The machine-readable registry is:
+
+`tools/client-240/deob-passes.json`
+
+Every pass has one of five safety classes.
+
+| Safety | Meaning | May define behavior? |
+| --- | --- | --- |
+| `evidence-only` | reads bytecode and emits facts | yes, when reading `original-exact` |
+| `identity-safe` | changes names/metadata presentation only | no independent behavior claim |
+| `analysis-equivalent` | intended semantics-preserving rewrite that changes instruction representation | no, verify against original |
+| `analysis-only` | readability transform that may affect behaviorally relevant representation | no |
+| `excluded-destructive` | removes or irreversibly hides evidence | never used in authoritative research |
+
+This gives us something the previous workflow lacked: an aggressive deob can exist without asking researchers to remember which pieces are safe.
+
+## Planned evidence passes
+
+### `decoder-evidence`
+
+Use the best ideas from `rl-suite` decoder confidence and Devious modular arithmetic.
+
+For every numeric encoded field, retain:
+
+- field identity;
+- read multiplier candidates;
+- write multiplier candidates;
+- modular inverse proof where it exists;
+- every cited instruction site;
+- confidence (`stated`, `proven`, `inferred`, `conflict`);
+- whether optional normalization is permitted.
+
+Default policy: only proven inverse pairs may be rewritten in `analysis-normalized`. Inferred values remain annotations.
+
+### `cfg-evidence`
+
+For each original method emit:
+
+- instruction-indexed basic blocks;
+- predecessors/successors;
+- conditional edges;
+- fallthrough edges;
+- switch edges and keys;
+- exception-handler edges;
+- loop/back edges;
+- unreachable blocks without deleting them;
+- future dominator/post-dominator information.
+
+The CFG is more reliable than a decompiler's labelled-break syntax for understanding player/NPC update loops.
+
+### `symbolic-flow-evidence`
+
+Build a lightweight ASM-based value provenance engine, influenced by the useful ideas in Devious `Execution`, `Frame`, and `InstructionContext`.
+
+It should answer questions such as:
+
+- Which packet-buffer read produced this mask bit?
+- Which field receives this decoded value?
+- Which comparison controls this animation reset?
+- Which constants and arguments feed this coordinate calculation?
+- Does a value pass through an encoder/decoder before storage?
+- Which call sites supply a constant parameter?
+
+The output is a graph/trace, not rewritten Java.
+
+### `packet-discovery`
+
+Combine three independent evidence sources:
+
+1. revision-240 packet tables;
+2. original exact bytecode discovery;
+3. known protocol evidence such as RSProt where selected by the research tree.
+
+The output should record:
+
+- packet identity;
+- direction;
+- opcode/framing path;
+- ISAAC relationship;
+- declared length where known;
+- actual buffer read sequence;
+- handler method;
+- update-mask dispatch;
+- cycle/world-view routing;
+- conflicts between tables and bytecode.
+
+A conflict is surfaced, not silently reconciled.
+
+### `cross-revision-mapper`
+
+Replace single-feature carry-forward with a ranked, explainable matcher.
+
+Candidate features can include:
+
+- obfuscated identity where available;
+- descriptor compatibility;
+- superclass/interface neighborhood;
+- virtual family structure;
+- canonical bytecode fingerprint;
+- CFG fingerprint;
+- constant/string signature;
+- field-use signature;
+- call-neighborhood signature;
+- decoder signature;
+- packet role;
+- static-initializer evidence;
+- value-flow signature.
+
+The mapper outputs candidates and independent scores. It never edits a mapping shard.
+
+---
+
+# Existing v2 tooling
+
+## `Client240Evidence.java`
+
+This repository-local ASM program is deliberately separate from the existing verified rename path.
+
+Commands:
 
 ```text
 index JAR OUT.tsv
     Build a bytecode-first class/member/reference index.
 
 audit ORIGINAL.jar SEMANTIC.jar OUT.tsv
-    Match symbols through obfuscated identity and report methods whose bytecode
-    shape or control-flow metrics differ between the shipped and semantic jars.
+    Match methods through preserved obfuscated identity and report drift.
 
 refs JAR CLASS [CLASS...]
-    Print the exact incoming/outgoing class reference closure from bytecode,
-    descriptors, hierarchy and annotations rather than source grep.
+    Print exact incoming/outgoing class references from bytecode evidence.
 ```
 
-The index records both a strict instruction fingerprint and a canonical structural fingerprint. Canonical identities use preserved obfuscation annotations where available so a pure rename does not manufacture a structural change.
+The index contains strict and canonical method fingerprints. Canonical references use preserved obfuscated identities where possible so a pure rename does not manufacture a structural difference.
 
-### `deob-v2.py`
+## `decompile-ensemble.py`
 
-The orchestration CLI. It resolves only repository-pinned inputs and tools and writes generated evidence below `.cache/client-240/deob-v2/` unless explicitly redirected through the existing safe-output policy.
+A class-focused source renderer using both pinned decompilers.
 
-It will provide:
+A dossier can retain:
 
 ```text
+semantic / Vineflower
+semantic / CFR
+original / Vineflower
+original / CFR
+bytecode drift
+reference evidence
+command/tool manifest
+```
+
+Decompiler disagreement is evidence to inspect bytecode, not a vote where two tools outnumber the original jar.
+
+## `deob-v2.py`
+
+The orchestration CLI now exposes both evidence production and the architecture itself:
+
+```text
+python3 tools/client-240/deob-v2.py plan
 python3 tools/client-240/deob-v2.py index
 python3 tools/client-240/deob-v2.py audit
 python3 tools/client-240/deob-v2.py refs classDF classDG
-python3 tools/client-240/deob-v2.py dossier classDF
+python3 tools/client-240/deob-v2.py dossier classDF --name player-sync
+python3 tools/client-240/deob-v2.py workbench
 ```
 
-`index`, `audit`, and `refs` do not decompile anything. `dossier` is the explicit opt-in source-rendering path.
+`plan` prints the declared views, safety classes, pass status, and defaults.
 
-### `decompile-ensemble.py`
+`index`, `audit`, and `refs` stay bytecode-first.
 
-A focused source renderer that keeps generated source disposable. It renders requested evidence through the pinned decompilers, records command/tool identity, preserves failures independently, and writes a comparison manifest. It does not bless either renderer as correct.
+`dossier` explicitly opts into source presentation.
 
-## Evidence contract
+`workbench` renders generated evidence to an offline HTML artifact.
 
-Every future naming or behavior claim should be able to answer these questions:
+## `render-workbench.py`
 
-| Question | Authority |
-| --- | --- |
-| What symbol is this? | semantic stable name plus preserved obfuscated identity |
-| Who references it? | ASM bytecode reference graph |
-| What does the shipped client execute? | original gamepack bytecode |
-| Was this method transformed for analysis? | original-vs-semantic drift audit |
-| What readable Java do the tools reconstruct? | Vineflower and CFR, independently |
-| What readable name do we assign? | tiny-v2 shard plus evidence ledger |
-| Does the rename alter bytecode? | existing round-trip rename-only proof |
+The workbench is the answer to “let us fully read and see everything” without building another source of truth.
 
-## Method fingerprints
+It is a static, dependency-free HTML renderer over generated evidence. The first version exposes:
 
-Fingerprints are research accelerators, not naming evidence tiers by themselves.
+- corpus counts;
+- original class identity;
+- semantic class identity;
+- original-vs-semantic method drift;
+- exact original reference edges;
+- pass safety/status/defaults;
+- generated dossiers;
+- upstream design provenance and license boundary;
+- global table filtering/search.
 
-A method gets two hashes:
+Future evidence panels should add:
 
-- `strict_hash`: opcode and operand stream as represented in that jar. Useful for cache invalidation and exact same-jar checks.
-- `canonical_hash`: an identity-normalized stream. In-repo class/member references are represented by preserved obfuscated identities when available; constant-pool indices and decompiler syntax are absent.
+- method instruction view with stable instruction indices;
+- CFG visualization;
+- symbolic value-flow traces;
+- decoder/multiplier sites;
+- packet read timeline;
+- virtual-family browser;
+- cross-revision candidate comparison;
+- tiny-v2/ledger linkage;
+- side-by-side Vineflower/CFR source;
+- original versus normalized instruction diff;
+- direct stable-symbol to original-obfuscated identity navigation.
+
+The workbench itself is disposable. Its evidence files remain the machine-readable source.
+
+---
+
+# Method fingerprints
+
+Fingerprints are research accelerators, not naming tiers.
+
+Each indexed method gets:
+
+- `strict_hash`: opcode and operand stream as represented in that jar;
+- `canonical_hash`: identity-normalized instruction stream using preserved obfuscated identities where possible.
 
 The canonical stream includes:
 
 - opcode;
-- primitive immediates and stable literal values;
-- field and method reference kind, canonical owner, canonical member identity, normalized descriptor;
-- type instructions with canonical type identity;
-- invokedynamic name/descriptor and bootstrap-handle identity;
-- jump target expressed as a real-instruction index;
+- primitive immediates and stable literals;
+- field/method reference kind, canonical owner, canonical member identity, normalized descriptor;
+- canonical type references;
+- invokedynamic name/descriptor and bootstrap identity;
+- branch target as real-instruction index;
 - lookup/table switch keys and destinations;
 - multi-array dimensions;
-- exception table start/end/handler indices and caught type.
+- exception table ranges, handlers, and caught type.
 
-Line numbers, local-variable names, stack-map frames, source file names, and constant-pool slot numbers are excluded.
+It excludes:
 
-## Original-versus-semantic drift classification
+- line numbers;
+- local-variable names;
+- stack-map frames;
+- source file names;
+- constant-pool slot numbers;
+- decompiler syntax.
 
-The audit should not merely say `different`. Each matched method receives metrics for both sides and zero or more flags:
+Future versions should add independent CFG and value-flow hashes rather than making `canonical_hash` an overloaded universal similarity score.
+
+---
+
+# Original-versus-semantic drift
+
+The existing v2 audit classifies method drift with flags such as:
 
 - `instruction-count-changed`
 - `branch-shape-changed`
@@ -202,36 +588,159 @@ The audit should not merely say `different`. Each matched method receives metric
 - `missing-original`
 - `missing-semantic`
 
-For protocol and entity-sync work, any control-flow flag means the original method must be consulted before specifying behavior.
+For protocol and entity-sync research, any control-flow, exception, call-set, field-set, or constant-set difference is a reason to inspect the original method before specifying behavior.
 
-## Renaming policy changes
+The long-term workbench should also show the **specific original instruction regions** affected by each normalized transform.
 
-The existing evidence tiers remain. v2 changes how candidates are *screened* before a human promotes them:
+---
+
+# Naming policy
+
+The existing T1-T4 evidence tiers remain. v2 changes the screening and research environment around them.
 
 1. T1/T2 evidence remains strongest.
-2. T3 carry-forward requires descriptor compatibility plus canonical structural compatibility where both revisions can provide it.
-3. T4 behavior names must cite the original-bytecode identity when the drift audit marks the semantic method transformed.
-4. A decompiler disagreement lowers confidence until reconciled against bytecode.
-5. Reference-set ownership comes from the bytecode graph, not `grep -rlw`.
-6. `client` and `rl5` remain unowned unless explicitly assigned by the wave.
-7. No automated score is allowed to write a mapping shard directly.
+2. T3 carry-forward should require multiple compatible structural features, not one score.
+3. T4 behavior names cite exact original method identity when the semantic method drifted.
+4. Decompiler disagreement lowers confidence until reconciled against bytecode.
+5. Ownership/reference sets come from the bytecode graph, not source `grep`.
+6. Virtual-family names are reviewed across the whole override family.
+7. Decoder normalization never creates a readable name by itself.
+8. Cross-revision mapping emits proposals only.
+9. No automated score writes tiny-v2 mapping shards.
+10. A readable name must always remain traceable to the stable symbol and original obfuscated identity.
 
-## Why not write a new decompiler?
+---
 
-A JVM decompiler is a large compiler-reconstruction project: exception-region recovery, expression structuring, type inference, synthetic pattern recognition, switch recovery, monitor handling and malformed/hostile bytecode all matter. The repository already pins two mature and independent decompilers. Reimplementing that machinery would add risk while leaving the more important source-of-truth problem unsolved.
+# Target research workflow
 
-The better investment is an independent bytecode evidence layer plus a deterministic ensemble around the decompilers already shipped.
+For a difficult subsystem such as player updating:
 
-## Compatibility with the existing pipeline
+```text
+1. select subsystem / candidate classes
+              |
+              v
+2. exact bytecode reference graph
+              |
+              v
+3. original-versus-semantic drift
+              |
+              +--------------------+
+              |                    |
+              v                    v
+4. exact CFG/value flow      5. readable identity
+              |                    |
+              +---------+----------+
+                        v
+6. packet + decoder + virtual-family evidence
+                        |
+                        v
+7. Vineflower/CFR dossier if human source helps
+                        |
+                        v
+8. workbench inspection
+                        |
+                        v
+9. human evidence decision
+                        |
+                        v
+10. tiny-v2 shard + ledger + behavior write-up
+```
 
-v2 is additive:
+This is intentionally evidence-first. Decompilation happens late enough that reconstructed syntax cannot silently define the model.
 
-- existing mapping shards remain tiny-v2;
-- existing ledger rows remain the naming authority;
-- `remap.sh` remains the rename mechanism;
-- `verify.sh` remains the rename-only gate when the user chooses to run it;
-- generated v2 indexes and decompiler outputs stay under cache paths;
-- `references/` remains read-only;
-- no Rust implementation is generated from this tooling.
+---
 
-During evaluation, `Client240Tool.java`, the current remapper, and current verification flow remain untouched. Once v2 proves useful, selected v2 checks can be promoted into the normal wave procedure in a separate checkpoint.
+# Roadmap
+
+## Phase A: foundation - current branch
+
+Implemented or specified:
+
+- exact original/semantic bytecode indexes;
+- canonical identities and fingerprints;
+- exact reference graph;
+- original-versus-semantic drift audit;
+- dual-decompiler dossiers;
+- pass/view safety registry;
+- offline searchable workbench;
+- upstream adoption policy.
+
+## Phase B: semantics
+
+Build on ASM 9.6:
+
+- decoder evidence with proof/confidence;
+- exact CFG extraction;
+- symbolic stack/local value provenance;
+- virtual-family index;
+- richer per-method instruction evidence.
+
+## Phase C: protocol and entity updating
+
+Add:
+
+- packet discovery;
+- packet read timelines;
+- ISAAC/framing call-path evidence;
+- update-mask discovery;
+- player/NPC synchronization dossiers;
+- animation/movement cycle data-flow tracing.
+
+## Phase D: cross-revision automation
+
+Add an explainable matcher using multiple independent features:
+
+- 235 -> 240 calibration against known names;
+- ambiguity/conflict reporting;
+- virtual-family mapping;
+- packet-role matching;
+- CFG/value-flow fingerprints;
+- no automatic promotion to mappings.
+
+## Phase E: research UX
+
+Expand the workbench into the primary navigation surface for generated evidence while keeping it static and reproducible:
+
+- class browser;
+- method browser;
+- bytecode/CFG/value-flow tabs;
+- packet browser;
+- decoder browser;
+- source ensemble;
+- mapping evidence;
+- transform lineage;
+- revision comparison.
+
+---
+
+# Non-goals
+
+This project does **not** need to:
+
+- invent a new Java decompiler;
+- execute or log in with analysis jars;
+- remove evidence just to make the jar smaller;
+- mutate files under `references/`;
+- automatically bless human-readable names;
+- make a Java class map one-for-one to a Rust type;
+- port behavior into Rust as a side effect of deobfuscation;
+- treat a normalized/decompiled representation as behavioral truth.
+
+The repository already pins two mature decompilers. The higher-value work is exact evidence, control/data-flow analysis, explainable mapping, transform lineage, and a research UI that makes all of those visible together.
+
+---
+
+# Compatibility with the existing pipeline
+
+v2 remains additive:
+
+- mapping shards stay tiny-v2;
+- ledger rows stay the readable-name authority;
+- `remap.sh` stays the rename mechanism;
+- `verify.sh` stays the rename-only verification path when explicitly run;
+- generated indexes, source, dossiers, and HTML stay under cache paths;
+- `references/` stays read-only;
+- no Rust implementation is generated;
+- `Client240Tool.java` and the current mapping verifier remain untouched while v2 matures.
+
+The desired end state is not a single “deobfuscated jar.” It is a **traceable deobfuscation system** where a researcher can move from readable class names and Java all the way down to the exact original instruction, packet read, field flow, branch, decoder, and revision mapping that justified the interpretation.
