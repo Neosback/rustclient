@@ -4,9 +4,9 @@ Status: **specified** for the revision-240 facing-state representation, target c
 
 ## Scope
 
-This cluster owns `classBZ`, `classLU`, `classLJ`, and `classLV`. It names the state object carried by `Actor.field1461`, the primary facing mode, the entity target kind, and the secondary policy controlling whether facing is gated by active movement. `Actor`, `classDC`, `classEB`, `classBT`, and `classKN` are read-only evidence and remain owned by their existing shards.
+This cluster owns `classBZ`, `classLU`, `classLJ`, and `classLV`. It names the state object carried by `Actor.field1461`, the primary facing mode, the entity target kind, and the secondary policy controlling whether facing is gated by active movement. `Actor`, `classDC`, `classDF`, `classAS`, `Player`, `NPC`, `classGA`, `classEB`, `classBT`, and `classKN` are read-only evidence and remain owned by their existing shards.
 
-Observed external referrers include `Actor`, `classDC`, `classEB`, and `classKN` through the desired/current-orientation lifecycle.
+Observed external referrers include `Actor`, `classDC`, `classEB`, and `classKN` through the desired/current-orientation lifecycle. The broader player/NPC synchronization corpus was also checked in the latest cleanup-writer audit.
 
 ## Mapping
 
@@ -62,7 +62,7 @@ Those primitive names are already established by the buffer/framing shard. Enum 
 
 ## Facing apply policy
 
-The two `classLV` values now have a safe behavior-level name because their only inspected consumers are explicit movement eligibility checks.
+The two `classLV` values have a safe behavior-level name because their inspected consumers are explicit movement eligibility checks.
 
 For explicit-angle facing, `Actor.method3216` behaves as follows:
 
@@ -101,14 +101,35 @@ After desired-facing resolution and movement/safety-reset work, `classKN.method6
 
 ## Target cleanup behavior
 
-`Actor.field1473` is still deliberately unnamed because the writer that sets it is not yet pinned. Its **consumer behavior**, however, is exact enough to document:
+`Actor.field1473` remains deliberately unnamed. Its **consumer behavior** is exact:
 
 - in `classEB.method3820`, if an entity target can no longer be resolved, no fallback angle is available, and `field1473` is set, the actor clears retained entity-facing state and then clears the flag;
 - in `classKN.method6539`, when current orientation has reached desired orientation, the same flag causes retained target state to be cleared and the flag reset;
-- `Actor.method3248` performs the relevant target-state reset through `classBZ.method1388`;
-- broader actor reset helpers also clear the flag.
+- `Actor.method3248` performs the target-state reset through `classBZ.method1388`;
+- actor construction and broader reset helpers initialize/reset the flag to `false`.
 
-So this is clearly a pending target-cleanup control, but assigning a final field name before finding the true writer would still be premature.
+The latest writer audit checked the direct exact-240 actor/synchronization paths rather than inferring from old-client names:
+
+- `Actor` contains initialization/reset-to-false and consumer-side clearing, but no `true` assignment;
+- `Player` and `NPC` contain no direct assignment;
+- `classDF` and `classDC` contain no direct assignment while managing player synchronization/facing propagation;
+- `classAS` contains no direct assignment while decoding NPC synchronization;
+- `classGA` contains no direct assignment while projecting NPC composition;
+- `classEB` and `classKN` consume the latch and clear it, but do not arm it.
+
+That proves the latch is not simply authored by the normal player/NPC facing update path. The operation that arms it is still outside the inspected direct runtime/synchronization corpus, so a final readable field name would remain premature. Keep `Actor.field1473` stable until that write site is pinned.
+
+## Turn-rate source boundary
+
+The same audit tightened the turn-rate ownership boundary:
+
+- `Actor.field1470` initializes to semantic `32`;
+- `classGA.method5325` projects `NPCComposition.field5297` into the NPC actor;
+- `NPCComposition.field5297` is authored by opcode `103`, with decode default `32`;
+- `classAS.method661` calls `classGA.method5325` and only reacts to a resulting zero rate by setting current orientation to zero; it does not author another rate;
+- `Player`, `NPC`, `classDF`, and `classDC` contain no direct turn-rate writer in the inspected sources.
+
+For the Rust port, cache-derived NPC policy may override the actor default, including with zero. Packet-local movement/facing decoders should not synthesize a second turn-rate source.
 
 ## Lifecycle and ordering
 
@@ -155,8 +176,8 @@ No ambiguous Vineflower labelled-break or collapsed-switch construct was needed 
 ## Handover
 
 - Full facing-target retention: preserve entity/area/apply-policy/control state through the protocol-to-GameState boundary instead of collapsing everything to an optional angle.
-- Target cleanup: find the reachable writer that sets `Actor.field1473` before assigning its final readable field name.
-- Turn-rate writers: constructor/default behavior and NPC definition projection are established; audit any remaining reachable writers before treating player turn rate as immutable.
+- Target cleanup: locate the write site that arms `Actor.field1473`; the normal actor/player/NPC synchronization corpus is now ruled out as a direct writer.
+- Turn rate: constructor/default + NPC opcode-103 definition projection are established for the normal actor path; widen the write-site census only if another reachable subsystem exposes a mutation.
 - Ordinary smooth turning itself is **closed as a source-location question**: `classKN.method6539` is the exact owner.
 
 ## Verification
