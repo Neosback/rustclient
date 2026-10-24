@@ -78,6 +78,15 @@ impl ActorPathQueue {
         self.len = u8::try_from(next_len).expect("actor path capacity fits u8");
     }
 
+    /// Remove and return the oldest active request, matching the stock scheduler's `len - 1`
+    /// consumption order.
+    pub(crate) fn pop_oldest(&mut self) -> Option<ActorPathEntry> {
+        let index = usize::from(self.len.checked_sub(1)?);
+        let entry = self.entries[index].take();
+        self.len -= 1;
+        entry
+    }
+
     pub(crate) fn clear(&mut self) {
         self.entries = [None; ACTOR_PATH_CAPACITY];
         self.len = 0;
@@ -107,6 +116,10 @@ mod tests {
             queue.iter().rev().map(|entry| entry.target).collect::<Vec<_>>(),
             vec![tile(1), tile(2), tile(3)]
         );
+        assert_eq!(queue.pop_oldest().unwrap().target, tile(1));
+        assert_eq!(queue.pop_oldest().unwrap().target, tile(2));
+        assert_eq!(queue.pop_oldest().unwrap().target, tile(3));
+        assert_eq!(queue.pop_oldest(), None);
     }
 
     #[test]
@@ -119,6 +132,7 @@ mod tests {
         assert_eq!(usize::from(queue.len()), ACTOR_PATH_CAPACITY);
         assert_eq!(queue.newest().unwrap().target, tile(9));
         assert_eq!(queue.oldest().unwrap().target, tile(1));
+        assert_eq!(queue.pop_oldest().unwrap().target, tile(1));
     }
 
     #[test]
@@ -128,5 +142,6 @@ mod tests {
         queue.clear();
         assert!(queue.is_empty());
         assert_eq!(queue.oldest(), None);
+        assert_eq!(queue.pop_oldest(), None);
     }
 }
