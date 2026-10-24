@@ -1,6 +1,6 @@
 //! Bounded authoritative actor path queue shared by players and NPCs.
 
-use rustclient_model::{FINE_UNITS_PER_TILE, MoveSpeed, WorldTile};
+use rustclient_model::{FINE_UNITS_PER_TILE, MoveSpeed, PathAccelerationPolicy, WorldTile};
 
 /// Maximum number of active path requests retained by revision-240 actor scheduling.
 pub const ACTOR_PATH_CAPACITY: usize = 9;
@@ -52,6 +52,9 @@ pub struct ActorPathQueue {
     /// first required. Once initialized this value is authoritative and must not be recomputed from
     /// the server-confirmed endpoint.
     fine_position: Option<ActorFinePosition>,
+    /// Definition-derived ordinary backlog acceleration. Players use the shared standard policy
+    /// directly; NPCs retain their resolved definition policy here so later cycles need no cache.
+    acceleration_policy: Option<PathAccelerationPolicy>,
 }
 
 impl Default for ActorPathQueue {
@@ -60,6 +63,7 @@ impl Default for ActorPathQueue {
             entries: [None; ACTOR_PATH_CAPACITY],
             len: 0,
             fine_position: None,
+            acceleration_policy: None,
         }
     }
 }
@@ -78,6 +82,11 @@ impl ActorPathQueue {
     #[must_use]
     pub const fn is_empty(self) -> bool {
         self.len == 0
+    }
+
+    #[must_use]
+    pub const fn acceleration_policy(self) -> Option<PathAccelerationPolicy> {
+        self.acceleration_policy
     }
 
     /// Current authoritative fine position, falling back to the actor's confirmed tile only until
@@ -120,6 +129,10 @@ impl ActorPathQueue {
         self.fine_position = Some(position);
     }
 
+    pub(crate) fn set_acceleration_policy(&mut self, policy: Option<PathAccelerationPolicy>) {
+        self.acceleration_policy = policy;
+    }
+
     pub(crate) fn enqueue(&mut self, target: WorldTile, speed: MoveSpeed) {
         let active = usize::from(self.len);
         let next_len = (active + 1).min(ACTOR_PATH_CAPACITY);
@@ -139,8 +152,8 @@ impl ActorPathQueue {
         entry
     }
 
-    /// Clear path requests while retaining the current fine position. Forced movement uses this
-    /// form because its approach phase begins from the actor's current sub-tile position.
+    /// Clear path requests while retaining the current fine position and definition policy. Forced
+    /// movement uses this form because its approach phase begins from the current sub-tile position.
     pub(crate) fn clear(&mut self) {
         self.entries = [None; ACTOR_PATH_CAPACITY];
         self.len = 0;
@@ -156,7 +169,7 @@ impl ActorPathQueue {
 #[cfg(test)]
 mod tests {
     use super::{ACTOR_PATH_CAPACITY, ActorFinePosition, ActorPathQueue};
-    use rustclient_model::{MoveSpeed, Plane, WorldTile};
+    use rustclient_model::{MoveSpeed, PathAccelerationPolicy, Plane, WorldTile};
 
     fn tile(x: i32) -> WorldTile {
         WorldTile::new(x, 0, Plane::MIN)
@@ -169,6 +182,17 @@ mod tests {
         queue.ensure_position(tile(3));
         queue.reset_to(tile(7));
         assert_eq!(queue.fine_position(tile(99)), ActorFinePosition::from_tile(tile(7)));
+    }
+
+    #[test]
+    fn definition_policy_survives_path_clear_and_reset() {
+        let mut queue = ActorPathQueue::default();
+        queue.set_acceleration_policy(Some(PathAccelerationPolicy::EARLY));
+        queue.enqueue(tile(1), MoveSpeed::Walk);
+        queue.clear();
+        assert_eq!(queue.acceleration_policy(), Some(PathAccelerationPolicy::EARLY));
+        queue.reset_to(tile(4));
+        assert_eq!(queue.acceleration_policy(), Some(PathAccelerationPolicy::EARLY));
     }
 
     #[test]
