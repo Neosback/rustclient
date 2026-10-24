@@ -1,12 +1,12 @@
 # 08 - actor facing state
 
-Status: **specified** for the revision-240 facing-state representation, target classification, and movement-gating policy. The ordinary turn mutator is independently traced in cluster 03 / `classKN.method6539`; this shard still does not claim full facing-target retention or Rust parity.
+Status: **specified** for the revision-240 facing-state representation, target classification, and movement-gating policy. The ordinary turn mutator is independently traced in cluster 03 / `classKN.method6539`; this shard still does not claim full facing-target retention or Rust parity. The remaining `Actor.field1473` arming writer is intentionally left unresolved after the focused source audit below and is no longer a naming-wave blocker.
 
 ## Scope
 
-This cluster owns `classBZ`, `classLU`, `classLJ`, and `classLV`. It names the state object carried by `Actor.field1461`, the primary facing mode, the entity target kind, and the secondary policy controlling whether facing is gated by active movement. `Actor`, `classDC`, `classDF`, `classAS`, `Player`, `NPC`, `classGA`, `classEB`, `classBT`, and `classKN` are read-only evidence and remain owned by their existing shards.
+This cluster owns `classBZ`, `classLU`, `classLJ`, and `classLV`. It names the state object carried by `Actor.field1461`, the primary facing mode, the entity target kind, and the secondary policy controlling whether facing is gated by active movement. `Actor`, `classDC`, `classDF`, `classAS`, `Player`, `NPC`, `classGA`, `classEB`, `classBT`, `classKN`, and `client` are read-only evidence and remain owned by their existing shards.
 
-Observed external referrers include `Actor`, `classDC`, `classEB`, and `classKN` through the desired/current-orientation lifecycle. The broader player/NPC synchronization corpus was also checked in the latest cleanup-writer audit.
+Observed external referrers include `Actor`, `classDC`, `classEB`, and `classKN` through the desired/current-orientation lifecycle. The broader player/NPC synchronization corpus and the semantic `client.java` dispatcher were also checked in the cleanup-writer audit.
 
 ## Mapping
 
@@ -108,16 +108,19 @@ After desired-facing resolution and movement/safety-reset work, `classKN.method6
 - `Actor.method3248` performs the target-state reset through `classBZ.method1388`;
 - actor construction and broader reset helpers initialize/reset the flag to `false`.
 
-The latest writer audit checked the direct exact-240 actor/synchronization paths rather than inferring from old-client names:
+The focused writer audit checked the direct exact-240 actor/synchronization path and the semantic top-level dispatcher rather than inferring from old-client names:
 
 - `Actor` contains initialization/reset-to-false and consumer-side clearing, but no `true` assignment;
 - `Player` and `NPC` contain no direct assignment;
 - `classDF` and `classDC` contain no direct assignment while managing player synchronization/facing propagation;
 - `classAS` contains no direct assignment while decoding NPC synchronization;
 - `classGA` contains no direct assignment while projecting NPC composition;
-- `classEB` and `classKN` consume the latch and clear it, but do not arm it.
+- `classEB` and `classKN` consume the latch and clear it, but do not arm it;
+- an exact-field search of the semantic `client.java` blob found `field1473` only in the same consumer/clear-to-false paths and found no `field1473 = true` assignment.
 
-That proves the latch is not simply authored by the normal player/NPC facing update path. The operation that arms it is still outside the inspected direct runtime/synchronization corpus, so a final readable field name would remain premature. Keep `Actor.field1473` stable until that write site is pinned.
+The RuneLite interaction-notification path is separate: `Actor.method3285` marks `Actor.field1481` pending event flags, and `Actor.method3224` invokes that hook before copying `classBZ`. It does not arm `field1473`.
+
+This is enough to stop treating the latch writer as a productive naming-wave search target. It does **not** prove that the writer never exists elsewhere in the archive, nor whether the missing provenance is stock, injected, indirect, or a decompilation artifact. Keep `Actor.field1473` stable and unnamed. Re-open the writer census only if Rust implementation/parity evidence makes the latch behavior observable and necessary.
 
 ## Turn-rate source boundary
 
@@ -152,16 +155,16 @@ Packet-time facing intent, policy eligibility, desired-orientation resolution, a
 Do not port `ActorFacingState` one-for-one as a Java-shaped object.
 
 - Header bits, smart reads, enum ordinals, and sentinels belong in `protocol::openrune_240`.
-- Normalized facing intent, `FacingApplyPolicy`, target identity, explicit angle/area, fallback state, and cleanup lifecycle belong in `game-state` actor semantics.
+- Normalized facing intent, `FacingApplyPolicy`, target identity, explicit angle/area, fallback state, and proven cleanup behavior belong in `game-state` actor semantics.
 - Target lookup and ordinary turn stepping are semantic `GameState` work.
 - NPC definition-authored turn rate belongs in cache-derived policy.
 - Scene/renderer consumes committed current orientation and must not own facing authority.
 
-A useful semantic shape is a typed facing intent (`None | Angle | Area | Entity`) plus a separate apply policy and snap/control state. Keeping policy separate prevents movement-gating rules from leaking back into protocol bytes or renderer logic.
+A useful semantic shape is a typed facing intent (`None | Angle | Area | Entity`) plus a separate apply policy and snap/control state. Keeping policy separate prevents movement-gating rules from leaking back into protocol bytes or renderer logic. Do not add a guessed Rust boolean corresponding to `Actor.field1473` until the arming semantics become observable or otherwise proven.
 
 ## Injection-only separation
 
-RuneLite API methods such as `Actor.getInteracting()` and `Actor.isInteracting()` expose this state to plugins. They are observability surfaces, not evidence that plugin callbacks or injected setters should own semantic state in RustClient.
+RuneLite API methods such as `Actor.getInteracting()` and `Actor.isInteracting()` expose this state to plugins. `Actor.method3285`/`field1481` also implement injected interaction-change notification. Those are observability/event surfaces and are distinct from the unresolved stock-style cleanup latch behavior; they are not evidence that plugin callbacks should own semantic facing state in RustClient.
 
 ## Client quirks and cautions
 
@@ -176,9 +179,10 @@ No ambiguous Vineflower labelled-break or collapsed-switch construct was needed 
 ## Handover
 
 - Full facing-target retention: preserve entity/area/apply-policy/control state through the protocol-to-GameState boundary instead of collapsing everything to an optional angle.
-- Target cleanup: locate the write site that arms `Actor.field1473`; the normal actor/player/NPC synchronization corpus is now ruled out as a direct writer.
+- `Actor.field1473`: keep the stable symbol and proven consumer behavior, but **do not spend another naming wave on its arming writer** unless implementation/parity evidence makes it necessary.
 - Turn rate: constructor/default + NPC opcode-103 definition projection are established for the normal actor path; widen the write-site census only if another reachable subsystem exposes a mutation.
 - Ordinary smooth turning itself is **closed as a source-location question**: `classKN.method6539` is the exact owner.
+- Next shared-runtime priority is action-sequence advancement/completion, followed by actor spot-animation lifecycle.
 
 ## Verification
 
