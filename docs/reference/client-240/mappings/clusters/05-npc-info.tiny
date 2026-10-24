@@ -1,0 +1,5 @@
+tiny	2	0	semantic	readable
+c	classAS	classAS
+	m	(Ldz;ZLxs;II)V	method661	decodeNpcInfo
+c	classKA	classKA
+	f	[I	field3506	npcDefinitionBitWidths

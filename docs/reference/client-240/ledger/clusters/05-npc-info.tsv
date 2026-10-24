@@ -1,0 +1,2 @@
+classAS.method661	classAS	en	decodeNpcInfo	method	T4	A	classAS.method661 performs the complete revision-240 NPC synchronization pass: old-list retention/removal and movement bits, new-NPC bit creation, endBitAccess, variable-length update-mask extension and ordered extended-state decoding	protocol::npc_sync	05-npc-info
+classKA.field3506	classKA	az	npcDefinitionBitWidths	field	T4	B	classAS.method661 reads a 2-bit selector and uses classKA.field3506[selector] as the bit width for the NPCComposition id; values are 12,14,17,24	protocol::npc_sync	05-npc-info
