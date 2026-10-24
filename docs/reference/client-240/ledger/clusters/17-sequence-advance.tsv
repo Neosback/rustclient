@@ -1,0 +1,1 @@
+classRD.method9980	classRD	az	advanceAnimationSequence	method	T4	B	Common revision-240 AnimationSequence advancement: tracks readiness, advances legacy or cached-model playback, writes controller state and returns loop/terminal/advanced/frame-step flags consumed by actor and world-effect schedulers	game-state::sequence_playback	17-sequence-advance
