@@ -1,11 +1,11 @@
 //! Authoritative per-client-cycle actor fine-position scheduling.
 //!
-//! This checkpoint moves ordinary queued player movement into `GameState`. Forced/exact movement
+//! Ordinary queued player and resolved-NPC movement lives in `GameState`. Forced/exact movement
 //! still has a legacy action-frame gate that is deliberately left in the scene projection until
 //! that remaining revision-240 dependency is implemented here too.
 
 use crate::{ActorFinePosition, ActorPathQueue, WorldEntitiesState};
-use rustclient_model::{ActorSequenceSlot, MoveSpeed, WorldTile};
+use rustclient_model::{ActorSequenceSlot, MoveSpeed, PathAccelerationPolicy, WorldTile};
 
 const SNAP_FINE_UNITS: i64 = 288;
 
@@ -18,23 +18,33 @@ pub(crate) enum ActorMovementCycle {
     Snapped,
 }
 
-/// Advance all visible players by one authoritative client cycle.
+/// Advance all ordinary visible actors by one authoritative client cycle.
 ///
-/// Movement is evaluated before the action-sequence delay is decremented for the same cycle. This
-/// preserves the revision-240 predicate that an action with a non-zero explicit delay does not yet
-/// block normal queued movement.
+/// The historical function name is retained to keep the existing entity-cycle call site small;
+/// this now advances players plus NPCs whose definition-derived acceleration policy was resolved.
+/// Movement is evaluated before the action-sequence delay is decremented for the same cycle.
 pub(crate) fn advance_players(entities: &mut WorldEntitiesState) {
     for player in entities.players.values_mut() {
         if player.exact_move.is_some() {
-            // Forced movement owns position while active. Keeping ordinary queue progression frozen
-            // here avoids conflicting with its still-unported legacy frame-boundary gate.
             continue;
         }
         advance_actor_cycle(
             &mut player.path_queue,
             &mut player.sequence,
             player.tile,
+            PathAccelerationPolicy::STANDARD,
         );
+    }
+
+    for npc in entities.npcs.values_mut() {
+        if npc.exact_move.is_some() {
+            continue;
+        }
+        let Some(policy) = npc.path_queue.acceleration_policy() else {
+            // Direct semantic fixtures may omit cache enrichment. Do not invent revision policy.
+            continue;
+        };
+        advance_actor_cycle(&mut npc.path_queue, &mut npc.sequence, npc.tile, policy);
     }
 }
 
@@ -50,6 +60,7 @@ fn advance_actor_cycle(
     path: &mut ActorPathQueue,
     sequence: &mut ActorSequenceSlot,
     fallback_tile: WorldTile,
+    acceleration: PathAccelerationPolicy,
 ) -> ActorMovementCycle {
     if path.is_empty() {
         path.ensure_position(fallback_tile);
@@ -73,11 +84,10 @@ fn advance_actor_cycle(
         return ActorMovementCycle::Snapped;
     }
 
-    // This is the stock normal acceleration branch without turn-slowing, the blocked-cycle
-    // catch-up counter, or the alternate NPC-definition thresholds. Those are explicit follow-ups.
-    let mut step = if path.len() > 3 {
+    let backlog = path.len();
+    let mut step = if backlog > acceleration.step_eight_after {
         8_i64
-    } else if path.len() > 2 {
+    } else if backlog > acceleration.step_six_after {
         6_i64
     } else {
         4_i64
@@ -106,7 +116,8 @@ mod tests {
     use super::{ActorMovementCycle, advance_actor_cycle};
     use crate::{ActorFinePosition, ActorPathQueue};
     use rustclient_model::{
-        ActorSequenceSlot, MoveSpeed, Plane, SequenceId, SequencePolicy, WorldTile,
+        ActorSequenceSlot, MoveSpeed, PathAccelerationPolicy, Plane, SequenceId, SequencePolicy,
+        WorldTile,
     };
 
     fn tile(x: i32, y: i32) -> WorldTile {
@@ -130,7 +141,12 @@ mod tests {
         path.enqueue(tile(1, 0), MoveSpeed::Walk);
         let mut sequence = ActorSequenceSlot::default();
         assert_eq!(
-            advance_actor_cycle(&mut path, &mut sequence, tile(1, 0)),
+            advance_actor_cycle(
+                &mut path,
+                &mut sequence,
+                tile(1, 0),
+                PathAccelerationPolicy::STANDARD,
+            ),
             ActorMovementCycle::Moving
         );
         assert_eq!(
@@ -147,7 +163,12 @@ mod tests {
         path.enqueue(tile(4, 0), MoveSpeed::Walk);
         let mut sequence = ActorSequenceSlot::default();
         assert_eq!(
-            advance_actor_cycle(&mut path, &mut sequence, tile(4, 0)),
+            advance_actor_cycle(
+                &mut path,
+                &mut sequence,
+                tile(4, 0),
+                PathAccelerationPolicy::STANDARD,
+            ),
             ActorMovementCycle::Snapped
         );
         assert_eq!(
@@ -165,7 +186,12 @@ mod tests {
         let mut sequence = ActorSequenceSlot::default();
         sequence.assign_sequence(Some((SequenceId::new(10), policy(0, 1))), 0, 1);
         assert_eq!(
-            advance_actor_cycle(&mut path, &mut sequence, tile(1, 0)),
+            advance_actor_cycle(
+                &mut path,
+                &mut sequence,
+                tile(1, 0),
+                PathAccelerationPolicy::STANDARD,
+            ),
             ActorMovementCycle::Blocked
         );
         assert_eq!(
@@ -181,19 +207,57 @@ mod tests {
         path.ensure_position(tile(0, 0));
         path.enqueue(tile(1, 0), MoveSpeed::Run);
         let mut sequence = ActorSequenceSlot::default();
-        advance_actor_cycle(&mut path, &mut sequence, tile(1, 0));
+        advance_actor_cycle(
+            &mut path,
+            &mut sequence,
+            tile(1, 0),
+            PathAccelerationPolicy::STANDARD,
+        );
         assert_eq!(path.fine_position(tile(0, 0)).x, 8);
     }
 
     #[test]
-    fn backlog_acceleration_uses_stock_normal_thresholds() {
+    fn standard_backlog_acceleration_uses_player_thresholds() {
         let mut path = ActorPathQueue::default();
         path.ensure_position(tile(0, 0));
-        for x in 1..=4 {
+        for x in 1..=3 {
             path.enqueue(tile(x, 0), MoveSpeed::Walk);
         }
         let mut sequence = ActorSequenceSlot::default();
-        advance_actor_cycle(&mut path, &mut sequence, tile(4, 0));
-        assert_eq!(path.fine_position(tile(0, 0)).x, 8);
+        advance_actor_cycle(
+            &mut path,
+            &mut sequence,
+            tile(3, 0),
+            PathAccelerationPolicy::STANDARD,
+        );
+        assert_eq!(path.fine_position(tile(0, 0)).x, 6);
+    }
+
+    #[test]
+    fn early_npc_backlog_acceleration_moves_one_entry_sooner() {
+        let mut standard = ActorPathQueue::default();
+        let mut early = ActorPathQueue::default();
+        standard.ensure_position(tile(0, 0));
+        early.ensure_position(tile(0, 0));
+        for x in 1..=2 {
+            standard.enqueue(tile(x, 0), MoveSpeed::Walk);
+            early.enqueue(tile(x, 0), MoveSpeed::Walk);
+        }
+        let mut standard_sequence = ActorSequenceSlot::default();
+        let mut early_sequence = ActorSequenceSlot::default();
+        advance_actor_cycle(
+            &mut standard,
+            &mut standard_sequence,
+            tile(2, 0),
+            PathAccelerationPolicy::STANDARD,
+        );
+        advance_actor_cycle(
+            &mut early,
+            &mut early_sequence,
+            tile(2, 0),
+            PathAccelerationPolicy::EARLY,
+        );
+        assert_eq!(standard.fine_position(tile(0, 0)).x, 4);
+        assert_eq!(early.fine_position(tile(0, 0)).x, 6);
     }
 }
