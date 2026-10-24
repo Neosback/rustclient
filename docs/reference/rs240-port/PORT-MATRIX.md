@@ -22,8 +22,8 @@ canonical for behaviors they already cover.
 | P0 | Login/bootstrap/session | `GameEngine.java`, `client.java`, login classes, initial player bit stream | `protocol`, `application`, `game-state::connection` | partial/verified for current OpenRune flow | Catalog every response/state transition, rebuild/reconnect path and region/bootstrap dependency |
 | P0 | Player list synchronization | `classDF.java`, `classDC.java`, `Player.java` | `protocol::openrune_240::player_info`, `game-state::players/entities/player_movement` | partial with strong existing audit | Fill all extended masks that are currently only consumed, then finish lifecycle and scheduler cross-effects |
 | P0 | NPC list synchronization | `classAS.java`, `NPC.java`, `NPCComposition.java`, related update helpers | `protocol::openrune_240::npc_info`, `game-state::npcs/entities` | partial with strong existing audit | Method-map every remaining NPC mask and lifecycle branch, especially cosmetic/effect state |
-| P0 | Actor path scheduler | `Actor.java`, `classDC.java`, `classGT.java` | `game-state::entities`, `player_movement`, `npcs`; scene projection consumes state | partial | Trace per-cycle normal path scheduling, movement blocking, catch-up, traversal speeds and facing interaction |
-| P0 | Action/sequence scheduler | `classCU.java`, `Actor.java`, `Animation.java` | `model::ActorSequenceSlot`, `game-state` semantic scheduler + `scene` pose preparation | partial: definition policy retained and exact slot assignment implemented; packet-time policy resolution not yet wired | Add cache-backed policy resolution before GameState packet application, then implement finite completion/loops and movement gating |
+| P0 | Actor path scheduler | `Actor.java`, `classDC.java`, `classGT.java` | `game-state::entities`, `player_movement`, `npcs`; scene projection consumes state | partial | Implement the bounded oldest-first path queue, assignment backlog, per-cycle movement gates, catch-up and traversal-speed scheduling |
+| P0 | Action/sequence scheduler | `classCU.java`, `Actor.java`, `Animation.java` | `cache::osrs240::sequence_policy`, `application::SequencePolicyResolver`, `model::ActorSequenceSlot`, `game-state::sequence_scheduler`, `scene` pose preparation | partial: revision-240 policy is resolved from cache before native GameState application; priority and same-ID restart semantics are authoritative and fingerprinted | Replace the temporary zero backlog with the actor path queue, then implement movement gating plus finite completion/loop semantics |
 | P0 | Facing/turning/targets | `Actor.java`, `Player.java`, `NPC.java`, entity-target lookup helpers | `game-state::entities`; `scene` projection | partial | Trace target indexes, explicit face angles/tiles, turn rate, turn-left/right/walk selection and target disappearance |
 | P0 | Player appearance | `Player.java`, `PlayerComposition.java`, update-mask handler | `game-state::players`, `cache`, `scene` | partial | Decode/retain complete appearance state, transforms/customization, sequence defaults and model-cache invalidation rules |
 | P0 | NPC definitions and morphs | `NPCComposition.java`, `NPC.java` | `cache`, `scene`, `game-state` vars | partial/verified for important morph behavior | Finish override/customization fields, model dependencies and morph edge cases used by 240 cache |
@@ -95,15 +95,16 @@ player/NPC framing and movement. The most valuable next research is therefore no
 to rediscover those packet loops. It is to close the runtime semantics that those
 packets feed:
 
-1. wire the resolved sequence policy into player/NPC packet application before GameState mutation;
-2. finite action completion/looping and action movement-blocking rules;
-3. target-following, turn rate and directional turn/walk/run selection;
-4. spot animations, hits/headbars, overhead state, tint/transparency and other
+1. implement the bounded actor path queue and capture the real assignment-time backlog;
+2. apply the two resolved action movement gates during per-cycle path scheduling;
+3. finish finite action completion/looping semantics;
+4. target-following, turn rate and directional turn/walk/run selection;
+5. spot animations, hits/headbars, overhead state, tint/transparency and other
    currently consumed-but-not-retained update blocks;
-5. player appearance details and model invalidation;
-6. projectile/graphics-object lifetime and pose behavior;
-7. region rebuild/base-shift semantics; then
-8. widgets + CS2 + complete menu/input action flow.
+6. player appearance details and model invalidation;
+7. projectile/graphics-object lifetime and pose behavior;
+8. region rebuild/base-shift semantics; then
+9. widgets + CS2 + complete menu/input action flow.
 
 Those gaps connect already-decoded network state to the visible/client-script
 behavior that makes the Rust client feel correct.
