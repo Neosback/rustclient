@@ -1,36 +1,36 @@
-//! Projection facade that keeps ordinary player position sourced from authoritative `GameState`.
+//! Projection facade that sources ordinary actor translation from authoritative `GameState`.
 //!
-//! The legacy motion projector still owns disposable pose/turn state and NPC interpolation. For
-//! ordinary players, however, the drawn footprint corner is copied from
-//! `ActorPathQueue::fine_position`, so rendering, camera and minimap consumers no longer run a
-//! second positional scheduler. Exact/forced player movement remains on the legacy projection until
-//! its frame-boundary gate is moved into `GameState`.
+//! The legacy motion projector still owns disposable pose/turn state and forced-movement
+//! interpolation. Ordinary players and NPCs with resolved path policy copy their drawn footprint
+//! corner from `ActorPathQueue::fine_position`, so rendering consumers do not run a second ordinary
+//! positional scheduler.
 
 use crate::motion::{ActorMotion as LegacyActorMotion, ActorPose};
 use rustclient_game_state::{ActorFinePosition, WorldEntitiesState};
 use rustclient_model::{ClientCycle, NpcIndex, PlayerIndex};
 use std::collections::{BTreeMap, BTreeSet};
 
-/// Disposable draw projection with authoritative ordinary-player positions.
+/// Disposable draw projection with authoritative ordinary actor positions.
 #[derive(Debug, Default)]
 pub struct ActorMotion {
     legacy: LegacyActorMotion,
     player_positions: BTreeMap<PlayerIndex, [i32; 2]>,
+    npc_positions: BTreeMap<NpcIndex, [i32; 2]>,
     exact_players: BTreeSet<PlayerIndex>,
 }
 
 impl ActorMotion {
-    /// Reconcile disposable pose/NPC state and snapshot authoritative player fine positions.
+    /// Reconcile disposable pose state and snapshot authoritative ordinary fine positions.
     pub fn observe(&mut self, entities: &WorldEntitiesState, cycle: ClientCycle) {
         self.legacy.observe(entities, cycle);
         self.player_positions
             .retain(|index, _| entities.players().contains_key(index));
+        self.npc_positions
+            .retain(|index, _| entities.npcs().contains_key(index));
         self.exact_players.clear();
 
         for (index, player) in entities.players() {
             if player.exact_move.is_some() {
-                // Exact movement has not yet moved into authoritative fine scheduling. Preserve the
-                // existing projection only for that explicitly documented boundary.
                 self.exact_players.insert(*index);
                 continue;
             }
@@ -39,20 +39,30 @@ impl ActorMotion {
                 scene_position(player.path_queue.fine_position(player.tile)),
             );
         }
+
+        for (index, npc) in entities.npcs() {
+            if npc.exact_move.is_some() || npc.path_queue.acceleration_policy().is_none() {
+                // Forced movement is still projection-owned. An unresolved direct fixture also
+                // stays on the legacy path instead of pretending a cache policy was known.
+                self.npc_positions.remove(index);
+                continue;
+            }
+            self.npc_positions.insert(
+                *index,
+                scene_position(npc.path_queue.fine_position(npc.tile)),
+            );
+        }
     }
 
-    /// Advance disposable pose/turn/NPC projection state.
+    /// Advance disposable pose/turn and forced-movement projection state.
     ///
-    /// Ordinary player position returned by [`Self::player`] is never read from this legacy
-    /// advancement path, so this cannot become a competing player-position authority.
+    /// Ordinary positions returned by [`Self::player`] and [`Self::npc`] are not read from this
+    /// legacy advancement path once their authoritative scheduler inputs are available.
     pub fn advance(&mut self, cycles: u32) {
         self.legacy.advance(cycles);
     }
 
     /// Footprint corner of a player in world fine units.
-    ///
-    /// Ordinary movement is sourced from authoritative GameState fine position. Exact movement is
-    /// temporarily delegated to the legacy projector until its scheduler is ported.
     #[must_use]
     pub fn player(&self, index: PlayerIndex) -> Option<[i32; 2]> {
         if self.exact_players.contains(&index) {
@@ -77,9 +87,15 @@ impl ActorMotion {
     }
 
     /// Footprint corner of an NPC in world fine units.
+    ///
+    /// Resolved ordinary movement comes from GameState. Forced movement and unresolved direct
+    /// fixtures temporarily fall back to the legacy projector.
     #[must_use]
     pub fn npc(&self, index: NpcIndex) -> Option<[i32; 2]> {
-        self.legacy.npc(index)
+        self.npc_positions
+            .get(&index)
+            .copied()
+            .or_else(|| self.legacy.npc(index))
     }
 }
 
