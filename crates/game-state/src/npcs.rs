@@ -233,6 +233,7 @@ impl WorldEntitiesState {
                     path_queue,
                     exact_move: None,
                     orientation: npc.orientation,
+                    current_orientation: npc.orientation,
                     sequence: rustclient_model::ActorSequenceSlot::default(),
                     sequence_timing_resolved: false,
                     animation_cycle: 0,
