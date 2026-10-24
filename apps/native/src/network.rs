@@ -1,7 +1,7 @@
 //! Native composition only: paths, entropy, TCP and worker lifetime.
 use crate::LoadEvent;
-use rustclient_application::ConnectionDecoder;
-use rustclient_cache::Cache;
+use rustclient_application::{ConnectionDecoder, SequencePolicyResolver};
+use rustclient_cache::{Cache, CacheProfile};
 use rustclient_game_state::{LoginFailure, SemanticOperation};
 use rustclient_platform::{ByteStream, TransportError};
 use rustclient_platform_native::{ConnectionCancellation, DirectoryBlobs, NativeTcp};
@@ -20,6 +20,7 @@ use winit::event_loop::EventLoopProxy;
 #[derive(Clone)]
 pub(super) struct ConnectionOptions {
     pub profile: ServerProfile,
+    pub cache_profile: CacheProfile,
     pub host: String,
     pub port: u16,
     pub public_key: PathBuf,
@@ -91,7 +92,14 @@ type Failure = (LoginFailure, String);
 fn prepare(
     options: &ConnectionOptions,
     cancel: &ConnectionCancellation,
-) -> Result<(PublicKey, rustclient_protocol::LoginChecksums), Failure> {
+) -> Result<
+    (
+        PublicKey,
+        rustclient_protocol::LoginChecksums,
+        Cache<DirectoryBlobs>,
+    ),
+    Failure,
+> {
     let failure = |category, error: String| (category, error);
     let cache = DirectoryBlobs::open(&options.cache_dir)
         .map_err(|e| failure(LoginFailure::CacheMismatch, e.to_string()))
@@ -132,7 +140,7 @@ fn prepare(
         )
     })?;
     drop(js5);
-    Ok((key, crcs))
+    Ok((key, crcs, cache))
 }
 fn open_session(
     options: &ConnectionOptions,
@@ -140,10 +148,17 @@ fn open_session(
     window: rustclient_model::WindowMetrics,
     cancel: &ConnectionCancellation,
     emit: &impl Fn(NetworkEvent),
-) -> Result<(NativeTcp, ConnectionDecoder), Failure> {
+) -> Result<
+    (
+        NativeTcp,
+        ConnectionDecoder,
+        SequencePolicyResolver<DirectoryBlobs>,
+    ),
+    Failure,
+> {
     let failure = |category, error: String| (category, error);
     emit(NetworkEvent::Progress("Checking cache compatibility"));
-    let (key, crcs) = prepare(options, cancel)?;
+    let (key, crcs, cache) = prepare(options, cancel)?;
     let connect = || {
         NativeTcp::connect(&options.host, options.port, cancel.clone())
             .map_err(|e| failure(LoginFailure::Connection, e.to_string()))
@@ -194,7 +209,8 @@ fn open_session(
         ),
     )
     .map_err(|e| failure(LoginFailure::Disconnected, e.to_string()))?;
-    Ok((stream, decoder))
+    let sequence_policies = SequencePolicyResolver::new(cache, options.cache_profile);
+    Ok((stream, decoder, sequence_policies))
 }
 fn run(
     options: &ConnectionOptions,
@@ -205,7 +221,8 @@ fn run(
     emit: &impl Fn(NetworkEvent),
 ) -> Result<(), Failure> {
     let failure = |category, error: String| (category, error);
-    let (mut stream, mut decoder) = open_session(options, credentials, window, cancel, emit)?;
+    let (mut stream, mut decoder, mut sequence_policies) =
+        open_session(options, credentials, window, cancel, emit)?;
     let bootstrap_deadline = Instant::now() + Duration::from_secs(15);
     let mut next_heartbeat = Instant::now() + Duration::from_secs(5);
     let mut bytes = [0; 16384];
@@ -226,10 +243,33 @@ fn run(
             }
             Ok(n) => {
                 last_received = Instant::now();
+                let mut policy_error = None;
                 let connected = decoder
                     .receive_inputs(&bytes[..n], |input| {
-                        let op=match input {rustclient_application::ConnectionInput::Operation(op)=>op,rustclient_application::ConnectionInput::Script(request)=>{interface_epoch=interface_epoch.wrapping_add(1);emit(NetworkEvent::Script(interface_epoch,request));return;}};
-                        if matches!(&op,SemanticOperation::Interface(_)|SemanticOperation::Inventory(_)){interface_epoch=interface_epoch.wrapping_add(1);}
+                        if policy_error.is_some() {
+                            return;
+                        }
+                        let op = match input {
+                            rustclient_application::ConnectionInput::Operation(op) => op,
+                            rustclient_application::ConnectionInput::Script(request) => {
+                                interface_epoch = interface_epoch.wrapping_add(1);
+                                emit(NetworkEvent::Script(interface_epoch, request));
+                                return;
+                            }
+                        };
+                        let op = match sequence_policies.resolve_operation(op) {
+                            Ok(op) => op,
+                            Err(error) => {
+                                policy_error = Some(error.to_string());
+                                return;
+                            }
+                        };
+                        if matches!(
+                            &op,
+                            SemanticOperation::Interface(_) | SemanticOperation::Inventory(_)
+                        ) {
+                            interface_epoch = interface_epoch.wrapping_add(1);
+                        }
                         if matches!(
                             op,
                             SemanticOperation::EstablishInitialPlacement(_)
@@ -241,6 +281,12 @@ fn run(
                         emit(NetworkEvent::Operation(map_epoch, interface_epoch, op));
                     })
                     .map_err(|e| failure(LoginFailure::Protocol, e.to_string()))?;
+                if let Some(error) = policy_error {
+                    return Err(failure(
+                        LoginFailure::CacheMismatch,
+                        format!("sequence scheduling policy: {error}"),
+                    ));
+                }
                 if !connected {
                     return Err(failure(
                         LoginFailure::Disconnected,

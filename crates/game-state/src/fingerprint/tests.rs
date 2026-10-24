@@ -19,11 +19,11 @@ fn run_operations(operations: &[SemanticOperation]) -> (GameState, CommitStreamF
 }
 
 #[test]
-fn state_fingerprint_v16_has_exact_regression_vectors() {
+fn state_fingerprint_v23_has_exact_regression_vectors() {
     let mut state = GameState::new();
     assert_eq!(
         state.semantic_fingerprint().get(),
-        13_106_773_751_953_311_645
+        17_110_043_786_423_888_958
     );
 
     state
@@ -35,7 +35,7 @@ fn state_fingerprint_v16_has_exact_regression_vectors() {
 
     assert_eq!(
         state.semantic_fingerprint().get(),
-        10_190_475_705_488_636_671
+        18_012_300_398_216_534_442
     );
 }
 
@@ -90,8 +90,134 @@ fn state_fingerprint_distinguishes_revision_identity() {
     );
     assert_eq!(
         subrevision.semantic_fingerprint().get(),
-        6_392_671_347_810_390_634
+        17_311_525_448_509_257_931
     );
+}
+
+#[test]
+fn npc_path_policy_catch_up_and_current_orientation_participate_in_canonical_state() {
+    use rustclient_model::{
+        ActionMask, ActorSequenceSlot, NpcDefinitionId, NpcIndex, NpcInstanceId,
+        PathAccelerationPolicy, Plane, WorldTile,
+    };
+
+    fn state_with_policy(policy: PathAccelerationPolicy) -> GameState {
+        let mut state = GameState::new();
+        state
+            .apply_operation(BEGIN_240)
+            .expect("inactive state can begin a session");
+        let tile = WorldTile::new(3200, 3200, Plane::MIN);
+        let mut path_queue = crate::ActorPathQueue::default();
+        path_queue.set_acceleration_policy(Some(policy));
+        state.entities.npcs.insert(
+            NpcIndex::new(1),
+            crate::NpcEntity {
+                index: NpcIndex::new(1),
+                instance: NpcInstanceId::new(1),
+                definition_id: NpcDefinitionId::new(1),
+                tile,
+                path: None,
+                path_queue,
+                exact_move: None,
+                orientation: 0,
+                current_orientation: 0,
+                sequence: ActorSequenceSlot::default(),
+                sequence_timing_resolved: false,
+                name: None,
+                actions: ActionMask::ALL,
+                locomotion: crate::Locomotion::Idle,
+                animation_cycle: 0,
+            },
+        );
+        state.entities.npc_serial = 1;
+        state
+    }
+
+    let standard = state_with_policy(PathAccelerationPolicy::STANDARD);
+    let early = state_with_policy(PathAccelerationPolicy::EARLY);
+    assert_ne!(standard.semantic_fingerprint(), early.semantic_fingerprint());
+
+    let mut with_debt = state_with_policy(PathAccelerationPolicy::STANDARD);
+    with_debt
+        .entities
+        .npcs
+        .get_mut(&rustclient_model::NpcIndex::new(1))
+        .expect("fixture NPC exists")
+        .path_queue
+        .increment_catch_up();
+    assert_ne!(standard.semantic_fingerprint(), with_debt.semantic_fingerprint());
+
+    let mut turned = state_with_policy(PathAccelerationPolicy::STANDARD);
+    turned
+        .entities
+        .npcs
+        .get_mut(&rustclient_model::NpcIndex::new(1))
+        .expect("fixture NPC exists")
+        .current_orientation = 512;
+    assert_ne!(standard.semantic_fingerprint(), turned.semantic_fingerprint());
+}
+
+#[test]
+fn active_sequence_timing_resolution_participates_in_canonical_state() {
+    use rustclient_model::{
+        ActionMask, ActorSequenceSlot, NpcDefinitionId, NpcIndex, NpcInstanceId,
+        PathAccelerationPolicy, Plane, SequenceId, SequencePolicy, SequenceTiming, WorldTile,
+    };
+
+    fn state_with_timing(timing: Option<SequenceTiming>) -> GameState {
+        let mut state = GameState::new();
+        state
+            .apply_operation(BEGIN_240)
+            .expect("inactive state can begin a session");
+        let sequence_id = SequenceId::new(7);
+        let policy = SequencePolicy {
+            restart_mode: 2,
+            replacement_priority: 5,
+            movement_gate_with_backlog: 1,
+            movement_gate_without_backlog: 1,
+            max_loops: 99,
+        };
+        let mut sequence = ActorSequenceSlot::default();
+        sequence.assign_sequence(Some((sequence_id, policy)), 0, 0);
+        let mut path_queue = crate::ActorPathQueue::default();
+        path_queue.set_acceleration_policy(Some(PathAccelerationPolicy::STANDARD));
+        state.entities.npcs.insert(
+            NpcIndex::new(1),
+            crate::NpcEntity {
+                index: NpcIndex::new(1),
+                instance: NpcInstanceId::new(1),
+                definition_id: NpcDefinitionId::new(1),
+                tile: WorldTile::new(3200, 3200, Plane::MIN),
+                path: None,
+                path_queue,
+                exact_move: None,
+                orientation: 0,
+                current_orientation: 0,
+                sequence,
+                sequence_timing_resolved: timing.is_some(),
+                name: None,
+                actions: ActionMask::ALL,
+                locomotion: crate::Locomotion::Idle,
+                animation_cycle: 0,
+            },
+        );
+        state.entities.npc_serial = 1;
+        if let Some(timing) = timing {
+            state.entities.sequence_timings.insert(sequence_id, timing);
+        }
+        state
+    }
+
+    let unresolved = state_with_timing(None);
+    let legacy = state_with_timing(Some(SequenceTiming::Legacy {
+        frame_delays: vec![2, 3],
+        frame_step: Some(2),
+    }));
+    let cached = state_with_timing(Some(SequenceTiming::CachedModel {
+        range: Some((0, 5)),
+    }));
+    assert_ne!(unresolved.semantic_fingerprint(), legacy.semantic_fingerprint());
+    assert_ne!(legacy.semantic_fingerprint(), cached.semantic_fingerprint());
 }
 
 #[test]
@@ -113,7 +239,7 @@ fn equivalent_observable_state_has_equivalent_fingerprint() {
 }
 
 #[test]
-fn commit_stream_fingerprint_v16_has_exact_regression_vector() {
+fn commit_stream_fingerprint_v23_has_exact_regression_vector() {
     let operations = [
         BEGIN_240,
         SemanticOperation::AdvanceTick(TickSpan::new(2)),
@@ -122,10 +248,10 @@ fn commit_stream_fingerprint_v16_has_exact_regression_vector() {
     ];
     let (_, fingerprint) = run_operations(&operations);
 
-    assert_eq!(fingerprint.get(), 10_395_866_910_311_550_467);
+    assert_eq!(fingerprint.get(), 6_206_448_854_425_763_638);
     assert_eq!(
         CommitStreamFingerprintBuilder::new().finish().get(),
-        10_566_103_509_052_713_974
+        12_438_599_299_192_874_999
     );
 }
 

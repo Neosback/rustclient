@@ -1,6 +1,6 @@
 //! Semantic entity types: player appearance, slots, animation slots, and actor states.
 
-use crate::{ItemDefinitionId, KitId, SequenceId};
+use crate::{ItemDefinitionId, KitId, SequenceId, SequencePolicy};
 
 /// Total appearance body slots in client order.
 pub const APPEARANCE_SLOTS: usize = 12;
@@ -71,13 +71,38 @@ impl Default for PlayerAppearance {
     }
 }
 
-/// Runtime playback state for an entity animation sequence slot.
+/// Result of applying one action-sequence assignment to an actor slot.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum SequenceAssignmentOutcome {
+    /// The action slot was cleared.
+    Cleared,
+    /// A different sequence was accepted and became active.
+    Replaced,
+    /// Same sequence, restart mode 1: playback and supplied delay were reset.
+    Restarted,
+    /// Same sequence, restart mode 2: only the iteration counter was reset.
+    IterationReset,
+    /// Same sequence with a restart mode that does not mutate playback.
+    Unchanged,
+    /// A lower-priority replacement was rejected.
+    RejectedPriority,
+    /// The active legacy slot has no policy, so replacement priority cannot be decided safely.
+    MissingCurrentPolicy,
+}
+
+/// Runtime playback state for an entity action-animation sequence slot.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct ActorSequenceSlot {
     pub sequence: Option<SequenceId>,
+    /// Resolved definition policy for the active action sequence.
+    pub policy: Option<SequencePolicy>,
     pub frame: Option<u32>,
     pub cycle: i32,
     pub delay: i32,
+    /// Playback iteration counter. Restart mode 2 resets only this value.
+    pub iterations: u32,
+    /// Number of path entries that predated the currently accepted action assignment.
+    pub path_backlog_at_assignment: u32,
 }
 
 impl ActorSequenceSlot {
@@ -86,13 +111,85 @@ impl ActorSequenceSlot {
         self.sequence.is_some()
     }
 
+    /// Apply an action-sequence assignment using already-resolved semantic policy.
+    ///
+    /// The behavior matches the revision-240 action assignment control flow without embedding
+    /// revision/cache knowledge here:
+    ///
+    /// - same id consults the active definition's restart mode and returns before priority checks,
+    /// - restart mode 1 fully resets playback and reapplies the supplied delay,
+    /// - restart mode 2 resets only the iteration counter,
+    /// - a different lower-priority sequence is rejected,
+    /// - accepted replacement captures the path backlog that existed at assignment time.
+    ///
+    /// `MissingCurrentPolicy` is intentionally non-mutating. A caller must resolve the active
+    /// sequence definition before it can make an exact different-id priority decision.
+    pub fn assign_sequence(
+        &mut self,
+        assignment: Option<(SequenceId, SequencePolicy)>,
+        delay: i32,
+        path_backlog: u32,
+    ) -> SequenceAssignmentOutcome {
+        let Some((sequence, incoming_policy)) = assignment else {
+            self.clear();
+            return SequenceAssignmentOutcome::Cleared;
+        };
+
+        if self.sequence == Some(sequence) {
+            // Revision 240 reads the current sequence definition for same-id restart behavior.
+            // A legacy slot may not have retained it, but the newly resolved definition is the
+            // same sequence and can safely repair that missing policy before applying the mode.
+            let active_policy = self.policy.unwrap_or(incoming_policy);
+            self.policy = Some(active_policy);
+            return match active_policy.restart_mode {
+                1 => {
+                    self.reset_playback(delay);
+                    SequenceAssignmentOutcome::Restarted
+                }
+                2 => {
+                    self.iterations = 0;
+                    SequenceAssignmentOutcome::IterationReset
+                }
+                _ => SequenceAssignmentOutcome::Unchanged,
+            };
+        }
+
+        if self.sequence.is_some() {
+            let Some(active_policy) = self.policy else {
+                return SequenceAssignmentOutcome::MissingCurrentPolicy;
+            };
+            if incoming_policy.replacement_priority < active_policy.replacement_priority {
+                return SequenceAssignmentOutcome::RejectedPriority;
+            }
+        }
+
+        self.sequence = Some(sequence);
+        self.policy = Some(incoming_policy);
+        self.reset_playback(delay);
+        self.path_backlog_at_assignment = path_backlog;
+        SequenceAssignmentOutcome::Replaced
+    }
+
+    /// Transitional unpolicy assignment used by packet paths that have not yet been connected to
+    /// the sequence-policy resolver. It deliberately clears retained policy so a later exact
+    /// replacement cannot accidentally use stale definition metadata.
     pub fn set_sequence(&mut self, sequence: Option<SequenceId>, delay: i32) {
         if self.sequence != sequence {
             self.sequence = sequence;
-            self.frame = Some(0);
+            self.policy = None;
+            self.frame = sequence.map(|_| 0);
             self.cycle = 0;
             self.delay = delay;
+            self.iterations = 0;
+            self.path_backlog_at_assignment = 0;
         }
+    }
+
+    fn reset_playback(&mut self, delay: i32) {
+        self.frame = Some(0);
+        self.cycle = 0;
+        self.delay = delay;
+        self.iterations = 0;
     }
 
     /// Advance action playback after consuming its explicit start delay.
@@ -107,9 +204,12 @@ impl ActorSequenceSlot {
     }
     pub fn clear(&mut self) {
         self.sequence = None;
+        self.policy = None;
         self.frame = None;
         self.cycle = 0;
         self.delay = 0;
+        self.iterations = 0;
+        self.path_backlog_at_assignment = 0;
     }
 }
 
@@ -178,6 +278,12 @@ pub struct PlayerInfoUpdate {
     pub local_appearance: Option<PlayerAppearance>,
     pub local_sequence: SequenceChange,
     pub local_sequence_delay: u8,
+    /// Resolved scheduling definitions attached by application orchestration after protocol decode.
+    /// An empty table preserves compatibility with direct semantic fixtures that have no cache.
+    pub sequence_policies: Vec<(SequenceId, SequencePolicy)>,
+    /// Resolved playback timing attached with the same sequence definitions. This is immutable
+    /// cache-derived input for client-cycle scheduling such as forced-movement frame gating.
+    pub sequence_timings: Vec<(SequenceId, crate::SequenceTiming)>,
     pub local_facing: Option<u16>,
     pub remote: Vec<RemotePlayerUpdate>,
 }
@@ -295,6 +401,15 @@ pub struct NpcInfoUpdate {
     pub new_npcs: Vec<NewNpc>,
     pub movements: Vec<NpcMovement>,
     pub removals: Vec<crate::NpcIndex>,
+    /// Resolved scheduling definitions attached by application orchestration after protocol decode.
+    /// An empty table preserves compatibility with direct semantic fixtures that have no cache.
+    pub sequence_policies: Vec<(SequenceId, SequencePolicy)>,
+    /// Resolved playback timing attached with the same sequence definitions.
+    pub sequence_timings: Vec<(SequenceId, crate::SequenceTiming)>,
+    /// Resolved definition-derived path acceleration attached after protocol decode.
+    /// An empty table leaves direct semantic fixtures unresolved instead of guessing cache policy.
+    pub path_acceleration_policies:
+        Vec<(crate::NpcDefinitionId, crate::PathAccelerationPolicy)>,
 }
 
 /// Server-authored changes to a visible NPC, applied in packet block order.
@@ -329,5 +444,120 @@ mod tracking_tests {
             PlayerTrackingGrid::new(8192, 256).unwrap().extent(),
             2_097_152
         );
+    }
+}
+
+#[cfg(test)]
+mod sequence_assignment_tests {
+    use super::{ActorSequenceSlot, SequenceAssignmentOutcome};
+    use crate::{SequenceId, SequencePolicy};
+
+    const fn policy(restart_mode: u8, priority: u8) -> SequencePolicy {
+        SequencePolicy {
+            restart_mode,
+            replacement_priority: priority,
+            movement_gate_with_backlog: 0,
+            movement_gate_without_backlog: 0,
+            max_loops: 99,
+        }
+    }
+
+    #[test]
+    fn lower_priority_replacement_is_rejected_without_mutation() {
+        let mut slot = ActorSequenceSlot::default();
+        assert_eq!(
+            slot.assign_sequence(Some((SequenceId::new(10), policy(2, 5))), 3, 4),
+            SequenceAssignmentOutcome::Replaced
+        );
+        slot.frame = Some(7);
+        slot.cycle = 11;
+        slot.iterations = 2;
+        let before = slot;
+        assert_eq!(
+            slot.assign_sequence(Some((SequenceId::new(20), policy(2, 4))), 9, 8),
+            SequenceAssignmentOutcome::RejectedPriority
+        );
+        assert_eq!(slot, before);
+    }
+
+    #[test]
+    fn equal_priority_replacement_resets_playback_and_captures_backlog() {
+        let mut slot = ActorSequenceSlot::default();
+        slot.assign_sequence(Some((SequenceId::new(10), policy(2, 5))), 0, 2);
+        slot.frame = Some(8);
+        slot.cycle = 15;
+        slot.iterations = 4;
+        assert_eq!(
+            slot.assign_sequence(Some((SequenceId::new(20), policy(1, 5))), 6, 7),
+            SequenceAssignmentOutcome::Replaced
+        );
+        assert_eq!(slot.sequence, Some(SequenceId::new(20)));
+        assert_eq!(slot.frame, Some(0));
+        assert_eq!(slot.cycle, 0);
+        assert_eq!(slot.delay, 6);
+        assert_eq!(slot.iterations, 0);
+        assert_eq!(slot.path_backlog_at_assignment, 7);
+    }
+
+    #[test]
+    fn same_id_restart_mode_one_resets_playback_and_reapplies_delay_only() {
+        let mut slot = ActorSequenceSlot::default();
+        slot.assign_sequence(Some((SequenceId::new(10), policy(1, 5))), 2, 6);
+        slot.frame = Some(9);
+        slot.cycle = 21;
+        slot.iterations = 3;
+        assert_eq!(
+            slot.assign_sequence(Some((SequenceId::new(10), policy(1, 99))), 8, 1),
+            SequenceAssignmentOutcome::Restarted
+        );
+        assert_eq!(slot.frame, Some(0));
+        assert_eq!(slot.cycle, 0);
+        assert_eq!(slot.delay, 8);
+        assert_eq!(slot.iterations, 0);
+        assert_eq!(slot.path_backlog_at_assignment, 6);
+        assert_eq!(slot.policy, Some(policy(1, 5)));
+    }
+
+    #[test]
+    fn same_id_restart_mode_two_only_resets_iteration_counter() {
+        let mut slot = ActorSequenceSlot::default();
+        slot.assign_sequence(Some((SequenceId::new(10), policy(2, 5))), 4, 6);
+        slot.frame = Some(9);
+        slot.cycle = 21;
+        slot.iterations = 3;
+        let policy_before = slot.policy;
+        assert_eq!(
+            slot.assign_sequence(Some((SequenceId::new(10), policy(1, 99))), 8, 1),
+            SequenceAssignmentOutcome::IterationReset
+        );
+        assert_eq!(slot.frame, Some(9));
+        assert_eq!(slot.cycle, 21);
+        assert_eq!(slot.delay, 4);
+        assert_eq!(slot.iterations, 0);
+        assert_eq!(slot.path_backlog_at_assignment, 6);
+        assert_eq!(slot.policy, policy_before);
+    }
+
+    #[test]
+    fn different_id_requires_current_policy_instead_of_guessing_priority() {
+        let mut slot = ActorSequenceSlot::default();
+        slot.set_sequence(Some(SequenceId::new(10)), 0);
+        let before = slot;
+        assert_eq!(
+            slot.assign_sequence(Some((SequenceId::new(20), policy(2, 5))), 0, 3),
+            SequenceAssignmentOutcome::MissingCurrentPolicy
+        );
+        assert_eq!(slot, before);
+    }
+
+    #[test]
+    fn clear_removes_policy_and_assignment_backlog() {
+        let mut slot = ActorSequenceSlot::default();
+        slot.assign_sequence(Some((SequenceId::new(10), policy(2, 5))), 3, 7);
+        assert_eq!(
+            slot.assign_sequence(None, 99, 99),
+            SequenceAssignmentOutcome::Cleared
+        );
+        assert_eq!(slot, ActorSequenceSlot::default());
     }
 }

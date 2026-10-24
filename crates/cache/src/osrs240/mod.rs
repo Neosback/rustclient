@@ -6,10 +6,12 @@ mod dependencies;
 pub mod entity_assets;
 pub mod models;
 pub mod npc_model;
+pub mod npc_path_policy;
 pub mod player_model;
 mod script_opcodes;
 pub mod script_tables;
 pub mod scripts;
+pub mod sequence_policy;
 mod terrain;
 pub mod widgets;
 use crate::{

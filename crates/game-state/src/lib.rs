@@ -5,6 +5,9 @@
 
 #![forbid(unsafe_code)]
 
+mod actor_movement;
+mod actor_path;
+pub use actor_path::{ACTOR_PATH_CAPACITY, ActorFinePosition, ActorPathEntry, ActorPathQueue};
 mod interfaces;
 pub use interfaces::{InterfaceError, InterfaceState};
 mod inventory;
@@ -14,6 +17,8 @@ mod npcs;
 pub use npcs::NpcPath;
 mod player_movement;
 mod players;
+mod sequence_playback;
+mod sequence_scheduler;
 pub use entities::{
     EntityUpdateError, Locomotion, NpcEntity, PlayerEntity, WorldEntitiesState, direction_to_delta,
     direction_to_orientation,

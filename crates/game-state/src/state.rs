@@ -217,11 +217,14 @@ impl GameState {
                     tracking_grid: None,
                     path_speed: rustclient_model::MoveSpeed::Walk,
                     movement_speed: rustclient_model::MoveSpeed::Walk,
+                    path_queue: crate::ActorPathQueue::default(),
                     exact_move: None,
                     tile: placement.position,
                     orientation: 0,
+                    current_orientation: 0,
                     appearance: None,
                     sequence: rustclient_model::ActorSequenceSlot::default(),
+                    sequence_timing_resolved: false,
                     animation_cycle: 0,
                     locomotion: crate::Locomotion::Idle,
                 },
@@ -314,7 +317,7 @@ impl GameState {
     /// # Errors
     ///
     /// Returns [`LifecycleError::NotActive`] when no session is active. Failed
-    /// transitions leave the state unchanged.
+    /// transitions leave authoritative state unchanged.
     pub(crate) fn end_session(&mut self) -> Result<(), LifecycleError> {
         if self.lifecycle == SessionLifecycle::Inactive {
             return Err(LifecycleError::NotActive);
@@ -346,7 +349,7 @@ impl GameState {
     ///
     /// Returns [`TickAdvanceError::InactiveSession`] when no session is active,
     /// or [`TickAdvanceError::Overflow`] when the tick ordinal would overflow.
-    /// Failed transitions leave the state unchanged.
+    /// Failed transitions leave authoritative state unchanged.
     pub(crate) fn advance_tick(
         &mut self,
         span: TickSpan,

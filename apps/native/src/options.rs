@@ -95,9 +95,10 @@ impl Options {
         let plugins_dir = plugins_dir.unwrap_or_else(|| preferences_dir.join("plugins"));
         let connection = match (server_profile, public_key) {
             (None, None) if !endpoint_option => None,
-            (Some(profile), Some(public_key)) if !host.is_empty() && port != 0 => {
+            (Some(server_profile), Some(public_key)) if !host.is_empty() && port != 0 => {
                 Some(crate::network::ConnectionOptions {
-                    profile,
+                    profile: server_profile,
+                    cache_profile: profile,
                     host,
                     port,
                     public_key,

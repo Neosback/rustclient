@@ -3,7 +3,7 @@ use crate::player_movement::{apply_movement, apply_traversal, exact_movement, mo
 use crate::{EntityUpdateError as Error, Locomotion, PlayerEntity, WorldEntitiesState};
 use rustclient_model::{
     ActorSequenceSlot, Plane, PlayerAppearance, PlayerIndex, PlayerInstanceId, PlayerTrackingGrid,
-    RemotePlayerUpdate as Update, SequenceChange, TileOffset, WorldTile,
+    RemotePlayerUpdate as Update, SequenceId, SequencePolicy, SequenceTiming, TileOffset, WorldTile,
 };
 use std::collections::BTreeMap;
 
@@ -141,6 +141,8 @@ impl WorldEntitiesState {
         &mut self,
         updates: &[Update],
         cycle: rustclient_model::ClientCycle,
+        sequence_policies: &[(SequenceId, SequencePolicy)],
+        sequence_timings: &[(SequenceId, SequenceTiming)],
     ) -> bool {
         let mut changed = false;
         for update in updates {
@@ -181,6 +183,7 @@ impl WorldEntitiesState {
                                 tracking_grid: Some(player.grid),
                                 path_speed: player.path_speed,
                                 movement_speed: player.path_speed,
+                                path_queue: crate::ActorPathQueue::default(),
                                 exact_move: None,
                                 tile: WorldTile::new(
                                     player.region.x + offset.x,
@@ -188,8 +191,10 @@ impl WorldEntitiesState {
                                     player.region.plane,
                                 ),
                                 orientation: player.orientation,
+                                current_orientation: player.orientation,
                                 appearance: player.appearance,
                                 sequence: ActorSequenceSlot::default(),
+                                sequence_timing_resolved: false,
                                 animation_cycle: 0,
                                 locomotion: Locomotion::Idle,
                             },
@@ -243,27 +248,28 @@ impl WorldEntitiesState {
                         if let Some(exact) = exact_move {
                             let next = exact_movement(player.tile, cycle, *exact)
                                 .expect("validated exact movement");
-                            changed |= player.exact_move != Some(next);
+                            changed |= !player.path_queue.is_empty()
+                                || player.sequence.path_backlog_at_assignment != 0
+                                || player.exact_move != Some(next);
+                            player.path_queue.clear();
+                            player.sequence.path_backlog_at_assignment = 0;
                             player.exact_move = Some(next);
                         }
-                        changed |= set_sequence(player, *sequence, *delay);
+                        changed |= crate::sequence_scheduler::apply_change(
+                            &mut player.sequence,
+                            &mut player.sequence_timing_resolved,
+                            *sequence,
+                            i32::from(*delay),
+                            player.path_queue.backlog(),
+                            sequence_policies,
+                            sequence_timings,
+                        );
                     }
                 }
             }
         }
         changed
     }
-}
-fn set_sequence(player: &mut PlayerEntity, sequence: SequenceChange, delay: u8) -> bool {
-    let previous = player.sequence;
-    if let SequenceChange::Set(sequence) = sequence {
-        if sequence.is_none() {
-            player.sequence.clear();
-        } else {
-            player.sequence.set_sequence(sequence, i32::from(delay));
-        }
-    }
-    previous != player.sequence
 }
 
 fn shift(

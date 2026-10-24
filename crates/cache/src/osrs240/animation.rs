@@ -13,12 +13,18 @@ use rustclient_model::{SequenceId, VarpId};
 use std::collections::BTreeMap;
 pub(super) fn sequence(bytes: &[u8], id: SequenceId, source: Source) -> Result<SequenceAsset> {
     let mut r = Reader::new(bytes, source);
+    let mut movement_gate_with_backlog = None;
+    let mut movement_gate_without_backlog = None;
+    let mut has_blend_mask = false;
     let mut out = SequenceAsset {
         id,
         frames: Vec::new(),
         delays: Vec::new(),
         frame_step: None,
         max_loops: 99,
+        priority: 5,
+        movement_gate_with_backlog: 0,
+        movement_gate_without_backlog: 0,
         restart: 2,
         skeletal: None,
         range: None,
@@ -38,11 +44,15 @@ pub(super) fn sequence(bytes: &[u8], id: SequenceId, source: Source) -> Result<S
             }
             2 => out.frame_step = Some(r.u16()?),
             3 | 17 => {
+                has_blend_mask = true;
                 let n = usize::from(r.u8()?);
                 r.take(n)?;
             }
             4 | 19 => {}
-            5 | 9 | 10 | 16 => {
+            5 => out.priority = r.u8()?,
+            9 => movement_gate_with_backlog = Some(r.u8()?),
+            10 => movement_gate_without_backlog = Some(r.u8()?),
+            16 => {
                 r.u8()?;
             }
             6 | 7 => {
@@ -66,6 +76,10 @@ pub(super) fn sequence(bytes: &[u8], id: SequenceId, source: Source) -> Result<S
             op => return Err(source.error("sequence", format!("unsupported opcode {op}"))),
         }
     }
+    let default_movement_gate = if has_blend_mask { 2 } else { 0 };
+    out.movement_gate_with_backlog = movement_gate_with_backlog.unwrap_or(default_movement_gate);
+    out.movement_gate_without_backlog =
+        movement_gate_without_backlog.unwrap_or(default_movement_gate);
     r.finish()?;
     Ok(out)
 }
@@ -373,13 +387,17 @@ mod tests {
     fn legacy_sequence_and_modern_metadata_keep_exact_frame_identifiers() {
         // Hand-authored from revision-240 opcode widths, not copied cache data.
         let bytes = [
-            1, 0, 2, 0, 3, 0, 5, 0, 7, 0, 9, 0, 1, 0, 2, 2, 0, 2, 8, 4, 11, 1, 0,
+            1, 0, 2, 0, 3, 0, 5, 0, 7, 0, 9, 0, 1, 0, 2, 2, 0, 2, 5, 7, 8, 4, 9, 1,
+            10, 2, 11, 1, 0,
         ];
         let seq = sequence(&bytes, SequenceId::new(1), source()).unwrap();
         assert_eq!(seq.frames, [0x10007, 0x20009]);
         assert_eq!(seq.delays, [3, 5]);
         assert_eq!(seq.frame_step, Some(2));
         assert_eq!((seq.max_loops, seq.restart), (4, 1));
+        assert_eq!(seq.priority, 7);
+        assert_eq!(seq.movement_gate_with_backlog, 1);
+        assert_eq!(seq.movement_gate_without_backlog, 2);
         for n in 0..bytes.len() {
             assert!(sequence(&bytes[..n], seq.id, source()).is_err());
         }
@@ -391,6 +409,12 @@ mod tests {
         .unwrap();
         assert_eq!(seq.skeletal, Some(65538));
         assert_eq!(seq.range, Some((3, 9)));
+        assert_eq!(seq.priority, 5);
+        assert_eq!(seq.movement_gate_with_backlog, 0);
+        assert_eq!(seq.movement_gate_without_backlog, 0);
+        let blended = sequence(&[3, 1, 7, 0], SequenceId::new(3), source()).unwrap();
+        assert_eq!(blended.movement_gate_with_backlog, 2);
+        assert_eq!(blended.movement_gate_without_backlog, 2);
     }
     #[test]
     fn frame_inserts_omitted_pivot_and_preserves_signed_smart_scale_defaults() {

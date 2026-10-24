@@ -16,6 +16,8 @@ This specification owns:
 - revision identity,
 - deterministic game-tick ordinals,
 - integer game-space orientation/angles,
+- revision-neutral sequence scheduling policy shared between definition adapters and live actor schedulers,
+- revision-neutral path acceleration policy shared between definition adapters and live actor schedulers,
 - conversion and range behavior for those values.
 
 It does not own server networking, packet layouts, cache binary formats, renderer transforms, plugin ABI types, or the full `ServerProfile` configuration.
@@ -43,6 +45,8 @@ Reference code is evidence only. This specification and RustClient tests define 
 8. Game ticks are ordinal semantic steps; real-time tick duration belongs to runtime/profile policy.
 9. Renderer coordinates, matrices, quaternions, and GPU types do not enter this crate.
 10. Revision-specific packet/cache behavior stays outside the semantic model.
+11. Sequence definition adapters resolve revision-specific defaults before constructing `SequencePolicy`; live actor scheduling does not interpret cache opcodes or unresolved sentinels.
+12. Path-definition adapters resolve revision-specific acceleration selectors before constructing `PathAccelerationPolicy`; live actor scheduling does not interpret cache opcode numbers.
 
 ## Coordinate taxonomy
 
@@ -164,6 +168,58 @@ A server profile will combine a `Revision` with protocol/cache/login/extension/r
 
 Tick arithmetic is checked. This layer does not assume that one tick is exactly 600 ms or any other duration; private servers may intentionally configure different timing.
 
+## Sequence scheduling policy
+
+`SequencePolicy` is the revision-neutral set of definition-derived inputs needed by the live actor action scheduler. It contains:
+
+- `restart_mode`, controlling what a same-sequence assignment does to existing playback state,
+- `replacement_priority`, used when deciding whether a different action sequence may replace the active one,
+- `movement_gate_with_backlog`, used while movement queued before the action assignment remains outstanding,
+- `movement_gate_without_backlog`, used after that assignment-time movement backlog has been exhausted,
+- `max_loops`, carrying the finite loop limit supplied by the definition.
+
+The model deliberately does not define cache opcode numbers or unresolved cache defaults. A revision-specific definition adapter must resolve those details before projecting a `SequencePolicy`.
+
+The numeric restart and movement-gate modes remain compact semantic values until cross-revision evidence justifies stable named enums. Consumers must not reinterpret those values as revision-240 cache opcodes.
+
+`SequencePolicy` does not own a `SequenceId`, frame data, playback counters, or actor state. Those belong to the definition/playback/runtime objects that use the policy.
+
+### Action sequence assignment
+
+`ActorSequenceSlot` retains the policy for its active action sequence together with playback state, the iteration counter, and the count of movement entries that predated the accepted assignment.
+
+The assignment primitive consumes an already-resolved `(SequenceId, SequencePolicy)` and follows these revision-neutral scheduling rules established from the revision-240 evidence:
+
+1. Clearing the action removes the sequence, policy, playback counters, delay, and assignment-time movement backlog.
+2. Reassigning the same active sequence consults the active sequence's restart policy and returns before replacement-priority arbitration.
+3. Restart mode `1` resets frame/cycle/iteration playback state and reapplies the newly supplied delay, but does not recapture movement backlog.
+4. Restart mode `2` resets only the iteration counter. Frame, cycle, delay, and the captured movement backlog remain unchanged.
+5. Other restart modes leave playback unchanged.
+6. A different sequence is rejected when its replacement priority is lower than the active sequence's priority.
+7. An accepted different sequence fully resets playback, stores its resolved policy and delay, and captures the current movement backlog for later movement-gate decisions.
+8. If a legacy active slot has no retained policy, a different-id assignment must report `MissingCurrentPolicy` without mutation rather than guessing the priority result.
+
+`SequenceAssignmentOutcome` makes each result explicit so orchestration and tests can distinguish replacement, same-id restart, priority rejection, and unresolved legacy state.
+
+The transitional unpolicy `set_sequence` path is not the target runtime scheduler. It exists only while packet application is being connected to a policy resolver and deliberately clears any retained policy on a changed sequence so stale metadata cannot be used for later arbitration.
+
+Policy resolution must occur before authoritative action scheduling. Rendering-oriented asynchronous animation loading is not sufficient for this decision because replacement priority and restart semantics are observable at packet-application time.
+
+## Path acceleration policy
+
+`PathAccelerationPolicy` is the revision-neutral set of definition-derived backlog thresholds needed by ordinary actor path scheduling. It contains:
+
+- `step_six_after`, the backlog value that must be exceeded before the scheduler raises its base step from four to six fine units;
+- `step_eight_after`, the backlog value that must be exceeded before the scheduler raises the step to eight fine units.
+
+Both comparisons are strict `>` comparisons. The type deliberately does not encode NPC identity, cache opcode numbers, revision identity, traversal mode, turn state, or blocked-cycle catch-up state.
+
+A revision-specific definition adapter resolves those source details before constructing `PathAccelerationPolicy`. For revision 240, for example, the cache adapter maps the NPC-definition branch selector to either the standard or earlier backlog thresholds; the semantic scheduler consumes only the resolved thresholds.
+
+Traversal scaling such as run/crawl, turn-slowing, action movement gates, snap distance, and blocked-cycle catch-up remain separate scheduling inputs. Keeping them separate prevents one cache-definition flag from becoming an opaque movement-mode enum.
+
+If a definition-derived path policy is required for correct future movement but is unavailable, authoritative scheduling must not invent a revision-specific default merely to make progress. The owning orchestration layer must resolve it or retain the state as explicitly unresolved.
+
 ## Orientation
 
 `LocOrientation` validates ordinary object/location orientation `0..=3`.
@@ -205,6 +261,12 @@ Do not micro-optimize field widths by leaking revision-specific limits into sema
 - revision parse/display behavior is tested,
 - game-tick arithmetic is checked,
 - integer orientation behavior has deterministic tests,
+- `SequencePolicy` contains only resolved semantic scheduling inputs and no cache/parser types,
+- revision adapters can project decoded definition metadata into `SequencePolicy` without adding a dependency from `crates/model` back to cache,
+- action assignment tests cover same-id restart modes, replacement priority, assignment-time backlog capture, clear behavior, and missing active policy,
+- `PathAccelerationPolicy` contains only resolved strict backlog thresholds and no revision/cache/NPC-specific selector,
+- revision adapters can project definition-derived path acceleration into `PathAccelerationPolicy` without adding a dependency from `crates/model` back to cache,
+- live actor scheduling treats an unavailable required path policy as unresolved rather than interpreting cache opcodes or guessing a revision-specific threshold,
 - the model crate depends on no RustClient subsystem.
 
 ## Non-goals
@@ -301,3 +363,18 @@ cached object identity. AnimationStart optionally carries that placement;
 sequence absence explicitly stops animation. Shape 22 is FloorDecoration;
 shapes 9 through 21 are GameObject. Wire sentinels/coordinate layouts remain
 inside the revision adapter.
+
+## Sequence playback timing continuation (2026-10-24)
+
+`SequenceTiming` is immutable, revision-neutral definition timing used by live semantic schedulers when frame boundaries affect authoritative behavior. It is separate from `SequencePolicy`: policy decides assignment/replacement/movement-gate rules, while timing answers playback-family and frame-duration questions.
+
+The semantic variants are:
+
+- `Legacy { frame_delays, frame_step }`, retaining ordered legacy frame delays and the optional rewind count used when looping;
+- `CachedModel { range }`, identifying cached-model/skeletal playback and retaining its optional semantic frame range.
+
+The model does not encode revision-240 opcode numbers, archive/group layout, frame resource IDs, or cached-model resource IDs. Revision adapters decode those representations and project only the timing facts needed by live scheduling.
+
+`PlayerInfoUpdate` and `NpcInfoUpdate` may carry a sorted `(SequenceId, SequenceTiming)` table attached by application orchestration alongside `sequence_policies`. Protocol decoders leave that table empty. Direct semantic fixtures may also leave timing unresolved; authoritative schedulers must not invent legacy frame durations or classify a sequence as cached-model without definition evidence.
+
+For revision 240, this timing is required by exact/forced movement because the legacy interpolation branch may advance only on the action frame boundary, while cached-model actions bypass that legacy frame-boundary test. Rendering is not an acceptable source for this decision: the timing must be available to `GameState` before forced movement becomes authoritative.

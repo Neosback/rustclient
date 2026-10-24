@@ -1,6 +1,9 @@
 //! NPC batch validation and authoritative ordered movement/trajectory updates.
 use crate::{EntityUpdateError, Locomotion, NpcEntity, WorldEntitiesState};
-use rustclient_model::{ClientCycle, MoveSpeed, NpcInfoUpdate, NpcMovement, TileOffset, WorldTile};
+use rustclient_model::{
+    ClientCycle, MoveSpeed, NpcDefinitionId, NpcInfoUpdate, NpcMovement, PathAccelerationPolicy,
+    TileOffset, WorldTile,
+};
 
 /// Latest ordered path request, distinct from the NPC's confirmed endpoint.
 /// Serial distinguishes repeated requests, including a run returning to its start.
@@ -18,6 +21,17 @@ impl NpcPath {
         self.second.unwrap_or(self.first)
     }
 }
+
+fn acceleration_policy(
+    update: &NpcInfoUpdate,
+    definition_id: NpcDefinitionId,
+) -> Option<PathAccelerationPolicy> {
+    update
+        .path_acceleration_policies
+        .iter()
+        .find_map(|(id, policy)| (*id == definition_id).then_some(*policy))
+}
+
 fn path(npc: &NpcEntity, movement: &NpcMovement) -> Result<NpcPath, EntityUpdateError> {
     if !matches!(
         movement.speed,
@@ -84,6 +98,18 @@ impl WorldEntitiesState {
             + update.removals.len()
             > 4096
         {
+            return Err(EntityUpdateError::InvalidNpcBatch);
+        }
+        let policy_ids: BTreeSet<_> = update
+            .path_acceleration_policies
+            .iter()
+            .map(|(id, _)| *id)
+            .collect();
+        if policy_ids.len() != update.path_acceleration_policies.len() {
+            return Err(EntityUpdateError::InvalidNpcBatch);
+        }
+        let timing_ids: BTreeSet<_> = update.sequence_timings.iter().map(|(id, _)| *id).collect();
+        if timing_ids.len() != update.sequence_timings.len() {
             return Err(EntityUpdateError::InvalidNpcBatch);
         }
         let removed: BTreeSet<_> = update.removals.iter().copied().collect();
@@ -183,12 +209,15 @@ impl WorldEntitiesState {
         cycle: ClientCycle,
     ) -> bool {
         use rustclient_model::NpcProperty;
+        self.merge_sequence_timings(&update.sequence_timings);
         let mut changed = !update.removals.is_empty() || !update.new_npcs.is_empty();
         for removal in &update.removals {
             self.npcs.remove(removal);
         }
         for npc in &update.new_npcs {
             self.npc_serial += 1;
+            let mut path_queue = crate::ActorPathQueue::default();
+            path_queue.set_acceleration_policy(acceleration_policy(update, npc.definition_id));
             self.npcs.insert(
                 npc.index,
                 NpcEntity {
@@ -201,9 +230,12 @@ impl WorldEntitiesState {
                         origin.plane,
                     ),
                     path: None,
+                    path_queue,
                     exact_move: None,
                     orientation: npc.orientation,
+                    current_orientation: npc.orientation,
                     sequence: rustclient_model::ActorSequenceSlot::default(),
+                    sequence_timing_resolved: false,
                     animation_cycle: 0,
                     name: None,
                     actions: rustclient_model::ActionMask::ALL,
@@ -227,6 +259,10 @@ impl WorldEntitiesState {
             npc.locomotion = locomotion;
             if let Some(movement) = movement {
                 let path = path(npc, movement).expect("validated NPC path");
+                npc.path_queue.enqueue(path.first, movement.speed);
+                if let Some(second) = path.second {
+                    npc.path_queue.enqueue(second, movement.speed);
+                }
                 npc.tile = path.endpoint();
                 npc.path = Some(path);
                 npc.exact_move = None;
@@ -245,21 +281,30 @@ impl WorldEntitiesState {
                         let exact =
                             crate::player_movement::exact_movement(npc.tile, cycle, *request)
                                 .expect("validated NPC exact movement");
-                        changed |= npc.exact_move != Some(exact);
+                        changed |= !npc.path_queue.is_empty()
+                            || npc.sequence.path_backlog_at_assignment != 0
+                            || npc.exact_move != Some(exact);
+                        npc.path_queue.clear();
+                        npc.sequence.path_backlog_at_assignment = 0;
                         npc.exact_move = Some(exact);
                     }
                     NpcProperty::Definition(id) => {
-                        changed |= npc.definition_id != *id;
+                        let policy = acceleration_policy(update, *id);
+                        changed |= npc.definition_id != *id
+                            || npc.path_queue.acceleration_policy() != policy;
                         npc.definition_id = *id;
+                        npc.path_queue.set_acceleration_policy(policy);
                     }
                     NpcProperty::Sequence { sequence, delay } => {
-                        let previous = npc.sequence;
-                        if sequence.is_none() {
-                            npc.sequence.clear();
-                        } else {
-                            npc.sequence.set_sequence(*sequence, delay.cast_signed());
-                        }
-                        changed |= npc.sequence != previous;
+                        changed |= crate::sequence_scheduler::apply_sequence(
+                            &mut npc.sequence,
+                            &mut npc.sequence_timing_resolved,
+                            *sequence,
+                            delay.cast_signed(),
+                            npc.path_queue.backlog(),
+                            &update.sequence_policies,
+                            &update.sequence_timings,
+                        );
                     }
                     NpcProperty::Facing(angle) => {
                         changed |= npc.orientation != *angle;

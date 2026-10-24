@@ -202,7 +202,7 @@ impl GameState {
                 validate_key(key)?;
                 if start.and_then(|s| s.placement).is_some_and(|p| {
                     p.shape > 22
-                        || rustclient_model::LocationLayer::from_shape(p.shape) != key.layer
+                        || rustclient_model::LocationLayer::from_shape(p.shape) != key.layer)
                 }) {
                     return Err(SceneryError::InvalidLocation);
                 }
@@ -234,7 +234,7 @@ impl GameState {
         }
         self.scenery.cycle = current;
         let reboot_active = self.entities.reboot_cycles() != 0;
-        self.entities.advance_cycles(cycles);
+        self.entities.advance_cycles(previous, cycles);
         Ok(OperationCommit::new(
             Some(SemanticEvent::ClientCyclesAdvanced { previous, current }),
             StateDelta::client_cycle(

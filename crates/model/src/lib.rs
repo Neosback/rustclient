@@ -21,8 +21,12 @@ pub use interface::{
 };
 mod inventory;
 pub use inventory::{InventorySlotUpdate, InventoryUpdate, ItemStack};
+mod movement;
+pub use movement::PathAccelerationPolicy;
 pub mod orientation;
 pub mod revision;
+mod sequence;
+mod sequence_timing;
 pub mod time;
 
 pub use coords::{
@@ -33,7 +37,7 @@ pub use entity::{
     APPEARANCE_SLOTS, ActorSequenceSlot, COLOR_SLOTS, ExactMove, Gender, KIT_PARTS, KIT_SLOT,
     MoveSpeed, MovementSequences, NewNpc, NpcAttributeUpdate, NpcInfoUpdate, NpcMovement,
     NpcProperty, PlayerAppearance, PlayerInfoUpdate, PlayerMovement, PlayerTrackingGrid,
-    RemotePlayerUpdate, SequenceChange, SlotContent,
+    RemotePlayerUpdate, SequenceAssignmentOutcome, SequenceChange, SlotContent,
 };
 pub use ids::{
     FloorOverlayId, FloorUnderlayId, FontId, InterfaceId, InventoryId, InventorySlot,
@@ -43,6 +47,8 @@ pub use ids::{
 };
 pub use orientation::{JAU_FULL_TURN, JAU_QUARTER_TURN, JauAngle, LocOrientation, QuarterTurn};
 pub use revision::{REVISION_240, Revision, RevisionParseError};
+pub use sequence::SequencePolicy;
+pub use sequence_timing::SequenceTiming;
 pub use time::{ClientCycle, GameTick, TickSpan};
 mod scenery;
 pub use scenery::{
