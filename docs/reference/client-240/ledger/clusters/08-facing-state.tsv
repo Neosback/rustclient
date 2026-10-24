@@ -4,6 +4,7 @@ classBZ.field622	classBZ	ae	snap	field	T4	B	Actor.method3236 returns this flag; 
 classBZ.field623	classBZ	ab	targetKind	field	T4	B	classEB.method3820 selects NPC, player or world-entity lookup from this enum; NONE suppresses entity-target facing	game-state::entities	08-facing-state
 classBZ.field631	classBZ	ag	targetIndex	field	T4	B	Actor.method3252 returns it; classEB.method3820 uses it as the indexed NPC/player/world-entity lookup key	game-state::entities	08-facing-state
 classBZ.field633	classBZ	as	fallbackAngle	field	T4	B	Actor.method3256 returns it; classEB.method3820 uses it when an entity target cannot be resolved	game-state::entities	08-facing-state
+classBZ.field625	classBZ	az	applyPolicy	field	T4	B	classBZ.method1384 decodes it from header bits 0..2; Actor.method3216 and method3222 use classLV.field4233 to bypass movement gating while the other value remains movement-gated	protocol::openrune_240 + game-state::entities	08-facing-state
 classBZ.field627	classBZ	al	angle	field	T4	B	Actor.method3270 returns it and Actor.method3162 tests it against -1; classEB.method3820 consumes it as the explicit facing angle	game-state::entities	08-facing-state
 classBZ.field628	classBZ	ax	areaX	field	T4	B	Actor.method3258 returns it; classEB.method3820 converts it from world tile coordinates to local fine coordinates when resolving area facing	game-state::entities	08-facing-state
 classBZ.field630	classBZ	ac	areaY	field	T4	B	Actor.method3260 returns it; classEB.method3820 converts it from world tile coordinates to local fine coordinates when resolving area facing	game-state::entities	08-facing-state
@@ -11,7 +12,7 @@ classBZ.field629	classBZ	aa	areaWidth	field	T4	B	Actor.method3263 returns it; cl
 classBZ.field632	classBZ	ao	areaHeight	field	T4	B	Actor.method3266 returns it; classEB.method3820 uses height-1 to derive the opposite Y edge before taking the area center	game-state::entities	08-facing-state
 classBZ.method1378	classBZ	az	reset	method	T4	B	Method body restores default mode/target/snap and -1-style sentinels; classDC.method2891 invokes it while resetting a player-info slot	game-state::entities	08-facing-state
 classBZ.method1380	classBZ	af	copyFrom	method	T4	B	Method body copies shared flags and only the payload fields selected by the source facing mode	game-state::entities	08-facing-state
-classBZ.method1384	classBZ	ae	decode	method	T4	B	Actor.method3231 delegates the facing update to this method; it decodes behavior bits 0..2, mode bits 3..5, snap bit 6, then a mode-specific smart payload	protocol::openrune_240	08-facing-state
+classBZ.method1384	classBZ	ae	decode	method	T4	B	Actor.method3231 delegates the facing update to this method; it decodes apply-policy bits 0..2, mode bits 3..5, snap bit 6, then a mode-specific smart payload	protocol::openrune_240	08-facing-state
 classLU	classLU	lu	FacingMode	class	T4	B	Actor.method3162/3165/3163 use three constants as explicit-angle, area and entity facing modes; classBZ constructor uses the fourth as the default no-facing mode	game-state::entities	08-facing-state
 classLU.field4226	classLU	ae	ANGLE	field	T4	B	Actor.method3162 returns true only for this mode with a non--1 classBZ.field627 explicit angle	game-state::entities	08-facing-state
 classLU.field4224	classLU	af	AREA	field	T4	B	Actor.method3165 returns true only for this mode with a non--1 classBZ.field628 area origin	game-state::entities	08-facing-state
@@ -22,3 +23,6 @@ classLJ.field4174	classLJ	ae	PLAYER	field	T4	B	classEB.method3820 resolves this 
 classLJ.field4175	classLJ	af	NPC	field	T4	B	classEB.method3820 resolves this kind from WorldView.field1696 NPC storage	game-state::entities	08-facing-state
 classLJ.field4173	classLJ	ab	WORLD_ENTITY	field	T4	B	classEB.method3820 resolves this kind from WorldView.field1698 world-entity storage	game-state::entities	08-facing-state
 classLJ.field4172	classLJ	az	NONE	field	T4	B	classBZ constructor/reset selects this value and Actor.method3163 rejects it as an entity target	game-state::entities	08-facing-state
+classLV	classLV	lv	FacingApplyPolicy	class	T4	B	Actor.method3216 and method3222 use the two values only to decide whether explicit-angle/area facing must obey movement-state gates	game-state::entities	08-facing-state
+classLV.field4233	classLV	af	BYPASS_MOVEMENT_GATE	field	T4	B	Actor.method3216 accepts explicit-angle facing without the path-length/catch-up gate and method3222 accepts area facing even while pathLength is nonzero when this value is active	game-state::entities	08-facing-state
+classLV.field4232	classLV	az	MOVEMENT_GATED	field	T4	B	When this value is active, Actor.method3216 conditions explicit-angle facing on path/catch-up state and method3222 defers area facing while pathLength is nonzero	game-state::entities	08-facing-state
