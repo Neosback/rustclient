@@ -17,6 +17,7 @@ pub mod item_icon;
 pub use collision::CollisionMap;
 pub mod entity_mesh;
 mod motion;
+pub use motion::{ActorPose, Facing, Pace, Pose};
 mod authoritative_motion;
 pub use authoritative_motion::ActorMotion;
 mod inputs;
