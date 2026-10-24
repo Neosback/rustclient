@@ -7,10 +7,7 @@
 
 mod actor_movement;
 mod actor_path;
-pub use actor_path::{
-    ACTOR_FINE_UNITS_PER_TILE, ACTOR_PATH_CAPACITY, ActorFinePosition, ActorPathEntry,
-    ActorPathQueue,
-};
+pub use actor_path::{ACTOR_PATH_CAPACITY, ActorFinePosition, ActorPathEntry, ActorPathQueue};
 mod interfaces;
 pub use interfaces::{InterfaceError, InterfaceState};
 mod inventory;
