@@ -1,0 +1,35 @@
+tiny	2	0	semantic	readable
+c	classDF	PlayerInfoDecoder
+	f	[I	field1421	activePlayerIndices
+	f	[LclassDC;	field1409	playerSlots
+	f	[Z	field1414	deferredMovement
+	f	[I	field1416	inactivePlayerIndices
+	f	I	field1417	activePlayerCount
+	f	I	field1418	inactivePlayerCount
+	m	(Lxs;)V	method3006	initializePlayerInfo
+	m	(Lxs;)V	method3015	decodePlayerMovement
+	m	(Lxs;I)I	method3019	readSkipCount
+	m	(Ldf;Lxs;III)V	method3050	decodeExtendedPlayerUpdate
+c	classDC	PlayerInfoSlot
+	f	I	field1379	packedRegion
+	f	LclassKY;	field1380	coord
+	f	B	field1388	updateFlags
+	f	LclassXY;	field1393	appearanceBuffer
+	f	[Ljava/lang/String;	field1382	actions
+	f	LclassGT;	field1392	traversal
+	f	I	field1381	playerIndex
+	f	Ljava/util/ArrayList;	field1387	representedPlayers
+	m	(II)V	method2891	reset
+	m	(Lct;I)V	method2901	attachPlayer
+	m	(Ldc;Lgt;)V	method2923	applyTraversal
+	m	(III)V	method2930	applyActionSequence
+c	classKY	Coord
+	f	I	field4053	x
+	f	I	field4054	y
+	f	I	field4055	plane
+	m	(IIII)I	method6623	pack
+	m	(II)I	method6626	unpackPlane
+	m	(IB)I	method6638	unpackX
+	m	(II)I	method6640	unpackY
+	m	(IB)V	method6660	setPacked
+	m	(I)Z	method6674	isValid
