@@ -202,7 +202,7 @@ checked movement and wrapping without embedding a revision's bit layout. Initial
 tracking, coarse shifts, promotions, demotions, movement and properties are ordered
 semantic updates. Validate the whole batch before mutation. New visible incarnations
 have typed instance identity so interpolation cannot reuse a departed actor's path.
-All tracking fields and action playback participate in fingerprint schema 13,
+All tracking fields and action playback participate in the current fingerprint schema,
 replay, entity deltas and session reset. Low-resolution wire flags/list order stay
 in the decoder; it does not keep a second authoritative position/appearance cache.
 
@@ -281,3 +281,107 @@ has no additional observable state. It must allow the authored operation listene
 to finish, followed by the validated logout button request; server confirmation
 then ends the session. A future automatic reconnect policy must model that hint
 explicitly before changing this behavior.
+
+### Revision-240 player movement audit continuation
+
+The exact revision-240 client manager is rl-suite-240 classDF, not an older
+PlayerUpdateManager copy. The selected RSProt writer and its byte-buffer
+extensions define the profile's wire transforms; classDF/classDC corroborate
+movement/mask ordering and forced offsets. See the dated
+[player audit](../plan/PLAYER-UPDATING-240.md) and selected-file manifest.
+
+GameState owns persistent traversal, each current movement's speed and the
+normalized forced trajectory. Outside-view records retain the persistent speed
+through promotion/demotion. Ordinary movement clears a previous trajectory;
+stationary GPI updates retain it so a completed forced position does not jump
+back before the next network movement. Client-cycle advancement and session reset
+use the existing gateway and entity delta domain. Scene motion consumes these
+values, drops queued interpolation for immediate placement, applies crawl/run
+speed, and projects the forced direction and trajectory without mutating the
+network coordinate. Rebuilding the projection uses the committed cycle.
+
+Acceptance requires codec vectors for actual 240 mask extensions, byte transforms,
+appearance reversal, traversal controls and wrapped teleport; atomic/replay/reset
+state contracts; cycle-based motion contracts; and a live two-account
+appearance/movement/removal proof. These checks do not establish full actor
+scheduling parity: action priority/restart, frame-gated forced motion, turning,
+movement blocking, and action/movement blending remain incomplete. New semantic
+sequence policies must be owned by GameState with explicit asset-derived inputs;
+renderer-only rejection/restart must not become semantic truth.
+
+For a zero-duration forced interval, the inclusive approach phase takes precedence
+and holds the start coordinate; the projection must avoid division by zero.
+
+### Gameframe reflow and operation callbacks
+
+A widget selection validates topology, visibility, item identity and permissions
+before its operation callback starts. Retain that selected action across the
+callback: deleting or hiding its own dropdown rows does not cancel the button
+request. Recheck effective operation permission afterward. A stale selection
+submitted before execution remains invalid. This follows 240 classEA.method3815.
+
+Reflow aligns all attached components, including hidden components, and clamps
+both scroll axes before delivering deferred resize listeners. Paint/hit-testing
+continue to prune hidden ancestors. Resize invalidation uses the attached layout,
+so revealing a same-sized component does not synthesize another size change.
+The game canvas is capped independently of the host: fixed 765x503; resizable
+7680x2160 for the selected profile, horizontally centered and top aligned. Host
+fullscreen is a platform property independent of either game layout.
+
+The script-owned no-scroll-through flag is independent of click-through behavior.
+Wheel routing delivers the top component's own interaction and blocks underlying
+wheel targets when the barrier is set. It resets with its widget/group and is
+included in fingerprint schema 15. Canvas query instructions return the committed
+canvas, while reserved viewport-origin queries return the selected profile's zero.
+Mounted roots use their host container's effective scroll extent for alignment,
+matching the same reflow used for ordinary and dynamic children. Unused canvas
+margins are black. The pointer and painting share the same top-aligned horizontal
+centering transform. New live and source evidence is in the
+[gameframe audit](../plan/GAMEFRAME-240.md).
+
+## NPC path and object animation audit continuation (2026-10-23)
+
+GameState owns each NPC's latest ordered NpcPath request and checked per-instance
+serial, confirmed endpoint, traversal speed and optional ExactMovement. The path
+is the last server request, not a second position authority or render queue.
+Every new request increments its serial, even if its two steps return to the
+same tile. The projection observes committed operations in order, consumes each
+serial once and queues the authored intermediate tile. Reconstructed projections
+start at the current endpoint. Index reuse creates a new instance with no path
+or trajectory. Invalid steps, speed/step-count combinations, overflow and bad
+exact-move intervals reject the whole batch before mutation. Forced movement is
+anchored after ordinary movement and uses the current client cycle; stationary
+updates retain its endpoint until another movement replaces it. NPC crawl/run
+cache animation sets and recursive morph dependencies are retained/resolved.
+
+The 240 adapter decodes specific location animations as offsets from the map
+anchor, with local player plane. Zone headers supply the explicit plane for
+global/direct and enclosed animations. Packet fields include shape/orientation
+and a nullable sequence; there is no plane in a specific packet's packed medium.
+Enclosed packets are parsed completely before publishing animation updates or
+retaining their header. Other verified zone payload layouts are consumed but
+not represented as new scenery/item/effect semantics in this continuation.
+
+TriggerLocationAnimation resolves the current anchor/plane and stamps playback
+with the authoritative current client cycle; it uses explicit random word zero
+(frame zero) for server triggers. Full zone resets translate to a bounded
+ResetLocationArea, removing location overrides only in that plane/rectangle and
+emitting LocationAreaReset when anything changed. Ordinary map/session resets
+retain their existing ownership. These transitions use normal replay and
+scenery/entity deltas and participate in fingerprint schema 16.
+
+Scenery overrides move formerly static objects into the dynamic projection.
+Actor and scenery consumers share immutable AnimationAssets snapshots through
+the existing scene/catalog boundary; native cache work remains asynchronous.
+New server-selected sequence dependencies use the same loader as actors, with
+legacy and cached-model poses supported. Pending dependencies retain base
+geometry; decode/preparation failures remain diagnostics and fail parity claims.
+No state or GPU handle is shared with the cache loader. Animation snapshot maps
+share resource allocations via Arc; mutable catalog growth never alters a worker's
+snapshot. GPU reconstruction preserves semantic cycles and overrides.
+
+The full actor scheduler is still incomplete: assignment restart/priority,
+authoritative completion/loop counts, turn rates/target following, action movement
+blocking, frame-gated exact movement, interleave/bone-mask composition and several
+combat/effect/customisation masks remain outside verified behavior. This audit
+is not complete gameplay or pixel parity acceptance; see NPC-ANIMATION-240.md.

@@ -341,6 +341,7 @@ impl GameState {
             .apply(update)
             .map_err(OperationError::Interface)?
         {
+            self.interfaces.touch();
             if topology {
                 self.interfaces.invalidate();
             }
@@ -387,10 +388,13 @@ impl GameState {
     ) -> Result<OperationCommit, OperationError> {
         self.require_active()?;
         self.entities
-            .validate_player_info(update)
+            .validate_player_info(update, self.scenery.cycle())
             .map_err(OperationError::EntityUpdate)?;
         let previous_plane = self.entities.local_player().map(|p| p.tile.plane);
-        if !self.entities.apply_player_info(update) {
+        if !self
+            .entities
+            .apply_player_info(update, self.scenery.cycle())
+        {
             return Ok(OperationCommit::new(None, StateDelta::default()));
         }
         if let Some(player) = self.entities.local_player()
@@ -446,9 +450,12 @@ impl GameState {
             local_tile
         };
         self.entities
-            .validate_npc_info(update, origin)
+            .validate_npc_info(update, origin, self.scenery.cycle())
             .map_err(OperationError::EntityUpdate)?;
-        if !self.entities.apply_npc_info(update, origin) {
+        if !self
+            .entities
+            .apply_npc_info(update, origin, self.scenery.cycle())
+        {
             return Ok(OperationCommit::new(None, StateDelta::default()));
         }
         Ok(OperationCommit::new(

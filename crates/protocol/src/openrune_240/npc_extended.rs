@@ -82,7 +82,15 @@ pub(super) fn decode_attributes(r: &mut Reader<'_>, index: NpcIndex) -> Result<N
         r.take(4)?;
     }
     if mask & 0x2000 != 0 {
-        r.take(10)?;
+        changes.push(NpcProperty::ExactMove(rustclient_model::ExactMove {
+            start_delta_x: r.i8_add()?,
+            start_delta_y: r.i8_sub()?,
+            end_delta_x: r.u8()?.cast_signed(),
+            end_delta_y: r.i8_add()?,
+            start_delay: r.u16_le()?,
+            end_delay: r.u16_add()?,
+            direction: r.u16_le()?,
+        }));
     }
     if mask & 4 != 0 {
         let lo = r.u8()?;
@@ -147,4 +155,42 @@ fn read_text(r: &mut Reader<'_>) -> Result<String> {
         text.push(crate::wire::decode_cp1252(byte));
     }
     Err(ProtocolError::new("NPC text", "text limit exceeded"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn forced_move_and_sequence_mixed_mask_uses_npc_transforms_and_checks_every_prefix() {
+        let bytes = [0x24, 0x20, 126, 125, 4, 123, 2, 0, 0, 136, 0, 6, 40, 3, 130];
+        let update =
+            decode_attributes(&mut Reader::new(&bytes, "fixture"), NpcIndex::new(42)).unwrap();
+        assert_eq!(
+            update.changes,
+            vec![
+                NpcProperty::ExactMove(rustclient_model::ExactMove {
+                    start_delta_x: -2,
+                    start_delta_y: 3,
+                    end_delta_x: 4,
+                    end_delta_y: -5,
+                    start_delay: 2,
+                    end_delay: 8,
+                    direction: 1536,
+                }),
+                NpcProperty::Sequence {
+                    sequence: Some(rustclient_model::SequenceId::new(808)),
+                    delay: 2
+                }
+            ]
+        );
+        for length in 0..bytes.len() {
+            assert!(
+                decode_attributes(
+                    &mut Reader::new(&bytes[..length], "fixture"),
+                    NpcIndex::new(42)
+                )
+                .is_err()
+            );
+        }
+    }
 }

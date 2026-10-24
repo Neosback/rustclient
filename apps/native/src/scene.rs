@@ -51,6 +51,14 @@ impl SceneView {
             dynamic_cycle: rustclient_model::ClientCycle::ZERO,
         }
     }
+    pub fn scenery_inputs(
+        &self,
+        state: &rustclient_game_state::SceneryState,
+    ) -> rustclient_scene::SceneryInputs {
+        let mut inputs = rustclient_scene::SceneryInputs::from(state);
+        inputs.animations = self.entity_catalog.animation_assets();
+        inputs
+    }
     pub fn clear(&mut self) {
         self.entity_geometry = rustclient_scene::SceneGeometry::default();
         self.motion = rustclient_scene::ActorMotion::default();
@@ -66,10 +74,14 @@ impl SceneView {
         self.camera = None;
         self.input = CameraInput::default();
     }
+    /// Drop the loaded region but keep what is not tied to it: the camera and the actors' drawn
+    /// positions, rotations and poses, which are world-space and continue across a map rebuild.
     pub fn invalidate_map(&mut self) {
         let camera = self.camera;
+        let motion = std::mem::take(&mut self.motion);
         self.clear();
         self.camera = camera;
+        self.motion = motion;
     }
     pub fn start(
         &mut self,

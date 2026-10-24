@@ -270,3 +270,34 @@ client-cycle threshold and scrollbar behavior. `WidgetKey` names semantic keys;
 revision script codes remain in the cache profile. A held pointer's original grab
 offset and temporary drag origin are presentation metadata, not another widget
 position owner. Action animation delay is independent of movement animation time.
+
+### Traversal and forced movement
+
+MoveSpeed expresses path behavior: Crawl, Walk, Run, or immediate placement
+(Stationary). Protocol enum IDs and reset sentinels remain in the profile.
+PlayerInfoUpdate distinguishes a persistent path-speed change from a one-entry
+speed override. Remote movement carries its effective override with the movement;
+attributes change the persistent default separately. This avoids observable
+intermediate locomotion changes while applying a single player batch.
+
+WrappedTeleport carries offsets, plane delta and a positive checked grid extent.
+The profile supplies its wrapping dimensions; GameState performs checked Euclidean
+wrapping. It is distinct from a signed relative teleport that does not wrap.
+ExactMove requests signed tile offsets from the newly updated network coordinate,
+client-cycle start/end delays and a direction. GameState validates and normalizes
+it to an immutable ExactMovement with absolute world tiles and client cycles.
+Invalid intervals, directions, coordinate or cycle overflow reject the entire
+player batch. Neither the packet decoder nor a draw projection advances semantic
+coordinates or stores a second persistent traversal default.
+
+## NPC and location animation continuation (2026-10-23)
+
+NpcMovement preserves one adjacent TileOffset and an optional second adjacent
+step in source order, with typed MoveSpeed. Crawl/Walk carry one step; Run
+carries two. Collapsing two directions into an endpoint loses bent and closed
+paths. NpcProperty::ExactMove uses the shared relative trajectory request.
+LocationAnimationPlacement preserves shape/orientation independently of the
+cached object identity. AnimationStart optionally carries that placement;
+sequence absence explicitly stops animation. Shape 22 is FloorDecoration;
+shapes 9 through 21 are GameObject. Wire sentinels/coordinate layouts remain
+inside the revision adapter.

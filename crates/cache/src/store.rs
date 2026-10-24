@@ -229,6 +229,26 @@ impl<S: ReadOnlyBlobs> Cache<S> {
         crate::sprite::decode_sprites(&bytes, Source::group(IndexId(8), group))
     }
 
+    /// The per-byte chat code lengths of the `huffman` group in index 10, if the cache has one.
+    ///
+    /// # Errors
+    /// Fails when the group's container cannot be read.
+    pub fn huffman_sizes(&self) -> Result<Option<Vec<u8>>> {
+        let Some(group) = self
+            .tables
+            .get(&IndexId(10))
+            .and_then(|table| table.named_group("huffman"))
+            .map(|row| row.id)
+        else {
+            return Ok(None);
+        };
+        Ok(self
+            .group_files(IndexId(10), group)?
+            .into_iter()
+            .next()
+            .map(|(_, bytes)| bytes.clone()))
+    }
+
     /// Read and decode a single indexed sprite group from index 8.
     ///
     /// # Errors

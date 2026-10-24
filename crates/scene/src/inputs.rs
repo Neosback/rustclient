@@ -4,6 +4,8 @@ use rustclient_model::{ClientCycle, LocationKey, VarpId};
 use std::collections::BTreeMap;
 #[derive(Debug, Clone, Default)]
 pub struct SceneryInputs {
+    /// Catalog resources are disposable projection inputs, never semantic state.
+    pub animations: std::sync::Arc<crate::AnimationAssets>,
     pub cycle: ClientCycle,
     pub generation: u64,
     pub variables: BTreeMap<VarpId, i32>,
@@ -12,6 +14,7 @@ pub struct SceneryInputs {
 impl From<&SceneryState> for SceneryInputs {
     fn from(state: &SceneryState) -> Self {
         Self {
+            animations: std::sync::Arc::default(),
             cycle: state.cycle(),
             generation: state.generation(),
             variables: state.variables().clone(),

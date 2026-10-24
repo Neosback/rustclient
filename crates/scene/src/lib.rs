@@ -9,6 +9,8 @@
     reason = "scene topology is expressed as fixed-width complete records and intentionally keeps reference chunk iteration"
 )]
 mod animation;
+mod animation_assets;
+pub use animation_assets::AnimationAssets;
 mod collision;
 mod color;
 pub mod item_icon;
@@ -127,7 +129,8 @@ impl SceneAsset {
             .ok_or_else(|| SceneError("location definition unavailable".into()))?;
         locations::resolve(self, definition, inputs)
     }
-    /// Bridge-aware bilinear scene-local height, in reference negative-up fine units.
+    /// Bridge-aware scene-local floor height, in reference negative-up fine units: the drawn
+    /// floor triangle where the tile has one, otherwise a bilinear corner blend.
     /// # Errors
     /// Rejects points outside the retained terrain height border.
     #[expect(
@@ -149,6 +152,9 @@ impl SceneAsset {
         };
         let fx = fine[0].rem_euclid(128);
         let fy = fine[1].rem_euclid(128);
+        if let Some(height) = terrain::floor_height(self, plane, x, y, fx, fy)? {
+            return Ok(height);
+        }
         let a = (-self.elevation(plane, x, y)? * (128 - fx)
             - self.elevation(plane, x + 1, y)? * fx)
             >> 7;

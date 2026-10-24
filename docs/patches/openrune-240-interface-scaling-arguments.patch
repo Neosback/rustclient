@@ -1,0 +1,14 @@
+--- a/api/player-output/src/main/kotlin/org/rsmod/api/player/output/ClientScripts.kt
++++ b/api/player-output/src/main/kotlin/org/rsmod/api/player/output/ClientScripts.kt
+@@ -41,8 +41,10 @@
+         count: Int,
+     ): Unit = player.runClientScript(LOOTTRACKER_ADD_LOOT_SCRIPT, npcId, eventId, objId, count)
+ 
++    @Suppress("UNUSED_PARAMETER")
+     public fun settingsInterfaceScaling(player: Player, scale: Int) {
+-        player.runClientScript(2358, scale)
++        // Revision-240 cache script 2358 accepts no arguments.
++        player.runClientScript(2358)
+     }
+ 
+     public fun buffBarLayoutRedraw(player: Player) {

@@ -11,7 +11,7 @@ use crate::{GameState, OperationCommit, SemanticEvent, SessionLifecycle};
 ///
 /// Any change to field ordering, tags, integer encoding, or fingerprint
 /// algorithm that changes canonical output must increment this version.
-pub const SEMANTIC_FINGERPRINT_VERSION: u16 = 13;
+pub const SEMANTIC_FINGERPRINT_VERSION: u16 = 16;
 
 const FNV_OFFSET_BASIS: u64 = 0xCBF2_9CE4_8422_2325;
 const FNV_PRIME: u64 = 0x0000_0100_0000_01B3;
@@ -226,6 +226,7 @@ impl GameState {
             fingerprint.write_u32(player.region.y.cast_unsigned());
             fingerprint.write_u8(player.region.plane.get());
             fingerprint.write_u16(player.orientation);
+            write_speed(&mut fingerprint, player.path_speed);
             write_appearance(&mut fingerprint, player.appearance.as_ref());
         }
         fingerprint.write_u32(entities.reboot_cycles());
@@ -269,6 +270,22 @@ impl GameState {
             fingerprint.write_bytes(&player.tile.y.to_le_bytes());
             fingerprint.write_u8(player.tile.plane.get());
             fingerprint.write_u16(player.orientation);
+            write_speed(&mut fingerprint, player.path_speed);
+            write_speed(&mut fingerprint, player.movement_speed);
+            match player.exact_move {
+                None => fingerprint.write_u8(0),
+                Some(exact) => {
+                    fingerprint.write_u8(1);
+                    for tile in [exact.start, exact.end] {
+                        fingerprint.write_u32(tile.x.cast_unsigned());
+                        fingerprint.write_u32(tile.y.cast_unsigned());
+                        fingerprint.write_u8(tile.plane.get());
+                    }
+                    fingerprint.write_u64(exact.starts_at.get());
+                    fingerprint.write_u64(exact.ends_at.get());
+                    fingerprint.write_u16(exact.direction);
+                }
+            }
             fingerprint.write_u32(player.animation_cycle);
             fingerprint.write_u8(match player.locomotion {
                 crate::Locomotion::Idle => 0,
@@ -308,6 +325,33 @@ impl GameState {
             fingerprint.write_bytes(&npc.tile.y.to_le_bytes());
             fingerprint.write_u8(npc.tile.plane.get());
             fingerprint.write_u16(npc.orientation);
+            match npc.path {
+                None => fingerprint.write_u8(0),
+                Some(path) => {
+                    fingerprint.write_u8(1);
+                    fingerprint.write_u64(path.serial);
+                    write_tile(&mut fingerprint, path.first);
+                    match path.second {
+                        None => fingerprint.write_u8(0),
+                        Some(tile) => {
+                            fingerprint.write_u8(1);
+                            write_tile(&mut fingerprint, tile);
+                        }
+                    }
+                    write_speed(&mut fingerprint, path.speed);
+                }
+            }
+            match npc.exact_move {
+                None => fingerprint.write_u8(0),
+                Some(exact) => {
+                    fingerprint.write_u8(1);
+                    write_tile(&mut fingerprint, exact.start);
+                    write_tile(&mut fingerprint, exact.end);
+                    fingerprint.write_u64(exact.starts_at.get());
+                    fingerprint.write_u64(exact.ends_at.get());
+                    fingerprint.write_u16(exact.direction);
+                }
+            }
             fingerprint.write_u32(npc.animation_cycle);
             match npc.sequence.sequence {
                 None => fingerprint.write_u8(0),
@@ -345,6 +389,22 @@ impl GameState {
         }
         StateFingerprint(fingerprint.finish())
     }
+}
+
+fn write_tile(fingerprint: &mut StableFingerprint64, tile: rustclient_model::WorldTile) {
+    fingerprint.write_u32(tile.x.cast_unsigned());
+    fingerprint.write_u32(tile.y.cast_unsigned());
+    fingerprint.write_u8(tile.plane.get());
+}
+
+fn write_speed(fingerprint: &mut StableFingerprint64, speed: rustclient_model::MoveSpeed) {
+    use rustclient_model::MoveSpeed;
+    fingerprint.write_u8(match speed {
+        MoveSpeed::Stationary => 0,
+        MoveSpeed::Crawl => 1,
+        MoveSpeed::Walk => 2,
+        MoveSpeed::Run => 3,
+    });
 }
 
 fn write_appearance(
@@ -499,6 +559,13 @@ fn write_commit(fingerprint: &mut StableFingerprint64, commit: OperationCommit) 
 
 fn write_event(fingerprint: &mut StableFingerprint64, event: SemanticEvent) {
     match event {
+        SemanticEvent::LocationAreaReset { origin, size } => {
+            fingerprint.write_u8(20);
+            write_tile(fingerprint, origin);
+            for value in size {
+                fingerprint.write_u32(value);
+            }
+        }
         SemanticEvent::ClientCyclesAdvanced { previous, current } => {
             fingerprint.write_u8(7);
             fingerprint.write_u64(previous.get());
@@ -628,6 +695,14 @@ fn write_location_override(f: &mut StableFingerprint64, value: crate::LocationOv
             }
             f.write_u64(start.cycle.get());
             f.write_u64(start.random_seed);
+            match start.placement {
+                None => f.write_u8(0),
+                Some(placement) => {
+                    f.write_u8(1);
+                    f.write_u8(placement.shape);
+                    f.write_u8(placement.orientation.get());
+                }
+            }
         }
     }
 }

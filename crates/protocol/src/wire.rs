@@ -129,13 +129,6 @@ impl<'a> Reader<'a> {
         let bytes = self.take(2)?;
         Ok(u16::from(bytes[0].wrapping_sub(128)) | (u16::from(bytes[1]) << 8))
     }
-    pub fn u32_me(&mut self) -> Result<u32> {
-        let bytes = self.take(4)?;
-        Ok((u32::from(bytes[1]) << 24)
-            | (u32::from(bytes[0]) << 16)
-            | (u32::from(bytes[3]) << 8)
-            | u32::from(bytes[2]))
-    }
     pub fn u_short_smart(&mut self) -> Result<u16> {
         let Some(&first) = self.bytes.get(self.offset) else {
             return Err(ProtocolError::new(self.stage, "truncated smart integer"));
@@ -190,12 +183,6 @@ mod tests {
         assert_eq!(reader.u8_sub().unwrap(), 5);
         assert_eq!(reader.u16_add().unwrap(), 0x1234);
         assert_eq!(reader.u16_add_le().unwrap(), 0x1234);
-    }
-
-    #[test]
-    fn revision_240_middle_endian_int_matches_deob() {
-        let mut reader = Reader::new(&[0x22, 0x11, 0x44, 0x33], "test");
-        assert_eq!(reader.u32_me().unwrap(), 0x1122_3344);
     }
 
     #[test]

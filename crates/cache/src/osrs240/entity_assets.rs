@@ -73,7 +73,12 @@ impl EntityLoader {
         Self {
             profile: Some(profile),
             models: world.models.keys().copied().collect(),
-            sequences: world.sequences.keys().copied().collect(),
+            sequences: world
+                .sequences
+                .values()
+                .filter(|s| s.skeletal.is_none())
+                .map(|s| s.id)
+                .collect(),
             frames: world.frames.keys().copied().collect(),
             skeletons: world.skeletons.keys().copied().collect(),
             varbits: world.varbits.keys().copied().collect(),
@@ -175,6 +180,8 @@ impl EntityLoader {
                         .into_iter()
                         .flatten(),
                     );
+                    sequences.extend(def.run_sequences.into_iter().flatten());
+                    sequences.extend(def.crawl_sequences.into_iter().flatten());
                     if let Some(morphs) = &def.morphs {
                         varbits.extend(morphs.varbit);
                         pending.extend(

@@ -8,6 +8,10 @@ use rustclient_model::{GameTick, Revision, SceneDescriptor};
 /// does not change observable state may commit without producing an event.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SemanticEvent {
+    LocationAreaReset {
+        origin: rustclient_model::WorldTile,
+        size: [u32; 2],
+    },
     ChatMessageAdded(u32),
     ChatSettingsChanged,
     InterfacesChanged,

@@ -1,8 +1,9 @@
 //! Scene geometry generation for live player and NPC entities.
 
 use crate::{
-    ActorMotion, Result, SceneAsset, SceneError, SceneGeometry, animation::BakedAnimation,
+    ActorMotion, AnimationAssets, Result, SceneAsset, SceneGeometry,
     lighting::Light,
+    motion::{ActorPose, Facing, Pace, Pose},
 };
 use rustclient_cache::{
     osrs240::{
@@ -11,10 +12,7 @@ use rustclient_cache::{
         npc_model::build_npc_base,
         player_model::{body_recolors, build_player_base},
     },
-    world::{
-        ItemDefinition, LegacyFrame, NpcDefinition, SequenceAsset, Skeleton, StaticModel,
-        VarbitDefinition,
-    },
+    world::{ItemDefinition, NpcDefinition, StaticModel, VarbitDefinition},
 };
 use rustclient_game_state::{NpcEntity, PlayerEntity, WorldEntitiesState};
 use rustclient_model::{
@@ -32,10 +30,7 @@ pub struct EntityCatalog {
     npcs: BTreeMap<NpcDefinitionId, NpcDefinition>,
     items: BTreeMap<ItemDefinitionId, ItemDefinition>,
     models: BTreeMap<ModelId, StaticModel>,
-    sequences: BTreeMap<SequenceId, SequenceAsset>,
-    frames: BTreeMap<u32, LegacyFrame>,
-    skeletons: BTreeMap<u16, Skeleton>,
-    cached_animations: BTreeMap<u32, BakedAnimation>,
+    animations: std::sync::Arc<AnimationAssets>,
     varbits: BTreeMap<VarbitId, VarbitDefinition>,
     requested_npcs: BTreeSet<NpcDefinitionId>,
     requested_items: BTreeSet<ItemDefinitionId>,
@@ -50,13 +45,35 @@ impl EntityCatalog {
         &mut self,
         asset: &SceneAsset,
         entities: &WorldEntitiesState,
+        scenery: &rustclient_game_state::SceneryState,
     ) -> Option<EntityRequest> {
         let mut request = EntityRequest::default();
         let mut want_sequence = |id: SequenceId, requested: &mut BTreeSet<SequenceId>| {
-            if !asset.sources().sequences.contains_key(&id) && requested.insert(id) {
+            if asset
+                .sources()
+                .sequences
+                .get(&id)
+                .is_none_or(|s| s.skeletal.is_some())
+                && requested.insert(id)
+            {
                 request.sequences.insert(id);
             }
         };
+        for id in scenery
+            .locations()
+            .values()
+            .filter_map(|loc| loc.animation.and_then(|a| a.sequence))
+            .chain(
+                asset
+                    .sources()
+                    .sequences
+                    .values()
+                    .filter(|s| s.skeletal.is_some())
+                    .map(|s| s.id),
+            )
+        {
+            want_sequence(id, &mut self.requested_sequences);
+        }
         for player in entities.players().values() {
             if let Some(sequence) = player.sequence.sequence {
                 want_sequence(sequence, &mut self.requested_sequences);
@@ -105,26 +122,11 @@ impl EntityCatalog {
     ///
     /// Returns advisories for cached-model animations that could not be prepared for playback;
     /// those sequences are then drawn in rest pose.
-    pub fn merge(&mut self, asset: &SceneAsset, assets: EntityAssets) -> Vec<String> {
+    pub fn merge(&mut self, asset: &SceneAsset, mut assets: EntityAssets) -> Vec<String> {
+        let failures = std::sync::Arc::make_mut(&mut self.animations).merge(asset, &mut assets);
         self.npcs.extend(assets.npcs);
         self.items.extend(assets.items);
         self.models.extend(assets.models);
-        self.sequences.extend(assets.sequences);
-        self.frames.extend(assets.frames);
-        self.skeletons.extend(assets.skeletons);
-        let mut failures = Vec::new();
-        for (id, animation) in assets.cached_animations {
-            let baked = self
-                .skeleton(asset, animation.skeleton)
-                .ok_or_else(|| SceneError(format!("skeleton {} missing", animation.skeleton)))
-                .and_then(|skeleton| BakedAnimation::new(&animation, skeleton));
-            match baked {
-                Ok(baked) => {
-                    self.cached_animations.insert(id, baked);
-                }
-                Err(error) => failures.push(format!("cached animation {id}: {error}")),
-            }
-        }
         self.varbits.extend(assets.varbits);
         failures
     }
@@ -140,35 +142,39 @@ impl EntityCatalog {
         id: NpcDefinitionId,
         variables: &BTreeMap<VarpId, i32>,
     ) -> Option<&'a NpcDefinition> {
-        let def = self.npcs.get(&id)?;
-        let Some(morphs) = &def.morphs else {
-            return Some(def);
-        };
-        let selector = if let Some(varbit) = morphs.varbit {
-            let bit = self
-                .varbits
-                .get(&varbit)
-                .or_else(|| asset.sources().varbits.get(&varbit))?;
-            let value = *variables.get(&bit.varp).unwrap_or(&0);
-            let width = u32::from(bit.high - bit.low) + 1;
-            let mask = if width == 32 {
-                u32::MAX
-            } else {
-                (1_u32 << width) - 1
+        let mut id = id;
+        // A chain cannot visit more definitions than the catalog contains without cycling.
+        for _ in 0..=self.npcs.len() {
+            let def = self.npcs.get(&id)?;
+            let Some(morphs) = &def.morphs else {
+                return Some(def);
             };
-            ((value.cast_unsigned() >> bit.low) & mask).cast_signed()
-        } else {
-            morphs
-                .varp
-                .map_or(-1, |varp| *variables.get(&varp).unwrap_or(&0))
-        };
-        let last = morphs.transforms.len().checked_sub(1)?;
-        let index = usize::try_from(selector)
-            .ok()
-            .filter(|index| *index < last)
-            .unwrap_or(last);
-        let target = (*morphs.transforms.get(index)?)?;
-        self.npcs.get(&target)
+            let selector = if let Some(varbit) = morphs.varbit {
+                let bit = self
+                    .varbits
+                    .get(&varbit)
+                    .or_else(|| asset.sources().varbits.get(&varbit))?;
+                let value = *variables.get(&bit.varp).unwrap_or(&0);
+                let width = u32::from(bit.high - bit.low) + 1;
+                let mask = if width == 32 {
+                    u32::MAX
+                } else {
+                    (1_u32 << width) - 1
+                };
+                ((value.cast_unsigned() >> bit.low) & mask).cast_signed()
+            } else {
+                morphs
+                    .varp
+                    .map_or(-1, |varp| *variables.get(&varp).unwrap_or(&0))
+            };
+            let last = morphs.transforms.len().checked_sub(1)?;
+            let index = usize::try_from(selector)
+                .ok()
+                .filter(|index| *index < last)
+                .unwrap_or(last);
+            id = (*morphs.transforms.get(index)?)?;
+        }
+        None
     }
 
     /// One-line account of why live actors are or are not drawable, for the dev diagnostics.
@@ -235,16 +241,10 @@ impl EntityCatalog {
             .or_else(|| asset.sources().models.get(&id))
     }
 
-    fn frame<'a>(&'a self, asset: &'a SceneAsset, id: u32) -> Option<&'a LegacyFrame> {
-        self.frames
-            .get(&id)
-            .or_else(|| asset.sources().frames.get(&id))
-    }
-
-    fn skeleton<'a>(&'a self, asset: &'a SceneAsset, id: u16) -> Option<&'a Skeleton> {
-        self.skeletons
-            .get(&id)
-            .or_else(|| asset.sources().skeletons.get(&id))
+    /// Immutable animation resources for the scenery worker.
+    #[must_use]
+    pub fn animation_assets(&self) -> std::sync::Arc<AnimationAssets> {
+        std::sync::Arc::clone(&self.animations)
     }
 }
 
@@ -281,13 +281,69 @@ pub fn build_entities_geometry(
         let position = motion
             .player(player.index)
             .unwrap_or_else(|| corner(player.tile));
-        build_player(asset, catalog, player, position, geometry)?;
+        build_player(
+            asset,
+            catalog,
+            player,
+            position,
+            motion.player_pose(player.index),
+            geometry,
+        )?;
     }
     for npc in entities.npcs().values() {
         let position = motion.npc(npc.index).unwrap_or_else(|| corner(npc.tile));
-        build_npc(asset, catalog, npc, position, variables, geometry)?;
+        build_npc(
+            asset,
+            catalog,
+            npc,
+            position,
+            motion.npc_pose(npc.index),
+            variables,
+            geometry,
+        )?;
     }
     Ok(())
+}
+
+/// Every movement animation an actor authors, indexed forward, back, left, right.
+struct DirectionalSequences {
+    idle: Option<SequenceId>,
+    turn_left: Option<SequenceId>,
+    turn_right: Option<SequenceId>,
+    walk: [Option<SequenceId>; 4],
+    run: [Option<SequenceId>; 4],
+    crawl: [Option<SequenceId>; 4],
+}
+
+/// The animation the reference client plays for a movement pose (`Actor.method3284` and
+/// `classKN.method6539`): a missing directional animation falls back to the forward walk, a
+/// missing run or crawl variant to the walk of the same direction, and a missing turn animation
+/// to the forward walk.
+fn select_movement(pose: Pose, sequences: &DirectionalSequences) -> Option<SequenceId> {
+    match pose {
+        Pose::Idle => sequences.idle,
+        Pose::TurnLeft => sequences.turn_left.or(sequences.walk[0]),
+        Pose::TurnRight => sequences.turn_right.or(sequences.walk[0]),
+        Pose::Move { facing, pace } => {
+            let direction = match facing {
+                Facing::Forward => 0,
+                Facing::Back => 1,
+                Facing::Left => 2,
+                Facing::Right => 3,
+            };
+            let direction = if sequences.walk[direction].is_some() {
+                direction
+            } else {
+                0
+            };
+            match pace {
+                Pace::Run => sequences.run[direction],
+                Pace::Crawl => sequences.crawl[direction],
+                Pace::Walk => None,
+            }
+            .or(sequences.walk[direction])
+        }
+    }
 }
 
 /// Footprint corner of a tile in world units.
@@ -311,15 +367,11 @@ fn pose_model(
     let Some(sequence) = sequence else {
         return Ok(true);
     };
-    let Some(sequence) = catalog
-        .sequences
-        .get(&sequence)
-        .or_else(|| asset.sources().sequences.get(&sequence))
-    else {
+    let Some(sequence) = catalog.animations.sequence(asset, sequence) else {
         return Ok(true);
     };
     if let Some(animation) = sequence.skeletal {
-        let Some(animation) = catalog.cached_animations.get(&animation) else {
+        let Some(animation) = catalog.animations.cached(animation) else {
             return Ok(true);
         };
         let Some(frame) =
@@ -342,8 +394,8 @@ fn pose_model(
     if let Some(frame) = sequence
         .frames
         .get(index)
-        .and_then(|id| catalog.frame(asset, *id))
-        && let Some(skeleton) = catalog.skeleton(asset, frame.skeleton)
+        .and_then(|id| catalog.animations.frame(asset, *id))
+        && let Some(skeleton) = catalog.animations.skeleton(asset, frame.skeleton)
     {
         crate::animation::pose(
             &mut model.vertices,
@@ -362,8 +414,10 @@ fn build_player(
     catalog: &EntityCatalog,
     player: &PlayerEntity,
     position: [i32; 2],
+    drawn: Option<ActorPose>,
     geometry: &mut SceneGeometry,
 ) -> Result<()> {
+    let orientation = drawn.map_or(player.orientation, |drawn| drawn.rotation);
     let Some(appearance) = &player.appearance else {
         return Ok(());
     };
@@ -382,11 +436,37 @@ fn build_player(
     let recolors = body_recolors(appearance.colors);
     let mut model = adjusted_model(&base_model, &recolors, &[], 0);
     let movement = appearance.movement_sequences;
-    let base = match player.locomotion {
-        rustclient_game_state::Locomotion::Idle => movement.idle,
-        rustclient_game_state::Locomotion::Walk => movement.walk.or(movement.idle),
-        rustclient_game_state::Locomotion::Run => movement.run.or(movement.walk).or(movement.idle),
-        rustclient_game_state::Locomotion::Turn => movement.turn.or(movement.idle),
+    let (base, base_cycle) = match drawn {
+        Some(drawn) => (
+            select_movement(
+                drawn.pose,
+                &DirectionalSequences {
+                    idle: movement.idle,
+                    turn_left: movement.turn,
+                    turn_right: movement.turn,
+                    walk: [
+                        movement.walk,
+                        movement.walk_back,
+                        movement.walk_left,
+                        movement.walk_right,
+                    ],
+                    run: [movement.run, None, None, None],
+                    crawl: [None; 4],
+                },
+            ),
+            drawn.cycle,
+        ),
+        None => (
+            match player.locomotion {
+                rustclient_game_state::Locomotion::Idle => movement.idle,
+                rustclient_game_state::Locomotion::Walk => movement.walk.or(movement.idle),
+                rustclient_game_state::Locomotion::Run => {
+                    movement.run.or(movement.walk).or(movement.idle)
+                }
+                rustclient_game_state::Locomotion::Turn => movement.turn.or(movement.idle),
+            },
+            player.animation_cycle,
+        ),
     };
     let (sequence, cycle, action) =
         if player.sequence.sequence.is_some() && player.sequence.delay == 0 {
@@ -396,17 +476,10 @@ fn build_player(
                 true,
             )
         } else {
-            (base, player.animation_cycle, false)
+            (base, base_cycle, false)
         };
     if !pose_model(asset, catalog, &mut model, sequence, cycle, action)? {
-        pose_model(
-            asset,
-            catalog,
-            &mut model,
-            base,
-            player.animation_cycle,
-            false,
-        )?;
+        pose_model(asset, catalog, &mut model, base, base_cycle, false)?;
     }
 
     emit_model(
@@ -416,7 +489,7 @@ fn build_player(
             position,
             plane: player.tile.plane,
             size: 1,
-            orientation: player.orientation,
+            orientation,
         },
         Light::entity(64, 850),
         geometry,
@@ -428,21 +501,55 @@ fn build_npc(
     catalog: &EntityCatalog,
     npc: &NpcEntity,
     position: [i32; 2],
+    drawn: Option<ActorPose>,
     variables: &BTreeMap<VarpId, i32>,
     geometry: &mut SceneGeometry,
 ) -> Result<()> {
+    let orientation = drawn.map_or(npc.orientation, |drawn| drawn.rotation);
     let Some(def) = catalog.resolve_npc(asset, npc.definition_id, variables) else {
         return Ok(());
     };
     let Some(mut model) = build_npc_base(def, |id| catalog.model(asset, id)) else {
         return Ok(());
     };
-    let base = match npc.locomotion {
-        rustclient_game_state::Locomotion::Walk | rustclient_game_state::Locomotion::Run => {
-            def.walk_sequence.or(def.idle_sequence)
-        }
-        rustclient_game_state::Locomotion::Turn => def.turn_left_sequence.or(def.idle_sequence),
-        rustclient_game_state::Locomotion::Idle => def.idle_sequence,
+    let (base, base_cycle) = match drawn {
+        Some(drawn) => (
+            select_movement(
+                drawn.pose,
+                &DirectionalSequences {
+                    idle: def.idle_sequence,
+                    turn_left: def.turn_left_sequence,
+                    turn_right: def.turn_right_sequence,
+                    walk: [
+                        def.walk_sequence,
+                        def.walk_back_sequence,
+                        def.walk_left_sequence,
+                        def.walk_right_sequence,
+                    ],
+                    run: def.run_sequences,
+                    crawl: def.crawl_sequences,
+                },
+            ),
+            drawn.cycle,
+        ),
+        None => (
+            match npc.locomotion {
+                rustclient_game_state::Locomotion::Run => def.run_sequences[0]
+                    .or(def.walk_sequence)
+                    .or(def.idle_sequence),
+                rustclient_game_state::Locomotion::Walk => npc
+                    .path
+                    .filter(|p| p.speed == rustclient_model::MoveSpeed::Crawl)
+                    .and(def.crawl_sequences[0])
+                    .or(def.walk_sequence)
+                    .or(def.idle_sequence),
+                rustclient_game_state::Locomotion::Turn => {
+                    def.turn_left_sequence.or(def.idle_sequence)
+                }
+                rustclient_game_state::Locomotion::Idle => def.idle_sequence,
+            },
+            npc.animation_cycle,
+        ),
     };
     let (sequence, cycle, action) = if npc.sequence.sequence.is_some() && npc.sequence.delay == 0 {
         (
@@ -451,10 +558,10 @@ fn build_npc(
             true,
         )
     } else {
-        (base, npc.animation_cycle, false)
+        (base, base_cycle, false)
     };
     if !pose_model(asset, catalog, &mut model, sequence, cycle, action)? {
-        pose_model(asset, catalog, &mut model, base, npc.animation_cycle, false)?;
+        pose_model(asset, catalog, &mut model, base, base_cycle, false)?;
     }
     // The reference scales the animated model, so bone translations stay in unscaled units.
     if def.scale_width != 128 || def.scale_height != 128 {
@@ -472,7 +579,7 @@ fn build_npc(
             position,
             plane: npc.tile.plane,
             size: def.size.max(1),
-            orientation: npc.orientation,
+            orientation,
         },
         Light::entity(
             i32::from(def.ambient) + 64,

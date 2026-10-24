@@ -432,3 +432,21 @@ fn entity_models_stand_on_the_ground_with_their_tops_above_it() {
     assert_eq!(heights.iter().copied().max(), Some(ground));
     assert_eq!(heights.iter().copied().min(), Some(ground - 128));
 }
+#[test]
+fn ground_height_follows_the_drawn_floor_triangle_not_a_corner_blend() {
+    let mut assets = assets();
+    // Only the north-east corner of tile (1, 1) is raised, so the tile is not planar.
+    let tiles = &mut assets.squares[0].tiles;
+    for (x, y, elevation) in [(1, 1, 0), (2, 1, 0), (1, 2, 0), (2, 2, 100)] {
+        tiles[x * 64 + y].elevation = elevation;
+    }
+    let scene = scene(assets);
+    let at = |x, y| scene.ground_height(Plane::MIN, [128 + x, 128 + y]).unwrap();
+    // The split runs south-east to north-west: the south-west half stays flat and the
+    // diagonal itself is level, where a bilinear blend would already rise to -25.
+    assert_eq!(at(32, 32), 0);
+    assert_eq!(at(64, 64), 0);
+    // Halfway up the north-east half the plane reaches half of the corner's height; the
+    // bilinear blend would give about -56.
+    assert!((at(96, 96) + 50).abs() <= 1, "{}", at(96, 96));
+}

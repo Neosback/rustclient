@@ -43,7 +43,8 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     let travel = args
         .get(2)
         .is_some_and(|s| s == "--walk-and-bank" || s == "--verify-bank");
-    let review = args.get(2).is_some_and(|s| s == "--review-interfaces");
+    let frame_only = args.get(2).is_some_and(|s| s == "--review-gameframe");
+    let review = frame_only || args.get(2).is_some_and(|s| s == "--review-interfaces");
     let entities = args.get(2).is_some_and(|s| s == "--review-entities");
     let sample_walk = args.get(2).is_some_and(|s| s == "--walk-sample");
     if args.len() != 2 && !(args.len() == 3 && (travel || review || entities || sample_walk)) {
@@ -90,6 +91,19 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     );
     let mut state = GameState::new();
     state.apply_operation(authenticated)?;
+    if frame_only {
+        state.apply_operation(SemanticOperation::Interface(
+            rustclient_model::InterfaceUpdate::Window(
+                rustclient_cache::CacheProfile::OpenRune240.window_metrics(
+                    rustclient_model::WindowMode::Resizable,
+                    rustclient_model::CanvasSize {
+                        width: 1280,
+                        height: 800,
+                    },
+                ),
+            ),
+        ))?;
+    }
     println!(
         "authenticated player {}",
         state
@@ -100,15 +114,17 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     );
     pollster::block_on(stream.send(&decoder.encode(ClientIntent::WindowStatus {
         mode: rustclient_model::WindowMode::Resizable,
-        width: 765,
-        height: 503,
+        width: state.interfaces().window().canvas.width.try_into()?,
+        height: state.interfaces().window().canvas.height.try_into()?,
     })?))?;
     let mut bytes = [0; 16384];
     let end = Instant::now()
         + Duration::from_secs(if travel {
             240
-        } else if entities || review {
-            12
+        } else if entities {
+            20
+        } else if review {
+            24
         } else {
             8
         });
@@ -117,12 +133,13 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     let mut next_heartbeat = Instant::now() + Duration::from_secs(5);
     let mut reported = false;
     let mut interface_review = interfaces::Review::default();
+    interface_review.frame_only = frame_only;
     let mut entity_review = entity_review::Review::default();
     let mut walked_sample = false;
     let mut logout_sent = false;
     let mut reported_window = state.interfaces().window();
     while Instant::now() < end {
-        stream.deadline_after(Duration::from_millis(200));
+        stream.deadline_after(Duration::from_millis(if review { 20 } else { 200 }));
         match pollster::block_on(stream.receive(&mut bytes)) {
             Ok(0) => return Err("game stream closed".into()),
             Ok(n) => {
@@ -178,6 +195,9 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
                 eprintln!("widget resize: {error}");
             }
             interface_review.step(&mut state, &mut scripts, &mut decoder, &mut stream)?;
+            if frame_only && interface_review.completed {
+                break;
+            }
         }
         for intent in scripts.take_intents() {
             stream.deadline_after(Duration::from_secs(2));
@@ -237,7 +257,10 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     }
     entity_review.report(entities)?;
     if review {
-        if !interface_review.price_opened {
+        if frame_only && !interface_review.completed {
+            return Err("gameframe transition review timed out".into());
+        }
+        if !frame_only && !interface_review.price_opened {
             return Err("guide prices did not mount interface 464".into());
         }
         println!(

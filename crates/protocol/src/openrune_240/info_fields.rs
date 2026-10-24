@@ -1,11 +1,7 @@
 //! Shared verified actor-info field encodings.
 use crate::{ProtocolError, Result, wire::Reader};
 pub(super) fn smart(reader: &mut Reader<'_>) -> Result<u16> {
-    if reader.bytes.get(reader.offset).is_some_and(|b| *b < 128) {
-        Ok(u16::from(reader.u8()?))
-    } else {
-        Ok(reader.u16()? - 32768)
-    }
+    reader.u_short_smart()
 }
 pub(super) fn face(reader: &mut Reader<'_>, flag: u8) -> Result<Option<u16>> {
     match (flag >> 3) & 7 {

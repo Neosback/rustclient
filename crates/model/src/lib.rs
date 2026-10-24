@@ -45,7 +45,10 @@ pub use orientation::{JAU_FULL_TURN, JAU_QUARTER_TURN, JauAngle, LocOrientation,
 pub use revision::{REVISION_240, Revision, RevisionParseError};
 pub use time::{ClientCycle, GameTick, TickSpan};
 mod scenery;
-pub use scenery::{AnimationStart, LocationChange, LocationDefinition, LocationKey, LocationLayer};
+pub use scenery::{
+    AnimationStart, LocationAnimationPlacement, LocationChange, LocationDefinition, LocationKey,
+    LocationLayer,
+};
 
 mod scene;
 pub use scene::{MapAnchor, SceneAssetId, SceneDescriptor};

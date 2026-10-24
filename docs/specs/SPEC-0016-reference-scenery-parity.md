@@ -85,3 +85,17 @@ individual PASS/FAIL/NOT-RUN gates. Green unit tests alone do not establish pari
 
 Non-goals: walking; player/NPC models; ground items, projectiles and spot effects;
 instanced travel/subsequent region streaming; full widgets or general CS2.
+
+## Server animation dependency continuation (2026-10-23)
+
+A server animation override participates in dynamic location classification even
+when its cached definition has no animation. It is excluded from the static
+stream so the same object is not emitted twice. Preserve requested placement,
+start cycle, stop sentinel and the inherited object identity separately.
+On-demand animation assets are immutable scene catalog snapshots shared with
+actors, using the existing cache/scene/application boundary. Location poses
+support both legacy frame groups and cached-model bone weights, undoing/restoring
+placement orientation around the pose. The model is assembled/scaled/lit before
+animation and contoured afterward, as in ObjectComposition.method8629. Asset
+arrival is asynchronous; missing/failed dependencies do not pass acceptance.
+These changes do not establish the visual/priority/coplanar acceptance gate.

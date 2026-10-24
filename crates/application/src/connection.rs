@@ -113,15 +113,22 @@ impl ConnectionDecoder {
             ServerUpdate::ResetActorAnimations => deliver(ConnectionInput::Operation(
                 SemanticOperation::ResetActorAnimations,
             )),
+            ServerUpdate::LocationZoneReset(origin) => {
+                deliver(ConnectionInput::Operation(SemanticOperation::Scenery(
+                    rustclient_game_state::SceneryOperation::ResetLocationArea {
+                        offset: origin.offset,
+                        plane: origin.plane,
+                        size: [8, 8],
+                    },
+                )));
+            }
             ServerUpdate::LocationAnim(anim) => {
                 deliver(ConnectionInput::Operation(SemanticOperation::Scenery(
-                    rustclient_game_state::SceneryOperation::AnimateLocation {
-                        key: anim.key,
-                        start: Some(rustclient_model::AnimationStart {
-                            sequence: Some(anim.sequence),
-                            cycle: rustclient_model::ClientCycle::new(0),
-                            random_seed: 0,
-                        }),
+                    rustclient_game_state::SceneryOperation::TriggerLocationAnimation {
+                        offset: anim.offset,
+                        plane: anim.plane,
+                        placement: anim.placement,
+                        sequence: anim.sequence,
                     },
                 )));
             }

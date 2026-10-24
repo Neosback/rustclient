@@ -117,6 +117,9 @@ pub struct NpcDefinition {
     pub walk_back_sequence: Option<SequenceId>,
     pub walk_left_sequence: Option<SequenceId>,
     pub walk_right_sequence: Option<SequenceId>,
+    /// Forward, backward, left and right animations for each traversal speed.
+    pub run_sequences: [Option<SequenceId>; 4],
+    pub crawl_sequences: [Option<SequenceId>; 4],
     pub recolors: Vec<(u16, u16)>,
     pub retextures: Vec<(Option<TextureId>, Option<TextureId>)>,
     pub combat_level: Option<u16>,

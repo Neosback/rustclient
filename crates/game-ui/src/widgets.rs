@@ -89,6 +89,11 @@ struct Task {
     clip: WidgetBounds,
     depth: u16,
 }
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Visibility {
+    Painted,
+    Attached,
+}
 impl WidgetTree {
     /// Rebuild a disposable layout from the selected root and mounted groups.
     /// Hidden ancestors prune their descendants. No listeners run here.
@@ -104,15 +109,34 @@ impl WidgetTree {
     /// Build the same layout with a disposable drag origin inherited by descendants.
     /// # Errors
     /// Uses the ordinary layout bounds and overflow checks.
-    #[expect(
-        clippy::too_many_lines,
-        reason = "single-pass layout validation and construction"
-    )]
     pub fn build_with_drag(
         state: &InterfaceState,
         assets: &BTreeMap<InterfaceId, InterfaceDefinition>,
         viewport: WidgetBounds,
         dragged: Option<crate::pointer::DraggedWidget>,
+    ) -> Result<Self, WidgetLayoutError> {
+        Self::layout(state, assets, viewport, dragged, Visibility::Painted)
+    }
+    /// Reflow attached components, including hidden descendants, without painting them.
+    /// # Errors
+    /// Uses the same bounded layout validation as the paint projection.
+    pub fn attached(
+        state: &InterfaceState,
+        assets: &BTreeMap<InterfaceId, InterfaceDefinition>,
+        viewport: WidgetBounds,
+    ) -> Result<Self, WidgetLayoutError> {
+        Self::layout(state, assets, viewport, None, Visibility::Attached)
+    }
+    #[expect(
+        clippy::too_many_lines,
+        reason = "single-pass layout validation and construction"
+    )]
+    fn layout(
+        state: &InterfaceState,
+        assets: &BTreeMap<InterfaceId, InterfaceDefinition>,
+        viewport: WidgetBounds,
+        dragged: Option<crate::pointer::DraggedWidget>,
+        visibility: Visibility,
     ) -> Result<Self, WidgetLayoutError> {
         if viewport.width < 0
             || viewport.height < 0
@@ -157,7 +181,7 @@ impl WidgetTree {
                 .get(&widget.id.interface)
                 .ok_or(WidgetLayoutError::MissingInterface(widget.id.interface))?;
             let overrides = state.runtime().get(&task.address);
-            if widget.hidden {
+            if widget.hidden && visibility == Visibility::Painted {
                 continue;
             }
             let mut bounds = place(&widget, task.origin, task.parent_size)?;
@@ -166,7 +190,7 @@ impl WidgetTree {
                 bounds.y = checked(i64::from(dragged.origin[1]))?;
             }
             let clip = task.clip.intersection(bounds);
-            let (child_size, scroll_y) =
+            let (child_size, scroll) =
                 if let WidgetBody::Container { scroll_size, .. } = widget.body {
                     let effective = [
                         if scroll_size[0] == 0 {
@@ -180,23 +204,22 @@ impl WidgetTree {
                             checked(i64::from(scroll_size[1]))?
                         },
                     ];
-                    let maximum = (effective[1] - bounds.height).max(0).cast_unsigned();
+                    let maximum = [effective[0] - bounds.width, effective[1] - bounds.height]
+                        .map(|n| n.max(0).cast_unsigned());
+                    let current = overrides.and_then(|v| v.scroll).unwrap_or([0; 2]);
                     (
                         effective,
-                        overrides
-                            .and_then(|v| v.scroll)
-                            .map_or(0, |v| v[1])
-                            .min(maximum),
+                        [current[0].min(maximum[0]), current[1].min(maximum[1])],
                     )
                 } else {
-                    ([bounds.width, bounds.height], 0)
+                    ([bounds.width, bounds.height], [0; 2])
                 };
             nodes.push(PlacedWidget {
                 id: widget.id,
                 address: task.address,
                 bounds,
                 clip,
-                scroll_y,
+                scroll_y: scroll[1],
             });
             let depth = task.depth + 1;
             // Mounted roots follow the owning component's normal children.
@@ -208,15 +231,15 @@ impl WidgetTree {
                     assets,
                     mount.interface,
                     [bounds.x, bounds.y],
-                    [bounds.width, bounds.height],
+                    child_size,
                     clip,
                     depth,
                 )?;
             }
             if matches!(widget.body, WidgetBody::Container { .. }) {
                 let origin = [
-                    bounds.x,
-                    checked(i64::from(bounds.y) - i64::from(scroll_y))?,
+                    checked(i64::from(bounds.x) - i64::from(scroll[0]))?,
+                    checked(i64::from(bounds.y) - i64::from(scroll[1]))?,
                 ];
                 {
                     for address in dynamic_children

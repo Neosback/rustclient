@@ -31,6 +31,7 @@ pub struct InterfaceState {
     settings: BTreeMap<rustclient_model::ClientSetting, bool>,
     device_preferences: BTreeMap<u8, i32>,
     epoch: u64,
+    revision: u64,
     root: Option<InterfaceId>,
     mounts: BTreeMap<WidgetId, InterfaceMount>,
     events: Vec<WidgetEventRange>,
@@ -54,6 +55,15 @@ impl InterfaceState {
     #[must_use]
     pub const fn epoch(&self) -> u64 {
         self.epoch
+    }
+    /// Disposable change counter, advanced by every committed interface mutation and
+    /// excluded from semantic fingerprints. Layout caches compare it to skip unchanged work.
+    #[must_use]
+    pub const fn revision(&self) -> u64 {
+        self.revision
+    }
+    pub(crate) fn touch(&mut self) {
+        self.revision = self.revision.wrapping_add(1);
     }
     pub(crate) fn invalidate(&mut self) {
         self.epoch = self.epoch.wrapping_add(1);

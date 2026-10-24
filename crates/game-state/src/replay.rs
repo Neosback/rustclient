@@ -35,6 +35,10 @@ impl ReplayEnvelope {
 
 /// Why deterministic semantic replay stopped.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[expect(
+    clippy::large_enum_variant,
+    reason = "copyable pair of bounded semantic commits, constructed only on replay failure"
+)]
 pub enum ReplayFailure {
     /// A recorded operation was rejected when replayed against the current state.
     OperationRejected(OperationError),

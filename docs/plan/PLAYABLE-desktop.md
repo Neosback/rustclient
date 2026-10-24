@@ -4,6 +4,12 @@ Status: walk/bank **headless integration proof passes**; desktop gameframe/manua
 acceptance is still being reviewed. Contract: [SPEC-0018](../specs/SPEC-0018-playable-desktop.md).
 Full visual parity remains the separate ADR-0004 gate.
 
+The [2026-10-23 gameframe audit](GAMEFRAME-240.md) records fixed/classic/modern
+layout transitions and remaining server-script mismatch.
+
+The [2026-10-23 player audit](PLAYER-UPDATING-240.md) records the corrected 240
+decoder, traversal/forced movement, live evidence and remaining animation gaps.
+
 ## Implemented
 
 - Server-confirmed movement, ordinary rebuilds, collision, cache-authored world
@@ -17,7 +23,7 @@ Full visual parity remains the separate ADR-0004 gate.
   draws the cache gameframe; the handwritten chat/tabs/minimap HUD was removed.
 - Incoming game-message history and filters, player display names, reboot status,
   and script-authored viewport settings. Camera projection/picking use the same
-  cache-authored viewport and aspect/zoom settings. Fingerprint schema is 11.
+  cache-authored viewport and aspect/zoom settings. Current fingerprint schema is 15 (SPEC-0002).
 - Login retains the form and Login button while connecting. Repeat submission is
   blocked; only the submitted password's mask length remains in presentation.
 - Native title bar reports presented FPS and process RSS in MiB once per second.
@@ -85,4 +91,4 @@ window can report zero. RSS is resident process memory, not a GPU-memory counter
 exactly two credential lines from stdin; never put a password in command arguments.
 The transaction probe expects the named disposable fixture's total to remain 10.
 
-Validation for the final review revision is recorded below after the gates finish.
+Current continuation validation is recorded in the [player audit](PLAYER-UPDATING-240.md).

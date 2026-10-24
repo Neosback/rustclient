@@ -13,19 +13,13 @@ pub(crate) fn build(
     let d = asset.descriptor;
     let origin = d.origin();
     let locations = effective_locations(asset, inputs);
-    let is_dynamic = |loc: &StaticLocation| {
-        asset
-            .assets
-            .objects
-            .get(&loc.object)
-            .is_some_and(|def| def.animation.is_some() || def.morphs.is_some())
-    };
+
     // A pose-only rebuild runs every client cycle; wall thickness is only consulted
     // on tiles that hold a posed location, so index just those tiles.
     let dynamic_tiles: Option<std::collections::BTreeSet<_>> = dynamic.then(|| {
         locations
             .iter()
-            .filter(|loc| is_dynamic(loc))
+            .filter(|loc| is_dynamic(asset, inputs, loc))
             .map(|loc| loc.tile)
             .collect()
     });
@@ -47,7 +41,10 @@ pub(crate) fn build(
     {
         for loc in &locations {
             // Unknown objects fall through so the explicit missing-object error stays.
-            if dynamic && asset.assets.objects.contains_key(&loc.object) && !is_dynamic(loc) {
+            if dynamic
+                && asset.assets.objects.contains_key(&loc.object)
+                && !is_dynamic(asset, inputs, loc)
+            {
                 continue;
             }
             if loc.tile.x < origin.x
@@ -63,7 +60,7 @@ pub(crate) fn build(
                 .objects
                 .get(&loc.object)
                 .ok_or_else(|| SceneError(format!("missing object {}", loc.object.get())))?;
-            if (def.animation.is_some() || def.morphs.is_some()) != dynamic {
+            if is_dynamic(asset, inputs, loc) != dynamic {
                 continue;
             }
             mesh.stats.locations += 1;
@@ -73,9 +70,15 @@ pub(crate) fn build(
             if def.animation.is_some() {
                 mesh.stats.animated_static += 1;
             }
-            let rotation = loc.orientation.get();
+            let animated = inputs
+                .locations
+                .get(&location_key(loc))
+                .and_then(|o| o.animation)
+                .and_then(|a| a.placement);
+            let rotation = animated.map_or(loc.orientation.get(), |p| p.orientation.get());
+            let shape = animated.map_or(loc.shape, |p| p.shape);
             let thickness = i32::from(*walls.get(&loc.tile).unwrap_or(&16));
-            let requests = placement_requests(loc.shape, rotation, thickness);
+            let requests = placement_requests(shape, rotation, thickness);
             let mut selected = false;
             for (shape, orientation, offset) in requests {
                 if let Some(model) = prepare(asset, loc, def, shape, orientation, offset, inputs)? {
@@ -109,6 +112,18 @@ pub(crate) fn build(
     }
     Ok(())
 }
+fn is_dynamic(asset: &SceneAsset, inputs: &crate::SceneryInputs, loc: &StaticLocation) -> bool {
+    inputs
+        .locations
+        .get(&location_key(loc))
+        .is_some_and(|o| o.animation.is_some())
+        || asset
+            .assets
+            .objects
+            .get(&loc.object)
+            .is_some_and(|def| def.animation.is_some() || def.morphs.is_some())
+}
+
 pub(crate) fn resolve<'a>(
     asset: &'a SceneAsset,
     mut def: &'a ObjectDefinition,
@@ -159,6 +174,7 @@ pub(crate) struct InstanceModel {
     pub faces: Vec<rustclient_cache::world::ModelFace>,
     textures: Vec<[u32; 3]>,
     skins: Vec<Option<u8>>,
+    weights: Vec<Vec<(u8, u8)>>,
 }
 fn construct(
     asset: &SceneAsset,
@@ -171,6 +187,7 @@ fn construct(
         faces: Vec::new(),
         textures: Vec::new(),
         skins: Vec::new(),
+        weights: Vec::new(),
     };
     let mut shared = BTreeMap::new();
     let mirror = def.mirrored ^ (orientation > 3);
@@ -197,6 +214,7 @@ fn construct(
                     u32::try_from(model.vertices.len()).expect("bounded source combination");
                 model.vertices.push(point);
                 model.skins.push(source.vertex_skins[vertex]);
+                model.weights.push(source.skeletal_weights[vertex].clone());
                 index
             });
             mapping.push(index);
@@ -260,7 +278,7 @@ fn prepare(
     let Some(mut model) = construct(asset, def, shape, orientation)? else {
         return Ok(None);
     };
-    let size = if loc.orientation.get() & 1 != 0 {
+    let size = if orientation & 1 != 0 {
         [def.size[1], def.size[0]]
     } else {
         def.size
@@ -295,49 +313,19 @@ fn prepare(
         .and_then(|o| o.animation);
     let animation = start.map_or(def.animation, |s| s.sequence);
     if let Some(id) = animation {
-        let seq = asset
-            .assets
-            .sequences
-            .get(&id)
-            .ok_or_else(|| SceneError("missing sequence".into()))?;
-        let zone = (loc.tile.x.div_euclid(8), loc.tile.y.div_euclid(8));
-        let local = (
-            center[0] + offset[0] - zone.0 * 1024,
-            -base,
-            center[1] + offset[1] - zone.1 * 1024,
-        );
-        let mut hash = std::collections::hash_map::DefaultHasher::new();
-        (zone, local, loc.tile.plane.get(), id.get()).hash(&mut hash);
-        let random = def
-            .random_start
-            .then(|| start.map_or_else(|| hash.finish(), |s| s.random_seed));
-        if let Some(index) = crate::animation::frame_index(
-            seq,
-            inputs
-                .cycle
-                .get()
-                .saturating_sub(start.map_or(0, |s| s.cycle.get())),
-            random,
-        )? {
-            let frame = asset
-                .assets
-                .frames
-                .get(&seq.frames[index])
-                .ok_or_else(|| SceneError("missing sequence frame".into()))?;
-            let skeleton = asset
-                .assets
-                .skeletons
-                .get(&frame.skeleton)
-                .ok_or_else(|| SceneError("missing skeleton".into()))?;
-            crate::animation::pose(
-                &mut model.vertices,
-                &mut model.faces,
-                &model.skins,
-                frame,
-                &skeleton.transforms,
-                orientation,
-            )?;
-        }
+        pose(
+            asset,
+            inputs,
+            &mut model,
+            loc,
+            def,
+            id,
+            orientation,
+            center,
+            offset,
+            base,
+            start,
+        )?;
     }
 
     if let Some(clip) = def.contour {
@@ -394,7 +382,10 @@ fn prepare(
         points,
         loc: *loc,
         size,
-        mergeable: def.non_flat_shading && def.animation.is_none() && def.morphs.is_none(),
+        mergeable: def.non_flat_shading
+            && animation.is_none()
+            && start.is_none()
+            && def.morphs.is_none(),
         ambient: def.ambient,
         contrast: def.contrast,
         colors,
@@ -405,6 +396,76 @@ fn prepare(
         },
     }))
 }
+#[expect(
+    clippy::too_many_arguments,
+    reason = "immutable location placement and pose inputs"
+)]
+fn pose(
+    asset: &SceneAsset,
+    inputs: &crate::SceneryInputs,
+    model: &mut InstanceModel,
+    loc: &StaticLocation,
+    def: &ObjectDefinition,
+    id: rustclient_model::SequenceId,
+    orientation: u8,
+    center: [i32; 2],
+    offset: [i32; 2],
+    base: i32,
+    start: Option<rustclient_model::AnimationStart>,
+) -> Result<()> {
+    // Server overrides can name assets outside the original map dependency closure.
+    // Until the asynchronous catalog arrives, preserve the object's base geometry.
+    let Some(seq) = inputs.animations.sequence(asset, id) else {
+        return Ok(());
+    };
+    let elapsed = inputs
+        .cycle
+        .get()
+        .saturating_sub(start.map_or(0, |s| s.cycle.get()));
+    let zone = (loc.tile.x.div_euclid(8), loc.tile.y.div_euclid(8));
+    let local = (
+        center[0] + offset[0] - zone.0 * 1024,
+        -base,
+        center[1] + offset[1] - zone.1 * 1024,
+    );
+    let mut hash = std::collections::hash_map::DefaultHasher::new();
+    (zone, local, loc.tile.plane.get(), id.get()).hash(&mut hash);
+    // Explicit server triggers start at frame zero even on randomly phased cache objects.
+    let random = def
+        .random_start
+        .then(|| start.map_or_else(|| hash.finish(), |s| s.random_seed));
+    if let Some(id) = seq.skeletal {
+        if let Some(frame) = crate::animation::skeletal_frame(seq, elapsed, random)
+            && let Some(animation) = inputs.animations.cached(id)
+        {
+            crate::animation::pose_skeletal_oriented(
+                animation,
+                frame,
+                &mut model.vertices,
+                &mut model.faces,
+                &model.weights,
+                orientation,
+            )?;
+        }
+    } else if let Some(index) = crate::animation::frame_index(seq, elapsed, random)? {
+        let Some(frame) = inputs.animations.frame(asset, seq.frames[index]) else {
+            return Ok(());
+        };
+        let Some(skeleton) = inputs.animations.skeleton(asset, frame.skeleton) else {
+            return Ok(());
+        };
+        crate::animation::pose(
+            &mut model.vertices,
+            &mut model.faces,
+            &model.skins,
+            frame,
+            &skeleton.transforms,
+            orientation,
+        )?;
+    }
+    Ok(())
+}
+
 fn emit(mesh: &mut WorldMesh, prepared: PreparedModel) -> Result<()> {
     let PreparedModel {
         model,

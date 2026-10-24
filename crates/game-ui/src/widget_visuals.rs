@@ -12,6 +12,15 @@ pub struct WidgetVisualAssets {
     pub sprite_frames: BTreeMap<SpriteId, SpriteFrame>,
     pub failures: Vec<String>,
 }
+impl WidgetVisualAssets {
+    /// Fold a later load into this set; the cache is immutable, so equal keys are equal values.
+    pub fn merge(&mut self, later: Self) {
+        self.images.extend(later.images);
+        self.fonts.extend(later.fonts);
+        self.sprite_frames.extend(later.sprite_frames);
+        self.failures.extend(later.failures);
+    }
+}
 /// Cache frame geometry: the reference client scales and tiles the full canvas.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SpriteFrame {

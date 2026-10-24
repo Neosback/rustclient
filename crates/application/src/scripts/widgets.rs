@@ -413,6 +413,7 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
                 }
                 runtime.body = Some(body);
             }
+            Opcode::CcSetnoscrollthrough => runtime.no_scroll_through = Some(s.int()? == 1),
             CcSetobject | CcSetobjectNonum | CcSetobjectAlwaysNum => {
                 let [id, count] = s.ints()?;
                 runtime.item = u32::try_from(id)

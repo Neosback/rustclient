@@ -10,11 +10,15 @@ pub use interfaces::{InterfaceError, InterfaceState};
 mod inventory;
 pub use inventory::{InventoryError, InventoryState};
 mod entities;
+mod npcs;
+pub use npcs::NpcPath;
+mod player_movement;
 mod players;
 pub use entities::{
     EntityUpdateError, Locomotion, NpcEntity, PlayerEntity, WorldEntitiesState, direction_to_delta,
     direction_to_orientation,
 };
+pub use player_movement::ExactMovement;
 pub use players::TrackedPlayer;
 
 mod commit;

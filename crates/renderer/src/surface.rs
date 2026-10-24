@@ -142,7 +142,46 @@ pub struct SurfaceRenderer {
     configured: bool,
     ui: Option<UiGpu>,
     world: Option<WorldGpu>,
+    /// Latest posed geometry awaiting a presentable frame. wgpu retains every staged
+    /// write until the next submission, so uploads are issued only when a frame will
+    /// be submitted; a hidden window then costs one bounded CPU copy and no GPU memory.
+    staged: StagedGeometry,
     device_lost: Arc<AtomicBool>,
+}
+
+/// One latest-wins geometry stream: a reusable copy plus whether it still needs uploading.
+#[derive(Default)]
+struct StagedStream {
+    geometry: rustclient_scene::SceneGeometry,
+    pending: bool,
+}
+
+impl StagedStream {
+    /// Copy the GPU-visible parts, reusing the previous staging allocation.
+    fn stage(&mut self, geometry: &rustclient_scene::SceneGeometry) {
+        let staged = &mut self.geometry;
+        staged.vertices.clear();
+        staged.vertices.extend_from_slice(&geometry.vertices);
+        staged.opaque.clear();
+        staged.opaque.extend_from_slice(&geometry.opaque);
+        staged.transparent.clear();
+        staged.transparent.extend_from_slice(&geometry.transparent);
+        staged.models.clear();
+        staged.models.extend_from_slice(&geometry.models);
+        self.pending = true;
+    }
+
+    /// The staged geometry exactly once per staging.
+    fn take_pending(&mut self) -> Option<&rustclient_scene::SceneGeometry> {
+        std::mem::take(&mut self.pending).then_some(&self.geometry)
+    }
+}
+
+/// The two dynamic geometry streams awaiting a presentable frame.
+#[derive(Default)]
+struct StagedGeometry {
+    dynamic: StagedStream,
+    entities: StagedStream,
 }
 
 impl SurfaceRenderer {
@@ -210,6 +249,7 @@ impl SurfaceRenderer {
             configured: false,
             ui: None,
             world: None,
+            staged: StagedGeometry::default(),
             device_lost,
         };
         renderer.resize(size);
@@ -238,8 +278,16 @@ impl SurfaceRenderer {
         assets: &TitleAssets,
         images: &std::collections::BTreeMap<rustclient_game_ui::UiImageId, rustclient_cache::Image>,
     ) -> Result<(), RenderError> {
-        let ui = UiGpu::with_images(&self.device, &self.queue, self.view_format, assets, images)?;
-        self.ui = Some(ui);
+        if let Some(ui) = &mut self.ui {
+            return ui.replace_images(&self.device, &self.queue, assets, images);
+        }
+        self.ui = Some(UiGpu::with_images(
+            &self.device,
+            &self.queue,
+            self.view_format,
+            assets,
+            images,
+        )?);
         Ok(())
     }
     /// Upload a disposable world mesh once per asset/GPU lifetime.
@@ -253,6 +301,7 @@ impl SurfaceRenderer {
             SurfaceSize::new(self.config.width, self.config.height),
             mesh,
         )?);
+        self.staged = StagedGeometry::default();
         Ok(())
     }
     /// Update posed geometry while retaining static vertices, textures and pipelines.
@@ -265,17 +314,19 @@ impl SurfaceRenderer {
     ) -> Result<(), RenderError> {
         let world = self
             .world
-            .as_mut()
+            .as_ref()
             .ok_or(RenderError::World("scene is not uploaded"))?;
         if world.asset != asset {
             return Err(RenderError::World("dynamic scenery asset mismatch"));
         }
-        world.update_dynamic(&self.device, &self.queue, geometry)
+        self.staged.dynamic.stage(geometry);
+        Ok(())
     }
 
     /// Replace live entity geometry; scenery and static buffers are untouched.
+    /// The upload happens with the next presented frame.
     /// # Errors
-    /// Rejects mismatched scene identity and device allocation limits.
+    /// Rejects mismatched scene identity.
     pub fn set_world_entities(
         &mut self,
         asset: rustclient_model::SceneAssetId,
@@ -283,12 +334,13 @@ impl SurfaceRenderer {
     ) -> Result<(), RenderError> {
         let world = self
             .world
-            .as_mut()
+            .as_ref()
             .ok_or(RenderError::World("scene is not uploaded"))?;
         if world.asset != asset {
             return Err(RenderError::World("entity geometry asset mismatch"));
         }
-        world.update_entities(&self.device, &self.queue, geometry)
+        self.staged.entities.stage(geometry);
+        Ok(())
     }
 
     /// Render committed world geometry with a disposable camera and UI overlay.
@@ -322,6 +374,22 @@ impl SurfaceRenderer {
             return Err(RenderError::World(
                 "GPU scene does not match authoritative asset reference",
             ));
+        }
+        // Acquire before staging any upload: a frame that cannot be presented must not
+        // queue writes, because wgpu holds them until the next submission.
+        let surface_texture = match self.acquire() {
+            Ok(texture) => texture,
+            Err(outcome) => return outcome,
+        };
+        let world = self
+            .world
+            .as_mut()
+            .ok_or(RenderError::World("scene is not uploaded"))?;
+        if let Some(geometry) = self.staged.dynamic.take_pending() {
+            world.update_dynamic(&self.device, &self.queue, geometry)?;
+        }
+        if let Some(geometry) = self.staged.entities.take_pending() {
+            world.update_entities(&self.device, &self.queue, geometry)?;
         }
         let viewport = TitleViewport {
             canvas_width: frame.canvas.map_or(765, |s| s.width),
@@ -357,17 +425,18 @@ impl SurfaceRenderer {
                     scale,
                 },
             )?;
-        self.render_frame(
+        Ok(self.present_frame(
+            surface_texture,
             ClearColor {
-                r: 0.12,
-                g: 0.17,
-                b: 0.23,
+                r: 0.,
+                g: 0.,
+                b: 0.,
                 a: 1.,
             },
             true,
             true,
             before_present,
-        )
+        ))
     }
 
     /// Latest title projection counters, without GPU readback.
@@ -393,6 +462,10 @@ impl SurfaceRenderer {
         if self.device_lost.load(Ordering::Relaxed) {
             return Ok(FrameOutcome::RecreateRequired);
         }
+        let surface_texture = match self.acquire() {
+            Ok(texture) => texture,
+            Err(outcome) => return outcome,
+        };
         let viewport = TitleViewport {
             canvas_width: frame.canvas.map_or(765, |s| s.width),
             physical_width: self.config.width,
@@ -410,7 +483,8 @@ impl SurfaceRenderer {
                 crate::ui::DynamicImages::default(),
                 viewport,
             )?;
-        self.render_frame(
+        Ok(self.present_frame(
+            surface_texture,
             ClearColor {
                 r: 0.,
                 g: 0.,
@@ -420,7 +494,7 @@ impl SurfaceRenderer {
             true,
             false,
             before_present,
-        )
+        ))
     }
 
     /// Reconfigure for a new physical size. Zero-sized surfaces are suspended.
@@ -468,30 +542,51 @@ impl SurfaceRenderer {
         draw_world: bool,
         before_present: F,
     ) -> Result<FrameOutcome, RenderError> {
+        match self.acquire() {
+            Ok(texture) => {
+                Ok(self.present_frame(texture, color, draw_ui, draw_world, before_present))
+            }
+            Err(outcome) => outcome,
+        }
+    }
+
+    /// Next presentable surface texture, or the outcome that explains why there is none.
+    ///
+    /// Callers acquire before preparing uploads so skipped frames stage nothing.
+    fn acquire(&mut self) -> Result<wgpu::SurfaceTexture, Result<FrameOutcome, RenderError>> {
         if !self.configured {
-            return Ok(FrameOutcome::Suspended);
+            return Err(Ok(FrameOutcome::Suspended));
         }
         if self.device_lost.load(Ordering::Relaxed) {
-            return Ok(FrameOutcome::RecreateRequired);
+            return Err(Ok(FrameOutcome::RecreateRequired));
         }
-        let surface_texture = match self.surface.get_current_texture() {
-            wgpu::CurrentSurfaceTexture::Success(texture) => texture,
+        match self.surface.get_current_texture() {
+            wgpu::CurrentSurfaceTexture::Success(texture) => Ok(texture),
             wgpu::CurrentSurfaceTexture::Occluded | wgpu::CurrentSurfaceTexture::Timeout => {
-                return Ok(FrameOutcome::Skipped);
+                Err(Ok(FrameOutcome::Skipped))
             }
             wgpu::CurrentSurfaceTexture::Suboptimal(texture) => {
                 drop(texture);
                 self.reconfigure();
-                return Ok(FrameOutcome::Reconfigured);
+                Err(Ok(FrameOutcome::Reconfigured))
             }
             wgpu::CurrentSurfaceTexture::Outdated => {
                 self.reconfigure();
-                return Ok(FrameOutcome::Reconfigured);
+                Err(Ok(FrameOutcome::Reconfigured))
             }
-            wgpu::CurrentSurfaceTexture::Lost => return Ok(FrameOutcome::RecreateRequired),
-            wgpu::CurrentSurfaceTexture::Validation => return Err(RenderError::Validation),
-        };
+            wgpu::CurrentSurfaceTexture::Lost => Err(Ok(FrameOutcome::RecreateRequired)),
+            wgpu::CurrentSurfaceTexture::Validation => Err(Err(RenderError::Validation)),
+        }
+    }
 
+    fn present_frame<F: FnOnce()>(
+        &mut self,
+        surface_texture: wgpu::SurfaceTexture,
+        color: ClearColor,
+        draw_ui: bool,
+        draw_world: bool,
+        before_present: F,
+    ) -> FrameOutcome {
         let texture_view = surface_texture
             .texture
             .create_view(&wgpu::TextureViewDescriptor {
@@ -559,7 +654,7 @@ impl SurfaceRenderer {
         self.queue.submit([encoder.finish()]);
         before_present();
         self.queue.present(surface_texture);
-        Ok(FrameOutcome::Presented)
+        FrameOutcome::Presented
     }
 
     fn reconfigure(&self) {

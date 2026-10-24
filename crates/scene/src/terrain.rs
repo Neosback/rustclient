@@ -172,6 +172,115 @@ pub(crate) fn build(
     }
     Ok(())
 }
+/// Height of the drawn floor at fine offset `(fx, fy)` inside world tile `(wx, wy)`.
+///
+/// The 240 client places actors on the plane of the floor triangle actually rendered
+/// under them (the tile's diagonal split or overlay shape), not on a bilinear blend of its
+/// four corners; the two differ wherever the tile is not planar. Returns `None` for a tile
+/// with no floor, where the caller falls back to the corner blend as the client does.
+///
+/// # Errors
+/// Rejects missing corner heights or unsupported overlay shapes.
+#[expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_precision_loss,
+    reason = "reference barycentric interpolation is single precision truncated to integer"
+)]
+pub(crate) fn floor_height(
+    asset: &SceneAsset,
+    plane: Plane,
+    wx: i32,
+    wy: i32,
+    fx: i32,
+    fy: i32,
+) -> Result<Option<i32>> {
+    let Some(tile) = asset.tile(plane, wx, wy) else {
+        return Ok(None);
+    };
+    if tile.underlay.is_none() && tile.overlay.is_none() {
+        return Ok(None);
+    }
+    let heights = [
+        asset.elevation(plane, wx, wy)?,
+        asset.elevation(plane, wx + 1, wy)?,
+        asset.elevation(plane, wx + 1, wy + 1)?,
+        asset.elevation(plane, wx, wy + 1)?,
+    ]
+    .map(|v| -v);
+    let (shape, rotation) = tile
+        .overlay
+        .map_or((0, 0), |o| (usize::from(o.shape) + 1, o.rotation));
+    let codes = VERTEX_CODES
+        .get(shape)
+        .ok_or_else(|| SceneError("unsupported floor topology".into()))?;
+    let mut points = [[0_i32; 3]; 6];
+    for (index, &raw) in codes.iter().enumerate() {
+        let (px, py, h) = vertex(rotate_code(raw, rotation), heights)?;
+        points[index] = [i32::from(px), i32::from(py), h];
+    }
+    let rows: &[u8] = if shape == 0 {
+        &[0, 2, 3, 1, 0, 0, 1, 3]
+    } else if shape == 1 {
+        &[1, 2, 3, 1, 1, 0, 1, 3]
+    } else {
+        FACE_CODES[shape]
+    };
+    for face in rows.chunks_exact(4) {
+        let corners = std::array::from_fn::<_, 3, _>(|i| {
+            let n = face[i + 1];
+            let index = usize::from(if n < 4 && shape > 1 {
+                n.wrapping_sub(rotation) & 3
+            } else {
+                n
+            });
+            points[index]
+        });
+        if !inside_triangle(fx, fy, corners) {
+            continue;
+        }
+        let [[x1, z1, h1], [x2, z2, h2], [x3, z3, h3]] = corners;
+        let denominator = ((z1 - z3) * (x3 - x2) + (x1 - x3) * (z2 - z3)) as f32;
+        let w1 = (((fx - x3) * (z2 - z3) + (fy - z3) * (x3 - x2)) as f32) / denominator;
+        let w2 = (((x1 - x3) * (fy - z3) + (fx - x3) * (z3 - z1)) as f32) / denominator;
+        let w3 = 1.0 - w1 - w2;
+        return Ok(Some(
+            (w2 * h2 as f32 + w1 * h1 as f32 + w3 * h3 as f32) as i32,
+        ));
+    }
+    Ok(None)
+}
+/// Edge-inclusive point-in-triangle test, matching the client's `Scene.method4174`.
+#[expect(
+    clippy::many_single_char_names,
+    clippy::comparison_chain,
+    reason = "geometric edge labels and branch order retain the reference point-in-triangle calculation"
+)]
+fn inside_triangle(x: i32, z: i32, corners: [[i32; 3]; 3]) -> bool {
+    let [[x1, z1, _], [x2, z2, _], [x3, z3, _]] = corners;
+    if (z < z1 && z < z2 && z < z3)
+        || (z > z1 && z > z2 && z > z3)
+        || (x < x1 && x < x2 && x < x3)
+        || (x > x1 && x > x2 && x > x3)
+    {
+        return false;
+    }
+    let a = (z - z1) * (x2 - x1) - (x - x1) * (z2 - z1);
+    let b = (z - z2) * (x3 - x2) - (x - x2) * (z3 - z2);
+    let c = (z - z3) * (x1 - x3) - (x - x3) * (z1 - z3);
+    if a == 0 {
+        if b == 0 {
+            true
+        } else if b < 0 {
+            c <= 0
+        } else {
+            c >= 0
+        }
+    } else if a < 0 {
+        b <= 0 && c <= 0
+    } else {
+        b >= 0 && c >= 0
+    }
+}
 /// Per-tile underlay HSL terms for one plane, indexed `x * height + y`.
 #[expect(
     clippy::cast_possible_truncation,

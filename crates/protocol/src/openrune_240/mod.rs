@@ -3,6 +3,7 @@
 mod actions;
 pub(crate) mod bit_reader;
 pub(crate) mod game;
+pub(crate) mod huffman;
 mod info_fields;
 mod interfaces;
 mod inventory;
@@ -20,6 +21,7 @@ mod player_extended;
 )]
 pub(crate) mod player_info;
 mod scripts;
+pub(crate) mod zone;
 use crate::{ProtocolError, Result};
 pub(crate) const REVISION: rustclient_model::Revision =
     rustclient_model::Revision::with_subrevision(240, 2);

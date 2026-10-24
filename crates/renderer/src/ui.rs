@@ -267,6 +267,22 @@ impl UiGpu {
             stats: UiStats::default(),
         })
     }
+    /// Repack the static atlas for a grown image set, keeping the pipeline, buffers and
+    /// dynamic textures. Only the atlas texture and its bind group are replaced.
+    pub(crate) fn replace_images(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        assets: &TitleAssets,
+        images: &BTreeMap<UiImageId, Image>,
+    ) -> Result<(), RenderError> {
+        let (pixels, regions) = atlas(assets, images)?;
+        let atlas_texture = texture(device, ATLAS_WIDTH, ATLAS_HEIGHT, "title static atlas");
+        upload(queue, &atlas_texture, ATLAS_WIDTH, ATLAS_HEIGHT, &pixels);
+        self.atlas = bind(device, &self.layout, &self.sampler, &atlas_texture);
+        self.regions = regions;
+        Ok(())
+    }
     #[expect(
         clippy::too_many_lines,
         reason = "single painter-ordered batching pass"

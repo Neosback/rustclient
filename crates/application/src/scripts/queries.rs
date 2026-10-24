@@ -362,6 +362,22 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
             })
         }
         MapWorld => Some(255),
+        Opcode::CamGetangleXa => Some(h.resources.camera_angles[0]),
+        Opcode::CamGetangleYa => Some(h.resources.camera_angles[1]),
+        Opcode::ChatSendpublic => {
+            let chat_type = u8::try_from(s.int()?).map_err(|_| "chat type out of range")?;
+            let text = s.text()?;
+            let message = h.resources.encode_public_chat(&text)?;
+            h.resources
+                .queue_chat(rustclient_protocol::ChatIntent::Public { chat_type, message })?;
+            None
+        }
+        Opcode::Docheat => {
+            let text = s.text()?;
+            h.resources
+                .queue_chat(rustclient_protocol::ChatIntent::Command(text))?;
+            None
+        }
         IfClose => {
             if h.resources.effects.len() >= 32 {
                 return Err("script effect limit".into());
@@ -445,7 +461,7 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
         Clientclock => Some(
             i32::try_from(h.state.scenery().cycle().get()).map_err(|_| "client cycle overflow")?,
         ),
-        Clienttype | OnMobile => Some(0),
+        Clienttype | OnMobile | Opcode::ViewportGetx | Opcode::ViewportGety => Some(0),
         Getwindowmode => Some(
             h.resources
                 .profile
@@ -476,6 +492,8 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
                 .extend([canvas.width.cast_signed(), canvas.height.cast_signed()]);
             None
         }
+        Opcode::Getcanvaswidth => Some(h.state.interfaces().window().canvas.width.cast_signed()),
+        Opcode::Getcanvasheight => Some(h.state.interfaces().window().canvas.height.cast_signed()),
         MapMembers => Some(i32::from(
             h.state.authenticated_player().is_some_and(|p| p.member),
         )),
@@ -833,6 +851,46 @@ mod tests {
         );
         assert!(run(&mut scripts, &mut state, Opcode::Renderself, &[]).is_err());
         assert_eq!(state.semantic_fingerprint(), before);
+    }
+
+    #[test]
+    fn camera_angles_come_from_the_host_and_commands_queue_one_intent() {
+        let (mut scripts, mut state) = (scripts(), state());
+        scripts.set_camera_angles(200, 1024);
+        assert_eq!(
+            run(&mut scripts, &mut state, Opcode::CamGetangleXa, &[]).unwrap(),
+            [200]
+        );
+        assert_eq!(
+            run(&mut scripts, &mut state, Opcode::CamGetangleYa, &[]).unwrap(),
+            [1024]
+        );
+        let mut stacks = Stacks::default();
+        stacks.push_object(ScriptValue::Text("tele 1 2".into()));
+        let mut host = ScriptHost {
+            resources: &mut scripts,
+            state: &mut state,
+        };
+        instruction(&mut host, Opcode::Docheat, 0, &mut stacks).unwrap();
+        assert_eq!(
+            scripts.take_intents().len(),
+            1,
+            "a command becomes one outbound chat intent"
+        );
+    }
+
+    #[test]
+    fn public_chat_needs_a_valid_type_and_the_cache_code_table() {
+        let (mut scripts, mut state) = (scripts(), state());
+        let mut stacks = Stacks::default();
+        stacks.push_object(ScriptValue::Text("hello".into()));
+        stacks.integers.push(300);
+        let mut host = ScriptHost {
+            resources: &mut scripts,
+            state: &mut state,
+        };
+        assert!(instruction(&mut host, Opcode::ChatSendpublic, 0, &mut stacks).is_err());
+        assert!(scripts.take_intents().is_empty());
     }
 
     #[test]

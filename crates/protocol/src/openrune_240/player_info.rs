@@ -3,7 +3,7 @@
 use super::{bit_reader::BitReader, player_extended::decode_extended};
 use crate::{ProtocolError, Result, wire::Reader};
 use rustclient_model::{
-    MoveSpeed, Plane, PlayerIndex, PlayerTrackingGrid, RemotePlayerUpdate, TileOffset, WorldTile,
+    Plane, PlayerIndex, PlayerTrackingGrid, RemotePlayerUpdate, TileOffset, WorldTile,
 };
 pub use rustclient_model::{PlayerInfoUpdate, PlayerMovement};
 
@@ -13,7 +13,6 @@ pub struct PlayerInfoDecoder {
     local: usize,
     high: [bool; PLAYER_CAPACITY],
     flags: [u8; PLAYER_CAPACITY],
-    path_speed: [MoveSpeed; PLAYER_CAPACITY],
 }
 impl PlayerInfoDecoder {
     /// Translate the login GPI region prefix without retaining a position cache.
@@ -50,7 +49,6 @@ impl PlayerInfoDecoder {
             local,
             high,
             flags: [0; PLAYER_CAPACITY],
-            path_speed: [MoveSpeed::Walk; PLAYER_CAPACITY],
         }
     }
     /// Decode all four independently aligned GPI passes and extended blocks.
@@ -64,7 +62,6 @@ impl PlayerInfoDecoder {
         let mut update = PlayerInfoUpdate::default();
         let mut extended = Vec::new();
         let mut pending_moves = Vec::new();
-        let mut has_extended = [false; PLAYER_CAPACITY];
         let old_high = self.high;
         for (high, flag) in [(true, 0), (true, 1), (false, 1), (false, 0)] {
             let mut skips = 0;
@@ -79,6 +76,7 @@ impl PlayerInfoDecoder {
                         update.remote.push(RemotePlayerUpdate::Move {
                             index: player(index)?,
                             movement: None,
+                            speed: None,
                         });
                     }
                     continue;
@@ -90,13 +88,13 @@ impl PlayerInfoDecoder {
                         update.remote.push(RemotePlayerUpdate::Move {
                             index: player(index)?,
                             movement: None,
+                            speed: None,
                         });
                     }
                 } else if high {
                     let pending_extended = bits.read_bits(1)? == 1;
                     if pending_extended {
                         extended.push(index);
-                        has_extended[index] = true;
                     }
                     let kind = bits.read_bits(2)?;
                     if kind == 0 && !pending_extended {
@@ -108,26 +106,12 @@ impl PlayerInfoDecoder {
                             index: player(index)?,
                         });
                         if bits.read_bits(1)? != 0 {
-                            self.low(
-                                &mut bits,
-                                index,
-                                &mut extended,
-                                &mut has_extended,
-                                &mut update.remote,
-                                0,
-                            )?;
+                            self.low(&mut bits, index, &mut extended, &mut update.remote, 0)?;
                         }
                     } else {
-                        pending_moves.push((index, movement(&mut bits, kind)?));
+                        pending_moves.push((index, movement(&mut bits, kind)?, None));
                     }
-                } else if self.low(
-                    &mut bits,
-                    index,
-                    &mut extended,
-                    &mut has_extended,
-                    &mut update.remote,
-                    0,
-                )? {
+                } else if self.low(&mut bits, index, &mut extended, &mut update.remote, 0)? {
                     self.flags[index] |= 2;
                 }
             }
@@ -140,69 +124,53 @@ impl PlayerInfoDecoder {
             *flags >>= 1;
         }
 
-        let mut effective_speed = [None; PLAYER_CAPACITY];
+        let mut attributes = Vec::with_capacity(extended.len());
         let mut reader = Reader::new(bits.remaining_bytes(), "player extended info");
         for index in extended {
             let values = decode_extended(&mut reader)?;
-            let previous_speed = self.path_speed[index];
-            if let Some(speed) = values.persistent_speed {
-                self.path_speed[index] = speed;
+            let speed = values.temporary_speed.or(values.persistent_speed);
+            if let Some((_, _, override_speed)) = pending_moves.iter_mut().find(|m| m.0 == index) {
+                *override_speed = speed;
             }
-            let speed = values
-                .temporary_speed
-                .or(values.persistent_speed)
-                .unwrap_or(previous_speed);
-            effective_speed[index] = Some(speed);
 
             if index == self.local {
                 update.local_appearance = values.appearance;
                 update.local_sequence = values.sequence;
                 update.local_sequence_delay = values.sequence_delay;
                 update.local_facing = values.facing;
-                update.local_movement_speed = Some(speed);
+                update.local_movement_speed = speed;
+                update.local_path_speed = values.persistent_speed;
                 update.local_exact_move = values.exact_move;
             } else {
-                update.remote.push(RemotePlayerUpdate::Attributes {
+                attributes.push(RemotePlayerUpdate::Attributes {
                     index: player(index)?,
                     appearance: values.appearance,
                     sequence: values.sequence,
                     delay: values.sequence_delay,
                     facing: values.facing,
-                    movement_speed: Some(speed),
+                    path_speed: values.persistent_speed,
                     exact_move: values.exact_move,
                 });
             }
         }
-        if reader.offset != reader.bytes.len() {
-            return Err(error("trailing player-info bytes"));
-        }
-
-        // Revision 240 applies ordinary path movement only after all pending masks are decoded.
-        // Exact movement remains separate semantic metadata; the confirmed network coordinate still
-        // advances by the movement bits and actor simulation can use `exact_move` to override pathing.
-        for (index, movement) in pending_moves {
-            let speed = effective_speed[index].unwrap_or(self.path_speed[index]);
+        // Exact offsets use the new network coordinate (classDC.method2961).
+        // Carry effective speed with movement so animation never observes an intermediate speed.
+        for (index, movement, speed) in pending_moves {
             if index == self.local {
                 update.local_movement = movement;
-                update.local_movement_speed = Some(speed);
             } else {
                 update.remote.push(RemotePlayerUpdate::Move {
                     index: player(index)?,
                     movement,
+                    speed,
                 });
-                if !has_extended[index] {
-                    update.remote.push(RemotePlayerUpdate::Attributes {
-                        index: player(index)?,
-                        appearance: None,
-                        sequence: rustclient_model::SequenceChange::Unchanged,
-                        delay: 0,
-                        facing: None,
-                        movement_speed: Some(speed),
-                        exact_move: None,
-                    });
-                }
             }
         }
+        update.remote.extend(attributes);
+        if reader.offset != reader.bytes.len() {
+            return Err(error("trailing player-info bytes"));
+        }
+
         Ok(update)
     }
     fn low(
@@ -210,7 +178,6 @@ impl PlayerInfoDecoder {
         bits: &mut BitReader<'_>,
         index: usize,
         extended: &mut Vec<usize>,
-        has_extended: &mut [bool; PLAYER_CAPACITY],
         remote: &mut Vec<RemotePlayerUpdate>,
         depth: u8,
     ) -> Result<bool> {
@@ -220,14 +187,13 @@ impl PlayerInfoDecoder {
         match bits.read_bits(2)? {
             0 => {
                 if bits.read_bits(1)? != 0 {
-                    self.low(bits, index, extended, has_extended, remote, depth + 1)?;
+                    self.low(bits, index, extended, remote, depth + 1)?;
                 }
                 let x = bits.read_bits_i32(13)?;
                 let y = bits.read_bits_i32(13)?;
                 let pending_extended = bits.read_bits(1)? != 0;
                 if pending_extended {
                     extended.push(index);
-                    has_extended[index] = true;
                 }
                 if self.high[index] {
                     return Err(error("duplicate high-resolution promotion"));
@@ -237,17 +203,6 @@ impl PlayerInfoDecoder {
                     index: player(index)?,
                     offset: TileOffset { x, y },
                 });
-                if !pending_extended {
-                    remote.push(RemotePlayerUpdate::Attributes {
-                        index: player(index)?,
-                        appearance: None,
-                        sequence: rustclient_model::SequenceChange::Unchanged,
-                        delay: 0,
-                        facing: None,
-                        movement_speed: Some(self.path_speed[index]),
-                        exact_move: None,
-                    });
-                }
                 Ok(true)
             }
             1 => {
@@ -366,11 +321,14 @@ fn movement(bits: &mut BitReader<'_>, kind: u32) -> Result<Option<PlayerMovement
         }
         _ => {
             let packed = bits.read_bits(30)?;
-            Some(PlayerMovement::Teleport {
+            Some(PlayerMovement::WrappedTeleport {
                 plane_delta: ((packed >> 28) & 3).to_le_bytes()[0],
-                delta_x: i32::try_from((packed >> 14) & 16_383)
-                    .map_err(|_| error("teleport x delta"))?,
-                delta_y: i32::try_from(packed & 16_383).map_err(|_| error("teleport y delta"))?,
+                offset: TileOffset {
+                    x: i32::try_from((packed >> 14) & 16_383)
+                        .map_err(|_| error("teleport x delta"))?,
+                    y: i32::try_from(packed & 16_383).map_err(|_| error("teleport y delta"))?,
+                },
+                extent: 16_384,
             })
         }
     })
@@ -379,7 +337,7 @@ fn movement(bits: &mut BitReader<'_>, kind: u32) -> Result<Option<PlayerMovement
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rustclient_model::{ExactMove, MoveSpeed, PlayerIndex, SequenceChange, SequenceId};
+    use rustclient_model::{ExactMove, PlayerIndex, SequenceChange, SequenceId};
     #[test]
     fn remote_gpi_promotion_attributes_movement_and_removal_survive_all_four_passes() {
         let mut decoder = PlayerInfoDecoder::new(PlayerIndex::new(1));
@@ -387,7 +345,7 @@ mod tests {
         assert_eq!(tracking.remote.len(), 2046);
         let promotion = decoder
             .decode(&[
-                0x00, 0x86, 0x40, 0x32, 0x06, 0xff, 0xe0, 0x10, 0x0a, 0x00, 0x83,
+                0x00, 0x86, 0x40, 0x32, 0x06, 0xff, 0xe0, 0x10, 0x8a, 0x00, 0x83,
             ])
             .unwrap();
         assert_eq!(
@@ -403,28 +361,18 @@ mod tests {
                     sequence: SequenceChange::Set(Some(SequenceId::new(10))),
                     delay: 3,
                     facing: None,
-                    movement_speed: Some(MoveSpeed::Walk),
+                    path_speed: None,
                     exact_move: None,
                 },
             ]
         );
         assert_eq!(
             decoder.decode(&[0x13, 0x00, 0x7f, 0xf0]).unwrap().remote,
-            [
-                RemotePlayerUpdate::Move {
-                    index: PlayerIndex::new(2),
-                    movement: Some(PlayerMovement::Step { direction: 4 })
-                },
-                RemotePlayerUpdate::Attributes {
-                    index: PlayerIndex::new(2),
-                    appearance: None,
-                    sequence: SequenceChange::Unchanged,
-                    delay: 0,
-                    facing: None,
-                    movement_speed: Some(MoveSpeed::Walk),
-                    exact_move: None,
-                },
-            ]
+            [RemotePlayerUpdate::Move {
+                index: PlayerIndex::new(2),
+                movement: Some(PlayerMovement::Step { direction: 4 }),
+                speed: None
+            },]
         );
         assert_eq!(
             decoder.decode(&[0x80, 0x00, 0x7f, 0xf0]).unwrap().remote,
@@ -443,7 +391,7 @@ mod tests {
             step.local_movement,
             Some(PlayerMovement::Step { direction: 4 })
         );
-        assert_eq!(step.local_movement_speed, Some(MoveSpeed::Walk));
+        assert_eq!(step.local_movement_speed, None);
         assert_eq!(
             decoder.decode(&[0, 0x7f, 0xf4]).unwrap().local_movement,
             None
@@ -451,18 +399,18 @@ mod tests {
         // After a stationary tick the local index moves to pass two, low-res
         // indices to pass three. Each pass still starts on its own byte.
         let sequence = decoder
-            .decode(&[0xc0, 0x7f, 0xf4, 0x10, 0x0a, 0, 0x80])
+            .decode(&[0xc0, 0x7f, 0xf4, 0x10, 0x8a, 0, 0x80])
             .unwrap();
         assert_eq!(
             sequence.local_sequence,
             SequenceChange::Set(Some(SequenceId::new(10)))
         );
         let clear = decoder
-            .decode(&[0xc0, 0x7f, 0xf4, 0x10, 0xff, 0xff, 0x80])
+            .decode(&[0xc0, 0x7f, 0xf4, 0x10, 0x7f, 0xff, 0x80])
             .unwrap();
         assert_eq!(clear.local_sequence, SequenceChange::Set(None));
         let delayed = decoder
-            .decode(&[0xc0, 0x7f, 0xf4, 0x10, 0x0a, 0, 0x83])
+            .decode(&[0xc0, 0x7f, 0xf4, 0x10, 0x8a, 0, 0x83])
             .unwrap();
         assert_eq!(delayed.local_sequence_delay, 3);
         let run = PlayerInfoDecoder::new(PlayerIndex::new(1))
@@ -486,6 +434,17 @@ mod tests {
                 plane_delta: 1
             })
         );
+        let wrapped = PlayerInfoDecoder::new(PlayerIndex::new(1))
+            .decode(&[0xbb, 0xff, 0xf8, 0, 0, 0x7f, 0xf4])
+            .unwrap();
+        assert_eq!(
+            wrapped.local_movement,
+            Some(PlayerMovement::WrappedTeleport {
+                offset: TileOffset { x: 16383, y: 0 },
+                plane_delta: 1,
+                extent: 16384,
+            })
+        );
         for bytes in [
             &[][..],
             &[0x98],
@@ -506,15 +465,15 @@ mod tests {
         let update = PlayerInfoDecoder::new(PlayerIndex::new(1))
             .decode(&[
                 0xd8, 0x7f, 0xf4, // local step with pending extended block
-                0x01, 0x02, // mask extension + exact move 0x200
-                129, 0, 2, 129, 0, 133, 0, 10, 128, 4,
+                0x80, 0x80, // extension + exact move 0x8000
+                255, 128, 2, 1, 133, 0, 138, 0, 128, 4,
             ])
             .unwrap();
         assert_eq!(
             update.local_movement,
             Some(PlayerMovement::Step { direction: 4 })
         );
-        assert_eq!(update.local_movement_speed, Some(MoveSpeed::Walk));
+        assert_eq!(update.local_movement_speed, None);
         assert_eq!(
             update.local_exact_move,
             Some(ExactMove {

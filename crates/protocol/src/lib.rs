@@ -4,7 +4,10 @@ mod crypto;
 pub mod openrune_240;
 mod wire;
 pub use crypto::Isaac;
-pub use openrune_240::game::{Bootstrap, ClientIntent, GameFramer, GamePacket, decode_bootstrap};
+pub use openrune_240::game::{
+    Bootstrap, ChatIntent, ClientIntent, GameFramer, GamePacket, decode_bootstrap,
+};
+pub use openrune_240::huffman::Huffman;
 pub use openrune_240::js5::verify_cache;
 pub use openrune_240::login::{
     Credentials, LoginAttempt, LoginEntropy, LoginSession, PublicKey, authenticate,

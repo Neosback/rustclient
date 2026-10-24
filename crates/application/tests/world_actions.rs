@@ -123,9 +123,9 @@ fn npc_batch_identity_permissions_delay_and_replay_reject_stale_actions_atomical
     let change = SemanticOperation::UpdateNpcs(NpcInfoUpdate {
         movements: vec![NpcMovement {
             index: NpcIndex::new(42),
-            delta_x: 1,
-            delta_y: 0,
-            running: false,
+            first: TileOffset { x: 1, y: 0 },
+            second: None,
+            speed: rustclient_model::MoveSpeed::Walk,
         }],
         attributes: vec![NpcAttributeUpdate {
             index: NpcIndex::new(42),
@@ -188,5 +188,46 @@ fn npc_batch_identity_permissions_delay_and_replay_reject_stale_actions_atomical
     assert_eq!(
         state.semantic_fingerprint(),
         GameState::new().semantic_fingerprint()
+    );
+}
+
+#[test]
+fn npc_morph_chains_resolve_nested_defaults_and_stop_cycles() {
+    let asset = asset();
+    let mut catalog = EntityCatalog::default();
+    let mut batch = EntityAssets::default();
+    for (id, bytes) in [
+        (1, &[106, 255, 255, 0, 7, 0, 0, 2, 0][..]),
+        (2, &[106, 255, 255, 0, 8, 0, 0, 3, 0][..]),
+        (3, &b"\x02Final form\0\0"[..]),
+        (4, &[106, 255, 255, 0, 7, 0, 0, 4, 0][..]),
+    ] {
+        let def = definitions::npc(
+            bytes,
+            NpcDefinitionId::new(id),
+            Source::group(IndexId(2), GroupId(9)),
+        )
+        .unwrap();
+        batch.npcs.insert(def.id, def);
+    }
+    assert!(catalog.merge(&asset, batch).is_empty());
+    let mut variables = BTreeMap::new();
+    assert_eq!(
+        catalog
+            .resolve_npc(&asset, NpcDefinitionId::new(1), &variables)
+            .unwrap()
+            .id,
+        NpcDefinitionId::new(3)
+    );
+    variables.insert(rustclient_model::VarpId::new(8), -1);
+    assert!(
+        catalog
+            .resolve_npc(&asset, NpcDefinitionId::new(1), &variables)
+            .is_none()
+    );
+    assert!(
+        catalog
+            .resolve_npc(&asset, NpcDefinitionId::new(4), &variables)
+            .is_none()
     );
 }

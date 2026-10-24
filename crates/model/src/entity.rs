@@ -113,29 +113,17 @@ impl ActorSequenceSlot {
     }
 }
 
-/// Traversal speed carried by revision-240 player path entries.
+/// Semantic traversal behavior for an actor path entry.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum MoveSpeed {
+    /// Clear queued steps and place the actor immediately.
     Stationary,
     Crawl,
     #[default]
     Walk,
     Run,
 }
-impl MoveSpeed {
-    #[must_use]
-    pub const fn from_wire(value: i8) -> Option<Self> {
-        match value {
-            -1 => Some(Self::Stationary),
-            0 => Some(Self::Crawl),
-            1 => Some(Self::Walk),
-            2 => Some(Self::Run),
-            _ => None,
-        }
-    }
-}
-
-/// Forced movement block decoded from the revision-240 player update mask.
+/// Relative server-authored trajectory. Delays count client cycles.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ExactMove {
     pub start_delta_x: i8,
@@ -162,6 +150,12 @@ pub enum PlayerMovement {
         delta_y: i32,
         plane_delta: u8,
     },
+    /// Relative relocation on a periodic world grid whose extent is supplied by the profile.
+    WrappedTeleport {
+        offset: crate::TileOffset,
+        plane_delta: u8,
+        extent: u32,
+    },
 }
 
 /// A sequence field can be absent, assigned, or explicitly cleared by the server.
@@ -177,6 +171,8 @@ pub struct PlayerInfoUpdate {
     pub local_movement: Option<PlayerMovement>,
     /// Effective traversal speed for this tick, or the persistent speed when it changed.
     pub local_movement_speed: Option<MoveSpeed>,
+    /// New default traversal; temporary movement speed does not replace this value.
+    pub local_path_speed: Option<MoveSpeed>,
     /// Forced movement authored by the server for the local player.
     pub local_exact_move: Option<ExactMove>,
     pub local_appearance: Option<PlayerAppearance>,
@@ -241,6 +237,8 @@ pub enum RemotePlayerUpdate {
     Move {
         index: crate::PlayerIndex,
         movement: Option<PlayerMovement>,
+        /// Override for this path entry; omission uses the player's persistent speed.
+        speed: Option<MoveSpeed>,
     },
     Attributes {
         index: crate::PlayerIndex,
@@ -248,8 +246,8 @@ pub enum RemotePlayerUpdate {
         sequence: SequenceChange,
         delay: u8,
         facing: Option<u16>,
-        /// Effective traversal speed for the deferred movement associated with this update.
-        movement_speed: Option<MoveSpeed>,
+        /// Persistent traversal speed for future path entries.
+        path_speed: Option<MoveSpeed>,
         /// Forced movement block, when present.
         exact_move: Option<ExactMove>,
     },
@@ -282,9 +280,10 @@ pub struct NewNpc {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NpcMovement {
     pub index: crate::NpcIndex,
-    pub delta_x: i32,
-    pub delta_y: i32,
-    pub running: bool,
+    /// First adjacent step, followed by an optional second step in wire order.
+    pub first: crate::TileOffset,
+    pub second: Option<crate::TileOffset>,
+    pub speed: MoveSpeed,
 }
 
 /// Consolidated NPC info tick update.
@@ -306,6 +305,7 @@ pub struct NpcAttributeUpdate {
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NpcProperty {
+    ExactMove(ExactMove),
     Definition(crate::NpcDefinitionId),
     Sequence {
         sequence: Option<SequenceId>,
@@ -318,7 +318,7 @@ pub enum NpcProperty {
 
 #[cfg(test)]
 mod tracking_tests {
-    use super::{MoveSpeed, PlayerTrackingGrid};
+    use super::PlayerTrackingGrid;
     #[test]
     fn tracking_grid_requires_nonzero_bounded_tile_extent() {
         assert!(PlayerTrackingGrid::new(0, 1).is_none());
@@ -329,14 +329,5 @@ mod tracking_tests {
             PlayerTrackingGrid::new(8192, 256).unwrap().extent(),
             2_097_152
         );
-    }
-
-    #[test]
-    fn movement_speed_wire_ids_match_revision_240() {
-        assert_eq!(MoveSpeed::from_wire(-1), Some(MoveSpeed::Stationary));
-        assert_eq!(MoveSpeed::from_wire(0), Some(MoveSpeed::Crawl));
-        assert_eq!(MoveSpeed::from_wire(1), Some(MoveSpeed::Walk));
-        assert_eq!(MoveSpeed::from_wire(2), Some(MoveSpeed::Run));
-        assert_eq!(MoveSpeed::from_wire(127), None);
     }
 }

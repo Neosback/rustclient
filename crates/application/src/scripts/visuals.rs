@@ -12,6 +12,28 @@ pub struct WidgetAssetRequest {
     pub fonts: BTreeSet<FontId>,
     pub items: BTreeSet<ItemDefinitionId>,
 }
+impl WidgetAssetRequest {
+    /// Nothing is requested.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.sprites.is_empty() && self.fonts.is_empty() && self.items.is_empty()
+    }
+    /// The part of this request that `loaded` does not already cover.
+    #[must_use]
+    pub fn missing_from(&self, loaded: &Self) -> Self {
+        Self {
+            sprites: self.sprites.difference(&loaded.sprites).copied().collect(),
+            fonts: self.fonts.difference(&loaded.fonts).copied().collect(),
+            items: self.items.difference(&loaded.items).copied().collect(),
+        }
+    }
+    /// Record `other` as covered.
+    pub fn absorb(&mut self, other: &Self) {
+        self.sprites.extend(other.sprites.iter().copied());
+        self.fonts.extend(other.fonts.iter().copied());
+        self.items.extend(other.items.iter().copied());
+    }
+}
 impl<S: ReadOnlyBlobs> ClientScripts<S> {
     /// # Errors
     /// Rejects a missing definition/layout rather than guessing widget geometry.

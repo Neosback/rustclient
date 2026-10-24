@@ -1,7 +1,7 @@
 //! Stateful revision-240 V6 NPC list decoder. Entity positions remain semantic state.
 use super::{bit_reader::BitReader, npc_extended::decode_attributes};
 use crate::{ProtocolError, Result, wire::Reader};
-use rustclient_model::TileOffset;
+use rustclient_model::{MoveSpeed, TileOffset};
 pub use rustclient_model::{NewNpc, NpcDefinitionId, NpcIndex, NpcInfoUpdate, NpcMovement};
 use std::collections::BTreeSet;
 
@@ -60,9 +60,9 @@ impl NpcInfoDecoder {
                     let (dx, dy) = direction(bits.read_bits_u8(3)?);
                     update.movements.push(NpcMovement {
                         index,
-                        delta_x: dx,
-                        delta_y: dy,
-                        running: false,
+                        first: TileOffset { x: dx, y: dy },
+                        second: None,
+                        speed: MoveSpeed::Walk,
                     });
                     if bits.read_bits(1)? != 0 {
                         extended.push(index);
@@ -70,17 +70,22 @@ impl NpcInfoDecoder {
                 }
                 2 => {
                     let running = bits.read_bits(1)? != 0;
-                    let (mut dx, mut dy) = direction(bits.read_bits_u8(3)?);
-                    if running {
+                    let (dx, dy) = direction(bits.read_bits_u8(3)?);
+                    let second = if running {
                         let (x, y) = direction(bits.read_bits_u8(3)?);
-                        dx += x;
-                        dy += y;
-                    }
+                        Some(TileOffset { x, y })
+                    } else {
+                        None
+                    };
                     update.movements.push(NpcMovement {
                         index,
-                        delta_x: dx,
-                        delta_y: dy,
-                        running,
+                        first: TileOffset { x: dx, y: dy },
+                        second,
+                        speed: if running {
+                            MoveSpeed::Run
+                        } else {
+                            MoveSpeed::Crawl
+                        },
                     });
                     if bits.read_bits(1)? != 0 {
                         extended.push(index);
@@ -177,6 +182,27 @@ mod tests {
     use super::*;
     use rustclient_model::{NpcProperty, SequenceId};
     #[test]
+    fn crawl_and_two_step_runs_preserve_both_directions_including_closed_paths() {
+        let mut d = NpcInfoDecoder::default();
+        d.decode(
+            include_bytes!("../../tests/fixtures/npc-stock-small.bin"),
+            false,
+        )
+        .unwrap();
+        let crawl = d.decode(&[1, 0xc8], false).unwrap();
+        assert_eq!(crawl.movements[0].speed, MoveSpeed::Crawl);
+        assert_eq!(crawl.movements[0].first, TileOffset { x: 1, y: 0 });
+        assert_eq!(crawl.movements[0].second, None);
+        let run = d.decode(&[1, 0xd9, 0x80], false).unwrap();
+        assert_eq!(run.movements[0].speed, MoveSpeed::Run);
+        assert_eq!(run.movements[0].first, TileOffset { x: 1, y: 0 });
+        assert_eq!(run.movements[0].second, Some(TileOffset { x: 0, y: 1 }));
+        let closed = d.decode(&[1, 0xd8, 0xc0], false).unwrap();
+        assert_eq!(closed.movements[0].second, Some(TileOffset { x: -1, y: 0 }));
+        assert!(d.decode(&[1, 0xd9], false).is_err());
+        assert_eq!(d.decode(&[1, 0], false).unwrap().movements.len(), 0);
+    }
+    #[test]
     fn npc_family_tracks_origin_spawns_movement_masks_removal_and_truncation() {
         let small = include_bytes!("../../tests/fixtures/npc-stock-small.bin");
         let large = include_bytes!("../../tests/fixtures/npc-stock-large.bin");
@@ -209,9 +235,9 @@ mod tests {
             movement.movements,
             vec![NpcMovement {
                 index: NpcIndex::new(42),
-                delta_x: 1,
-                delta_y: 0,
-                running: false
+                first: TileOffset { x: 1, y: 0 },
+                second: None,
+                speed: MoveSpeed::Walk
             }]
         );
         assert_eq!(

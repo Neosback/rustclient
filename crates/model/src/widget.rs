@@ -196,6 +196,8 @@ pub struct WidgetRuntime {
     pub parent_child: Option<u32>,
     pub parameters: BTreeMap<u32, ScriptValue>,
     pub hidden: Option<bool>,
+    /// Script-owned wheel barrier; does not hide or block ordinary clicks.
+    pub no_scroll_through: Option<bool>,
     pub scroll: Option<[u32; 2]>,
     pub layout: Option<WidgetLayout>,
     pub body: Option<WidgetBody>,

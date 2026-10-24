@@ -41,6 +41,12 @@ The RuneLite 235 tree (`references/RuneLite-melxin`) was removed from the reposi
 Those citations remain valid for their recorded snapshot. New research should use
 the source map above and record the specific files/revision used.
 
+The [gameframe audit](../plan/GAMEFRAME-240.md) maps 240 canvas sizing, reflow and
+operation-callback ordering to the shared widget/runtime owners.
+
+The [2026-10-23 player audit](../plan/PLAYER-UPDATING-240.md) identifies the actual
+240 update manager and separates verified movement from remaining actor gaps.
+
 ## CP1 semantic-model evidence
 
 For coordinate/identity/orientation work, inspect these pinned files first:
@@ -77,3 +83,5 @@ Before implementing a nontrivial OSRS-style behavior:
 ## Revision baseline
 
 RustClient's first implemented compatibility target is revision `240`. Multi-revision selection is part of the architecture from the start, but only supported revisions appear in the runtime registry. See `docs/specs/SPEC-0005-protocol-revisions.md`.
+
+The current NPC/object animation correction audit is [NPC-ANIMATION-240.md](../plan/NPC-ANIMATION-240.md); source pins distinguish stock framing from unimplemented actor scheduling/effects.

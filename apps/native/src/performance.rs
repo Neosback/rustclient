@@ -13,6 +13,7 @@ pub(super) struct Performance {
     tick_time: Duration,
     ticks: u32,
     log: bool,
+    last_note: Instant,
 }
 
 impl Performance {
@@ -27,6 +28,23 @@ impl Performance {
             tick_time: Duration::ZERO,
             ticks: 0,
             log: std::env::var_os("RUSTCLIENT_FRAME_TIMINGS").is_some(),
+            last_note: Instant::now(),
+        }
+    }
+
+    /// Window/lifecycle breadcrumbs for correlating memory samples; silent unless
+    /// `RUSTCLIENT_FRAME_TIMINGS` is set.
+    pub(super) fn event(&self, describe: impl FnOnce() -> String) {
+        if self.log {
+            eprintln!("event: {}", describe());
+        }
+    }
+
+    /// Like [`Self::event`] but at most once per second, for per-frame state.
+    pub(super) fn note(&mut self, describe: impl FnOnce() -> String) {
+        if self.log && self.last_note.elapsed() >= Duration::from_secs(1) {
+            self.last_note = Instant::now();
+            eprintln!("note: {}", describe());
         }
     }
 

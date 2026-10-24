@@ -191,6 +191,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         );
         return Ok(());
     }
+    if let Some(position) = std::env::args().position(|a| a == "--enum") {
+        for id in std::env::args().skip(position + 1) {
+            let id = id.parse::<u32>()?;
+            let table = profile.load_script_enum(&cache, id)?;
+            println!(
+                "enum {id} input {} output {} default {:?}",
+                table.input, table.output, table.default
+            );
+            for (key, value) in &table.entries {
+                println!("  {key} -> {value:?}");
+            }
+        }
+        return Ok(());
+    }
     if let Some(position) = std::env::args().position(|a| a == "--dump") {
         for id in std::env::args().skip(position + 1) {
             let id = id.parse::<u32>()?;

@@ -1,8 +1,7 @@
 //! Authoritative semantic entities: live players and NPCs in the active session.
 
 use rustclient_model::{
-    NpcDefinitionId, NpcIndex, NpcInfoUpdate, Plane, PlayerAppearance, PlayerIndex,
-    PlayerInfoUpdate, PlayerMovement, WorldTile,
+    NpcDefinitionId, NpcIndex, Plane, PlayerAppearance, PlayerIndex, PlayerInfoUpdate, WorldTile,
 };
 use std::collections::BTreeMap;
 
@@ -43,6 +42,9 @@ pub struct PlayerEntity {
     pub index: PlayerIndex,
     pub instance: rustclient_model::PlayerInstanceId,
     pub tracking_grid: Option<rustclient_model::PlayerTrackingGrid>,
+    pub path_speed: rustclient_model::MoveSpeed,
+    pub movement_speed: rustclient_model::MoveSpeed,
+    pub exact_move: Option<crate::ExactMovement>,
     pub tile: WorldTile,
     pub orientation: u16,
     pub appearance: Option<PlayerAppearance>,
@@ -58,6 +60,9 @@ pub struct NpcEntity {
     pub instance: rustclient_model::NpcInstanceId,
     pub definition_id: NpcDefinitionId,
     pub tile: WorldTile,
+    /// Latest ordered server path request; the tile remains its confirmed endpoint.
+    pub path: Option<crate::npcs::NpcPath>,
+    pub exact_move: Option<crate::ExactMovement>,
     pub orientation: u16,
     pub sequence: rustclient_model::ActorSequenceSlot,
     pub name: Option<String>,
@@ -224,8 +229,9 @@ impl WorldEntitiesState {
     pub(crate) fn validate_player_info(
         &self,
         update: &PlayerInfoUpdate,
+        cycle: rustclient_model::ClientCycle,
     ) -> Result<(), EntityUpdateError> {
-        self.validate_remote_players(&update.remote)?;
+        self.validate_remote_players(&update.remote, cycle)?;
         if update
             .local_appearance
             .as_ref()
@@ -236,39 +242,20 @@ impl WorldEntitiesState {
         let player = self
             .local_player()
             .ok_or(EntityUpdateError::MissingLocalPlayer)?;
-        let (x, y) = match update.local_movement {
-            None => (0, 0),
-            Some(PlayerMovement::Step { direction }) if direction < 8 => {
-                direction_to_delta(direction)
-            }
-            Some(PlayerMovement::Run {
-                direction1,
-                direction2,
-            }) if direction1 < 8 && direction2 < 8 => {
-                let a = direction_to_delta(direction1);
-                let b = direction_to_delta(direction2);
-                (a.0 + b.0, a.1 + b.1)
-            }
-            Some(PlayerMovement::Teleport {
-                delta_x,
-                delta_y,
-                plane_delta,
-            }) if plane_delta <= 3 => (delta_x, delta_y),
-            _ => return Err(EntityUpdateError::InvalidMovement),
-        };
-        player
-            .tile
-            .x
-            .checked_add(x)
-            .ok_or(EntityUpdateError::PositionOverflow)?;
-        player
-            .tile
-            .y
-            .checked_add(y)
-            .ok_or(EntityUpdateError::PositionOverflow)?;
+        let tile = crate::player_movement::move_tile(player.tile, update.local_movement)?;
+        if update.local_facing.is_some_and(|angle| angle >= 2048) {
+            return Err(EntityUpdateError::InvalidMovement);
+        }
+        if let Some(exact) = update.local_exact_move {
+            crate::player_movement::exact_movement(tile, cycle, exact)?;
+        }
         Ok(())
     }
-    pub(crate) fn apply_player_info(&mut self, update: &PlayerInfoUpdate) -> bool {
+    pub(crate) fn apply_player_info(
+        &mut self,
+        update: &PlayerInfoUpdate,
+        cycle: rustclient_model::ClientCycle,
+    ) -> bool {
         let Some(local_idx) = self.local_player_index else {
             return false;
         };
@@ -279,6 +266,9 @@ impl WorldEntitiesState {
                 index: local_idx,
                 instance: rustclient_model::PlayerInstanceId::new(0),
                 tracking_grid: None,
+                path_speed: rustclient_model::MoveSpeed::Walk,
+                movement_speed: rustclient_model::MoveSpeed::Walk,
+                exact_move: None,
                 tile: WorldTile::new(0, 0, Plane::MIN),
                 orientation: 0,
                 appearance: None,
@@ -288,50 +278,31 @@ impl WorldEntitiesState {
             });
 
         let previous = player.clone();
-        let locomotion = match update.local_movement {
-            Some(PlayerMovement::Step { .. }) => Locomotion::Walk,
-            Some(PlayerMovement::Run { .. }) => Locomotion::Run,
-            _ if update.local_facing.is_some_and(|f| f != player.orientation) => Locomotion::Turn,
-            _ => Locomotion::Idle,
-        };
-        if player.locomotion != locomotion {
-            player.animation_cycle = 0;
+        if let Some(speed) = update.local_path_speed {
+            player.path_speed = speed;
         }
-        player.locomotion = locomotion;
-        if let Some(movement) = &update.local_movement {
-            match movement {
-                PlayerMovement::Step { direction } => {
-                    let (dx, dy) = direction_to_delta(*direction);
-                    player.tile =
-                        WorldTile::new(player.tile.x + dx, player.tile.y + dy, player.tile.plane);
-                    player.orientation = direction_to_orientation(*direction);
-                }
-                PlayerMovement::Run {
-                    direction1,
-                    direction2,
-                } => {
-                    let (dx1, dy1) = direction_to_delta(*direction1);
-                    let (dx2, dy2) = direction_to_delta(*direction2);
-                    player.tile = WorldTile::new(
-                        player.tile.x + dx1 + dx2,
-                        player.tile.y + dy1 + dy2,
-                        player.tile.plane,
-                    );
-                    player.orientation = direction_to_orientation(*direction2);
-                }
-                PlayerMovement::Teleport {
-                    delta_x,
-                    delta_y,
-                    plane_delta,
-                } => {
-                    player.tile = WorldTile::new(
-                        player.tile.x + delta_x,
-                        player.tile.y + delta_y,
-                        Plane::new((player.tile.plane.get() + plane_delta) & 3)
-                            .unwrap_or(Plane::MIN),
-                    );
-                }
-            }
+        crate::player_movement::apply_movement(
+            player,
+            update.local_movement,
+            update.local_movement_speed,
+        );
+        if update.local_movement.is_none()
+            && update
+                .local_facing
+                .is_some_and(|f| f != previous.orientation)
+        {
+            player.locomotion = Locomotion::Turn;
+            player.animation_cycle = if previous.locomotion == Locomotion::Turn {
+                previous.animation_cycle
+            } else {
+                0
+            };
+        }
+        if let Some(exact) = update.local_exact_move {
+            player.exact_move = Some(
+                crate::player_movement::exact_movement(player.tile, cycle, exact)
+                    .expect("validated exact movement"),
+            );
         }
         if let Some(appearance) = &update.local_appearance {
             player.appearance = Some(appearance.clone());
@@ -348,9 +319,12 @@ impl WorldEntitiesState {
         if let Some(facing) = update.local_facing {
             player.orientation = facing;
         }
-        self.generation = self.generation.wrapping_add(1);
         let local_changed = *player != previous;
-        self.apply_remote_players(&update.remote) || local_changed
+        let changed = self.apply_remote_players(&update.remote, cycle) || local_changed;
+        if changed {
+            self.generation = self.generation.wrapping_add(1);
+        }
+        changed
     }
 
     pub(crate) fn reset_animations(&mut self) -> bool {
@@ -363,201 +337,6 @@ impl WorldEntitiesState {
         {
             changed |= *slot != rustclient_model::ActorSequenceSlot::default();
             slot.clear();
-        }
-        if changed {
-            self.generation = self.generation.wrapping_add(1);
-        }
-        changed
-    }
-
-    pub(crate) fn validate_npc_info(
-        &self,
-        update: &NpcInfoUpdate,
-        origin: WorldTile,
-    ) -> Result<(), EntityUpdateError> {
-        use rustclient_model::NpcProperty;
-        use std::collections::BTreeSet;
-        if update.new_npcs.len()
-            + update.movements.len()
-            + update.attributes.len()
-            + update.removals.len()
-            > 4096
-        {
-            return Err(EntityUpdateError::InvalidNpcBatch);
-        }
-        let removed: BTreeSet<_> = update.removals.iter().copied().collect();
-        if removed.len() != update.removals.len()
-            || removed.iter().any(|id| !self.npcs.contains_key(id))
-        {
-            return Err(EntityUpdateError::InvalidNpcBatch);
-        }
-        self.npc_serial
-            .checked_add(
-                u64::try_from(update.new_npcs.len())
-                    .map_err(|_| EntityUpdateError::InvalidNpcBatch)?,
-            )
-            .ok_or(EntityUpdateError::InvalidNpcBatch)?;
-        let mut added = BTreeSet::new();
-        for npc in &update.new_npcs {
-            if npc.orientation >= rustclient_model::JAU_FULL_TURN {
-                return Err(EntityUpdateError::InvalidNpcBatch);
-            }
-            if !added.insert(npc.index)
-                || self.npcs.contains_key(&npc.index) && !removed.contains(&npc.index)
-            {
-                return Err(EntityUpdateError::InvalidNpcBatch);
-            }
-            origin
-                .x
-                .checked_add(npc.delta_x)
-                .ok_or(EntityUpdateError::PositionOverflow)?;
-            origin
-                .y
-                .checked_add(npc.delta_y)
-                .ok_or(EntityUpdateError::PositionOverflow)?;
-        }
-        if self.npcs.len() - removed.len() + added.len() > 16384 {
-            return Err(EntityUpdateError::InvalidNpcBatch);
-        }
-        let mut moving = BTreeSet::new();
-        for movement in &update.movements {
-            let npc = self
-                .npcs
-                .get(&movement.index)
-                .filter(|_| !removed.contains(&movement.index))
-                .ok_or(EntityUpdateError::InvalidNpcBatch)?;
-            if !moving.insert(movement.index) {
-                return Err(EntityUpdateError::InvalidNpcBatch);
-            }
-            npc.tile
-                .x
-                .checked_add(movement.delta_x)
-                .ok_or(EntityUpdateError::PositionOverflow)?;
-            npc.tile
-                .y
-                .checked_add(movement.delta_y)
-                .ok_or(EntityUpdateError::PositionOverflow)?;
-        }
-        for attributes in &update.attributes {
-            if !added.contains(&attributes.index)
-                && (removed.contains(&attributes.index)
-                    || !self.npcs.contains_key(&attributes.index))
-                || attributes.changes.len() > 32
-            {
-                return Err(EntityUpdateError::InvalidNpcBatch);
-            }
-            for change in &attributes.changes {
-                match change {
-                    NpcProperty::Name(Some(name)) if name.len() > 1024 => {
-                        return Err(EntityUpdateError::InvalidNpcBatch);
-                    }
-                    NpcProperty::Sequence { delay, .. } if *delay > i32::MAX.cast_unsigned() => {
-                        return Err(EntityUpdateError::InvalidNpcBatch);
-                    }
-                    NpcProperty::Facing(angle) if *angle >= rustclient_model::JAU_FULL_TURN => {
-                        return Err(EntityUpdateError::InvalidNpcBatch);
-                    }
-                    _ => {}
-                }
-            }
-        }
-        Ok(())
-    }
-    pub(crate) fn apply_npc_info(&mut self, update: &NpcInfoUpdate, origin: WorldTile) -> bool {
-        use rustclient_model::NpcProperty;
-        let mut changed = !update.removals.is_empty() || !update.new_npcs.is_empty();
-        for removal in &update.removals {
-            self.npcs.remove(removal);
-        }
-        for npc in &update.new_npcs {
-            self.npc_serial += 1;
-            self.npcs.insert(
-                npc.index,
-                NpcEntity {
-                    index: npc.index,
-                    instance: rustclient_model::NpcInstanceId::new(self.npc_serial),
-                    definition_id: npc.definition_id,
-                    tile: WorldTile::new(
-                        origin.x + npc.delta_x,
-                        origin.y + npc.delta_y,
-                        origin.plane,
-                    ),
-                    orientation: npc.orientation,
-                    sequence: rustclient_model::ActorSequenceSlot::default(),
-                    animation_cycle: 0,
-                    name: None,
-                    actions: rustclient_model::ActionMask::ALL,
-                    locomotion: Locomotion::Idle,
-                },
-            );
-        }
-        for npc in self.npcs.values_mut() {
-            let movement = update.movements.iter().find(|m| m.index == npc.index);
-            let locomotion = match movement {
-                Some(m) if m.running => Locomotion::Run,
-                Some(m) if m.delta_x != 0 || m.delta_y != 0 => Locomotion::Walk,
-                _ => Locomotion::Idle,
-            };
-            if npc.locomotion != locomotion {
-                changed = true;
-                npc.animation_cycle = 0;
-            }
-            npc.locomotion = locomotion;
-            if let Some(movement) = movement {
-                npc.tile = WorldTile::new(
-                    npc.tile.x + movement.delta_x,
-                    npc.tile.y + movement.delta_y,
-                    npc.tile.plane,
-                );
-                let direction = match (movement.delta_x.signum(), movement.delta_y.signum()) {
-                    (-1, -1) => 0,
-                    (0, -1) => 1,
-                    (1, -1) => 2,
-                    (-1, 0) => 3,
-                    (1, 0) => 4,
-                    (-1, 1) => 5,
-                    (0, 1) => 6,
-                    _ => 7,
-                };
-                npc.orientation = direction_to_orientation(direction);
-                changed = true;
-            }
-        }
-        for attributes in &update.attributes {
-            let Some(npc) = self.npcs.get_mut(&attributes.index) else {
-                continue;
-            };
-            for change in &attributes.changes {
-                match change {
-                    NpcProperty::Definition(id) => {
-                        changed |= npc.definition_id != *id;
-                        npc.definition_id = *id;
-                    }
-                    NpcProperty::Sequence { sequence, delay } => {
-                        let previous = npc.sequence;
-                        if sequence.is_none() {
-                            npc.sequence.clear();
-                        } else {
-                            npc.sequence.set_sequence(*sequence, delay.cast_signed());
-                        }
-                        changed |= npc.sequence != previous;
-                    }
-                    NpcProperty::Facing(angle) => {
-                        changed |= npc.orientation != *angle;
-                        npc.orientation = *angle;
-                    }
-                    NpcProperty::Name(name) => {
-                        if npc.name != *name {
-                            changed = true;
-                            npc.name.clone_from(name);
-                        }
-                    }
-                    NpcProperty::Actions(actions) => {
-                        changed |= npc.actions != *actions;
-                        npc.actions = *actions;
-                    }
-                }
-            }
         }
         if changed {
             self.generation = self.generation.wrapping_add(1);

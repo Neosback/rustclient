@@ -96,3 +96,49 @@ operand handling, `class179` child lookup by parameters, `class75` sprite setter
 `class191` key listeners and `class73`/`class47` device options. OpenRune script
 7109 supplies its master-volume variable to device option 19. Synthetic fixtures
 contain no live account data. See SPEC-0018 for the current semantic owner mapping.
+
+## 2026-10-23 player update correction
+
+The former older PlayerUpdateManager cross-reference is not revision-240 mask
+evidence. The actual 240 deob is rl-suite-240 classDF.method3043/method3050;
+classDC.method2961 anchors exact movement to the newly decoded network position.
+Their hashes, plus classGT/classCU/Player/Animation, are pinned in
+`docs/reference/source-manifest.json`. The selected desktop writer above agrees:
+extension bits 7 and 13, appearance reversal without byte addition, and sequence
+LE-add shorts. Synthetic literal vectors beside player_extended/player_info cover
+mixed masks and every truncated prefix, core appearance, traversal/reset controls,
+and 14-bit wrapping teleport offsets. They are independently field-packed, not
+live packet captures or a claim to cover every appearance customization.
+
+Additional selected RSProt source-entry SHA-256:
+
+- PlayerExactMoveEncoder.kt: `fd0bf3bb1b1bbc3594b2b951bad6727dc6e58613aaacc24d7cfbb9c3a75b915a`
+- PlayerSequenceEncoder.kt: `2b175a96d1983e2320ee05afde5fb39840e8e42cc5c303d85aa6a4dc2c3625e4`
+- PlayerMoveSpeedEncoder.kt: `44560e4319d50354faa841ba65eecc3c5f92403dc79b6ced4661857f238fbf1e`
+- net/rsprot/buffer/extensions/JagexByteBufExtensions.kt: `1b680ffa8cfe0d99d4367d5edb307a491d62610e70e95833670803546ffe6087`
+
+The last entry comes from the same-release `net.rsprot:buffer` sources JAR.
+
+## 2026-10-23 NPC paths and object animations
+
+Synthetic literal vectors cover crawl, bent and closed two-step NPC runs; a mixed
+NPC exact-move/sequence mask with every truncated prefix; specific, direct-zone
+and enclosed location animations, stop sentinels and zone-plane context. The
+selected same-release desktop writer confirms NPC mask ordering and byte transforms.
+CoordInBuildArea encodes zone X/Z plus local nibbles; it contains no plane.
+Global zone header context supplies a plane. These are codec contracts, not full
+combat/effect/rendering acceptance. Relevant 240 deob hashes (classAS, NPC,
+NPCComposition, DynamicObject, ObjectComposition, classJR and classQR) are in the
+reference manifest. No reference or server source was modified.
+
+Additional selected source-entry SHA-256:
+
+- `net/rsprot/protocol/game/outgoing/codec/npcinfo/extendedinfo/NpcExactMoveEncoder.kt`: `fbdf07811f26c0196407e70c5855e1cb26b22efdae031bdcb3e9bec87ebbf4d1`
+- `net/rsprot/protocol/game/outgoing/codec/npcinfo/extendedinfo/NpcSequenceEncoder.kt`: `ec3e42cbea5a72ffb6a1f5b80209cac0612771d8bb934d88d5afd6875cb3b0fb`
+- `net/rsprot/protocol/game/outgoing/codec/specific/LocAnimSpecificEncoder.kt`: `71f277d78a1be24988a3666bca4a9533233e1f841fb72aa98c558bce38469c07`
+- `net/rsprot/protocol/game/outgoing/codec/zone/header/DesktopUpdateZonePartialEnclosedEncoder.kt`: `293f7842dfa03968c0c5f73612be2718e3671214a8e73e8085d556431efeb415`
+- `net/rsprot/protocol/game/outgoing/codec/zone/header/UpdateZoneFullFollowsEncoder.kt`: `d1e7d927d07218287c9341a2fc2137f8955524eb2dd9304aacf2291264cb4569`
+- `net/rsprot/protocol/game/outgoing/codec/zone/header/UpdateZonePartialFollowsEncoder.kt`: `15cfa63ec55d85f40e82ae14e757232a04fd7ae772846327940f39c345e19d87`
+- `net/rsprot/protocol/game/outgoing/codec/zone/payload/LocAddChangeV2Encoder.kt`: `cbe53b8fe318ce0a9227753222fd30dc56134412f02aab0cddd2615aa7842121`
+- `net/rsprot/protocol/game/outgoing/codec/zone/payload/LocAnimEncoder.kt`: `5909de1008fa23e4196db0e23b14617cba9cd553d163b0cecb5cf5e483aef027`
+- `net/rsprot/protocol/game/outgoing/zone/payload/util/CoordInBuildArea.kt`: `f790e5685a8e463dced49af3ebc31324488e73eda656d9eb6da02570e27d375b`

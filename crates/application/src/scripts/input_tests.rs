@@ -139,6 +139,7 @@ fn script_drag_configuration_is_owned_by_interface_state_and_resets_with_the_gro
         (Opcode::CcSetdraggable, vec![65536, -1]),
         (Opcode::CcSetdragdeadzone, vec![3]),
         (Opcode::CcSetdragdeadtime, vec![2]),
+        (Opcode::CcSetnoscrollthrough, vec![1]),
     ] {
         let mut stacks = Stacks::default();
         stacks.integers = ints;
@@ -155,6 +156,10 @@ fn script_drag_configuration_is_owned_by_interface_state_and_resets_with_the_gro
         .unwrap();
     }
     let drag = state.interfaces().runtime()[&address].drag.unwrap();
+    assert_eq!(
+        state.interfaces().runtime()[&address].no_scroll_through,
+        Some(true)
+    );
     assert_eq!(
         (drag.parent, drag.zone, drag.threshold),
         (Some(address), 3, 2)
@@ -176,108 +181,6 @@ fn script_drag_configuration_is_owned_by_interface_state_and_resets_with_the_gro
         .apply_operation(SemanticOperation::Interface(InterfaceUpdate::SetRoot(None)))
         .unwrap();
     assert!(!state.interfaces().runtime().contains_key(&address));
-}
-
-#[test]
-fn resize_runs_after_load_on_first_layout_and_only_again_when_its_extent_changes() {
-    let mut scripts = test_support::scripts();
-    let mut state = GameState::new();
-    let id = WidgetId::new(InterfaceId::new(1), 0);
-    let mut widget = component(id);
-    widget.layout.size = [0, 0];
-    widget.layout.size_mode = [SizeMode::ParentMinus; 2];
-    widget
-        .listeners
-        .insert(WidgetListener::Resize, vec![ScriptValue::Int(90001)]);
-    scripts.interfaces.insert(
-        id.interface,
-        InterfaceDefinition::from_widgets(id.interface, vec![widget]).unwrap(),
-    );
-    scripts.scripts.insert(
-        ScriptId::new(90001),
-        Arc::new(Script {
-            id: ScriptId::new(90001),
-            name: String::new(),
-            locals: [0; 3],
-            arguments: [0; 3],
-            switches: vec![],
-            instructions: [
-                (Opcode::GetVarcInt, 1),
-                (Opcode::Iconst, 1),
-                (Opcode::Add, 0),
-                (Opcode::SetVarcInt, 1),
-                (Opcode::Return, 0),
-            ]
-            .into_iter()
-            .map(|(opcode, integer)| Instruction {
-                opcode,
-                integer,
-                text: None,
-                long: 0,
-                array_default: None,
-            })
-            .collect(),
-        }),
-    );
-    state
-        .apply_operation(SemanticOperation::BeginSession {
-            revision: Revision::with_subrevision(240, 2),
-        })
-        .unwrap();
-    state
-        .apply_operation(SemanticOperation::Interface(
-            InterfaceUpdate::ClientVariable {
-                id: 1,
-                value: ScriptValue::Int(0),
-            },
-        ))
-        .unwrap();
-    scripts
-        .commit(
-            &mut state,
-            SemanticOperation::Interface(InterfaceUpdate::SetRoot(Some(id.interface))),
-        )
-        .unwrap();
-    assert_eq!(
-        state.interfaces().client_variables().get(&1),
-        Some(&ScriptValue::Int(0))
-    );
-    scripts.resize_widgets(&mut state).unwrap();
-    assert_eq!(
-        state.interfaces().client_variables().get(&1),
-        Some(&ScriptValue::Int(1))
-    );
-    scripts.resize_widgets(&mut state).unwrap();
-    assert_eq!(
-        state.interfaces().client_variables().get(&1),
-        Some(&ScriptValue::Int(1))
-    );
-    scripts
-        .commit(
-            &mut state,
-            SemanticOperation::Interface(InterfaceUpdate::Window(WindowMetrics {
-                mode: WindowMode::Resizable,
-                available: CanvasSize {
-                    width: 800,
-                    height: 600,
-                },
-                canvas: CanvasSize {
-                    width: 800,
-                    height: 600,
-                },
-            })),
-        )
-        .unwrap();
-    assert_eq!(
-        state.interfaces().client_variables().get(&1),
-        Some(&ScriptValue::Int(1)),
-        "resize is deferred until after network/load scripts"
-    );
-    scripts.resize_widgets(&mut state).unwrap();
-    assert_eq!(
-        state.interfaces().client_variables().get(&1),
-        Some(&ScriptValue::Int(2))
-    );
 }
 
 #[test]

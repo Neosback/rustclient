@@ -14,8 +14,8 @@ impl LocationLayer {
         match shape {
             0..=3 => Self::Boundary,
             4..=8 => Self::WallDecoration,
-            9..=11 | 22 => Self::GameObject,
-            _ => Self::FloorDecoration,
+            22 => Self::FloorDecoration,
+            _ => Self::GameObject,
         }
     }
 }
@@ -46,8 +46,16 @@ pub enum LocationChange {
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AnimationStart {
+    pub placement: Option<LocationAnimationPlacement>,
     /// None explicitly stops the inherited animation.
     pub sequence: Option<SequenceId>,
     pub cycle: ClientCycle,
     pub random_seed: u64,
+}
+
+/// Shape and orientation requested when replacing a location's animated renderable.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LocationAnimationPlacement {
+    pub shape: u8,
+    pub orientation: LocOrientation,
 }

@@ -108,6 +108,31 @@ impl TitleUi {
             [170, 170, 170, 255],
         );
     }
+    /// Black loading screen shown while an entered world has no interface root, such as between
+    /// map rebuilds, so the title chrome never reappears mid-session.
+    #[expect(
+        clippy::cast_precision_loss,
+        clippy::cast_possible_wrap,
+        reason = "canvas extents are bounded to 16384"
+    )]
+    pub fn project_loading(&self, assets: &TitleAssets, state: &GameState, frame: &mut UiFrame) {
+        let canvas = state.interfaces().window().canvas;
+        frame.quads.clear();
+        frame.fill_rect(
+            Rect::new(0., 0., canvas.width as f32, canvas.height as f32),
+            [0, 0, 0, 255],
+            Rect::new(0., 0., canvas.width as f32, canvas.height as f32),
+        );
+        centered(
+            frame,
+            &assets.fonts[1],
+            1,
+            "Loading - please wait.",
+            (canvas.width / 2) as i32,
+            (canvas.height / 2) as i32,
+            WHITE,
+        );
+    }
     /// Project the authenticated bootstrap from `GameState`, without a second session model.
     pub fn project_session(&self, assets: &TitleAssets, state: &GameState, frame: &mut UiFrame) {
         title_chrome(assets, frame);

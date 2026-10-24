@@ -74,7 +74,12 @@ pub fn logout(
         &scripts.interfaces,
         rustclient_game_ui::widgets::WidgetBounds::canvas(state.interfaces()),
     )?;
-    for node in tree.nodes.iter().rev() {
+    let root = state.interfaces().root();
+    // Opening the logout tab is a separate authored action from its logout button.
+    // Prefer mounted content and keep trying after a root tab operation.
+    let mut nodes: Vec<_> = tree.nodes.iter().rev().collect();
+    nodes.sort_by_key(|node| Some(node.id.interface) == root);
+    for node in nodes {
         for (label, action) in
             rustclient_application::widget_actions(state, &scripts.interfaces, node.address)?
         {
@@ -83,12 +88,12 @@ pub fn logout(
                 if !errors.is_empty() {
                     return Err(errors.join("; ").into());
                 }
-                let transmitted = !intents.is_empty();
+                let transmitted = !intents.is_empty() && Some(node.id.interface) != root;
                 for intent in intents {
                     stream.deadline_after(std::time::Duration::from_secs(2));
                     pollster::block_on(stream.send(&decoder.encode(intent)?))?;
                 }
-                println!("entity review logout action: {label}");
+                println!("entity review logout action: {label} at {:?}", node.address);
                 return Ok(transmitted);
             }
         }

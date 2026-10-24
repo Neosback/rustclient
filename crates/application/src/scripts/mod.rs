@@ -2,6 +2,8 @@
 mod arrays;
 mod database;
 #[cfg(test)]
+mod gameframe_tests;
+#[cfg(test)]
 mod input_tests;
 mod queries;
 #[cfg(test)]
@@ -40,11 +42,16 @@ pub struct ClientScripts<S> {
     items: BTreeMap<ItemDefinitionId, rustclient_cache::world::ItemDefinition>,
     loaded_groups: BTreeSet<InterfaceId>,
     layout_sizes: BTreeMap<WidgetAddress, [i32; 2]>,
+    /// Interface revision the sizes above were computed from; a match means nothing moved.
+    layout_revision: Option<u64>,
     pub modifiers: [bool; 3],
     fonts: BTreeMap<FontId, rustclient_cache::BitmapFont>,
     effects: Vec<rustclient_protocol::ClientIntent>,
     sound_effects: Vec<SoundEffectRequest>,
     db: database::DbState,
+    huffman: Option<rustclient_protocol::Huffman>,
+    /// Renderer-owned camera pitch and yaw in script units, supplied each frame by the host.
+    camera_angles: [i32; 2],
     queue: VecDeque<(ScriptRequest, Option<WidgetAddress>)>,
 }
 impl<S: ReadOnlyBlobs> ClientScripts<S> {
@@ -59,11 +66,14 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
             items: BTreeMap::new(),
             loaded_groups: BTreeSet::new(),
             layout_sizes: BTreeMap::new(),
+            layout_revision: None,
             modifiers: [false; 3],
             fonts: BTreeMap::new(),
             effects: Vec::new(),
             sound_effects: Vec::new(),
             db: database::DbState::default(),
+            huffman: None,
+            camera_angles: [0; 2],
             queue: VecDeque::new(),
         }
     }
@@ -133,7 +143,7 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
         }
         Ok(self.drain(state))
     }
-    /// Execute an operation listener before revalidating any server button request.
+    /// Validate a selection, execute its listener, then check operation permissions.
     /// # Errors
     /// Rejects stale or forbidden actions before producing any network command.
     pub fn perform_action(
@@ -141,7 +151,7 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
         state: &mut GameState,
         action: WidgetAction,
     ) -> Result<(Vec<rustclient_protocol::ClientIntent>, Vec<String>)> {
-        let intent = crate::validate_widget_action(state, &self.interfaces, action)?;
+        crate::validate_widget_action(state, &self.interfaces, action)?;
         let widget = rustclient_game_ui::widgets::resolve_widget(
             state.interfaces(),
             &self.interfaces,
@@ -171,10 +181,20 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
             ));
         }
         let mut intents = std::mem::take(&mut self.effects);
-        if intent.is_some()
-            && let Ok(Some(intent)) = crate::validate_widget_action(state, &self.interfaces, action)
+        // classEA.method3815 retains the selected widget across its callback. A
+        // dropdown may delete its own rows; that must not cancel this validated
+        // button. Permissions may still change during the callback.
+        let permissions = state
+            .interfaces()
+            .permissions(
+                action.address.widget,
+                action.address.child.map_or(-1, u32::cast_signed),
+            )
+            .unwrap_or(widget.permissions);
+        if state.authenticated_player().is_some()
+            && permissions.enabled_operations & (1_u32 << action.operation.index()) != 0
         {
-            intents.push(intent);
+            intents.push(rustclient_protocol::ClientIntent::WidgetAction(action));
         }
         Ok((intents, errors))
     }
@@ -279,9 +299,45 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
         }
         Ok(result)
     }
+    /// Publish the camera's pitch and yaw for `CAM_GETANGLE_*`. The camera stays renderer-owned;
+    /// this is a disposable projection of it.
+    pub fn set_camera_angles(&mut self, pitch: i32, yaw: i32) {
+        self.camera_angles = [pitch, yaw];
+    }
+    /// Queue a chatbox message or `::` command for the server.
+    /// # Errors
+    /// Rejects text the chat code cannot represent and an exhausted effect budget.
+    pub(crate) fn queue_chat(&mut self, chat: rustclient_protocol::ChatIntent) -> Result<()> {
+        if self.effects.len() >= 32 {
+            return Err("script effect limit".into());
+        }
+        self.effects
+            .push(rustclient_protocol::ClientIntent::Chat(chat));
+        Ok(())
+    }
+    /// Frame a public chat message with the cache's Huffman table, loading it on first use.
+    /// # Errors
+    /// Fails when the cache has no table or the text cannot be coded.
+    pub(crate) fn encode_public_chat(&mut self, text: &str) -> Result<Vec<u8>> {
+        if self.huffman.is_none() {
+            let table = self
+                .cache
+                .huffman_sizes()
+                .map_err(|e| e.to_string())?
+                .ok_or("cache has no chat huffman table")?;
+            self.huffman =
+                Some(rustclient_protocol::Huffman::from_sizes(&table).map_err(|e| e.to_string())?);
+        }
+        self.huffman
+            .as_ref()
+            .ok_or("chat huffman table unavailable")?
+            .encode_message(text)
+            .map_err(|e| e.to_string())
+    }
     pub fn reset(&mut self) {
         self.loaded_groups.clear();
         self.layout_sizes.clear();
+        self.layout_revision = None;
         self.queue.clear();
         self.effects.clear();
         self.sound_effects.clear();
@@ -300,7 +356,14 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
     /// # Errors
     /// Rejects incomplete layouts or malformed resize listeners.
     pub fn resize_widgets(&mut self, state: &mut GameState) -> Result<Vec<String>> {
-        let tree = rustclient_game_ui::widgets::WidgetTree::build(
+        // Layout is a pure function of interface state: skip it while nothing has changed,
+        // but still deliver queued listener work.
+        let revision = state.interfaces().revision();
+        if self.layout_revision == Some(revision) {
+            return Ok(self.drain(state));
+        }
+        self.layout_revision = None;
+        let tree = rustclient_game_ui::widgets::WidgetTree::attached(
             state.interfaces(),
             &self.interfaces,
             rustclient_game_ui::widgets::WidgetBounds::canvas(state.interfaces()),
@@ -310,15 +373,39 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
         for node in tree.nodes {
             let size = [node.bounds.width, node.bounds.height];
             sizes.insert(node.address, size);
-            if self.layout_sizes.get(&node.address) == Some(&size) {
-                continue;
-            }
             let widget = rustclient_game_ui::widgets::resolve_widget(
                 state.interfaces(),
                 &self.interfaces,
                 node.address,
             )
             .map_err(|e| e.to_string())?;
+            if let rustclient_model::WidgetBody::Container { scroll_size, .. } = widget.body
+                && let Some(runtime) = state.interfaces().runtime().get(&node.address)
+                && let Some(scroll) = runtime.scroll
+            {
+                let clamped = [0, 1].map(|axis| {
+                    scroll[axis]
+                        .min(scroll_size[axis].saturating_sub(size[axis].max(0).cast_unsigned()))
+                });
+                if clamped != scroll {
+                    let mut runtime = runtime.clone();
+                    runtime.scroll = Some(clamped);
+                    state
+                        .apply_operation(SemanticOperation::Interface(
+                            InterfaceUpdate::SetProperty {
+                                widget: node.id,
+                                property: rustclient_model::WidgetProperty::Runtime {
+                                    address: node.address,
+                                    value: Box::new(runtime),
+                                },
+                            },
+                        ))
+                        .map_err(|e| e.to_string())?;
+                }
+            }
+            if self.layout_sizes.get(&node.address) == Some(&size) {
+                continue;
+            }
             if let Some(args) = widget.listeners.get(&WidgetListener::Resize)
                 && let Some(request) = request(args.clone())?
             {
@@ -326,6 +413,7 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
             }
         }
         self.layout_sizes = sizes;
+        self.layout_revision = Some(revision);
         Ok(self.drain(state))
     }
     /// Schedule server calls and widget listeners in arrival order.

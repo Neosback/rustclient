@@ -270,6 +270,8 @@ pub fn npc(bytes: &[u8], id: NpcDefinitionId, source: Source) -> Result<NpcDefin
         walk_back_sequence: None,
         walk_left_sequence: None,
         walk_right_sequence: None,
+        run_sequences: [None; 4],
+        crawl_sequences: [None; 4],
         recolors: Vec::new(),
         retextures: Vec::new(),
         combat_level: None,
@@ -335,7 +337,7 @@ pub fn npc(bytes: &[u8], id: NpcDefinitionId, source: Source) -> Result<NpcDefin
                 out.walk_left_sequence = (wl != 65535).then_some(SequenceId::new(u32::from(wl)));
                 out.walk_right_sequence = (wr != 65535).then_some(SequenceId::new(u32::from(wr)));
             }
-            18 | 42 | 74..=79 | 103 | 114 | 116 | 124 | 126 | 146 => {
+            18 | 42 | 74..=79 | 103 | 124 | 126 | 146 => {
                 r.u16()?;
             }
             30..=34 => {
@@ -417,8 +419,17 @@ pub fn npc(bytes: &[u8], id: NpcDefinitionId, source: Source) -> Result<NpcDefin
                 });
             }
             107 => out.interactable = false,
-            115 | 117 => {
-                r.take(8)?;
+            114..=117 => {
+                let sequences = if op <= 115 {
+                    &mut out.run_sequences
+                } else {
+                    &mut out.crawl_sequences
+                };
+                let count = if op % 2 == 0 { 1 } else { 4 };
+                for slot in &mut sequences[..count] {
+                    let id = r.u16()?;
+                    *slot = (id != 65535).then_some(SequenceId::new(u32::from(id)));
+                }
             }
             148 => {
                 r.take(4)?;

@@ -40,6 +40,106 @@
         {
           "path": "sources-semantic/ModelData.java",
           "sha256": "1784248266a4835691bfc8c12ac281a6da412b89667667cf8adcdb78237d3ab7"
+        },
+        {
+          "path": "sources-semantic/classDF.java",
+          "sha256": "b7af3a17c6a25711d1cc600bc7cae03ab0e34982180c3c055fec246bc45a368c"
+        },
+        {
+          "path": "sources-semantic/classDC.java",
+          "sha256": "592d2f87d2abf61fea1976bc03db435818fbd31705162c218c1eb279c584cc2e"
+        },
+        {
+          "path": "sources-semantic/classGT.java",
+          "sha256": "20c3f0d9eafde226eea1519af9f6aaae965efbf268acdf85d30a5a9133288ce8"
+        },
+        {
+          "path": "sources-semantic/classCU.java",
+          "sha256": "39f2a771db49b446b1d64ca279a48ef38f43d1a34f8dbcf9b54673b2430b35e7"
+        },
+        {
+          "path": "sources-semantic/Player.java",
+          "sha256": "34c9625ac8d2619125e4f1768e66e31a5f3c527501d41daeee23d7d16c10125e"
+        },
+        {
+          "path": "sources-semantic/Animation.java",
+          "sha256": "991c8bae7433f0225b0e9283f5c3ad43de943d79ffe554a5cb10783eca638b12"
+        },
+        {
+          "path": "sources-semantic/GameEngine.java",
+          "sha256": "bf6e8248d92a020c47537a0a506d75f0bdf2db6b0f63dda085eb7ffb082e4401"
+        },
+        {
+          "path": "sources-semantic/client.java",
+          "sha256": "7c61d35b0f260c2cd8fbf1ae4436b6ef19954c93f79e13b27657c465c544043e"
+        },
+        {
+          "path": "sources-semantic/classEA.java",
+          "sha256": "ffa33d2523c5301a3a8ff5a12a2c6422c84a400bb1233bd21c4a9c6544fc2867"
+        },
+        {
+          "path": "sources-semantic/classCN.java",
+          "sha256": "c410d7563b8ec84e5c9a62111fce07e5b02a9620107105892689f6be002f86be"
+        },
+        {
+          "path": "sources-semantic/classPF.java",
+          "sha256": "226757c27dc3b0d6f9696f70956003e752fa3163b35622dddbd432014ef59673"
+        },
+        {
+          "path": "sources-semantic/classFC.java",
+          "sha256": "655c194d6faf4a773829f284fc2251b09eef3e0763f26df2017bad200d0b60e5"
+        },
+        {
+          "path": "sources-semantic/NpcOverrides.java",
+          "sha256": "58377517f9d483d43b086d0b7b5768f0f91dfe57e990f27e443dd27b4f8a8505"
+        },
+        {
+          "path": "sources-semantic/classLO.java",
+          "sha256": "381bb3f5a0ed39605a898749216952288a25d93fdf2b10327fd6907a8f2c30ca"
+        },
+        {
+          "path": "sources-semantic/classXO.java",
+          "sha256": "d943fc6147ed223fdba74b02dc5e5611a09f349b3757555971510aedc2fe80fa"
+        },
+        {
+          "path": "sources-semantic/classUO.java",
+          "sha256": "c6d1bd3d07b444f0ea929d79015349dee5e74825dad07f75807319ce87666f0a"
+        },
+        {
+          "path": "sources-semantic/classBB.java",
+          "sha256": "9b299f51dce52286186c8d8ce9d5fc5bd5c48d73abf448cd1a24490dee75409a"
+        },
+        {
+          "path": "sources-semantic/Widget.java",
+          "sha256": "9dbab17c5c894b17fc701f8f139189bd27437469cbb69338f944d47fbefd2627"
+        },
+        {
+          "path": "sources-semantic/classAS.java",
+          "sha256": "818472abec022e35e8b1dd463f1240a845e4005ca6eb28447b3a60e25340cde8"
+        },
+        {
+          "path": "sources-semantic/NPC.java",
+          "sha256": "e7dc855242339bb65de6045991922019f9eb61e24eecccc8817a40723bbeaa1e"
+        },
+        {
+          "path": "sources-semantic/NPCComposition.java",
+          "sha256": "1b9e6f03ba6b844a613be4090947d2f6768187cf8410029f4ef55dc750f4499f"
+        },
+        {
+          "path": "sources-semantic/DynamicObject.java",
+          "sha256": "41038073a4702708e4e02c8ff00c697d51c37fc5001242404cb20368f2b82e24"
+        },
+        {
+          "path": "sources-semantic/ObjectComposition.java",
+          "sha256": "3c3972c7128dc73b1500c709d1d5eb3a29be308d0b29acb31229798f2e013875"
+        },
+        {
+          "path": "sources-semantic/classJR.java",
+          "sha256": "c97c2a1eeda832bcae936a23174721864b40a8d7cdd7e56fbfcf9e665733d5b6"
+        },
+        {
+          "path": "sources-semantic/classQR.java",
+          "sha256": "2291e97459a36c3ef9e3a96773733142335536b5b11775eab5246f412443a0c1"
         }
       ]
     },
@@ -114,6 +214,18 @@
         {
           "path": "content/interfaces/equipment/src/main/kotlin/org/rsmod/content/interfaces/equipment/prices/GuidePriceScript.kt",
           "sha256": "55cdafc2f78e1eef9ddd1f10dba11edb9491f03378fd6f5f1bd5d660d03f5fd7"
+        },
+        {
+          "path": "api/player-output/src/main/kotlin/org/rsmod/api/player/output/ClientScripts.kt",
+          "sha256": "39f7844182789adcd1c8a408b2b5f5d58d590aecac96ec1052b1287301fe291b"
+        },
+        {
+          "path": "content/interfaces/settings/src/main/kotlin/org/rsmod/content/interfaces/settings/scripts/tab/impl/DisplaySettingsScript.kt",
+          "sha256": "5208d34b4ecb0a1600032f6846a800614cc770d834006d9fe28163222b62e074"
+        },
+        {
+          "path": "content/interfaces/gameframe/src/main/kotlin/org/rsmod/content/interfaces/gameframe/script/GameframeScript.kt",
+          "sha256": "8b808c20b4719cb38f078bba45e0f59b1dc1bdc937ed55da3ea330d4316980bc"
         }
       ],
       "git_commit": "abc80a8d76d68912f96819680f8aae279a586514"

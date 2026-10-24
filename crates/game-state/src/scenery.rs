@@ -7,6 +7,18 @@ use rustclient_model::{AnimationStart, ClientCycle, LocationChange, LocationKey,
 use std::collections::BTreeMap;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SceneryOperation {
+    /// Trigger at the current cycle, relative to the active map anchor and local plane.
+    ResetLocationArea {
+        offset: rustclient_model::TileOffset,
+        plane: rustclient_model::Plane,
+        size: [u32; 2],
+    },
+    TriggerLocationAnimation {
+        plane: Option<rustclient_model::Plane>,
+        offset: rustclient_model::TileOffset,
+        placement: rustclient_model::LocationAnimationPlacement,
+        sequence: Option<rustclient_model::SequenceId>,
+    },
     AdvanceCycles(u32),
     SetVariable {
         id: VarpId,
@@ -117,27 +129,29 @@ impl GameState {
         if self.lifecycle() != SessionLifecycle::Active {
             return Err(SceneryError::InactiveSession);
         }
+        if let SceneryOperation::TriggerLocationAnimation {
+            offset,
+            placement,
+            sequence,
+            plane: requested_plane,
+        } = op
+        {
+            return self.trigger_location_animation(offset, requested_plane, placement, sequence);
+        }
+        if let SceneryOperation::ResetLocationArea {
+            offset,
+            plane,
+            size,
+        } = op
+        {
+            return self.reset_location_area(offset, plane, size);
+        }
         let scene = &mut self.scenery;
         let event = match op {
+            SceneryOperation::TriggerLocationAnimation { .. }
+            | SceneryOperation::ResetLocationArea { .. } => unreachable!("normalized above"),
             SceneryOperation::AdvanceCycles(cycles) => {
-                let previous = scene.cycle;
-                let current = previous
-                    .checked_advance(cycles)
-                    .ok_or(SceneryError::Overflow)?;
-                if previous == current {
-                    return Ok(OperationCommit::new(None, StateDelta::default()));
-                }
-                scene.cycle = current;
-                let reboot_active = self.entities.reboot_cycles() != 0;
-                self.entities.advance_cycles(cycles);
-                return Ok(OperationCommit::new(
-                    Some(SemanticEvent::ClientCyclesAdvanced { previous, current }),
-                    StateDelta::client_cycle(
-                        reboot_active
-                            || !self.entities.players().is_empty()
-                            || !self.entities.npcs().is_empty(),
-                    ),
-                ));
+                return self.advance_scenery_cycles(cycles);
             }
             SceneryOperation::SetVariable { id, value } => {
                 change_variable(scene, id, value, false)?
@@ -175,7 +189,8 @@ impl GameState {
             SceneryOperation::ChangeLocation { key, change } => {
                 validate_key(key)?;
                 if let LocationChange::Replace(def) = change
-                    && (def.shape > 22 || layer(def.shape) != key.layer)
+                    && (def.shape > 22
+                        || rustclient_model::LocationLayer::from_shape(def.shape) != key.layer)
                 {
                     return Err(SceneryError::InvalidLocation);
                 }
@@ -185,6 +200,12 @@ impl GameState {
             }
             SceneryOperation::AnimateLocation { key, start } => {
                 validate_key(key)?;
+                if start.and_then(|s| s.placement).is_some_and(|p| {
+                    p.shape > 22
+                        || rustclient_model::LocationLayer::from_shape(p.shape) != key.layer
+                }) {
+                    return Err(SceneryError::InvalidLocation);
+                }
                 if start.is_some_and(|s| s.cycle > scene.cycle) {
                     return Err(SceneryError::FutureAnimation);
                 }
@@ -202,6 +223,115 @@ impl GameState {
             StateDelta::SCENERY
         };
         Ok(OperationCommit::new(event, delta))
+    }
+    fn advance_scenery_cycles(&mut self, cycles: u32) -> Result<OperationCommit, SceneryError> {
+        let previous = self.scenery.cycle;
+        let current = previous
+            .checked_advance(cycles)
+            .ok_or(SceneryError::Overflow)?;
+        if previous == current {
+            return Ok(OperationCommit::new(None, StateDelta::default()));
+        }
+        self.scenery.cycle = current;
+        let reboot_active = self.entities.reboot_cycles() != 0;
+        self.entities.advance_cycles(cycles);
+        Ok(OperationCommit::new(
+            Some(SemanticEvent::ClientCyclesAdvanced { previous, current }),
+            StateDelta::client_cycle(
+                reboot_active
+                    || !self.entities.players().is_empty()
+                    || !self.entities.npcs().is_empty(),
+            ),
+        ))
+    }
+
+    fn trigger_location_animation(
+        &mut self,
+        offset: rustclient_model::TileOffset,
+        requested_plane: Option<rustclient_model::Plane>,
+        placement: rustclient_model::LocationAnimationPlacement,
+        sequence: Option<rustclient_model::SequenceId>,
+    ) -> Result<OperationCommit, SceneryError> {
+        let anchor = self
+            .initial_placement()
+            .ok_or(SceneryError::InvalidLocation)?
+            .map_anchor;
+        let plane = requested_plane.unwrap_or(
+            self.entities
+                .local_player()
+                .ok_or(SceneryError::InvalidLocation)?
+                .tile
+                .plane,
+        );
+        let tile = rustclient_model::WorldTile::new(
+            anchor
+                .x
+                .checked_add(offset.x)
+                .ok_or(SceneryError::Overflow)?,
+            anchor
+                .y
+                .checked_add(offset.y)
+                .ok_or(SceneryError::Overflow)?,
+            plane,
+        );
+        self.change_scenery(SceneryOperation::AnimateLocation {
+            key: LocationKey::new(
+                tile,
+                rustclient_model::LocationLayer::from_shape(placement.shape),
+            ),
+            start: Some(AnimationStart {
+                placement: Some(placement),
+                sequence,
+                cycle: self.scenery.cycle(),
+                random_seed: 0,
+            }),
+        })
+    }
+    fn reset_location_area(
+        &mut self,
+        offset: rustclient_model::TileOffset,
+        plane: rustclient_model::Plane,
+        size: [u32; 2],
+    ) -> Result<OperationCommit, SceneryError> {
+        let anchor = self
+            .initial_placement()
+            .ok_or(SceneryError::InvalidLocation)?
+            .map_anchor;
+        if size.contains(&0) || size.iter().any(|s| *s > 192) {
+            return Err(SceneryError::InvalidLocation);
+        }
+        let origin = rustclient_model::WorldTile::new(
+            anchor
+                .x
+                .checked_add(offset.x)
+                .ok_or(SceneryError::Overflow)?,
+            anchor
+                .y
+                .checked_add(offset.y)
+                .ok_or(SceneryError::Overflow)?,
+            plane,
+        );
+        let inside = |key: &LocationKey| {
+            key.tile.plane == plane
+                && i64::from(key.tile.x) >= i64::from(origin.x)
+                && i64::from(key.tile.x) < i64::from(origin.x) + i64::from(size[0])
+                && i64::from(key.tile.y) >= i64::from(origin.y)
+                && i64::from(key.tile.y) < i64::from(origin.y) + i64::from(size[1])
+        };
+        if !self.scenery.locations.keys().any(inside) {
+            return Ok(OperationCommit::new(None, StateDelta::default()));
+        }
+        let generation = self
+            .scenery
+            .generation
+            .checked_add(1)
+            .ok_or(SceneryError::Overflow)?;
+        self.scenery.locations.retain(|key, _| !inside(key));
+        self.scenery.generation = generation;
+        Ok(OperationCommit::new(
+            Some(SemanticEvent::LocationAreaReset { origin, size }),
+            StateDelta::SCENERY,
+        ))
     }
 }
 fn change_location(
@@ -239,16 +369,6 @@ fn validate_key(key: LocationKey) -> Result<(), SceneryError> {
         Ok(())
     }
 }
-fn layer(shape: u8) -> rustclient_model::LocationLayer {
-    use rustclient_model::LocationLayer;
-    match shape {
-        0..=3 => LocationLayer::Boundary,
-        4..=8 => LocationLayer::WallDecoration,
-        22 => LocationLayer::FloorDecoration,
-        _ => LocationLayer::GameObject,
-    }
-}
-
 fn change_variable(
     scene: &mut SceneryState,
     id: VarpId,

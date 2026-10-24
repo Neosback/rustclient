@@ -90,6 +90,7 @@ pub(super) fn write(f: &mut StableFingerprint64, state: &InterfaceState) {
             script_value(f, v);
         }
         option(f, value.hidden, |f, n| f.write_u8(u8::from(n)));
+        option(f, value.no_scroll_through, |f, n| f.write_u8(u8::from(n)));
         option(f, value.scroll, |f, a| {
             for n in a {
                 f.write_u32(n);

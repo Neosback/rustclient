@@ -1,8 +1,9 @@
 //! Out-of-view tracking and visible remote players share the entity state owner.
+use crate::player_movement::{apply_movement, apply_traversal, exact_movement, move_tile};
 use crate::{EntityUpdateError as Error, Locomotion, PlayerEntity, WorldEntitiesState};
 use rustclient_model::{
-    ActorSequenceSlot, Plane, PlayerAppearance, PlayerIndex, PlayerInstanceId, PlayerMovement,
-    PlayerTrackingGrid, RemotePlayerUpdate as Update, SequenceChange, TileOffset, WorldTile,
+    ActorSequenceSlot, Plane, PlayerAppearance, PlayerIndex, PlayerInstanceId, PlayerTrackingGrid,
+    RemotePlayerUpdate as Update, SequenceChange, TileOffset, WorldTile,
 };
 use std::collections::BTreeMap;
 
@@ -12,6 +13,7 @@ pub struct TrackedPlayer {
     pub region: WorldTile,
     pub appearance: Option<PlayerAppearance>,
     pub orientation: u16,
+    pub path_speed: rustclient_model::MoveSpeed,
 }
 #[derive(Clone, Copy)]
 enum Position {
@@ -34,7 +36,11 @@ impl WorldEntitiesState {
             .map(|p| Position::Outside(p.grid, p.region))
     }
     /// Plan positions for only the touched indexes. No appearance copies or live mutations.
-    pub(crate) fn validate_remote_players(&self, updates: &[Update]) -> Result<(), Error> {
+    pub(crate) fn validate_remote_players(
+        &self,
+        updates: &[Update],
+        cycle: rustclient_model::ClientCycle,
+    ) -> Result<(), Error> {
         if updates.len() > 16_384 {
             return Err(Error::InvalidPlayerBatch);
         }
@@ -96,7 +102,10 @@ impl WorldEntitiesState {
                 }
                 (
                     Update::Attributes {
-                        appearance, facing, ..
+                        appearance,
+                        facing,
+                        exact_move,
+                        ..
                     },
                     Some(position @ Position::Visible(_, _)),
                 ) => {
@@ -106,6 +115,9 @@ impl WorldEntitiesState {
                             .is_some_and(|a| a.display_name.len() > 320)
                     {
                         return Err(Error::InvalidPlayerBatch);
+                    }
+                    if let (Some(exact), Position::Visible(_, tile)) = (exact_move, position) {
+                        exact_movement(tile, cycle, *exact)?;
                     }
                     position
                 }
@@ -121,7 +133,15 @@ impl WorldEntitiesState {
             .ok_or(Error::InvalidPlayerBatch)?;
         Ok(())
     }
-    pub(crate) fn apply_remote_players(&mut self, updates: &[Update]) -> bool {
+    #[expect(
+        clippy::too_many_lines,
+        reason = "ordered validated visibility and attribute transitions"
+    )]
+    pub(crate) fn apply_remote_players(
+        &mut self,
+        updates: &[Update],
+        cycle: rustclient_model::ClientCycle,
+    ) -> bool {
         let mut changed = false;
         for update in updates {
             let index = update.index();
@@ -134,6 +154,7 @@ impl WorldEntitiesState {
                             region: *region,
                             appearance: None,
                             orientation: 0,
+                            path_speed: rustclient_model::MoveSpeed::Walk,
                         },
                     );
                     changed = true;
@@ -158,6 +179,9 @@ impl WorldEntitiesState {
                                 index,
                                 instance: PlayerInstanceId::new(self.player_serial),
                                 tracking_grid: Some(player.grid),
+                                path_speed: player.path_speed,
+                                movement_speed: player.path_speed,
+                                exact_move: None,
                                 tile: WorldTile::new(
                                     player.region.x + offset.x,
                                     player.region.y + offset.y,
@@ -184,14 +208,17 @@ impl WorldEntitiesState {
                                 region: coarse(grid, player.tile),
                                 appearance: player.appearance,
                                 orientation: player.orientation,
+                                path_speed: player.path_speed,
                             },
                         );
                         changed = true;
                     }
                 }
-                Update::Move { movement, .. } => {
+                Update::Move {
+                    movement, speed, ..
+                } => {
                     if let Some(player) = self.players.get_mut(&index) {
-                        changed |= apply_movement(player, *movement);
+                        changed |= apply_movement(player, *movement, *speed);
                     }
                 }
                 Update::Attributes {
@@ -199,6 +226,8 @@ impl WorldEntitiesState {
                     sequence,
                     delay,
                     facing,
+                    path_speed,
+                    exact_move,
                     ..
                 } => {
                     if let Some(player) = self.players.get_mut(&index) {
@@ -209,6 +238,13 @@ impl WorldEntitiesState {
                         if let Some(facing) = facing {
                             changed |= player.orientation != *facing;
                             player.orientation = *facing;
+                        }
+                        changed |= apply_traversal(player, *path_speed);
+                        if let Some(exact) = exact_move {
+                            let next = exact_movement(player.tile, cycle, *exact)
+                                .expect("validated exact movement");
+                            changed |= player.exact_move != Some(next);
+                            player.exact_move = Some(next);
                         }
                         changed |= set_sequence(player, *sequence, *delay);
                     }
@@ -228,29 +264,6 @@ fn set_sequence(player: &mut PlayerEntity, sequence: SequenceChange, delay: u8) 
         }
     }
     previous != player.sequence
-}
-
-fn apply_movement(player: &mut PlayerEntity, movement: Option<PlayerMovement>) -> bool {
-    let locomotion = match movement {
-        Some(PlayerMovement::Step { .. }) => Locomotion::Walk,
-        Some(PlayerMovement::Run { .. }) => Locomotion::Run,
-        _ => Locomotion::Idle,
-    };
-    let tile = move_tile(player.tile, movement).expect("validated remote movement");
-    let previous = (player.tile, player.locomotion, player.orientation);
-    if player.locomotion != locomotion {
-        player.animation_cycle = 0;
-    }
-    player.tile = tile;
-    player.locomotion = locomotion;
-    if let Some(direction) = match movement {
-        Some(PlayerMovement::Step { direction }) => Some(direction),
-        Some(PlayerMovement::Run { direction2, .. }) => Some(direction2),
-        _ => None,
-    } {
-        player.orientation = crate::entities::direction_to_orientation(direction);
-    }
-    previous != (player.tile, player.locomotion, player.orientation)
 }
 
 fn shift(
@@ -278,32 +291,4 @@ fn coarse(grid: PlayerTrackingGrid, tile: WorldTile) -> WorldTile {
         tile.y.rem_euclid(extent) / size * size,
         tile.plane,
     )
-}
-fn move_tile(tile: WorldTile, movement: Option<PlayerMovement>) -> Result<WorldTile, Error> {
-    let (x, y, plane) = match movement {
-        None => (0, 0, 0),
-        Some(PlayerMovement::Step { direction }) if direction < 8 => {
-            let (x, y) = crate::entities::direction_to_delta(direction);
-            (x, y, 0)
-        }
-        Some(PlayerMovement::Run {
-            direction1,
-            direction2,
-        }) if direction1 < 8 && direction2 < 8 => {
-            let a = crate::entities::direction_to_delta(direction1);
-            let b = crate::entities::direction_to_delta(direction2);
-            (a.0 + b.0, a.1 + b.1, 0)
-        }
-        Some(PlayerMovement::Teleport {
-            delta_x,
-            delta_y,
-            plane_delta,
-        }) if plane_delta <= 3 => (delta_x, delta_y, plane_delta),
-        _ => return Err(Error::InvalidMovement),
-    };
-    Ok(WorldTile::new(
-        tile.x.checked_add(x).ok_or(Error::PositionOverflow)?,
-        tile.y.checked_add(y).ok_or(Error::PositionOverflow)?,
-        Plane::new((tile.plane.get() + plane) & 3).unwrap_or(Plane::MIN),
-    ))
 }

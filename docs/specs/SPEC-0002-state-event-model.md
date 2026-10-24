@@ -355,7 +355,7 @@ checkpoints; exact current regression vectors live in `game-state`'s fingerprint
 contract tests. Interface topology epochs remain disposable invalidation tokens.
 
 
-## Current input/entity continuation: fingerprint schema 13
+## Input/entity continuation: fingerprint schema 13 (historical)
 
 Schema 13 covers the committed fixed/resizable window metrics and defaults,
 numeric device preferences, script-authored widget drag configuration (including
@@ -369,8 +369,57 @@ an already clear collection is a no-op. Input capture, layout extents, temporary
 drag display origins, interpolation queues, click crosses and GPU sorting remain
 disposable projections outside the canonical fingerprint.
 
-Current exact state vectors: inactive `4547667724600293240`, revision 240 at tick 5
-`2727580851940192160`, revision 240.2 at tick 5 `3773900769062229405`.
-The reference commit stream is `13725348769846276724`; empty stream is
-`10220152073364718933`. Authentication/placement state is `5742575929545608436`.
-Executable contract tests remain the source for these anchors.
+## Player movement continuation: fingerprint schema 14 (historical)
+
+Schema 14 retains schema 13 and adds traversal and normalized forced trajectories.
+Each outside-view record encodes persistent path speed after orientation. Each
+visible player encodes persistent and current speed after orientation, then an
+optional exact trajectory: start/end WorldTile, absolute start/end ClientCycle
+(u64), and direction u16. Speed tags are Stationary=0, Crawl=1, Walk=2, Run=3;
+these canonical tags are independent of protocol traversal IDs. Option tags use
+0/1. Entity generations remain excluded. All fields reset on session boundaries,
+participate in entity deltas, and replay through the ordinary operation gateway.
+
+Current exact state vectors: inactive `237448203302558247`, revision 240 at tick 5
+`3711999109362557877`, revision 240.2 at tick 5 `14307038910201837996`.
+The reference commit stream is `16923022090785853209`; empty stream is
+`8347656283224557908`. Authentication/placement state is `11602713927183629577`;
+its commit stream is `18371847887112349494`. Executable contract tests are the
+source for these anchors.
+
+## Current gameframe continuation: fingerprint schema 15
+
+Retains schema 14, adding the optional script-owned `no_scroll_through` widget
+runtime flag immediately after the hidden override (0/1 presence, then 0/1 bool).
+It uses ordinary interface operations, interface deltas, group/session reset and
+replay. Reflow commits clamped scroll positions through the existing runtime
+owner; layout extents and selected action snapshots remain disposable metadata.
+
+Exact current state anchors: inactive `1281885794702987382`, revision 240 at tick 5
+`5567887058505747346`, revision 240.2 at tick 5 `14107708122822350899`.
+Reference commit stream `17569586246510101726`; empty stream
+`8971821546604611583`. Authentication/placement state `9877886527834491606`;
+its commit stream `2554017282337221413`. Executable tests define these anchors.
+
+## Current NPC/location continuation: fingerprint schema 16
+
+Retains schema 15, adding after each NPC orientation: optional path presence,
+checked u64 serial, first tile (x/y unsigned-bit i32, plane), optional second tile,
+and speed using the existing 0 stationary / 1 crawl / 2 walk / 3 run tags. Then
+optional exact trajectory uses start/end tiles, absolute u64 start/end cycles and
+u16 direction. New instances and session resets clear these values; path serials
+change on every request, including closed paths. Generations remain excluded.
+
+AnimationStart appends optional placement (presence, shape u8, orientation u8)
+after its random seed in both state and LocationChanged event encodings.
+LocationAreaReset uses event tag 20 followed by origin tile and two u32 extents.
+A reset with no affected overrides emits no event. Trigger operations normalize
+through the ordinary validated scenery owner, so replay uses the same anchor,
+plane, client cycle and mutation rules. Executable fingerprint tests define the
+updated exact anchors recorded in NPC-ANIMATION-240.md.
+
+Schema 16 exact anchors: inactive `13106773751953311645`; revision 240 tick 5
+`10190475705488636671`; revision 240.2 tick 5 `6392671347810390634`; reference
+commit stream `10395866910311550467`; empty stream `10566103509052713974`;
+authentication/placement state `12191201622066736735`; its commit stream
+`10866463569101878984`. Prior sections retain historical schema anchors.

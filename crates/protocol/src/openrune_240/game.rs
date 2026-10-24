@@ -200,8 +200,18 @@ fn decode_map_anchor(payload: &[u8]) -> Result<rustclient_model::MapAnchor> {
         y: i32::from(y) * 8,
     })
 }
+/// A message entered in the chatbox: a public message or a `::` command.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ChatIntent {
+    /// Public message of the given chat type with default colour and effect; `message` is the
+    /// length-prefixed Huffman coding from [`super::huffman::Huffman::encode_message`].
+    Public { chat_type: u8, message: Vec<u8> },
+    /// Developer/console command without its leading `::`.
+    Command(String),
+}
+
 /// Narrow outbound semantic intents supported by this profile.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub enum ClientIntent {
     WindowStatus {
         mode: rustclient_model::WindowMode,
@@ -218,6 +228,8 @@ pub enum ClientIntent {
     MapBuildComplete,
     WidgetAction(rustclient_model::WidgetAction),
     CloseModal,
+    /// Chat typed in the main chatbox. `command` carries text after `::`.
+    Chat(ChatIntent),
     NpcAction {
         index: rustclient_model::NpcIndex,
         slot: rustclient_model::ActionSlot,
@@ -238,6 +250,30 @@ impl ClientIntent {
         let (opcode, payload) = match self {
             Self::KeepAlive => (99, vec![]),
             Self::CloseModal => (98, vec![]),
+            Self::Chat(chat) => {
+                // MESSAGE_PUBLIC and CLIENT_CHEAT are both VAR_BYTE.
+                let (opcode, body) = match chat {
+                    ChatIntent::Public { chat_type, message } => {
+                        let mut body = vec![chat_type, 0, 0];
+                        body.extend(message);
+                        (56, body)
+                    }
+                    ChatIntent::Command(text) => {
+                        let mut body: Vec<u8> = text
+                            .chars()
+                            .map(|ch| u8::try_from(u32::from(ch)).unwrap_or(b'?'))
+                            .collect();
+                        body.push(0);
+                        (79, body)
+                    }
+                };
+                let length = u8::try_from(body.len()).map_err(|_| {
+                    ProtocolError::new("chat encode", "message exceeds one length byte")
+                })?;
+                let mut payload = vec![length];
+                payload.extend(body);
+                (opcode, payload)
+            }
             Self::WidgetAction(action) => super::actions::widget(action)?,
             Self::NpcAction {
                 index,
@@ -332,6 +368,7 @@ pub enum ServerUpdate {
     NpcInfo(NpcInfoUpdate),
     ResetActorAnimations,
     LocationAnim(LocAnimUpdate),
+    LocationZoneReset(super::zone::ZoneOrigin),
     Tick,
     LoggedOut,
     Deferred,
@@ -373,6 +410,7 @@ pub struct SessionCodec {
     framed_packets: u64,
     players: PlayerInfoDecoder,
     npcs: NpcInfoDecoder,
+    zones: super::zone::ZoneDecoder,
 }
 impl SessionCodec {
     #[must_use]
@@ -388,6 +426,7 @@ impl SessionCodec {
             framed_packets: 0,
             players: PlayerInfoDecoder::new(local_player),
             npcs: NpcInfoDecoder::default(),
+            zones: super::zone::ZoneDecoder::default(),
         }
     }
     /// Diagnostic count, never used as semantic game time.
@@ -407,6 +446,10 @@ impl SessionCodec {
     /// Deliver complete, profile-decoded updates in stream order.
     /// # Errors
     /// Fails on invalid framing or unsupported map transitions.
+    #[expect(
+        clippy::too_many_lines,
+        reason = "single ordered profile packet dispatch"
+    )]
     pub fn receive(&mut self, bytes: &[u8], mut emit: impl FnMut(ServerUpdate)) -> Result<()> {
         self.framer.feed(bytes)?;
         while let Some(packet) = self.framer.next_packet()? {
@@ -443,6 +486,7 @@ impl SessionCodec {
                 39 => {
                     let map_anchor = decode_map_anchor(&packet.payload)?;
                     self.npcs.clear_origin();
+                    self.zones.clear();
                     ServerUpdate::RebuildMap { map_anchor }
                 }
                 12 => {
@@ -468,9 +512,27 @@ impl SessionCodec {
                     let update = self.npcs.decode(&packet.payload, true)?;
                     ServerUpdate::NpcInfo(update)
                 }
+                118 | 126 => {
+                    let origin = self.zones.header(packet.opcode, &packet.payload)?;
+                    if packet.opcode == 126 {
+                        ServerUpdate::LocationZoneReset(origin)
+                    } else {
+                        ServerUpdate::Deferred
+                    }
+                }
+                49 => {
+                    for animation in self.zones.enclosed(&packet.payload)? {
+                        emit(ServerUpdate::LocationAnim(animation));
+                    }
+                    ServerUpdate::Deferred
+                }
+                123 => self
+                    .zones
+                    .animation(&packet.payload)?
+                    .map_or(ServerUpdate::Deferred, ServerUpdate::LocationAnim),
                 84 => {
                     let update = decode_loc_anim_specific(&packet.payload)?;
-                    ServerUpdate::LocationAnim(update)
+                    update.map_or(ServerUpdate::Deferred, ServerUpdate::LocationAnim)
                 }
                 11 | 30 | 35 | 45 | 51 | 54 | 78 | 106 | 116 => ServerUpdate::Interface(
                     super::interfaces::decode(packet.opcode, &packet.payload)?,

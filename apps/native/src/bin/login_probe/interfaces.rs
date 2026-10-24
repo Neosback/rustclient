@@ -16,6 +16,8 @@ type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 pub struct Review {
     phase: usize,
     pub price_opened: bool,
+    pub frame_only: bool,
+    pub completed: bool,
 }
 impl Review {
     #[expect(
@@ -29,7 +31,10 @@ impl Review {
         decoder: &mut ConnectionDecoder,
         stream: &mut NativeTcp,
     ) -> Result<()> {
-        if state.current_tick().is_none_or(|tick| tick.get() < 3) || self.phase >= 10 {
+        if state.current_tick().is_none_or(|tick| tick.get() < 3)
+            || self.completed
+            || (!self.frame_only && self.phase >= 10)
+        {
             return Ok(());
         }
         let tree = WidgetTree::build(
@@ -106,25 +111,71 @@ impl Review {
                 scripts,
                 decoder,
                 stream,
-                if fixed { "Fixed" } else { "Resizable" },
+                if fixed {
+                    "Fixed - Classic layout"
+                } else {
+                    "Resizable - Classic layout"
+                },
             )?;
             self.phase += 1;
             return Ok(());
         }
         if self.phase == 4 {
-            if state.interfaces().window().mode != rustclient_model::WindowMode::Fixed {
-                return Err("fixed layout selection did not commit fixed mode".into());
+            if state.interfaces().window().mode != rustclient_model::WindowMode::Fixed
+                || state.interfaces().root() != Some(InterfaceId::new(548))
+            {
+                return Ok(());
             }
+            println!(
+                "fixed mode committed with root {:?} and canvas {:?}",
+                state.interfaces().root(),
+                state.interfaces().window().canvas
+            );
             click_dropdown(state, scripts, decoder, stream)?;
             self.phase = 5;
             return Ok(());
         }
         if self.phase == 6 {
-            if state.interfaces().window().mode != rustclient_model::WindowMode::Resizable {
-                return Err("resizable selection did not commit resizable mode".into());
+            if state.interfaces().window().mode != rustclient_model::WindowMode::Resizable
+                || state.interfaces().root() != Some(InterfaceId::new(161))
+            {
+                return Ok(());
             }
             println!("fixed and resizable choices verified through authored dropdown listeners");
+            if self.frame_only {
+                click_dropdown(state, scripts, decoder, stream)?;
+                self.phase = 11;
+                return Ok(());
+            }
             self.phase = 7;
+        }
+        if self.phase == 11 {
+            select_layout(state, scripts, decoder, stream, "Resizable - Modern layout")?;
+            self.phase = 12;
+            return Ok(());
+        }
+        if self.phase == 12 {
+            if state.interfaces().root() != Some(InterfaceId::new(164)) {
+                return Ok(());
+            }
+            let metrics = state.interfaces().window();
+            if metrics.canvas != metrics.available {
+                return Err("resizable gameframe did not use the host canvas".into());
+            }
+            let viewport = tree
+                .nodes
+                .iter()
+                .find(|node| {
+                    resolve_widget(state.interfaces(), &scripts.interfaces, node.address)
+                        .is_ok_and(|w| w.content == rustclient_model::WidgetContent::WorldViewport)
+                })
+                .ok_or("gameframe viewport absent")?;
+            println!(
+                "modern resizable root 164, canvas {:?}, viewport {:?}",
+                metrics.canvas, viewport.bounds
+            );
+            self.completed = true;
+            return Ok(());
         }
         if self.phase == 9 {
             if state.interfaces().groups().contains(&InterfaceId::new(464)) {

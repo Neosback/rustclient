@@ -67,7 +67,9 @@ impl NativeApp {
                 return;
             }
         };
-        if request == self.widget_requested {
+        // Everything loaded stays loaded (the cache is immutable); only new visuals are decoded.
+        let request = request.missing_from(&self.widget_requested);
+        if request.is_empty() {
             return;
         }
         self.widget_loading = true;
@@ -243,6 +245,15 @@ impl NativeApp {
             {
                 listener = Some(node.address);
                 break;
+            }
+            if self
+                .state
+                .interfaces()
+                .runtime()
+                .get(&node.address)
+                .is_some_and(|runtime| runtime.no_scroll_through == Some(true))
+            {
+                return Ok(true);
             }
         }
         let Some(address) = listener else {

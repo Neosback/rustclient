@@ -106,6 +106,24 @@ fn quarter(p: &mut ModelPoint, turn: u8) {
         _ => (p.x, p.z),
     };
 }
+/// Object sequences animate in the unrotated orientation, then restore placement.
+pub(crate) fn pose_skeletal_oriented(
+    animation: &BakedAnimation,
+    frame: i32,
+    vertices: &mut [ModelPoint],
+    faces: &mut [ModelFace],
+    weights: &[Vec<(u8, u8)>],
+    orientation: u8,
+) -> Result<()> {
+    for p in &mut *vertices {
+        quarter(p, (4 - (orientation & 3)) & 3);
+    }
+    pose_skeletal(animation, frame, vertices, faces, weights)?;
+    for p in vertices {
+        quarter(p, orientation & 3);
+    }
+    Ok(())
+}
 /// Actor movement loops indefinitely. Action playback honors the authored maximum
 /// loop count and then falls back to the actor's movement sequence.
 pub(crate) fn actor_frame(
