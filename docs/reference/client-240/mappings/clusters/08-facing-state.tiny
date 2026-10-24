@@ -5,6 +5,7 @@ c	classBZ	ActorFacingState
 	f	LclassLJ;	field623	targetKind
 	f	I	field631	targetIndex
 	f	I	field633	fallbackAngle
+	f	LclassLV;	field625	applyPolicy
 	f	I	field627	angle
 	f	I	field628	areaX
 	f	I	field630	areaY
@@ -23,3 +24,6 @@ c	classLJ	FacingTargetKind
 	f	LclassLJ;	field4175	NPC
 	f	LclassLJ;	field4173	WORLD_ENTITY
 	f	LclassLJ;	field4172	NONE
+c	classLV	FacingApplyPolicy
+	f	LclassLV;	field4233	BYPASS_MOVEMENT_GATE
+	f	LclassLV;	field4232	MOVEMENT_GATED
