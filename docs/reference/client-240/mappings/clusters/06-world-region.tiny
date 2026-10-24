@@ -1,11 +1,11 @@
 tiny	2	0	semantic	readable
 c	WorldView	WorldView
-	f	[Lgc;	field1685	collisionMaps
-	f	Lez;	field1687	scene
-	f	Lyk;	field1692	players
-	f	Lyk;	field1696	npcs
-	f	Lyn;	field1698	worldEntities
+	f	[LCollisionData;	field1685	collisionMaps
+	f	LScene;	field1687	scene
+	f	LIndexedObjectSet;	field1692	players
+	f	LIndexedObjectSet;	field1696	npcs
+	f	LIterableHashTable;	field1698	worldEntities
 c	classIV	classIV
-	m	(Lxs;I)V	method6364	decodeNormalRegionRebuild
+	m	(LPacketBuffer;I)V	method6364	decodeNormalRegionRebuild
 c	classKK	classKK
-	m	(Lxk;IIZB)V	method6533	beginRegionLoad
+	m	(LclassXK;IIZB)V	method6533	beginRegionLoad
