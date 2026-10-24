@@ -40,7 +40,7 @@ impl ActorPathQueue {
 
     #[must_use]
     pub const fn backlog(self) -> u32 {
-        self.len as u32
+        u32::from(self.len)
     }
 
     #[must_use]
