@@ -11,7 +11,7 @@ use crate::{GameState, OperationCommit, SemanticEvent, SessionLifecycle};
 ///
 /// Any change to field ordering, tags, integer encoding, or fingerprint
 /// algorithm that changes canonical output must increment this version.
-pub const SEMANTIC_FINGERPRINT_VERSION: u16 = 16;
+pub const SEMANTIC_FINGERPRINT_VERSION: u16 = 17;
 
 const FNV_OFFSET_BASIS: u64 = 0xCBF2_9CE4_8422_2325;
 const FNV_PRIME: u64 = 0x0000_0100_0000_01B3;
@@ -310,6 +310,7 @@ impl GameState {
                     fingerprint.write_u32(seq.get());
                 }
             }
+            write_sequence_scheduler(&mut fingerprint, player.sequence);
         }
         fingerprint.write_bytes(
             &u32::try_from(entities.npcs().len())
@@ -386,6 +387,7 @@ impl GameState {
             }
             fingerprint.write_bytes(&npc.sequence.cycle.to_le_bytes());
             fingerprint.write_bytes(&npc.sequence.delay.to_le_bytes());
+            write_sequence_scheduler(&mut fingerprint, npc.sequence);
         }
         StateFingerprint(fingerprint.finish())
     }
@@ -405,6 +407,25 @@ fn write_speed(fingerprint: &mut StableFingerprint64, speed: rustclient_model::M
         MoveSpeed::Walk => 2,
         MoveSpeed::Run => 3,
     });
+}
+
+fn write_sequence_scheduler(
+    fingerprint: &mut StableFingerprint64,
+    slot: rustclient_model::ActorSequenceSlot,
+) {
+    match slot.policy {
+        None => fingerprint.write_u8(0),
+        Some(policy) => {
+            fingerprint.write_u8(1);
+            fingerprint.write_u8(policy.restart_mode);
+            fingerprint.write_u8(policy.replacement_priority);
+            fingerprint.write_u8(policy.movement_gate_with_backlog);
+            fingerprint.write_u8(policy.movement_gate_without_backlog);
+            fingerprint.write_u16(policy.max_loops);
+        }
+    }
+    fingerprint.write_u32(slot.iterations);
+    fingerprint.write_u32(slot.path_backlog_at_assignment);
 }
 
 fn write_appearance(
