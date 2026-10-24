@@ -3,7 +3,8 @@ use crate::player_movement::{apply_movement, apply_traversal, exact_movement, mo
 use crate::{EntityUpdateError as Error, Locomotion, PlayerEntity, WorldEntitiesState};
 use rustclient_model::{
     ActorSequenceSlot, Plane, PlayerAppearance, PlayerIndex, PlayerInstanceId, PlayerTrackingGrid,
-    RemotePlayerUpdate as Update, SequenceId, SequencePolicy, SequenceTiming, TileOffset, WorldTile,
+    RemotePlayerUpdate as Update, SequenceId, SequencePolicy, SequenceTiming, TileOffset,
+    WorldTile,
 };
 use std::collections::BTreeMap;
 

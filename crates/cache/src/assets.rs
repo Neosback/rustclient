@@ -67,21 +67,21 @@ pub struct BitmapFont {
     pub advances: [u8; 256],
     /// Distance from drawing origin to baseline.
     pub ascent: u16,
+    /// Ink extents above and below the baseline, distinct from nominal line spacing.
+    pub max_ascent: i32,
+    pub max_descent: i32,
+    kerning: Option<Vec<i8>>,
 }
 impl BitmapFont {
-    /// Decode the simple metrics layout used by the three LIVE title fonts.
+    /// Decode simple or contour/kerning metrics and the complete glyph mask table.
     ///
     /// # Errors
-    /// Rejects extended metrics (not yet supported) and incomplete glyph tables.
+    /// Rejects malformed metrics and incomplete glyph tables.
     pub fn decode(metrics: &[u8], mut glyphs: Vec<Sprite>, source: Source) -> Result<Self> {
-        if metrics.len() != 257 || glyphs.len() != 256 {
-            return Err(source.error(
-                "font",
-                "title font requires 257-byte metrics and 256 glyphs",
-            ));
+        if glyphs.len() != 256 {
+            return Err(source.error("font", "requires 256 glyphs"));
         }
-        let mut advances = [0; 256];
-        advances.copy_from_slice(&metrics[..256]);
+        let metrics = crate::osrs240::font_metrics::decode(metrics, source)?;
         for glyph in &mut glyphs {
             let mut pixels = glyph.image.pixels().to_vec();
             for pixel in pixels.as_chunks_mut::<4>().0 {
@@ -91,16 +91,31 @@ impl BitmapFont {
             }
             glyph.image = Image::new(glyph.image.width(), glyph.image.height(), pixels, source)?;
         }
+        let top = glyphs
+            .iter()
+            .filter(|g| g.image.height() != 0)
+            .map(|g| i32::from(g.offset[1]))
+            .min()
+            .unwrap_or(i32::from(metrics.ascent));
+        let bottom = glyphs
+            .iter()
+            .map(|g| i32::from(g.offset[1]) + i32::try_from(g.image.height()).unwrap_or(0))
+            .max()
+            .unwrap_or(i32::from(metrics.ascent));
         Ok(Self {
             glyphs,
-            advances,
-            ascent: u16::from(metrics[256]),
+            advances: metrics.advances,
+            ascent: metrics.ascent,
+            max_ascent: i32::from(metrics.ascent) - top,
+            max_descent: bottom - i32::from(metrics.ascent),
+            kerning: metrics.kerning,
         })
     }
 
     /// Measure literal text, without interpreting angle brackets as markup.
     #[must_use]
     pub fn width(&self, text: &str) -> i32 {
+        let mut previous = None;
         text.chars()
             .map(|ch| {
                 let byte = if ch == '\u{a0}' {
@@ -108,8 +123,22 @@ impl BitmapFont {
                 } else {
                     crate::cp1252(ch).unwrap_or(b'?')
                 };
-                i32::from(self.advances[usize::from(byte)])
+                let advance = self.advance(previous, byte);
+                previous = Some(byte);
+                advance
             })
             .sum()
+    }
+    /// Advance including the authored kerning pair, when present.
+    #[must_use]
+    pub fn advance(&self, previous: Option<u8>, byte: u8) -> i32 {
+        i32::from(self.advances[usize::from(byte)])
+            + previous
+                .and_then(|p| {
+                    self.kerning
+                        .as_ref()
+                        .map(|k| i32::from(k[usize::from(p) * 256 + usize::from(byte)]))
+                })
+                .unwrap_or(0)
     }
 }

@@ -42,7 +42,7 @@ impl<S: ReadOnlyBlobs> SequencePolicyResolver<S> {
     /// referenced definition id once.
     ///
     /// # Errors
-    /// Returns the underlying cache/decode failure rather than allowing GameState to guess policy
+    /// Returns the underlying cache/decode failure rather than allowing `GameState` to guess policy
     /// or playback timing.
     pub fn resolve_operation(
         &mut self,
@@ -145,8 +145,7 @@ fn npc_sequence_ids(update: &NpcInfoUpdate) -> BTreeSet<SequenceId> {
         .flat_map(|attributes| &attributes.changes)
         .filter_map(|change| match change {
             NpcProperty::Sequence {
-                sequence: Some(id),
-                ..
+                sequence: Some(id), ..
             } => Some(*id),
             _ => None,
         })
@@ -154,7 +153,11 @@ fn npc_sequence_ids(update: &NpcInfoUpdate) -> BTreeSet<SequenceId> {
 }
 
 fn npc_definition_ids(update: &NpcInfoUpdate) -> BTreeSet<NpcDefinitionId> {
-    let mut ids: BTreeSet<_> = update.new_npcs.iter().map(|npc| npc.definition_id).collect();
+    let mut ids: BTreeSet<_> = update
+        .new_npcs
+        .iter()
+        .map(|npc| npc.definition_id)
+        .collect();
     ids.extend(
         update
             .attributes
@@ -203,7 +206,10 @@ mod tests {
             ],
             ..Default::default()
         };
-        assert_eq!(player_sequence_ids(&update).into_iter().collect::<Vec<_>>(), vec![repeated]);
+        assert_eq!(
+            player_sequence_ids(&update).into_iter().collect::<Vec<_>>(),
+            vec![repeated]
+        );
     }
 
     #[test]
@@ -234,7 +240,10 @@ mod tests {
             }],
             ..Default::default()
         };
-        assert_eq!(npc_sequence_ids(&update).into_iter().collect::<Vec<_>>(), vec![low, high]);
+        assert_eq!(
+            npc_sequence_ids(&update).into_iter().collect::<Vec<_>>(),
+            vec![low, high]
+        );
     }
 
     #[test]
@@ -255,6 +264,9 @@ mod tests {
             }],
             ..Default::default()
         };
-        assert_eq!(npc_definition_ids(&update).into_iter().collect::<Vec<_>>(), vec![low, high]);
+        assert_eq!(
+            npc_definition_ids(&update).into_iter().collect::<Vec<_>>(),
+            vec![low, high]
+        );
     }
 }

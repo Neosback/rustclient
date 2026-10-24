@@ -80,7 +80,7 @@ impl ActorPathQueue {
 
     #[must_use]
     pub const fn backlog(self) -> u32 {
-        u32::from(self.len)
+        self.len as u32
     }
 
     #[must_use]
@@ -210,10 +210,16 @@ mod tests {
     #[test]
     fn fine_position_is_lazy_and_can_be_reset_independently_of_endpoint_state() {
         let mut queue = ActorPathQueue::default();
-        assert_eq!(queue.fine_position(tile(3)), ActorFinePosition::from_tile(tile(3)));
+        assert_eq!(
+            queue.fine_position(tile(3)),
+            ActorFinePosition::from_tile(tile(3))
+        );
         queue.ensure_position(tile(3));
         queue.reset_to(tile(7));
-        assert_eq!(queue.fine_position(tile(99)), ActorFinePosition::from_tile(tile(7)));
+        assert_eq!(
+            queue.fine_position(tile(99)),
+            ActorFinePosition::from_tile(tile(7))
+        );
     }
 
     #[test]
@@ -222,9 +228,15 @@ mod tests {
         queue.set_acceleration_policy(Some(PathAccelerationPolicy::EARLY));
         queue.enqueue(tile(1), MoveSpeed::Walk);
         queue.clear();
-        assert_eq!(queue.acceleration_policy(), Some(PathAccelerationPolicy::EARLY));
+        assert_eq!(
+            queue.acceleration_policy(),
+            Some(PathAccelerationPolicy::EARLY)
+        );
         queue.reset_to(tile(4));
-        assert_eq!(queue.acceleration_policy(), Some(PathAccelerationPolicy::EARLY));
+        assert_eq!(
+            queue.acceleration_policy(),
+            Some(PathAccelerationPolicy::EARLY)
+        );
     }
 
     #[test]
@@ -248,7 +260,11 @@ mod tests {
         assert_eq!(queue.newest().unwrap().target, tile(3));
         assert_eq!(queue.oldest().unwrap().target, tile(1));
         assert_eq!(
-            queue.iter().rev().map(|entry| entry.target).collect::<Vec<_>>(),
+            queue
+                .iter()
+                .rev()
+                .map(|entry| entry.target)
+                .collect::<Vec<_>>(),
             vec![tile(1), tile(2), tile(3)]
         );
         assert_eq!(queue.pop_oldest().unwrap().target, tile(1));
@@ -279,6 +295,9 @@ mod tests {
         assert!(queue.is_empty());
         assert_eq!(queue.oldest(), None);
         assert_eq!(queue.pop_oldest(), None);
-        assert_eq!(queue.fine_position(tile(9)), ActorFinePosition::from_tile(tile(0)));
+        assert_eq!(
+            queue.fine_position(tile(9)),
+            ActorFinePosition::from_tile(tile(0))
+        );
     }
 }

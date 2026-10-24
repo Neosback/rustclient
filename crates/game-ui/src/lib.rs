@@ -26,11 +26,12 @@ pub fn shadowed_text(
     color: [u8; 4],
     clip: Rect,
 ) -> i32 {
-    let font = &assets.fonts[1];
-    presentation::text(frame, font, 1, value, x, baseline, color, clip);
+    let font = &assets.fonts[2]; // b12_full, also used by the reference context menu.
+    presentation::text(frame, font, 2, value, x, baseline, color, clip);
     font.width(value)
 }
 
+pub mod widget_text;
 pub mod widget_visuals;
 
 pub mod viewport;

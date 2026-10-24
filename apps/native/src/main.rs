@@ -42,6 +42,10 @@ use winit::{
 };
 
 const STEP: Duration = Duration::from_millis(20);
+#[expect(
+    clippy::large_enum_variant,
+    reason = "keep bounded network operations inline without a heap allocation per packet"
+)]
 enum LoadEvent {
     Progress(String),
     Loaded(Box<Result<TitleAssets, String>>),
@@ -1137,19 +1141,22 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
             }
             WindowEvent::RedrawRequested => self.redraw(event_loop),
             WindowEvent::MouseWheel { delta, .. } => {
+                #[expect(
+                    clippy::cast_possible_truncation,
+                    reason = "finite bounded platform wheel rotation"
+                )]
                 let amount = match delta {
                     winit::event::MouseScrollDelta::LineDelta(_, y) => {
-                        if y > 0. {
-                            -45
-                        } else {
-                            45
-                        }
+                        (-f64::from(y)).clamp(-128., 128.).round() as i32
                     }
                     winit::event::MouseScrollDelta::PixelDelta(p) => {
-                        if p.y > 0. {
-                            -45
+                        let lines = -p.y / 45.;
+                        if lines == 0. || !lines.is_finite() {
+                            0
+                        } else if lines.abs() < 1. {
+                            lines.signum() as i32
                         } else {
-                            45
+                            lines.clamp(-128., 128.).round() as i32
                         }
                     }
                 };

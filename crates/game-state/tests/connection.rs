@@ -39,11 +39,12 @@ fn authentication_and_initial_placement_replay_exactly_and_reset_on_disconnect()
         stream.push(commit);
         envelopes.push(ReplayEnvelope::new(operation, commit));
     }
+    // Schema 23 includes authoritative actor movement/orientation and sequence timing.
     assert_eq!(
         state.semantic_fingerprint().get(),
-        12_191_201_622_066_736_735
+        16_992_688_755_226_080_273
     );
-    assert_eq!(stream.finish().get(), 10_866_463_569_101_878_984);
+    assert_eq!(stream.finish().get(), 13_913_792_482_801_393_789);
     assert_eq!(state.lifecycle(), SessionLifecycle::Active);
     assert_eq!(state.authenticated_player(), Some(player()));
     assert_eq!(state.initial_placement(), Some(placement()));

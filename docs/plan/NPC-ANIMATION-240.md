@@ -1,5 +1,13 @@
 # NPC and object animation audit — 2026-10-23
 
+Historical checkpoint: later actor ownership, path consumption, forced movement and
+sequence assignment were superseded by the merged
+[actor runtime corpus](../reference/rs240-port/ACTOR-RUNTIME.md),
+[sequence scheduler](../reference/rs240-port/SEQUENCE-SCHEDULER.md) and
+[facing split](../reference/rs240-port/FACING-TURNING.md). Read those current owner
+records before treating the remaining-work table below as a present implementation
+inventory. This record retains its original evidence and validation limits.
+
 Status: implemented corrections; complete actor/render parity remains open.
 
 ## Evidence and corrections

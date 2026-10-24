@@ -304,6 +304,9 @@ mod tests {
             frame_step: None,
             max_loops: 1,
             restart: 2,
+            priority: 5,
+            movement_gate_with_backlog: 0,
+            movement_gate_without_backlog: 0,
             skeletal: None,
             range: None,
         };
@@ -329,6 +332,9 @@ mod tests {
             frame_step: Some(2),
             max_loops: 1,
             restart: 2,
+            priority: 5,
+            movement_gate_with_backlog: 0,
+            movement_gate_without_backlog: 0,
             skeletal: None,
             range: None,
         };

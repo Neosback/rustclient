@@ -202,7 +202,7 @@ impl GameState {
                 validate_key(key)?;
                 if start.and_then(|s| s.placement).is_some_and(|p| {
                     p.shape > 22
-                        || rustclient_model::LocationLayer::from_shape(p.shape) != key.layer)
+                        || rustclient_model::LocationLayer::from_shape(p.shape) != key.layer
                 }) {
                     return Err(SceneryError::InvalidLocation);
                 }

@@ -330,3 +330,155 @@ fn window_modes_and_individual_canvas_queries_share_the_profile_caps() {
         assert_eq!(stacks.integers, [expected[0], expected[1], 0, 0]);
     }
 }
+
+#[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "one IF3 wheel/listener/barrier lifecycle"
+)]
+fn wheel_uses_all_visible_listeners_and_preserves_rotation_without_mutating_container_scroll() {
+    let mut scripts = test_support::scripts();
+    let mut state = GameState::new();
+    let id = WidgetId::new(InterfaceId::new(1), 0);
+    let child = WidgetId::new(id.interface, 1);
+    let mut parent = component(id);
+    parent.layout.offset = [0; 2];
+    parent.layout.position_mode = [PositionMode::Start; 2];
+    parent.body = WidgetBody::Container {
+        scroll_size: [0, 1000],
+        no_click_through: false,
+    };
+    let mut row = component(child);
+    row.parent = Some(id);
+    row.layout.offset = [0; 2];
+    row.layout.position_mode = [PositionMode::Start; 2];
+    row.body = WidgetBody::Container {
+        scroll_size: [0; 2],
+        no_click_through: false,
+    };
+    for w in [&mut parent, &mut row] {
+        w.listeners.insert(
+            WidgetListener::Scroll,
+            vec![ScriptValue::Int(90005), ScriptValue::Int(-2_147_483_646)],
+        );
+    }
+    scripts.interfaces.insert(
+        id.interface,
+        InterfaceDefinition::from_widgets(id.interface, vec![parent, row]).unwrap(),
+    );
+    scripts.scripts.insert(
+        ScriptId::new(90005),
+        Arc::new(Script {
+            id: ScriptId::new(90005),
+            name: String::new(),
+            locals: [1, 0, 0],
+            arguments: [1, 0, 0],
+            switches: vec![],
+            instructions: [
+                (Opcode::Iload, 0),
+                (Opcode::GetVarcInt, 1),
+                (Opcode::Add, 0),
+                (Opcode::SetVarcInt, 1),
+                (Opcode::GetVarcInt, 2),
+                (Opcode::Iconst, 1),
+                (Opcode::Add, 0),
+                (Opcode::SetVarcInt, 2),
+                (Opcode::Return, 0),
+            ]
+            .into_iter()
+            .map(|(opcode, integer)| Instruction {
+                opcode,
+                integer,
+                text: None,
+                long: 0,
+                array_default: None,
+            })
+            .collect(),
+        }),
+    );
+    state
+        .apply_operation(SemanticOperation::BeginSession {
+            revision: Revision::with_subrevision(240, 2),
+        })
+        .unwrap();
+    for id in [1, 2] {
+        state
+            .apply_operation(SemanticOperation::Interface(
+                InterfaceUpdate::ClientVariable {
+                    id,
+                    value: ScriptValue::Int(0),
+                },
+            ))
+            .unwrap();
+    }
+    scripts
+        .commit(
+            &mut state,
+            SemanticOperation::Interface(InterfaceUpdate::SetRoot(Some(id.interface))),
+        )
+        .unwrap();
+    let result = scripts
+        .scroll_at(&mut state, [10., 10.], -3, true)
+        .unwrap()
+        .unwrap();
+    assert!(result.errors.is_empty());
+    assert_eq!(
+        state.interfaces().client_variables()[&1],
+        ScriptValue::Int(-6)
+    );
+    assert_eq!(
+        state.interfaces().client_variables()[&2],
+        ScriptValue::Int(2)
+    );
+    assert!(
+        state
+            .interfaces()
+            .runtime()
+            .get(&WidgetAddress::component(id))
+            .is_none_or(|r| r.scroll.is_none())
+    );
+    let address = WidgetAddress::component(child);
+    scripts
+        .commit(
+            &mut state,
+            SemanticOperation::Interface(InterfaceUpdate::SetProperty {
+                widget: child,
+                property: WidgetProperty::Runtime {
+                    address,
+                    value: Box::new(WidgetRuntime {
+                        no_scroll_through: Some(true),
+                        ..Default::default()
+                    }),
+                },
+            }),
+        )
+        .unwrap();
+    assert!(
+        scripts
+            .scroll_at(&mut state, [10., 10.], 5, true)
+            .unwrap()
+            .unwrap()
+            .errors
+            .is_empty()
+    );
+    assert_eq!(
+        state.interfaces().client_variables()[&1],
+        ScriptValue::Int(-1)
+    );
+    assert_eq!(
+        state.interfaces().client_variables()[&2],
+        ScriptValue::Int(3)
+    );
+    assert!(
+        scripts
+            .scroll_at(&mut state, [10., 10.], 0, true)
+            .unwrap()
+            .is_none()
+    );
+    assert!(
+        scripts
+            .scroll_at(&mut state, [-10., -10.], 5, true)
+            .unwrap()
+            .is_none()
+    );
+}

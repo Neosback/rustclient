@@ -63,13 +63,20 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
                 }
                 _ => {}
             }
-            if let Some((item, _)) = state
+            if let Some((item, count)) = state
                 .interfaces()
                 .runtime()
                 .get(&node.address)
                 .and_then(|r| r.item)
             {
                 request.items.insert(item);
+                if count > 1 {
+                    request.fonts.insert(
+                        self.profile
+                            .quantity_font(&self.cache)
+                            .map_err(|e| e.to_string())?,
+                    );
+                }
             }
         }
         Ok(request)
@@ -83,6 +90,9 @@ pub fn load_widget_visuals<S: ReadOnlyBlobs>(
     request: &WidgetAssetRequest,
 ) -> WidgetVisualAssets {
     let mut assets = WidgetVisualAssets::default();
+    if !request.items.is_empty() {
+        assets.quantity_font = profile.quantity_font(cache).ok();
+    }
     for id in &request.sprites {
         match cache.sprite(id.get()) {
             Ok(Some(sprite)) => {

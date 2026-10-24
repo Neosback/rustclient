@@ -140,6 +140,46 @@
         {
           "path": "sources-semantic/classQR.java",
           "sha256": "2291e97459a36c3ef9e3a96773733142335536b5b11775eab5246f412443a0c1"
+        },
+        {
+          "path": "sources-semantic/classPQ.java",
+          "sha256": "c3100a0376a9dd4a30eb1ec43d8f5d2d8048954c86bf552b860a2640f3c4548f"
+        },
+        {
+          "path": "sources-semantic/AbstractFont.java",
+          "sha256": "5a895e3ddef3131a36c5bf57acf02c49e1704f15b0e11e4e4f7538f8314f174d"
+        },
+        {
+          "path": "sources-semantic/ItemComposition.java",
+          "sha256": "3179fd57411f51fbc3762cc55c183054a64b2e2bd668ef126dd59bea330bb5b9"
+        },
+        {
+          "path": "sources-semantic/classLH.java",
+          "sha256": "4e0702d48374a832fdc0ff4aaa7c0591fc19152eac8823a5c4708ab2e13d0db0"
+        },
+        {
+          "path": "sources-semantic/Menu.java",
+          "sha256": "071651eef9b1470e65accf4ac4611c59e258fef30a4b94380da27f7d6cdd49c8"
+        },
+        {
+          "path": "sources-semantic/classXJ.java",
+          "sha256": "72b799986d8df804f4dea3c088e3534ba1343448d349c0f309f1b7cf1fe5f6d8"
+        },
+        {
+          "path": "sources-semantic/classDG.java",
+          "sha256": "5a2e0c5e0f4145901fe3e5f50f490892f4f493fadd04f8a05fdb61e041f2969f"
+        },
+        {
+          "path": "sources-semantic/classGP.java",
+          "sha256": "04bb9647c80f4a79fb428096f27b55d96378da39fe5c4900f6012bd5ad854125"
+        },
+        {
+          "path": "sources-semantic/classIV.java",
+          "sha256": "7f2023b8e7efa43a1acc15522acad91d41b6af391aea3541c8663301f17726e5"
+        },
+        {
+          "path": "sources-semantic/classKK.java",
+          "sha256": "5263854ca8b76fd8540a4f700f7c382a60e115e423d9413b6eaabb1e3388cf4c"
         }
       ]
     },

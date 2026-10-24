@@ -212,6 +212,22 @@ impl CacheProfile {
     }
 }
 impl CacheProfile {
+    /// The item quantity overlay uses the cache's plain-11 font, not the first loaded font.
+    /// # Errors
+    /// Rejects missing named font metadata.
+    pub fn quantity_font<S: ReadOnlyBlobs>(
+        self,
+        cache: &Cache<S>,
+    ) -> Result<rustclient_model::FontId> {
+        cache
+            .tables()
+            .get(&IndexId(13))
+            .and_then(|t| t.named_group("p11_full"))
+            .map(|g| rustclient_model::FontId::new(g.id.0))
+            .ok_or_else(|| {
+                Source::group(IndexId(13), GroupId(0)).error("font", "missing p11_full metadata")
+            })
+    }
     /// # Errors
     /// Rejects absent or malformed cache font masks/metrics.
     pub fn load_widget_font<S: ReadOnlyBlobs>(

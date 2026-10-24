@@ -1,0 +1,504 @@
+tiny	2	0	semantic	readable
+c	AABB	AABB
+	f	I	field2363	extremeY
+	f	I	field2364	centerY
+	f	I	field2365	centerX
+	f	I	field2366	extremeX
+	f	I	field2367	centerZ
+	f	I	field2368	extremeZ
+c	AbstractFont	AbstractFont
+	f	I	field8	baseline
+c	Actor	Actor
+	f	I	field1434	idlePoseAnimation
+	f	I	field1442	idleRotateLeft
+	f	I	field1443	walkAnimation
+	f	I	field1446	walkRotateRight
+	f	I	field1447	runAnimation
+	f	I	field1448	walkRotateLeft
+	f	I	field1455	idleRotateRight
+	f	I	field1457	overheadCycle
+	f	Ljava/lang/String;	field1459	overheadText
+	f	I	field1460	walkRotate180
+	f	I	field1468	logicalHeight
+	f	I	field1485	currentOrientation
+	f	I	field1493	orientation
+	f	Z	field1502	dead
+c	ActorSpotAnim	ActorSpotAnim
+	f	I	field5957	id
+	f	I	field5958	height
+	f	I	field5959	startCycle
+c	AmbientSoundEffect	AmbientSoundEffect
+	f	I	field1639	plane
+c	Animation	Animation
+	f	I	field5116	id
+	f	I	field5120	restartMode
+	f	[I	field5123	frameLengths
+	f	I	field5132	frameStep
+c	BufferProvider	BufferProvider
+	f	I	field6965	height
+	f	I	field6966	width
+	f	[I	field6969	pixels
+c	ChatLineBuffer	ChatLineBuffer
+	f	[LMessageNode;	field580	lines
+	f	I	field583	length
+c	ChatPlayer	ChatPlayer
+	f	I	field5667	world
+c	ClanChannel	ClanChannel
+	f	Ljava/lang/String;	field2946	name
+	f	Ljava/util/List;	field2953	members
+c	ClanChannelMember	ClanChannelMember
+	f	I	field2840	world
+c	ClanSettings	ClanSettings
+	f	Ljava/lang/String;	field3014	name
+c	ClientPreferences	ClientPreferences
+	f	I	field1338	soundEffectVolume
+	f	Z	field1339	hideUsername
+	f	Ljava/lang/String;	field1350	rememberedUsername
+	f	I	field1352	areaSoundEffectVolume
+c	CollisionData	CollisionData
+	f	[[I	field2548	flags
+c	ColorTextureOverride	ColorTextureOverride
+	f	[S	field5258	textureToReplaceWith
+	f	[S	field5259	colorToReplaceWith
+c	DBRowConfig	DBRowConfig
+	f	I	field7171	tableID
+c	DecorativeObject	DecorativeObject
+	f	I	field2263	config
+	f	J	field2264	hash
+	f	I	field2266	y
+	f	I	field2267	XOffset2
+	f	I	field2268	YOffset
+	f	I	field2270	YOffset2
+	f	I	field2271	z
+	f	I	field2273	x
+	f	I	field2274	XOffset
+	f	I	field2275	plane
+c	EnumComposition	EnumComposition
+	f	[I	field4822	keys
+	f	[I	field4826	intVals
+	f	[J	field4827	longVals
+	f	[Ljava/lang/String;	field4828	stringVals
+c	FriendContainer	FriendContainer
+	f	LDeque;	field5810	pendingLogins
+c	FriendsChatManager	FriendsChatManager
+	f	Ljava/lang/String;	field5858	name
+	f	Ljava/lang/String;	field5862	owner
+c	GameEngine	GameEngine
+	f	Ljava/awt/Canvas;	field6217	canvas
+	f	Ljava/lang/Thread;	field6221	clientThread
+c	GameObject	GameObject
+	f	I	field2182	config
+	f	J	field2183	hash
+	f	I	field2185	plane
+	f	I	field2187	modelOrientation
+	f	I	field2188	z
+	f	I	field2193	x
+	f	I	field2194	y
+c	GrandExchangeOffer	GrandExchangeOffer
+	f	I	field4532	price
+	f	I	field4533	itemId
+	f	I	field4534	totalQuantity
+	f	I	field4535	quantitySold
+	f	I	field4536	spent
+c	GraphicsObject	GraphicsObject
+	f	I	field465	id
+	f	I	field469	z
+	f	I	field470	startCycle
+	f	I	field471	level
+c	GroundObject	GroundObject
+	f	I	field1804	x
+	f	I	field1805	z
+	f	I	field1806	y
+	f	I	field1807	config
+	f	I	field1812	plane
+	f	J	field1813	hash
+c	HealthBarConfig	HealthBarConfig
+	f	I	field5477	healthBarFrontSpriteId
+c	Hitsplat	Hitsplat
+	f	I	field1633	hitsplatType
+	f	I	field1634	disappearsOnGameCycle
+	f	I	field1636	amount
+c	IndexDataBase	IndexDataBase
+	f	Z	field6443	overlayOutdated
+c	IndexedSprite	IndexedSprite
+	f	I	field7117	height
+	f	I	field7118	originalHeight
+	f	I	field7119	width
+	f	I	field7120	offsetX
+	f	I	field7121	offsetY
+	f	I	field7122	originalWidth
+	f	[B	field7123	pixels
+	f	[I	field7124	palette
+c	IntProjection	IntProjection
+	f	F	field1915	pitchCos
+	f	I	field1918	cameraZ
+	f	I	field1919	cameraY
+	f	F	field1920	pitchSin
+	f	F	field1922	yawSin
+	f	F	field1923	yawCos
+	f	I	field1925	cameraX
+c	IntegerNode	IntegerNode
+	f	I	field6501	value
+c	ItemComposition	ItemComposition
+	f	I	field5011	placeholderId
+	f	I	field5012	id
+	f	Z	field5014	members
+	f	[S	field5015	textureToReplaceWith
+	f	[S	field5020	textureToReplace
+	f	[Ljava/lang/String;	field5023	inventoryActions
+	f	I	field5028	contrast
+	f	LIterableHashTable;	field5030	params
+	f	I	field5033	xan2d
+	f	I	field5034	yan2d
+	f	I	field5035	inventoryModel
+	f	[S	field5038	colorToReplace
+	f	[S	field5039	colorToReplaceWith
+	f	Ljava/lang/String;	field5040	name
+	f	I	field5041	price
+	f	[[Ljava/lang/String;	field5048	subops
+	f	I	field5049	note
+	f	I	field5052	zan2d
+	f	I	field5056	linkedNoteId
+	f	I	field5058	ambient
+	f	Z	field5059	tradeable
+	f	Z	field5060	geTradeable
+	f	I	field5063	placeholderTemplateId
+	f	Ljava/lang/String;	field5075	membersName
+c	ItemLayer	ItemLayer
+	f	I	field1836	height
+	f	I	field1837	y
+	f	I	field1838	x
+	f	I	field1839	z
+	f	I	field1841	plane
+	f	J	field1842	hash
+c	MainBufferProvider	MainBufferProvider
+	f	Ljava/awt/Image;	field6132	image
+c	Menu	Menu
+	f	I	field6810	menuWidth
+	f	I	field6812	menuHeight
+	f	I	field6813	menuY
+	f	I	field6815	menuX
+c	MessageNode	MessageNode
+	f	I	field721	timestamp
+	f	I	field727	id
+	f	Ljava/lang/String;	field729	name
+	f	Ljava/lang/String;	field730	sender
+	f	Ljava/lang/String;	field732	runeLiteFormatMessage
+c	MidiRequest	MidiRequest
+	f	I	field4630	archiveId
+	f	Z	field4643	jingle
+c	Model	Model
+	f	I	field2417	faceCount
+	f	I	field2422	verticesCount
+	f	B	field2423	transparency
+	f	[F	field2424	verticesZ
+	f	[F	field2425	verticesX
+	f	[I	field2426	faceColors2
+	f	[I	field2427	faceIndices1
+	f	[F	field2428	verticesY
+	f	[B	field2429	faceRenderPriorities
+	f	[I	field2430	faceIndices2
+	f	[I	field2431	faceIndices3
+	f	[I	field2432	faceColors1
+	f	[I	field2433	faceColors3
+	f	[B	field2434	textureFaces
+	f	[S	field2435	faceTextures
+	f	[B	field2436	faceBias
+	f	[I	field2437	texIndices1
+	f	[I	field2438	texIndices2
+	f	[I	field2439	texIndices3
+	f	[B	field2442	faceTransparencies
+	f	I	field2487	radius
+	f	I	field2488	XYZMag
+	f	I	field2489	diameter
+	f	I	field2490	bottomY
+	f	I	field2492	uvBufferOffset
+	f	I	field2493	sceneId
+	f	I	field2494	bufferOffset
+	f	[I	field2501	vertexNormalsX
+	f	[I	field2502	vertexNormalsZ
+	f	[I	field2503	vertexNormalsY
+	f	[S	field2504	unlitFaceColors
+c	ModelData	ModelData
+	f	I	field1846	verticesCount
+	f	I	field1847	faceCount
+	f	[S	field1850	faceColors
+	f	[S	field1851	faceTextures
+	f	[F	field1853	verticesX
+	f	[F	field1854	verticesY
+	f	[F	field1855	verticesZ
+	f	[B	field1857	faceTransparencies
+	f	[I	field1862	faceIndices2
+	f	[I	field1863	faceIndices3
+	f	[I	field1878	faceIndices1
+c	NPC	NPC
+	f	LNpcOverrides;	field1580	chatheadOverrides
+	f	LNpcOverrides;	field1581	modelOverrides
+c	NPCComposition	NPCComposition
+	f	I	field5282	size
+	f	[I	field5290	models
+	f	Ljava/lang/String;	field5291	name
+	f	LIterableHashTable;	field5298	params
+	f	I	field5300	id
+	f	[I	field5302	chatheadModels
+	f	[S	field5312	colorToReplace
+	f	[S	field5313	colorToReplaceWith
+	f	Z	field5317	minimapVisible
+	f	I	field5318	combatLevel
+	f	I	field5319	widthScale
+	f	I	field5320	heightScale
+	f	[I	field5323	configs
+	f	Z	field5324	interactible
+	f	Z	field5326	follower
+	f	[I	field5327	stats
+	f	I	field5330	footprintSize
+c	NameableContainer	NameableContainer
+	f	I	field5838	size
+	f	I	field5840	count
+c	Node	Node
+	f	J	field6550	hash
+c	NpcOverrides	NpcOverrides
+	f	[I	field5372	modelIds
+	f	[S	field5373	colorToReplaceWith
+	f	[S	field5374	textureToReplaceWith
+c	ObjectComposition	ObjectComposition
+	f	I	field4920	id
+	f	I	field4922	sizeY
+	f	I	field4924	varbitId
+	f	[I	field4928	impostorIds
+	f	LIterableHashTable;	field4929	params
+	f	I	field4942	sizeX
+	f	Ljava/lang/String;	field4943	name
+	f	I	field4951	mapIconId
+	f	I	field4952	mapSceneId
+	f	I	field4960	varPlayerId
+c	PendingLogin	PendingLogin
+	f	S	field5664	world
+c	Player	Player
+	f	I	field1258	footprintSize
+	f	I	field1259	combatLevel
+	f	I	field1263	team
+	f	I	field1269	skullIcon
+c	PlayerComposition	PlayerComposition
+	f	I	field4092	gender
+	f	[I	field4093	equipmentIds
+	f	[LColorTextureOverride;	field4095	colorTextureOverrides
+	f	[I	field4096	colors
+	f	I	field4097	transformedNpcId
+c	Projectile	Projectile
+	f	I	field544	startCycle
+	f	I	field546	sourceLevel
+	f	I	field551	targetLevel
+	f	I	field554	startPos
+	f	I	field555	slope
+	f	I	field556	id
+	f	I	field557	endHeight
+	f	I	field558	endCycle
+	f	D	field562	z
+	f	D	field563	y
+	f	D	field564	x
+	f	I	field565	orientation
+c	RenderOverview	RenderOverview
+	f	F	field6728	worldMapZoom
+c	Renderable	Renderable
+	f	I	field1741	modelHeight
+c	Scene	Scene
+	f	I	field1986	roofRemovalMode
+	f	[[[I	field1992	roofs
+	f	I	field2038	minLevel
+	f	[[[I	field2058	tileHeights
+	f	I	field2106	worldViewId
+	f	I	field2109	baseY
+	f	I	field2144	baseX
+	f	Z	field2153	instance
+	f	[I	field2154	mapRegions
+	f	[[[B	field2155	extendedTileSettings
+	f	[[[B	field2156	tileShapes
+	f	[[[I	field2157	instanceTemplateChunks
+	f	[[[S	field2159	overlayIds
+	f	[[[S	field2160	underlayIds
+c	SceneTileModel	SceneTileModel
+	f	Z	field2317	flat
+	f	I	field2318	shape
+	f	I	field2319	modelOverlay
+	f	[I	field2320	vertexX
+	f	[I	field2321	vertexY
+	f	[I	field2322	triangleTextureId
+	f	[I	field2323	triangleColorB
+	f	I	field2324	rotation
+	f	[I	field2325	vertexZ
+	f	[I	field2326	triangleColorC
+	f	[I	field2327	faceZ
+	f	[I	field2328	faceX
+	f	[I	field2329	faceY
+	f	[I	field2330	triangleColorA
+	f	I	field2331	modelUnderlay
+	f	I	field2340	uvBufferOffset
+	f	I	field2341	bufferOffset
+	f	I	field2342	bufferLen
+c	SceneTilePaint	SceneTilePaint
+	f	Z	field2281	flat
+	f	I	field2282	nwColor
+	f	I	field2283	swColor
+	f	I	field2284	neColor
+	f	I	field2285	texture
+	f	I	field2286	seColor
+	f	I	field2287	RBG
+	f	I	field2289	bufferOffset
+	f	I	field2290	uvBufferOffset
+	f	I	field2291	bufferLen
+c	Script	Script
+	f	[I	field501	instructions
+	f	[I	field502	intOperands
+c	ScriptEvent	ScriptEvent
+	f	I	field7245	mouseX
+	f	I	field7247	op
+	f	Ljava/lang/String;	field7248	opbase
+	f	[Ljava/lang/Object;	field7249	arguments
+	f	I	field7250	typedKeyChar
+	f	I	field7251	typedKeyCode
+	f	I	field7253	mouseY
+c	ScriptEventBuilder	ScriptEventBuilder
+	f	[Ljava/lang/Object;	field7259	arguments
+	f	I	field7260	op
+c	SpritePixels	SpritePixels
+	f	[I	field7003	pixels
+	f	I	field7004	maxWidth
+	f	I	field7005	width
+	f	I	field7006	maxHeight
+	f	I	field7007	height
+	f	I	field7008	offsetX
+	f	I	field7009	offsetY
+c	StructComposition	StructComposition
+	f	I	field5384	id
+	f	LIterableHashTable;	field5385	params
+c	Texture	Texture
+	f	I	field2393	animationSpeed
+	f	[I	field2395	pixels
+	f	Z	field2396	loaded
+	f	I	field2399	animationDirection
+	f	F	field2400	u
+	f	F	field2401	v
+c	TextureProvider	TextureProvider
+	f	D	field1727	brightness
+c	Tile	Tile
+	f	I	field1947	plane
+	f	I	field1948	renderLevel
+c	TileItem	TileItem
+	f	I	field1548	quantity
+	f	I	field1549	id
+	f	I	field1552	ownership
+c	VarbitComposition	VarbitComposition
+	f	I	field5417	leastSignificantBit
+	f	I	field5418	index
+	f	I	field5419	mostSignificantBit
+c	WallObject	WallObject
+	f	J	field2238	hash
+	f	I	field2239	config
+	f	I	field2240	z
+	f	I	field2241	orientationB
+	f	I	field2242	x
+	f	I	field2243	y
+	f	I	field2244	orientationA
+	f	I	field2245	plane
+c	Widget	Widget
+	f	I	field4243	fontId
+	f	I	field4246	originalX
+	f	I	field4247	width
+	f	I	field4248	YPositionMode
+	f	I	field4249	widthMode
+	f	I	field4250	heightMode
+	f	I	field4253	originalWidth
+	f	Z	field4254	flippedHorizontally
+	f	I	field4255	relativeY
+	f	I	field4256	scrollWidth
+	f	I	field4257	height
+	f	I	field4258	index
+	f	I	field4262	XPositionMode
+	f	I	field4267	scrollHeight
+	f	I	field4268	textColor
+	f	Z	field4269	filled
+	f	Z	field4273	if3
+	f	[I	field4278	varTransmitTrigger
+	f	I	field4279	relativeX
+	f	Z	field4280	spriteTiling
+	f	I	field4281	borderType
+	f	I	field4283	originalY
+	f	I	field4286	animationId
+	f	Z	field4287	selfHidden
+	f	I	field4290	rotationZ
+	f	I	field4292	rotationY
+	f	I	field4297	itemQuantityMode
+	f	I	field4301	lineHeight
+	f	I	field4302	XTextAlignment
+	f	I	field4303	YTextAlignment
+	f	Z	field4304	textShadowed
+	f	I	field4308	targetPriority
+	f	LWidget;	field4309	dragParent
+	f	I	field4311	dragDeadTime
+	f	I	field4317	itemId
+	f	I	field4318	clickMask
+	f	Z	field4326	noScrollThrough
+	f	I	field4327	id
+	f	I	field4329	scrollY
+	f	I	field4331	modelType
+	f	I	field4332	contentType
+	f	I	field4333	originalHeight
+	f	[Ljava/lang/String;	field4335	actions
+	f	I	field4336	modelZoom
+	f	I	field4339	scrollX
+	f	I	field4342	itemQuantity
+	f	Ljava/lang/String;	field4343	targetVerb
+	f	I	field4345	opacity
+	f	I	field4346	spriteId
+	f	Z	field4350	flippedVertically
+	f	[[Ljava/lang/String;	field4351	subOps
+	f	[Ljava/lang/Object;	field4353	onInvTransmitListener
+	f	I	field4354	rotationX
+	f	I	field4366	dragDeadZone
+	f	I	field4372	modelId
+	f	I	field4373	type
+	f	[Ljava/lang/Object;	field4374	onLoadListener
+	f	[Ljava/lang/Object;	field4380	onVarTransmitListener
+	f	[Ljava/lang/Object;	field4384	onOpListener
+	f	[Ljava/lang/Object;	field4386	onKeyListener
+	f	Z	field4401	noClickThrough
+c	WidgetConfigNode	WidgetConfigNode
+	f	I	field4133	opMask
+	f	I	field4135	clickMask
+c	WidgetNode	WidgetNode
+	f	I	field5274	modalMode
+	f	I	field5275	id
+c	World	World
+	f	I	field1157	playerCount
+	f	I	field1159	id
+	f	I	field1160	location
+	f	I	field1161	index
+	f	Ljava/lang/String;	field1165	activity
+	f	Ljava/lang/String;	field1167	address
+c	WorldEntityConfig	WorldEntityConfig
+	f	I	field4876	id
+	f	I	field4880	category
+c	WorldMapRenderer	WorldMapRenderer
+	f	Z	field2685	loaded
+	f	[[LWorldMapRegion;	field2702	mapRegions
+c	WorldView	WorldView
+	f	[[[I	field1686	tileHeights
+	f	LDeque2;	field1689	graphicsObjects
+	f	I	field1690	sizeY
+	f	I	field1694	sizeX
+	f	I	field1697	id
+	f	[[[B	field1700	tileSettings
+	f	I	field1706	baseX
+	f	I	field1707	baseY
+	f	I	field1708	plane
+	f	Z	field1710	instance
+	f	[I	field1711	mapRegions
+	f	[[[I	field1712	instanceTemplateChunks
+c	classAAF	classAAF
+	f	Ljava/lang/Throwable;	field44	cause
+	f	Ljava/lang/String;	field45	message
+c	classPS	classPS
+	f	I	field5402	category
+c	client	client
+	f	Lnet/runelite/api/hooks/Callbacks;	field1116	callbacks

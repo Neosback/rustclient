@@ -11,7 +11,7 @@ use sha2::{Digest, Sha256};
 pub enum CacheProfile {
     /// User-supplied LIVE snapshot, first revision-240 title target.
     Osrs240,
-    /// `OpenRune` 240 repack; decoded size hints for the object archive are advisory.
+    /// `OpenRune` 240 repack; decoded-size hints for selected repacked archives are advisory.
     OpenRune240,
 }
 impl CacheProfile {

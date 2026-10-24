@@ -9,6 +9,7 @@ mod queries;
 #[cfg(test)]
 mod test_support;
 mod visuals;
+mod wheel;
 mod widgets;
 use rustclient_cache::{Cache, CacheProfile, script::Script, widget::InterfaceDefinition};
 use rustclient_client_script::{Context, Host, Limits, Stacks, execute};
@@ -211,6 +212,20 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
         kind: WidgetListener,
         event: ListenerEvent,
     ) -> Result<Option<ListenerOutcome>> {
+        if !self.queue_listener(state, address, kind, event)? {
+            return Ok(None);
+        }
+        let errors = self.drain(state);
+        let intents = std::mem::take(&mut self.effects);
+        Ok(Some(ListenerOutcome { intents, errors }))
+    }
+    fn queue_listener(
+        &mut self,
+        state: &GameState,
+        address: WidgetAddress,
+        kind: WidgetListener,
+        event: ListenerEvent,
+    ) -> Result<bool> {
         let widget = rustclient_game_ui::widgets::resolve_widget(
             state.interfaces(),
             &self.interfaces,
@@ -218,10 +233,10 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
         )
         .map_err(|e| e.to_string())?;
         let Some(args) = widget.listeners.get(&kind) else {
-            return Ok(None);
+            return Ok(false);
         };
         let Some(mut request) = request(args.clone())? else {
-            return Ok(None);
+            return Ok(false);
         };
         for arg in &mut request.arguments {
             if let ScriptValue::Int(n) = arg {
@@ -229,9 +244,7 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
             }
         }
         self.enqueue(request, Some(address))?;
-        let errors = self.drain(state);
-        let intents = std::mem::take(&mut self.effects);
-        Ok(Some(ListenerOutcome { intents, errors }))
+        Ok(true)
     }
     /// The widget's scroll-wheel listener, run with the wheel rotation (negative scrolls up,
     /// like Java's `getWheelRotation`).

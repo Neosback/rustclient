@@ -30,7 +30,7 @@ impl<A: Copy> ContextMenu<A> {
     }
     #[expect(
         clippy::cast_precision_loss,
-        reason = "at most six menu entries and bounded logical font widths"
+        reason = "bounded menu entries and logical font widths"
     )]
     pub fn open(
         &mut self,
@@ -51,7 +51,7 @@ impl<A: Copy> ContextMenu<A> {
                 .map(|(label, action)| (label, Some(action))),
         );
         self.entries.push(("Cancel".into(), None));
-        let font = &assets.fonts[1];
+        let font = &assets.fonts[2]; // b12_full
         let width = (self
             .entries
             .iter()
@@ -59,22 +59,22 @@ impl<A: Copy> ContextMenu<A> {
             .max()
             .unwrap_or(0)
             .max(font.width("Choose Option"))
-            + 10) as f32;
+            + 8) as f32;
         self.canvas = Rect::new(
             0.,
             0.,
             canvas.width.max(1) as f32,
             canvas.height.max(1) as f32,
         );
-        let width = width.max(80.).min(self.canvas.width);
-        let height = (22. + self.entries.len() as f32 * 16.).min(self.canvas.height);
+        let width = width.min(self.canvas.width);
+        let height = (22. + self.entries.len() as f32 * 15.).min(self.canvas.height);
         self.bounds = Some(Rect::new(
-            x.clamp(0., self.canvas.width - width),
+            (x - width / 2.).clamp(0., self.canvas.width - width),
             y.clamp(0., self.canvas.height - height),
             width,
             height,
         ));
-        self.selected = Some(0);
+        self.selected = self.entry_at(x, y);
     }
     pub fn pointer(&mut self, x: f32, y: f32) {
         self.selected = self.entry_at(x, y);
@@ -86,14 +86,9 @@ impl<A: Copy> ContextMenu<A> {
             return None;
         }
         self.entries.iter().enumerate().find_map(|(i, _)| {
-            Rect::new(
-                bounds.x + 1.,
-                bounds.y + 22. + i as f32 * 16.,
-                bounds.width - 2.,
-                16.,
-            )
-            .contains(x, y)
-            .then_some(i)
+            let baseline = bounds.y + 31. + i as f32 * 15.;
+            (x > bounds.x && x < bounds.x + bounds.width && y > baseline - 13. && y < baseline + 3.)
+                .then_some(i)
         })
     }
     pub fn navigate(&mut self, delta: i32) {
@@ -101,8 +96,10 @@ impl<A: Copy> ContextMenu<A> {
             return;
         }
         let count = i32::try_from(self.entries.len()).unwrap_or(1);
-        let next = (i32::try_from(self.selected.unwrap_or(0)).unwrap_or(0) + delta.signum())
-            .rem_euclid(count);
+        let next = self.selected.map_or_else(
+            || if delta < 0 { count - 1 } else { 0 },
+            |selected| (i32::try_from(selected).unwrap_or(0) + delta.signum()).rem_euclid(count),
+        );
         self.selected = usize::try_from(next).ok();
     }
     pub fn activate(&mut self) -> Option<A> {
@@ -126,40 +123,44 @@ impl<A: Copy> ContextMenu<A> {
             return;
         };
         let clip = self.canvas;
-        frame.fill_rect(bounds, [0, 0, 0, 255], clip);
+        frame.fill_rect(bounds, [93, 84, 71, 255], clip);
         frame.fill_rect(
-            Rect::new(
-                bounds.x + 1.,
-                bounds.y + 1.,
-                bounds.width - 2.,
-                bounds.height - 2.,
-            ),
-            [93, 84, 71, 255],
-            clip,
-        );
-        frame.fill_rect(
-            Rect::new(bounds.x + 1., bounds.y + 1., bounds.width - 2., 20.),
+            Rect::new(bounds.x + 1., bounds.y + 1., bounds.width - 2., 16.),
             [0, 0, 0, 255],
             clip,
         );
+        let body = Rect::new(
+            bounds.x + 1.,
+            bounds.y + 18.,
+            bounds.width - 2.,
+            bounds.height - 19.,
+        );
+        for border in [
+            Rect::new(body.x, body.y, body.width, 1.),
+            Rect::new(body.x, body.y + body.height - 1., body.width, 1.),
+            Rect::new(body.x, body.y, 1., body.height),
+            Rect::new(body.x + body.width - 1., body.y, 1., body.height),
+        ] {
+            frame.fill_rect(border, [0, 0, 0, 255], clip);
+        }
         crate::presentation::text(
             frame,
-            &assets.fonts[1],
-            1,
+            &assets.fonts[2],
+            2,
             "Choose Option",
-            bounds.x as i32 + 4,
-            bounds.y as i32 + 16,
+            bounds.x as i32 + 3,
+            bounds.y as i32 + 14,
             [93, 84, 71, 255],
             bounds,
         );
         for (i, (label, _)) in self.entries.iter().enumerate() {
             crate::presentation::text(
                 frame,
-                &assets.fonts[1],
-                1,
+                &assets.fonts[2],
+                2,
                 label,
-                bounds.x as i32 + 4,
-                bounds.y as i32 + 35 + i32::try_from(i).unwrap_or(0) * 16,
+                bounds.x as i32 + 3,
+                bounds.y as i32 + 31 + i32::try_from(i).unwrap_or(0) * 15,
                 if self.selected == Some(i) {
                     [255, 255, 0, 255]
                 } else {

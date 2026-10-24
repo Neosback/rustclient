@@ -6,9 +6,7 @@
 
 use super::animation;
 use crate::{
-    Cache, CacheProfile, FileId, GroupId, IndexId, Source,
-    error::Result,
-    world::SequenceAsset,
+    Cache, CacheProfile, FileId, GroupId, IndexId, Source, error::Result, world::SequenceAsset,
 };
 use rustclient_model::{SequenceId, SequencePolicy, SequenceTiming};
 use rustclient_platform::ReadOnlyBlobs;

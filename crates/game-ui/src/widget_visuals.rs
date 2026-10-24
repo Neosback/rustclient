@@ -8,6 +8,7 @@ use std::collections::BTreeMap;
 pub struct WidgetVisualAssets {
     pub images: BTreeMap<UiImageId, Image>,
     pub fonts: BTreeMap<FontId, BitmapFont>,
+    pub quantity_font: Option<FontId>,
     /// Untrimmed canvas and trim offset; widget geometry scales the canvas, not the trimmed image.
     pub sprite_frames: BTreeMap<SpriteId, SpriteFrame>,
     pub failures: Vec<String>,
@@ -17,6 +18,7 @@ impl WidgetVisualAssets {
     pub fn merge(&mut self, later: Self) {
         self.images.extend(later.images);
         self.fonts.extend(later.fonts);
+        self.quantity_font = later.quantity_font.or(self.quantity_font);
         self.sprite_frames.extend(later.sprite_frames);
         self.failures.extend(later.failures);
     }
@@ -102,16 +104,29 @@ pub fn project_widgets_with_drag(
                 frame.image(image, rect, clip);
             }
             if count > 1 {
-                let font = assets.fonts.iter().next();
+                let font = assets
+                    .quantity_font
+                    .and_then(|id| assets.fonts.get(&id).map(|font| (id, font)));
                 if let Some((id, font)) = font {
+                    let (label, color) = crate::widget_text::quantity_label(count);
                     draw_text(
                         frame,
                         font,
-                        *id,
-                        &count.to_string(),
+                        id,
+                        &label,
+                        node.bounds.x + 1,
+                        node.bounds.y + 10,
+                        [0, 0, 1, 255],
+                        clip,
+                    );
+                    draw_text(
+                        frame,
+                        font,
+                        id,
+                        &label,
                         node.bounds.x,
-                        node.bounds.y + i32::from(font.ascent),
-                        [255, 255, 0, 255],
+                        node.bounds.y + 9,
+                        rgba(color, 255),
                         clip,
                     );
                 }
@@ -192,42 +207,23 @@ pub fn project_widgets_with_drag(
                 line_height,
                 alignment,
                 color,
-                ..
+                shadowed,
             } => {
                 if let Some(font) = assets.fonts.get(&id) {
-                    let lines = wrap(&text, font, node.bounds.width);
-                    let line_height = if line_height == 0 {
-                        i32::from(font.ascent)
-                    } else {
-                        i32::from(line_height)
-                    };
-                    let block = i32::try_from(lines.len()).map_err(|_| "text lines")? * line_height;
-                    let top = node.bounds.y
-                        + match alignment[1] {
-                            1 => (node.bounds.height - block) / 2,
-                            2 => node.bounds.height - block,
-                            _ => 0,
-                        };
-                    for (index, line) in lines.iter().enumerate() {
-                        let width = font.width(line);
-                        let x = node.bounds.x
-                            + match alignment[0] {
-                                1 => (node.bounds.width - width) / 2,
-                                2 => node.bounds.width - width,
-                                _ => 0,
-                            };
-                        draw_text(
-                            frame,
-                            font,
-                            id,
-                            line,
-                            x,
-                            top + i32::from(font.ascent)
-                                + i32::try_from(index).map_err(|_| "text lines")? * line_height,
-                            rgba(color, 255),
-                            clip,
-                        );
-                    }
+                    crate::widget_text::paint(
+                        frame,
+                        font,
+                        id,
+                        crate::widget_text::TextBox {
+                            text: &text,
+                            bounds: node.bounds,
+                            alignment,
+                            line_height,
+                            color,
+                            shadowed,
+                        },
+                        clip,
+                    );
                 }
             }
             WidgetBody::Line {
@@ -400,42 +396,7 @@ fn rgba(color: u32, alpha: u8) -> [u8; 4] {
     let [_, r, g, b] = color.to_be_bytes();
     [r, g, b, alpha]
 }
-/// Bounded markup-aware wrapping used for both widget display and script text measurement.
-#[must_use]
-pub fn wrap(text: &str, font: &BitmapFont, width: i32) -> Vec<String> {
-    let mut lines = Vec::new();
-    let mut line = String::new();
-    let text = text.replace("<br>", "\n");
-    let mut tag = false;
-    for word in text.split_inclusive([' ', '\n']) {
-        let plain: String = word
-            .chars()
-            .filter(|c| {
-                if *c == '<' {
-                    tag = true;
-                    false
-                } else if *c == '>' {
-                    tag = false;
-                    false
-                } else {
-                    !tag && *c != '\n'
-                }
-            })
-            .collect();
-        if !line.is_empty() && font.width(&line) + font.width(&plain) > width {
-            lines.push(std::mem::take(&mut line));
-        }
-        line.push_str(&plain);
-        if word.ends_with('\n') {
-            lines.push(std::mem::take(&mut line));
-        }
-        if lines.len() >= 4096 {
-            break;
-        }
-    }
-    lines.push(line);
-    lines
-}
+pub use crate::widget_text::wrap;
 #[expect(clippy::too_many_arguments, reason = "explicit text projection inputs")]
 fn draw_text(
     frame: &mut UiFrame,

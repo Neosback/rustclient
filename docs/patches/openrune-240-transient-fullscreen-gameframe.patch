@@ -1,0 +1,41 @@
+diff --git a/content/interfaces/gameframe/src/main/kotlin/org/rsmod/content/interfaces/gameframe/script/GameframeScript.kt b/content/interfaces/gameframe/src/main/kotlin/org/rsmod/content/interfaces/gameframe/script/GameframeScript.kt
+index f878aeed7..cdadc1c35 100644
+--- a/content/interfaces/gameframe/src/main/kotlin/org/rsmod/content/interfaces/gameframe/script/GameframeScript.kt
++++ b/content/interfaces/gameframe/src/main/kotlin/org/rsmod/content/interfaces/gameframe/script/GameframeScript.kt
+@@ -29,6 +29,7 @@ import org.rsmod.game.entity.Player
+ import org.rsmod.plugin.scripts.PluginScript
+ import org.rsmod.plugin.scripts.ScriptContext
+ 
++private const val FULLSCREEN_TOP_LEVEL = "interface.toplevel_display"
+ 
+ var Player.gameframeTopLevel by intVarBit("varbit.gameframe_toplevel")
+ private var Player.stoneArrangements by boolVarBit("varbit.resizable_stone_arrangement")
+@@ -64,7 +65,11 @@ class GameframeScript @Inject internal constructor(private val eventBus: EventBu
+ 
+     private fun Player.openLoginGameframe() {
+         val gameframe = gameframes[gameframeTopLevel]
+-        if (gameframe != null && gameframe.resizable == ui.frameResizable) {
++        if (
++            gameframe != null &&
++            gameframe.topLevel != FULLSCREEN_TOP_LEVEL &&
++            gameframe.resizable == ui.frameResizable
++        ) {
+             ifOpenTop(gameframe.topLevel)
+             openGameframe(gameframe, eventBus)
+             return
+@@ -163,11 +168,13 @@ class GameframeScript @Inject internal constructor(private val eventBus: EventBu
+     }
+ 
+     private fun selectFallback(resizable: Boolean, stoneArrangements: Boolean): Gameframe? {
+-        val priority = gameframes.values.firstOrNull { it.hasFlags(resizable, stoneArrangements) }
++        // Fullscreen world map has no ordinary world viewport or gameframe layout.
++        val normalLayouts = gameframes.values.filter { it.topLevel != FULLSCREEN_TOP_LEVEL }
++        val priority = normalLayouts.firstOrNull { it.hasFlags(resizable, stoneArrangements) }
+         if (priority != null) {
+             return priority
+         }
+-        return gameframes.values.firstOrNull { it.resizable == resizable }
++        return normalLayouts.firstOrNull { it.resizable == resizable }
+     }
+ 
+     private fun loadAll() {

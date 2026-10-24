@@ -83,7 +83,7 @@ pub(crate) fn advance_one(slot: &mut ActorSequenceSlot, timing: Option<&Sequence
 
     slot.cycle = 1;
     let next = frame.saturating_add(1);
-    if usize::try_from(next).ok().is_some_and(|index| index < frame_delays.len()) {
+    if usize::try_from(next).is_ok_and(|index| index < frame_delays.len()) {
         slot.frame = Some(next);
         return;
     }
@@ -154,7 +154,9 @@ mod tests {
     fn cached_model_bypasses_legacy_boundary_gate() {
         let mut slot = ActorSequenceSlot::default();
         slot.assign_sequence(Some((SequenceId::new(1), POLICY)), 0, 0);
-        let timing = SequenceTiming::CachedModel { range: Some((0, 10)) };
+        let timing = SequenceTiming::CachedModel {
+            range: Some((0, 10)),
+        };
         assert!(forced_interpolation_allowed(slot, Some(&timing), false));
     }
 

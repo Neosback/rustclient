@@ -11,13 +11,23 @@ use rustclient_platform_native::DirectoryBlobs;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let path = std::env::args().nth(1).ok_or("cache directory required")?;
     let cache = Cache::open(DirectoryBlobs::open(path)?)?;
+    let started = std::time::Instant::now();
     let assets = CacheProfile::OpenRune240.load_world(
         &cache,
         WorldTile::new(3168, 3168, Plane::MIN),
         104,
         104,
-        |s| println!("loading {s}"),
+        |s| {
+            println!(
+                "{:>7.0} ms loading {s}",
+                started.elapsed().as_secs_f64() * 1000.
+            );
+        },
     )?;
+    println!(
+        "{:>7.0} ms world assets",
+        started.elapsed().as_secs_f64() * 1000.
+    );
     println!(
         "squares {}, locations {}, objects {}, models {}",
         assets.squares.len(),
@@ -38,6 +48,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         104,
         104,
     )?;
+    println!(
+        "{:>7.0} ms scene asset",
+        started.elapsed().as_secs_f64() * 1000.
+    );
     let state = placed_state(scene.descriptor())?;
     let mesh = rustclient_scene::build_mesh(
         &scene,
@@ -47,6 +61,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .ok_or("placement missing")?
             .position,
     )?;
+    println!(
+        "{:>7.0} ms mesh built",
+        started.elapsed().as_secs_f64() * 1000.
+    );
     let fingerprint = state.semantic_fingerprint();
     println!(
         "mesh: {:?}; {} vertices, {} bytes",

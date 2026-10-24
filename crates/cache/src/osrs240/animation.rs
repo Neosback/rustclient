@@ -387,8 +387,7 @@ mod tests {
     fn legacy_sequence_and_modern_metadata_keep_exact_frame_identifiers() {
         // Hand-authored from revision-240 opcode widths, not copied cache data.
         let bytes = [
-            1, 0, 2, 0, 3, 0, 5, 0, 7, 0, 9, 0, 1, 0, 2, 2, 0, 2, 5, 7, 8, 4, 9, 1,
-            10, 2, 11, 1, 0,
+            1, 0, 2, 0, 3, 0, 5, 0, 7, 0, 9, 0, 1, 0, 2, 2, 0, 2, 5, 7, 8, 4, 9, 1, 10, 2, 11, 1, 0,
         ];
         let seq = sequence(&bytes, SequenceId::new(1), source()).unwrap();
         assert_eq!(seq.frames, [0x10007, 0x20009]);

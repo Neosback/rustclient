@@ -13,7 +13,7 @@ and an ergonomic sandboxed plugin ecosystem. See the
 | Networking | Native OpenRune bootstrap/login, framing/ciphers, initial placement and initial entity/location packet families | Complete client outbound actions and server update coverage, travel/reconnect behavior, browser-compatible transport |
 | Cache/scene | JS5, terrain/models/textures, morph inputs, NPC/player base assets, legacy and cached-model animation paths | Complete required format coverage and independently verified transforms/materials/poses |
 | Renderer | Shared wgpu, camera, world/UI pipelines, retained assets and rebuild paths | SPEC-0016 manual acceptance evidence; correct any measured differences |
-| UI | Title, gameframe/minimap, tabs/chatbox presentation | Actual widget tree, CS2 VM, interactive menus/inventories and server-driven interfaces |
+| UI | Title, cache-authored IF3 gameframe/mount tree, CS2, menus/drag/chat/input, shared layout, font/formatting and wheel-listener paths | Complete widget kinds, scrollbar/interface edge cases, scaling/persistence, world-map content and desktop three-layout acceptance; see rs240-port/GAMEFRAME-INTERFACES.md |
 | Browser | Canvas/renderer bootstrap and shared-crate Wasm compilation | Cache import/storage, shared application session, relay/WebSocket transport, controls and actual world/UI flow |
 | Plugins | Accepted WIT/Component architecture and crate ownership | Real WIT interfaces/bindings, host mediation, both runtimes, SDK, sample plugin and authoring tooling |
 | Distribution | Development native launch scripts | Reproducible desktop bundles and browser build/deployment with asset/transport setup |

@@ -5,10 +5,7 @@ use rustclient_model::{
     ActorSequenceSlot, SequenceChange, SequenceId, SequencePolicy, SequenceTiming,
 };
 
-fn policy(
-    policies: &[(SequenceId, SequencePolicy)],
-    id: SequenceId,
-) -> Option<SequencePolicy> {
+fn policy(policies: &[(SequenceId, SequencePolicy)], id: SequenceId) -> Option<SequencePolicy> {
     policies
         .iter()
         .find_map(|(candidate, policy)| (*candidate == id).then_some(*policy))
@@ -306,11 +303,7 @@ mod tests {
         queue.enqueue(tile(1), MoveSpeed::Walk);
         queue.enqueue(tile(2), MoveSpeed::Walk);
         let mut slot = ActorSequenceSlot::default();
-        slot.assign_sequence(
-            Some((SequenceId::new(10), movement_policy(1, 0))),
-            0,
-            1,
-        );
+        slot.assign_sequence(Some((SequenceId::new(10), movement_policy(1, 0))), 0, 1);
 
         assert_eq!(
             consume_oldest_path_entry(&mut queue, &mut slot),
@@ -333,11 +326,7 @@ mod tests {
         let mut queue = ActorPathQueue::default();
         queue.enqueue(tile(1), MoveSpeed::Run);
         let mut slot = ActorSequenceSlot::default();
-        slot.assign_sequence(
-            Some((SequenceId::new(10), movement_policy(0, 0))),
-            2,
-            1,
-        );
+        slot.assign_sequence(Some((SequenceId::new(10), movement_policy(0, 0))), 2, 1);
 
         assert!(!movement_blocked(slot));
         assert!(matches!(

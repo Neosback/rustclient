@@ -14,9 +14,7 @@ pub enum SequenceTiming {
     },
     /// Cached-model/skeletal sequence. Revision 240 does not apply the legacy frame-boundary gate
     /// to forced-movement interpolation for this sequence family.
-    CachedModel {
-        range: Option<(u16, u16)>,
-    },
+    CachedModel { range: Option<(u16, u16)> },
 }
 
 impl SequenceTiming {
@@ -28,7 +26,9 @@ impl SequenceTiming {
     #[must_use]
     pub fn legacy_frame_delay(&self, frame: u32) -> Option<u16> {
         match self {
-            Self::Legacy { frame_delays, .. } => frame_delays.get(usize::try_from(frame).ok()?).copied(),
+            Self::Legacy { frame_delays, .. } => {
+                frame_delays.get(usize::try_from(frame).ok()?).copied()
+            }
             Self::CachedModel { .. } => None,
         }
     }

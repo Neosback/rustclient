@@ -1,6 +1,6 @@
 //! Read-only interface/cache diagnostic; does not execute scripts or claim UI parity.
 use rustclient_cache::{Cache, CacheProfile};
-use rustclient_model::InterfaceId;
+use rustclient_model::{InterfaceId, WidgetBody};
 use rustclient_platform_native::DirectoryBlobs;
 fn run() -> Result<(), Box<dyn std::error::Error>> {
     let mut args = std::env::args().skip(1);
@@ -18,6 +18,26 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     for group in groups {
         let definition =
             CacheProfile::OpenRune240.load_interface(&cache, InterfaceId::new(group))?;
+        let fonts: std::collections::BTreeSet<_> = definition
+            .widgets()
+            .values()
+            .filter_map(|widget| match widget.body {
+                WidgetBody::Text { font, .. } => font,
+                _ => None,
+            })
+            .chain(Some(CacheProfile::OpenRune240.quantity_font(&cache)?))
+            .collect();
+        for id in fonts {
+            let font = CacheProfile::OpenRune240.load_widget_font(&cache, id)?;
+            println!(
+                "interface {group}: font {} ascent {} ink ascent/descent {}/{}; literal ABC width {}",
+                id.get(),
+                font.ascent,
+                font.max_ascent,
+                font.max_descent,
+                font.width("ABC")
+            );
+        }
         if std::env::var_os("RUSTCLIENT_WIDGET_DIAGNOSTICS").is_some() {
             for w in definition.widgets().values() {
                 println!(

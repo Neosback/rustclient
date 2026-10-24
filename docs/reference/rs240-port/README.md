@@ -83,7 +83,11 @@ or validated plugin commands rather than injected mutable fields.
   rows narrow and factual so agents can search/sort it without parsing prose.
 - `ACTOR-RUNTIME.md`: first method-level navigation map for player/NPC movement,
   actor scheduling and action sequences.
+- `LOGIN-REGION-INTERFACES.md`: login/root/mount/region ordering and the reproduced
+  empty fullscreen gameframe diagnosis; links the approved OpenRune selector fix.
 - `AGENTS.md`: local rules for extending this research corpus.
+- [`../client-240/`](../client-240/README.md): evidence-backed readable names for the stable symbols
+  used here, with per-cluster write-ups. The ledger below stays keyed by the stable symbol.
 
 Existing deep audits remain canonical for their exact checkpoints. In particular:
 
@@ -190,3 +194,43 @@ The research corpus is complete when every row in `PORT-MATRIX.md` is either:
 
 and every implemented Rust behavior can be traced back to its evidence without
 requiring a future agent to rediscover the broad deob call graph from scratch.
+
+## Keeping the method inventory accountable
+
+`SYMBOL-LEDGER.tsv` now separates implementation status from verification:
+
+- `verification`: unrecorded, source-reviewed, contract-tested, live-tested,
+  visual-accepted, or not-applicable. Name the exact covered subset in the note.
+- `evidence`: a concrete test, diagnostic/checkpoint or acceptance artifact.
+- `rust_paths`: existing implementation files separated by `|`, checked by tooling.
+- `remaining`: missing branches or the next verification obligation.
+
+Historical rows retain their status but start with verification unrecorded; no
+new evidence is invented for them. Update rows when implementation/evidence changes,
+including regressions or superseding ownership. A whole method stays partial if
+required branches are absent. Class entries are navigation, not coverage for all
+of that class's methods. Do not count generated aliases, injected API methods or
+simple accessors as equivalent-sized gameplay features.
+
+Run the read-only source/owner checks and generate the broad declaration inventory:
+
+```sh
+python3 tools/port_audit.py --check
+python3 tools/port_audit.py --inventory target/rs240-methods.tsv --report target/rs240-port-report.json
+python3 tools/port_audit.py --domain gameframe --report target/rs240-gameframe-report.json
+```
+
+The checker verifies ledger vocabulary, duplicate identities, source declarations,
+explicit Rust owner paths, named verification evidence and selected source hashes.
+The generated inventory indexes top-level methods and constructors in the pinned
+735 Java sources, with source line/signature/hash. It includes aliases/injection;
+it is a declaration index, not a Java compiler or a semantic completion percentage.
+Only explicit method ledger rows receive mapped status. Everything else remains
+untriaged, even when its class has an implementation row. Use the inventory to
+find omissions, then decompose methods into behavior obligations in the ledger
+and the owning spec. Generated outputs belong under target and are not reference
+source or runtime dependencies. Tool checks do not rerun Cargo/parity gates.
+
+The current interface work is indexed in
+[GAMEFRAME-INTERFACES.md](GAMEFRAME-INTERFACES.md). The original canonical class
+map remains in the pinned reference tree; this inventory does not rename methods.

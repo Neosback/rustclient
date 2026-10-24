@@ -135,7 +135,10 @@ fn npc_path_policy_catch_up_and_current_orientation_participate_in_canonical_sta
 
     let standard = state_with_policy(PathAccelerationPolicy::STANDARD);
     let early = state_with_policy(PathAccelerationPolicy::EARLY);
-    assert_ne!(standard.semantic_fingerprint(), early.semantic_fingerprint());
+    assert_ne!(
+        standard.semantic_fingerprint(),
+        early.semantic_fingerprint()
+    );
 
     let mut with_debt = state_with_policy(PathAccelerationPolicy::STANDARD);
     with_debt
@@ -145,7 +148,10 @@ fn npc_path_policy_catch_up_and_current_orientation_participate_in_canonical_sta
         .expect("fixture NPC exists")
         .path_queue
         .increment_catch_up();
-    assert_ne!(standard.semantic_fingerprint(), with_debt.semantic_fingerprint());
+    assert_ne!(
+        standard.semantic_fingerprint(),
+        with_debt.semantic_fingerprint()
+    );
 
     let mut turned = state_with_policy(PathAccelerationPolicy::STANDARD);
     turned
@@ -154,7 +160,10 @@ fn npc_path_policy_catch_up_and_current_orientation_participate_in_canonical_sta
         .get_mut(&rustclient_model::NpcIndex::new(1))
         .expect("fixture NPC exists")
         .current_orientation = 512;
-    assert_ne!(standard.semantic_fingerprint(), turned.semantic_fingerprint());
+    assert_ne!(
+        standard.semantic_fingerprint(),
+        turned.semantic_fingerprint()
+    );
 }
 
 #[test]
@@ -216,7 +225,10 @@ fn active_sequence_timing_resolution_participates_in_canonical_state() {
     let cached = state_with_timing(Some(SequenceTiming::CachedModel {
         range: Some((0, 5)),
     }));
-    assert_ne!(unresolved.semantic_fingerprint(), legacy.semantic_fingerprint());
+    assert_ne!(
+        unresolved.semantic_fingerprint(),
+        legacy.semantic_fingerprint()
+    );
     assert_ne!(legacy.semantic_fingerprint(), cached.semantic_fingerprint());
 }
 

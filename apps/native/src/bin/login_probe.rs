@@ -5,7 +5,7 @@ mod entity_review;
 mod interfaces;
 #[path = "login_probe/journey.rs"]
 mod journey;
-use rustclient_application::{ConnectionDecoder, ConnectionInput};
+use rustclient_application::{ConnectionDecoder, ConnectionInput, SequencePolicyResolver};
 use rustclient_cache::Cache;
 use rustclient_game_state::{GameState, SemanticOperation};
 use rustclient_platform::{ByteStream, TransportError};
@@ -85,6 +85,10 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     ))?;
     drop(entropy);
     let (mut decoder, authenticated) = ConnectionDecoder::new(profile, login);
+    let mut sequence_policies = SequencePolicyResolver::new(
+        Cache::open(DirectoryBlobs::open(&args[0])?)?,
+        rustclient_cache::CacheProfile::OpenRune240,
+    );
     let mut scripts = rustclient_application::scripts::ClientScripts::new(
         cache,
         rustclient_cache::CacheProfile::OpenRune240,
@@ -145,8 +149,14 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
             Ok(n) => {
                 let mut operation_error = None;
                 let connected = decoder.receive_inputs(&bytes[..n], |input| {
+                    if operation_error.is_some() {
+                        return;
+                    }
                     let result = match input {
-                        ConnectionInput::Operation(op) => scripts.commit(&mut state, op),
+                        ConnectionInput::Operation(op) => sequence_policies
+                            .resolve_operation(op)
+                            .map_err(|error| format!("actor scheduling cache: {error}"))
+                            .and_then(|op| scripts.commit(&mut state, op)),
                         ConnectionInput::Script(request) => scripts
                             .enqueue(request, None)
                             .map(|()| scripts.drain(&mut state)),

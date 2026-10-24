@@ -86,7 +86,8 @@ impl Options {
             }
         }
         let cache_dir = cache_dir.ok_or("--cache-dir is required; use --help")?;
-        let profile = profile.ok_or("--cache-profile is required; supported: osrs-240")?;
+        let profile =
+            profile.ok_or("--cache-profile is required; supported: osrs-240, openrune-240")?;
         let preferences_dir = preferences_dir
             .or_else(|| {
                 std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".rustclient"))
@@ -122,7 +123,7 @@ impl Options {
 
     fn usage() {
         println!(
-            "RustClient desktop title\n\ncargo run -p rustclient-native -- --cache-dir PATH --cache-profile osrs-240\n\nOptions:\n  --server-profile openrune-240.2 --rsa-public-key PATH  enable dev server login\n  --server-host IP --server-port PORT  defaults: 127.0.0.1:43594\n  --preferences-dir PATH  override local preferences directory\n  --plugins-dir PATH      plugin package directory (default: <preferences-dir>/plugins)\n  --capture-dir PATH      capture deterministic GPU frames and verify rebuild, then exit"
+            "RustClient desktop title\n\ncargo run -p rustclient-native -- --cache-dir PATH --cache-profile osrs-240\n\nOptions:\n  --cache-profile osrs-240|openrune-240  use openrune-240 for the server repack\n  --server-profile openrune-240.2 --rsa-public-key PATH  enable dev server login\n  --server-host IP --server-port PORT  defaults: 127.0.0.1:43594\n  --preferences-dir PATH  override local preferences directory\n  --plugins-dir PATH      plugin package directory (default: <preferences-dir>/plugins)\n  --capture-dir PATH      capture deterministic GPU frames and verify rebuild, then exit"
         );
     }
 }

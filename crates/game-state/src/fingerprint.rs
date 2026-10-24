@@ -472,7 +472,10 @@ fn write_active_sequence_timing(
     fingerprint: &mut StableFingerprint64,
     resolved: bool,
     sequence: Option<rustclient_model::SequenceId>,
-    timings: &std::collections::BTreeMap<rustclient_model::SequenceId, rustclient_model::SequenceTiming>,
+    timings: &std::collections::BTreeMap<
+        rustclient_model::SequenceId,
+        rustclient_model::SequenceTiming,
+    >,
 ) {
     if !resolved {
         fingerprint.write_u8(0);

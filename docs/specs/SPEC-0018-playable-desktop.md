@@ -153,9 +153,16 @@ variables/settings and server skill/energy/weight updates participate in schema
 token, like the existing scenery generation; it is excluded from fingerprints.
 
 The explicit OpenRune cache adapter treats stale decoded-size hints for config
-archives 5 (inventories), 10 (items), 11 (parameters) and 14 (varbits) as advisory, as it already
-does for the object repack. CRC, stored-version and bounded decompression checks
+archives 5 (inventories), 9 (NPCs), 10 (items), 11 (parameters), 12 (sequences)
+and 14 (varbits) as advisory, as it already does for the object repack.
+Packet-time actor-policy resolution uses the explicitly selected cache profile,
+as do the asset loaders. CRC, stored-version and bounded decompression checks
 remain required. This policy does not apply to the ordinary osrs-240 profile.
+
+Cache failure feedback covers local loading and compatibility verification, both
+before and after authentication. It must not assert server rejection or that
+credentials were not submitted when the failure category does not establish that.
+Diagnostics retain the failing stage, selected profile and archive context.
 
 Live ordinary travel also encountered the OpenRune repack's stale decoded-size
 hint for animation frame archives in index 0: archive 4699 reported 2744, decoded
@@ -380,8 +387,38 @@ No state or GPU handle is shared with the cache loader. Animation snapshot maps
 share resource allocations via Arc; mutable catalog growth never alters a worker's
 snapshot. GPU reconstruction preserves semantic cycles and overrides.
 
-The full actor scheduler is still incomplete: assignment restart/priority,
-authoritative completion/loop counts, turn rates/target following, action movement
-blocking, frame-gated exact movement, interleave/bone-mask composition and several
-combat/effect/customisation masks remain outside verified behavior. This audit
-is not complete gameplay or pixel parity acceptance; see NPC-ANIMATION-240.md.
+That NPC checkpoint predates the subsequent authoritative actor work. Current
+assignment restart/priority, action movement blocking, exact-movement frame gates,
+path queue and desired/current orientation ownership are documented in
+`docs/reference/rs240-port/ACTOR-RUNTIME.md` and its linked domain audits.
+Ordinary turn rates/target following, directional locomotion, full playback
+completion/effect scheduling, interleave/bone-mask composition and several
+combat/effect/customisation masks remain incomplete. Neither checkpoint accepts
+complete gameplay or pixel parity.
+
+## Gameframe text and wheel continuation (2026-10-24)
+
+Status: implemented subset; remaining acceptance is recorded below. Owners remain cache (font metrics), game-ui (disposable
+text layout/paint), application (widget listener routing), game-state (authored
+widget properties/window metrics), native/web (host input adapters). No new
+semantic text/window owner is introduced. Fixed uses root 548 and its capped
+canvas; classic and modern resizable roots 161/164 share the resizable window
+mode. A host fullscreen change does not select an interface root.
+
+Widget text preserves authored font IDs, color/shadow properties and supported
+inline formatting across wrapping. Formatting tags have no advance; escaped
+angle brackets and nonbreaking spaces have their glyph advance. Explicit breaks
+reset text style; automatic wrapping preserves it. Simple and contour/kerning
+font metric encodings are bounded reads in the cache adapter. Glyph extents,
+not nominal line spacing, determine vertical alignment; measurement and paint
+share one rich-text layout. Malformed optional formatting is ignored as in the
+client; malformed font assets return contextual errors. Inline images and injected
+RuneLite substitutions require separate evidence before being accepted.
+
+IF3 wheel events are delivered to authored scroll listeners through the shared
+application runtime, respecting clipping, hidden hierarchy and no-scroll-through
+barriers. The host adapter supplies wheel rotation; it does not independently
+change the scroll position and bypass the scrollbar's scripts. Tests establish
+text/metric/input contracts, not pixel or complete interface parity. Acceptance
+tracks each window/layout/input/text behavior separately in the existing 240
+symbol ledger; a source mapping alone is never a verified-port claim.

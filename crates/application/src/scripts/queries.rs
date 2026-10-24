@@ -333,7 +333,11 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
             Some(if op == Paraheight {
                 i32::try_from(lines.len()).map_err(|_| "text line count")?
             } else {
-                lines.iter().map(|line| font.width(line)).max().unwrap_or(0)
+                lines
+                    .iter()
+                    .map(|line| rustclient_game_ui::widget_text::width(line, font))
+                    .max()
+                    .unwrap_or(0)
             })
         }
         Stat | StatBase | StatXp => {

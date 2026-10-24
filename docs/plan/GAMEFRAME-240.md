@@ -108,3 +108,159 @@ check each layout visually, physical resize, DPI changes, fullscreen entry/exit,
 menu/drag hit alignment and modal behavior. Complete world-map content, every
 widget kind, default-mode persistence, layout scaling preferences and full rendering parity are not accepted
 by this checkpoint.
+
+
+## 2026-10-24 implementation continuation
+
+Reviewed merge `809a941e` before extending this checkpoint. Its actor path,
+sequence-policy, forced-movement and desired/current orientation work supersedes
+the historical actor gaps in earlier plan documents. Current actor evidence lives
+under `docs/reference/rs240-port/`; this UI continuation does not accept complete
+actor scheduling or animation parity.
+
+The [interface/font audit](../reference/rs240-port/GAMEFRAME-INTERFACES.md)
+records exact source methods, owners and a per-layout acceptance matrix. Changes:
+
+- Decode both simple and contour font metrics, signed pair kerning and glyph ink
+  ascent/descent. Synthetic metric-family coverage includes malformed/truncated
+  data; actual LIVE fonts were loaded separately.
+- Preserve rich-text tags through wrapping; share formatted measurement with CS2;
+  respect authored shadow/color, ink-based vertical placement and justification.
+- Resolve item quantities to named plain-11 and stock raw/K/M colors. Use bold-12
+  for context menus and hover text. Align menu bounds, hit bands, row spacing,
+  colors and baselines with the selected Menu methods.
+- Queue eligible IF3 wheel listeners before execution, with complete rotation and
+  click/wheel barriers. Scroll position and thumb updates stay script authored.
+  Horizontal/zero pixel events do not synthesize a vertical rotation.
+- Repair merge build/lint issues and update the connection replay fixture's old
+  schema-16 anchors to the already-authoritative schema 23. Replay equality and
+  disconnect/reset checks remain. The obsolete private scene NPC-pose test was
+  removed after movement/scheduler ownership moved to GameState; current actor
+  contract coverage remains in that owner.
+
+The existing [symbol ledger](../reference/rs240-port/SYMBOL-LEDGER.tsv) now has
+separate verification/evidence/owner-path/remaining fields. Historical entries
+retain unrecorded verification until concrete evidence is attached. Run
+`python3 tools/port_audit.py --check` to detect missing declarations/owners,
+duplicate rows, invalid vocabulary, missing strong-verification evidence and
+changed selected source hashes. `--inventory target/rs240-methods.tsv --report
+target/rs240-port-report.json` generates the full declaration index, including
+unmapped declarations. Class mappings do not accept every method in a class;
+declaration counts are not semantic completion percentages.
+
+Fresh live evidence is `target/gameframe2-live.log`: 501 complete packets through
+tick 8, authored zoom drag `[512,512]` to `[1448,1448]`, fixed root 548 at 765×503,
+classic resizable root 161, modern root 164 at simulated 1280×800, chat typing and
+backspace, then clean authenticated-state reset. Three script-2358 argument errors
+remain. The separate server patch is still unapplied. This is a headless behavior
+result, not physical window/fullscreen/DPI or scrollbar pixel acceptance.
+
+`target/gameframe2-cache-interfaces.log` loads roots 548/161/164 plus inventory
+149 and chat 162 without executing scripts. It also loads the named quantity font.
+LIVE plain-11 is font 494 (ascent 10, ink extents 10/2); plain-12 and bold-12 are
+495/496 (ascent 12, ink extents 12/4). This confirms decode/selection, not appearance.
+The cache identity matches the earlier live checkpoint.
+
+Validation with Rust 1.99.0:
+
+- Formatting, workspace/all-target check and strict Clippy pass:
+  `target/gameframe2-final-{fmt,check,clippy}.log`.
+- Workspace tests: 315 passed, 0 failed, 0 ignored:
+  `target/gameframe2-final-tests.log`.
+- Web wasm target check passes: `target/gameframe2-final-wasm.log`.
+- Native client, login probe and interface probe rebuilt:
+  `target/gameframe2-final-build.log`.
+- Ledger/source checks and generated declaration inventory pass:
+  `target/gameframe2-ledger.log`. Negative checks reject duplicate rows, unknown
+  statuses and empty evidence for contract-tested rows.
+- All 41 selected source-manifest hashes match; references remain unchanged;
+  `git diff --check` passes.
+
+Remaining: desktop font/color/scrollbar appearance and physical resize/DPI/
+fullscreen acceptance for each layout; inline images and soft-hyphen text;
+submenus/formatted menu targets/tall-menu scrolling; quantity display modes;
+IF1/additional widget kinds; world-map content; scaling/default-mode persistence.
+An already-running client must restart to load the rebuilt executable.
+
+
+## 2026-10-24 cache-profile restart correction
+
+The subsequent GUI restart incorrectly selected strict `osrs-240`, despite using
+the server's actual `.data/cache/LIVE`. Authentication succeeded, then packet-time
+NPC policy loading rejected index 2/group 9: reported decoded size 1,792,969 versus
+actual 1,806,666. This was a local profile/data-loading error, not a JS5 checksum
+rejection. Restarting the server did not change it. Relaunching with the existing
+explicit `openrune-240` profile resolves the stale size hint while preserving CRC,
+stored-version and bounded decompression checks. No server or cache files changed.
+Use the canonical `scripts/run-openrune.sh SERVER_DIRECTORY` launcher, which already
+selects this profile.
+
+The headless login probe previously committed entity packets without the native
+worker's SequencePolicyResolver. It now resolves actor policy/timing/path metadata
+before committing those operations and stops processing a decoded batch after its
+first operation failure. `target/cache-profile-live.log` passes this enriched path:
+27 NPCs, authored zoom/layout/chat interactions, 516 framed packets through tick 9,
+then clean authenticated-state reset. The same three script-2358 argument errors
+remain independently unresolved. This supersedes the earlier probe's limited
+actor-cache-loading evidence; it is still not visual acceptance.
+
+The GUI was rebuilt and relaunched with `openrune-240`; title loading is recorded
+in `target/native-openrune-profile.log`. Cache-failure feedback now covers local
+loading/verification without asserting server rejection or a pre-authentication
+failure. Diagnostic errors include the selected cache profile. CLI help lists
+both profiles and identifies the OpenRune repack choice.
+
+Follow-up validation: Rust 1.99.0 formatting, workspace/all-target checking, strict
+Clippy, all 315 workspace tests, the web wasm check and native/probe rebuild pass
+(`target/cache-profile-{fmt,check,clippy,tests,wasm,build}.log`). `git diff --check`
+also passes. No cache-integrity check was disabled by this correction.
+
+
+## 2026-10-24 account-specific empty fullscreen root
+
+A fresh diagnostic GUI rendered gameplay for the working account. The user then
+reproduced a persistent black screen with `test22` in a second fresh GUI using the
+same binary and OpenRune profile. Its frame trace selected root 165 with normal
+HUD mounts, no world-map mount, no world viewport, 25 quads and successful frame
+presentation. Scene installation and drawable actors had already completed.
+
+Read-only LIVE cache inspection shows root 165 has one-pixel ordinary HUD hosts
+and an opaque full-canvas black rectangle, with no WorldViewport content.
+OpenRune identifies it as `interface.toplevel_display`, the transient fullscreen
+world-map root. Its login selector accepted this row both as a saved layout and as
+an ordinary matching-resizable/stone fallback. We did not infer or edit the
+account's historical stored values.
+
+The user approved applying, rebuilding and restarting OpenRune. The selector
+correction rejects this root for saved login selection and filters it out of both
+fallback searches. Normal fixed/classic/modern selection and normal preference
+updates are retained. The existing full-screen-map runtime stays separate.
+
+The patch is applied to OpenRune's GameframeScript.kt and mirrored in
+`docs/patches/openrune-240-transient-fullscreen-gameframe.patch`.
+`:content:interfaces:gameframe:compileKotlin` and its JAR build succeeded;
+`:content:interfaces:gameframe:test` reported NO-SOURCE, not an executed unit
+suite. Gradle reported BUILD SUCCESSFUL with 158 tasks (2 executed, 156 up-to-date)
+in `target/login-root165-server-build.log`. The running server was stopped
+gracefully and restarted with its preserved JVM/classpath configuration; startup
+is logged in `target/openrune-login-selector-restart.log`.
+
+The [login/region/interface source map](../reference/rs240-port/LOGIN-REGION-INTERFACES.md)
+records exact methods, Rust owners, remaining widget-model/reset obligations and
+why RustClient must not silently replace a server-selected root. The symbol ledger
+and selected source hashes are extended accordingly. No Rust runtime code changed
+in this investigation. The user retried the affected `test22` account after the patched server reached
+its ready gate and confirmed that the world and gameframe appear. The post-restart
+GUI trace also selects normal root 164 with a world viewport. This accepts this
+reported account-specific login failure, not every interface or world-map feature.
+
+
+Post-restart validation: the first probe reached the listening port before the
+plugin ready gate and received response 8; it is retained separately. After the
+server logged `Server ready`, `target/login-root165-patched-live-ready.log` passed
+authentication, actor-policy loading (26 NPCs), authored zoom drag, all three
+normal layout choices, chat typing/backspace and clean disconnect: 558 framed
+packets through tick 13. The independently known three script-2358 argument
+errors remain. The source ledger/checker and all 44 selected deob hashes pass;
+reference trees remain unchanged. The applied server patch passes reverse-apply
+checking, and whitespace checks pass in both repositories for the changed files.

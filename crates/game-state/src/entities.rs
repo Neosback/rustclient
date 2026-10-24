@@ -239,12 +239,11 @@ impl WorldEntitiesState {
         }
     }
 
-    #[must_use]
-    pub(crate) fn sequence_timing(&self, id: SequenceId) -> Option<&SequenceTiming> {
-        self.sequence_timings.get(&id)
-    }
-
-    pub(crate) fn advance_cycles(&mut self, previous_cycle: rustclient_model::ClientCycle, cycles: u32) {
+    pub(crate) fn advance_cycles(
+        &mut self,
+        previous_cycle: rustclient_model::ClientCycle,
+        cycles: u32,
+    ) {
         self.reboot_cycles = self.reboot_cycles.saturating_sub(cycles);
         // Movement must observe the action delay/frame boundary before that same cycle advances
         // playback. The scenery clock remains the single ClientCycle authority.

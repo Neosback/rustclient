@@ -93,6 +93,10 @@ pub(crate) fn advance_players(entities: &mut WorldEntitiesState, current_cycle: 
 
 /// Advance the active revision-240 forced trajectory, returning `None` only when no forced phase
 /// owns this cycle. An expired trajectory is cleared and ordinary scheduling resumes immediately.
+#[expect(
+    clippy::too_many_arguments,
+    reason = "explicit borrowed actor state for the authoritative forced-movement step"
+)]
 fn advance_forced_cycle(
     path: &mut ActorPathQueue,
     sequence: &ActorSequenceSlot,
@@ -133,17 +137,16 @@ fn advance_forced_cycle(
     *current_orientation = *orientation;
 
     let at_exact_end = current == end_cycle;
-    if !crate::sequence_playback::forced_interpolation_allowed(
-        *sequence,
-        timing,
-        at_exact_end,
-    ) {
+    if !crate::sequence_playback::forced_interpolation_allowed(*sequence, timing, at_exact_end) {
         return Some(ActorMovementCycle::ForcedHeld);
     }
 
     let end = ActorFinePosition::from_tile(exact.end);
     let duration = end_cycle - start_cycle;
-    debug_assert!(duration > 0, "approach phase owns zero-duration exact movement");
+    debug_assert!(
+        duration > 0,
+        "approach phase owns zero-duration exact movement"
+    );
     let elapsed = current - start_cycle;
     let interpolate = |from: i64, to: i64| {
         let duration = i128::from(duration);
@@ -186,7 +189,9 @@ fn advance_actor_cycle(
     }
 
     path.ensure_position(fallback_tile);
-    let entry = path.oldest().expect("non-empty actor path has oldest entry");
+    let entry = path
+        .oldest()
+        .expect("non-empty actor path has oldest entry");
     let target = ActorFinePosition::from_tile(entry.target);
     let mut position = path.fine_position(fallback_tile);
     let gap = (target.x - position.x)

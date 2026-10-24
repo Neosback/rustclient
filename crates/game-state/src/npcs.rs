@@ -84,6 +84,10 @@ fn orientation(step: TileOffset) -> u16 {
     }
 }
 impl WorldEntitiesState {
+    #[expect(
+        clippy::too_many_lines,
+        reason = "validate the complete NPC batch before any mutation"
+    )]
     pub(crate) fn validate_npc_info(
         &self,
         update: &NpcInfoUpdate,
@@ -202,6 +206,10 @@ impl WorldEntitiesState {
         }
         Ok(())
     }
+    #[expect(
+        clippy::too_many_lines,
+        reason = "apply validated NPC phases and attributes in semantic source order"
+    )]
     pub(crate) fn apply_npc_info(
         &mut self,
         update: &NpcInfoUpdate,

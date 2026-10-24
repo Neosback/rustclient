@@ -2,7 +2,7 @@
 use crate::{LoadEvent, NativeApp, network};
 use rustclient_game_ui::gameframe::{GameplayPointer, gameplay_pointer};
 use rustclient_game_ui::widgets::resolve_widget;
-use rustclient_model::{WidgetAction, WidgetBody, WidgetContent, WidgetListener};
+use rustclient_model::{WidgetAction, WidgetBody, WidgetContent};
 impl NativeApp {
     #[expect(
         clippy::cast_possible_truncation,
@@ -203,69 +203,11 @@ impl NativeApp {
         Ok(false)
     }
     pub(super) fn widget_scroll(&mut self, x: f32, y: f32, delta: i32) -> Result<bool, String> {
-        let Some(scripts) = &self.scripts else {
+        let world_hit = self.pointer_over_world(x, y);
+        let Some(scripts) = &mut self.scripts else {
             return Ok(false);
         };
-        let mut listener = None;
-        for node in self.widget_tree.nodes.iter().rev() {
-            if !node.bounds.rect().contains(x, y) || !node.clip.rect().contains(x, y) {
-                continue;
-            }
-            let widget = resolve_widget(self.state.interfaces(), &scripts.interfaces, node.address)
-                .map_err(|e| e.to_string())?;
-            if let WidgetBody::Container { scroll_size, .. } = widget.body
-                && scroll_size[1] > node.bounds.height.max(0).cast_unsigned()
-            {
-                let mut runtime = self
-                    .state
-                    .interfaces()
-                    .runtime()
-                    .get(&node.address)
-                    .cloned()
-                    .unwrap_or_default();
-                let maximum =
-                    scroll_size[1].saturating_sub(node.bounds.height.max(0).cast_unsigned());
-                let mut scroll = runtime.scroll.unwrap_or([0, node.scroll_y]);
-                scroll[1] = scroll[1].saturating_add_signed(delta).min(maximum);
-                runtime.scroll = Some(scroll);
-                let op = rustclient_game_state::SemanticOperation::Interface(
-                    rustclient_model::InterfaceUpdate::SetProperty {
-                        widget: node.id,
-                        property: rustclient_model::WidgetProperty::Runtime {
-                            address: node.address,
-                            value: Box::new(runtime),
-                        },
-                    },
-                );
-                self.apply(Some(op));
-                return Ok(true);
-            }
-            if widget.listeners.contains_key(&WidgetListener::Scroll)
-                && (widget.content != WidgetContent::WorldViewport || self.pointer_over_world(x, y))
-            {
-                listener = Some(node.address);
-                break;
-            }
-            if self
-                .state
-                .interfaces()
-                .runtime()
-                .get(&node.address)
-                .is_some_and(|runtime| runtime.no_scroll_through == Some(true))
-            {
-                return Ok(true);
-            }
-        }
-        let Some(address) = listener else {
-            return Ok(false);
-        };
-        // Java reports wheel-up as a negative rotation; `delta` already carries that sign.
-        let rotation = delta.signum();
-        let scripts = self
-            .scripts
-            .as_mut()
-            .ok_or("widget definitions are loading")?;
-        let Some(outcome) = scripts.scroll_wheel(&mut self.state, address, rotation)? else {
+        let Some(outcome) = scripts.scroll_at(&mut self.state, [x, y], delta, world_hit)? else {
             return Ok(false);
         };
         for error in outcome.errors {
@@ -274,6 +216,7 @@ impl NativeApp {
         self.send_script_intents(outcome.intents);
         Ok(true)
     }
+
     pub(super) fn pointer_over_world(&self, x: f32, y: f32) -> bool {
         matches!(
             gameplay_pointer(

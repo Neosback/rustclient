@@ -79,7 +79,7 @@ impl ActorMotion {
 
     /// Footprint corner of an NPC in world fine units.
     ///
-    /// Exact movement and cache-resolved ordinary movement come from GameState. Only deliberately
+    /// Exact movement and cache-resolved ordinary movement come from `GameState`. Only deliberately
     /// unresolved direct ordinary fixtures can fall back to the legacy projector.
     #[must_use]
     pub fn npc(&self, index: NpcIndex) -> Option<[i32; 2]> {
@@ -105,7 +105,10 @@ mod tests {
 
     #[test]
     fn scene_position_preserves_normal_fine_coordinates_and_bounds_extremes() {
-        assert_eq!(scene_position(ActorFinePosition { x: 128, y: -256 }), [128, -256]);
+        assert_eq!(
+            scene_position(ActorFinePosition { x: 128, y: -256 }),
+            [128, -256]
+        );
         assert_eq!(
             scene_position(ActorFinePosition {
                 x: i64::MAX,

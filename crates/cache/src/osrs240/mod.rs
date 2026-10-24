@@ -4,6 +4,7 @@ pub mod db_tables;
 pub mod definitions;
 mod dependencies;
 pub mod entity_assets;
+pub(crate) mod font_metrics;
 pub mod models;
 pub mod npc_model;
 pub mod npc_path_policy;

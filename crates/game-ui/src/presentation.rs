@@ -396,9 +396,9 @@ fn login_lines(status: LoginStatus) -> [&'static str; 3] {
                 "See diagnostics for the reason.",
             ],
             LoginFailure::CacheMismatch => [
-                "Cache does not match the server.",
-                "Select the server LIVE cache.",
-                "No credentials were submitted.",
+                "Could not load or verify the cache.",
+                "Check the cache path and profile.",
+                "See client diagnostics for the reason.",
             ],
             LoginFailure::Protocol => [
                 "Unsupported server response.",
@@ -490,8 +490,15 @@ pub(crate) fn text(
     color: [u8; 4],
     clip: Rect,
 ) {
+    let mut previous = None;
     for ch in value.chars() {
-        let byte = cp1252(ch).unwrap_or(b'?');
+        let byte = if ch == '\u{a0}' {
+            b' '
+        } else {
+            cp1252(ch).unwrap_or(b'?')
+        };
+        let advance = i32::from(font.advances[usize::from(byte)]);
+        x += font.advance(previous, byte) - advance;
         let glyph = &font.glyphs[usize::from(byte)];
         if glyph.image.width() > 0 && glyph.image.height() > 0 {
             let px = x + i32::from(glyph.offset[0]);
@@ -515,7 +522,8 @@ pub(crate) fn text(
                 quad.tint = color;
             }
         }
-        x += i32::from(font.advances[usize::from(byte)]);
+        x += advance;
+        previous = Some(byte);
     }
 }
 fn trim_left(value: &mut String, font: &BitmapFont, max: i32) {

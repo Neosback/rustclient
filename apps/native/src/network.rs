@@ -212,6 +212,10 @@ fn open_session(
     let sequence_policies = SequencePolicyResolver::new(cache, options.cache_profile);
     Ok((stream, decoder, sequence_policies))
 }
+#[expect(
+    clippy::too_many_lines,
+    reason = "one transport owner orders decode, cache policy resolution, epochs and outbound cipher advancement"
+)]
 fn run(
     options: &ConnectionOptions,
     credentials: Credentials,
@@ -284,7 +288,10 @@ fn run(
                 if let Some(error) = policy_error {
                     return Err(failure(
                         LoginFailure::CacheMismatch,
-                        format!("sequence scheduling policy: {error}"),
+                        format!(
+                            "sequence scheduling policy (cache profile {}): {error}",
+                            options.cache_profile.name()
+                        ),
                     ));
                 }
                 if !connected {
