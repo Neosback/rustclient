@@ -8,8 +8,8 @@ use crate::{
     },
 };
 use rustclient_model::{
-    ItemDefinitionId, KitId, ModelId, NpcDefinitionId, ObjectDefinitionId, SequenceId, TextureId,
-    VarbitId, VarpId,
+    ItemDefinitionId, KitId, ModelId, NpcDefinitionId, ObjectDefinitionId, PathAccelerationPolicy,
+    SequenceId, TextureId, VarbitId, VarpId,
 };
 use std::collections::BTreeMap;
 /// Decode a floor material definition.
@@ -251,12 +251,32 @@ pub fn object(bytes: &[u8], id: ObjectDefinitionId, source: Source) -> Result<Ob
 /// Decode one NPC definition from cache group 9 data.
 /// # Errors
 /// Returns error on corrupt buffer or malformed parameter structures.
+pub fn npc(bytes: &[u8], id: NpcDefinitionId, source: Source) -> Result<NpcDefinition> {
+    npc_with_path_acceleration(bytes, id, source).map(|(definition, _)| definition)
+}
+
+/// Decode only the definition-derived ordinary path acceleration policy for one NPC.
+/// # Errors
+/// Returns the same source-aware decode failures as [`npc`].
+pub fn npc_path_acceleration(
+    bytes: &[u8],
+    id: NpcDefinitionId,
+    source: Source,
+) -> Result<PathAccelerationPolicy> {
+    npc_with_path_acceleration(bytes, id, source).map(|(_, policy)| policy)
+}
+
 #[expect(
     clippy::too_many_lines,
     reason = "exhaustive opcode decoder preserves field semantics"
 )]
-pub fn npc(bytes: &[u8], id: NpcDefinitionId, source: Source) -> Result<NpcDefinition> {
+fn npc_with_path_acceleration(
+    bytes: &[u8],
+    id: NpcDefinitionId,
+    source: Source,
+) -> Result<(NpcDefinition, PathAccelerationPolicy)> {
     let mut r = Reader::new(bytes, source);
+    let mut path_acceleration = PathAccelerationPolicy::STANDARD;
     let mut out = NpcDefinition {
         id,
         name: None,
@@ -378,8 +398,11 @@ pub fn npc(bytes: &[u8], id: NpcDefinitionId, source: Source) -> Result<NpcDefin
             }
             97 => out.scale_width = r.u16()?,
             98 => out.scale_height = r.u16()?,
-            // Flag opcodes without payload: render priority, clickability, follower and z-buffer flags.
-            99 | 109 | 111 | 122 | 123 | 130 | 145 | 147 => {}
+            // Flag opcodes without payload: render priority, follower and z-buffer flags.
+            99 | 111 | 122 | 123 | 130 | 145 | 147 => {}
+            // Exact revision-240 Actor.method3284 branch selector: opcode 109 changes the
+            // definition from the normal >2/>3 backlog thresholds to >1/>2.
+            109 => path_acceleration = PathAccelerationPolicy::EARLY,
             100 => out.ambient = i16::from(r.i8()?),
             101 => out.contrast = i16::from(r.i8()?),
             102 => {
@@ -475,7 +498,7 @@ pub fn npc(bytes: &[u8], id: NpcDefinitionId, source: Source) -> Result<NpcDefin
         }
     }
     r.finish()?;
-    Ok(out)
+    Ok((out, path_acceleration))
 }
 
 /// Decode an identity kit definition from cache group 3.
