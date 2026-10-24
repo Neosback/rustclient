@@ -1,8 +1,8 @@
 # Revision 240 actor movement catch-up (`field1452`)
 
-Status: ordinary-path catch-up is implemented authoritatively for players and resolved NPCs; forced/exact-movement reset timing remains deliberately deferred to the forced-movement scheduler.
+Status: catch-up is authoritative for ordinary and forced/exact player/NPC movement. Turning-dependent speed remains separate pending work.
 
-This document records the exact revision-240 meaning of `Actor.field1452` and the RustClient ownership boundary used by the ordinary actor path scheduler.
+This document records the exact revision-240 meaning of `Actor.field1452` and the RustClient ownership boundary used by the actor movement scheduler.
 
 ## Exact revision-240 evidence
 
@@ -20,7 +20,7 @@ In the normal-path branch of `method3284`:
 6. a gap greater than 288 takes the snap branch and consumes the target without decrementing `field1452`;
 7. therefore a snap can leave positive catch-up debt until a later ordinary eligible cycle or until a reset condition clears it.
 
-The check is signed `field1452 > 0`. RustClient therefore stores a signed counter and uses wrapping increment semantics rather than inventing saturation behavior absent from the client evidence.
+The check is signed `field1452 > 0`. RustClient stores a signed counter and uses wrapping increment semantics rather than inventing saturation behavior absent from the client evidence.
 
 ## Reset behavior
 
@@ -30,7 +30,7 @@ Hard/immediate placement helpers such as `Actor.method3123` / `method3124` reset
 
 By contrast, several queue-only helpers clear path length and `field1476` without touching `field1452`. Therefore the counter belongs to actor movement state, not to a generic queue-clear operation.
 
-Both forced/exact movement phases inside `Actor.method3284` reset `field1452` to zero on each cycle in which those phases are active. RustClient does not apply that reset merely because `ExactMovement` is present: the current trajectory marker can remain stored beyond its active interval, and the authoritative movement loop does not yet carry the exact per-inner-cycle forced phase. The forced-movement checkpoint must own that reset when it ports the exact timing and action-frame boundary gate.
+Both active forced/exact movement phases inside `Actor.method3284` reset `field1452` to zero every client cycle. RustClient now applies that reset from authoritative per-inner-cycle forced phase selection, not merely from `ExactMovement` marker presence. Once `current_cycle > forced_end_cycle`, the marker is cleared and ordinary path scheduling resumes in that same cycle without an extra reset.
 
 ## `method3292` is not the mutation authority
 
@@ -43,11 +43,9 @@ RustClient therefore keeps `GameState` as the sole authority and does not model 
 `game-state::ActorPathQueue` owns:
 
 - the bounded ordinary target queue,
-- the authoritative fine-position cursor,
+- the authoritative fine-position cursor used by both ordinary and forced movement,
 - the resolved NPC path-acceleration policy where required,
 - `catch_up_cycles`, the revision-240 `field1452` equivalent.
-
-This is appropriate because the counter changes future ordinary movement speed and is shared by player and NPC scheduling. It is not immutable cache policy and is not action-sequence playback state.
 
 `game-state::actor_movement` applies the counter in this order for ordinary movement:
 
@@ -67,23 +65,32 @@ later ordinary movement allowed
     -> consume target if reached
 ```
 
+During either active forced phase:
+
+```text
+forced approach/interpolation owns this client cycle
+    -> catch_up_cycles = 0
+    -> forced fine-position transition
+    -> forced orientation
+```
+
 An ordinary empty queue resets the debt. `ActorPathQueue::reset_to` also resets it because that method represents immediate/hard placement. `ActorPathQueue::clear` deliberately preserves it because a generic queue clear is not sufficient evidence for a reset.
 
 ## Interaction with pending turning work
 
 The stock standard-acceleration branch can reduce base step to 2 for turning before applying backlog acceleration and catch-up. Catch-up is later in that ordering and therefore overrides a turning slowdown to base step 8 when its condition is true.
 
-RustClient has not yet ported turning slowdown. When it is added, the catch-up test must remain after the turning/backlog calculations and before run/crawl scaling.
+RustClient has not yet ported authoritative desired/current orientation and turning slowdown. When it is added, the catch-up test must remain after turning/backlog calculations and before run/crawl scaling.
 
 ## Fingerprint/replay consequence
 
-Positive catch-up debt changes future authoritative position, so it participates in semantic fingerprint schema v21 as a signed `i32` in the actor-path encoding.
+Positive catch-up debt changes future authoritative position. It participates in the actor-path portion of semantic fingerprint schema v22; v22 also fingerprints active sequence timing because that timing can hold or advance forced interpolation.
 
-Two otherwise-identical actors with different catch-up debt are intentionally different semantic states.
+Two otherwise-identical actors with different catch-up debt remain intentionally different semantic states.
 
 ## Implemented scope
 
-Implemented in the ordinary authoritative scheduler:
+Implemented authoritatively:
 
 - increment on opcode-9/opcode-10 action-gated path cycles;
 - signed positive-debt test;
@@ -95,13 +102,13 @@ Implemented in the ordinary authoritative scheduler:
 - empty-queue reset;
 - hard-placement reset through `reset_to`;
 - preservation across generic queue `clear`;
+- reset on every actually active forced approach/interpolation cycle;
+- no over-reset after the forced interval expires;
 - semantic fingerprint participation.
 
 Still deferred:
 
-- forced/exact phase reset timing and interpolation;
-- the legacy action-frame boundary condition during forced interpolation;
 - turning slowdown and desired/current orientation scheduling;
 - scene-bound safety-reset parity where it indirectly invokes hard actor reset behavior.
 
-The next movement dependency should be authoritative forced/exact movement because it closes both the remaining positional projection exception and the remaining exact reset site for this counter.
+The next movement dependency is authoritative facing/turning because forced/exact positional ownership and the remaining exact `field1452` reset site are now closed.
