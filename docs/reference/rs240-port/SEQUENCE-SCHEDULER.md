@@ -1,312 +1,463 @@
-# Sequence assignment and actor movement gating
+# Revision 240 sequence assignment and playback scheduler
 
-Status: exact revision-240 behavior identified for assignment policy; full playback
-scheduler remains incomplete.
+Status: exact revision-240 behavior identified for action assignment, restart/priority policy, legacy frame advancement, cached-model advancement, finite-loop completion, action delay, and actor freeze interaction. Spot-animation lifetime/repeat semantics remain a separate open effect trace.
 
-This document records the first concrete deob-to-Rust mismatch found by the port
-research branch. It is deliberately narrower than a complete animation audit.
+This document is the canonical port record for authoritative actor sequence scheduling. Rendering/model posing consumes committed playback state; it is not allowed to decide sequence lifetime, loop count, movement blocking, or restart policy.
 
-## Sources
-
-Exact revision-240 client evidence:
+## Exact revision-240 sources
 
 - `references/rl-suite-240/sources-semantic/classCU.java`
-  - `classCU.method2672`
+  - `classCU.method2672`: player action assignment/restart/priority
 - `references/rl-suite-240/sources-semantic/classQR.java`
-  - `classQR.method9770`
-  - `classQR.method9791`
-  - `classQR.method9793`
+  - active sequence controller state and reset/copy helpers
+- `references/rl-suite-240/sources-semantic/classRD.java`
+  - `classRD.method9980`: common advancement and full legacy-frame path
+- `references/rl-suite-240/sources-semantic/classEJ.java`
+  - `classEJ.method3922`: cached-model animation advancement
+- `references/rl-suite-240/sources-semantic/classKB.java`
+  - `classKB.method6491`: actor-cycle scheduling, action delay, freeze windows, slot-specific completion behavior
 - `references/rl-suite-240/sources-semantic/Animation.java`
-  - constructor opcode decode
-  - `Animation.field5119`
-  - `Animation.field5120`
-  - `Animation.field5129`
-  - `Animation.field5117`
+  - sequence-definition opcode decode and timing/policy fields
 - `references/rl-suite-240/sources-semantic/Actor.java`
-  - `Actor.field1471`
-  - `Actor.field1476`
-  - path-movement checks that consume `Animation.field5129/field5117`
+  - action/path movement gates and authoritative sequence slots
 
-Current Rust owners inspected:
+Readable controller names are maintained by client-240 cluster 07. Stable foreign symbols remain cited where their classes are owned elsewhere.
 
-- `crates/cache/src/osrs240/animation.rs`
-- `crates/cache/src/world.rs::SequenceAsset`
-- `crates/model/src/entity.rs::ActorSequenceSlot`
-- `crates/game-state/src/entities.rs`
-- `crates/game-state/src/player_movement.rs`
+## 1. Action assignment policy
 
-## Exact 240 assignment behavior
+`classCU.method2672(Player actor, requestedSequence, delay, ...)` applies authored definition policy before mutating the action controller.
 
-`classCU.method2672(Player actor, int requested_sequence, int delay, ...)` performs
-policy before mutating the action slot.
+### Same ID
 
-### Case 1: requested ID equals current ID
+When the requested ID equals the currently active ID and is not `-1`, `Animation.field5120` controls the result:
 
-If the ID is `-1`, the same-ID restart logic is skipped and normal replacement
-logic continues.
+- restart mode `1`: reset frame, frameCycle, and loopCount to zero, then reapply the supplied action delay;
+- restart mode `2`: reset only loopCount;
+- other values: preserve playback state unchanged;
+- return immediately after the same-ID handling; do not run replacement-priority arbitration.
 
-If the ID is not `-1`, the current `Animation.field5120` restart mode controls the
-result:
+Cluster 07 now names the exact controller helpers:
 
-- restart mode `1` calls `classQR.method9791` and reapplies the supplied actor
-  sequence delay;
-- restart mode `2` calls `classQR.method9793`;
-- any other restart mode leaves playback state unchanged;
-- after the same-ID branch, the method returns. It does not run replacement
-  priority arbitration.
+- `classQR.method9791` -> `resetPlaybackState`;
+- `classQR.method9793` -> `resetLoopCount`.
 
-`classQR.method9791` resets three playback counters to zero:
+This is why restart mode 2 must not be implemented as a generic animation restart.
 
-- `field5600`
-- `field5602`
-- `field5599`
+### Different ID
 
-`classQR.method9793` resets only `field5599` to zero.
-
-The exact higher-level semantic names of all three controller counters still need
-to be established from advancement code. Their differing reset sets are already a
-compatibility requirement. Do not collapse both restart modes into one generic
-"restart animation" operation.
-
-### Case 2: requested ID differs from current ID
-
-If the requested ID is not `-1` and the current controller has an active sequence,
-`method2672` compares:
+If the requested ID is not `-1` and the current controller has a definition, assignment is rejected when:
 
 ```text
 new Animation.field5119 < current Animation.field5119
 ```
 
-If true, assignment is rejected and the current sequence continues.
-
-Therefore `Animation.field5119` is the sequence replacement priority used by this
-240 client. It comes from sequence-definition opcode `5`, whose constructor default
-is `5`.
+`Animation.field5119` comes from sequence-definition opcode `5`, defaults to `5`, and is the replacement priority for this path.
 
 If replacement is allowed:
 
-1. `classQR.method9770` changes the controller sequence ID;
-2. `classQR.method9791` resets the playback counters;
-3. the actor sequence delay is set to the supplied delay;
-4. `Actor.field1476` is set from `Actor.field1471`.
+1. change/clear the action sequence ID;
+2. reset playback state;
+3. set the supplied action delay;
+4. copy current path backlog/remainder state into `Actor.field1476`.
 
-The last step is important because `field1476` participates in movement gating.
-It is not renderer-only bookkeeping.
+Clearing with `-1` is not blocked by the replacement-priority test.
 
-## Sequence-definition fields relevant to the scheduler
+## 2. Exact controller state
 
-The `Animation` constructor provides a useful exact opcode map. The fields below
-are the ones already proven relevant to actor scheduling.
+The revision-240 controller has two counters that were previously unresolved.
 
-| Opcode | 240 constructor destination | Default | Established use |
-| --- | --- | ---: | --- |
-| 1 | frame delays + frame IDs | absent | legacy frame playback |
-| 2 | `field5132` | `-1` | frame step/loop-back value, API getter `getFrameStep()` |
-| 3 | `field5133` | absent | interleave/order table; presence also affects defaults for opcodes 9/10 |
-| 5 | `field5119` | `5` | replacement priority in `classCU.method2672` |
-| 8 | `field5122` | `99` | max-loop-like authored limit; exact completion use still to trace |
-| 9 | `field5129` | derived | movement gate used while pre-assignment queued path remains |
-| 10 | `field5117` | derived | movement gate used when that pre-assignment remainder is exhausted |
-| 11 | `field5120` | `2` | same-ID restart mode |
-| 13 | `field5126` | `-1` | cached-model/skeletal animation identity path |
-| 17 | `field5134` | absent | 256-entry boolean mask; presence also affects defaults for opcodes 9/10 |
+### `classQR.field5599` -> `loopCount`
 
-Opcode 9 and opcode 10 defaulting is exact:
+This is exact.
 
-- if neither the opcode-3 interleave table nor opcode-17 boolean mask exists,
-  each missing value defaults to `0`;
-- otherwise each missing value defaults to `2`.
+Both `classRD.method9980` and `classEJ.method3922` increment it when playback crosses the definition end and attempts to loop. Completion checks it against `Animation.field5122`.
 
-This means simply storing raw explicit opcode values is insufficient. The cache
-adapter must preserve the final authored policy after constructor/default rules.
+Same-ID restart mode 2 resets only this field, further confirming that it is the independent iteration/loop counter.
 
-Other sequence opcodes are still port-relevant for posing, hand overrides, sounds,
-blending and cached-model behavior. They are outside this narrow assignment-policy
-finding and remain in the broader `PORT-MATRIX.md` audit.
+### `classQR.field5598` -> `unreadyCycles`
 
-## Exact movement-gating evidence
+This is **not** playback elapsed time.
 
-The actor source uses two different sequence-definition policy fields based on
-`Actor.field1476`.
-
-When an action is active and its explicit delay is zero, normal path movement can
-be blocked as follows:
+At the beginning of `classRD.method9980`:
 
 ```text
-if field1476 > 0 and Animation.field5129 == 0:
-    block normal path progress
-
-if field1476 <= 0 and Animation.field5117 == 0:
-    block normal path progress
+if controller has no definition:
+    unreadyCycles = 0
+else if Animation.method8820(definition) reports animation assets ready:
+    unreadyCycles = 0
+else:
+    unreadyCycles += advanceAmount
 ```
 
-`field1476` is reset with path resets, is initialized from `field1471` when a new
-action is assigned, and is decremented when queued path entries are consumed.
-This establishes that it tracks action/path interaction state tied to the path that
-existed when the action began. The precise semantic name should remain provisional
-until the complete path scheduler trace is finished.
+`Animation.method8820` checks the cached-model animation resource on the Maya/cached path and the first required legacy frame archive on the legacy path.
 
-Do not encode this behavior in scene posing. It changes authoritative movement
-progress and therefore belongs in the actor semantic scheduler.
+`classKB.method6491` uses positive `unreadyCycles` to keep an idle fallback pose controller synchronized/advancing for a bounded window (`< 30` on the fallback controller).
 
-## Current Rust mismatch
+Do not use this field as sequence age or completion time in Rust.
 
-### 1. Sequence priority is discarded
+### Mode-specific playback state
 
-`crates/cache/src/osrs240/animation.rs` currently handles opcode `5` together with
-other one-byte fields by reading and discarding it:
+Legacy definitions use:
 
 ```text
-5 | 9 | 10 | 16 => read u8 and drop
+frame
+frameCycle
+loopCount
 ```
 
-`SequenceAsset` has `restart`, `max_loops`, frame/cached-animation fields and range,
-but it has no replacement-priority field.
-
-Consequence: `GameState` cannot reproduce the exact lower-priority rejection in
-`classCU.method2672`, even if assignment logic is otherwise corrected.
-
-### 2. Both movement-gating policy fields are discarded
-
-The same decoder drops opcodes `9` and `10`, and therefore also loses the derived
-constructor defaults based on opcode 3/17 mask presence.
-
-Consequence: a future actor scheduler would not have enough immutable sequence
-metadata to reproduce path blocking/catch-up behavior.
-
-### 3. Same-ID restart modes cannot work
-
-`ActorSequenceSlot::set_sequence` currently mutates only when:
+Cached-model definitions use:
 
 ```text
-self.sequence != requested_sequence
+frame/time position
+loopCount
 ```
 
-For the same ID it performs no action, so revision-240 restart mode 1 and mode 2
-are both impossible.
+The cached path deliberately leaves `frameCycle` untouched.
 
-### 4. Playback state is too small for the proven restart distinction
+A Rust representation may use a typed enum for these mode-specific fields rather than mirroring the Java storage layout.
 
-The current `ActorSequenceSlot` contains:
+## 3. Definition fields now closed for scheduling
 
-- sequence ID
-- optional frame
-- aggregate cycle
-- delay
+| Opcode | Source field | Default | Exact scheduler role |
+| ---: | --- | ---: | --- |
+| 1 | `field5123` + `field5125` | absent | legacy frame lengths and frame IDs |
+| 2 | `field5132` / API `getFrameStep()` | `-1` | loop-back distance |
+| 5 | `field5119` | `5` | replacement priority |
+| 8 | `field5122` | `99` | maximum loop count before terminal completion |
+| 9 | `field5129` | derived | action/path movement gate while pre-assignment path remainder exists |
+| 10 | `field5117` | derived | action/path movement gate after that remainder is exhausted |
+| 11 | `field5120` / API `getRestartMode()` | `2` | same-ID restart behavior |
+| 13 | `field5126` | `-1` | cached-model animation identity |
+| 15 | `field5127`, `field5128` | `0`, `0` | cached-model start/end range; difference is cached duration |
+| 17 | `field5134` | absent | boolean mask affecting opcode 9/10 defaults and blending behavior |
 
-It has no explicit loop/iteration counter equivalent to the controller state that
-`classQR.method9793` resets independently. Its `advance_cycles` only consumes start
-delay and increments aggregate cycle. It does not implement authored finite-loop
-completion.
+Opcode 9 and 10 defaulting remains exact:
 
-### 5. Assignment has no definition-policy input
+- if neither the opcode-3 interleave table nor opcode-17 mask exists, a missing value defaults to `0`;
+- otherwise a missing value defaults to `2`.
 
-Player/NPC attribute application currently calls `set_sequence` with ID/delay only.
-No sequence definition is available at the semantic mutation boundary, so the
-mutation cannot evaluate:
+`Animation.field5131` is the sum of decoded legacy frame lengths and is used to reduce large legacy advancement amounts modulo total duration when loop-back is possible.
 
-- same-ID restart mode;
-- replacement priority;
-- movement-gating policy;
-- max loops/completion policy.
+## 4. Common advancement flags
 
-This is an ownership/API design issue, not a missing `if` statement.
+`classRD.method9980(controller, advanceAmount, callbackSink, ...)` returns a bitset.
 
-### 6. Player movement currently has no stock-like queued path state
+Observed meanings:
 
-The current player semantic movement helper directly advances the confirmed tile
-for step/run updates. It retains traversal speed and exact movement, but not the
-stock actor's multi-entry path queue/action-path remainder represented by the
-`field1471`/`field1476` interaction.
+| Bit | Meaning |
+| ---: | --- |
+| `1` | playback crossed the end and attempted a loop |
+| `2` | terminal completion occurred |
+| `4` | at least one frame/time step advanced |
+| `8` | definition entered advancement with `frameStep == -1` |
 
-This does not automatically mean the Rust design must copy a ten-element Java
-array. It does mean the semantic owner needs enough queued-path state to reproduce
-cycle-by-cycle movement and sequence blocking rather than asking the renderer to
-fake it from packet endpoints.
+The actor scheduler uses terminal bit `2` for pose/action lifetime decisions. Spot-effect scheduling also observes the loop-boundary bit; that effect-specific behavior remains for the next trace.
 
-NPCs already retain an ordered path request. Player and NPC scheduling should
-converge on shared actor semantics where the 240 behavior is actually shared.
+## 5. Legacy frame advancement
 
-## Required Rust contract before implementation
+For non-cached definitions, `classRD.method9980` loads current `frame`, `frameCycle`, and `loopCount`.
 
-Do not patch `ActorSequenceSlot::set_sequence` in isolation. First make the semantic
-contract able to express the source behavior.
+If the stored frame is already beyond the frame array, it normalizes frame/frameCycle to zero before continuing.
 
-At minimum, immutable sequence policy must expose:
+When `frameStep > 0` and total legacy frame duration is positive, a large requested advancement is reduced modulo that duration.
+
+The core loop is:
 
 ```text
-restart_mode
-replacement_priority
-movement_gate_with_preexisting_path
-movement_gate_after_preexisting_path
-max_loops
+frameCycle += advanceAmount
+
+while frameCycle > frameLengths[frame]:
+    frameCycle -= frameLengths[frame]
+    frame += 1
+    mark ADVANCED
+    emit frame callback when configured
+
+    if frame >= frameCount:
+        loopCount += 1
+        mark LOOP_BOUNDARY
+        frame -= frameStep
+
+        if loopCount >= maxLoops:
+            mark TERMINAL
+
+        if frame < 0 or frame >= frameCount:
+            mark TERMINAL
+            frame = 0
+
+        if not terminal:
+            emit callback for looped-to frame when configured
 ```
 
-Names can be improved once the complete source trace is finished. The first four
-must preserve the 240 values/default rules, not generic assumptions.
+Then the controller stores the final `(frame, frameCycle, loopCount)`.
 
-Authoritative action playback needs distinct state for at least:
+### Timing quirk
+
+The legacy boundary is strictly:
 
 ```text
-sequence id
-start delay
-legacy frame or cached-animation time
-within-frame time where applicable
-loop/iteration count
-completion state
-path remainder captured/derived for movement gating
+frameCycle > frameLengths[frame]
 ```
 
-The exact representation should support both legacy frames and cached-model
-animations without making cache objects or renderer resources part of `GameState`.
+not `>=`.
 
-## Recommended semantic gateway
+Do not replace it with a conventional zero-based `>= duration` loop without reconciling the resulting one-cycle difference.
 
-The clean boundary is a definition-informed action assignment operation, not a raw
-packet callback and not a renderer decision.
+### Loop-back quirk
 
-Conceptually:
+Looping subtracts authored `frameStep` from the frame index. It does **not** automatically restart at frame `0`.
+
+If the subtraction produces an invalid frame, playback is terminal even if `maxLoops` has not yet been reached.
+
+## 6. Cached-model advancement
+
+`classEJ.method3922` handles cached-model/Maya definitions.
+
+It reads the controller's frame/time position and loopCount. There is no legacy `frameCycle` accumulation.
+
+For positive `frameStep`, a large positive advancement is reduced to the equivalent positive remainder within one loop-step span.
+
+Then each remaining cycle does:
 
 ```text
-protocol mask decode
+frame += 1
+mark ADVANCED
+emit frame callback when configured
+
+if frame >= cachedDuration:
+    loopCount += 1
+    mark LOOP_BOUNDARY
+    frame -= frameStep
+
+    if loopCount >= maxLoops:
+        mark TERMINAL
+
+    if frame < 0 or frame >= cachedDuration:
+        mark TERMINAL
+        frame = 0
+
+    if not terminal:
+        emit callback for looped-to frame when configured
+```
+
+The controller stores `(frame, loopCount)` and leaves legacy frameCycle alone.
+
+Legacy and cached definitions therefore share the same loop-count and terminal policy but not the same intra-loop timing representation.
+
+## 7. Slot-specific completion policy
+
+Terminal bit `2` does not have one universal consequence.
+
+### Pose controller
+
+When active pose advancement becomes terminal, `classKB.method6491` calls `resetPlaybackState`.
+
+The pose sequence remains assigned and restarts from its beginning.
+
+### Idle fallback controller
+
+The same terminal behavior applies: reset playback state, keep the sequence assigned.
+
+### Action controller
+
+When action advancement becomes terminal, `classKB.method6491` calls `clearSequence`.
+
+The action becomes inactive.
+
+Therefore a generic scheduler that always loops or always clears on terminal completion would be incompatible. Lifetime policy belongs to the actor slot using the shared playback result.
+
+## 8. Exact action-delay ordering
+
+`classKB.method6491` separates delay consumption from action advancement.
+
+When the special action/path hold is not active:
+
+```text
+if actionDelay > 0:
+    actionDelay -= 1
+    consumedDelayThisCycle = true
+
+if not frozen and not consumedDelayThisCycle:
+    advance action controller by one cycle
+```
+
+So a controller does **not** advance on the same cycle that a positive delay is decremented to zero.
+
+### Hold at delay one
+
+Before freeze-window processing, an active action can force:
+
+```text
+actionDelay = 1
+```
+
+and mark the cycle so that the later delay decrement/action advancement block is skipped.
+
+The gate involves:
+
+- action definition `field5129 == 1`;
+- captured pre-assignment path remainder `Actor.field1476 > 0`;
+- the exact/forced-movement cycle bounds relative to the current client cycle.
+
+This reproduces the old-client action/path synchronization hold. It changes authoritative action timing and cannot live in scene interpolation.
+
+## 9. Movement-gating policy
+
+Separate from the delay-one hold, Actor path movement uses two authored definition policies while an action is active with zero explicit delay:
+
+```text
+if Actor.field1476 > 0 and Animation.field5129 == 0:
+    block ordinary path progress
+
+if Actor.field1476 <= 0 and Animation.field5117 == 0:
+    block ordinary path progress
+```
+
+`Actor.field1476` is initialized from current path backlog/remainder when a new action is assigned and changes as path work is consumed.
+
+This policy belongs in the shared actor semantic scheduler, not the renderer.
+
+## 10. Freeze-window interaction
+
+`AnimationFreezeWindow` is half-open:
+
+```text
+startCycle <= cycle < endCycle
+```
+
+At a start transition, `classKB.method6491` can snapshot action/pose controllers and optionally invoke the actor reset helper.
+
+While the actor is frozen:
+
+- active pose advancement is suppressed;
+- action delay/action advancement is suppressed by the scheduler's frozen gate;
+- ordinary smooth body turning is skipped by the outer actor cycle via the same actor frozen state;
+- spot-animation controllers are still processed because their loop in `classKB.method6491` is outside the `!frozen` pose/action section.
+
+This is not a global animation stop.
+
+## 11. Resource-readiness fallback
+
+When not frozen, the active pose controller advances first.
+
+The scheduler then sets the fallback controller to the authored idle sequence. If the active pose has positive `unreadyCycles` and the idle fallback has been unready for fewer than 30 cycles:
+
+- if both controller IDs match, copy active pose controller state into the fallback;
+- otherwise advance the fallback controller independently and restart it on terminal completion.
+
+This is compatibility behavior for animation-resource readiness. RustClient may express the fallback differently architecturally, but it must not reinterpret `unreadyCycles` as gameplay sequence age.
+
+## 12. Current RustClient mismatches
+
+The earlier audit found several semantic gaps that remain implementation work.
+
+### Cache policy loss
+
+The revision-240 cache adapter historically discarded opcode `5`, `9`, and `10`, preventing exact replacement priority and movement-gate policy from reaching GameState.
+
+The cache-derived semantic policy must preserve final values after constructor defaulting, not only explicit wire opcodes.
+
+### Same-ID reassignment
+
+`ActorSequenceSlot::set_sequence` historically ignored same-ID requests, so restart modes 1 and 2 could not be reproduced.
+
+### Playback state too small
+
+An aggregate `cycle` field is insufficient for the exact contract. The source distinguishes:
+
+- legacy frame;
+- legacy within-frame cycle;
+- cached-model frame/time;
+- loopCount;
+- action delay;
+- asset-readiness wait state where fallback posing needs it;
+- terminal lifetime interpreted by slot.
+
+### Assignment lacks policy input
+
+Raw `{id, delay}` mutation cannot evaluate restart mode, replacement priority, max loops, or movement gates. The application/domain boundary must resolve an immutable sequence-policy view before authoritative mutation.
+
+### Shared actor path state
+
+Player/NPC sequence scheduling needs enough shared queued-path semantics to reproduce the `field1476` movement/action interaction. Rust does not need the exact Java array layout, but it does need the behavior.
+
+## 13. Required Rust semantic contract
+
+A dependency-light immutable view should expose at least:
+
+```text
+SequencePolicy {
+    restart_mode
+    replacement_priority
+    movement_gate_with_preexisting_path
+    movement_gate_after_preexisting_path
+    frame_step
+    max_loops
+    timing: Legacy { frame_lengths } | Cached { duration }
+}
+```
+
+Authoritative playback needs mode-specific state rather than one ambiguous cycle counter, for example:
+
+```text
+SequencePlayback {
+    sequence_id
+    delay
+    loop_count
+    unready_cycles
+    position:
+        Legacy { frame, frame_cycle }
+        Cached { time }
+}
+```
+
+Exact type placement should respect crate dependency rules; `game-state` should not depend directly on heavyweight cache objects merely to evaluate policy.
+
+A clean flow remains:
+
+```text
+protocol update
     -> SequenceChange { id, delay }
-    -> application/domain gateway resolves immutable SequencePolicy
-    -> GameState validates assignment against current action/path state
-    -> committed action state/delta
-    -> scene selects/advances pose from committed state + immutable assets
+    -> application resolves immutable SequencePolicy
+    -> GameState applies assignment/restart/priority/path policy
+    -> actor scheduler advances committed playback per cycle
+    -> scene/model poses committed frame/time
 ```
 
-Whether `SequencePolicy` lives in `model`, a dependency-light semantic asset view,
-or an application-mediated command should be decided against existing dependency
-rules before code changes. Do not make `game-state` depend directly on the cache
-crate merely to obtain a priority byte.
+## 14. Implementation acceptance cases
 
-## Focused verification when implementation begins
+When implementation begins, focused tests should cover at least:
 
-No broad gate is required for this research document. The eventual implementation
-should have small semantic contracts for:
-
-1. same ID + restart 1 resets full playback counters and reapplies delay;
-2. same ID + restart 2 resets only iteration/loop state;
+1. same ID + restart mode 1 resets frame/frameCycle/loopCount and reapplies delay;
+2. same ID + restart mode 2 resets only loopCount;
 3. same ID + other restart mode is a no-op;
 4. lower-priority different ID is rejected;
-5. equal/higher-priority different ID replaces and captures path interaction state;
-6. clearing with `-1`/`None` behaves independently of priority rejection;
-7. opcode 5, 9, 10 and 11 values/defaults survive cache decode;
-8. preexisting-path versus post-remainder movement gates block only under the exact
-   policy values established by the deob;
-9. replay/fingerprint state changes when newly authoritative scheduler fields do.
+5. equal/higher priority replacement succeeds and captures path interaction state;
+6. clearing ignores replacement-priority rejection;
+7. legacy transition uses strict `>` frame-length boundary;
+8. legacy loop-back subtracts frameStep;
+9. cached playback advances one time unit per cycle without mutating frameCycle;
+10. loopCount increments at end crossing and maxLoops produces terminal completion;
+11. invalid loop-back is terminal;
+12. terminal pose restarts while terminal action clears;
+13. positive delay decrements without advancing action on the same cycle;
+14. delay-one path hold preserves delay and suppresses action advancement;
+15. freeze suppresses pose/action but does not suppress the spot-animation loop;
+16. asset-unready pose fallback uses readiness state rather than gameplay elapsed time;
+17. authoritative replay/fingerprint state includes newly semantic playback fields.
 
-These should be focused unit/fixture tests, not a workspace-wide validation pass
-for the research branch.
+## 15. Remaining research
 
-## Immediate conclusion
+The core action/pose sequence lifetime question is now closed as a source-control-flow problem.
 
-The current animation problem is not primarily a renderer problem. The revision-240
-client makes action assignment and movement decisions from sequence metadata that
-RustClient currently discards, and it maintains playback/path interaction state
-that `ActorSequenceSlot` does not yet represent.
+Next research should move to:
 
-Fixing this semantic scheduler layer should happen before trying to tune animation
-visuals around the existing state, otherwise the renderer will be compensating for
-incorrect authoritative behavior.
+1. actor spot-animation add/remove/repeat/advance semantics and mask decode;
+2. hitsplat/headbar replacement and expiry rules;
+3. overhead/tint/freeze/customization state;
+4. player composition/model invalidation and final pose assembly.
+
+Do not reopen `classQR.field5598` as an elapsed-time candidate or `field5599` as an ambiguous counter unless new contradictory exact-240 evidence appears.
+
+## Verification
+
+Source/manual evidence only for this wave. No `verify.sh`, tests, Clippy, CI, compilation, mapping regeneration, or workspace gate was run.
