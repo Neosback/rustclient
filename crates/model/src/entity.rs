@@ -401,6 +401,10 @@ pub struct NpcInfoUpdate {
     /// Resolved scheduling definitions attached by application orchestration after protocol decode.
     /// An empty table preserves compatibility with direct semantic fixtures that have no cache.
     pub sequence_policies: Vec<(SequenceId, SequencePolicy)>,
+    /// Resolved definition-derived path acceleration attached after protocol decode.
+    /// An empty table leaves direct semantic fixtures unresolved instead of guessing cache policy.
+    pub path_acceleration_policies:
+        Vec<(crate::NpcDefinitionId, crate::PathAccelerationPolicy)>,
 }
 
 /// Server-authored changes to a visible NPC, applied in packet block order.
