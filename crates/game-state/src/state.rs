@@ -28,7 +28,7 @@ impl fmt::Display for LifecycleError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter.write_str(match self {
             Self::AlreadyActive => "game session is already active",
-            Self::NotActive => "no game session is active",
+            Self::NotActive => "no semantic game session is active",
         })
     }
 }
@@ -223,6 +223,7 @@ impl GameState {
                     orientation: 0,
                     appearance: None,
                     sequence: rustclient_model::ActorSequenceSlot::default(),
+                    sequence_timing_resolved: false,
                     animation_cycle: 0,
                     locomotion: crate::Locomotion::Idle,
                 },
