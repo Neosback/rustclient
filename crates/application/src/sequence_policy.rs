@@ -1,15 +1,18 @@
-//! Resolve definition-derived action-sequence policy before authoritative entity mutation.
+//! Resolve definition-derived actor scheduling policy before authoritative entity mutation.
 
-use rustclient_cache::{Cache, CacheError, CacheProfile, osrs240::sequence_policy};
+use rustclient_cache::{
+    Cache, CacheError, CacheProfile,
+    osrs240::{npc_path_policy, sequence_policy},
+};
 use rustclient_game_state::SemanticOperation;
 use rustclient_model::{
-    NpcInfoUpdate, NpcProperty, PlayerInfoUpdate, RemotePlayerUpdate, SequenceChange, SequenceId,
-    SequencePolicy,
+    NpcDefinitionId, NpcInfoUpdate, NpcProperty, PathAccelerationPolicy, PlayerInfoUpdate,
+    RemotePlayerUpdate, SequenceChange, SequenceId, SequencePolicy,
 };
 use rustclient_platform::ReadOnlyBlobs;
 use std::collections::{BTreeMap, BTreeSet};
 
-/// Cache-backed, target-neutral memoizer for packet-time action-sequence scheduling policy.
+/// Cache-backed, target-neutral memoizer for packet-time actor scheduling policy.
 ///
 /// It owns no live actor state. The authoritative update remains a [`SemanticOperation`]; this
 /// service only enriches entity updates with immutable definition-derived scheduling inputs.
@@ -17,6 +20,7 @@ pub struct SequencePolicyResolver<S> {
     cache: Cache<S>,
     profile: CacheProfile,
     policies: BTreeMap<SequenceId, SequencePolicy>,
+    npc_path_policies: BTreeMap<NpcDefinitionId, PathAccelerationPolicy>,
 }
 
 impl<S: ReadOnlyBlobs> SequencePolicyResolver<S> {
@@ -26,13 +30,14 @@ impl<S: ReadOnlyBlobs> SequencePolicyResolver<S> {
             cache,
             profile,
             policies: BTreeMap::new(),
+            npc_path_policies: BTreeMap::new(),
         }
     }
 
-    /// Attach every sequence policy referenced by one decoded semantic operation.
+    /// Attach every definition policy referenced by one decoded semantic operation.
     ///
-    /// Non-entity operations pass through untouched. Clear/unchanged sequence fields require no
-    /// definition lookup. The attached tables are sorted and contain each referenced id once.
+    /// Non-entity operations pass through untouched. The attached tables are sorted and contain
+    /// each referenced definition id once.
     ///
     /// # Errors
     /// Returns the underlying cache/decode failure rather than allowing GameState to guess policy.
@@ -45,7 +50,10 @@ impl<S: ReadOnlyBlobs> SequencePolicyResolver<S> {
                 update.sequence_policies = self.resolve_ids(player_sequence_ids(update))?;
             }
             SemanticOperation::UpdateNpcs(update) => {
-                update.sequence_policies = self.resolve_ids(npc_sequence_ids(update))?;
+                let sequence_ids = npc_sequence_ids(update);
+                let definition_ids = npc_definition_ids(update);
+                update.sequence_policies = self.resolve_ids(sequence_ids)?;
+                update.path_acceleration_policies = self.resolve_npc_path_ids(definition_ids)?;
             }
             _ => {}
         }
@@ -63,6 +71,24 @@ impl<S: ReadOnlyBlobs> SequencePolicyResolver<S> {
             } else {
                 let policy = sequence_policy::resolve(&self.cache, self.profile, id)?;
                 self.policies.insert(id, policy);
+                policy
+            };
+            resolved.push((id, policy));
+        }
+        Ok(resolved)
+    }
+
+    fn resolve_npc_path_ids(
+        &mut self,
+        ids: BTreeSet<NpcDefinitionId>,
+    ) -> Result<Vec<(NpcDefinitionId, PathAccelerationPolicy)>, CacheError> {
+        let mut resolved = Vec::with_capacity(ids.len());
+        for id in ids {
+            let policy = if let Some(policy) = self.npc_path_policies.get(&id).copied() {
+                policy
+            } else {
+                let policy = npc_path_policy::resolve(&self.cache, self.profile, id)?;
+                self.npc_path_policies.insert(id, policy);
                 policy
             };
             resolved.push((id, policy));
@@ -103,12 +129,27 @@ fn npc_sequence_ids(update: &NpcInfoUpdate) -> BTreeSet<SequenceId> {
         .collect()
 }
 
+fn npc_definition_ids(update: &NpcInfoUpdate) -> BTreeSet<NpcDefinitionId> {
+    let mut ids: BTreeSet<_> = update.new_npcs.iter().map(|npc| npc.definition_id).collect();
+    ids.extend(
+        update
+            .attributes
+            .iter()
+            .flat_map(|attributes| &attributes.changes)
+            .filter_map(|change| match change {
+                NpcProperty::Definition(id) => Some(*id),
+                _ => None,
+            }),
+    );
+    ids
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{npc_sequence_ids, player_sequence_ids};
+    use super::{npc_definition_ids, npc_sequence_ids, player_sequence_ids};
     use rustclient_model::{
-        NpcAttributeUpdate, NpcIndex, NpcInfoUpdate, NpcProperty, PlayerIndex, PlayerInfoUpdate,
-        RemotePlayerUpdate, SequenceChange, SequenceId,
+        NewNpc, NpcAttributeUpdate, NpcDefinitionId, NpcIndex, NpcInfoUpdate, NpcProperty,
+        PlayerIndex, PlayerInfoUpdate, RemotePlayerUpdate, SequenceChange, SequenceId,
     };
 
     #[test]
@@ -170,5 +211,26 @@ mod tests {
             ..Default::default()
         };
         assert_eq!(npc_sequence_ids(&update).into_iter().collect::<Vec<_>>(), vec![low, high]);
+    }
+
+    #[test]
+    fn npc_definition_ids_include_spawns_and_definition_changes() {
+        let low = NpcDefinitionId::new(4);
+        let high = NpcDefinitionId::new(9);
+        let update = NpcInfoUpdate {
+            new_npcs: vec![NewNpc {
+                index: NpcIndex::new(1),
+                definition_id: high,
+                delta_x: 0,
+                delta_y: 0,
+                orientation: 0,
+            }],
+            attributes: vec![NpcAttributeUpdate {
+                index: NpcIndex::new(1),
+                changes: vec![NpcProperty::Definition(low), NpcProperty::Definition(high)],
+            }],
+            ..Default::default()
+        };
+        assert_eq!(npc_definition_ids(&update).into_iter().collect::<Vec<_>>(), vec![low, high]);
     }
 }
