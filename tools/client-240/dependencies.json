@@ -1,0 +1,98 @@
+{
+  "schema_version": 1,
+  "purpose": "Pinned Java dependencies for the client-240 mapping, remapping, and decompilation toolchain.",
+  "artifacts": [
+    {
+      "path": "tools/client-240/vendor/tiny_deps/asm-9.6.jar",
+      "size_bytes": 123598,
+      "sha256": "3c6fac2424db3d4a853b669f4e3d1d9c3c552235e19a319673f887083c2303a1",
+      "upstream": "org.ow2.asm:asm",
+      "version": "9.6",
+      "license_path": "tools/client-240/vendor/licenses/asm-bsd-3-clause.txt",
+      "source_url": "https://repo1.maven.org/maven2/org/ow2/asm/asm/9.6/asm-9.6.jar"
+    },
+    {
+      "path": "tools/client-240/vendor/tiny_deps/asm-analysis-9.6.jar",
+      "size_bytes": 34041,
+      "sha256": "d92832d7c37edc07c60e2559ac6118b31d642e337a6671edcb7ba9fae68edbbb",
+      "upstream": "org.ow2.asm:asm-analysis",
+      "version": "9.6",
+      "license_path": "tools/client-240/vendor/licenses/asm-bsd-3-clause.txt",
+      "source_url": "https://repo1.maven.org/maven2/org/ow2/asm/asm-analysis/9.6/asm-analysis-9.6.jar"
+    },
+    {
+      "path": "tools/client-240/vendor/tiny_deps/asm-commons-9.6.jar",
+      "size_bytes": 72194,
+      "sha256": "7aefd0d5c0901701c69f7513feda765fb6be33af2ce7aa17c5781fc87657c511",
+      "upstream": "org.ow2.asm:asm-commons",
+      "version": "9.6",
+      "license_path": "tools/client-240/vendor/licenses/asm-bsd-3-clause.txt",
+      "source_url": "https://repo1.maven.org/maven2/org/ow2/asm/asm-commons/9.6/asm-commons-9.6.jar"
+    },
+    {
+      "path": "tools/client-240/vendor/tiny_deps/asm-tree-9.6.jar",
+      "size_bytes": 51935,
+      "sha256": "c43ecf17b539c777e15da7b5b86553b377e2d39a683de6285567d5283888e7ef",
+      "upstream": "org.ow2.asm:asm-tree",
+      "version": "9.6",
+      "license_path": "tools/client-240/vendor/licenses/asm-bsd-3-clause.txt",
+      "source_url": "https://repo1.maven.org/maven2/org/ow2/asm/asm-tree/9.6/asm-tree-9.6.jar"
+    },
+    {
+      "path": "tools/client-240/vendor/tiny_deps/asm-util-9.6.jar",
+      "size_bytes": 91131,
+      "sha256": "c635a7402f4aa9bf66b2f4230cea62025a0fe1cd63e8729adefc9b1994fac4c3",
+      "upstream": "org.ow2.asm:asm-util",
+      "version": "9.6",
+      "license_path": "tools/client-240/vendor/licenses/asm-bsd-3-clause.txt",
+      "source_url": "https://repo1.maven.org/maven2/org/ow2/asm/asm-util/9.6/asm-util-9.6.jar"
+    },
+    {
+      "path": "tools/client-240/vendor/tiny-remapper-0.10.3.jar",
+      "size_bytes": 227222,
+      "sha256": "8b0abcbdc373f85b04dce6adf9db31922827957718b31f39791e7c254df736b2",
+      "upstream": "net.fabricmc:tiny-remapper",
+      "version": "0.10.3",
+      "license_path": "tools/client-240/vendor/licenses/tiny-remapper-lgpl-3.0.txt",
+      "source_url": "https://maven.fabricmc.net/net/fabricmc/tiny-remapper/0.10.3/tiny-remapper-0.10.3.jar"
+    },
+    {
+      "path": "tools/client-240/vendor/mapping-io-0.6.0.jar",
+      "size_bytes": 185842,
+      "sha256": "98fcc38111cb22a317ad3ca066ce969768978b34a64800a7bb385adcc3edb42f",
+      "upstream": "net.fabricmc:mapping-io",
+      "version": "0.6.0",
+      "license_path": "tools/client-240/vendor/licenses/mapping-io-apache-2.0.txt",
+      "source_url": "https://maven.fabricmc.net/net/fabricmc/mapping-io/0.6.0/mapping-io-0.6.0.jar"
+    },
+    {
+      "path": "tools/client-240/vendor/vineflower-1.12.0.jar",
+      "size_bytes": 1633863,
+      "sha256": "1dfcfe974395734fa467ce620661c7623d05ba83670de0529b1fbd63ff548b9d",
+      "upstream": "org.vineflower:vineflower",
+      "version": "1.12.0",
+      "license_path": "tools/client-240/vendor/licenses/vineflower-apache-2.0.txt",
+      "source_url": "https://repo1.maven.org/maven2/org/vineflower/vineflower/1.12.0/vineflower-1.12.0.jar"
+    },
+    {
+      "path": "tools/client-240/vendor/cfr-0.152.jar",
+      "size_bytes": 2162315,
+      "sha256": "f686e8f3ded377d7bc87d216a90e9e9512df4156e75b06c655a16648ae8765b2",
+      "upstream": "org.benf:cfr",
+      "version": "0.152",
+      "license_path": "tools/client-240/vendor/licenses/cfr-mit.txt",
+      "source_url": "https://repo1.maven.org/maven2/org/benf/cfr/0.152/cfr-0.152.jar"
+    }
+  ],
+  "sources": [
+    {
+      "path": "tools/client-240/vendor/sources/tiny-remapper-0.10.3-sources.jar",
+      "size_bytes": 127367,
+      "sha256": "8bb55b7de8a576241abca7a22fe13ae0c36511185ce075e8ead89cf4a5f3eb7d",
+      "upstream": "net.fabricmc:tiny-remapper-sources",
+      "version": "0.10.3",
+      "license_path": "tools/client-240/vendor/licenses/tiny-remapper-lgpl-3.0.txt",
+      "source_url": "https://maven.fabricmc.net/net/fabricmc/tiny-remapper/0.10.3/tiny-remapper-0.10.3-sources.jar"
+    }
+  ]
+}

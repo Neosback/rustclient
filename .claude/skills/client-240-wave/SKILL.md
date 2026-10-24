@@ -1,7 +1,8 @@
 ---
 name: client-240-wave
 description: "Run a parallel naming wave over the revision-240 client evidence. Picks clusters of unnamed classes with disjoint reference sets, gives each to its own subagent that writes an evidence-backed tiny-v2 mapping shard, ledger rows and a behavior write-up, verifies rename-only with tools/client-240/verify.sh, and commits one cluster per commit. Use for 'client wave', 'name more of the 240 client', 'do another deob wave', 'map the 240 client to readable names'. Takes a cluster count, an optional token ceiling and an area."
-version: 1.0.0
+metadata:
+  version: "1.1.0"
 ---
 
 # Revision-240 Client Naming Wave
@@ -12,6 +13,9 @@ RustClient crate is a separate spec-gated checkpoint.
 
 Read first: `docs/reference/client-240/README.md`, `docs/reference/client-240/AGENTS.md`,
 `docs/reference/rs240-port/{README,AGENTS,PORT-MATRIX}.md`, ADR-0005 and the root `AGENTS.md`.
+
+Run commands from the RustClient repository root, resolved with `git rev-parse --show-toplevel`.
+Install this canonical skill for Codex with `python3 tools/client-240/install-skill.py`.
 
 ## Arguments
 
@@ -45,8 +49,11 @@ git status --porcelain -- docs/reference/client-240 tools/client-240 references
 bash tools/client-240/verify.sh baseline-$(date +%Y%m%d)
 ```
 
-Stop if the baseline does not pass. Missing inputs print the exact `CLIENT240_TOOLS` /
-`CLIENT240_SEMANTIC_JAR` override to set.
+Stop if the baseline does not pass. Run `python3 tools/client-240/toolchain.py --check`
+first: the tool JARs and pinned inputs ship in the repository. Only a host JDK 17+, Python 3.9+,
+Git and Bash are prerequisites. Optional CLIENT240 overrides are for explicit alternate inputs.
+When asked to verify installation/setup only, stop after toolchain/baseline verification; do not
+start a naming wave or commit other sessions' pending shards.
 
 ### 2. Pick clusters with disjoint class sets
 
@@ -88,7 +95,7 @@ For `--dry-run`, print each cluster name, its classes, its reference-set size an
 serves, then stop.
 
 Seed material for agents: `proposals/235-carry.tsv` (T3 candidates by unique signature) and the packet
-tables at `/Users/tylercovalt/Documents/rl-suite-main/data/rev-240/mappings/`.
+tables at `docs/reference/client-240/inputs/{client,server}-packets.tsv`.
 
 ### 3. Brief the agents
 
@@ -111,7 +118,7 @@ the class number. Every prompt must carry:
    reconcile. For a member of a class it does not own, or a class nobody owns, it writes a handover line
    instead of a mapping entry. `client` and `rl5` are owned by nobody in a wave unless explicitly assigned.
 6. **Cross-check ambiguous decompilation** (labelled breaks, collapsed switches, `$VF` markers) with a second
-   decompiler already available under `/Users/tylercovalt/Documents/Java Deob/` (jadx, CFR, Procyon) and
+   decompiler bundled in the repository (`tools/client-240/secondary-decompile.sh CLASS`, using CFR) and
    record disagreement instead of picking silently.
 7. **Client quirks stay**: document any odd or buggy original behavior as a `client quirk` with its method
    reference; never correct it in wording. A Rust port must reproduce it when OpenRune depends on it.

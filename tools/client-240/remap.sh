@@ -4,7 +4,7 @@
 #   roundtrip forward then readable -> semantic (must equal the input; see verify.sh)
 source "$(dirname "$0")/env.sh"
 client240_require_inputs
-mode="${1:?mode forward|roundtrip}"; out="${2:?output jar}"
+mode="${1:?mode forward|roundtrip}"; out="$(client240_output "${2:?output jar}")"
 map="${CLIENT240_MAP:-$CLIENT240_DOCS/mappings/merged.tiny}"
 mkdir -p "$CLIENT240_CACHE" "$(dirname "$out")"
 run() { "$CLIENT240_JAVA" -cp "$CLIENT240_REMAPPER" net.fabricmc.tinyremapper.Main "$@"; }

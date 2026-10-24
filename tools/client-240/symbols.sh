@@ -6,7 +6,7 @@
 source "$(dirname "$0")/env.sh"
 client240_require_inputs || exit 1
 for cls in "$@"; do
-  "$(dirname "$CLIENT240_JAVA")/javap" -p -s -cp "$CLIENT240_SEMANTIC_JAR" "$cls" | python3 -c '
+  "$CLIENT240_JAVAP" -p -s -cp "$CLIENT240_SEMANTIC_JAR" "$cls" | python3 -c '
 import re, sys
 cls = sys.argv[1]
 print(f"c\t{cls}\t{cls}")

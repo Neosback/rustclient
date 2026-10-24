@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "artifacts": [
+    {
+      "role": "original",
+      "path": "references/gamepacks/osrs-240/injected-client-1.12.39.jar",
+      "sha256": "25f42961c400bd9dfff1554402441c0ba6d1cffd011163cb9b0b4c42ae194f85",
+      "provenance": "docs/reference/gamepack-240.json"
+    },
+    {
+      "role": "semantic",
+      "path": "docs/reference/client-240/inputs/injected-client-1.12.39-deob-semantic.jar",
+      "sha256": "7ef51916eb8f47ce12d8787981d7d1dc96314e04c1e339f7fa57b94ad52116dc",
+      "provenance": "references/rl-suite-240/injected-client-1.12.39-deob-semantic.audit.json",
+      "usage": "Analysis-only pinned input; never execute or log in with this jar."
+    },
+    {
+      "role": "packet-table",
+      "path": "docs/reference/client-240/inputs/client-packets.tsv",
+      "sha256": "2ba5e2855fca01ffa3ce62a63ee41ee38b407c6572a65ec1532a749412a2ca57",
+      "provenance": "rl-suite 1.3.1 data/rev-240/mappings/client-packets.tsv"
+    },
+    {
+      "role": "packet-table",
+      "path": "docs/reference/client-240/inputs/server-packets.tsv",
+      "sha256": "02964eb784f4a18ba070d41f5ef158aad260e3db0b0c2ba02038817b1ca2db3b",
+      "provenance": "rl-suite 1.3.1 data/rev-240/mappings/server-packets.tsv"
+    }
+  ]
+}

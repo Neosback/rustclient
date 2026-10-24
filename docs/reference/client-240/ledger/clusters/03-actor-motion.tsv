@@ -1,0 +1,156 @@
+Actor.field1452	Actor	dz	pathCatchUpCycles	field	T4	A	Actor.method3284 increments when the action gate blocks and spends one to force base step 8; documented in ACTOR-CATCH-UP.md	game-state::ActorPathQueue	03-actor-motion
+Actor.field1496	Actor	mx	updatingActor	field	T4	B	Actor.method3291 stores the actor at the start of the cycle update and Actor.method3289 clears it at the end of classKN.method6539	-	03-actor-motion
+Actor.field1465	Actor	cz	actionDelay	field	T4	B	classKB.method6491 decrements while >0 and sets 1 for the Animation field5129==1 hold; Actor.method3284 and method3185 require 0 for an active action	game-state::sequence_scheduler	03-actor-motion
+Actor.field1432	Actor	bg	hitsplats	field	T4	A	Actor.method3138 iterates Hitsplat entries and inserts new ones; constructor ArrayList(4)	game-state::entities	03-actor-motion
+Actor.field1433	Actor	br	tint	field	T4	B	Actor.method3196 copies a classFL into it with start/end cycles; Actor.method3190 tests it; Player.vmethod93 applies it to the model	game-state::entities	03-actor-motion
+Actor.field1471	Actor	db	pathLength	field	T4	A	Actor.method3120 shifts 10-slot arrays and caps count at 9; Actor.method3284 reads pathLength-1 as oldest target and decrements on arrival	game-state::ActorPathQueue	03-actor-motion
+Actor.field1479	Actor	ck	overheadEffect	field	T4	B	classDC.method2954 public chat: field1479 = effects&0xFF	game-state::entities	03-actor-motion
+Actor.field1490	Actor	dd	forcedStartY	field	T4	A	Actor.method3284 approach phase target y; classDC.method2958 writes start y	game-state::actor_movement	03-actor-motion
+Actor.field1484	Actor	bb	localX	field	T4	A	Actor.getLocalLocation builds LocalPoint(field1484, field1486); Actor.method3292 writes (int)smoothX	game-state::ActorPathQueue	03-actor-motion
+Actor.field1486	Actor	bi	localY	field	T4	A	Actor.getLocalLocation builds LocalPoint(field1484, field1486); Actor.method3292 writes (int)smoothY	game-state::ActorPathQueue	03-actor-motion
+Actor.field1478	Actor	bw	index	field	T4	A	Actor constructor argument; compared with the local player index in Actor.method3280 and classDC.method2954	game-state::entities	03-actor-motion
+Actor.field1487	Actor	bt	sceneAddCycle	field	T4	B	Hitsplat.java (scene add) and classHO store the client cycle when the actor is added to the draw list; classCE compares cycle == field1487	-	03-actor-motion
+Actor.field1498	Actor	cj	frozenActionController	field	T4	B	classKB.method6491 copies actionController into it when a classQH freeze window starts; Actor.method3185 returns it while frozen	game-state::sequence_scheduler	03-actor-motion
+Actor.field1464	Actor	ch	idlePoseController	field	T4	B	classKB.method6491 sets it to the idlePoseAnimation each cycle and advances it; Actor.vmethod99 and Player.vmethod93 fall back to it when action and pose controllers are absent	game-state::sequence_scheduler	03-actor-motion
+Actor.field1497	Actor	cg	animationFreezes	field	T4	B	Actor.method3099 appends classQH(start,end,flag) windows; classKB.method6491 iterates them to decide the frozen state	game-state::sequence_scheduler	03-actor-motion
+Actor.field1491	Actor	di	forcedOrientation	field	T4	A	Actor.method3284 copies it to orientation during both forced phases; classDC.method2958 arg7	game-state::actor_movement	03-actor-motion
+Actor.field1449	Actor	cu	runRotateLeft	field	T4	A	Actor.method3284: step>=8 and base pose == walkRotateLeft selects this	game-state::sequence_scheduler	03-actor-motion
+Actor.field1450	Actor	cb	runRotateRight	field	T4	A	Actor.method3284: step>=8 and base pose == walkRotateRight selects this	game-state::sequence_scheduler	03-actor-motion
+Actor.field1451	Actor	ct	crawlAnimation	field	T4	A	Actor.method3284: step<=2 and base pose == walkAnimation selects this	game-state::sequence_scheduler	03-actor-motion
+Actor.field1444	Actor	cp	crawlRotate180	field	T4	A	Actor.method3284: step<=2 and base pose == walkRotate180 selects this	game-state::sequence_scheduler	03-actor-motion
+Actor.field1453	Actor	cq	crawlRotateLeft	field	T4	A	Actor.method3284: step<=2 and base pose == walkRotateLeft selects this	game-state::sequence_scheduler	03-actor-motion
+Actor.field1458	Actor	co	overheadColor	field	T4	B	classDC.method2954 public chat: field1458 = effects>>8	game-state::entities	03-actor-motion
+Actor.field1440	Actor	bj	healthBars	field	T4	A	Actor.method3144 and method3145 search/insert classCO nodes; Actor.getHealthRatio/getHealthScale read the head	game-state::entities	03-actor-motion
+Actor.field1475	Actor	bm	transparency	field	T4	B	classAAV.method272(cycle) result is passed to Model.method5230 in Player.vmethod93 as model transparency; written by classDC/classAS	game-state::entities	03-actor-motion
+Actor.field1436	Actor	ca	overheadPattern	field	T4	B	classDC.method2954 stores classKV.method6611(patternBytes); used by overhead text drawing in classCE	game-state::entities	03-actor-motion
+Actor.field1461	Actor	cc	facing	field	T4	A	classBZ facing state: Actor.method3162/3163/3165 test its mode/target; classEB.method3820 resolves it; classDC copies it	game-state::actor_movement (facing)	03-actor-motion
+Actor.field1462	Actor	cf	poseController	field	T4	A	Actor.getPoseAnimation/getPoseAnimationFrame read it; Actor.method3284 and classKN set it via Actor.method3096; advanced in classKB.method6491	game-state::sequence_scheduler	03-actor-motion
+Actor.field1482	Actor	ro	smoothY	field	T4	A	Actor.method3292 advances this float by step*dt and clamps at the path target; Actor.method3276 copies localY into it	game-state::actor_movement	03-actor-motion
+Actor.field1463	Actor	cn	actionController	field	T4	A	Actor.getAnimation/getAnimationFrame/setAnimation use it; gates movement in Actor.method3284; advanced in classKB.method6491	game-state::sequence_scheduler	03-actor-motion
+Actor.field1430	Actor	bu	tintEndCycle	field	T4	A	Actor.method3190 tests cycle < field1430; written by method3196 and method3192 arg2	game-state::entities	03-actor-motion
+Actor.field1454	Actor	cl	crawlRotateRight	field	T4	A	Actor.method3284: step<=2 and base pose == walkRotateRight selects this	game-state::sequence_scheduler	03-actor-motion
+Actor.field1439	Actor	by	tileSize	field	T4	A	position = pathTile*128 + size*64 in Actor.method3123; NPC copies NPCComposition size in classGA.method5325; returned by Actor.method3178 to ActorSpotAnim	game-state::entities	03-actor-motion
+Actor.field1499	Actor	cw	frozenPoseController	field	T4	B	classKB.method6491 copies poseController into it when a freeze window starts; Actor.method3187 returns it while frozen	game-state::sequence_scheduler	03-actor-motion
+Actor.field1480	Actor	ow	deathHealthBarIds	field	T4	B	Actor.method3277 tests health bar type id in this set before raising ActorDeath when health ratio is 0	-	03-actor-motion
+Actor.field1435	Actor	bo	tintStartCycle	field	T4	A	Actor.method3190 tests cycle >= field1435; written by method3196 and method3192 arg1	game-state::entities	03-actor-motion
+Actor.field1466	Actor	ci	animationsFrozen	field	T4	B	classKB.method6491 stores whether any freeze window is active; classKN.method6539 skips turning and Actor.method3185/3187 switch to frozen controllers	game-state::sequence_scheduler	03-actor-motion
+Actor.field1467	Actor	cx	spotAnims	field	T4	A	Actor.method3148 inserts ActorSpotAnim keyed by slot; Actor.method3150 iterates and removes them; Actor.method3299 returns it	game-state::sequence_scheduler	03-actor-motion
+Actor.field1481	Actor	ym	pendingEventFlags	field	T4	B	Actor.method3237/3285 set bit 1 (interacting changed), classQR.method9823 sets bit 2 (animation changed) when deferred; Actor.method3286 posts events and clears	-	03-actor-motion
+Actor.field1437	Actor	ba	worldViewId	field	T4	A	Actor.method3177 resolves WorldView by id via client.field815 (0 = top level); Actor.getLocalLocation passes it as LocalPoint worldview	game-state::entities	03-actor-motion
+Actor.field1488	Actor	cm	forcedStartX	field	T4	A	Actor.method3284 approach phase target x = size*64 + field1488*128; classDC.method2958 writes sceneRelative start x	game-state::actor_movement	03-actor-motion
+Actor.field1489	Actor	dc	forcedEndX	field	T4	A	Actor.method3284 interpolation phase end x; classDC.method2958 writes end x then Player.method2648 seeds path head	game-state::actor_movement	03-actor-motion
+Actor.field1492	Actor	dm	forcedEndY	field	T4	A	Actor.method3284 interpolation phase end y; classDC.method2958 writes end y	game-state::actor_movement	03-actor-motion
+Actor.field1494	Actor	dx	forcedStartCycle	field	T4	A	Actor.method3284 first branch while forcedStartCycle >= cycle (approach); classDC.method2958 arg5	game-state::actor_movement	03-actor-motion
+Actor.field1445	Actor	ce	spotAnimCount	field	T4	A	Actor.method3148 and createSpotAnim increment/decrement per insert/remove; Actor.method3150 zeroes it	game-state::sequence_scheduler	03-actor-motion
+Actor.field1441	Actor	cr	runRotate180	field	T4	A	Actor.method3284: step>=8 and base pose == walkRotate180 selects this; NPC copy from composition in classGA.method5325	game-state::sequence_scheduler	03-actor-motion
+Actor.field1469	Actor	dr	turnCycles	field	T4	A	classKN.method6539 increments while currentOrientation differs from orientation, resets to 0 when equal; idle turn pose only after more than 25	game-state::actor_movement (facing)	03-actor-motion
+Actor.field1470	Actor	dk	turnRate	field	T4	A	classKN.method6539 adds turnRate*direction to currentOrientation each cycle; constructor default 32; copied from NPCComposition in classGA.method5325	game-state::actor_movement (facing)	03-actor-motion
+Actor.field1495	Actor	dy	forcedEndCycle	field	T4	A	Actor.method3284 second branch while forcedEndCycle >= cycle (interpolate); Actor.method3180 tests it; classDC.method2958 arg6	game-state::actor_movement	03-actor-motion
+Actor.field1501	Actor	uh	eventsDeferred	field	T4	B	classQR.method9823 sets pendingEventFlags instead of posting AnimationChanged when true	-	03-actor-motion
+Actor.field1472	Actor	dw	pathX	field	T4	A	Actor.method3120 stores arg1 at index 0; Actor.method3284 target x = size*64 + pathX[pathLength-1]*128	game-state::ActorPathQueue	03-actor-motion
+Actor.field1431	Actor	dh	pathY	field	T4	A	Actor.method3120 stores arg2 at index 0; Actor.method3284 target y = size*64 + pathY[pathLength-1]*128	game-state::ActorPathQueue	03-actor-motion
+Actor.field1474	Actor	de	pathTraversal	field	T4	A	Actor.method3120 stores classGT mode; Actor.method3284 doubles step for run (classGT.field2679) and halves for crawl (field2677)	game-state::ActorPathQueue	03-actor-motion
+Actor.field1483	Actor	vl	smoothX	field	T4	A	Actor.method3292 advances this float by step*dt and clamps at the path target; Actor.method3275 copies localX into it	game-state::actor_movement	03-actor-motion
+Actor.field1476	Actor	dn	actionPathBacklog	field	T4	B	classAS and classCU assign pathLength when an action starts; Actor.method3284 selects the Animation opcode-9 gate while >0 and decrements on each path pop	game-state::sequence_scheduler	03-actor-motion
+Actor.method3277	Actor	lk	onHealthBarUpdated	method	T4	B	RuneLite hook run at the head of method3144; raises ActorDeath when ratio 0 and id in deathHealthBarIds	-	03-actor-motion
+Actor.method3091	Actor	dy	getPoseAnimationId	method	T4	B	Returns poseController id	game-state::sequence_scheduler	03-actor-motion
+Actor.method3096	Actor	di	switchPose	method	T4	A	Sets poseController to the given id, resetting frame state when leaving or entering the idle pose; called by classKN.method6539 and client	game-state::sequence_scheduler	03-actor-motion
+Actor.method3150	Actor	ei	removeAllSpotAnims	method	T4	B	Static; iterates spot anim table removing nodes, zeroes spotAnimCount	game-state::sequence_scheduler	03-actor-motion
+Actor.method3099	Actor	du	addAnimationFreeze	method	T4	B	Adds or replaces a classQH window starting at cycle+arg1 for arg2 cycles; called from classDC and classAS	game-state::sequence_scheduler	03-actor-motion
+Actor.method3106	Actor	dr	getActionAnimationId	method	T4	B	Returns actionController id	game-state::sequence_scheduler	03-actor-motion
+Actor.method3260	Actor	fd	getFaceAreaY	method	T4	A	Returns classBZ field630; classEB.method3820 area centre calculation	game-state::actor_movement (facing)	03-actor-motion
+Actor.method3113	Actor	db	hasActiveAction	method	T4	B	actionController has an animation and actionDelay == 0	game-state::sequence_scheduler	03-actor-motion
+Actor.method3120	Actor	dh	queuePathStep	method	T4	A	Shifts the 10-slot arrays, caps pathLength at 9 and writes the new step at index 0; called by Player/NPC step queuers	game-state::ActorPathQueue	03-actor-motion
+Actor.method3123	Actor	de	placeAtTile	method	T4	A	Resets pathLength, actionPathBacklog and catch-up, sets path head and fine position to tile centre; called by Player.method2644, NPC.method3471, classDC	game-state::ActorPathQueue	03-actor-motion
+Actor.method3129	Actor	dz	clearPathQueue	method	T4	B	Zeroes pathLength and actionPathBacklog only; called from client	game-state::ActorPathQueue	03-actor-motion
+Actor.method3236	Actor	su	isFacingSnap	method	T4	B	Static; returns classBZ snap flag field622	game-state::actor_movement (facing)	03-actor-motion
+Actor.method3165	Actor	da	hasFaceArea	method	T4	A	facing mode == coordinate (classLU.field4224) and area x != -1	game-state::actor_movement (facing)	03-actor-motion
+Actor.method3170	Actor	dp	clearFaceAngle	method	T4	B	Clears the snap flag and resets angle; called by classEB.method3820 and Player.method2644	game-state::actor_movement (facing)	03-actor-motion
+Actor.method3210	Actor	et	actionBlocksMovement	method	T4	A	Active action with opcode-9 field5129==0 while actionPathBacklog>0, or opcode-10 field5117==0 otherwise; used by classEB.method3820	game-state::sequence_scheduler	03-actor-motion
+Actor.method3177	Actor	ej	resolveWorldView	method	T4	A	worldViewId != 0 ? client.field815.method1584(id) : top-level view	game-state::entities	03-actor-motion
+Actor.method3283	Actor	iu	postSpotAnimGraphicChanged	method	T4	A	Posts GraphicChanged; called by setSpotAnim	-	03-actor-motion
+Actor.method3178	Actor	ed	getTileSize	method	T4	A	Returns tileSize; used by ActorSpotAnim	game-state::entities	03-actor-motion
+Actor.method3180	Actor	ev	isForcedMovementActive	method	T4	B	forcedEndCycle >= cycle	game-state::actor_movement	03-actor-motion
+Actor.method3185	Actor	el	getActiveActionController	method	T4	A	Returns frozen or live action controller if it has a usable animation, else null	game-state::sequence_scheduler	03-actor-motion
+Actor.method3187	Actor	eh	getActivePoseController	method	T4	A	Returns frozen or live pose controller unless it equals idle and an action controller is present	game-state::sequence_scheduler	03-actor-motion
+Actor.method3196	Actor	eq	setTint	method	T4	B	Stores tint start/end cycles and copies classFL; called 8 times by classDC	game-state::entities	03-actor-motion
+Actor.method3216	Actor	eu	faceAngleMayApply	method	T4	B	secondary behaviour is other, or pathLength == 0, or catch-up > 0; gate for face-angle in classEB.method3820	game-state::actor_movement (facing)	03-actor-motion
+Actor.method3190	Actor	en	isTintActive	method	T4	A	tint set and tintStartCycle <= cycle < tintEndCycle	game-state::entities	03-actor-motion
+Actor.method3232	Actor	ei	getFacingBehaviour	method	T4	B	Returns classBZ secondary behaviour field625	game-state::actor_movement (facing)	03-actor-motion
+Actor.method3205	Actor	es	headingToNextPathTarget	method	T4	A	Static; returns one of 0,256,512,768,1024,1280,1536,1792 or -1 from fine position vs oldest path target	game-state::actor_movement (facing)	03-actor-motion
+Actor.method3256	Actor	fl	getFaceFallbackAngle	method	T4	B	Returns classBZ field633; classEB.method3820 uses it when the target is not found	game-state::actor_movement (facing)	03-actor-motion
+Actor.method3263	Actor	fy	getFaceAreaWidth	method	T4	A	Returns classBZ field629 (low nibble read in classBZ.method1384)	game-state::actor_movement (facing)	03-actor-motion
+Actor.method3270	Actor	fi	getFaceAngle	method	T4	A	Returns classBZ field627	game-state::actor_movement (facing)	03-actor-motion
+Actor.method3291	Actor	xu	runMovementCycle	method	T4	A	Called first by classKN.method6539; sets updatingActor then runs method3284 and method3280	game-state::actor_movement	03-actor-motion
+Actor.method3280	Actor	ci	resetWhenOutsideScene	method	T4	A	Resets action, forced cycles, spot anims and position to path head when fine position leaves scene bounds or local player leaves 1536..11776	game-state::actor_movement	03-actor-motion
+Actor.method3192	Actor	gi	setTintComponents	method	T4	B	Static; stores tint start/end and passes four bytes to classFL.method4850; called from client and classAS	game-state::entities	03-actor-motion
+Actor.method3279	Actor	sw	postOverheadTextChanged	method	T4	A	Posts OverheadTextChanged; called from constructor after clearing text	-	03-actor-motion
+Actor.method3163	Actor	dj	hasFaceEntity	method	T4	A	facing mode == entity (classLU.field4223), target kind != none, index != -1	game-state::actor_movement (facing)	03-actor-motion
+Actor.method3213	Actor	ew	followsPathHeading	method	T4	A	secondary behaviour == follow-path (classLV.field4232) and not actionBlocksMovement; classEB.method3820 fallback heading	game-state::actor_movement (facing)	03-actor-motion
+Actor.method3292	Actor	tv	advanceMovementFractional	method	T4	A	Called per rendered frame from client.method2341 with dt=nanos/2e7; the only ordinary translation writer; pops path on arrival	game-state::actor_movement	03-actor-motion
+Actor.method3258	Actor	fj	getFaceAreaX	method	T4	A	Returns classBZ field628; classEB.method3820 area centre calculation	game-state::actor_movement (facing)	03-actor-motion
+Actor.method3276	Actor	ww	syncSmoothY	method	T4	A	smoothY = localY	-	03-actor-motion
+Actor.method3237	Actor	mi	markInteractingChangedOnRead	method	T4	B	Sets pendingEventFlags bit 1; called at head of decodeFacing	-	03-actor-motion
+Actor.method3244	Actor	ep	getFaceTargetKind	method	T4	B	Returns classBZ target kind field623 (none/player/NPC/world entity)	game-state::actor_movement (facing)	03-actor-motion
+Actor.method3228	Actor	hk	decodeFacing	method	T4	A	Static; reads classBZ from PacketBuffer via classBZ.method1384 (behaviour bits0-2, mode bits3-5, snap bit6)	game-state::actor_movement (facing)	03-actor-motion
+Actor.method3145	Actor	do	removeHealthBar	method	T4	A	Finds classCO whose config matches and calls vmethod398 to remove	game-state::entities	03-actor-motion
+Actor.method3290	Actor	js	postHitsplatApplied	method	T4	A	Builds or reuses Hitsplat and posts HitsplatApplied	-	03-actor-motion
+Actor.method3224	Actor	em	copyFacing	method	T4	A	Copies classBZ state from info decoder into the actor; called 9 times by classDC	game-state::actor_movement (facing)	03-actor-motion
+Actor.method3299	Actor	pk	getSpotAnimTable	method	T4	A	Returns spotAnims	-	03-actor-motion
+Actor.method3144	Actor	dv	updateHealthBar	method	T4	A	Finds existing classCO for config id or inserts in priority order, max four	game-state::entities	03-actor-motion
+Actor.method3148	Actor	dg	setSpotAnim	method	T4	A	Replaces or inserts ActorSpotAnim at slot with start cycle = cycle+delay; called from client, classDC, classAS	game-state::sequence_scheduler	03-actor-motion
+Actor.method3266	Actor	gg	getFaceAreaHeight	method	T4	A	Static; returns classBZ field632 (high nibble read in classBZ.method1384)	game-state::actor_movement (facing)	03-actor-motion
+Actor.method3105	Actor	dt	clearAnimationFreezes	method	T4	B	Nulls both frozen controllers and clears the freeze list; called from client, classDC, classAS	game-state::sequence_scheduler	03-actor-motion
+Actor.method3138	Actor	gs	addHitsplat	method	T4	A	Merges into hitsplats list by type/cycle, honours max count; called from client, classDC, classAS	game-state::entities	03-actor-motion
+Actor.method3285	Actor	dp	markInteractingChanged	method	T4	B	Sets pendingEventFlags bit 1; called at head of copyFacing	-	03-actor-motion
+Actor.method3289	Actor	xc	clearUpdatingActor	method	T4	B	Sets updatingActor to null; last call of classKN.method6539	-	03-actor-motion
+Actor.method3288	Actor	oc	bindActionControllerOwner	method	T4	B	actionController.field5604 = this; used by classQR.method9823 to post AnimationChanged	-	03-actor-motion
+Actor.method3243	Actor	eb	setFacingSnap	method	T4	B	Sets classBZ snap flag field622	game-state::actor_movement (facing)	03-actor-motion
+Actor.method3278	Actor	pa	postGraphicChanged	method	T4	A	Posts GraphicChanged; called by removeAllSpotAnims	-	03-actor-motion
+Actor.method3286	Actor	yd	postPendingEvents	method	T4	A	Posts InteractingChanged/AnimationChanged from pendingEventFlags then clears; called from client and classDF	-	03-actor-motion
+Actor.method3162	Actor	ds	hasFaceAngle	method	T4	A	facing mode == angle (classLU.field4226) and angle != -1	game-state::actor_movement (facing)	03-actor-motion
+Actor.method3252	Actor	fo	getFaceTargetIndex	method	T4	A	Returns classBZ field631; classEB.method3820 uses it to look up the NPC/player/world entity	game-state::actor_movement (facing)	03-actor-motion
+Actor.method3275	Actor	aw	syncSmoothX	method	T4	A	smoothX = localX	-	03-actor-motion
+Actor.method3284	Actor	cs	advanceMovement	method	T4	A	Forced approach/interpolate, blocked-cycle counting, snap beyond 288 units, speed and pose selection, path pop; see ACTOR-CATCH-UP.md	game-state::actor_movement	03-actor-motion
+Actor.method3222	Actor	ef	faceAreaMayApply	method	T4	B	secondary behaviour is other, or pathLength == 0; gate for face-area in classEB.method3820	game-state::actor_movement (facing)	03-actor-motion
+Actor.method3273	Actor	tg	setFaceAngle	method	T4	B	Static; sets classBZ angle field627; classAS NPC spawn after classGA.method5325	game-state::actor_movement (facing)	03-actor-motion
+Actor.method3111	Actor	ge	stopActionSequence	method	T4	B	Static; resets actionController to id -1 via classQR.method9765; called by Player.method2644, NPC.method3471/3465 when Animation.field5117==1	game-state::sequence_scheduler	03-actor-motion
+Actor.method3287	Actor	po	clearPendingHitsplat	method	T4	B	Sets Hitsplat.field1638 null; called at head of addHitsplat	-	03-actor-motion
+Player.field1282	Player	ap	locMergeModel	field	T4	B	client.method1882 builds it from an ObjectComposition model; Player.vmethod93 merges it into the player model during the window	game-state::players	03-actor-motion
+Player.field1281	Player	ae	username	field	T4	B	Player.method2615 builds classAAE from a string; compared with the local name in classDC and classCE	game-state::players	03-actor-motion
+Player.field1283	Player	ab	composition	field	T4	A	Player.method2615 fills PlayerComposition; vmethod93 builds the model from it	game-state::players	03-actor-motion
+Player.field1260	Player	aa	skillLevel	field	T4	B	Player.method2615 reads a short after combatLevel; classHO shows 'skill: N' when non-zero instead of combat level	game-state::players	03-actor-motion
+Player.field1268	Player	ax	nameDecorations	field	T4	B	Three strings read in Player.method2615; classHO builds prefix + name + suffix + level text	game-state::players	03-actor-motion
+Player.field1264	Player	as	prayerIcon	field	T4	A	Player.method2615 reads the byte after skullIcon; classCE draws field713[prayerIcon]	game-state::players	03-actor-motion
+Player.field1261	Player	aj	locMergeEndCycle	field	T4	B	client.method1882 = cycle + arg8; Player.vmethod93 window end	game-state::players	03-actor-motion
+Player.field1273	Player	am	plane	field	T4	B	classDC writes decoder plane into it; consumers use it as the actor level	game-state::players	03-actor-motion
+Player.field1275	Player	aq	locMergeHeight	field	T4	B	client.method1882 = averaged corner heights of the footprint	game-state::players	03-actor-motion
+Player.field1271	Player	ad	locMergeY	field	T4	B	client.method1882 = tileY*128 + footprintHeight*64; offset base y in Player.vmethod93	game-state::players	03-actor-motion
+Player.field1277	Player	au	locMergeMinTileX	field	T4	B	client.method1882 = tileX + min(arg9,arg11)	game-state::players	03-actor-motion
+Player.field1272	Player	ai	locMergeMinTileY	field	T4	B	client.method1882 = tileY + min(arg10,arg12)	game-state::players	03-actor-motion
+Player.field1276	Player	ar	locMergeMaxTileX	field	T4	B	client.method1882 = tileX + max(arg9,arg11)	game-state::players	03-actor-motion
+Player.field1278	Player	aw	locMergeMaxTileY	field	T4	B	client.method1882 = tileY + max(arg10,arg12)	game-state::players	03-actor-motion
+Player.field1257	Player	at	hidden	field	T4	B	Player.method2615 reads a boolean; scene add, chat and overlays skip the player when true	game-state::players	03-actor-motion
+Player.field1256	Player	al	locMergeStartCycle	field	T4	B	client.method1882 = cycle + arg7; Player.vmethod93 window start	game-state::players	03-actor-motion
+Player.field1279	Player	ay	locMergeX	field	T4	B	client.method1882 = tileX*128 + footprintWidth*64; offset base x in Player.vmethod93	game-state::players	03-actor-motion
+Player.method2615	Player	af	decodeAppearance	method	T4	A	Reads gender, icons, 12 equipment slots, colours, six pose animations, name, combat level, titles from a PacketBuffer	game-state::players	03-actor-motion
+Player.method2644	Player	am	moveTo	method	T4	A	Queues a step: stops opcode-10 actions, clears follow-path face angle, places the actor when either tile is outside the world view, else queues the step	game-state::players	03-actor-motion
+Player.method2648	Player	ah	setPathHead	method	T4	B	Writes path[0] and sets pathLength 0 without moving; classDC.method2958 after forced movement	game-state::players	03-actor-motion
+NPC.field1569	NPC	ac	nameOverride	field	T4	B	NPC.method3464 returns it when non-empty else composition name; written by classAS via method3449	game-state::npcs	03-actor-motion
+NPC.field1579	NPC	as	composition	field	T4	A	NPC definition used by classGA.method5325, classAS, client; Actor.method3284 reads composition field5325 for acceleration	cache::osrs240 (NPC definition adapter)	03-actor-motion
+NPC.field1568	NPC	aa	optionMask	field	T4	A	NPC.method3457 tests bit (1<<option) for options 0..4; classAS mask handler writes it; constructor default 31	game-state::npcs	03-actor-motion
+NPC.field1578	NPC	ad	overrideComposition	field	T4	B	NPC.method3500 builds PlayerComposition from NpcOverrides when the override flag is set	game-state::npcs	03-actor-motion
+NPC.method3449	NPC	af	setNameOverride	method	T4	B	Stores nameOverride, null becomes empty; classAS mask handler	game-state::npcs	03-actor-motion
+NPC.method3457	NPC	ax	isOptionEnabled	method	T4	A	Tests optionMask bit for index 0..4	game-state::npcs	03-actor-motion
+NPC.method3471	NPC	ao	moveTo	method	T4	A	Stops opcode-10 actions; walks one queued step when within +-8 tiles and not a teleport, otherwise placeAtTile	game-state::npcs	03-actor-motion
+NPC.method3453	NPC	as	setOptionMask	method	T4	A	Stores optionMask; classAS mask handler	game-state::npcs	03-actor-motion
+NPC.method3500	NPC	bc	setModelOverrides	method	T4	B	Stores NpcOverrides into field1581 and builds overrideComposition	game-state::npcs	03-actor-motion
+NPC.method3503	NPC	bo	clearModelOverrides	method	T4	B	Nulls model overrides and overrideComposition	game-state::npcs	03-actor-motion
+NPC.method3496	NPC	bx	setChatheadOverrides	method	T4	B	Stores NpcOverrides into the chathead slot field1580	game-state::npcs	03-actor-motion
+NPC.method3510	NPC	ol	postCompositionEvents	method	T4	A	RuneLite hook: raises NpcSpawned/NpcDespawned/NpcChanged when the composition is assigned	-	03-actor-motion
+NPC.method3501	NPC	qq	clearChatheadOverrides	method	T4	B	Static; nulls the chathead overrides	game-state::npcs	03-actor-motion
+NPC.method3465	NPC	wv	queueDirectionStep	method	T4	A	Static; applies one of 8 direction codes to the head tile then queuePathStep with a traversal mode	game-state::npcs	03-actor-motion
+NPC.method3464	NPC	ac	getDisplayName	method	T4	A	nameOverride if non-empty else multi-transform resolved composition name	game-state::npcs	03-actor-motion
+classEB.method3820	classEB	bs	resolveFacing	method	T4	A	Per cycle after turn start: picks angle, area, entity or path heading into orientation; snap flag copies to currentOrientation	game-state::actor_movement (facing)	03-actor-motion
+classGA.method5325	classGA	ex	applyNpcComposition	method	T4	A	Static; copies size, turn rate and all 15 pose animations from NPCComposition into the NPC	cache::osrs240 (NPC definition adapter)	03-actor-motion
+classKN.method6539	classKN	bq	updateActorTurn	method	T4	A	Top of the per-cycle actor update: runMovementCycle, turn step, classKB.method6491 animation advance, clearUpdatingActor	game-state::actor_movement (facing)	03-actor-motion

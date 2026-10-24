@@ -1,0 +1,4 @@
+interface:
+  display_name: "Revision 240 Naming Wave"
+  short_description: "Map revision 240 names with bytecode verification"
+  default_prompt: "Use $client-240-wave to run a verified naming wave over the revision-240 client evidence."
