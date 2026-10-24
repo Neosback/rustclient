@@ -38,7 +38,7 @@ The existing audit identifies two especially important behaviors:
 - `method2961`: exact/forced movement offsets are anchored after the new network coordinate is decoded; the forced-movement end becomes the actor path target.
 - `method2924`: immediate placement versus queued path movement/reset behavior. A position reset does not itself invent a new facing direction.
 
-The latest facing-writer audit also confirms that `classDC` propagates retained facing state but does not directly author `Actor.field1470` turn rate or arm `Actor.field1473`.
+The facing-writer audit also confirms that `classDC` propagates retained facing state but does not directly author `Actor.field1470` turn rate or arm `Actor.field1473`.
 
 This class is useful evidence for lifecycle and ordering, but RustClient should not copy its mixed networking/runtime responsibility.
 
@@ -63,7 +63,7 @@ Actor.method3284(actor)               // movement + locomotion selection
 Actor.method3280(world, actor)        // scene-bound safety reset
 ```
 
-`Actor.field1473` remains deliberately unnamed. In `Actor` itself it is initialized/reset to `false`; the exact-240 actor class does not contain the still-missing operation that arms it.
+`Actor.field1473` remains deliberately unnamed. In `Actor` itself it is initialized/reset to `false`; the exact consumer behavior is known, but the focused actor/player/NPC plus semantic-`client.java` audit did not recover an arming assignment. That provenance gap is now deferred rather than kept as the first runtime research task.
 
 ### `classKN.java`: outer actor-cycle and smooth turning
 
@@ -112,7 +112,7 @@ Sources include:
 
 The packet-facing state itself lives in `classBZ`; packet-time intent and client-cycle orientation mutation are separate phases.
 
-If an entity target disappears, no fallback angle exists, and `Actor.field1473` is set, `method3820` clears the retained target and resets the latch. The normal player/NPC sync paths inspected in this wave do not directly set that latch.
+If an entity target disappears, no fallback angle exists, and `Actor.field1473` is set, `method3820` clears the retained target and resets the latch. The focused writer audit did not find a direct arming assignment in `Actor`, `Player`, `NPC`, `classDF`, `classDC`, `classAS`, `classGA`, `classEB`, `classKN`, or the semantic top-level `client.java` exact-field results. Keep the stable symbol; do not block later actor-runtime research on this unresolved provenance.
 
 ### `classBT.java`: target-to-angle helper
 
@@ -152,6 +152,21 @@ Required concepts already established:
 
 These are definition-driven semantic policies and should enter the actor semantic gateway using decoded sequence metadata.
 
+### `classKB.java`: action/pose advancement owner
+
+`classKB.method6491` runs after ordinary turning in `classKN.method6539` and is the next high-priority source trace. It advances the actor's action, pose/locomotion and related animation controllers, handles freeze-window state, and participates in completion/clear behavior.
+
+The next naming wave should trace this routine together with `classQR` and the relevant `Animation` definition fields, separating:
+
+- legacy frame-array advancement;
+- cached-model animation time advancement;
+- loop/replay counters and frame-step behavior;
+- action delay/hold rules;
+- completion/clear transitions;
+- any callback/injection-only frame-event surfaces.
+
+Do not merge these into scene-side model posing. Authoritative playback lifetime belongs in GameState; application of the selected frame/time to model geometry belongs downstream.
+
 ### `Animation.java`: sequence definition inputs
 
 The semantic `Animation` class is the API-derived sequence definition class in this 240 artifact. The actor scheduler needs authored policy/timing data; geometry posing belongs in scene/cache preparation.
@@ -182,11 +197,11 @@ Keep separate:
 - entity target identity and kind;
 - explicit face-coordinate/area/angle intent;
 - `FacingApplyPolicy` (`MOVEMENT_GATED` versus `BYPASS_MOVEMENT_GATE`);
-- target-disappearance/alignment cleanup state;
+- proven target-disappearance/alignment cleanup behavior;
 - packet/source-driven snap flag;
 - idle turn-left/right sequence inputs.
 
-Do not give the pending cleanup latch a semantic field name in Rust solely from `Actor.field1473` consumers. Its arming write still needs to be located.
+Do not give the unresolved cleanup latch a Rust semantic field solely from `Actor.field1473` consumers. Its arming provenance is deferred unless parity evidence later proves the state must be represented.
 
 ### Locomotion
 
@@ -281,7 +296,7 @@ Shared orientation math, turn stepping, path traversal, exact trajectory timing 
 - live facing target/intent and apply policy;
 - turn rate and turn-cycle counter;
 - ordinary smooth-turn mutation;
-- target cleanup state once its arming semantics are proven;
+- target cleanup behavior only to the extent its arming semantics are proven/required;
 - action/locomotion/effect scheduler state;
 - validated cycle transitions and expiration.
 
@@ -305,15 +320,16 @@ GPU resources/passes/draw ordering only after scene projection has produced the 
 
 ## Next source traces
 
-The ordinary turn mutator and normal NPC turn-rate source are no longer open items. Continue in this order:
+Facing/turning is sufficiently closed for this naming phase: the ordinary turn mutator, apply policy and normal NPC turn-rate source are established, while `Actor.field1473` is retained as a deferred stable-symbol provenance gap rather than an active blocker.
 
-1. locate the writer that arms `Actor.field1473`; the direct Actor/Player/NPC/classDF/classDC/classAS/classGA synchronization corpus is now ruled out as the writer;
-2. preserve full typed facing-target state and target-disappearance/alignment cleanup once that latch writer is known;
-3. complete cached-model action advancement/completion and remaining legacy completion/event semantics;
-4. actor spot animation add/remove/advance helpers and corresponding player/NPC mask fields;
-5. hitsplat/headbar add/remove/expiry helpers and replacement priority rules;
-6. overhead/tint/freeze/customization mask consumers and expiry/application sites;
-7. `Player`/`PlayerComposition` model assembly invalidation rules.
+Continue in this order:
+
+1. complete action-sequence advancement/completion in `classKB.method6491`, `classQR` and `Animation`, including legacy versus cached-model timing, loops, delays, holds and clear conditions;
+2. trace actor spot-animation add/remove/advance helpers and corresponding player/NPC mask fields;
+3. trace hitsplat/headbar add/remove/expiry helpers and replacement priority rules;
+4. trace overhead/tint/freeze/customization mask consumers and expiry/application sites;
+5. trace `Player`/`PlayerComposition` model assembly invalidation rules;
+6. preserve full typed facing-target state as implementation work proceeds, reopening `Actor.field1473` only if concrete parity evidence requires its arming semantics.
 
 Only widen the turn-rate writer census if a newly traced reachable subsystem demonstrates a direct mutation outside actor default and NPC definition projection.
 
