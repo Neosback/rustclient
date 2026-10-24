@@ -19,11 +19,11 @@ fn run_operations(operations: &[SemanticOperation]) -> (GameState, CommitStreamF
 }
 
 #[test]
-fn state_fingerprint_v22_has_exact_regression_vectors() {
+fn state_fingerprint_v23_has_exact_regression_vectors() {
     let mut state = GameState::new();
     assert_eq!(
         state.semantic_fingerprint().get(),
-        14_004_924_912_801_453_135
+        17_110_043_786_423_888_958
     );
 
     state
@@ -35,7 +35,7 @@ fn state_fingerprint_v22_has_exact_regression_vectors() {
 
     assert_eq!(
         state.semantic_fingerprint().get(),
-        18_310_109_310_675_007_821
+        18_012_300_398_216_534_442
     );
 }
 
@@ -90,12 +90,12 @@ fn state_fingerprint_distinguishes_revision_identity() {
     );
     assert_eq!(
         subrevision.semantic_fingerprint().get(),
-        4_132_266_560_656_612_196
+        17_311_525_448_509_257_931
     );
 }
 
 #[test]
-fn npc_path_policy_and_catch_up_participate_in_canonical_state() {
+fn npc_path_policy_catch_up_and_current_orientation_participate_in_canonical_state() {
     use rustclient_model::{
         ActionMask, ActorSequenceSlot, NpcDefinitionId, NpcIndex, NpcInstanceId,
         PathAccelerationPolicy, Plane, WorldTile,
@@ -120,6 +120,7 @@ fn npc_path_policy_and_catch_up_participate_in_canonical_state() {
                 path_queue,
                 exact_move: None,
                 orientation: 0,
+                current_orientation: 0,
                 sequence: ActorSequenceSlot::default(),
                 sequence_timing_resolved: false,
                 name: None,
@@ -145,6 +146,15 @@ fn npc_path_policy_and_catch_up_participate_in_canonical_state() {
         .path_queue
         .increment_catch_up();
     assert_ne!(standard.semantic_fingerprint(), with_debt.semantic_fingerprint());
+
+    let mut turned = state_with_policy(PathAccelerationPolicy::STANDARD);
+    turned
+        .entities
+        .npcs
+        .get_mut(&rustclient_model::NpcIndex::new(1))
+        .expect("fixture NPC exists")
+        .current_orientation = 512;
+    assert_ne!(standard.semantic_fingerprint(), turned.semantic_fingerprint());
 }
 
 #[test]
@@ -182,6 +192,7 @@ fn active_sequence_timing_resolution_participates_in_canonical_state() {
                 path_queue,
                 exact_move: None,
                 orientation: 0,
+                current_orientation: 0,
                 sequence,
                 sequence_timing_resolved: timing.is_some(),
                 name: None,
@@ -228,7 +239,7 @@ fn equivalent_observable_state_has_equivalent_fingerprint() {
 }
 
 #[test]
-fn commit_stream_fingerprint_v22_has_exact_regression_vector() {
+fn commit_stream_fingerprint_v23_has_exact_regression_vector() {
     let operations = [
         BEGIN_240,
         SemanticOperation::AdvanceTick(TickSpan::new(2)),
@@ -237,10 +248,10 @@ fn commit_stream_fingerprint_v22_has_exact_regression_vector() {
     ];
     let (_, fingerprint) = run_operations(&operations);
 
-    assert_eq!(fingerprint.get(), 5_559_884_698_701_515_121);
+    assert_eq!(fingerprint.get(), 6_206_448_854_425_763_638);
     assert_eq!(
         CommitStreamFingerprintBuilder::new().finish().get(),
-        11_814_434_035_812_821_324
+        12_438_599_299_192_874_999
     );
 }
 
