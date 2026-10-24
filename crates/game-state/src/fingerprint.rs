@@ -11,7 +11,7 @@ use crate::{GameState, OperationCommit, SemanticEvent, SessionLifecycle};
 ///
 /// Any change to field ordering, tags, integer encoding, or fingerprint
 /// algorithm that changes canonical output must increment this version.
-pub const SEMANTIC_FINGERPRINT_VERSION: u16 = 21;
+pub const SEMANTIC_FINGERPRINT_VERSION: u16 = 22;
 
 const FNV_OFFSET_BASIS: u64 = 0xCBF2_9CE4_8422_2325;
 const FNV_PRIME: u64 = 0x0000_0100_0000_01B3;
@@ -312,6 +312,12 @@ impl GameState {
                 }
             }
             write_sequence_scheduler(&mut fingerprint, player.sequence);
+            write_active_sequence_timing(
+                &mut fingerprint,
+                player.sequence_timing_resolved,
+                player.sequence.sequence,
+                &entities.sequence_timings,
+            );
         }
         fingerprint.write_bytes(
             &u32::try_from(entities.npcs().len())
@@ -390,6 +396,12 @@ impl GameState {
             fingerprint.write_bytes(&npc.sequence.cycle.to_le_bytes());
             fingerprint.write_bytes(&npc.sequence.delay.to_le_bytes());
             write_sequence_scheduler(&mut fingerprint, npc.sequence);
+            write_active_sequence_timing(
+                &mut fingerprint,
+                npc.sequence_timing_resolved,
+                npc.sequence.sequence,
+                &entities.sequence_timings,
+            );
         }
         StateFingerprint(fingerprint.finish())
     }
@@ -452,6 +464,60 @@ fn write_sequence_scheduler(
     }
     fingerprint.write_u32(slot.iterations);
     fingerprint.write_u32(slot.path_backlog_at_assignment);
+}
+
+fn write_active_sequence_timing(
+    fingerprint: &mut StableFingerprint64,
+    resolved: bool,
+    sequence: Option<rustclient_model::SequenceId>,
+    timings: &std::collections::BTreeMap<rustclient_model::SequenceId, rustclient_model::SequenceTiming>,
+) {
+    if !resolved {
+        fingerprint.write_u8(0);
+        return;
+    }
+    let Some(sequence) = sequence else {
+        // Preserve an impossible-but-constructible state as distinct instead of collapsing it into
+        // an unresolved actor. Valid transitions clear the resolved bit with the action.
+        fingerprint.write_u8(3);
+        return;
+    };
+    let Some(timing) = timings.get(&sequence) else {
+        fingerprint.write_u8(3);
+        return;
+    };
+    match timing {
+        rustclient_model::SequenceTiming::Legacy {
+            frame_delays,
+            frame_step,
+        } => {
+            fingerprint.write_u8(1);
+            fingerprint.write_u32(
+                u32::try_from(frame_delays.len()).expect("bounded sequence frame delays"),
+            );
+            for delay in frame_delays {
+                fingerprint.write_u16(*delay);
+            }
+            match frame_step {
+                None => fingerprint.write_u8(0),
+                Some(step) => {
+                    fingerprint.write_u8(1);
+                    fingerprint.write_u16(*step);
+                }
+            }
+        }
+        rustclient_model::SequenceTiming::CachedModel { range } => {
+            fingerprint.write_u8(2);
+            match range {
+                None => fingerprint.write_u8(0),
+                Some((start, end)) => {
+                    fingerprint.write_u8(1);
+                    fingerprint.write_u16(*start);
+                    fingerprint.write_u16(*end);
+                }
+            }
+        }
+    }
 }
 
 fn write_appearance(
