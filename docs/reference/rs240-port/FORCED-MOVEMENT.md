@@ -1,6 +1,6 @@
 # Revision 240 forced/exact actor movement
 
-Status: exact source behavior is pinned and sequence timing now reaches semantic entity updates; authoritative interpolation is the next checkpoint.
+Status: forced/exact player and NPC translation is authoritative in `GameState`, including the legacy action-frame boundary gate, active-cycle `field1452` reset, forced orientation, and scene projection migration.
 
 ## Exact revision-240 control flow
 
@@ -12,7 +12,7 @@ The method has three mutually ordered position phases around the current client 
    - Compute the forced start fine coordinate.
    - Divide the remaining delta by `max(1, forced_start_cycle - current_cycle)` and approach that start coordinate.
    - Reset `field1452` catch-up debt to zero.
-   - Force the authored desired orientation.
+   - Force the authored orientation.
 
 2. **Interpolation phase** while `forced_end_cycle >= current_cycle` after the approach condition is false.
    - Interpolation is always allowed on the exact end cycle.
@@ -20,50 +20,73 @@ The method has three mutually ordered position phases around the current client 
    - Cached-model/skeletal actions allow interpolation without the legacy frame-boundary test.
    - A legacy action with zero explicit delay allows interpolation only when `current_frame_cycle + 1 > current_frame_delay`.
    - When allowed, linearly interpolate the forced start/end coordinates using `(current - start) / (end - start)`.
-   - Reset `field1452` to zero and force both desired/current orientation to the authored direction.
+   - Reset `field1452` to zero and force the authored orientation.
 
 3. **Ordinary path phase** once `current_cycle > forced_end_cycle`.
-   - Forced interpolation no longer owns position.
-   - The ordinary path scheduler resumes.
+   - Clear the expired forced trajectory marker.
+   - Resume ordinary scheduling in that same client cycle.
 
 The approach condition is inclusive, so a zero-duration forced interval is handled by the approach branch at its start/end cycle rather than by division through a zero interpolation duration.
 
-## Why action timing is semantic input
+## Sequence timing and cycle ordering
 
-The legacy interpolation gate reads the active action's current frame and current frame-cycle against that frame's definition delay. This means `GameState` cannot reproduce forced movement from `ExactMovement` plus `SequencePolicy` alone.
+The legacy interpolation gate reads the active action's current frame and within-frame cycle before action playback advances for that client cycle. Cached-model actions bypass the legacy frame-delay gate.
 
-Revision 240 additionally distinguishes cached-model actions from legacy frame sequences: cached-model actions bypass the legacy frame-delay gate. That classification is immutable definition data, not renderer state.
-
-Part 11A therefore adds revision-neutral `SequenceTiming`:
+RustClient carries revision-neutral `SequenceTiming` from cache through application orchestration:
 
 - `Legacy { frame_delays, frame_step }`
 - `CachedModel { range }`
 
-The cache adapter derives it from the already-decoded revision-240 sequence definition. Application orchestration memoizes it and attaches a sorted `(SequenceId, SequenceTiming)` table to player/NPC semantic updates alongside `sequence_policies`.
+`WorldEntitiesState` retains immutable timing evidence once, while each actor retains whether timing was actually supplied for its currently accepted action. Registry history therefore cannot silently resolve a later direct fixture that omitted timing.
 
-Protocol remains cache-free and direct fixtures remain allowed to omit timing. The authoritative forced scheduler must treat missing required legacy timing as unresolved rather than inventing a frame duration.
+The authoritative client-cycle order is:
 
-## Current RustClient boundary
+```text
+SceneryState previous ClientCycle
+    -> derive exact inner current cycle
+    -> actor movement / forced gate using pre-advance action state
+    -> advance action delay/frame state
+```
 
-Implemented in Part 11A:
+This preserves the revision-240 legacy test against the frame boundary that will be crossed later in the same cycle.
 
-- dependency-light `SequenceTiming` semantic vocabulary;
-- revision-240 projection from `SequenceAsset`;
-- cached-model versus legacy classification;
-- retention of legacy frame delays and frame rewind count;
-- retention of cached-model range;
-- application-level timing memoization;
-- player/NPC update enrichment using the same referenced sequence IDs as policy resolution;
-- SPEC-0012 ownership documentation.
+For resolved legacy timing, the semantic playback helper advances frame/frame-cycle state and applies the retained rewind/max-loop inputs. Cached-model family classification is sufficient for the forced gate, but complete cached-model playback/completion remains separate work.
 
-Not implemented until the next checkpoint:
+## Authoritative position transition
 
-- authoritative legacy action frame/cycle advancement from resolved timing;
-- exact per-inner-client-cycle forced phase selection;
-- approach/interpolation mutation of `ActorPathQueue` fine position;
-- active forced-phase `field1452` reset;
-- forced orientation mutation;
-- clearing/resuming ordinary scheduling after the end cycle;
-- removal of the scene forced-position fallback.
+`game-state::actor_movement` now owns forced movement for players and NPCs:
 
-Those pieces should land together so there is one forced-movement authority and no guessed legacy frame gate.
+- pre-start approach writes `ActorPathQueue` fine position;
+- active interpolation writes the same authoritative fine cursor;
+- an unresolved zero-delay action holds mid-flight rather than inventing a legacy frame duration;
+- the exact end cycle always reaches the authored interpolation result even if timing is unresolved;
+- active approach/interpolation cycles reset `catch_up_cycles`;
+- forced direction updates the actor's current semantic orientation;
+- expired trajectories are cleared before ordinary path scheduling resumes.
+
+RustClient currently has one authoritative actor orientation field rather than the stock client's full desired/current rotation pair. Forced movement therefore records the authored direction there; dual-angle turning parity remains part of the facing/turning checkpoint.
+
+## Projection boundary
+
+`crates/scene/src/authoritative_motion.rs` now snapshots player and forced-NPC translation from `ActorPathQueue::fine_position(...)` just like ordinary authoritative movement.
+
+The old scene motion implementation may still maintain disposable pose/turn state, and it remains a fallback for deliberately unresolved **ordinary** NPC fixtures. It is no longer the positional authority for connected forced movement.
+
+## Fingerprint/replay consequence
+
+Active sequence timing resolution can change whether a forced actor moves or holds on the next client cycle. Semantic fingerprint schema v22 therefore fingerprints the currently active timing state:
+
+- unresolved,
+- legacy timing including frame delays/rewind,
+- cached-model timing including range.
+
+The historical timing registry itself is not fingerprinted when unused; only timing bound to the active action participates in live semantic identity.
+
+## Remaining gaps
+
+Forced/exact positional ownership is no longer a movement gap. Remaining adjacent work includes:
+
+- desired/current orientation separation, target following and turn rate;
+- turning-dependent ordinary speed reduction and directional locomotion selection;
+- complete cached-model action playback/completion semantics;
+- scene-bound safety-reset parity.
