@@ -19,11 +19,11 @@ fn run_operations(operations: &[SemanticOperation]) -> (GameState, CommitStreamF
 }
 
 #[test]
-fn state_fingerprint_v17_has_exact_regression_vectors() {
+fn state_fingerprint_v18_has_exact_regression_vectors() {
     let mut state = GameState::new();
     assert_eq!(
         state.semantic_fingerprint().get(),
-        9_676_210_235_746_906_132
+        14_558_861_092_833_984_211
     );
 
     state
@@ -35,7 +35,7 @@ fn state_fingerprint_v17_has_exact_regression_vectors() {
 
     assert_eq!(
         state.semantic_fingerprint().get(),
-        676_844_396_870_897_820
+        12_163_846_204_612_127_345
     );
 }
 
@@ -90,7 +90,7 @@ fn state_fingerprint_distinguishes_revision_identity() {
     );
     assert_eq!(
         subrevision.semantic_fingerprint().get(),
-        9_323_867_929_788_745_561
+        2_444_665_494_353_736_216
     );
 }
 
@@ -113,7 +113,7 @@ fn equivalent_observable_state_has_equivalent_fingerprint() {
 }
 
 #[test]
-fn commit_stream_fingerprint_v17_has_exact_regression_vector() {
+fn commit_stream_fingerprint_v18_has_exact_regression_vector() {
     let operations = [
         BEGIN_240,
         SemanticOperation::AdvanceTick(TickSpan::new(2)),
@@ -122,10 +122,10 @@ fn commit_stream_fingerprint_v17_has_exact_regression_vector() {
     ];
     let (_, fingerprint) = run_operations(&operations);
 
-    assert_eq!(fingerprint.get(), 14_194_337_706_106_055_872);
+    assert_eq!(fingerprint.get(), 2_623_355_410_879_449_957);
     assert_eq!(
         CommitStreamFingerprintBuilder::new().finish().get(),
-        11_190_268_772_432_767_649
+        9_317_772_982_292_606_624
     );
 }
 
