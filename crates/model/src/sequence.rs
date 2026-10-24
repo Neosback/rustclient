@@ -5,7 +5,7 @@
 /// Revision adapters resolve cache-format defaults before constructing this value. The actor
 /// scheduler consumes the resolved policy without knowing which revision or cache opcode produced
 /// it. Numeric modes remain explicit until their complete cross-revision semantics are proven.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SequencePolicy {
     /// Same-sequence reassignment behavior.
     pub restart_mode: u8,
