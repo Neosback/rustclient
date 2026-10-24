@@ -363,3 +363,18 @@ cached object identity. AnimationStart optionally carries that placement;
 sequence absence explicitly stops animation. Shape 22 is FloorDecoration;
 shapes 9 through 21 are GameObject. Wire sentinels/coordinate layouts remain
 inside the revision adapter.
+
+## Sequence playback timing continuation (2026-10-24)
+
+`SequenceTiming` is immutable, revision-neutral definition timing used by live semantic schedulers when frame boundaries affect authoritative behavior. It is separate from `SequencePolicy`: policy decides assignment/replacement/movement-gate rules, while timing answers playback-family and frame-duration questions.
+
+The semantic variants are:
+
+- `Legacy { frame_delays, frame_step }`, retaining ordered legacy frame delays and the optional rewind count used when looping;
+- `CachedModel { range }`, identifying cached-model/skeletal playback and retaining its optional semantic frame range.
+
+The model does not encode revision-240 opcode numbers, archive/group layout, frame resource IDs, or cached-model resource IDs. Revision adapters decode those representations and project only the timing facts needed by live scheduling.
+
+`PlayerInfoUpdate` and `NpcInfoUpdate` may carry a sorted `(SequenceId, SequenceTiming)` table attached by application orchestration alongside `sequence_policies`. Protocol decoders leave that table empty. Direct semantic fixtures may also leave timing unresolved; authoritative schedulers must not invent legacy frame durations or classify a sequence as cached-model without definition evidence.
+
+For revision 240, this timing is required by exact/forced movement because the legacy interpolation branch may advance only on the action frame boundary, while cached-model actions bypass that legacy frame-boundary test. Rendering is not an acceptable source for this decision: the timing must be available to `GameState` before forced movement becomes authoritative.
