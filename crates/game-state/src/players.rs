@@ -191,6 +191,7 @@ impl WorldEntitiesState {
                                     player.region.plane,
                                 ),
                                 orientation: player.orientation,
+                                current_orientation: player.orientation,
                                 appearance: player.appearance,
                                 sequence: ActorSequenceSlot::default(),
                                 sequence_timing_resolved: false,
