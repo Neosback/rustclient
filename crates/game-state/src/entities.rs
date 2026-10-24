@@ -48,7 +48,11 @@ pub struct PlayerEntity {
     pub path_queue: crate::ActorPathQueue,
     pub exact_move: Option<crate::ExactMovement>,
     pub tile: WorldTile,
+    /// Desired orientation selected by path/facing/forced-movement intent.
     pub orientation: u16,
+    /// Current body rotation. Ordinary smooth-turn advancement is intentionally deferred until
+    /// the exact revision-240 turn mutator is pinned.
+    pub current_orientation: u16,
     pub appearance: Option<PlayerAppearance>,
     pub sequence: rustclient_model::ActorSequenceSlot,
     /// Whether definition timing for the currently active action was supplied when it became
@@ -70,7 +74,11 @@ pub struct NpcEntity {
     pub path: Option<crate::npcs::NpcPath>,
     pub path_queue: crate::ActorPathQueue,
     pub exact_move: Option<crate::ExactMovement>,
+    /// Desired orientation selected by path/facing/forced-movement intent.
     pub orientation: u16,
+    /// Current body rotation. Ordinary smooth-turn advancement is intentionally deferred until
+    /// the exact revision-240 turn mutator is pinned.
+    pub current_orientation: u16,
     pub sequence: rustclient_model::ActorSequenceSlot,
     pub sequence_timing_resolved: bool,
     pub name: Option<String>,
@@ -325,6 +333,7 @@ impl WorldEntitiesState {
                 exact_move: None,
                 tile: WorldTile::new(0, 0, Plane::MIN),
                 orientation: 0,
+                current_orientation: 0,
                 appearance: None,
                 sequence: rustclient_model::ActorSequenceSlot::default(),
                 sequence_timing_resolved: false,
