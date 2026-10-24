@@ -34,7 +34,7 @@ pub use entity::{
     APPEARANCE_SLOTS, ActorSequenceSlot, COLOR_SLOTS, ExactMove, Gender, KIT_PARTS, KIT_SLOT,
     MoveSpeed, MovementSequences, NewNpc, NpcAttributeUpdate, NpcInfoUpdate, NpcMovement,
     NpcProperty, PlayerAppearance, PlayerInfoUpdate, PlayerMovement, PlayerTrackingGrid,
-    RemotePlayerUpdate, SequenceChange, SlotContent,
+    RemotePlayerUpdate, SequenceAssignmentOutcome, SequenceChange, SlotContent,
 };
 pub use ids::{
     FloorOverlayId, FloorUnderlayId, FontId, InterfaceId, InventoryId, InventorySlot,
