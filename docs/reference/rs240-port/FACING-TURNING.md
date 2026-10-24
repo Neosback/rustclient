@@ -1,6 +1,6 @@
 # Revision 240 actor facing and turning
 
-Status: desired/current orientation and the path-scheduler interaction are specified from exact revision-240 client evidence. The ordinary smooth-turn mutator is not yet pinned and must not be guessed.
+Status: desired/current orientation is now split authoritatively in `GameState`, including the exact forced-approach versus interpolation behavior. The ordinary smooth-turn mutator, full facing-target state, turning slowdown and directional locomotion are still not implemented and must not be guessed.
 
 This document narrows the facing/turning work that remains after authoritative ordinary and forced actor translation. It supersedes the older ambiguity in `MOVEMENT-FACING.md` about whether the client keeps one orientation value or two.
 
@@ -41,9 +41,9 @@ The distinction is exact and API-visible in the revision-240 source:
 | `field1470` | no stable semantic name yet | non-zero turn-rate/state value; constructor default decodes to `32` |
 | `field1469` | no stable semantic name yet | unresolved turn-related runtime field; do not name from proximity alone |
 
-RustClient's current single `orientation: u16` field therefore collapses two independently observable values.
+RustClient now preserves this distinction for visible actors. Existing `PlayerEntity::orientation` / `NpcEntity::orientation` remains the desired orientation for compatibility with packet/path-facing code, and `current_orientation` stores the independent current body rotation.
 
-Do not "fix" this by renaming the existing field to current orientation. The current Rust field is populated from packet-facing/path intent and is already closest to revision-240 **desired orientation** semantics. The safe migration is to retain it as desired orientation and add a separate current-orientation value.
+The fields intentionally remain `u16` during this migration because all existing protocol validation already enforces the `0..2047` domain. A later cleanup can wrap both in `JauAngle` without changing the semantic ownership established here.
 
 ## 2. Per-cycle ordering
 
@@ -59,6 +59,8 @@ This proves that ordinary path movement chooses direction-sensitive locomotion f
 
 The smooth mutation that advances current orientation toward desired orientation is not in `method3284` and is not the scene-bound `method3280` safety stage. Its exact owner/call position must be located before RustClient advances current orientation authoritatively.
 
+Part 12B therefore stores current orientation but deliberately does not advance it during ordinary cycles.
+
 ## 3. Forced movement writes desired/current differently by phase
 
 `Actor.method3284` distinguishes the two forced phases:
@@ -72,7 +74,7 @@ While `forced_start_cycle >= current_cycle`:
 - `field1493` (desired orientation) is set to the authored forced direction;
 - **`field1485` (current orientation) is not assigned in this branch.**
 
-This is a concrete correction to the temporary RustClient Part 11B representation, which currently has only one orientation field and therefore effectively forces both concepts during approach.
+RustClient now matches that behavior: forced approach changes `orientation` and leaves `current_orientation` unchanged.
 
 ### Interpolation phase
 
@@ -83,7 +85,9 @@ While the start is in the past and `forced_end_cycle >= current_cycle`:
 - desired orientation is set to the authored forced direction;
 - current orientation is then explicitly set equal to desired orientation.
 
-So the eventual Rust transition must be:
+The current-orientation assignment belongs to the interpolation phase itself, not only to cycles where positional interpolation is allowed. RustClient therefore snaps `current_orientation` even when the legacy action-frame gate produces a `ForcedHeld` position cycle.
+
+So the authoritative transition is now:
 
 ```text
 approach:
@@ -118,6 +122,8 @@ atan2(delta_x, delta_y) * 325.94932345220167
 ```
 
 and masks the result to the `0..2047` Jagex angular domain. A zero position delta produces `-1` and leaves the prior desired orientation in effect.
+
+RustClient does not yet retain enough typed facing-source state to reproduce this resolver for moving targets. Existing packet/path updates continue writing desired orientation only; they no longer overwrite `current_orientation` as a side effect.
 
 ## 5. Facing update wire/runtime state
 
@@ -174,6 +180,8 @@ current_orientation = desired_orientation
 ```
 
 This is a separate snap path from ordinary smooth turning.
+
+RustClient now has the state shape required to express this precisely, but the facing control/source model itself is not yet retained, so this packet-driven snap path remains deferred.
 
 It is important not to model every desired-orientation change as an immediate current-orientation change merely because this explicit snap case exists.
 
@@ -244,7 +252,7 @@ run/crawl traversal scaling applies last
 
 The alternate NPC acceleration branch does not run this turning-slowdown test; it immediately applies its earlier backlog thresholds.
 
-RustClient must preserve this ordering. Adding a generic `if turning { speed /= 2 }` after backlog/run scaling would be wrong.
+RustClient now has independent desired/current orientation values, so this comparison no longer requires another state-model rewrite. The slowdown is still deferred until the exact turn-rate/state mutator and entity-target interaction state are retained.
 
 ## 9. Turn rate default is exactly 32
 
@@ -252,49 +260,51 @@ The `Actor` constructor stores obfuscated `field1470 = -853380256`. Applying the
 
 That establishes the constructor default only. It does **not** establish all mutation rules for the field, so RustClient should not yet expose a fully named `turn_rate` policy API until the remaining writer/advancement methods are traced.
 
-## 10. Current RustClient mismatch after Part 11B
+## 10. RustClient state after Part 12B
 
-RustClient currently has one `orientation: u16` on `PlayerEntity` and `NpcEntity`.
-
-That one value is used for multiple incompatible roles:
-
-- packet/path desired direction;
-- explicit-facing result;
-- forced-movement direction;
-- scene/pose orientation assumptions.
-
-Part 11B also writes the forced direction before checking whether the actor is in the approach or interpolation phase. With one field that was the only available representation, but exact source evidence now proves the future split must preserve current orientation through the approach phase and snap it only in the interpolation phase.
-
-The current `Locomotion::{Idle,Walk,Run,Turn}` type is also too coarse to identify forward/back/left/right authored locomotion. Packet traversal speed alone cannot select the correct sequence.
-
-Finally, protocol `face(...)` still discards entity-target, coordinate-target, secondary behavior and control-flag state. That prevents moving-target facing and exact interaction-aware slowdown.
-
-## 11. Required implementation boundary
-
-The next implementation checkpoint should introduce a revision-neutral live orientation state without copying `classBZ` directly.
-
-At minimum, visible actors need:
+Visible `PlayerEntity` and `NpcEntity` now retain:
 
 ```text
-desired_orientation: JauAngle
-current_orientation: JauAngle
-facing source/state
-  none/path-derived
-  explicit angle
-  coordinate/area target
-  entity target with lifecycle-safe identity
-secondary facing behavior (provisional typed enum)
-control/snap flag
-turn-rate/state value once the mutator trace is complete
+orientation          // desired orientation
+current_orientation  // current body rotation
 ```
 
-The existing Rust `orientation` field should be treated as the desired orientation during migration for compatibility with its current packet-facing role; add current orientation separately rather than silently changing the meaning of existing readers.
+Lifecycle rules in this checkpoint are deliberately small and exact:
 
-Protocol owns the revision-240 selector/byte decoding. `GameState` owns the resolved live facing source and both orientation values. Scene/renderer consume current orientation for draw rotation; they do not independently chase targets or rotate actors.
+- local-player placement initializes both to the same value;
+- a remote player entering visibility initializes current from the tracked desired orientation;
+- a newly spawned NPC initializes both from the spawn orientation;
+- ordinary movement/path direction changes desired orientation only;
+- explicit facing changes desired orientation only;
+- forced approach changes desired only;
+- forced interpolation/held cycles set current equal to desired;
+- visibility/despawn lifecycle destroys current orientation with the actor instance rather than retaining it in out-of-view tracking.
 
-Entity targets should use actor instance identity where possible so an index reused after despawn cannot redirect an old facing target onto a different actor.
+Ordinary current-orientation advancement remains disabled. This is preferable to inventing a turn-rate rule and gives later turning work a clean state boundary.
 
-## 12. Do not implement yet
+The current `Locomotion::{Idle,Walk,Run,Turn}` type remains too coarse to identify forward/back/left/right authored locomotion. Packet traversal speed alone cannot select the correct sequence.
+
+Protocol `face(...)` also still discards entity-target, coordinate-target, secondary behavior and control-flag state. That prevents moving-target facing and exact interaction-aware slowdown.
+
+## 11. Semantic ownership
+
+The orientation split is authoritative `GameState` state, not scene state.
+
+Protocol owns revision-240 facing selector/byte decoding. `GameState` owns desired/current orientation and will own resolved live facing source once that richer semantic type lands. Scene/renderer must eventually consume current orientation for draw rotation; it must not independently chase targets or become the smooth-turn authority.
+
+Part 12B intentionally leaves the existing legacy scene turn projector in place as a visual fallback because authoritative ordinary current-orientation advancement is not implemented yet. Migrating draw rotation now would freeze actors at their last committed current angle during ordinary turning.
+
+Entity targets should use actor instance identity where possible so an index reused after despawn cannot redirect an old facing target onto a different actor instance.
+
+## 12. Fingerprint/replay consequence
+
+Desired and current orientation can now diverge and produce different future movement/locomotion behavior. Semantic fingerprint schema **v23** therefore encodes both values for every visible player/NPC.
+
+Outside/tracked players retain only desired orientation because they do not have live actor-body rotation while outside the visible actor lifecycle. Re-entry starts a new visible body state with current initialized from retained desired orientation.
+
+A focused regression fixture changes only `current_orientation` and must produce a different semantic state fingerprint.
+
+## 13. Do not implement yet
 
 Do not implement the following from inference alone:
 
@@ -307,15 +317,16 @@ Do not implement the following from inference alone:
 
 Those are compatibility-sensitive and should be pinned from the exact 240 writers/consumers first.
 
-## 13. Next concrete checkpoint
+## 14. Next concrete checkpoint
 
-The next small implementation should be the **desired/current orientation split only**:
+The next small checkpoint should trace the **ordinary smooth-turn mutator** and every writer that materially changes `field1470` / the associated turn runtime state.
 
-1. retain the existing actor `orientation` meaning as desired orientation;
-2. add current orientation initialized from desired orientation on spawn/visibility entry;
-3. correct forced movement so approach changes desired only and interpolation sets both;
-4. include current orientation in semantic fingerprints;
-5. keep ordinary smooth turning disabled until its exact mutator is found;
-6. keep the legacy scene turn projector only as a disposable visual fallback until GameState current-orientation advancement is authoritative.
+Only after that trace should RustClient:
 
-After that, trace and implement the smooth-turn mutator, then wire the exact turning slowdown and directional locomotion policy. This keeps each semantic transition evidence-backed and avoids another orientation rewrite.
+1. advance `current_orientation` toward desired orientation per client cycle;
+2. implement the exact control-flag snap path;
+3. add turning slowdown in its proven pre-backlog position;
+4. migrate scene draw rotation from the disposable turn projector to authoritative current orientation;
+5. then expand the facing semantic type so player/NPC/coordinate targets can update desired orientation every cycle.
+
+This preserves the desired/current split already implemented while keeping the remaining timing behavior evidence-backed.
