@@ -218,13 +218,18 @@ impl WorldEntitiesState {
 
     pub(crate) fn advance_cycles(&mut self, cycles: u32) {
         self.reboot_cycles = self.reboot_cycles.saturating_sub(cycles);
-        for player in self.players.values_mut() {
-            player.animation_cycle = player.animation_cycle.wrapping_add(cycles);
-            player.sequence.advance_cycles(cycles);
-        }
-        for npc in self.npcs.values_mut() {
-            npc.animation_cycle = npc.animation_cycle.wrapping_add(cycles);
-            npc.sequence.advance_cycles(cycles);
+        // Movement must observe the action delay before that same cycle decrements it. Advancing
+        // one cycle at a time preserves that ordering while keeping the existing client-cycle API.
+        for _ in 0..cycles {
+            crate::actor_movement::advance_players(self);
+            for player in self.players.values_mut() {
+                player.animation_cycle = player.animation_cycle.wrapping_add(1);
+                player.sequence.advance_cycles(1);
+            }
+            for npc in self.npcs.values_mut() {
+                npc.animation_cycle = npc.animation_cycle.wrapping_add(1);
+                npc.sequence.advance_cycles(1);
+            }
         }
     }
 
