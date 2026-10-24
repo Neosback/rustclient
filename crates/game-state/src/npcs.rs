@@ -1,6 +1,9 @@
 //! NPC batch validation and authoritative ordered movement/trajectory updates.
 use crate::{EntityUpdateError, Locomotion, NpcEntity, WorldEntitiesState};
-use rustclient_model::{ClientCycle, MoveSpeed, NpcInfoUpdate, NpcMovement, TileOffset, WorldTile};
+use rustclient_model::{
+    ClientCycle, MoveSpeed, NpcDefinitionId, NpcInfoUpdate, NpcMovement, PathAccelerationPolicy,
+    TileOffset, WorldTile,
+};
 
 /// Latest ordered path request, distinct from the NPC's confirmed endpoint.
 /// Serial distinguishes repeated requests, including a run returning to its start.
@@ -18,6 +21,17 @@ impl NpcPath {
         self.second.unwrap_or(self.first)
     }
 }
+
+fn acceleration_policy(
+    update: &NpcInfoUpdate,
+    definition_id: NpcDefinitionId,
+) -> Option<PathAccelerationPolicy> {
+    update
+        .path_acceleration_policies
+        .iter()
+        .find_map(|(id, policy)| (*id == definition_id).then_some(*policy))
+}
+
 fn path(npc: &NpcEntity, movement: &NpcMovement) -> Result<NpcPath, EntityUpdateError> {
     if !matches!(
         movement.speed,
@@ -84,6 +98,14 @@ impl WorldEntitiesState {
             + update.removals.len()
             > 4096
         {
+            return Err(EntityUpdateError::InvalidNpcBatch);
+        }
+        let policy_ids: BTreeSet<_> = update
+            .path_acceleration_policies
+            .iter()
+            .map(|(id, _)| *id)
+            .collect();
+        if policy_ids.len() != update.path_acceleration_policies.len() {
             return Err(EntityUpdateError::InvalidNpcBatch);
         }
         let removed: BTreeSet<_> = update.removals.iter().copied().collect();
@@ -189,6 +211,8 @@ impl WorldEntitiesState {
         }
         for npc in &update.new_npcs {
             self.npc_serial += 1;
+            let mut path_queue = crate::ActorPathQueue::default();
+            path_queue.set_acceleration_policy(acceleration_policy(update, npc.definition_id));
             self.npcs.insert(
                 npc.index,
                 NpcEntity {
@@ -201,7 +225,7 @@ impl WorldEntitiesState {
                         origin.plane,
                     ),
                     path: None,
-                    path_queue: crate::ActorPathQueue::default(),
+                    path_queue,
                     exact_move: None,
                     orientation: npc.orientation,
                     sequence: rustclient_model::ActorSequenceSlot::default(),
@@ -258,8 +282,11 @@ impl WorldEntitiesState {
                         npc.exact_move = Some(exact);
                     }
                     NpcProperty::Definition(id) => {
-                        changed |= npc.definition_id != *id;
+                        let policy = acceleration_policy(update, *id);
+                        changed |= npc.definition_id != *id
+                            || npc.path_queue.acceleration_policy() != policy;
                         npc.definition_id = *id;
+                        npc.path_queue.set_acceleration_policy(policy);
                     }
                     NpcProperty::Sequence { sequence, delay } => {
                         changed |= crate::sequence_scheduler::apply_sequence(
