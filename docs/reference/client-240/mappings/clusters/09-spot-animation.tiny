@@ -1,0 +1,8 @@
+tiny	2	0	semantic	readable
+c	classOR	SpotAnimationDefinition
+	f	I	field5086	id
+	f	I	field5082	modelId
+	f	I	field5081	sequenceId
+	m	(I)LclassOR;	method8753	getSpotAnimationDefinition
+	m	(II)LModel;	method8757	getModel
+	m	(LclassOR;I)LModel;	method8760	getBaseModel
