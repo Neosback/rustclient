@@ -14,6 +14,7 @@ mod npcs;
 pub use npcs::NpcPath;
 mod player_movement;
 mod players;
+mod sequence_scheduler;
 pub use entities::{
     EntityUpdateError, Locomotion, NpcEntity, PlayerEntity, WorldEntitiesState, direction_to_delta,
     direction_to_orientation,
