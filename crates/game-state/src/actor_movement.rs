@@ -16,7 +16,6 @@ pub(crate) enum ActorMovementCycle {
     Moving,
     Consumed,
     Snapped,
-    ExactPending,
 }
 
 /// Advance all visible players by one authoritative client cycle.
