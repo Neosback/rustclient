@@ -1,4 +1,4 @@
-//! Resolve definition-derived actor scheduling policy before authoritative entity mutation.
+//! Resolve definition-derived actor scheduling inputs before authoritative entity mutation.
 
 use rustclient_cache::{
     Cache, CacheError, CacheProfile,
@@ -7,19 +7,20 @@ use rustclient_cache::{
 use rustclient_game_state::SemanticOperation;
 use rustclient_model::{
     NpcDefinitionId, NpcInfoUpdate, NpcProperty, PathAccelerationPolicy, PlayerInfoUpdate,
-    RemotePlayerUpdate, SequenceChange, SequenceId, SequencePolicy,
+    RemotePlayerUpdate, SequenceChange, SequenceId, SequencePolicy, SequenceTiming,
 };
 use rustclient_platform::ReadOnlyBlobs;
 use std::collections::{BTreeMap, BTreeSet};
 
-/// Cache-backed, target-neutral memoizer for packet-time actor scheduling policy.
+/// Cache-backed, target-neutral memoizer for packet-time actor scheduling inputs.
 ///
 /// It owns no live actor state. The authoritative update remains a [`SemanticOperation`]; this
-/// service only enriches entity updates with immutable definition-derived scheduling inputs.
+/// service only enriches entity updates with immutable definition-derived inputs.
 pub struct SequencePolicyResolver<S> {
     cache: Cache<S>,
     profile: CacheProfile,
     policies: BTreeMap<SequenceId, SequencePolicy>,
+    timings: BTreeMap<SequenceId, SequenceTiming>,
     npc_path_policies: BTreeMap<NpcDefinitionId, PathAccelerationPolicy>,
 }
 
@@ -30,29 +31,34 @@ impl<S: ReadOnlyBlobs> SequencePolicyResolver<S> {
             cache,
             profile,
             policies: BTreeMap::new(),
+            timings: BTreeMap::new(),
             npc_path_policies: BTreeMap::new(),
         }
     }
 
-    /// Attach every definition policy referenced by one decoded semantic operation.
+    /// Attach every definition-derived scheduling input referenced by one decoded operation.
     ///
-    /// Non-entity operations pass through untouched. The attached tables are sorted and contain
-    /// each referenced definition id once.
+    /// Non-entity operations pass through untouched. Attached tables are sorted and contain each
+    /// referenced definition id once.
     ///
     /// # Errors
-    /// Returns the underlying cache/decode failure rather than allowing GameState to guess policy.
+    /// Returns the underlying cache/decode failure rather than allowing GameState to guess policy
+    /// or playback timing.
     pub fn resolve_operation(
         &mut self,
         mut operation: SemanticOperation,
     ) -> Result<SemanticOperation, CacheError> {
         match &mut operation {
             SemanticOperation::UpdatePlayers(update) => {
-                update.sequence_policies = self.resolve_ids(player_sequence_ids(update))?;
+                let ids = player_sequence_ids(update);
+                update.sequence_policies = self.resolve_ids(ids.clone())?;
+                update.sequence_timings = self.resolve_timing_ids(ids)?;
             }
             SemanticOperation::UpdateNpcs(update) => {
                 let sequence_ids = npc_sequence_ids(update);
                 let definition_ids = npc_definition_ids(update);
-                update.sequence_policies = self.resolve_ids(sequence_ids)?;
+                update.sequence_policies = self.resolve_ids(sequence_ids.clone())?;
+                update.sequence_timings = self.resolve_timing_ids(sequence_ids)?;
                 update.path_acceleration_policies = self.resolve_npc_path_ids(definition_ids)?;
             }
             _ => {}
@@ -74,6 +80,24 @@ impl<S: ReadOnlyBlobs> SequencePolicyResolver<S> {
                 policy
             };
             resolved.push((id, policy));
+        }
+        Ok(resolved)
+    }
+
+    fn resolve_timing_ids(
+        &mut self,
+        ids: BTreeSet<SequenceId>,
+    ) -> Result<Vec<(SequenceId, SequenceTiming)>, CacheError> {
+        let mut resolved = Vec::with_capacity(ids.len());
+        for id in ids {
+            let timing = if let Some(timing) = self.timings.get(&id) {
+                timing.clone()
+            } else {
+                let timing = sequence_policy::resolve_timing(&self.cache, self.profile, id)?;
+                self.timings.insert(id, timing.clone());
+                timing
+            };
+            resolved.push((id, timing));
         }
         Ok(resolved)
     }
