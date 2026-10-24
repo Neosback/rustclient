@@ -1,6 +1,6 @@
 # Revision 240 actor path queue implementation checkpoint
 
-Status: bounded queue retention, action movement gates and ordinary player fine-position scheduling are authoritative; NPC and forced-movement fine scheduling remain incomplete.
+Status: bounded queue retention, action movement gates, ordinary player fine-position scheduling and ordinary player position projection are authoritative; NPC and forced-movement fine scheduling remain incomplete.
 
 This checkpoint updates the implementation status described in `MOVEMENT-FACING.md` without changing that document's exact revision-240 source findings. In particular, the older "Current Rust mismatches" notes that players had no bounded queue and NPCs retained only the latest request are superseded by the implementation described here.
 
@@ -34,7 +34,7 @@ This ordering matters. Initializing the cursor after overwriting `player.tile` w
 
 ## Authoritative ordinary player cycle scheduler
 
-`game-state::actor_movement` now advances ordinary queued **player** movement from the same `SceneryOperation::AdvanceCycles` client-cycle transition that advances action delays.
+`game-state::actor_movement` advances ordinary queued **player** movement from the same `SceneryOperation::AdvanceCycles` client-cycle transition that advances action delays.
 
 For each client cycle, movement is evaluated before that cycle decrements the action's explicit delay. That preserves the revision-240 ordering where an action with a non-zero delay does not yet apply its normal path gate.
 
@@ -49,7 +49,23 @@ For an ordinary queued player path:
 7. each axis approaches the target by at most that step;
 8. target equality invokes the shared authoritative consumption transition.
 
-That consumption transition removes the oldest entry and decrements the positive `field1476`-style pre-action remainder. Therefore the Part 6 gate/decrement behavior is now reached by real ordinary player target completion rather than existing only as a helper.
+That consumption transition removes the oldest entry and decrements the positive `field1476`-style pre-action remainder. Therefore the Part 6 gate/decrement behavior is reached by real ordinary player target completion rather than existing only as a helper.
+
+## Ordinary player projection migration
+
+`crates/scene/src/authoritative_motion.rs` now fronts the older disposable motion projector.
+
+For ordinary players, `ActorMotion::player(...)` is populated from `ActorPathQueue::fine_position(...)` during scene observation. Existing consumers therefore receive the authoritative GameState position without having to own movement rules themselves. This includes:
+
+- live player mesh placement through `entity_mesh::build_entities_geometry`;
+- gameplay camera following through the native scene view;
+- player dots on the minimap.
+
+The legacy `scene::motion` implementation is still used for player pose/turn projection and for NPC projection, but its independently walked ordinary-player coordinate is no longer exposed as the ordinary player's drawn position. It therefore cannot compete with GameState for ordinary player position authority.
+
+Exact/forced player movement is the deliberate exception: until its frame-boundary gate and interpolation move into GameState, the facade delegates an actively forced player's drawn position to the legacy projector. That keeps the already-visible exact-movement behavior instead of freezing the actor at the ordinary fine cursor.
+
+This migration is projection-only and does not change semantic fingerprint schema v19.
 
 ## NPC update behavior
 
@@ -81,12 +97,6 @@ A blocked ordinary player cycle changes neither fine position, queue nor remaind
 
 The Rust field is still named `path_backlog_at_assignment` from the earlier assignment checkpoint, but its runtime meaning now matches the mutable remaining `field1476` counter. A later model-cleanup checkpoint can rename it without changing behavior.
 
-## Projection boundary still to remove
-
-`crates/scene/src/motion.rs` still carries its older disposable interpolation queue for drawing. It must not feed changes back into `GameState` and is no longer the semantic source of truth for ordinary player position.
-
-This checkpoint deliberately does not rewrite the renderer/projection path at the same time as introducing the authoritative scheduler. A following small checkpoint should make player rendering/camera/minimap translation consume `ActorPathQueue::fine_position(...)`, then remove the duplicate ordinary-player positional walk from `scene::motion`.
-
 ## Deliberately not implemented here
 
 This checkpoint does **not** claim parity for:
@@ -98,6 +108,6 @@ This checkpoint does **not** claim parity for:
 - directional walk/run/crawl sequence selection;
 - desired/current orientation and moving facing targets;
 - ordinary scene-bound safety reset behavior beyond already modeled explicit reset paths;
-- removal of the older duplicate `scene::motion` ordinary-player position projection.
+- removal of legacy player pose/turn projection or NPC positional projection.
 
-Those behaviors remain specified by `MOVEMENT-FACING.md` and `SEQUENCE-SCHEDULER.md`. The next small dependency is either the NPC ordinary fine scheduler or projection migration; forced movement should remain separate until its frame-gate dependency is resolved.
+Those behaviors remain specified by `MOVEMENT-FACING.md` and `SEQUENCE-SCHEDULER.md`. The next small dependency is the NPC ordinary fine scheduler or the authoritative forced-movement scheduler; both should consume the existing queue/fine-position state rather than reintroducing projection-owned semantic movement.
