@@ -1,9 +1,7 @@
 //! Bounded authoritative actor path queue shared by players and NPCs.
 
-use rustclient_model::{MoveSpeed, WorldTile};
+use rustclient_model::{FINE_UNITS_PER_TILE, MoveSpeed, WorldTile};
 
-/// Local fine-coordinate units per world tile used by the stock actor scheduler.
-pub const ACTOR_FINE_UNITS_PER_TILE: i64 = 128;
 /// Maximum number of active path requests retained by revision-240 actor scheduling.
 pub const ACTOR_PATH_CAPACITY: usize = 9;
 
@@ -21,9 +19,10 @@ pub struct ActorFinePosition {
 impl ActorFinePosition {
     #[must_use]
     pub fn from_tile(tile: WorldTile) -> Self {
+        let scale = i64::from(FINE_UNITS_PER_TILE);
         Self {
-            x: i64::from(tile.x) * ACTOR_FINE_UNITS_PER_TILE,
-            y: i64::from(tile.y) * ACTOR_FINE_UNITS_PER_TILE,
+            x: i64::from(tile.x) * scale,
+            y: i64::from(tile.y) * scale,
         }
     }
 
