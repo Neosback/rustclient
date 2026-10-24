@@ -330,7 +330,7 @@ fn load_objects<S: ReadOnlyBlobs>(
         model_ids.extend(object.models.iter().map(|m| m.id));
         objects.insert(typed, object);
     }
-    Ok(objects, model_ids)
+    Ok((objects, model_ids))
 }
 fn load_models<S: ReadOnlyBlobs>(
     cache: &Cache<S>,
