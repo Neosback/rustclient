@@ -47,6 +47,13 @@ pub(crate) fn movement_blocked(slot: ActorSequenceSlot) -> bool {
 /// tile is reached per client cycle. The future fine-position scheduler must call this only after
 /// it has actually reached (or stock-snapped to) the oldest target. On consumption, revision-240
 /// `field1476` semantics decrement the pre-action remainder while it is still positive.
+#[cfg_attr(
+    not(test),
+    allow(
+        dead_code,
+        reason = "the authoritative fine-position checkpoint will call this exact transition"
+    )
+)]
 pub(crate) fn consume_oldest_path_entry(
     queue: &mut ActorPathQueue,
     slot: &mut ActorSequenceSlot,
