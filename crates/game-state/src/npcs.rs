@@ -108,6 +108,10 @@ impl WorldEntitiesState {
         if policy_ids.len() != update.path_acceleration_policies.len() {
             return Err(EntityUpdateError::InvalidNpcBatch);
         }
+        let timing_ids: BTreeSet<_> = update.sequence_timings.iter().map(|(id, _)| *id).collect();
+        if timing_ids.len() != update.sequence_timings.len() {
+            return Err(EntityUpdateError::InvalidNpcBatch);
+        }
         let removed: BTreeSet<_> = update.removals.iter().copied().collect();
         if removed.len() != update.removals.len()
             || removed.iter().any(|id| !self.npcs.contains_key(id))
@@ -205,6 +209,7 @@ impl WorldEntitiesState {
         cycle: ClientCycle,
     ) -> bool {
         use rustclient_model::NpcProperty;
+        self.merge_sequence_timings(&update.sequence_timings);
         let mut changed = !update.removals.is_empty() || !update.new_npcs.is_empty();
         for removal in &update.removals {
             self.npcs.remove(removal);
@@ -229,6 +234,7 @@ impl WorldEntitiesState {
                     exact_move: None,
                     orientation: npc.orientation,
                     sequence: rustclient_model::ActorSequenceSlot::default(),
+                    sequence_timing_resolved: false,
                     animation_cycle: 0,
                     name: None,
                     actions: rustclient_model::ActionMask::ALL,
@@ -291,10 +297,12 @@ impl WorldEntitiesState {
                     NpcProperty::Sequence { sequence, delay } => {
                         changed |= crate::sequence_scheduler::apply_sequence(
                             &mut npc.sequence,
+                            &mut npc.sequence_timing_resolved,
                             *sequence,
                             delay.cast_signed(),
                             npc.path_queue.backlog(),
                             &update.sequence_policies,
+                            &update.sequence_timings,
                         );
                     }
                     NpcProperty::Facing(angle) => {
