@@ -20,10 +20,10 @@ pub struct ActorFinePosition {
 
 impl ActorFinePosition {
     #[must_use]
-    pub const fn from_tile(tile: WorldTile) -> Self {
+    pub fn from_tile(tile: WorldTile) -> Self {
         Self {
-            x: tile.x as i64 * ACTOR_FINE_UNITS_PER_TILE,
-            y: tile.y as i64 * ACTOR_FINE_UNITS_PER_TILE,
+            x: i64::from(tile.x) * ACTOR_FINE_UNITS_PER_TILE,
+            y: i64::from(tile.y) * ACTOR_FINE_UNITS_PER_TILE,
         }
     }
 
@@ -84,7 +84,7 @@ impl ActorPathQueue {
     /// Current authoritative fine position, falling back to the actor's confirmed tile only until
     /// the scheduler has initialized its cursor.
     #[must_use]
-    pub const fn fine_position(self, fallback: WorldTile) -> ActorFinePosition {
+    pub fn fine_position(self, fallback: WorldTile) -> ActorFinePosition {
         match self.fine_position {
             Some(position) => position,
             None => ActorFinePosition::from_tile(fallback),
