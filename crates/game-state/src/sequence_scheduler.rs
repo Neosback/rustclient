@@ -14,12 +14,13 @@ fn policy(
 /// Apply a player sequence field, using resolved definition policy when application supplied it.
 ///
 /// Empty policy tables remain supported for direct semantic fixtures and unfinished adapters; that
-/// path deliberately uses the transitional unpolicy setter. The exact path captures zero backlog
-/// until the bounded actor path queue becomes authoritative in the movement-scheduler checkpoint.
+/// path deliberately uses the transitional unpolicy setter. Resolved assignments capture the
+/// actor's real bounded queued-path backlog at the instant a different sequence is accepted.
 pub(crate) fn apply_change(
     slot: &mut ActorSequenceSlot,
     change: SequenceChange,
     delay: i32,
+    path_backlog: u32,
     policies: &[(SequenceId, SequencePolicy)],
 ) -> bool {
     let previous = *slot;
@@ -28,7 +29,7 @@ pub(crate) fn apply_change(
         SequenceChange::Set(None) => slot.clear(),
         SequenceChange::Set(Some(id)) => {
             if let Some(policy) = policy(policies, id) {
-                slot.assign_sequence(Some((id, policy)), delay, 0);
+                slot.assign_sequence(Some((id, policy)), delay, path_backlog);
             } else {
                 slot.set_sequence(Some(id), delay);
             }
@@ -42,6 +43,7 @@ pub(crate) fn apply_sequence(
     slot: &mut ActorSequenceSlot,
     sequence: Option<SequenceId>,
     delay: i32,
+    path_backlog: u32,
     policies: &[(SequenceId, SequencePolicy)],
 ) -> bool {
     let previous = *slot;
@@ -49,7 +51,7 @@ pub(crate) fn apply_sequence(
         None => slot.clear(),
         Some(id) => {
             if let Some(policy) = policy(policies, id) {
-                slot.assign_sequence(Some((id, policy)), delay, 0);
+                slot.assign_sequence(Some((id, policy)), delay, path_backlog);
             } else {
                 slot.set_sequence(Some(id), delay);
             }
@@ -74,7 +76,7 @@ mod tests {
     }
 
     #[test]
-    fn resolved_player_assignment_uses_priority() {
+    fn resolved_player_assignment_uses_priority_and_captures_backlog() {
         let high = SequenceId::new(1);
         let low = SequenceId::new(2);
         let policies = [(high, policy(2, 8)), (low, policy(2, 3))];
@@ -83,28 +85,33 @@ mod tests {
             &mut slot,
             SequenceChange::Set(Some(high)),
             0,
+            4,
             &policies
         ));
+        assert_eq!(slot.path_backlog_at_assignment, 4);
         assert!(!apply_change(
             &mut slot,
             SequenceChange::Set(Some(low)),
             0,
+            7,
             &policies
         ));
         assert_eq!(slot.sequence, Some(high));
+        assert_eq!(slot.path_backlog_at_assignment, 4);
     }
 
     #[test]
-    fn resolved_npc_same_id_restart_reapplies_delay() {
+    fn resolved_npc_same_id_restart_reapplies_delay_without_replacing_backlog() {
         let id = SequenceId::new(3);
         let policies = [(id, policy(1, 5))];
         let mut slot = ActorSequenceSlot::default();
-        assert!(apply_sequence(&mut slot, Some(id), 2, &policies));
+        assert!(apply_sequence(&mut slot, Some(id), 2, 5, &policies));
         slot.cycle = 7;
         slot.frame = Some(4);
-        assert!(apply_sequence(&mut slot, Some(id), 6, &policies));
+        assert!(apply_sequence(&mut slot, Some(id), 6, 1, &policies));
         assert_eq!(slot.cycle, 0);
         assert_eq!(slot.frame, Some(0));
         assert_eq!(slot.delay, 6);
+        assert_eq!(slot.path_backlog_at_assignment, 5);
     }
 }
