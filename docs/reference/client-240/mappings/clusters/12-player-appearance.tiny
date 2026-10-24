@@ -1,0 +1,16 @@
+tiny	2	0	semantic	readable
+c	classOF	KitDefinition
+	f	I	field4842	bodyPartId
+	f	[I	field4843	bodyModelIds
+	f	[I	field4848	headModelIds
+	f	Z	field4849	nonSelectable
+	f	[S	field4844	recolorFrom
+	f	[S	field4845	recolorTo
+	f	[S	field4846	retextureFrom
+	f	[S	field4847	retextureTo
+	m	(III)Z	method8444	matchesBodyPart
+	m	(LclassOF;B)Z	method8449	bodyModelsReady
+	m	(I)LModelData;	method8452	getBodyModelData
+	m	(I)Z	method8453	headModelsReady
+	m	(I)LModelData;	method8456	getHeadModelData
+	m	(I)LclassOF;	method8438	getKitDefinition
