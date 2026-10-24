@@ -1,23 +1,23 @@
 tiny	2	0	semantic	readable
 c	classQR	AnimationSequence
-	f	Ldh;	field5604	actor
+	f	LActor;	field5604	actor
 	f	I	field5596	sequenceId
-	f	Lou;	field5597	definition
+	f	LAnimation;	field5597	definition
 	f	I	field5600	frame
 	f	I	field5602	frameCycle
-	m	(Lqr;II)V	method9770	setSequence
-	m	(Lqr;I)V	method9765	clearSequence
-	m	(B)Lou;	method9775	getDefinition
+	m	(LclassQR;II)V	method9770	setSequence
+	m	(LclassQR;I)V	method9765	clearSequence
+	m	(B)LAnimation;	method9775	getDefinition
 	m	(I)Z	method9772	hasDefinition
 c	classQH	AnimationFreezeWindow
 	f	I	field5538	startCycle
 	f	I	field5536	endCycle
 	f	Z	field5537	resetActorOnStart
-	m	(Lqh;IS)Z	method9582	isActiveAt
+	m	(LclassQH;IS)Z	method9582	isActiveAt
 	m	(I)Z	method9573	shouldResetActorOnStart
 c	classKB	classKB
-	m	(Ldz;Ldh;B)V	method6491	advanceActorAnimations
+	m	(LWorldView;LActor;B)V	method6491	advanceActorAnimations
 c	classCU	classCU
-	m	(Lct;III)V	method2672	applyPlayerActionSequence
+	m	(LPlayer;III)V	method2672	applyPlayerActionSequence
 c	classQA	classQA
-	m	(II)Lou;	method9477	getAnimationDefinition
+	m	(II)LAnimation;	method9477	getAnimationDefinition
