@@ -23,7 +23,7 @@ canonical for behaviors they already cover.
 | P0 | Player list synchronization | `classDF.java`, `classDC.java`, `Player.java` | `protocol::openrune_240::player_info`, `game-state::players/entities/player_movement` | partial with strong existing audit | Fill all extended masks that are currently only consumed, then finish lifecycle and scheduler cross-effects |
 | P0 | NPC list synchronization | `classAS.java`, `NPC.java`, `NPCComposition.java`, related update helpers | `protocol::openrune_240::npc_info`, `game-state::npcs/entities` | partial with strong existing audit | Method-map every remaining NPC mask and lifecycle branch, especially cosmetic/effect state |
 | P0 | Actor path scheduler | `Actor.java`, `classDC.java`, `classGT.java` | `game-state::entities`, `player_movement`, `npcs`; scene projection consumes state | partial | Trace per-cycle normal path scheduling, movement blocking, catch-up, traversal speeds and facing interaction |
-| P0 | Action/sequence scheduler | `classCU.java`, `Actor.java`, `Animation.java` | `game-state` semantic scheduler + `scene` pose preparation | partial | Specify same-ID restart modes, priority arbitration, finite completion/loops and movement gating before adding code |
+| P0 | Action/sequence scheduler | `classCU.java`, `Actor.java`, `Animation.java` | `model::ActorSequenceSlot`, `game-state` semantic scheduler + `scene` pose preparation | partial: definition policy retained and exact slot assignment implemented; packet-time policy resolution not yet wired | Add cache-backed policy resolution before GameState packet application, then implement finite completion/loops and movement gating |
 | P0 | Facing/turning/targets | `Actor.java`, `Player.java`, `NPC.java`, entity-target lookup helpers | `game-state::entities`; `scene` projection | partial | Trace target indexes, explicit face angles/tiles, turn rate, turn-left/right/walk selection and target disappearance |
 | P0 | Player appearance | `Player.java`, `PlayerComposition.java`, update-mask handler | `game-state::players`, `cache`, `scene` | partial | Decode/retain complete appearance state, transforms/customization, sequence defaults and model-cache invalidation rules |
 | P0 | NPC definitions and morphs | `NPCComposition.java`, `NPC.java` | `cache`, `scene`, `game-state` vars | partial/verified for important morph behavior | Finish override/customization fields, model dependencies and morph edge cases used by 240 cache |
@@ -95,7 +95,7 @@ player/NPC framing and movement. The most valuable next research is therefore no
 to rediscover those packet loops. It is to close the runtime semantics that those
 packets feed:
 
-1. same-sequence restart modes and sequence priority arbitration;
+1. wire the resolved sequence policy into player/NPC packet application before GameState mutation;
 2. finite action completion/looping and action movement-blocking rules;
 3. target-following, turn rate and directional turn/walk/run selection;
 4. spot animations, hits/headbars, overhead state, tint/transparency and other
