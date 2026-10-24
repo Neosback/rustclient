@@ -281,6 +281,9 @@ pub struct PlayerInfoUpdate {
     /// Resolved scheduling definitions attached by application orchestration after protocol decode.
     /// An empty table preserves compatibility with direct semantic fixtures that have no cache.
     pub sequence_policies: Vec<(SequenceId, SequencePolicy)>,
+    /// Resolved playback timing attached with the same sequence definitions. This is immutable
+    /// cache-derived input for client-cycle scheduling such as forced-movement frame gating.
+    pub sequence_timings: Vec<(SequenceId, crate::SequenceTiming)>,
     pub local_facing: Option<u16>,
     pub remote: Vec<RemotePlayerUpdate>,
 }
@@ -401,6 +404,8 @@ pub struct NpcInfoUpdate {
     /// Resolved scheduling definitions attached by application orchestration after protocol decode.
     /// An empty table preserves compatibility with direct semantic fixtures that have no cache.
     pub sequence_policies: Vec<(SequenceId, SequencePolicy)>,
+    /// Resolved playback timing attached with the same sequence definitions.
+    pub sequence_timings: Vec<(SequenceId, crate::SequenceTiming)>,
     /// Resolved definition-derived path acceleration attached after protocol decode.
     /// An empty table leaves direct semantic fixtures unresolved instead of guessing cache policy.
     pub path_acceleration_policies:
