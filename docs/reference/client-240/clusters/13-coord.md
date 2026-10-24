@@ -18,6 +18,7 @@ This cluster names the revision-240 packed plane/x/y coordinate primitive and th
 | `classKY.field4055` | `az` | `plane` | T4: packed high bits plus `-1` invalid sentinel |
 | `classKY.method6623` | `az` | `pack` | T4: `plane << 28 | x << 14 | y` |
 | `classKY.method6626` | `af` | `unpackPlane` | T4: `value >> 28` |
+| `classKY.method6638` | `ae` | `unpackX` | T4: `(value >> 14) & 16383`; used by `PROJANIM_SPECIFIC_V4` for source and target packed coordinates |
 | `classKY.method6640` | `ab` | `unpackY` | T4: `value & 16383` |
 | `classKY.method6649` | `ax` | `tileToLocalBase` | T4: `tile << 7` |
 | `classKY.method6652` | `ac` | `localToTile` | T4: `local >> 7` |
@@ -35,6 +36,14 @@ bits 14..27  x
 bits  0..13  y
 ```
 
+The primary extractors are the direct inverse of `pack`:
+
+```text
+unpackPlane(value) = value >> 28
+unpackX(value)     = (value >> 14) & 16383
+unpackY(value)     = value & 16383
+```
+
 A packed value of `-1` constructs an invalid coordinate by setting `plane` to `-1`. `isValid` tests exactly that sentinel.
 
 The local-coordinate helpers establish the stock 128-local-unit tile scale:
@@ -45,7 +54,7 @@ localToTile(local)      = local >> 7
 tileToLocalCenter(tile) = 64 + (tile << 7)
 ```
 
-These helpers matter to the world-effect path. `Projectile` applies local-coordinate deltas through `classKY.method6649`, while `classNG.method7883` uses `method6656` when resolving a tile target to the center of a scene tile.
+These helpers matter directly to the world-effect path. `PROJANIM_SPECIFIC_V4` decodes both its source and target packed coordinates with `unpackPlane`, `unpackX`, and `unpackY`. `Projectile` applies local-coordinate deltas through `tileToLocalBase`, while `classNG.method7883` uses `tileToLocalCenter` when resolving a tile target to the center of a scene tile.
 
 ## Authority and Rust owner
 
@@ -59,9 +68,10 @@ The `-1` invalid packed sentinel is wire/reference behavior, not a reason to rep
 
 ## Known external referrers inspected
 
-- `Actor.java`, which produces this coordinate-shaped actor position data;
+- `Actor.java`, which produces coordinate-shaped actor position data;
 - `classNG.java`, whose `method7883` resolves entity/tile targets and consumes the local-center conversion;
-- `Projectile.java`, which consumes the local-unit conversion while moving a projectile target/source frame.
+- `Projectile.java`, which consumes local-unit conversion while rebasing projectile source/target/current coordinates;
+- `client.java`, whose `PROJANIM_SPECIFIC_V4` handler decodes packed source and target `Coord` values using the three primary extractors.
 
 The exhaustive reference set was not regenerated in this checkpoint because the user explicitly prohibited the repository verification/gate workflow. A later verification pass should enumerate all referrers before merging generated artifacts.
 
@@ -71,7 +81,7 @@ The exhaustive reference set was not regenerated in this checkpoint because the 
 
 ## Deliberately left generic
 
-Several duplicate/unused extraction helpers and region-specific unpacking helpers remain unnamed. Their bodies are either redundant, marked unused, or require a broader region-coordinate audit before a semantic name would be safer than the stable symbol.
+Several duplicate/unused extraction helpers and region-specific unpacking helpers remain unnamed. Their bodies are redundant, marked unused, or require a broader region-coordinate audit before a semantic name would be safer than the stable symbol. The primary plane/x/y packed-coordinate extractors are now complete.
 
 ## Verification state
 

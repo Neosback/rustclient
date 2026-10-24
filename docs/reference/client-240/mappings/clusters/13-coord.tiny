@@ -5,6 +5,7 @@ c	classKY	Coord
 	f	I	field4055	plane
 	m	(IIII)I	method6623	pack
 	m	(II)I	method6626	unpackPlane
+	m	(IB)I	method6638	unpackX
 	m	(II)I	method6640	unpackY
 	m	(II)I	method6649	tileToLocalBase
 	m	(IB)I	method6652	localToTile
