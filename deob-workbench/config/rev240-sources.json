@@ -63,14 +63,14 @@
       "notes": "Closest currently identified rl-suite rev-240 neighbor. Structural names are generated, not full semantic names."
     },
     {
-      "id": "runelite-rev240-semantic",
+      "id": "runelite-1.12.36-semantic",
       "role": "SEMANTIC_ORACLE",
-      "status": "NEEDS_PIN",
+      "status": "READY",
       "revision": "240",
-      "version": "historical commit required",
-      "locator": "https://github.com/runelite/runelite",
-      "license": "BSD-2-Clause; verify per-file headers",
-      "notes": "Use the historical RuneLite API/client snapshot nearest 1.12.39 as semantic vocabulary. Do not promote current-master concepts into rev 240 without lineage evidence."
+      "version": "1.12.36",
+      "locator": "https://github.com/runelite/runelite/tree/57b8d715707c0db4b3aac6e857790fcf325c9ce8",
+      "license": "BSD-2-Clause; preserve applicable source notices",
+      "notes": "Pinned official RuneLite 1.12.36 release commit. Use API/domain vocabulary only; never use it as target-bytecode behavioral authority. Actor vocabulary is curated in config/runelite-1.12.36-actor-vocabulary.json."
     },
     {
       "id": "devious-deob-algorithms",

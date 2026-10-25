@@ -1,0 +1,31 @@
+{
+  "id": "runelite-1.12.36-actor-vocabulary",
+  "sourceRepository": "https://github.com/runelite/runelite",
+  "sourceCommit": "57b8d715707c0db4b3aac6e857790fcf325c9ce8",
+  "sourceVersion": "1.12.36",
+  "sourceFiles": [
+    "runelite-api/src/main/java/net/runelite/api/Actor.java",
+    "runelite-api/src/main/java/net/runelite/api/Player.java",
+    "runelite-api/src/main/java/net/runelite/api/NPC.java"
+  ],
+  "entries": [
+    {"term":"worldLocation","category":"LOCATION_SERVER","apiMember":"Actor.getWorldLocation","descriptorHint":"","notes":["server-side actor location; distinct from rendered client location"]},
+    {"term":"localLocation","category":"LOCATION_CLIENT","apiMember":"Actor.getLocalLocation","descriptorHint":"","notes":["client-side rendered/local actor location"]},
+    {"term":"orientation","category":"ORIENTATION_TARGET","apiMember":"Actor.getOrientation","descriptorHint":"I","notes":["target orientation vocabulary"]},
+    {"term":"currentOrientation","category":"ORIENTATION_CURRENT","apiMember":"Actor.getCurrentOrientation","descriptorHint":"I","notes":["current orientation vocabulary"]},
+    {"term":"animation","category":"ANIMATION_PRIMARY","apiMember":"Actor.getAnimation","descriptorHint":"I","notes":["primary action animation id"]},
+    {"term":"animationFrame","category":"ANIMATION_FRAME","apiMember":"Actor.getAnimationFrame","descriptorHint":"I","notes":["current primary animation frame"]},
+    {"term":"poseAnimation","category":"POSE_ANIMATION","apiMember":"Actor.getPoseAnimation","descriptorHint":"I","notes":["secondary/idle-or-movement pose animation"]},
+    {"term":"poseAnimationFrame","category":"POSE_FRAME","apiMember":"Actor.getPoseAnimationFrame","descriptorHint":"I","notes":["current pose animation frame"]},
+    {"term":"idlePoseAnimation","category":"POSE_IDLE","apiMember":"Actor.getIdlePoseAnimation","descriptorHint":"I","notes":["idle pose animation id"]},
+    {"term":"walkAnimation","category":"POSE_WALK","apiMember":"Actor.getWalkAnimation","descriptorHint":"I","notes":["walking animation id"]},
+    {"term":"runAnimation","category":"POSE_RUN","apiMember":"Actor.getRunAnimation","descriptorHint":"I","notes":["running animation id"]},
+    {"term":"spotAnims","category":"SPOT_ANIMATION","apiMember":"Actor.getSpotAnims","descriptorHint":"","notes":["actor spot-animation collection vocabulary"]},
+    {"term":"overheadText","category":"OVERHEAD_TEXT","apiMember":"Actor.getOverheadText","descriptorHint":"Ljava/lang/String;","notes":["text displayed above actor"]},
+    {"term":"overheadCycle","category":"OVERHEAD_TEXT_CYCLE","apiMember":"Actor.getOverheadCycle","descriptorHint":"I","notes":["remaining client ticks for overhead text"]},
+    {"term":"interacting","category":"TARGET_INTERACTION","apiMember":"Actor.getInteracting","descriptorHint":"","notes":["actor interaction/target vocabulary"]},
+    {"term":"dead","category":"DEAD_STATE","apiMember":"Actor.isDead","descriptorHint":"Z","notes":["actor death-state vocabulary"]},
+    {"term":"footprintSize","category":"ACTOR_SIZE","apiMember":"Actor.getFootprintSize","descriptorHint":"I","notes":["actor footprint size vocabulary"]},
+    {"term":"animationHeightOffset","category":"ANIMATION_HEIGHT","apiMember":"Actor.getAnimationHeightOffset","descriptorHint":"I","notes":["height offset associated with current animation"]}
+  ]
+}
