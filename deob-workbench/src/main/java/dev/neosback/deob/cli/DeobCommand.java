@@ -11,16 +11,23 @@ import picocli.CommandLine.Command;
     subcommands = {
         IndexCommand.class,
         CfgCommand.class,
+        CfgStructureCommand.class,
         HierarchyCommand.class,
         ProvenanceCommand.class,
         DecodersCommand.class,
+        PacketReadsCommand.class,
+        PacketTimelinesCommand.class,
+        LineageCommand.class,
         SourcesCommand.class
     }
 )
 public final class DeobCommand implements Callable<Integer> {
     @Override
     public Integer call() {
-        System.out.println("Use --help or a subcommand: index, cfg, hierarchy, provenance, decoders, sources.");
+        System.out.println(
+            "Use --help or a subcommand: index, cfg, cfg-structure, hierarchy, provenance, "
+                + "decoders, packet-reads, packet-timelines, lineage, sources."
+        );
         return 0;
     }
 }

@@ -10,20 +10,25 @@ original exact jar
       +--> immutable corpus + opcode instruction ids
       |          |
       |          +--> exact CFG
+      |          |          |
+      |          |          +--> dominators + natural loops
+      |          |
       |          +--> exact class hierarchy
       |          |          |
       |          |          +--> virtual method families
       |          |
       |          +--> stack/local value provenance
-      |          |          |
-      |          |          +--> decoder/multiplier evidence
-      |          |          +--> packet read timelines       (next)
-      |          |
-      |          +--> dominators/natural loops              (later)
+      |                     |
+      |                     +--> decoder/multiplier evidence
+      |                     +--> structural packet-read discovery
+      |                                |
+      |                                +--> packet value timelines
       |
       +--> structural neighbor revisions
       |          |
-      |          +--> explainable lineage matcher           (later)
+      |          +--> explainable method lineage matcher
+      |                     |
+      |                     +--> richer CFG/value-flow/family evidence (next)
       |
       +--> identity overlay
       |
@@ -55,12 +60,12 @@ Decompiler line numbers are presentation coordinates and must not replace this i
 
 ## Fingerprints
 
-The initial index emits two SHA-256 fingerprints per method:
+The bytecode index emits two SHA-256 fingerprints per method:
 
 - `exactSha256`: includes owners/names/descriptors and instruction operands.
 - `structuralSha256`: removes class/member names from references and normalizes object types while retaining control-flow targets, descriptors, constants, locals, switches, and bootstrap shape.
 
-Neither hash alone proves semantic identity. The future lineage matcher will combine multiple independent features and report ambiguity rather than auto-promote matches.
+Neither hash alone proves semantic identity. Lineage uses fingerprints as one weighted feature and reports ambiguity rather than auto-promoting a match.
 
 ## CFG
 
@@ -73,7 +78,9 @@ Neither hash alone proves semantic identity. The future lineage matcher will com
 - switch case/default
 - exception handlers
 
-The current `backward` flag means only that an edge targets an earlier lexical instruction range. Dominator/post-dominator and natural-loop analysis remain separate so the workbench does not overstate what was proven.
+The `backward` flag on a raw edge is only lexical. `CfgStructureAnalyzer` separately computes dominator sets and immediate dominators. A natural loop is emitted only when a non-exception/non-subroutine back-edge target dominates its source. This keeps "backward jump" and "proven loop" as separate claims.
+
+Post-dominators and richer region/loop nesting remain future passes.
 
 ## Hierarchy and virtual families
 
@@ -87,7 +94,7 @@ This is dispatch evidence, not semantic naming. A family key is stable only for 
 
 The analysis intentionally keeps incomplete input shapes explicit for stack-manipulation instructions whose logical consumption depends on category-1/category-2 values. Missing precision is reported as incomplete evidence rather than guessed.
 
-This provenance graph is the substrate for packet reads, decoder arithmetic, field-flow explanations, and future semantic proposals.
+This provenance graph is the substrate for packet reads, decoder arithmetic, field-flow explanations, and later semantic proposals.
 
 ## Decoder proof
 
@@ -101,15 +108,43 @@ readMultiplier * writeMultiplier == 1 (mod 2^N)
 
 where `N` is 32 or 64 from the field descriptor. Proven pairs are evidence records only. The original bytecode is not normalized or rewritten.
 
+## Packet-read discovery
+
+`PacketReadDiscovery` searches exact methods for structural byte-buffer behavior rather than semantic method names. Evidence includes byte-array loads, integer fields both read and written in the same method, `& 255` masks, shifts, branches, return type, and fixed/variable byte-consumption shape.
+
+A candidate can therefore be described as `FIXED_TWO_BYTE` with specific byte-array and offset-field evidence without claiming it is a particular RuneScape protocol primitive.
+
+## Packet value timelines
+
+`PacketTimelineAnalyzer` treats calls to discovered read candidates as exact roots. It reverses the provenance relation into producer-to-consumer edges and walks reachable consumers. Events are classified as read calls, transforms, local flow, field writes, branches, calls, returns, or other dependent instructions.
+
+This is the first direct bridge from "candidate buffer read" to "what client state or control flow did that value affect?". Analyzer failures are retained in `skippedMethods` so missing coverage remains visible.
+
+## Cross-revision lineage
+
+`MethodLineageMatcher` is the first explainable method matcher. It normalizes object identities in method descriptor shape, enforces static/constructor compatibility, and ranks candidates using:
+
+- rename-insensitive structural bytecode hash
+- instruction count
+- branch and switch counts
+- try/catch count
+- invoke count
+- field-access count
+- simple owning-class shape
+
+Every score contribution is emitted. The best score is compared with the runner-up, and close candidates become `AMBIGUOUS`. No mapping is written automatically.
+
+This is intentionally only phase one. Future lineage enrichment should add exact CFG topology, dominator/loop signatures, hierarchy/virtual-family context, packet-read roles, decoder evidence, and value-flow fingerprints before high-confidence semantic carry-forward is attempted.
+
 ## Evidence source policy
 
 `config/rev240-sources.json` records the role and readiness of each source. The original 1.12.39 gamepack is the behavioral authority. The semantic jar is an identity overlay. `rl-suite` rev-240 jars are neighboring structural evidence. A historically pinned RuneLite snapshot will provide semantic vocabulary. Devious Client is an algorithm reference, not a second bytecode model.
 
 ## Next passes
 
-1. Packet-buffer read discovery and packet timeline evidence.
-2. Dominators, post-dominators, and natural-loop evidence.
-3. Multi-feature 1.12.34 -> 1.12.39 lineage matching using hierarchy, CFG, fingerprints, and value flow.
-4. Historical RuneLite semantic-oracle extraction.
-5. Field/method semantic candidate scoring with explicit evidence weights.
-6. Static workbench pages linking every semantic proposal back to exact instructions.
+1. Enrich lineage with CFG topology, dominator/loop signatures, virtual families, decoder sites, and packet/value-flow evidence.
+2. Identify packet-buffer class families and packet handler call paths, including ISAAC/framing relationships.
+3. Build focused player/NPC update dossiers from packet reads through update masks into Actor/Player/NPC state.
+4. Pin the historical RuneLite snapshot nearest the target rev-240 window and extract semantic vocabulary.
+5. Add field/method semantic candidate scoring with explicit source weights and provenance.
+6. Add static workbench pages linking every proposal back to exact instructions and revision lineage.
