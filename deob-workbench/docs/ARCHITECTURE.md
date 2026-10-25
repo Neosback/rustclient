@@ -5,103 +5,150 @@
 Produce a readable, navigable reconstruction of a target client while preserving a provable path back to exact shipped bytecode.
 
 ```text
-original exact jar
+original exact 1.12.39 jar
       |
       +--> immutable corpus + opcode instruction ids
       |          |
-      |          +--> exact CFG
-      |          |          |
-      |          |          +--> dominators + natural loops
-      |          |
-      |          +--> exact class hierarchy
-      |          |          |
-      |          |          +--> virtual method families
-      |          |
-      |          +--> stack/local value provenance
-      |          |          |
-      |          |          +--> decoder/multiplier evidence
-      |          |          +--> packet read timelines
-      |          |
-      |          +--> buffer-family evidence
-      |                     |
-      |                     +--> framing/cipher-like candidates
-      |                     +--> packet-handler candidates
-      |                     +--> player-update dossier hypotheses
+      |          +--> exact CFG -> dominators -> natural loops
+      |          +--> exact hierarchy -> virtual method families
+      |          +--> provenance -> decoder proofs
+      |          +--> packet reads -> packet timelines
+      |          +--> buffer family -> bit-access candidates
+      |          +--> generic protocol entry candidates
       |
-      +--> structural neighbor revisions
+      +--> rev-240 packet profile (external semantic evidence)
       |          |
-      |          +--> explainable lineage matcher
+      |          +--> PLAYER_INFO / NPC_INFO_* ids
+      |                        |
+      |                        +--> exact switch cases
+      |                        +--> target basic blocks
+      |                        +--> player-like / NPC-like calls
+      |                                      |
+      |                                      +--> update-mask tests
+      |                                      +--> mask-controlled field writes
+      |                                      +--> Actor vocabulary hints
       |
-      +--> identity overlay
+      +--> neighboring rev-240 structural lineage
       |
       +--> historical RuneLite semantic vocabulary
-                 |
-                 +--> evidence-backed name candidates
                               |
                               v
-                      human-reviewed mappings
+                       human-reviewed mappings
 ```
 
-## One corpus, many passes
+## Authority model
 
-`JarCorpus` owns exact classfile bytes. Every pass requests a fresh ASM tree and reports evidence using shared `ClassId`, `FieldId`, `MethodId`, and `InstructionId` identities. The ASM tree is a working view, not the source artifact or the identity system.
+`JarCorpus` owns exact target classfile bytes. Every analyzer opens a fresh ASM tree and reports through shared `ClassId`, `FieldId`, `MethodId`, and `InstructionId` coordinates. No transformed/decompiled representation becomes behavioral authority.
 
-## Exact instruction identity
+External packet tables and RuneLite names are semantic evidence. They may label or rank exact-bytecode evidence, but they cannot redefine what the target bytecode does.
 
-`InstructionId` counts opcode-bearing JVM instructions only. Labels, frames, line numbers, and pseudo nodes do not consume indices. This keeps packet, CFG, decoder, and semantic evidence tied to exact shipped instructions rather than decompiler line numbers.
+## CFG, hierarchy, provenance, and decoders
 
-## CFG structure
+`CfgAnalyzer` emits exact basic blocks and typed normal/exception edges. `CfgStructureAnalyzer` computes dominators and only reports natural loops when a normal back-edge target dominates its source.
 
-`CfgAnalyzer` emits exact basic blocks and typed normal/exception edges. `CfgStructureAnalyzer` computes dominators and immediate dominators and only reports a natural loop when the target of a normal back edge dominates its source. Lexical backward jumps therefore remain distinct from proven natural loops.
+`ClassHierarchy` and `VirtualMethodFamilies` model exact in-corpus type/dispatch structure.
 
-## Hierarchy and virtual dispatch
+`ValueProvenanceAnalyzer` uses ASM source analysis for exact producer evidence. `DecoderEvidenceAnalyzer` proves same-field integer/long read/write multipliers only when they are modular inverses. Missing precision remains explicit.
 
-`ClassHierarchy` records exact in-corpus superclass/interface relationships. `VirtualMethodFamilies` groups override-equivalent methods by JVM name/descriptor only when hierarchy evidence supports the relationship. These families are structural evidence, not semantic names.
+## Packet reads and value timelines
 
-## Value provenance and decoders
+`PacketReadDiscovery` ranks methods that consume object-owned byte arrays and mutate offset-like integer state. Byte count, masks, shifts, branches, and loops are structural facts, not semantic method names.
 
-`ValueProvenanceAnalyzer` uses ASM source analysis to identify exact producer instructions and argument/local origins for consumed values. Incomplete stack-manipulation cases are marked incomplete instead of guessed.
+`PacketTimelineAnalyzer` treats discovered read calls as roots and follows exact provenance through transforms, locals, field writes, branches, calls, and returns.
 
-`DecoderEvidenceAnalyzer` uses that provenance to locate integer/long multiplier sites. A field only receives `PROVEN_INVERSE_PAIR` evidence when a read and write multiplier are multiplicative inverses modulo 2^32 or 2^64. No bytecode normalization occurs.
+## Generic protocol entry analysis
 
-## Packet reads and timelines
+`BufferFamilyAnalyzer` groups likely buffer classes from packet-read ownership, byte-array/offset fields, and inheritance.
 
-`PacketReadDiscovery` ranks methods that structurally consume object-owned byte arrays and mutate offset-like integer fields. It classifies fixed/variable byte-consumption shapes without assigning semantic names such as `readUnsignedShort`.
+`ProtocolEntryAnalyzer` ranks framing/cipher-like methods, packet-handler methods, and high-density player-update hypotheses. These generic hypotheses are useful for narrowing search space but are deliberately weaker than rev-specific packet-table correlation.
 
-`PacketTimelineAnalyzer` treats calls to discovered read methods as roots and follows exact provenance forward into transforms, locals, field writes, branches, calls, and returns. Unanalyzable methods are reported explicitly.
+## External rev-240 packet profile
 
-## Protocol entry evidence
+`PacketTableParser` consumes the five-column rl-suite rev-240 TSV shape:
 
-`BufferFamilyAnalyzer` groups packet-read methods by class and exact inheritance relationships. The goal is to identify likely buffer families without assuming class names.
+```text
+id    name    length    read/write_count    fields
+```
 
-`ProtocolEntryAnalyzer` then correlates the existing evidence into four separate hypothesis layers:
+It preserves the raw read/write operation strings. Client write descriptors are split only on top-level commas so byte-encoding lists inside brackets remain intact.
 
-1. **Buffer-family candidates**: packet-read ownership, byte-array fields, offset fields, subtype structure.
-2. **Framing/cipher-like candidates**: packet-read calls, byte-array access, integer-return calls, object state, arithmetic. These are not called ISAAC unless later evidence proves that role.
-3. **Packet-handler candidates**: multiple packet-read timelines plus dependent transforms, field writes, branches, calls, and natural loops.
-4. **Player-update dossier candidates**: high-density update handlers with exact read, field-write, branch, call, and loop evidence. The word `player` is a hypothesis label only until historical RuneLite/neighbor revision/packet evidence corroborates it.
+The workbench does not vendor the upstream TSVs. Their names/ids are external protocol evidence with independent provenance.
 
-This separation is intentional. A method can be an excellent structural packet-handler candidate while still being NPC, widget, region, chat, or another protocol path.
+## Bit-oriented buffer access
+
+`BitAccessAnalyzer` searches exact methods for the intersection of:
+
+- object-owned byte-array access;
+- byte loads;
+- shift-by-3 operations associated with bit-index/byte-index conversion;
+- mutable integer state;
+- mask operations;
+- 7/8 constants;
+- branch/loop structure.
+
+A high score means bit-oriented buffer behavior is structurally plausible. It does not prove a particular RuneLite/Jagex method name such as `readBits`, `importIndex`, or `exportIndex`.
+
+## Rev-240 player/NPC sync correlation
+
+`Rev240SyncAnalyzer` reads `PLAYER_INFO` and `NPC_INFO_*` ids from the supplied server packet profile. It then finds exact `TABLESWITCH`/`LOOKUPSWITCH` cases containing those ids.
+
+For each case it records:
+
+1. exact dispatcher method and switch instruction;
+2. external packet id/name/length;
+3. exact target instruction/basic block;
+4. direct calls made by that target block.
+
+Those direct calls become role candidates and are strengthened with exact bit-access calls, structural packet-read calls, field writes, branches, and downstream calls. Roles are `PLAYER_LIKE`, `NPC_LIKE`, `MIXED`, or `UNKNOWN`.
+
+The role remains evidence, not truth: a target-block call can be a helper, and packet-table names come from an external profile.
+
+## Update-mask evidence
+
+`UpdateMaskAnalyzer` runs only over sync-role candidates. It looks for exact:
+
+```text
+IAND <constant>
+conditional branch
+```
+
+idioms. For every match it records the exact `IAND`, exact branch, and field writes in both immediate CFG successor blocks. It does not assume `IFEQ`/`IFNE` orientation or claim that every such test is a canonical update-mask bit.
+
+Fields observed under these tests receive low-confidence semantic vocabulary based on descriptor and shared player/NPC role. Integer fields can carry candidates such as animation, pose animation, frame, orientation, target, or movement-cycle state; string fields can carry overhead-text vocabulary. These candidate strings are prompts for later evidence fusion, never automatic mappings.
 
 ## Cross-revision lineage
 
-`MethodLineageMatcher` ranks source->target method candidates with visible score contributions from rename-insensitive structural fingerprints, normalized descriptor shape, instruction/control-flow counts, call/field-access shape, and owning-class structure. Close candidates are reported as `AMBIGUOUS`; no match is promoted into mappings automatically.
+`MethodLineageMatcher` currently combines rename-insensitive structural fingerprints, normalized descriptor shape, instruction/control-flow counts, call/field-access shape, and owner structure with explicit score contributions and ambiguity.
 
-The next lineage revision should add CFG topology, natural-loop signatures, virtual-family role, decoder patterns, packet-read roles, and value-flow fingerprints to the scoring model.
+Future lineage scoring should add CFG topology, loop signatures, virtual-family position, decoder patterns, bit-access roles, rev-240 dispatch roles, mask signatures, and value-flow fingerprints.
 
-## Evidence source policy
+## Evidence fusion target
 
-`config/rev240-sources.json` records source role/readiness. Exact 1.12.39 is behavioral authority. The semantic 1.12.39 jar is an identity/readability overlay. `rl-suite` rev-240 jars are neighboring structural evidence. Historical RuneLite will be a semantic vocabulary source once an exact time-appropriate commit is pinned. Devious Client is an algorithm reference, not a second bytecode model.
+The intended final semantic decision should look like:
+
+```text
+exact field/method
+    + rev-240 packet case
+    + bit/update-mask role
+    + packet read/value flow
+    + decoder proof
+    + neighboring revision lineage
+    + historical RuneLite vocabulary
+    + human review
+        -> readable mapping
+```
+
+No single source gets to shortcut this chain.
 
 ## Next passes
 
-1. Correlate protocol candidates with rl-suite server/client packet tables and neighboring rev-240 lineage.
-2. Discover bit-access/start/end-bit patterns and update-mask dispatch structure.
-3. Pin the historical RuneLite snapshot nearest the 1.12.39/rev-240 target.
-4. Score Actor/Player/NPC semantic candidates using packet flow + lineage + RuneLite vocabulary.
-5. Produce focused player/NPC update dossiers containing mask bits, read variants, field writes, movement/animation/facing/cycle dependencies, and exact instruction links.
-6. Add static workbench views for protocol paths, lineage confidence, and semantic proposals.
+1. Pin the historical RuneLite commit nearest the 1.12.39/rev-240 period and ingest only its semantic/API vocabulary.
+2. Expand sync dispatch evidence through interprocedural call paths instead of only direct target-block calls.
+3. Fingerprint update-mask blocks by read variants, constants, calls, and written fields so neighboring revisions can align individual mask semantics.
+4. Separate movement, animation, facing/target, overhead text, hitsplat/health, and spot-animation clusters with evidence-backed scoring.
+5. Produce focused player and NPC dossiers with exact packet case -> mask bit -> read -> transform -> field/call -> cycle dependency chains.
+6. Add static workbench views for packet dispatch, masks, lineage, and semantic proposals.
 
 ## Safety invariant
 
-No analysis view replaces the original bytecode. No candidate role or readable name becomes authoritative merely because an analyzer scored it highly. The target output is traceable evidence that a human can audit back to the exact shipped instruction stream.
+No analysis view replaces the original bytecode. No packet-table label, scored role, bit-access hypothesis, Actor vocabulary hint, or readable name becomes authoritative merely because an analyzer produced it. Every conclusion must remain traceable to exact shipped instructions and its external evidence sources.
