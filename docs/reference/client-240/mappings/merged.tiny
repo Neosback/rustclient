@@ -1031,3 +1031,16 @@ c	classCL	WorldViewManager
 	m	(III)LWorldView;	method1572	createRootWorldView
 	m	(LWorldView;)V	method1580	removeWorldView
 	m	(I)V	method1615	resetWorldViews
+c	Nameable	Nameable
+	m	(I)V	method10229	postNameableNameChanged
+c	classDS	classDS
+	m	(II)V	method3607	postVarClientIntChanged
+	m	(ILjava/lang/String;)V	method3606	postVarClientStrChanged
+c	classPQ	classPQ
+	m	(LWidgetNode;ZLclassVV;)V	method9203	postWidgetClosed
+	m	(ILclassVV;)V	method9202	postWidgetLoaded
+c	classPV	classPV
+	m	(I)V	method9369	postItemContainerChanged
+	m	(I)V	method9370	postStatChanged
+c	classTI	classTI
+	m	(Ljava/awt/event/FocusEvent;)V	method10894	postFocusChanged

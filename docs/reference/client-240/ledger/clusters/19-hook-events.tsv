@@ -1,0 +1,8 @@
+Nameable.method10229	Nameable	ot	postNameableNameChanged	method	T1	B	injector call site: this method constructs and posts net.runelite.api.events.NameableNameChanged (inputs/hook-anchors-240.tsv)	-	19-hook-events
+classDS.method3606	classDS	bd	postVarClientStrChanged	method	T1	B	injector call site: this method constructs and posts net.runelite.api.events.VarClientStrChanged (inputs/hook-anchors-240.tsv)	-	19-hook-events
+classDS.method3607	classDS	nq	postVarClientIntChanged	method	T1	B	injector call site: this method constructs and posts net.runelite.api.events.VarClientIntChanged (inputs/hook-anchors-240.tsv)	-	19-hook-events
+classPQ.method9202	classPQ	uu	postWidgetLoaded	method	T1	B	injector call site: this method constructs and posts net.runelite.api.events.WidgetLoaded (inputs/hook-anchors-240.tsv)	-	19-hook-events
+classPQ.method9203	classPQ	uh	postWidgetClosed	method	T1	B	injector call site: this method constructs and posts net.runelite.api.events.WidgetClosed (inputs/hook-anchors-240.tsv)	-	19-hook-events
+classPV.method9369	classPV	ep	postItemContainerChanged	method	T1	B	injector call site: this method constructs and posts net.runelite.api.events.ItemContainerChanged (inputs/hook-anchors-240.tsv)	-	19-hook-events
+classPV.method9370	classPV	ov	postStatChanged	method	T1	B	injector call site: this method constructs and posts net.runelite.api.events.StatChanged (inputs/hook-anchors-240.tsv)	-	19-hook-events
+classTI.method10894	classTI	ge	postFocusChanged	method	T1	B	injector call site: this method constructs and posts net.runelite.api.events.FocusChanged (inputs/hook-anchors-240.tsv)	-	19-hook-events

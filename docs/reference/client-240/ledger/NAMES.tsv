@@ -344,6 +344,7 @@ NPCComposition.field5324	NPCComposition	ds	interactible	field	T1	A	getter:NPCCom
 NPCComposition.field5326	NPCComposition	da	follower	field	T1	A	getter:NPCComposition.isFollower()	-	00-seed-api
 NPCComposition.field5327	NPCComposition	eh	stats	field	T1	A	getter:NPCComposition.getStats()	-	00-seed-api
 NPCComposition.field5330	NPCComposition	ex	footprintSize	field	T1	A	getter:NPCComposition.getFootprintSize()	-	00-seed-api
+Nameable.method10229	Nameable	ot	postNameableNameChanged	method	T1	B	injector call site: this method constructs and posts net.runelite.api.events.NameableNameChanged (inputs/hook-anchors-240.tsv)	-	19-hook-events
 NameableContainer.field5838	NameableContainer	aa	size	field	T1	A	getter:NameableContainer.getSize()	-	00-seed-api
 NameableContainer.field5840	NameableContainer	ao	count	field	T1	A	getter:NameableContainer.getCount()	-	00-seed-api
 Node.field6550	Node	ho	hash	field	T1	A	getter:Node.getHash()	-	00-seed-api
@@ -692,6 +693,8 @@ classDJ.method3374	classDJ	ae	queuePacket	method	T4	A	appends OutboundPacket to 
 classDJ.method3381	classDJ	ab	closeSocket	method	T4	B	closes the socket (vmethod604) and nulls it; used by logout teardown classGI.method5492	crates/protocol/src/openrune_240/game.rs (SessionCodec) + game-state::connection	01-buffer-framing
 classDJ.method3394	classDJ	as	getSocket	method	T4	B	returns field1532	crates/protocol/src/openrune_240/game.rs (SessionCodec) + game-state::connection	01-buffer-framing
 classDJ.method3397	classDJ	ax	setSocket	method	T4	B	assigns field1532	crates/protocol/src/openrune_240/game.rs (SessionCodec) + game-state::connection	01-buffer-framing
+classDS.method3606	classDS	bd	postVarClientStrChanged	method	T1	B	injector call site: this method constructs and posts net.runelite.api.events.VarClientStrChanged (inputs/hook-anchors-240.tsv)	-	19-hook-events
+classDS.method3607	classDS	nq	postVarClientIntChanged	method	T1	B	injector call site: this method constructs and posts net.runelite.api.events.VarClientIntChanged (inputs/hook-anchors-240.tsv)	-	19-hook-events
 classEB.method3820	classEB	bs	resolveFacing	method	T4	A	Per cycle after turn start: picks angle, area, entity or path heading into orientation; snap flag copies to currentOrientation	game-state::actor_movement (facing)	03-actor-motion
 classFL	classFL	fl	ModelColorOverride	class	T4	B	Exact revision-240 four-byte model color-override payload copied from actor state into Model after animation composition; Model API getters expose hue, saturation, luminance and amount	game-state::actor_overrides + scene::model_projection	11-overhead-overrides
 classFL.field2298	classFL	af	overrideHue	field	T1	B	Model.getOverrideHue returns Model.field2420.field2298; actor/player/NPC model assembly copies the active classFL payload into Model.field2420	game-state::actor_overrides + scene::model_projection	11-overhead-overrides
@@ -781,7 +784,11 @@ classOR.field5086	classOR	av	id	field	T4	B	Constructor stores the definition id 
 classOR.method8753	classOR	as	getSpotAnimationDefinition	method	T4	A	Looks up classOR by id in field5096, decodes archive group 13 on miss, caches and returns the definition	cache::spot_animation_definition	09-spot-animation
 classOR.method8757	classOR	ae	getModel	method	T4	A	Obtains the cached base model, applies the authored sequence frame when present, then applies definition scale and rotation before returning the effect model	cache::spot_animation_definition + scene::spot_animation_projection	09-spot-animation
 classOR.method8760	classOR	tm	getBaseModel	method	T4	A	Caches the unanimated definition model by field5086 after loading ModelData by field5082 and applying recolor/retexture/light transforms	cache::spot_animation_definition	09-spot-animation
+classPQ.method9202	classPQ	uu	postWidgetLoaded	method	T1	B	injector call site: this method constructs and posts net.runelite.api.events.WidgetLoaded (inputs/hook-anchors-240.tsv)	-	19-hook-events
+classPQ.method9203	classPQ	uh	postWidgetClosed	method	T1	B	injector call site: this method constructs and posts net.runelite.api.events.WidgetClosed (inputs/hook-anchors-240.tsv)	-	19-hook-events
 classPS.field5402	classPS	al	category	field	T1	A	getter:classPS.getCategory()	-	00-seed-api
+classPV.method9369	classPV	ep	postItemContainerChanged	method	T1	B	injector call site: this method constructs and posts net.runelite.api.events.ItemContainerChanged (inputs/hook-anchors-240.tsv)	-	19-hook-events
+classPV.method9370	classPV	ov	postStatChanged	method	T1	B	injector call site: this method constructs and posts net.runelite.api.events.StatChanged (inputs/hook-anchors-240.tsv)	-	19-hook-events
 classPW	classPW	pw	HitsplatDefinition	class	T4	A	Exact revision-240 definition consumed by Actor hit-splat insertion: supplies authored duration, replacement policy, optional transforms, text/sprite presentation data	cache::hitsplat_definition	10-hitsplats-healthbars
 classPW.field5446	classPW	bp	duration	field	T4	A	Constructor opcode 9 defaults to 70; Actor.method3135/method3138 adds this value to current cycle plus packet delay when writing Hitsplat.disappearsOnGameCycle	cache::hitsplat_definition	10-hitsplats-healthbars
 classPW.field5453	classPW	bb	transforms	field	T4	A	Constructor opcodes 17/18 build the alternate-definition id array with default/fallback entry; method9378 selects one entry from varbit/varp state	cache::hitsplat_definition	10-hitsplats-healthbars
@@ -815,6 +822,7 @@ classQR.method9799	classQR	aj	getUnreadyCycles	method	T4	A	Returns field5598; cl
 classQR.method9811	classQR	ap	setLegacyPlaybackState	method	T4	A	Writes frame, frameCycle and loopCount together after classRD.method9980 finishes legacy frame-length advancement	game-state::sequence_scheduler	07-animation-state
 classQR.method9812	classQR	au	setCachedPlaybackState	method	T4	A	Writes frame/time and loopCount after classEJ.method3922 advances cached-model animation state; frameCycle is intentionally untouched on that path	game-state::sequence_scheduler	07-animation-state
 classRD.method9980	classRD	az	advanceAnimationSequence	method	T4	B	Common revision-240 AnimationSequence advancement: tracks readiness, advances legacy or cached-model playback, writes controller state and returns loop/terminal/advanced/frame-step flags consumed by actor and world-effect schedulers	game-state::sequence_playback	17-sequence-advance
+classTI.method10894	classTI	ge	postFocusChanged	method	T1	B	injector call site: this method constructs and posts net.runelite.api.events.FocusChanged (inputs/hook-anchors-240.tsv)	-	19-hook-events
 classUZ	classUZ	uz	Vector3f	class	T4	B	Revision-240 mutable three-component float vector: constructors, set/add/subtract/cross/dot/length/normalize bodies all agree on one x/y/z tuple; projectile target resolution consumes it as scene-space x/height/z	model math + scene projection	14-vector3
 classUZ.field6423	classUZ	aa	y	field	T4	B	Second constructor component; classNG.method7883 stores resolved terrain/entity height here and Projectile.method1228 uses it as the vertical trajectory coordinate	model math + scene	14-vector3
 classUZ.field6424	classUZ	ao	z	field	T4	B	Third constructor component; classNG.method7883 stores resolved horizontal world/scene y here and Projectile.method1228 reads it as the second horizontal trajectory coordinate	model math + scene	14-vector3
