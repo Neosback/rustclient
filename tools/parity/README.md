@@ -57,3 +57,23 @@ python3 tools/client-240/opcode-table.py              # adds traced handler and 
 
 The agent bytecode was checked offline against the pinned jar (48 classes instrumented, ASM verifier clean); a live
 session is still needed to produce data. Unreliable deltas print as `?`.
+
+### Automation driver and UI recorder
+
+The bridge also offers an input driver and unattended recorders (`reference_input`, `reference_record_menu`,
+`reference_record_status`, `reference_record_stop`, `reference_dump_widgets`). The driver only delivers AWT
+mouse/key/focus events to the game canvas, the same events a player produces; there is no call that writes game state.
+It stays on 127.0.0.1 behind the per-run token. `tools/parity/record_ui.py` wraps it:
+
+```sh
+python3 tools/parity/record_ui.py dump fixed-baseline          # every loaded widget: geometry, text, sprites, actions
+python3 tools/parity/record_ui.py sweep fixed-sweep --step 8   # hover a grid, record the client's full menu at each point
+python3 tools/parity/record_ui.py regions fixed-sweep --step 8 --out menu-regions.tsv
+python3 tools/parity/record_ui.py tabs fixed-sweep             # click every tab found, dump its widgets
+```
+
+The window can stay minimised or behind other windows: input is delivered to the canvas directly, not through the OS
+pointer. A fully headless JVM is not possible because the client creates an AWT canvas. Recordings go to
+`target/runelite-240-runtime/recordings/` (not committed); curated summaries are copied into
+`docs/reference/client-240/inputs/`. `tools/client-240/menu-actions.py` extracts the matching static table (menu action
+id to outbound packet) from the decompiled dispatcher.

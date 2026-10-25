@@ -20,7 +20,8 @@ editing the reference sources, and hand-edited decompiler output cannot prove th
 2. Each renamed symbol has a **ledger row** with an evidence tier (T1 API getter or injector event call site, T2 packet/protocol
    table, T3 235 carry-forward, T4 behavior-derived, TR runtime-observed in the live pinned client through the
    read-only probes in `tools/parity`), a confidence and cited evidence. Names without evidence are not added.
-   Runtime probes never alter the `original-exact` jar and their traces are evidence about one session only.
+   Runtime probes never alter the `original-exact` jar and their traces are evidence about one session only. The reference
+   bridge may deliver canvas mouse/key events (an input driver) but never writes game state directly.
 3. Readable sources are **regenerated** from the semantic jar by tiny-remapper and Vineflower into an
    untracked cache. `tools/client-240/verify.sh` proves rename-only by remapping forward and back and
    comparing normalized bytecode, and proves the `@ObfuscatedName`/`@ObfuscatedSignature` evidence is

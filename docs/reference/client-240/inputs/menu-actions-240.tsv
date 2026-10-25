@@ -1,0 +1,47 @@
+action	client_prot	buffer_writes	note
+1	OPLOCU	writeShort,writeShortLE,writeShortLE,writeShortLE,writeShortLEAdd,writeIntLE	classQP.method9746
+2	OPLOCT	writeByteAdd,writeShort,writeShort,writeInt,writeShortLE,writeShortLE,writeShortAdd	classQP.method9746
+7	OPNPCU	writeShortLE,writeShortLE,writeShortAdd,writeInt	classQP.method9746
+8	OPNPCT	writeIntLE,writeShort,writeShortLEAdd,writeShortAdd	classQP.method9746
+9	OPNPC1_V2	writeShortLE,writeByte,writeByteAdd	classSW.method10742
+10	OPNPC2_V2	writeShortLE,writeByteAdd,writeByteSub	classSW.method10742
+11	OPNPC3_V2	writeShortLE,writeByteSub,writeByteNeg	classSW.method10742
+12	OPNPC4_V2	writeByte,writeShortAdd	classSW.method10742
+13	OPNPC5_V2	writeByte,writeShort	classSW.method10742
+14	OPPLAYERU	writeShortLE,writeIntAlt3,writeByte,writeShortLEAdd,writeShortLEAdd	classQP.method9746
+15	OPPLAYERT	writeShortLE,writeIntAlt2,writeShortLE,writeShortLEAdd	classQP.method9746
+16	OPOBJU	writeShortLEAdd,writeByte,writeShortLE,writeShortLE,writeShort,writeIntAlt2,writeShortAdd	classQP.method9746
+17	OPOBJT	writeShort,writeInt,writeShortLE,writeShortLEAdd,writeShortLEAdd,writeShort	classQP.method9746
+18	OPOBJ1_V2	writeByteNeg,writeShortAdd,writeShortLEAdd,writeShort	classHU.method6158
+19	OPOBJ2_V2	writeByteNeg,writeShort,writeShortAdd,writeShortAdd	classHU.method6158
+20	OPOBJ3_V2	writeShortAdd,writeByte,writeShortLE,writeShort	classHU.method6158
+21	OPOBJ4_V2	writeByteNeg,writeShortLEAdd,writeShortAdd,writeShortLE	classHU.method6158
+22	OPOBJ5_V2	writeShortLEAdd,writeByte,writeShortLE,writeShortAdd	classHU.method6158
+23			classQP.method9746: no packet in block (client-side or delegated)
+24	IF_BUTTON	writeInt	classQP.method9746
+25			classQP.method9746: no packet in block (client-side or delegated)
+26			classQP.method9746: no packet in block (client-side or delegated)
+28	IF_BUTTON	writeInt	classQP.method9746
+29	IF_BUTTON	writeInt	classQP.method9746
+30			classQP.method9746: no packet in block (client-side or delegated)
+44	OPPLAYER1	writeShort	classQP.method9746
+45	OPPLAYER2	writeShortLE	classQP.method9746
+46	OPPLAYER3	writeShortAdd	classQP.method9746
+47	OPPLAYER4	writeByteSub,writeShort	classQP.method9746
+48	OPPLAYER5	writeShortAdd	classQP.method9746
+49	OPPLAYER6	writeShortLE	classQP.method9746
+50	OPPLAYER7	writeShortLE	classQP.method9746
+51	OPPLAYER8	writeShortAdd,writeByte	classQP.method9746
+58	IF_BUTTONT	writeShortLE,writeInt,writeShortLEAdd,writeShortAdd,writeShortLEAdd,writeIntAlt3	classQP.method9746
+60	SET_HEADING	writeByteAdd	classQP.method9746
+61	OPWORLDENTITYU	writeShortLEAdd,writeInt,writeShortLEAdd,writeShortLE	classQP.method9746
+62	OPWORLDENTITYT	writeShortLEAdd,writeShortAdd,writeShort,writeInt,writeByteSub	classQP.method9746
+63	OPWORLDENTITY1	writeShort	classQP.method9746
+64	OPWORLDENTITY2	writeShort	classQP.method9746
+65	OPWORLDENTITY3	writeShort,writeByte	classQP.method9746
+66	OPWORLDENTITY4	writeShort,writeByteNeg	classQP.method9746
+67	OPWORLDENTITY5	writeShortLEAdd	classQP.method9746
+1002	OPLOC6	writeShortLE	classQP.method9746
+1003	OPNPC6	writeShortAdd	classQP.method9746
+1004	OPOBJ6	writeShortLE,writeShortLEAdd,writeShort	classQP.method9746
+1013	OPWORLDENTITY6	writeShortAdd	classQP.method9746

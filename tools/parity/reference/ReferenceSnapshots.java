@@ -60,12 +60,7 @@ final class ReferenceSnapshots {
             if (widget != null) roots.add(widget(widget, 0, new int[]{0}));
         }
         List<Object> menu = new ArrayList<>();
-        for (var entry : client.getMenuEntries()) {
-            if (menu.size() == 512) break;
-            menu.add(map("option", entry.getOption(), "type", entry.getType().getId(),
-                "identifier", entry.getIdentifier(), "param0", entry.getParam0(),
-                "param1", entry.getParam1(), "worldView", entry.getWorldViewId()));
-        }
+        menu.addAll(menu(client));
         return map("schema", 1, "revision", client.getRevision(), "gameState", client.getGameState().name(),
             "cycle", client.getGameCycle(), "tick", client.getTickCount(), "resized", client.isResized(),
             "canvas", new int[]{client.getCanvasWidth(), client.getCanvasHeight()},
@@ -78,6 +73,70 @@ final class ReferenceSnapshots {
             "actors", actors, "actorsTruncated", actors.size() == limit,
             "widgetRoots", roots, "menu", menu,
             "chatTab", client.getVarcIntValue(41));
+    }
+
+    /** Every entry of the menu the client built for the last processed mouse position, top entry last. */
+    static List<Object> menu(Client client) {
+        List<Object> menu = new ArrayList<>();
+        for (var entry : client.getMenuEntries()) {
+            if (menu.size() == 512) break;
+            menu.add(map("option", entry.getOption(), "target", entry.getTarget(),
+                "type", entry.getType().getId(), "identifier", entry.getIdentifier(),
+                "param0", entry.getParam0(), "param1", entry.getParam1(),
+                "worldView", entry.getWorldViewId(), "deprioritized", entry.isDeprioritized()));
+        }
+        return menu;
+    }
+
+    /** Full live widget record: geometry, flags, text, sprite/model/item content and numeric listener arguments. */
+    static Map<String, Object> widgetFull(Widget widget, int depth, int[] budget) {
+        if (widget == null || budget[0]++ >= 40000) return null;
+        var bounds = widget.getBounds();
+        var location = widget.getCanvasLocation();
+        var result = map("id", widget.getId(), "group", widget.getId() >>> 16,
+            "component", widget.getId() & 65535, "child", widget.getIndex(), "parent", widget.getParentId(),
+            "type", widget.getType(), "contentType", widget.getContentType(), "if3", widget.isIf3(),
+            "hidden", widget.isHidden(), "selfHidden", widget.isSelfHidden(),
+            "bounds", new int[]{bounds.x, bounds.y, bounds.width, bounds.height},
+            "canvas", location == null ? null : new int[]{location.getX(), location.getY()},
+            "relative", new int[]{widget.getRelativeX(), widget.getRelativeY(), widget.getWidth(), widget.getHeight()},
+            "original", new int[]{widget.getOriginalX(), widget.getOriginalY(),
+                widget.getOriginalWidth(), widget.getOriginalHeight()},
+            "modes", new int[]{widget.getXPositionMode(), widget.getYPositionMode(),
+                widget.getWidthMode(), widget.getHeightMode()},
+            "scroll", new int[]{widget.getScrollX(), widget.getScrollY(),
+                widget.getScrollWidth(), widget.getScrollHeight()},
+            "clickMask", widget.getClickMask(), "noClickThrough", widget.getNoClickThrough(),
+            "noScrollThrough", widget.getNoScrollThrough(), "targetVerb", widget.getTargetVerb(),
+            "targetPriority", widget.getTargetPriority(), "name", widget.getName(),
+            "text", widget.getText(), "textColor", widget.getTextColor(), "font", widget.getFontId(),
+            "textShadowed", widget.getTextShadowed(), "textAlign",
+            new int[]{widget.getXTextAlignment(), widget.getYTextAlignment(), widget.getLineHeight()},
+            "opacity", widget.getOpacity(), "filled", widget.isFilled(), "borderType", widget.getBorderType(),
+            "sprite", widget.getSpriteId(), "spriteTiling", widget.getSpriteTiling(),
+            "flipped", new boolean[]{widget.isFlippedHorizontally(), widget.isFlippedVertically()},
+            "model", widget.getModelId(), "modelType", widget.getModelType(),
+            "modelView", new int[]{widget.getRotationX(), widget.getRotationY(), widget.getRotationZ(),
+                widget.getModelZoom(), widget.getAnimationId()},
+            "item", new int[]{widget.getItemId(), widget.getItemQuantity(), widget.getItemQuantityMode()},
+            "drag", new int[]{widget.getDragDeadZone(), widget.getDragDeadTime()},
+            "actions", widget.getActions(), "hasListener", widget.hasListener(),
+            "onOp", listener(widget.getOnOpListener()), "onLoad", listener(widget.getOnLoadListener()),
+            "onKey", listener(widget.getOnKeyListener()), "onInv", listener(widget.getOnInvTransmitListener()),
+            "onVar", listener(widget.getOnVarTransmitListener()));
+        if (depth > 0) {
+            List<Object> children = new ArrayList<>();
+            for (Widget[] group : new Widget[][]{widget.getStaticChildren(),
+                    widget.getDynamicChildren(), widget.getNestedChildren()}) {
+                if (group == null) continue;
+                for (Widget child : group) {
+                    if (child == null || budget[0] >= 40000) continue;
+                    children.add(widgetFull(child, depth - 1, budget));
+                }
+            }
+            result.put("children", children);
+        }
+        return result;
     }
 
     private static Object[] listener(Object[] listener) {

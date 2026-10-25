@@ -22,6 +22,10 @@ def integer(minimum, maximum, default=None):
     return result
 
 
+def text(maximum, minimum=1):
+    return {"type": "string", "minLength": minimum, "maxLength": maximum}
+
+
 def tool(name, description, properties=None, required=None, readonly=True):
     return {"name": name, "description": description,
             "inputSchema": {"type": "object", "properties": properties or {},
@@ -46,6 +50,21 @@ TOOLS = [
          {"sampleOffset": integer(0, 500, 0), "sampleCount": integer(0, 20, 1),
           "eventOffset": integer(0, 4096, 0), "eventCount": integer(0, 256, 64)}),
     tool("reference_trace_stop", "Stop diagnostic capture and read its first page; does not change game state.", readonly=False),
+]
+POINT = {"x0": integer(0, 4096), "y0": integer(0, 4096), "x1": integer(0, 4096), "y1": integer(0, 4096)}
+TOOLS += [
+    tool("reference_input", "Deliver one mouse or key event to the game canvas (move, press, release, click, scroll, focus, "
+         "keydown, keyup, type). Canvas-pixel coordinates; the same events a player produces, no direct state writes.",
+         {"kind": text(16), "x": integer(0, 4096, 0), "y": integer(0, 4096, 0), "button": integer(1, 3, 1),
+          "amount": integer(-20, 20, 1), "keyCode": integer(0, 65535, 0), "text": text(80, 0)},
+         ["kind"], readonly=False),
+    tool("reference_record_menu", "Sweep the mouse over a canvas rectangle and append the client's full menu entries at every "
+         "point to recordings/NAME.jsonl (runs unattended on client ticks).",
+         {"name": text(40), "step": integer(1, 512, 8), "settle": integer(1, 20, 2), **POINT}, ["name"], readonly=False),
+    tool("reference_record_status", "Progress of the running menu sweep."),
+    tool("reference_record_stop", "Stop the running menu sweep and close its file.", readonly=False),
+    tool("reference_dump_widgets", "Write every loaded widget tree (geometry, text, sprites, models, actions, numeric "
+         "listener args) to recordings/NAME.json.", {"name": text(40), "depth": integer(0, 12, 8)}, ["name"], readonly=False),
 ]
 CATALOG = {entry["name"]: entry for entry in TOOLS}
 

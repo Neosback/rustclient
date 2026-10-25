@@ -4,6 +4,12 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
+import java.awt.Canvas;
+import java.awt.event.FocusEvent;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseWheelEvent;
+import java.io.BufferedWriter;
 import java.net.InetSocketAddress;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
@@ -14,6 +20,7 @@ import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.regex.Pattern;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -35,7 +42,11 @@ import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 
-/** Local reference diagnostics, deliberately offering no game-state mutation operations. */
+/**
+ * Local reference diagnostics. Queries are read-only. The automation driver ({@code input}, {@code record_menu})
+ * only delivers AWT mouse/key events to the game canvas, exactly like a player at the keyboard; there is no
+ * operation that writes game state directly. Everything stays on 127.0.0.1 behind the per-run token.
+ */
 @PluginDescriptor(name = "RustClient Reference", configName = "rustclientreference",
     developerPlugin = true, enabledByDefault = true)
 public final class ReferencePlugin extends Plugin {
@@ -51,6 +62,161 @@ public final class ReferencePlugin extends Plugin {
     private ExecutorService workers;
     private Path endpoint;
     private String token;
+    private static final Pattern NAME = Pattern.compile("[a-z0-9][a-z0-9-]{0,39}");
+    private boolean mouseInside;
+    private Recording recording;
+
+    /** A hover sweep: move to each point, wait for the client to rebuild its menu, then append the entries. */
+    private final class Recording {
+        final String name;
+        final Path file;
+        final BufferedWriter out;
+        final List<int[]> points = new ArrayList<>();
+        final int settle;
+        int index;
+        int wait;
+        boolean moved;
+        boolean done;
+        String error;
+
+        Recording(String name, int x0, int y0, int x1, int y1, int step, int settle) throws Exception {
+            this.name = name;
+            this.settle = settle;
+            Path dir = endpoint.resolveSibling("recordings");
+            Files.createDirectories(dir);
+            file = dir.resolve(name + ".jsonl");
+            out = Files.newBufferedWriter(file, StandardCharsets.UTF_8);
+            for (int y = y0; y <= y1; y += step) for (int x = x0; x <= x1; x += step) points.add(new int[]{x, y});
+        }
+
+        void tick() {
+            if (done) return;
+            try {
+                if (index >= points.size()) { finish(null); return; }
+                int[] point = points.get(index);
+                if (!moved) {
+                    mouse(MouseEvent.MOUSE_MOVED, point[0], point[1], 0, 0);
+                    moved = true;
+                    wait = settle;
+                    return;
+                }
+                if (wait-- > 0) return;
+                out.write(gson.toJson(ReferenceSnapshots.map("x", point[0], "y", point[1],
+                    "cycle", client.getGameCycle(), "menuOpen", client.isMenuOpen(),
+                    "entries", ReferenceSnapshots.menu(client))));
+                out.write('\n');
+                index++;
+                moved = false;
+            } catch (Exception failure) {
+                finish(failure.toString());
+            }
+        }
+
+        void finish(String problem) {
+            done = true;
+            error = problem;
+            try { out.close(); } catch (Exception ignored) { }
+        }
+    }
+
+    private void mouse(int id, int x, int y, int button, int clickCount) {
+        Canvas canvas = client.getCanvas();
+        if (!mouseInside && id != MouseEvent.MOUSE_EXITED) {
+            // The client only processes hover/keys for a focused canvas the pointer has entered.
+            canvas.dispatchEvent(new FocusEvent(canvas, FocusEvent.FOCUS_GAINED));
+            canvas.dispatchEvent(new MouseEvent(canvas, MouseEvent.MOUSE_ENTERED, System.currentTimeMillis(), 0, x, y, 0, false));
+            mouseInside = true;
+        }
+        int down = button == 1 ? MouseEvent.BUTTON1_DOWN_MASK : button == 2 ? MouseEvent.BUTTON2_DOWN_MASK
+            : button == 3 ? MouseEvent.BUTTON3_DOWN_MASK : 0;
+        int modifiers = id == MouseEvent.MOUSE_PRESSED || id == MouseEvent.MOUSE_DRAGGED ? down : 0;
+        canvas.dispatchEvent(new MouseEvent(canvas, id, System.currentTimeMillis(), modifiers, x, y, clickCount,
+            false, button));
+    }
+
+    private Object input(Map<String, String> q) {
+        String kind = q.getOrDefault("kind", "");
+        Canvas canvas = client.getCanvas();
+        if (canvas == null) throw new IllegalStateException("No game canvas yet");
+        int x = number(q, "x", 0, 0, 4096), y = number(q, "y", 0, 0, 4096);
+        int button = number(q, "button", 1, 1, 3);
+        switch (kind) {
+            case "move": mouse(MouseEvent.MOUSE_MOVED, x, y, 0, 0); break;
+            case "press": mouse(MouseEvent.MOUSE_PRESSED, x, y, button, 1); break;
+            case "release": mouse(MouseEvent.MOUSE_RELEASED, x, y, button, 1); break;
+            case "click":
+                mouse(MouseEvent.MOUSE_PRESSED, x, y, button, 1);
+                mouse(MouseEvent.MOUSE_RELEASED, x, y, button, 1);
+                mouse(MouseEvent.MOUSE_CLICKED, x, y, button, 1);
+                break;
+            case "scroll": {
+                int amount = number(q, "amount", 1, -20, 20);
+                canvas.dispatchEvent(new MouseWheelEvent(canvas, MouseEvent.MOUSE_WHEEL, System.currentTimeMillis(), 0,
+                    x, y, 0, false, MouseWheelEvent.WHEEL_UNIT_SCROLL, 1, amount));
+                break;
+            }
+            case "focus": canvas.dispatchEvent(new FocusEvent(canvas, FocusEvent.FOCUS_GAINED)); break;
+            case "keydown": case "keyup": {
+                int code = number(q, "keyCode", 0, 0, 65535);
+                canvas.dispatchEvent(new KeyEvent(canvas, kind.equals("keydown") ? KeyEvent.KEY_PRESSED : KeyEvent.KEY_RELEASED,
+                    System.currentTimeMillis(), 0, code, KeyEvent.CHAR_UNDEFINED));
+                break;
+            }
+            case "type": {
+                String text = q.getOrDefault("text", "");
+                if (text.length() > 80) throw new IllegalArgumentException("Range: text");
+                for (char c : text.toCharArray()) {
+                    canvas.dispatchEvent(new KeyEvent(canvas, KeyEvent.KEY_TYPED, System.currentTimeMillis(), 0,
+                        KeyEvent.VK_UNDEFINED, c));
+                }
+                break;
+            }
+            default: throw new IllegalArgumentException("Unknown input kind");
+        }
+        return ReferenceSnapshots.map("delivered", kind, "cycle", client.getGameCycle());
+    }
+
+    private Object recordMenu(Map<String, String> q) throws Exception {
+        String name = q.getOrDefault("name", "");
+        if (!NAME.matcher(name).matches()) throw new IllegalArgumentException("Name must match [a-z0-9-]{1,40}");
+        if (recording != null && !recording.done) throw new IllegalStateException("A recording is already running");
+        int step = number(q, "step", 8, 1, 512);
+        int x0 = number(q, "x0", 0, 0, 4096), y0 = number(q, "y0", 0, 0, 4096);
+        int x1 = number(q, "x1", client.getCanvasWidth() - 1, x0, 4096);
+        int y1 = number(q, "y1", client.getCanvasHeight() - 1, y0, 4096);
+        Recording next = new Recording(name, x0, y0, x1, y1, step, number(q, "settle", 2, 1, 20));
+        if (next.points.size() > 200_000) throw new IllegalArgumentException("Too many points; raise step");
+        recording = next;
+        return ReferenceSnapshots.map("name", name, "points", next.points.size(), "file", next.file.toString());
+    }
+
+    private Object recordStatus(boolean stop) {
+        if (recording == null) return ReferenceSnapshots.map("running", false);
+        if (stop && !recording.done) recording.finish(null);
+        return ReferenceSnapshots.map("name", recording.name, "running", !recording.done, "done", recording.index,
+            "total", recording.points.size(), "file", recording.file.toString(), "error", recording.error);
+    }
+
+    private Object dumpWidgets(Map<String, String> q) throws Exception {
+        String name = q.getOrDefault("name", "");
+        if (!NAME.matcher(name).matches()) throw new IllegalArgumentException("Name must match [a-z0-9-]{1,40}");
+        int depth = number(q, "depth", 8, 0, 12);
+        int[] budget = {0};
+        List<Object> roots = new ArrayList<>();
+        for (var widget : client.getWidgetRoots()) {
+            if (widget != null) roots.add(ReferenceSnapshots.widgetFull(widget, depth, budget));
+        }
+        Path dir = endpoint.resolveSibling("recordings");
+        Files.createDirectories(dir);
+        Path file = dir.resolve(name + ".json");
+        Files.writeString(file, gson.toJson(ReferenceSnapshots.map("cycle", client.getGameCycle(),
+            "resized", client.isResized(), "canvas", new int[]{client.getCanvasWidth(), client.getCanvasHeight()},
+            "viewport", new int[]{client.getViewportXOffset(), client.getViewportYOffset(),
+                client.getViewportWidth(), client.getViewportHeight()},
+            "roots", roots)), StandardCharsets.UTF_8);
+        return ReferenceSnapshots.map("file", file.toString(), "nodes", budget[0], "roots", roots.size(),
+            "truncated", budget[0] >= 40000);
+    }
 
     @Override
     protected void startUp() throws Exception {
@@ -136,6 +302,11 @@ public final class ReferencePlugin extends Plugin {
                 return ReferenceSnapshots.map("cycle", client.getGameCycle(), "widget",
                     ReferenceSnapshots.widget(widget, number(q, "depth", 1, 0, 4), new int[]{0}));
             }
+            case "input": return input(q);
+            case "record_menu": return recordMenu(q);
+            case "record_status": return recordStatus(false);
+            case "record_stop": return recordStatus(true);
+            case "dump_widgets": return dumpWidgets(q);
             case "tile": return ReferenceSnapshots.tile(client,
                 number(q, "x", 0, 0, 255), number(q, "y", 0, 0, 255), number(q, "plane", 0, 0, 3));
             case "class": return ReferenceSnapshots.type(client, classes, q.getOrDefault("name", "client"));
@@ -156,7 +327,7 @@ public final class ReferencePlugin extends Plugin {
                     "events", new ArrayList<>(events.subList(Math.min(eventStart, events.size()), Math.min(eventStart + eventCount, events.size()))),
                     "droppedEvents", droppedEvents);
             }
-            default: throw new IllegalArgumentException("Unknown read-only reference operation");
+            default: throw new IllegalArgumentException("Unknown reference operation");
         }
     }
 
@@ -175,6 +346,7 @@ public final class ReferencePlugin extends Plugin {
     }
 
     @Subscribe public void onClientTick(ClientTick event) {
+        if (recording != null) recording.tick();
         if (captureRemaining > 0) {
             var sample = ReferenceSnapshots.snapshot(client, 64);
             sample.remove("widgetRoots");

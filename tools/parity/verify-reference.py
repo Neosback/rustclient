@@ -38,7 +38,7 @@ by_id = {response["id"]: response for response in responses}
 assert len(responses) == len(messages) - 1  # notifications are silent
 assert by_id[1]["result"]["protocolVersion"] == "2025-11-25"
 names = {tool["name"] for tool in by_id[2]["result"]["tools"]}
-assert len(names) == 8 and "reference_trace" in names
+assert len(names) == 13 and {"reference_trace", "reference_input", "reference_record_menu"} <= names
 assert by_id[3]["result"] == {}
 assert by_id[4]["error"]["code"] == -32602
 assert by_id[5]["result"]["isError"]
