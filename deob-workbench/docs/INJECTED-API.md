@@ -10,7 +10,7 @@ A cleaned/decompiled copy remains presentation only.
 
 ## Exact bridge extraction
 
-`InjectedApiBridgeAnalyzer` scans classes implementing or inheriting `net/runelite/rs/api/*` interfaces and considers public semantic-looking methods. It only emits deliberately small shapes:
+`InjectedApiBridgeAnalyzer` scans classes implementing or inheriting `net/runelite/rs/api/*` or `net/runelite/api/*` interfaces and considers public semantic-looking methods. The pinned 240 injected client uses the latter namespace. The interface is evidence of injection, not proof that every public method implements that API. It only emits deliberately small shapes:
 
 - one exact field read followed by return;
 - one exact integer/long field read, one multiplier, then return;

@@ -40,7 +40,7 @@ public final class MaskFingerprintAnalyzer {
         CfgAnalyzer cfgAnalyzer = new CfgAnalyzer();
         List<MaskBlockFingerprint> result = new ArrayList<>();
 
-        for (UpdateMaskBitEvidence mask : masks.tests()) {
+        for (UpdateMaskBitEvidence mask : masks.maskTests()) {
             MethodNode method = methods.get(mask.method());
             if (method == null) continue;
             InstructionIndex index = InstructionIndex.of(method);

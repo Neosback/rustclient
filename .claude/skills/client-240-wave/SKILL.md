@@ -55,6 +55,24 @@ Git and Bash are prerequisites. Optional CLIENT240 overrides are for explicit al
 When asked to verify installation/setup only, stop after toolchain/baseline verification; do not
 start a naming wave or commit other sessions' pending shards.
 
+For installation verification with concurrent mapping edits, prefer
+`python3 tools/client-240/verify-setup.py <label>`: it verifies a committed snapshot and records its
+baseline without regenerating another session's pending merge/ledger files.
+
+### Workbench evidence before cleanup
+
+Use `python3 tools/client-240/workbench.py --build` to build a content-addressed source snapshot
+(first build downloads pinned Maven and versioned POM dependencies). Then use `injected-anchors`,
+`decoders`, `cfg`, `provenance` and the protocol/sync passes against the exact original JAR.
+Every `--out` must be a child of `.cache/client-240` or an explicit `CLIENT240_CACHE`.
+Reports propose evidence; they never promote names automatically. Both RuneLite interface namespaces
+are supported. Extract API getter/setter/invoker anchors before hiding injection wrappers in a reading view.
+
+Optional Recaf browsing is available through `tools/recaf/recaf.py` and its repo-owned MCP adapter;
+see `tools/recaf/README.md`. It needs a separate JDK 24+ build and is not a naming verification gate.
+Use its decompiled output as a reading aid, and retain exact class/member/instruction citations from
+the original corpus. Do not delete or simplify original bytecode to improve decompiler output.
+
 ### 2. Pick clusters with disjoint class sets
 
 This step makes or breaks the wave. A class belongs to exactly one shard, so **every cluster must own a

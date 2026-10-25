@@ -27,8 +27,10 @@ editing the reference sources, and hand-edited decompiler output cannot prove th
 4. Clusters own disjoint classes (and therefore disjoint shards), so parallel research agents cannot
    conflict. Cluster write-ups record behavior, wire/cycle semantics, client quirks and the proposed
    RustClient owner. Rust porting is a separate spec-gated step; this tree is evidence, not authority.
-5. Tooling reads the semantic jar and Java tools from outside the repository and checks pinned SHA-256
-   values first. Generated artifacts are never committed.
+5. Naming tools, licenses, corresponding LGPL source and pinned analysis inputs ship in the repository.
+   Checksum manifests are checked before use. Generated readable JARs and sources stay in an ignored cache.
+   Optional workbench/Recaf builds use repository-owned launchers and pinned bootstraps, with explicit
+   host JDK/network prerequisites. They do not depend on a researcher's external checkout.
 
 ## Consequences
 

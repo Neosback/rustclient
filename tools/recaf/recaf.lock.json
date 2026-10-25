@@ -1,0 +1,8 @@
+{
+  "commit": "d5888cdc10ba301659146e67a823d7d124851650",
+  "source_url": "https://codeload.github.com/Col-E/Recaf/zip/d5888cdc10ba301659146e67a823d7d124851650",
+  "source_sha256": "c4f2d65611512e2722e09a755b0492aa69c5eda83e1d9400563099445b96bff7",
+  "java_target": 24,
+  "gradle_version": "9.4.1",
+  "gradle_sha256": "2ab2958f2a1e51120c326cad6f385153bb11ee93b3c216c5fccebfdfbb7ec6cb"
+}

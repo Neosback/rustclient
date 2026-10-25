@@ -33,7 +33,8 @@ name (`@ObfuscatedName` in the jar, unchanged by construction).
 | `clusters/NN-name.md` | Behavior write-up for the cluster: old→new table, algorithms, wire and cycle semantics, Rust owner, open questions. |
 | `proposals/` | Unconfirmed candidate names (for example 235 carry-forward). Not part of the mapping until an agent confirms them. |
 | `verification/<wave>.md` | Machine output of `tools/client-240/verify.sh`. |
-| `../../../tools/client-240/` | Scripts and the ASM helper. |
+| `inputs/` | Pinned analysis-only semantic JAR and packet tables. Original gamepack stays under `references/`. |
+| `../../../tools/client-240/` | Scripts, ASM helper, vendored JARs, licenses and checksum manifests. |
 
 ## Evidence tiers
 
@@ -42,7 +43,7 @@ Every ledger row records the strongest evidence behind the name. Anything weaker
 | Tier | Source | Typical confidence |
 | --- | --- | --- |
 | T1 | RuneLite API getter implemented by the jar that returns one field (`Player.getSkullIcon()` returns `field1269`, so the field is `skullIcon`). Deterministic. | A |
-| T2 | Packet tables (`rl-suite-main/data/rev-240/mappings/*-packets.tsv`) and the selected RSProt 240 sources, cross-checked against control flow. | A or B |
+| T2 | Packet tables (`inputs/*-packets.tsv`) and the selected RSProt 240 sources, cross-checked against control flow. | A or B |
 | T3 | Carry-forward from the hand-named RuneLite 235 client, accepted only when structure matches (superclass chain, descriptors, constants, call shape). | B |
 | T4 | Behavior-derived: a cited method plus a one-line justification, ideally corroborated by cache or wire evidence. | B or C |
 
@@ -51,16 +52,60 @@ cluster write-up and are not named as stock behavior.
 
 ## Commands
 
-All run from the repository root. They read the semantic jar from outside the repo; set
-`CLIENT240_TOOLS` and `CLIENT240_SEMANTIC_JAR` if your local copies live elsewhere. The pinned SHA-256 of
-both jars is checked first.
+All run from the repository root. The naming toolchain and its inputs ship in the repository;
+no personal Java-Deob checkout or absolute Homebrew path is required. Prerequisites are a JDK 17+
+(including `javap`), Python 3.9+, Git and Bash. `JAVA_HOME` or `CLIENT240_JAVA` selects the host JDK.
+`dependencies.json` and `inputs.json` pin the artifacts; upstream licenses and Tiny Remapper's
+corresponding source archive are included under `tools/client-240/vendor/`.
+
+Install the repo-owned skill and verify setup before starting a naming wave:
+
+```bash
+python3 tools/client-240/install-skill.py
+python3 tools/client-240/toolchain.py --check
+python3 tools/client-240/test-setup.py
+python3 tools/client-240/verify-setup.py setup-$(date +%Y%m%d)
+```
+
+The setup verifier snapshots **committed** mapping/ledger shards into an isolated cache. It leaves
+concurrent research edits alone and records its baseline commit. Its report proves tooling integrity,
+not that every candidate name is correct. The installer refuses to overwrite another skill directory.
 
 ```text
 bash tools/client-240/verify.sh <wave-label>     all checks, writes verification/<wave-label>.md
 bash tools/client-240/merge-mappings.sh          regenerate mappings/merged.tiny
 bash tools/client-240/remap.sh forward OUT.jar   build the readable jar
 bash tools/client-240/decompile.sh IN.jar DIR    regenerate readable sources
+bash tools/client-240/secondary-decompile.sh Actor  cross-check one class with bundled CFR
 ```
+
+Generated JARs/sources must be children of `CLIENT240_CACHE` (default `.cache/client-240`).
+`CLIENT240_TOOLS` and `CLIENT240_SEMANTIC_JAR` can select alternate locations containing the same
+pinned bytes. The semantic transformation itself is not rebuilt by this setup: the pinned semantic
+artifact and its audit are evidence, and the original bytecode remains authoritative.
+
+## Workbench and Recaf
+
+Use the [workbench](../../../deob-workbench/README.md) for exact-bytecode evidence before deleting or
+rewriting injection wrappers. The wrapper builds a content-addressed snapshot, including pending local
+workbench edits, and records each source file hash and the resulting CLI hash. It downloads checksum-pinned
+Maven and resolves the POM's versioned dependencies on the first build; a system Maven install is optional.
+
+```bash
+python3 tools/client-240/workbench.py --build
+python3 tools/client-240/workbench.py injected-anchors \
+  --jar references/gamepacks/osrs-240/injected-client-1.12.39.jar \
+  --out .cache/client-240/workbench-evidence/injected-anchors.json
+python3 tools/client-240/workbench.py decoders \
+  --jar references/gamepacks/osrs-240/injected-client-1.12.39.jar \
+  --out .cache/client-240/workbench-evidence/decoders.json
+```
+
+Optional [Recaf MCP setup](../../../tools/recaf/README.md) exposes a read-only headless Recaf workspace
+for browsing, decompilation and disassembly. Its adapter source, pinned upstream source/Gradle checksums,
+license and installer are in this repository. The optional build needs JDK 24+ and network access;
+Recaf's generated distribution lives in the ignored cache. Naming verification uses the bundled tools
+and does not require Recaf. See [the cleanup workflow](CLEANUP-WORKFLOW.md) for the division of work.
 
 ## What `verify.sh` proves, and what it does not
 

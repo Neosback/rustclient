@@ -31,6 +31,7 @@ import org.objectweb.asm.tree.MethodNode;
  */
 public final class InjectedApiBridgeAnalyzer {
     private static final String RS_API_PREFIX = "net/runelite/rs/api/";
+    private static final String API_PREFIX = "net/runelite/api/";
 
     public InjectedApiBridgeReport analyze(JarCorpus corpus) {
         Map<ClassId, ClassNode> nodes = new HashMap<>();
@@ -195,7 +196,9 @@ public final class InjectedApiBridgeAnalyzer {
             ClassNode node = nodes.get(current);
             if (node == null) break;
             for (String iface : node.interfaces) {
-                if (iface.startsWith(RS_API_PREFIX)) result.add(new ClassId(iface));
+                if (iface.startsWith(RS_API_PREFIX) || iface.startsWith(API_PREFIX)) {
+                    result.add(new ClassId(iface));
+                }
             }
             current = node.superName == null ? null : new ClassId(node.superName);
         }
@@ -222,7 +225,8 @@ public final class InjectedApiBridgeAnalyzer {
             MethodId method,
             int memberInstruction,
             List<Integer> multiplies) {
-        Set<InstructionId> ids = new TreeSet<>();
+        // Every entry belongs to this method; sort the exact instruction indices explicitly.
+        Set<InstructionId> ids = new TreeSet<>(Comparator.comparingInt(InstructionId::opcodeIndex));
         ids.add(new InstructionId(method, memberInstruction));
         for (int multiply : multiplies) ids.add(new InstructionId(method, multiply));
         return List.copyOf(ids);
