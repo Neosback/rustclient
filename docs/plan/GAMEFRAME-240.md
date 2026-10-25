@@ -264,3 +264,20 @@ packets through tick 13. The independently known three script-2358 argument
 errors remain. The source ledger/checker and all 44 selected deob hashes pass;
 reference trees remain unchanged. The applied server patch passes reverse-apply
 checking, and whitespace checks pass in both repositories for the changed files.
+
+## 2026-10-25 reused-interface load callbacks
+
+The [current login/interface lifecycle record](../reference/rs240-port/LOGIN-REGION-INTERFACES.md)
+now distinguishes explicit root/subinterface opens from unchanged resync entries. Rust previously
+suppressed same-group load listeners because the cache group was already resident. `ClientScripts`
+now schedules those explicit opens after GameState validation and retains authored component and
+root/mount order. Repeated asset synchronization and mount moves do not manufacture open events.
+The coherent lifecycle helpers live under `scripts/lifecycle.rs`; the existing semantic owner and
+shared native/web path remain in place.
+
+Ten focused host contracts pass. Final Rust 1.99.0 formatting, workspace/all-target check, strict
+Clippy, **325 workspace tests**, web Wasm check and native binary build pass. Logs are
+`target/interface-lifecycle-final-{fmt,check,clippy,tests,wasm,native-build}.log`.
+The source ledger records these branches as contract-tested and the containing methods as partial.
+No fresh live login, pixel review, widget-model animation acceptance or script-2358 correction is
+claimed. An already-running native client needs a restart to load the rebuilt executable.

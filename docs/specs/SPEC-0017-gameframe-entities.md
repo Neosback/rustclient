@@ -32,3 +32,21 @@ Owners: model (typed entity identities, appearance, and orientation), cache (gam
    - Player composite models are assembled following `PlayerComposition`: kit models and worn items combined in slot order, tinted by body colors, and lit with player lighting constants.
    - NPC models are assembled from `NpcDefinition` body models, recolored/retextured, and lit with NPC lighting constants.
    - Dynamic entity posing evaluates sequence skeletal frames at the 50 Hz client cycle, projecting posed models into disposable scene vertex geometry.
+
+## Interface load callback continuation, 2026-10-25
+
+`application::ClientScripts` schedules immutable cache-authored group load listeners after a valid
+interface operation commits to GameState. Asset residency is not an interface-open event: an explicit
+root assignment or subinterface open runs that group's load listeners even when the same group is
+already present. A resync runs root load listeners only when the root changes and mount load listeners
+when a parent receives a different/new group; retaining a group at the same parent does not reopen it.
+Moves, unrelated updates and repeated resource synchronization do not synthesize load callbacks.
+
+Preserve root-before-mount and authored component order for explicitly opened groups. Invalid topology
+must reject before scheduling any callbacks. Native and web use this same scheduler. The resource
+cache/loaded-group set is disposable orchestration state, never a second owner of interface topology.
+
+Acceptance: semantic host tests cover repeated root/subinterface opens, unchanged resync, a reused group
+opened at another parent, callback order, invalid topology and repeated resource synchronization.
+This continuation does not accept widget-model frame reset/advancement, root-close callback ordering,
+all mutable widget unload behavior or rendering parity; those remain tracked separately.

@@ -18,6 +18,17 @@ and an ergonomic sandboxed plugin ecosystem. See the
 | Plugins | Accepted WIT/Component architecture and crate ownership | Real WIT interfaces/bindings, host mediation, both runtimes, SDK, sample plugin and authoring tooling |
 | Distribution | Development native launch scripts | Reproducible desktop bundles and browser build/deployment with asset/transport setup |
 
+2026-10-25 continuation: [the naming baseline](../reference/client-240/MAPPING-BASELINE.md) now passes
+after deterministic descriptor/ownership repair; 735 source files regenerate, with remaining syntax
+defects explicitly tracked. [Interface reopen callbacks](../reference/rs240-port/LOGIN-REGION-INTERFACES.md)
+now distinguish explicit opens from retained resync groups and have ten focused contracts. Shared Rust
+validation passes with 325 workspace tests. These are bounded improvements, not complete deobfuscation,
+widget-animation, actor/render or client parity.
+The refreshed source declaration index contains 18,433 declarations, of which 18,366 have no method-level
+triage row yet; it is a research denominator, not a count of missing Rust methods or a port percentage.
+The 124-row source ledger separately records 18 contract-tested and two live-tested entries. Generated
+inventory/report: `target/rs240-methods.tsv` and `target/rs240-port-report.json`.
+
 ## Verified 240 client reference (2026-10-22)
 
 Downloaded RuneLite's official `injected-client-1.12.39.jar` to

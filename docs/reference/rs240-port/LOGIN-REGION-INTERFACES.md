@@ -1,6 +1,7 @@
 # Login, initial region and interface lifecycle
 
-Status: source review and account-specific black-screen investigation, 2026-10-24.
+Status: source-reviewed login diagnosis (2026-10-24), with contract-tested interface reopen callbacks
+added 2026-10-25. Complete interface/model lifecycle parity remains open.
 The current GUI failure is a server-selected fullscreen world-map root without
 its content, rather than an unfinished first-region load. This document extends
 [GAMEFRAME-INTERFACES.md](GAMEFRAME-INTERFACES.md) and the
@@ -11,10 +12,10 @@ its content, rather than an unfinished first-region load. This document extends
 | Exact 240 source | Behavior | Rust owner / limit |
 | --- | --- | --- |
 | client IF_OPENTOP / IF_RESYNC_V2 branches | Select server root; reconcile mounted groups and permission ranges | protocol interface adapter; GameState interface owner. No account-name or first-login root guesses |
-| classPQ.method9137 | Assign root, align to canvas, reset widget model playback, invoke load listeners | application ClientScripts + shared WidgetTree. Widget model playback reset/advancement is incomplete |
-| classPQ.method9148 | Install mount, reset its model playback, align mounted children, invoke load and root callbacks | same authoritative interface owner + script scheduler; full callback/model branches remain open |
+| classPQ.method9137 | Assign root, align to canvas, reset widget model playback, invoke load listeners | GameState interface topology + application ClientScripts::synchronize_with_loads and game-ui layout. Explicit same-root load callbacks are contract-tested; widget model playback remains incomplete |
+| classPQ.method9148 | Install mount, reset its model playback, align mounted children, invoke load and root callbacks | GameState interface topology + application scripts/lifecycle.rs. Same-group open callbacks are contract-tested; full root-close/model branches remain open |
 | classPQ.method9188 | Reset component model frame and frame-cycle counters | explicit remaining widget-animation obligation, not an actor-animation reset substitute |
-| classPQ.method9181 | Invoke loaded group's authored on-load scripts | ClientScripts::synchronize; complete reopen/same-group lifecycle still needs auditing |
+| classPQ.method9181 | Invoke loaded group's authored on-load scripts | ClientScripts::enqueue_group_load; base component order, reused-group opens and retained resync entries are contract-tested. RuneLite callback hooks are not imported |
 | client.vmethod237 / client.method2187 / classGP.method5585 | Dispatch loading/game frames; draw the selected root and its children | native composition + game-ui projection + renderer. A presented frame does not prove visible gameplay |
 | classIV.method6364 / classKK.method6533 | Parse normal rebuild/base selection and coordinate initial/loading versus active map work | protocol map adapter; GameState scene selection; application load_scene; generation-tagged native worker. The injected async rl4 map-loader architecture is evidence, not Rust ownership |
 
@@ -73,3 +74,34 @@ all initial-load/reconnect transitions or every account-setup modal. The user re
 that the world and gameframe appear. The post-restart GUI trace selects normal
 root 164 with a world viewport. Preserve
 the logs and source mapping instead of treating 60 FPS or a loaded map as acceptance.
+
+## Reopen callbacks, 2026-10-25
+
+The previous scheduler treated membership in a disposable loaded-group set as the sole reason to run
+load listeners. It missed an explicit `IF_OPENTOP` or `IF_OPENSUB` when the same group was already
+present. Exact source review shows both setup paths invoke `classPQ.method9181` on every explicit open.
+`IF_RESYNC_V2` instead calls the root setup only for a changed root, and mount setup only when the
+parent has no mount or holds a different group. A retained same-parent/group entry does not reopen.
+
+The source identities are `pq.az(IIILvv;Lqn;I)V`, `pq.ae(IIILvv;Lqn;I)Lpk;`, and
+`pq.zw(Lpq;ILvv;I)V`. Original-JAR `javap` output confirms setup calls, reset-before-load order and
+exception regions; the workbench retained the original root CFG. A live Enigma `find_references`
+query returned eight contexts for `pq.zw`, including the root/mount helpers, under original SHA-256
+`25f42961c400bd9dfff1554402441c0ba6d1cffd011163cb9b0b4c42ae194f85`.
+Generated evidence is in `.cache/client-240/widget-lifecycle/`.
+
+The Rust scheduler now derives explicit open events from the operation and prior GameState topology,
+commits/validates first, ensures cache definitions, and queues authored base-component listeners in
+component order. Explicit resync opens preserve root-before-mount and wire mount order/multiplicity.
+Moves and repeated resource synchronization do not reopen a group. Ten host contract tests observe
+committed script variables to verify callback execution/order, reused groups and rejected topology.
+GameState remains the topology and script-variable authority; no second semantic UI state was added.
+
+Validation: Rust 1.99.0 formatting, workspace/all-target checking, strict Clippy, **325 workspace tests**,
+web Wasm checking and native binaries build pass (`target/interface-lifecycle-final-*.log`). This is
+static source plus synthetic host-contract evidence, not a live-account or per-case Java/Rust
+differential replay. Widget model frame/cycle reset and advancement, all mutable state unload rules,
+close/root callback ordering, unusual repeated-parent resync sequences and desktop appearance remain
+open. The previously recorded script-2358 diagnostics have not been re-tested by a new live login.
+The [machine record](verification/interface-lifecycle-20261025.json) pins source/Rust/evidence hashes,
+the ten cases and exact validation commands/log hashes.

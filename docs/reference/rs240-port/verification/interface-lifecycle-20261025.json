@@ -1,0 +1,105 @@
+{
+  "date": "2026-10-25",
+  "baselineCommit": "2c6c167",
+  "status": "CONTRACT_TESTED_PARTIAL_METHODS",
+  "originalJarSha256": "25f42961c400bd9dfff1554402441c0ba6d1cffd011163cb9b0b4c42ae194f85",
+  "sourceSha256": {
+    "references/rl-suite-240/sources-semantic/classPQ.java": "c3100a0376a9dd4a30eb1ec43d8f5d2d8048954c86bf552b860a2640f3c4548f",
+    "references/rl-suite-240/sources-semantic/client.java": "7c61d35b0f260c2cd8fbf1ae4436b6ef19954c93f79e13b27657c465c544043e"
+  },
+  "rustSha256": {
+    "crates/application/src/scripts/mod.rs": "be08e291e5c6a08c6b945c570a946003b3535a76973e172fd4b7975234bbe343",
+    "crates/application/src/scripts/lifecycle.rs": "8cda3e5e43e2783871638a389e4955c5a736031540f607a3c169b2acc37a995f",
+    "crates/application/src/scripts/lifecycle_tests.rs": "cbad70f5c5ce6b995ee9fe4210869b43fd02de7e2de3010ebf3dfa1be53dfddc"
+  },
+  "sourceMethods": [
+    "classPQ.method9137 / pq.az(IIILvv;Lqn;I)V",
+    "classPQ.method9148 / pq.ae(IIILvv;Lqn;I)Lpk;",
+    "classPQ.method9181 / pq.zw(Lpq;ILvv;I)V"
+  ],
+  "cases": [
+    "explicit_same_root_open_runs_its_load_callback_again",
+    "explicit_same_subinterface_open_runs_its_load_callback_again",
+    "resync_keeps_root_then_wire_mount_order_instead_of_numeric_group_order",
+    "unchanged_resync_does_not_reopen_retained_root_or_mounts",
+    "resync_opens_a_reused_group_at_a_new_parent_once",
+    "moving_an_existing_mount_does_not_reopen_it",
+    "repeated_resource_synchronization_does_not_reopen_groups",
+    "rejected_topology_cannot_queue_a_load_callback",
+    "initial_resync_preserves_two_opens_of_the_same_group",
+    "group_loads_follow_component_index_even_if_definitions_arrive_out_of_order"
+  ],
+  "evidenceSha256": {
+    ".cache/client-240/widget-lifecycle/enigma-load-references.json": "c6e5f9ae4b5d9807c767469dcb6a5891d4c96b5b0bdb43b0c890005aa6c2d493",
+    ".cache/client-240/widget-lifecycle/original-pq.txt": "3fe0d87b8600b243eb373ba20a9e13968a5797e2afc5927673d68f755bfab9c3",
+    ".cache/client-240/widget-lifecycle/root-cfg.json": "68db7afb09c2878b97dac37467e67f7fac28c4533a108465ed4de5d4e63db039"
+  },
+  "validation": [
+    {
+      "check": "fmt",
+      "returncode": 0,
+      "log": "target/interface-lifecycle-final-fmt.log",
+      "command": "cargo +1.99.0 fmt --all --check",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "check": "check",
+      "returncode": 0,
+      "log": "target/interface-lifecycle-final-check.log",
+      "command": "cargo +1.99.0 check --workspace --all-targets",
+      "logSha256": "d731e4af5156d313d1ff1aaef4bf51aabe990b385e8354ce2da1a7346bc925d1"
+    },
+    {
+      "check": "clippy",
+      "returncode": 0,
+      "log": "target/interface-lifecycle-final-clippy.log",
+      "command": "cargo +1.99.0 clippy --workspace --all-targets -- -D warnings",
+      "logSha256": "47d318bef67a6481f34ac77ae698bb9966903dcf90e45c02f4ebe1f0ddea8248"
+    },
+    {
+      "check": "tests",
+      "returncode": 0,
+      "log": "target/interface-lifecycle-final-tests.log",
+      "command": "cargo +1.99.0 test --workspace",
+      "logSha256": "9fcfcc0a2c38683817c9d56dacd39669fd302b555ed2742cfaeb7531cdf1c7d5"
+    },
+    {
+      "check": "wasm",
+      "returncode": 0,
+      "log": "target/interface-lifecycle-final-wasm.log",
+      "command": "cargo +1.99.0 check -p rustclient-web --target wasm32-unknown-unknown",
+      "logSha256": "c2ccae29be8ebbd8973f3201e5f6646ec32bdad22fe9c3866ff8d1618ed74896"
+    },
+    {
+      "check": "native-build",
+      "returncode": 0,
+      "log": "target/interface-lifecycle-final-native-build.log",
+      "command": "cargo +1.99.0 build -p rustclient-native --bins",
+      "logSha256": "b8ff5d1a56e79e0aa618efcbf1f82dc9a7c44fb76e500ab57fbb5002317c18fc"
+    }
+  ],
+  "workspaceTests": {
+    "passed": 325,
+    "failed": 0,
+    "ignored": 0
+  },
+  "limits": [
+    "Static original bytecode plus synthetic host contracts; no per-case Java/Rust differential replay.",
+    "No fresh live login, desktop pixel acceptance, complete model-animation reset/advancement or callback/unload parity.",
+    "Containing source methods remain partial; no new semantic state owner."
+  ],
+  "portInventory": {
+    "ledger_rows": 124,
+    "verification": {
+      "unrecorded": 67,
+      "source-reviewed": 37,
+      "contract-tested": 18,
+      "live-tested": 2
+    },
+    "declarations": 18433,
+    "untriaged_declarations": 18366,
+    "limits": "Declaration/source mapping is not semantic completion, passing tests, or visual parity.",
+    "inventorySha256": "3653ec03ddafbce8cb926139fde56fb80f0a54a5887ee119c68ff6d59036ad12",
+    "reportSha256": "b1809df7f319400f3c009b84ea1b182c41680cf470a434306dc26c9964076904"
+  }
+}

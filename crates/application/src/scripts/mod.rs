@@ -5,6 +5,9 @@ mod database;
 mod gameframe_tests;
 #[cfg(test)]
 mod input_tests;
+mod lifecycle;
+#[cfg(test)]
+mod lifecycle_tests;
 mod queries;
 #[cfg(test)]
 mod test_support;
@@ -122,12 +125,13 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
             )
         )
         .then(|| state.interfaces().groups());
+        let load_groups = Self::interface_load_groups(state, &op);
         let commit = state.apply_operation(op).map_err(|e| e.to_string())?;
         if state.lifecycle() != rustclient_game_state::SessionLifecycle::Active {
             self.reset();
             return Ok(Vec::new());
         }
-        self.synchronize(state)?;
+        self.synchronize_with_loads(state, &load_groups)?;
         if let Some(previous_groups) = previous_groups {
             let current = state.interfaces().groups();
             for group in previous_groups.difference(&current) {
@@ -437,44 +441,6 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
             return Err("script event queue limit".into());
         }
         self.queue.push_back((request, widget));
-        Ok(())
-    }
-    /// # Errors
-    /// Propagates missing required definitions and listener queue limits.
-    pub fn synchronize(&mut self, state: &GameState) -> Result<()> {
-        let current = state.interfaces().groups();
-        self.loaded_groups.retain(|g| current.contains(g));
-        self.layout_sizes
-            .retain(|address, _| current.contains(&address.widget.interface));
-        for group in current
-            .difference(&self.loaded_groups)
-            .copied()
-            .collect::<Vec<_>>()
-        {
-            if !self.interfaces.contains_key(&group) {
-                self.interfaces.insert(
-                    group,
-                    self.profile
-                        .load_interface(&self.cache, group)
-                        .map_err(|e| e.to_string())?,
-                );
-            }
-            let listeners: Vec<_> = self.interfaces[&group]
-                .widgets()
-                .values()
-                .filter_map(|w| {
-                    w.listeners
-                        .get(&WidgetListener::Load)
-                        .map(|a| (w.id, a.clone()))
-                })
-                .collect();
-            for (widget, args) in listeners {
-                if let Some(request) = request(args)? {
-                    self.enqueue(request, Some(WidgetAddress::component(widget)))?;
-                }
-            }
-            self.loaded_groups.insert(group);
-        }
         Ok(())
     }
     /// Schedule a committed variable/container notification. Trigger filtering follows cache listeners.
