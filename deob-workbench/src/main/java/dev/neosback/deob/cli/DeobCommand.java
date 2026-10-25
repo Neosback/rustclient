@@ -28,7 +28,9 @@ import picocli.CommandLine.Command;
         SyncPathsCommand.class,
         UpdateMasksCommand.class,
         MaskFingerprintsCommand.class,
+        MaskLineageCommand.class,
         ActorClustersCommand.class,
+        ActorSemanticDossierCommand.class,
         LineageCommand.class,
         ProtocolCommand.class,
         SourcesCommand.class
@@ -42,7 +44,7 @@ public final class DeobCommand implements Callable<Integer> {
                 + "decoders, packet-reads, packet-timelines, packet-profile, protocol-fingerprint, "
                 + "packet-reader-geometry, buffer-infra, reflection-hooks, reflection-hooks-controlled, "
                 + "bit-access, sync-candidates, sync-paths, update-masks, mask-fingerprints, "
-                + "actor-clusters, lineage, protocol, sources."
+                + "mask-lineage, actor-clusters, actor-semantic-dossier, lineage, protocol, sources."
         );
         return 0;
     }
