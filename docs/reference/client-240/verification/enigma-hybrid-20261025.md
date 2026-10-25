@@ -3,6 +3,9 @@
 Status: **PASS for the bounded setup and read-only comparison below**. This is not a naming-wave,
 complete decompilation, behavioral-parity or Rust-port completion claim.
 
+Later checkpoint: [the mapping baseline repair](../MAPPING-BASELINE.md) clears the 179 mechanical
+validation issues mentioned below. This report retains the original setup-run findings.
+
 ## Enigma integration
 
 The supplied Fabric tree matched official commit

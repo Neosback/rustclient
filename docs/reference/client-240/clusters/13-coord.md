@@ -2,6 +2,10 @@
 
 Status: evidence-found
 
+Ownership correction, 2026-10-25: this shard now owns all `classKY` mappings. Duplicate rows from
+cluster 04 were consolidated with their supporting evidence retained; its existing `setPacked`
+entry was moved here. No new coordinate name or confidence upgrade was introduced.
+
 ## Scope
 
 Owned class: `classKY` (`@ObfuscatedName("ky")`).

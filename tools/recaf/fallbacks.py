@@ -22,6 +22,7 @@ def main():
     parser.add_argument('--jadx', type=Path)
     parser.add_argument('--legacy-vineflower-only', action='store_true', help='try a separate legacy exception-rendering profile on constructor failures')
     parser.add_argument('--procyon-only', action='store_true', help='compare Recaf Procyon on the verified reading JAR')
+    parser.add_argument('--complex-condy-only', action='store_true', help='separate analysis-only non-lazy constant-dynamic presentation; never selected by assemble.py')
     args = parser.parse_args()
     check_build()
     java, _ = java_tools()
@@ -30,14 +31,16 @@ def main():
     jar = reading / 'reading.jar'
     if sha(jar.read_bytes()) != primary['provenance']['java_safe_sha256']:
         raise ValueError('reading JAR differs from the primary export')
-    if args.procyon_only and args.legacy_vineflower_only: parser.error('choose one optional profile')
-    out = reading / ('procyon' if args.procyon_only else ('legacy-vineflower' if args.legacy_vineflower_only else 'fallbacks'))
+    if sum((args.procyon_only, args.legacy_vineflower_only, args.complex_condy_only)) > 1: parser.error('choose one optional profile')
+    out = reading / ('analysis-condy' if args.complex_condy_only else ('procyon' if args.procyon_only else ('legacy-vineflower' if args.legacy_vineflower_only else 'fallbacks')))
     if out.exists(): raise ValueError('fallback evidence already exists; do not overwrite it')
     out.mkdir()
     flagged = sorted(set(primary['syntax_error_files']) | set(primary['failure_marker_files']))
     if args.legacy_vineflower_only:
         flagged = [name for name in flagged if 'Unable to resugar constructor' in primary['failure_marker_files'].get(name, {})]
-    engines = ['Vineflower-legacy'] if args.legacy_vineflower_only else (['CFR', 'JADX'] if args.jadx else ['CFR'])
+    if args.complex_condy_only:
+        flagged = [name for name in flagged if 'ConstantBootstraps.invoke<' in primary['failure_marker_files'].get(name, {})]
+    engines = ['Vineflower-condy'] if args.complex_condy_only else (['Vineflower-legacy'] if args.legacy_vineflower_only else (['CFR', 'JADX'] if args.jadx else ['CFR']))
     tasks = [(name[:-5], engine) for name in flagged for engine in engines]
 
     def render(task):
@@ -46,15 +49,18 @@ def main():
         dest.mkdir(exist_ok=True)
         source = dest / (cls + '.java')
         record = {'class_name': cls, 'engine': engine}
-        if engine in {'CFR', 'Vineflower-legacy'}:
+        if engine in {'CFR', 'Vineflower-legacy', 'Vineflower-condy'}:
             bytecode = out / (cls + '.class')
             with zipfile.ZipFile(jar) as archive: bytecode.write_bytes(archive.read(cls + '.class'))
             if engine == 'CFR':
                 command = [java, '-Xmx2g', '-jar', str(ROOT / 'tools/client-240/vendor/cfr-0.152.jar'),
                            str(bytecode), '--extraclasspath', str(jar), '--outputdir', str(dest), '--silent', 'true']
             else:
-                options = ['--old-try-dedup=true', '--simplify-stack=false', '--inline-simple-lambdas=false']
+                options = ['--decompile-complex-constant-dynamic=true'] if engine == 'Vineflower-condy' else ['--old-try-dedup=true', '--simplify-stack=false', '--inline-simple-lambdas=false']
                 record['options'] = options
+                if engine == 'Vineflower-condy':
+                    record['safety'] = 'analysis-only'
+                    record['limit'] = 'Non-lazy presentation can change constant initialization/exception timing. Not original-equivalent Java.'
                 command = [java, '-Xmx2g', '-jar', str(ROOT / 'tools/client-240/vendor/vineflower-1.12.0.jar'),
                            '-log=ERROR', '-thr=2', '-e=' + str(jar), *options, str(bytecode), str(dest)]
         else:
@@ -105,7 +111,7 @@ def main():
         if 'path' in record:
             record['syntax'] = syntax[str(Path(record['path']).relative_to(out.name))]
     (out / 'manifest.json').write_text(json.dumps({'records': records, 'reading_jar_sha256': primary['provenance']['java_safe_sha256'],
-        'scope': 'whole-class alternatives; no source splicing or automatic semantic promotion'}, indent=2) + '\n')
+        'scope': 'analysis-only non-lazy constant-dynamic presentation; excluded from assembly' if args.complex_condy_only else 'whole-class alternatives; no source splicing or automatic semantic promotion'}, indent=2) + '\n')
 
 
 if __name__ == '__main__':

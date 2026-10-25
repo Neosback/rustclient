@@ -23,13 +23,3 @@ c	classDC	PlayerInfoSlot
 	m	(LPlayer;I)V	method2901	attachPlayer
 	m	(LclassDC;LclassGT;)V	method2923	applyTraversal
 	m	(III)V	method2930	applyActionSequence
-c	classKY	Coord
-	f	I	field4053	x
-	f	I	field4054	y
-	f	I	field4055	plane
-	m	(IIII)I	method6623	pack
-	m	(II)I	method6626	unpackPlane
-	m	(IB)I	method6638	unpackX
-	m	(II)I	method6640	unpackY
-	m	(IB)V	method6660	setPacked
-	m	(I)Z	method6674	isValid

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Register the verified, running GUI-backed Enigma MCP review session."""
+import argparse
 import json
 import shutil
 import subprocess
@@ -8,6 +9,9 @@ from urllib.parse import urlsplit
 from enigma import CACHE, check_build
 
 NAME='rustclient-enigma'
+parser=argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--client',choices=('codex','claude','all'),default='codex')
+args=parser.parse_args()
 check_build()
 active=json.loads((CACHE/'active.json').read_text())
 url=active['url']; parsed=urlsplit(url)
@@ -19,13 +23,20 @@ if 'error' in reply: raise SystemExit(str(reply['error']))
 status=json.loads(reply['result']['content'][0]['text'])
 if status['originalSha256']!=active['original_sha256'] or not status['data']['draftOnly']:
     raise SystemExit('Unexpected Enigma workspace')
-codex=shutil.which('codex')
-if not codex: raise SystemExit('Codex CLI is not on PATH')
-existing=subprocess.run([codex,'mcp','get',NAME,'--json'],capture_output=True,text=True)
-if existing.returncode==0:
-    entry=json.loads(existing.stdout)
-    if entry['transport'].get('url')!=url: raise SystemExit(NAME+' already points elsewhere; refusing to replace it')
-    print(NAME+' already registered: '+url)
-else:
-    if 'No MCP server named' not in existing.stderr: raise SystemExit(existing.stderr)
-    subprocess.run([codex,'mcp','add',NAME,'--url',url],check=True)
+for client in ('codex','claude') if args.client=='all' else (args.client,):
+    executable=shutil.which(client)
+    if not executable: raise SystemExit(client+' CLI is not on PATH')
+    command=[executable,'mcp','get',NAME]
+    if client=='codex': command.append('--json')
+    existing=subprocess.run(command,capture_output=True,text=True)
+    if existing.returncode==0:
+        if client=='codex': found=json.loads(existing.stdout)['transport'].get('url')
+        else:
+            found=next((line.partition('URL:')[2].strip() for line in existing.stdout.splitlines() if line.strip().startswith('URL:')),None)
+        if found!=url: raise SystemExit(client+': '+NAME+' already points elsewhere; refusing to replace it')
+        print(client+': '+NAME+' already registered: '+url)
+    else:
+        if 'No MCP server named' not in existing.stderr+existing.stdout: raise SystemExit(existing.stderr+existing.stdout)
+        if client=='codex': command=[executable,'mcp','add',NAME,'--url',url]
+        else: command=[executable,'mcp','add','--transport','http','--scope','user',NAME,url]
+        subprocess.run(command,check=True)

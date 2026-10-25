@@ -16,7 +16,7 @@ Use **Vineflower 1.12 for the main export, Recaf for navigation and decompiler s
 | Named/keyword-safe primary Java | 735 files; six files still failed syntax reconstruction |
 | Checked reading bundle | 735 Java files, 730 syntax-pass files; classTV supplied by CFR |
 | Unresolved original code | Complete ASM views retained for the five remaining problem classes, with Code hashes and bootstrap/exception information |
-| Current production naming shards | Validation failed with 179 stale/conflicting entries; no automatic promotion or modification |
+| Current production naming shards | [Baseline repaired](MAPPING-BASELINE.md): 18 shards validate, 943 ledger/name entries agree, 735-class normalized roundtrip passes; semantic name confidence remains separately reviewed |
 
 For the small `aa` control class, raw Recaf output was 625,563 Java UTF-16 characters with Vineflower, 1,213,915 with CFR and 1,213,862 with Procyon. Removing annotation noise reduced those outputs to 584, 660 and 643 characters respectively. This is a readability measurement, not a semantic-equivalence score.
 
@@ -82,4 +82,22 @@ The annotation reader follows the separate annotation and Code structures in the
 
 Validation executed: both metadata tests over all 735 original classes; the diagnostic-limit/nested-member regression test; registered MCP smoke including raw and clean controls; the 735-class rename roundtrip; 59 initial renderer attempts plus targeted alternatives and a legacy profile; whole-corpus syntax checks; source hashes and original reference checksum preservation. No Rust files changed and no Cargo gates were run.
 
-[Current naming baseline failure report](verification/decompiler-quality-baseline-20261025.md).
+[Historical naming failure](verification/decompiler-quality-baseline-20261025.md), superseded by the
+[current passing baseline](MAPPING-BASELINE.md).
+
+## Follow-up measurements, 2026-10-25
+
+After the descriptor/ownership repair, the full semantic/readable source regeneration again produced
+735 files. A separate uncapped syntax scan still flags ClanSettings, ObjectComposition, Widget,
+classBF, classTV and client. This raw source view has no checked whole-class fallback selection;
+the original-code best-reading bundle above retains its 730 syntax-pass / five unresolved result.
+
+The pinned Vineflower 1.12 option `--decompile-complex-constant-dynamic=true` was also tried separately
+on classBF and client from the verified original reading JAR. Both renderers exited successfully,
+but retained 90/132 syntax diagnostics and 35/50 `ConstantBootstraps.invoke<` markers respectively.
+It is not a fix for these sites. Reproduce with
+`python3 tools/recaf/fallbacks.py --complex-condy-only` on a fresh reading export. Its generated
+`analysis-condy/manifest.json` labels the non-lazy presentation analysis-only, and `assemble.py`
+does not select it. No failed Java was promoted or original bytecode changed.
+The [follow-up machine record](verification/decompiler-followup-20261025.json) retains artifact hashes,
+options, marker counts and syntax diagnostics for these separate views.

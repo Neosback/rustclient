@@ -5,3 +5,15 @@ WorldView.field1696	WorldView	ay	npcs	field	T1	A	WorldView.npcs() directly retur
 WorldView.field1698	WorldView	ad	worldEntities	field	T1	A	WorldView.worldEntities() exposes this IterableHashTable and view reset clears it with the rest of world-scoped entity containers	game-state::entities	06-world-region
 classIV.method6364	classIV	cm	decodeNormalRegionRebuild	method	T4	A	Reads the normal region/base rebuild coordinates from PacketBuffer, updates the active map coordinate state, calls classKK.method6533 with instance=false, then finishes the packet-side region setup	protocol::map	06-world-region
 classKK.method6533	classKK	dd	beginRegionLoad	method	T4	B	When forced or the region center changes, computes the (center-6)*8 base, records region center and plane, drives loading-state transition and starts the injected rl4 loader; stock base-selection semantics are separated from injection-only orchestration in the write-up	application::scene_load	06-world-region
+WorldView.field1686	WorldView	al	tileHeights	field	T1	A	getter:WorldView.getTileHeights()	-	06-world-region
+WorldView.field1689	WorldView	ai	graphicsObjects	field	T1	A	getter:WorldView.getGraphicsObjects()	-	06-world-region
+WorldView.field1690	WorldView	ax	sizeY	field	T1	A	getter:WorldView.getSizeY()	-	06-world-region
+WorldView.field1694	WorldView	as	sizeX	field	T1	A	getter:WorldView.getSizeX()	-	06-world-region
+WorldView.field1697	WorldView	af	id	field	T1	A	getter:WorldView.getId()	-	06-world-region
+WorldView.field1700	WorldView	aj	tileSettings	field	T1	A	getter:WorldView.getTileSettings()	-	06-world-region
+WorldView.field1706	WorldView	aa	baseX	field	T1	A	getter:WorldView.getBaseX()	-	06-world-region
+WorldView.field1707	WorldView	ac	baseY	field	T1	A	getter:WorldView.getBaseY()	-	06-world-region
+WorldView.field1708	WorldView	ag	plane	field	T1	A	getter:WorldView.getPlane()	-	06-world-region
+WorldView.field1710	WorldView	xi	instance	field	T1	A	getter:WorldView.isInstance()	-	06-world-region
+WorldView.field1711	WorldView	kd	mapRegions	field	T1	A	getter:WorldView.getMapRegions()	-	06-world-region
+WorldView.field1712	WorldView	ro	instanceTemplateChunks	field	T1	A	getter:WorldView.getInstanceTemplateChunks()	-	06-world-region

@@ -22,13 +22,3 @@ classDC.method2891	classDC	af	reset	method	T4	A	Resets packed region, facing hel
 classDC.method2901	classDC	ab	attachPlayer	method	T4	A	Adds a concrete Player representation to the slot after applying stored logical state	game-state::player_info	04-player-info
 classDC.method2923	classDC	us	applyTraversal	method	T4	A	For every represented Player, derives local coordinates from the slot coordinate and WorldView base, copies plane, then teleports or traverses according to classGT and safe-box rules	game-state::player_info	04-player-info
 classDC.method2930	classDC	ao	applyActionSequence	method	T4	A	Forwards one action-sequence id and delay to every concrete Player represented by this slot through classCU.method2672	game-state::sequence_scheduler	04-player-info
-classKY	classKY	ky	Coord	class	T4	A	classKY stores plane/x/y and its constructors plus method6623/method6660 use the standard plane<<28 | x<<14 | y packing	game-state::coordinates	04-player-info
-classKY.field4053	classKY	af	x	field	T4	A	classKY packing, equality and WorldView-local conversion consistently treat this as the 14-bit world x coordinate	game-state::coordinates	04-player-info
-classKY.field4054	classKY	ae	y	field	T4	A	classKY packing, equality and WorldView-local conversion consistently treat this as the 14-bit world y coordinate	game-state::coordinates	04-player-info
-classKY.field4055	classKY	az	plane	field	T4	A	classKY packs this in bits 28-29 and uses -1 as the invalid coordinate sentinel	game-state::coordinates	04-player-info
-classKY.method6623	classKY	az	pack	method	T4	A	Returns plane<<28 | x<<14 | y	game-state::coordinates	04-player-info
-classKY.method6626	classKY	af	unpackPlane	method	T4	A	Returns packed>>28	game-state::coordinates	04-player-info
-classKY.method6638	classKY	ae	unpackX	method	T4	A	Returns packed>>14 & 16383	game-state::coordinates	04-player-info
-classKY.method6640	classKY	ab	unpackY	method	T4	A	Returns packed & 16383	game-state::coordinates	04-player-info
-classKY.method6660	classKY	ao	setPacked	method	T4	A	Assigns plane/x/y from the packed coordinate using the same bit layout and preserves -1 as invalid	game-state::coordinates	04-player-info
-classKY.method6674	classKY	aq	isValid	method	T4	A	Returns whether plane is not -1	game-state::coordinates	04-player-info

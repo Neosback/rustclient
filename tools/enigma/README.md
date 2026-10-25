@@ -24,6 +24,10 @@ Keep **RustClient — Enigma Mapping Review** open. When the session log contain
 
 ```bash
 python3 tools/enigma/install-mcp.py
+# Register the same verified endpoint in Claude Code user configuration:
+python3 tools/enigma/install-mcp.py --client claude
+# Or verify/register both clients:
+python3 tools/enigma/install-mcp.py --client all
 ```
 
 The installer verifies the live corpus and draft-only status, then uses `codex mcp add` to register
@@ -47,8 +51,9 @@ tool. Its manifest verifies byte-identical Code attributes, constant pools, memb
 other attributes. Annotation reflection changes; the JAR is for reading only.
 
 The initial draft copies the checked reading bundle's class/keyword map, or generates the same kind
-of identity view when that bundle is absent. It does not import the currently failing production
-mapping set. Each successful tool response includes the original SHA-256, analysis SHA-256 and session.
+of identity view when that bundle is absent. It does not import the production mapping set; the
+[subsequent baseline repair](../../docs/reference/client-240/MAPPING-BASELINE.md) is verified separately.
+Each successful tool response includes the original SHA-256, analysis SHA-256 and session.
 Enigma can compute analysis frames internally; its instruction representation is not the original
 bytecode authority. External RuneLite API dependency JARs are not loaded, so external method-family
 completeness is not guaranteed. Use the workbench's original instruction IDs for evidence citations.

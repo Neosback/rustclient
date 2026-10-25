@@ -1,0 +1,857 @@
+{
+  "semanticSha256": "7ef51916eb8f47ce12d8787981d7d1dc96314e04c1e339f7fa57b94ad52116dc",
+  "indexSha256": "87260060510e0321bb9c3c277750cb33179647f97c0a09296d1ddd073c337155",
+  "changes": [
+    {
+      "class": "Actor",
+      "fromShard": "00-seed-api",
+      "toShard": "03-actor-motion"
+    },
+    {
+      "class": "NPC",
+      "fromShard": "00-seed-api",
+      "toShard": "03-actor-motion"
+    },
+    {
+      "class": "Player",
+      "fromShard": "00-seed-api",
+      "toShard": "03-actor-motion"
+    },
+    {
+      "class": "WorldView",
+      "fromShard": "00-seed-api",
+      "toShard": "06-world-region"
+    },
+    {
+      "symbol": "Actor.field1452",
+      "fromDescriptor": "f",
+      "toDescriptor": "I"
+    },
+    {
+      "symbol": "Actor.field1496",
+      "fromDescriptor": "f",
+      "toDescriptor": "LActor;"
+    },
+    {
+      "symbol": "Actor.field1465",
+      "fromDescriptor": "f",
+      "toDescriptor": "I"
+    },
+    {
+      "symbol": "Actor.field1432",
+      "fromDescriptor": "f",
+      "toDescriptor": "Ljava/util/List;"
+    },
+    {
+      "symbol": "Actor.field1433",
+      "fromDescriptor": "f",
+      "toDescriptor": "LclassFL;"
+    },
+    {
+      "symbol": "Actor.field1471",
+      "fromDescriptor": "f",
+      "toDescriptor": "I"
+    },
+    {
+      "symbol": "Actor.field1479",
+      "fromDescriptor": "f",
+      "toDescriptor": "I"
+    },
+    {
+      "symbol": "Actor.field1490",
+      "fromDescriptor": "f",
+      "toDescriptor": "I"
+    },
+    {
+      "symbol": "Actor.field1484",
+      "fromDescriptor": "f",
+      "toDescriptor": "I"
+    },
+    {
+      "symbol": "Actor.field1486",
+      "fromDescriptor": "f",
+      "toDescriptor": "I"
+    },
+    {
+      "symbol": "Actor.field1478",
+      "fromDescriptor": "f",
+      "toDescriptor": "I"
+    },
+    {
+      "symbol": "Actor.field1487",
+      "fromDescriptor": "f",
+      "toDescriptor": "I"
+    },
+    {
+      "symbol": "Actor.field1498",
+      "fromDescriptor": "f",
+      "toDescriptor": "LclassQR;"
+    },
+    {
+      "symbol": "Actor.field1464",
+      "fromDescriptor": "f",
+      "toDescriptor": "LclassQR;"
+    },
+    {
+      "symbol": "Actor.field1497",
+      "fromDescriptor": "f",
+      "toDescriptor": "Ljava/util/ArrayList;"
+    },
+    {
+      "symbol": "Actor.field1491",
+      "fromDescriptor": "f",
+      "toDescriptor": "I"
+    },
+    {
+      "symbol": "Actor.field1449",
+      "fromDescriptor": "f",
+      "toDescriptor": "I"
+    },
+    {
+      "symbol": "Actor.field1450",
+      "fromDescriptor": "f",
+      "toDescriptor": "I"
+    },
+    {
+      "symbol": "Actor.field1451",
+      "fromDescriptor": "f",
+      "toDescriptor": "I"
+    },
+    {
+      "symbol": "Actor.field1444",
+      "fromDescriptor": "f",
+      "toDescriptor": "I"
+    },
+    {
+      "symbol": "Actor.field1453",
+      "fromDescriptor": "f",
+      "toDescriptor": "I"
+    },
+    {
+      "symbol": "Actor.field1458",
+      "fromDescriptor": "f",
+      "toDescriptor": "I"
+    },
+    {
+      "symbol": "Actor.field1440",
+      "fromDescriptor": "f",
+      "toDescriptor": "LclassNV;"
+    },
+    {
+      "symbol": "Actor.field1475",
+      "fromDescriptor": "f",
+      "toDescriptor": "LclassAAV;"
+    },
+    {
+      "symbol": "Actor.field1436",
+      "fromDescriptor": "f",
+      "toDescriptor": "[I"
+    },
+    {
+      "symbol": "Actor.field1461",
+      "fromDescriptor": "f",
+      "toDescriptor": "LclassBZ;"
+    },
+    {
+      "symbol": "Actor.field1462",
+      "fromDescriptor": "f",
+      "toDescriptor": "LclassQR;"
+    },
+    {
+      "symbol": "Actor.field1482",
+      "fromDescriptor": "f",
+      "toDescriptor": "F"
+    },
+    {
+      "symbol": "Actor.field1463",
+      "fromDescriptor": "f",
+      "toDescriptor": "LclassQR;"
+    },
+    {
+      "symbol": "Actor.field1430",
+      "fromDescriptor": "f",
+      "toDescriptor": "I"
+    },
+    {
+      "symbol": "Actor.field1454",
+      "fromDescriptor": "f",
+      "toDescriptor": "I"
+    },
+    {
+      "symbol": "Actor.field1439",
+      "fromDescriptor": "f",
+      "toDescriptor": "I"
+    },
+    {
+      "symbol": "Actor.field1499",
+      "fromDescriptor": "f",
+      "toDescriptor": "LclassQR;"
+    },
+    {
+      "symbol": "Actor.field1480",
+      "fromDescriptor": "f",
+      "toDescriptor": "Ljava/util/Set;"
+    },
+    {
+      "symbol": "Actor.field1435",
+      "fromDescriptor": "f",
+      "toDescriptor": "I"
+    },
+    {
+      "symbol": "Actor.field1466",
+      "fromDescriptor": "f",
+      "toDescriptor": "Z"
+    },
+    {
+      "symbol": "Actor.field1467",
+      "fromDescriptor": "f",
+      "toDescriptor": "LIterableHashTable;"
+    },
+    {
+      "symbol": "Actor.field1481",
+      "fromDescriptor": "f",
+      "toDescriptor": "B"
+    },
+    {
+      "symbol": "Actor.field1437",
+      "fromDescriptor": "f",
+      "toDescriptor": "I"
+    },
+    {
+      "symbol": "Actor.field1488",
+      "fromDescriptor": "f",
+      "toDescriptor": "I"
+    },
+    {
+      "symbol": "Actor.field1489",
+      "fromDescriptor": "f",
+      "toDescriptor": "I"
+    },
+    {
+      "symbol": "Actor.field1492",
+      "fromDescriptor": "f",
+      "toDescriptor": "I"
+    },
+    {
+      "symbol": "Actor.field1494",
+      "fromDescriptor": "f",
+      "toDescriptor": "I"
+    },
+    {
+      "symbol": "Actor.field1445",
+      "fromDescriptor": "f",
+      "toDescriptor": "I"
+    },
+    {
+      "symbol": "Actor.field1441",
+      "fromDescriptor": "f",
+      "toDescriptor": "I"
+    },
+    {
+      "symbol": "Actor.field1469",
+      "fromDescriptor": "f",
+      "toDescriptor": "I"
+    },
+    {
+      "symbol": "Actor.field1470",
+      "fromDescriptor": "f",
+      "toDescriptor": "I"
+    },
+    {
+      "symbol": "Actor.field1495",
+      "fromDescriptor": "f",
+      "toDescriptor": "I"
+    },
+    {
+      "symbol": "Actor.field1501",
+      "fromDescriptor": "f",
+      "toDescriptor": "Z"
+    },
+    {
+      "symbol": "Actor.field1472",
+      "fromDescriptor": "f",
+      "toDescriptor": "[I"
+    },
+    {
+      "symbol": "Actor.field1431",
+      "fromDescriptor": "f",
+      "toDescriptor": "[I"
+    },
+    {
+      "symbol": "Actor.field1474",
+      "fromDescriptor": "f",
+      "toDescriptor": "[LclassGT;"
+    },
+    {
+      "symbol": "Actor.field1483",
+      "fromDescriptor": "f",
+      "toDescriptor": "F"
+    },
+    {
+      "symbol": "Actor.field1476",
+      "fromDescriptor": "f",
+      "toDescriptor": "I"
+    },
+    {
+      "symbol": "Actor.method3277",
+      "fromDescriptor": "m",
+      "toDescriptor": "(IIIIII)V"
+    },
+    {
+      "symbol": "Actor.method3091",
+      "fromDescriptor": "m",
+      "toDescriptor": "(I)I"
+    },
+    {
+      "symbol": "Actor.method3096",
+      "fromDescriptor": "m",
+      "toDescriptor": "(II)V"
+    },
+    {
+      "symbol": "Actor.method3150",
+      "fromDescriptor": "m",
+      "toDescriptor": "(LActor;I)V"
+    },
+    {
+      "symbol": "Actor.method3099",
+      "fromDescriptor": "m",
+      "toDescriptor": "(IIZB)V"
+    },
+    {
+      "symbol": "Actor.method3106",
+      "fromDescriptor": "m",
+      "toDescriptor": "(I)I"
+    },
+    {
+      "symbol": "Actor.method3260",
+      "fromDescriptor": "m",
+      "toDescriptor": "(I)I"
+    },
+    {
+      "symbol": "Actor.method3113",
+      "fromDescriptor": "m",
+      "toDescriptor": "(I)Z"
+    },
+    {
+      "symbol": "Actor.method3120",
+      "fromDescriptor": "m",
+      "toDescriptor": "(IILclassGT;I)V"
+    },
+    {
+      "symbol": "Actor.method3123",
+      "fromDescriptor": "m",
+      "toDescriptor": "(III)V"
+    },
+    {
+      "symbol": "Actor.method3129",
+      "fromDescriptor": "m",
+      "toDescriptor": "(B)V"
+    },
+    {
+      "symbol": "Actor.method3236",
+      "fromDescriptor": "m",
+      "toDescriptor": "(LActor;I)Z"
+    },
+    {
+      "symbol": "Actor.method3165",
+      "fromDescriptor": "m",
+      "toDescriptor": "(I)Z"
+    },
+    {
+      "symbol": "Actor.method3170",
+      "fromDescriptor": "m",
+      "toDescriptor": "(I)V"
+    },
+    {
+      "symbol": "Actor.method3210",
+      "fromDescriptor": "m",
+      "toDescriptor": "(I)Z"
+    },
+    {
+      "symbol": "Actor.method3177",
+      "fromDescriptor": "m",
+      "toDescriptor": "(B)LWorldView;"
+    },
+    {
+      "symbol": "Actor.method3283",
+      "fromDescriptor": "m",
+      "toDescriptor": "(IIIIZ)V"
+    },
+    {
+      "symbol": "Actor.method3178",
+      "fromDescriptor": "m",
+      "toDescriptor": "(I)I"
+    },
+    {
+      "symbol": "Actor.method3180",
+      "fromDescriptor": "m",
+      "toDescriptor": "(I)Z"
+    },
+    {
+      "symbol": "Actor.method3185",
+      "fromDescriptor": "m",
+      "toDescriptor": "(I)LclassQR;"
+    },
+    {
+      "symbol": "Actor.method3187",
+      "fromDescriptor": "m",
+      "toDescriptor": "(LclassQR;I)LclassQR;"
+    },
+    {
+      "symbol": "Actor.method3196",
+      "fromDescriptor": "m",
+      "toDescriptor": "(IILclassFL;I)V"
+    },
+    {
+      "symbol": "Actor.method3216",
+      "fromDescriptor": "m",
+      "toDescriptor": "(I)Z"
+    },
+    {
+      "symbol": "Actor.method3190",
+      "fromDescriptor": "m",
+      "toDescriptor": "(I)Z"
+    },
+    {
+      "symbol": "Actor.method3232",
+      "fromDescriptor": "m",
+      "toDescriptor": "(I)LclassLV;"
+    },
+    {
+      "symbol": "Actor.method3205",
+      "fromDescriptor": "m",
+      "toDescriptor": "(LActor;I)I"
+    },
+    {
+      "symbol": "Actor.method3256",
+      "fromDescriptor": "m",
+      "toDescriptor": "(B)I"
+    },
+    {
+      "symbol": "Actor.method3263",
+      "fromDescriptor": "m",
+      "toDescriptor": "(B)I"
+    },
+    {
+      "symbol": "Actor.method3270",
+      "fromDescriptor": "m",
+      "toDescriptor": "(I)I"
+    },
+    {
+      "symbol": "Actor.method3291",
+      "fromDescriptor": "m",
+      "toDescriptor": "(LWorldView;LActor;I)V"
+    },
+    {
+      "symbol": "Actor.method3280",
+      "fromDescriptor": "m",
+      "toDescriptor": "(LWorldView;LActor;)V"
+    },
+    {
+      "symbol": "Actor.method3192",
+      "fromDescriptor": "m",
+      "toDescriptor": "(LActor;IIBBBBI)V"
+    },
+    {
+      "symbol": "Actor.method3279",
+      "fromDescriptor": "m",
+      "toDescriptor": "(I)V"
+    },
+    {
+      "symbol": "Actor.method3163",
+      "fromDescriptor": "m",
+      "toDescriptor": "(I)Z"
+    },
+    {
+      "symbol": "Actor.method3213",
+      "fromDescriptor": "m",
+      "toDescriptor": "(B)Z"
+    },
+    {
+      "symbol": "Actor.method3292",
+      "fromDescriptor": "m",
+      "toDescriptor": "(LActor;F)V"
+    },
+    {
+      "symbol": "Actor.method3258",
+      "fromDescriptor": "m",
+      "toDescriptor": "(I)I"
+    },
+    {
+      "symbol": "Actor.method3276",
+      "fromDescriptor": "m",
+      "toDescriptor": "(I)V"
+    },
+    {
+      "symbol": "Actor.method3237",
+      "fromDescriptor": "m",
+      "toDescriptor": "(ILPacketBuffer;)V"
+    },
+    {
+      "symbol": "Actor.method3244",
+      "fromDescriptor": "m",
+      "toDescriptor": "(I)LclassLJ;"
+    },
+    {
+      "symbol": "Actor.method3228",
+      "fromDescriptor": "m",
+      "toDescriptor": "(LActor;ILPacketBuffer;B)V"
+    },
+    {
+      "symbol": "Actor.method3145",
+      "fromDescriptor": "m",
+      "toDescriptor": "(II)V"
+    },
+    {
+      "symbol": "Actor.method3290",
+      "fromDescriptor": "m",
+      "toDescriptor": "(IIIII)V"
+    },
+    {
+      "symbol": "Actor.method3224",
+      "fromDescriptor": "m",
+      "toDescriptor": "(LclassBZ;I)V"
+    },
+    {
+      "symbol": "Actor.method3299",
+      "fromDescriptor": "m",
+      "toDescriptor": "()LIterableHashTable;"
+    },
+    {
+      "symbol": "Actor.method3144",
+      "fromDescriptor": "m",
+      "toDescriptor": "(IIIIIII)V"
+    },
+    {
+      "symbol": "Actor.method3148",
+      "fromDescriptor": "m",
+      "toDescriptor": "(IIIIZB)V"
+    },
+    {
+      "symbol": "Actor.method3266",
+      "fromDescriptor": "m",
+      "toDescriptor": "(LActor;B)I"
+    },
+    {
+      "symbol": "Actor.method3105",
+      "fromDescriptor": "m",
+      "toDescriptor": "(I)V"
+    },
+    {
+      "symbol": "Actor.method3138",
+      "fromDescriptor": "m",
+      "toDescriptor": "(IIIIII)V"
+    },
+    {
+      "symbol": "Actor.method3285",
+      "fromDescriptor": "m",
+      "toDescriptor": "(LclassBZ;)V"
+    },
+    {
+      "symbol": "Actor.method3289",
+      "fromDescriptor": "m",
+      "toDescriptor": "(LWorldView;LActor;I)V"
+    },
+    {
+      "symbol": "Actor.method3288",
+      "fromDescriptor": "m",
+      "toDescriptor": "()V"
+    },
+    {
+      "symbol": "Actor.method3243",
+      "fromDescriptor": "m",
+      "toDescriptor": "(ZI)V"
+    },
+    {
+      "symbol": "Actor.method3278",
+      "fromDescriptor": "m",
+      "toDescriptor": "()V"
+    },
+    {
+      "symbol": "Actor.method3286",
+      "fromDescriptor": "m",
+      "toDescriptor": "()V"
+    },
+    {
+      "symbol": "Actor.method3162",
+      "fromDescriptor": "m",
+      "toDescriptor": "(I)Z"
+    },
+    {
+      "symbol": "Actor.method3252",
+      "fromDescriptor": "m",
+      "toDescriptor": "(S)I"
+    },
+    {
+      "symbol": "Actor.method3275",
+      "fromDescriptor": "m",
+      "toDescriptor": "(I)V"
+    },
+    {
+      "symbol": "Actor.method3284",
+      "fromDescriptor": "m",
+      "toDescriptor": "(LActor;)V"
+    },
+    {
+      "symbol": "Actor.method3222",
+      "fromDescriptor": "m",
+      "toDescriptor": "(B)Z"
+    },
+    {
+      "symbol": "Actor.method3273",
+      "fromDescriptor": "m",
+      "toDescriptor": "(LActor;II)V"
+    },
+    {
+      "symbol": "Actor.method3111",
+      "fromDescriptor": "m",
+      "toDescriptor": "(LActor;I)V"
+    },
+    {
+      "symbol": "Actor.method3287",
+      "fromDescriptor": "m",
+      "toDescriptor": "(IIIII)V"
+    },
+    {
+      "symbol": "Player.field1282",
+      "fromDescriptor": "f",
+      "toDescriptor": "LModel;"
+    },
+    {
+      "symbol": "Player.field1281",
+      "fromDescriptor": "f",
+      "toDescriptor": "LclassAAE;"
+    },
+    {
+      "symbol": "Player.field1283",
+      "fromDescriptor": "f",
+      "toDescriptor": "LPlayerComposition;"
+    },
+    {
+      "symbol": "Player.field1260",
+      "fromDescriptor": "f",
+      "toDescriptor": "I"
+    },
+    {
+      "symbol": "Player.field1268",
+      "fromDescriptor": "f",
+      "toDescriptor": "[Ljava/lang/String;"
+    },
+    {
+      "symbol": "Player.field1264",
+      "fromDescriptor": "f",
+      "toDescriptor": "I"
+    },
+    {
+      "symbol": "Player.field1261",
+      "fromDescriptor": "f",
+      "toDescriptor": "I"
+    },
+    {
+      "symbol": "Player.field1273",
+      "fromDescriptor": "f",
+      "toDescriptor": "I"
+    },
+    {
+      "symbol": "Player.field1275",
+      "fromDescriptor": "f",
+      "toDescriptor": "I"
+    },
+    {
+      "symbol": "Player.field1271",
+      "fromDescriptor": "f",
+      "toDescriptor": "I"
+    },
+    {
+      "symbol": "Player.field1277",
+      "fromDescriptor": "f",
+      "toDescriptor": "I"
+    },
+    {
+      "symbol": "Player.field1272",
+      "fromDescriptor": "f",
+      "toDescriptor": "I"
+    },
+    {
+      "symbol": "Player.field1276",
+      "fromDescriptor": "f",
+      "toDescriptor": "I"
+    },
+    {
+      "symbol": "Player.field1278",
+      "fromDescriptor": "f",
+      "toDescriptor": "I"
+    },
+    {
+      "symbol": "Player.field1257",
+      "fromDescriptor": "f",
+      "toDescriptor": "Z"
+    },
+    {
+      "symbol": "Player.field1256",
+      "fromDescriptor": "f",
+      "toDescriptor": "I"
+    },
+    {
+      "symbol": "Player.field1279",
+      "fromDescriptor": "f",
+      "toDescriptor": "I"
+    },
+    {
+      "symbol": "Player.method2615",
+      "fromDescriptor": "m",
+      "toDescriptor": "(LclassXY;I)V"
+    },
+    {
+      "symbol": "Player.method2644",
+      "fromDescriptor": "m",
+      "toDescriptor": "(LWorldView;IILclassGT;I)V"
+    },
+    {
+      "symbol": "Player.method2648",
+      "fromDescriptor": "m",
+      "toDescriptor": "(III)V"
+    },
+    {
+      "symbol": "NPC.field1569",
+      "fromDescriptor": "f",
+      "toDescriptor": "Ljava/lang/String;"
+    },
+    {
+      "symbol": "NPC.field1579",
+      "fromDescriptor": "f",
+      "toDescriptor": "LNPCComposition;"
+    },
+    {
+      "symbol": "NPC.field1568",
+      "fromDescriptor": "f",
+      "toDescriptor": "I"
+    },
+    {
+      "symbol": "NPC.field1578",
+      "fromDescriptor": "f",
+      "toDescriptor": "LPlayerComposition;"
+    },
+    {
+      "symbol": "NPC.method3449",
+      "fromDescriptor": "m",
+      "toDescriptor": "(Ljava/lang/String;B)V"
+    },
+    {
+      "symbol": "NPC.method3457",
+      "fromDescriptor": "m",
+      "toDescriptor": "(II)Z"
+    },
+    {
+      "symbol": "NPC.method3471",
+      "fromDescriptor": "m",
+      "toDescriptor": "(IIZB)V"
+    },
+    {
+      "symbol": "NPC.method3453",
+      "fromDescriptor": "m",
+      "toDescriptor": "(IB)V"
+    },
+    {
+      "symbol": "NPC.method3500",
+      "fromDescriptor": "m",
+      "toDescriptor": "(LNpcOverrides;S)V"
+    },
+    {
+      "symbol": "NPC.method3503",
+      "fromDescriptor": "m",
+      "toDescriptor": "(I)V"
+    },
+    {
+      "symbol": "NPC.method3496",
+      "fromDescriptor": "m",
+      "toDescriptor": "(LNpcOverrides;B)V"
+    },
+    {
+      "symbol": "NPC.method3510",
+      "fromDescriptor": "m",
+      "toDescriptor": "(LNPCComposition;)V"
+    },
+    {
+      "symbol": "NPC.method3501",
+      "fromDescriptor": "m",
+      "toDescriptor": "(LNPC;I)V"
+    },
+    {
+      "symbol": "NPC.method3465",
+      "fromDescriptor": "m",
+      "toDescriptor": "(LNPC;ILclassGT;I)V"
+    },
+    {
+      "symbol": "NPC.method3464",
+      "fromDescriptor": "m",
+      "toDescriptor": "(I)Ljava/lang/String;"
+    },
+    {
+      "symbol": "classEB.method3820",
+      "fromDescriptor": "m",
+      "toDescriptor": "(LWorldView;LActor;I)V"
+    },
+    {
+      "symbol": "classGA.method5325",
+      "fromDescriptor": "m",
+      "toDescriptor": "(LNPC;B)V"
+    },
+    {
+      "symbol": "classKN.method6539",
+      "fromDescriptor": "m",
+      "toDescriptor": "(LWorldView;LActor;II)V"
+    },
+    {
+      "class": "classKY",
+      "fromShard": "04-player-info",
+      "toShard": "13-coord"
+    }
+  ],
+  "files": {
+    "docs/reference/client-240/mappings/clusters/00-seed-api.tiny": {
+      "before": "32b4498693c627ebf8ae89cc7b8025b4e7e54f26d28df667b2485124c5f19e82",
+      "after": "dd5d587fa21b0a574225a3b36b64b25de47a351e6e5184caaca136b95cf9e455"
+    },
+    "docs/reference/client-240/mappings/clusters/03-actor-motion.tiny": {
+      "before": "aef358e41850ee3ec5783e81603a2447b8347b970ea3d7cc1982a0bb5e95f2df",
+      "after": "e6d6303a7b5882a9be206525619410d9e6f7d625b79d636360c61372468d1c81"
+    },
+    "docs/reference/client-240/mappings/clusters/04-player-info.tiny": {
+      "before": "9e7476757951c1bb02f772581e932b792eff9358186c05fe979c955bafc03c45",
+      "after": "9d6f648521f1334f71586c00cf6ba7f30aecaedd64fbde46fea5bf75e6aa9572"
+    },
+    "docs/reference/client-240/mappings/clusters/06-world-region.tiny": {
+      "before": "b70c4049674ec6c1f2df617f7fb663f9b58393cf7c339fdc730b7481fb25c878",
+      "after": "6ac71186d9648c8970fe92b7203a8dee307a6177d2077966214fcdda3c3f116c"
+    },
+    "docs/reference/client-240/mappings/clusters/13-coord.tiny": {
+      "before": "73a6ae33f610356ba6ac4e3c7763905eed884546abd20e940939d5cf958bf7c8",
+      "after": "814c9ef1940d4e518a8e254733e272d43e75990c1f0fbcf95e63913f8aa6f4ca"
+    },
+    "docs/reference/client-240/ledger/clusters/00-seed-api.tsv": {
+      "before": "9070de2b7532a5d90b346a7cedd3f96f97edadfaead366223e354bcea971d7d1",
+      "after": "fbde19cbb49f0fe082794497abbda8f6a0bf5a0bb80eacbb31540fc637ea489d"
+    },
+    "docs/reference/client-240/ledger/clusters/03-actor-motion.tsv": {
+      "before": "3eac226ab46c82aaeef9323884b9a7a199044da4b24400d6255da88ed3db5e7b",
+      "after": "5ad8e4557c2081d50263692dcde9b024373fc321b45dd45008e5849b293aaeed"
+    },
+    "docs/reference/client-240/ledger/clusters/04-player-info.tsv": {
+      "before": "6ce3beca8a2fee65cbcd26acb5eb7ec77eb02e6ab78a3851fc74c1b8093c26b0",
+      "after": "dd82f41a5e51ad15ac9efa4ba6aab1857b41faa4ea494caa5d001b12f7e7e9d0"
+    },
+    "docs/reference/client-240/ledger/clusters/06-world-region.tsv": {
+      "before": "39f7d2fd12c6453aa2a72f7339f1d56caef7b62df45950caf4cfc4968bba7b1b",
+      "after": "7b8c474b17c2731aa79565f9e8b914a391e9ca6707a3f6397f4954d2cdc68829"
+    },
+    "docs/reference/client-240/ledger/clusters/13-coord.tsv": {
+      "before": "8a0b2b6e72916e011ea77fb10ccb1ac63784802eb4d725f79c2ce6aa5c46f829",
+      "after": "7caf326182a838ad832e5040d0c99580f66a62c07eff95fc2c8b37d069d9952b"
+    }
+  },
+  "policy": "No new readable names or confidence upgrades; descriptors resolved only by unique exact pinned member identity.",
+  "applied": true,
+  "repairScriptSha256": "04bb11fbd5d4d20b4316c45778a96a6ed570bdb2a26b6e7968e021af21a7e1b5",
+  "baselineCommit": "2c6c167"
+}

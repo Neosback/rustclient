@@ -8,21 +8,6 @@ c	AABB	AABB
 	f	I	field2368	extremeZ
 c	AbstractFont	AbstractFont
 	f	I	field8	baseline
-c	Actor	Actor
-	f	I	field1434	idlePoseAnimation
-	f	I	field1442	idleRotateLeft
-	f	I	field1443	walkAnimation
-	f	I	field1446	walkRotateRight
-	f	I	field1447	runAnimation
-	f	I	field1448	walkRotateLeft
-	f	I	field1455	idleRotateRight
-	f	I	field1457	overheadCycle
-	f	Ljava/lang/String;	field1459	overheadText
-	f	I	field1460	walkRotate180
-	f	I	field1468	logicalHeight
-	f	I	field1485	currentOrientation
-	f	I	field1493	orientation
-	f	Z	field1502	dead
 c	ActorSpotAnim	ActorSpotAnim
 	f	I	field5957	id
 	f	I	field5958	height
@@ -231,9 +216,6 @@ c	ModelData	ModelData
 	f	[I	field1862	faceIndices2
 	f	[I	field1863	faceIndices3
 	f	[I	field1878	faceIndices1
-c	NPC	NPC
-	f	LNpcOverrides;	field1580	chatheadOverrides
-	f	LNpcOverrides;	field1581	modelOverrides
 c	NPCComposition	NPCComposition
 	f	I	field5282	size
 	f	[I	field5290	models
@@ -274,11 +256,6 @@ c	ObjectComposition	ObjectComposition
 	f	I	field4960	varPlayerId
 c	PendingLogin	PendingLogin
 	f	S	field5664	world
-c	Player	Player
-	f	I	field1258	footprintSize
-	f	I	field1259	combatLevel
-	f	I	field1263	team
-	f	I	field1269	skullIcon
 c	PlayerComposition	PlayerComposition
 	f	I	field4092	gender
 	f	[I	field4093	equipmentIds
@@ -482,6 +459,390 @@ c	WorldEntityConfig	WorldEntityConfig
 c	WorldMapRenderer	WorldMapRenderer
 	f	Z	field2685	loaded
 	f	[[LWorldMapRegion;	field2702	mapRegions
+c	classAAF	classAAF
+	f	Ljava/lang/Throwable;	field44	cause
+	f	Ljava/lang/String;	field45	message
+c	classPS	classPS
+	f	I	field5402	category
+c	client	client
+	f	Lnet/runelite/api/hooks/Callbacks;	field1116	callbacks
+c	classXY	Buffer
+	f	[B	field6952	array
+	f	I	field6953	offset
+	f	[J	field6954	crc64Table
+	f	[I	field6955	crc32Table
+	m	(I)I	method13095	readUnsignedByte
+	m	(B)B	method13097	readByte
+	m	(I)I	method13099	readUnsignedShort
+	m	(B)I	method13104	readShort
+	m	(I)I	method13105	readUnsignedMedium
+	m	(I)I	method13107	readMedium
+	m	(LclassXY;B)I	method13113	readInt
+	m	(LclassXY;I)J	method13115	readLong
+	m	(I)F	method13119	readFloat
+	m	(B)Z	method13122	readBoolean
+	m	(I)Ljava/lang/String;	method13127	readString
+	m	(B)Ljava/lang/String;	method13125	readStringOrNull
+	m	(I)Ljava/lang/String;	method13134	readZeroPrefixedString
+	m	(LclassXY;I)Ljava/lang/String;	method13137	readZeroPrefixedUtf8String
+	m	([BIIB)V	method13140	readBytes
+	m	(LclassXY;[BIII)V	method13307	readBytesReversed
+	m	([BIII)V	method13310	readBytesReversedAdd
+	m	(I)I	method13172	readMidiVarLen
+	m	(I)I	method13176	readVarInt
+	m	(B)I	method13177	readVarIntZigZag
+	m	(S)I	method13150	readSmart1or2
+	m	(I)I	method13146	readSmart1or2Signed
+	m	(I)I	method13152	readSmart1or2Null
+	m	(B)I	method13156	readSmart1or2Extended
+	m	(LclassXY;S)I	method13164	readSmart2or4
+	m	(LclassXY;I)I	method13169	readSmart2or4Null
+	m	(B)I	method13158	readUnsignedByteOrShort252
+	m	(LclassXF;I)I	method13173	readIntByStorageType
+	m	(B)I	method13218	readUnsignedByteAdd
+	m	(B)B	method13229	readByteAdd
+	m	(I)I	method13224	readUnsignedByteNeg
+	m	(B)B	method13232	readByteNeg
+	m	(I)I	method13225	readUnsignedByteSub
+	m	(B)B	method13235	readByteSub
+	m	(I)I	method13250	readUnsignedShortLE
+	m	(B)I	method13258	readShortLE
+	m	(LclassXY;I)I	method13251	readUnsignedShortAdd
+	m	(LclassXY;B)I	method13262	readShortAdd
+	m	(I)I	method13254	readUnsignedShortLEAdd
+	m	(I)I	method13266	readShortLEAdd
+	m	(LclassXY;I)I	method13269	readUnsignedMediumLE
+	m	(I)I	method13275	readMediumLE
+	m	(I)I	method13278	readMediumAlt2
+	m	(LclassXY;I)I	method13283	readMediumAlt3
+	m	(I)I	method13295	readIntLE
+	m	(I)I	method13300	readIntAlt2
+	m	(B)I	method13303	readIntAlt3
+	m	(LclassXY;IB)V	method13029	writeByte
+	m	(II)V	method13031	writeShort
+	m	(IB)V	method13032	writeMedium
+	m	(II)V	method13037	writeInt
+	m	(J)V	method13039	writeLong48
+	m	(LclassXY;J)V	method13047	writeLong
+	m	(LclassXY;ZI)V	method13049	writeBoolean
+	m	(Ljava/lang/String;S)V	method13054	writeString
+	m	(Ljava/lang/String;I)V	method13057	writeZeroPrefixedString
+	m	(LclassXY;Ljava/lang/CharSequence;I)V	method13064	writeZeroPrefixedUtf8String
+	m	([BIIB)V	method13067	writeBytes
+	m	(LclassXY;B)V	method13068	writeBuffer
+	m	(II)V	method13074	writeLengthShort
+	m	(II)V	method13080	writeLengthByte
+	m	(II)V	method13084	writeSmart1or2
+	m	(IB)V	method13087	writeMidiVarLen
+	m	(IB)V	method13090	writeVarInt
+	m	(IB)V	method13093	writeVarIntZigZag
+	m	(II)V	method13209	writeByteAdd
+	m	(IB)V	method13211	writeByteNeg
+	m	(IB)V	method13214	writeByteSub
+	m	(LclassXY;IB)V	method13239	writeShortLE
+	m	(LclassXY;IB)V	method13242	writeShortAdd
+	m	(IS)V	method13244	writeShortLEAdd
+	m	(II)V	method13284	writeIntLE
+	m	(II)V	method13287	writeIntAlt2
+	m	(LclassXY;II)V	method13290	writeIntAlt3
+	m	([IB)V	method13182	xteaEncrypt
+	m	([II)V	method13186	xteaDecrypt
+	m	([IIII)V	method13190	xteaEncryptRange
+	m	([IIII)V	method13191	xteaDecryptRange
+	m	(Ljava/math/BigInteger;Ljava/math/BigInteger;I)V	method13195	rsaEncrypt
+	m	(LclassXY;II)I	method13202	writeCrc32
+	m	(LclassXY;I)Z	method13208	checkTrailingCrc32
+	m	(IZB)V	method13015	allocateArray
+	m	()I	method13312	readUnsignedShort
+	m	()I	method13314	getOffset
+	m	()I	method13317	readSmart1or2Signed
+	m	()B	method13318	readByte
+	m	()I	method13320	readSmart1or2
+	m	()I	method13322	readUnsignedByte
+	m	()I	method13324	readSmart1or2Extended
+	m	()I	method13325	readInt
+	m	()F	method13326	readFloat
+	m	()I	method13327	readShort
+	m	(I)V	method13319	setOffset
+	m	(Ljava/lang/String;)V	method13321	writeString
+	m	(I)V	method13323	writeInt
+c	PacketBuffer	PacketBuffer
+	f	[I	field6924	bitMasks
+	f	I	field6925	bitIndex
+	f	LclassYT;	field6927	isaacCipher
+	m	([II)V	method12955	seedIsaacCipher
+	m	(LclassYT;I)V	method12959	setIsaacCipher
+	m	(IB)V	method12964	writeCipheredByte
+	m	(I)I	method12965	readCipheredUnsignedByte
+	m	(I)Z	method12969	isTwoByteOpcodeAhead
+	m	(B)I	method12973	readOpcode
+	m	([BIII)V	method12976	readCipheredBytes
+	m	(B)V	method12981	beginBitAccess
+	m	(I)V	method12987	endBitAccess
+	m	(II)I	method12982	readBits
+	m	(II)I	method12991	bitsRemaining
+c	classJJ	ServerProt
+	f	I	field3318	opcode
+	f	I	field3319	length
+	f	LclassJJ;	field3295	UNHANDLED
+c	classKW	classKW
+	m	(I)[LclassJJ;	method6619	allServerProts
+	m	(Ljava/lang/String;I)Ljava/lang/String;	method6620	stripModIconPrefix
+c	classYT	IsaacCipher
+	f	[I	field7077	results
+	f	[I	field7078	memory
+	f	I	field7080	remaining
+	f	I	field7084	accumulator
+	f	I	field7081	lastResult
+	f	I	field7079	counter
+	m	(LclassYT;I)V	method13682	initialize
+	m	(B)V	method13674	generate
+	m	(B)I	method13667	nextInt
+	m	(I)I	method13670	peekInt
+c	classDJ	GameConnection
+	f	LclassUK;	field1532	socket
+	f	LclassYT;	field1533	outboundCipher
+	f	I	field1519	pendingBytes
+	f	LclassXY;	field1525	flushBuffer
+	f	LclassNV;	field1520	outboundQueue
+	f	LPacketBuffer;	field1521	inboundBuffer
+	f	Z	field1524	needsFirstOpcodeByte
+	f	LclassJJ;	field1518	currentServerProt
+	f	I	field1523	payloadLength
+	f	I	field1522	idleCycles
+	f	I	field1526	cyclesSinceWrite
+	f	I	field1527	packetGroupRemaining
+	f	I	field1528	bytesRead
+	f	LclassJJ;	field1531	recentServerProt0
+	f	LclassJJ;	field1530	recentServerProt1
+	f	LclassJJ;	field1529	recentServerProt2
+	m	(LclassJL;I)V	method3374	queuePacket
+	m	(I)V	method3371	flush
+	m	(LclassDJ;I)V	method3370	clearQueue
+	m	(S)V	method3381	closeSocket
+	m	(I)LclassUK;	method3394	getSocket
+	m	(LclassUK;I)V	method3397	setSocket
+c	classJL	OutboundPacket
+	f	LPacketBuffer;	field3341	packetBuffer
+	f	LclassJS;	field3340	clientProt
+	f	I	field3337	protLength
+	f	I	field3333	queuedSize
+	f	[LclassJL;	field3331	pool
+	f	I	field3332	poolSize
+	m	(I)V	method6428	recycle
+c	classJS	ClientProt
+	f	I	field3370	opcode
+	f	I	field3369	length
+c	Actor	Actor
+	f	I	field1434	idlePoseAnimation
+	f	I	field1442	idleRotateLeft
+	f	I	field1443	walkAnimation
+	f	I	field1446	walkRotateRight
+	f	I	field1447	runAnimation
+	f	I	field1448	walkRotateLeft
+	f	I	field1455	idleRotateRight
+	f	I	field1457	overheadCycle
+	f	Ljava/lang/String;	field1459	overheadText
+	f	I	field1460	walkRotate180
+	f	I	field1468	logicalHeight
+	f	I	field1485	currentOrientation
+	f	I	field1493	orientation
+	f	Z	field1502	dead
+	f	I	field1452	pathCatchUpCycles
+	f	LActor;	field1496	updatingActor
+	f	I	field1465	actionDelay
+	f	Ljava/util/List;	field1432	hitsplats
+	f	LclassFL;	field1433	tint
+	f	I	field1471	pathLength
+	f	I	field1479	overheadEffect
+	f	I	field1490	forcedStartY
+	f	I	field1484	localX
+	f	I	field1486	localY
+	f	I	field1478	index
+	f	I	field1487	sceneAddCycle
+	f	LclassQR;	field1498	frozenActionController
+	f	LclassQR;	field1464	idlePoseController
+	f	Ljava/util/ArrayList;	field1497	animationFreezes
+	f	I	field1491	forcedOrientation
+	f	I	field1449	runRotateLeft
+	f	I	field1450	runRotateRight
+	f	I	field1451	crawlAnimation
+	f	I	field1444	crawlRotate180
+	f	I	field1453	crawlRotateLeft
+	f	I	field1458	overheadColor
+	f	LclassNV;	field1440	healthBars
+	f	LclassAAV;	field1475	transparency
+	f	[I	field1436	overheadPattern
+	f	LclassBZ;	field1461	facing
+	f	LclassQR;	field1462	poseController
+	f	F	field1482	smoothY
+	f	LclassQR;	field1463	actionController
+	f	I	field1430	tintEndCycle
+	f	I	field1454	crawlRotateRight
+	f	I	field1439	tileSize
+	f	LclassQR;	field1499	frozenPoseController
+	f	Ljava/util/Set;	field1480	deathHealthBarIds
+	f	I	field1435	tintStartCycle
+	f	Z	field1466	animationsFrozen
+	f	LIterableHashTable;	field1467	spotAnims
+	f	B	field1481	pendingEventFlags
+	f	I	field1437	worldViewId
+	f	I	field1488	forcedStartX
+	f	I	field1489	forcedEndX
+	f	I	field1492	forcedEndY
+	f	I	field1494	forcedStartCycle
+	f	I	field1445	spotAnimCount
+	f	I	field1441	runRotate180
+	f	I	field1469	turnCycles
+	f	I	field1470	turnRate
+	f	I	field1495	forcedEndCycle
+	f	Z	field1501	eventsDeferred
+	f	[I	field1472	pathX
+	f	[I	field1431	pathY
+	f	[LclassGT;	field1474	pathTraversal
+	f	F	field1483	smoothX
+	f	I	field1476	actionPathBacklog
+	m	(IIIIII)V	method3277	onHealthBarUpdated
+	m	(I)I	method3091	getPoseAnimationId
+	m	(II)V	method3096	switchPose
+	m	(LActor;I)V	method3150	removeAllSpotAnims
+	m	(IIZB)V	method3099	addAnimationFreeze
+	m	(I)I	method3106	getActionAnimationId
+	m	(I)I	method3260	getFaceAreaY
+	m	(I)Z	method3113	hasActiveAction
+	m	(IILclassGT;I)V	method3120	queuePathStep
+	m	(III)V	method3123	placeAtTile
+	m	(B)V	method3129	clearPathQueue
+	m	(LActor;I)Z	method3236	isFacingSnap
+	m	(I)Z	method3165	hasFaceArea
+	m	(I)V	method3170	clearFaceAngle
+	m	(I)Z	method3210	actionBlocksMovement
+	m	(B)LWorldView;	method3177	resolveWorldView
+	m	(IIIIZ)V	method3283	postSpotAnimGraphicChanged
+	m	(I)I	method3178	getTileSize
+	m	(I)Z	method3180	isForcedMovementActive
+	m	(I)LclassQR;	method3185	getActiveActionController
+	m	(LclassQR;I)LclassQR;	method3187	getActivePoseController
+	m	(IILclassFL;I)V	method3196	setTint
+	m	(I)Z	method3216	faceAngleMayApply
+	m	(I)Z	method3190	isTintActive
+	m	(I)LclassLV;	method3232	getFacingBehaviour
+	m	(LActor;I)I	method3205	headingToNextPathTarget
+	m	(B)I	method3256	getFaceFallbackAngle
+	m	(B)I	method3263	getFaceAreaWidth
+	m	(I)I	method3270	getFaceAngle
+	m	(LWorldView;LActor;I)V	method3291	runMovementCycle
+	m	(LWorldView;LActor;)V	method3280	resetWhenOutsideScene
+	m	(LActor;IIBBBBI)V	method3192	setTintComponents
+	m	(I)V	method3279	postOverheadTextChanged
+	m	(I)Z	method3163	hasFaceEntity
+	m	(B)Z	method3213	followsPathHeading
+	m	(LActor;F)V	method3292	advanceMovementFractional
+	m	(I)I	method3258	getFaceAreaX
+	m	(I)V	method3276	syncSmoothY
+	m	(ILPacketBuffer;)V	method3237	markInteractingChangedOnRead
+	m	(I)LclassLJ;	method3244	getFaceTargetKind
+	m	(LActor;ILPacketBuffer;B)V	method3228	decodeFacing
+	m	(II)V	method3145	removeHealthBar
+	m	(IIIII)V	method3290	postHitsplatApplied
+	m	(LclassBZ;I)V	method3224	copyFacing
+	m	()LIterableHashTable;	method3299	getSpotAnimTable
+	m	(IIIIIII)V	method3144	updateHealthBar
+	m	(IIIIZB)V	method3148	setSpotAnim
+	m	(LActor;B)I	method3266	getFaceAreaHeight
+	m	(I)V	method3105	clearAnimationFreezes
+	m	(IIIIII)V	method3138	addHitsplat
+	m	(LclassBZ;)V	method3285	markInteractingChanged
+	m	(LWorldView;LActor;I)V	method3289	clearUpdatingActor
+	m	()V	method3288	bindActionControllerOwner
+	m	(ZI)V	method3243	setFacingSnap
+	m	()V	method3278	postGraphicChanged
+	m	()V	method3286	postPendingEvents
+	m	(I)Z	method3162	hasFaceAngle
+	m	(S)I	method3252	getFaceTargetIndex
+	m	(I)V	method3275	syncSmoothX
+	m	(LActor;)V	method3284	advanceMovement
+	m	(B)Z	method3222	faceAreaMayApply
+	m	(LActor;II)V	method3273	setFaceAngle
+	m	(LActor;I)V	method3111	stopActionSequence
+	m	(IIIII)V	method3287	clearPendingHitsplat
+c	NPC	NPC
+	f	LNpcOverrides;	field1580	chatheadOverrides
+	f	LNpcOverrides;	field1581	modelOverrides
+	f	Ljava/lang/String;	field1569	nameOverride
+	f	LNPCComposition;	field1579	composition
+	f	I	field1568	optionMask
+	f	LPlayerComposition;	field1578	overrideComposition
+	m	(Ljava/lang/String;B)V	method3449	setNameOverride
+	m	(II)Z	method3457	isOptionEnabled
+	m	(IIZB)V	method3471	moveTo
+	m	(IB)V	method3453	setOptionMask
+	m	(LNpcOverrides;S)V	method3500	setModelOverrides
+	m	(I)V	method3503	clearModelOverrides
+	m	(LNpcOverrides;B)V	method3496	setChatheadOverrides
+	m	(LNPCComposition;)V	method3510	postCompositionEvents
+	m	(LNPC;I)V	method3501	clearChatheadOverrides
+	m	(LNPC;ILclassGT;I)V	method3465	queueDirectionStep
+	m	(I)Ljava/lang/String;	method3464	getDisplayName
+c	Player	Player
+	f	I	field1258	footprintSize
+	f	I	field1259	combatLevel
+	f	I	field1263	team
+	f	I	field1269	skullIcon
+	f	LModel;	field1282	locMergeModel
+	f	LclassAAE;	field1281	username
+	f	LPlayerComposition;	field1283	composition
+	f	I	field1260	skillLevel
+	f	[Ljava/lang/String;	field1268	nameDecorations
+	f	I	field1264	prayerIcon
+	f	I	field1261	locMergeEndCycle
+	f	I	field1273	plane
+	f	I	field1275	locMergeHeight
+	f	I	field1271	locMergeY
+	f	I	field1277	locMergeMinTileX
+	f	I	field1272	locMergeMinTileY
+	f	I	field1276	locMergeMaxTileX
+	f	I	field1278	locMergeMaxTileY
+	f	Z	field1257	hidden
+	f	I	field1256	locMergeStartCycle
+	f	I	field1279	locMergeX
+	m	(LclassXY;I)V	method2615	decodeAppearance
+	m	(LWorldView;IILclassGT;I)V	method2644	moveTo
+	m	(III)V	method2648	setPathHead
+c	classEB	classEB
+	m	(LWorldView;LActor;I)V	method3820	resolveFacing
+c	classGA	classGA
+	m	(LNPC;B)V	method5325	applyNpcComposition
+c	classKN	classKN
+	m	(LWorldView;LActor;II)V	method6539	updateActorTurn
+c	classDF	PlayerInfoDecoder
+	f	[I	field1421	activePlayerIndices
+	f	[LclassDC;	field1409	playerSlots
+	f	[Z	field1414	deferredMovement
+	f	[I	field1416	inactivePlayerIndices
+	f	I	field1417	activePlayerCount
+	f	I	field1418	inactivePlayerCount
+	m	(LPacketBuffer;)V	method3006	initializePlayerInfo
+	m	(LPacketBuffer;)V	method3015	decodePlayerMovement
+	m	(LPacketBuffer;I)I	method3019	readSkipCount
+	m	(LclassDF;LPacketBuffer;III)V	method3050	decodeExtendedPlayerUpdate
+c	classDC	PlayerInfoSlot
+	f	I	field1379	packedRegion
+	f	LclassKY;	field1380	coord
+	f	B	field1388	updateFlags
+	f	LclassXY;	field1393	appearanceBuffer
+	f	[Ljava/lang/String;	field1382	actions
+	f	LclassGT;	field1392	traversal
+	f	I	field1381	playerIndex
+	f	Ljava/util/ArrayList;	field1387	representedPlayers
+	m	(II)V	method2891	reset
+	m	(LPlayer;I)V	method2901	attachPlayer
+	m	(LclassDC;LclassGT;)V	method2923	applyTraversal
+	m	(III)V	method2930	applyActionSequence
+c	classAS	classAS
+	m	(LWorldView;ZLPacketBuffer;II)V	method661	decodeNpcInfo
+c	classKA	classKA
+	f	[I	field3506	npcDefinitionBitWidths
 c	WorldView	WorldView
 	f	[[[I	field1686	tileHeights
 	f	LDeque2;	field1689	graphicsObjects
@@ -495,10 +856,178 @@ c	WorldView	WorldView
 	f	Z	field1710	instance
 	f	[I	field1711	mapRegions
 	f	[[[I	field1712	instanceTemplateChunks
-c	classAAF	classAAF
-	f	Ljava/lang/Throwable;	field44	cause
-	f	Ljava/lang/String;	field45	message
-c	classPS	classPS
-	f	I	field5402	category
-c	client	client
-	f	Lnet/runelite/api/hooks/Callbacks;	field1116	callbacks
+	f	[LCollisionData;	field1685	collisionMaps
+	f	LScene;	field1687	scene
+	f	LIndexedObjectSet;	field1692	players
+	f	LIndexedObjectSet;	field1696	npcs
+	f	LIterableHashTable;	field1698	worldEntities
+c	classIV	classIV
+	m	(LPacketBuffer;I)V	method6364	decodeNormalRegionRebuild
+c	classKK	classKK
+	m	(LclassXK;IIZB)V	method6533	beginRegionLoad
+c	classQR	AnimationSequence
+	f	LActor;	field5604	actor
+	f	I	field5596	sequenceId
+	f	LAnimation;	field5597	definition
+	f	I	field5600	frame
+	f	I	field5602	frameCycle
+	f	I	field5599	loopCount
+	f	I	field5598	unreadyCycles
+	m	(LclassQR;II)V	method9770	setSequence
+	m	(LclassQR;I)V	method9765	clearSequence
+	m	(B)LAnimation;	method9775	getDefinition
+	m	(I)Z	method9772	hasDefinition
+	m	(B)I	method9799	getUnreadyCycles
+	m	(I)I	method9784	getLoopCount
+	m	(LclassQR;I)V	method9791	resetPlaybackState
+	m	(I)V	method9793	resetLoopCount
+	m	(IIII)V	method9811	setLegacyPlaybackState
+	m	(III)V	method9812	setCachedPlaybackState
+c	classQH	AnimationFreezeWindow
+	f	I	field5538	startCycle
+	f	I	field5536	endCycle
+	f	Z	field5537	resetActorOnStart
+	m	(LclassQH;IS)Z	method9582	isActiveAt
+	m	(I)Z	method9573	shouldResetActorOnStart
+c	classKB	classKB
+	m	(LWorldView;LActor;B)V	method6491	advanceActorAnimations
+c	classCU	classCU
+	m	(LPlayer;III)V	method2672	applyPlayerActionSequence
+c	classQA	classQA
+	m	(II)LAnimation;	method9477	getAnimationDefinition
+c	classBZ	ActorFacingState
+	f	LclassLU;	field624	mode
+	f	Z	field622	snap
+	f	LclassLJ;	field623	targetKind
+	f	I	field631	targetIndex
+	f	I	field633	fallbackAngle
+	f	LclassLV;	field625	applyPolicy
+	f	I	field627	angle
+	f	I	field628	areaX
+	f	I	field630	areaY
+	f	I	field629	areaWidth
+	f	I	field632	areaHeight
+	m	(B)V	method1378	reset
+	m	(LclassBZ;I)V	method1380	copyFrom
+	m	(ILPacketBuffer;B)V	method1384	decode
+c	classLU	FacingMode
+	f	LclassLU;	field4226	ANGLE
+	f	LclassLU;	field4224	AREA
+	f	LclassLU;	field4225	NONE
+	f	LclassLU;	field4223	ENTITY
+c	classLJ	FacingTargetKind
+	f	LclassLJ;	field4174	PLAYER
+	f	LclassLJ;	field4175	NPC
+	f	LclassLJ;	field4173	WORLD_ENTITY
+	f	LclassLJ;	field4172	NONE
+c	classLV	FacingApplyPolicy
+	f	LclassLV;	field4233	BYPASS_MOVEMENT_GATE
+	f	LclassLV;	field4232	MOVEMENT_GATED
+c	classOR	SpotAnimationDefinition
+	f	I	field5086	id
+	f	I	field5082	modelId
+	f	I	field5081	sequenceId
+	m	(I)LclassOR;	method8753	getSpotAnimationDefinition
+	m	(II)LModel;	method8757	getModel
+	m	(LclassOR;I)LModel;	method8760	getBaseModel
+c	classPW	HitsplatDefinition
+	f	I	field5446	duration
+	f	I	field5458	replacementMode
+	f	[I	field5453	transforms
+	f	I	field5460	transformVarbit
+	f	I	field5461	transformVarp
+	m	(B)LclassPW;	method9378	transform
+c	classCO	ActorHealthBar
+	f	LclassNV;	field1174	updates
+	f	LHealthBarConfig;	field1175	definition
+	m	(IIIIB)V	method2549	putUpdate
+	m	(II)LclassCV;	method2552	getActiveUpdate
+	m	()LHealthBarConfig;	method2560	getDefinition
+c	classCV	HealthBarUpdate
+	f	I	field1298	cycle
+	f	I	field1295	cycleOffset
+	f	I	field1297	healthRatio
+	m	(IIIII)V	method2676	set
+	m	()I	method2685	getHealthRatio
+c	classFL	ModelColorOverride
+	f	B	field2298	overrideHue
+	f	B	field2299	overrideSaturation
+	f	B	field2300	overrideLuminance
+	f	B	field2301	overrideAmount
+	m	(LclassFL;)V	method4843	copyFrom
+	m	(LclassFL;BBBB)V	method4850	set
+	m	(LclassFL;)V	method4856	clear
+	m	()Z	method4857	isActive
+c	classAAV	TransparencyTransition
+	f	I	field105	startCycle
+	f	I	field104	endCycle
+	f	B	field107	startTransparency
+	f	B	field106	endTransparency
+	f	B	field108	currentTransparency
+	m	(IIIBBZ)V	method271	setTransition
+	m	(I)B	method272	sample
+c	classOF	KitDefinition
+	f	I	field4842	bodyPartId
+	f	[I	field4843	bodyModelIds
+	f	[I	field4848	headModelIds
+	f	Z	field4849	nonSelectable
+	f	[S	field4844	recolorFrom
+	f	[S	field4845	recolorTo
+	f	[S	field4846	retextureFrom
+	f	[S	field4847	retextureTo
+	m	(III)Z	method8444	matchesBodyPart
+	m	(LclassOF;B)Z	method8449	bodyModelsReady
+	m	(I)LModelData;	method8452	getBodyModelData
+	m	(I)Z	method8453	headModelsReady
+	m	(I)LModelData;	method8456	getHeadModelData
+	m	(I)LclassOF;	method8438	getKitDefinition
+c	classKY	Coord
+	f	I	field4053	x
+	f	I	field4054	y
+	f	I	field4055	plane
+	m	(IIII)I	method6623	pack
+	m	(II)I	method6626	unpackPlane
+	m	(IB)I	method6638	unpackX
+	m	(II)I	method6640	unpackY
+	m	(IB)V	method6660	setPacked
+	m	(I)Z	method6674	isValid
+	m	(II)I	method6649	tileToLocalBase
+	m	(IB)I	method6652	localToTile
+	m	(II)I	method6656	tileToLocalCenter
+	m	(LclassKY;I)I	method6663	packCoord
+c	classUZ	Vector3f
+	f	F	field6425	x
+	f	F	field6423	y
+	f	F	field6424	z
+	m	(LclassUZ;FFFI)V	method11802	set
+	m	(I)F	method11844	length
+	m	(I)V	method11817	normalize
+	m	(LclassUZ;I)V	method11822	add
+	m	(LclassUZ;I)V	method11834	subtract
+	m	(LclassUZ;LclassUZ;S)F	method11835	dot
+	m	(LclassUZ;I)V	method11839	cross
+	m	(FI)V	method11846	scale
+	m	(LclassUZ;FB)V	method11827	addScaled
+	m	(B)Z	method11816	isNearlyZero
+	m	(I)V	method11797	releaseToPool
+c	classNG	classNG
+	m	(IIIILclassCL;I)LclassUZ;	method7883	resolveWorldPosition
+c	classJC	ZoneUpdateType
+	f	LclassJC;	field3119	LOC_ADD_CHANGE
+	f	LclassJC;	field3130	LOC_ANIM
+	f	LclassJC;	field3128	LOC_DEL
+	f	LclassJC;	field3122	LOC_MERGE
+	f	LclassJC;	field3133	MAP_ANIM
+c	classRD	classRD
+	m	(LclassQR;ILclassQV;I)I	method9980	advanceAnimationSequence
+c	classCL	WorldViewManager
+	f	I	field779	worldViewCount
+	f	LIterableHashTable;	field782	worldViews
+	f	LWorldView;	field785	rootWorldView
+	m	(IIIILclassEX;I)LWorldView;	method1575	createWorldView
+	m	(IS)LWorldView;	method1584	getWorldViewById
+	m	(III)LWorldView;	method1590	getWorldViewAt
+	m	(I)LWorldView;	method1588	getRootWorldView
+	m	(III)LWorldView;	method1572	createRootWorldView
+	m	(LWorldView;)V	method1580	removeWorldView
+	m	(I)V	method1615	resetWorldViews

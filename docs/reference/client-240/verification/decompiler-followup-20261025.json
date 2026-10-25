@@ -1,0 +1,52 @@
+{
+  "date": "2026-10-25",
+  "namedSemanticSourceFiles": 735,
+  "namedSemanticSyntaxErrors": {
+    "ClanSettings.java": 4,
+    "ObjectComposition.java": 4,
+    "Widget.java": 2,
+    "classBF.java": 90,
+    "classTV.java": 2,
+    "client.java": 132
+  },
+  "namedSemanticReadingJarSha256": "6329e459cb964af8994002b0c6a88ee93df2440af7b5739efc3e860db9e478da",
+  "originalReadingBundleStatus": "REVIEW_REQUIRED: 735 files, 730 syntax-pass, five unresolved; unchanged",
+  "condyExperiment": {
+    "readingJarSha256": "623b4f9ba6930749ce470505fdcf37833f1e0f427d2ddf161b239d0b8ac56880",
+    "manifestSha256": "1de91603cfa87a3d7bcbb3181da98b5646093625105a9c68975fc07ef34d180d",
+    "scope": "analysis-only non-lazy constant-dynamic presentation; excluded from assembly",
+    "records": [
+      {
+        "class_name": "classBF",
+        "engine": "Vineflower-condy",
+        "options": [
+          "--decompile-complex-constant-dynamic=true"
+        ],
+        "safety": "analysis-only",
+        "limit": "Non-lazy presentation can change constant initialization/exception timing. Not original-equivalent Java.",
+        "returncode": 0,
+        "source_sha256": "0cb7827bae373ffb9fbc2f98fd9ca57878feed5e92a1162509e8ae5279fe02e8",
+        "failure_markers": {
+          "ConstantBootstraps.invoke<": 35
+        },
+        "syntaxErrors": 90
+      },
+      {
+        "class_name": "client",
+        "engine": "Vineflower-condy",
+        "options": [
+          "--decompile-complex-constant-dynamic=true"
+        ],
+        "safety": "analysis-only",
+        "limit": "Non-lazy presentation can change constant initialization/exception timing. Not original-equivalent Java.",
+        "returncode": 0,
+        "source_sha256": "ddcbfa437f570a20709334a9fffeb10e6bec3ff39fa0966fdefa1195dab3b198",
+        "failure_markers": {
+          "ConstantBootstraps.invoke<": 50
+        },
+        "syntaxErrors": 132
+      }
+    ]
+  },
+  "limits": "No whole-client Java typecheck or behavioral equivalence claim. Condy experiment is not selected into the original reading bundle."
+}

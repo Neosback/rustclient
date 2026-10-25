@@ -2,6 +2,10 @@
 
 Status: `specified`
 
+Ownership correction, 2026-10-25: `classKY`/Coord now belongs exclusively to
+[cluster 13](13-coord.md), including this shard's existing `setPacked` mapping. The coordinate behavior
+below remains supporting evidence; mapping/ledger ownership is no longer duplicated.
+
 Rust owners: `protocol` for bitstream and mask decoding; `game-state` for durable player-info slots, coordinates and committed entity state. The Java family must not be ported one class for one Rust type.
 
 ## Family

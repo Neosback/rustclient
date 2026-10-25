@@ -2,6 +2,9 @@
 
 Status: `specified`
 
+Ownership correction, 2026-10-25: the existing WorldView seed API rows have moved into this shard,
+so WorldView has one mapping owner. Their original T1 evidence/confidence is retained.
+
 Rust owners: `protocol` for rebuild packet decoding, `game-state` for active world-view/base/entity state, `scene` for scene data and collision consumers, and `application` for the load-scene transition. The injected Java loader is not a Rust architecture template.
 
 ## Family

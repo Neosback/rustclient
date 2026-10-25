@@ -8,21 +8,6 @@ c	AABB	AABB
 	f	I	field2368	extremeZ
 c	AbstractFont	AbstractFont
 	f	I	field8	baseline
-c	Actor	Actor
-	f	I	field1434	idlePoseAnimation
-	f	I	field1442	idleRotateLeft
-	f	I	field1443	walkAnimation
-	f	I	field1446	walkRotateRight
-	f	I	field1447	runAnimation
-	f	I	field1448	walkRotateLeft
-	f	I	field1455	idleRotateRight
-	f	I	field1457	overheadCycle
-	f	Ljava/lang/String;	field1459	overheadText
-	f	I	field1460	walkRotate180
-	f	I	field1468	logicalHeight
-	f	I	field1485	currentOrientation
-	f	I	field1493	orientation
-	f	Z	field1502	dead
 c	ActorSpotAnim	ActorSpotAnim
 	f	I	field5957	id
 	f	I	field5958	height
@@ -231,9 +216,6 @@ c	ModelData	ModelData
 	f	[I	field1862	faceIndices2
 	f	[I	field1863	faceIndices3
 	f	[I	field1878	faceIndices1
-c	NPC	NPC
-	f	LNpcOverrides;	field1580	chatheadOverrides
-	f	LNpcOverrides;	field1581	modelOverrides
 c	NPCComposition	NPCComposition
 	f	I	field5282	size
 	f	[I	field5290	models
@@ -274,11 +256,6 @@ c	ObjectComposition	ObjectComposition
 	f	I	field4960	varPlayerId
 c	PendingLogin	PendingLogin
 	f	S	field5664	world
-c	Player	Player
-	f	I	field1258	footprintSize
-	f	I	field1259	combatLevel
-	f	I	field1263	team
-	f	I	field1269	skullIcon
 c	PlayerComposition	PlayerComposition
 	f	I	field4092	gender
 	f	[I	field4093	equipmentIds
@@ -482,19 +459,6 @@ c	WorldEntityConfig	WorldEntityConfig
 c	WorldMapRenderer	WorldMapRenderer
 	f	Z	field2685	loaded
 	f	[[LWorldMapRegion;	field2702	mapRegions
-c	WorldView	WorldView
-	f	[[[I	field1686	tileHeights
-	f	LDeque2;	field1689	graphicsObjects
-	f	I	field1690	sizeY
-	f	I	field1694	sizeX
-	f	I	field1697	id
-	f	[[[B	field1700	tileSettings
-	f	I	field1706	baseX
-	f	I	field1707	baseY
-	f	I	field1708	plane
-	f	Z	field1710	instance
-	f	[I	field1711	mapRegions
-	f	[[[I	field1712	instanceTemplateChunks
 c	classAAF	classAAF
 	f	Ljava/lang/Throwable;	field44	cause
 	f	Ljava/lang/String;	field45	message

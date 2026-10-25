@@ -1,5 +1,17 @@
 tiny	2	0	semantic	readable
 c	WorldView	WorldView
+	f	[[[I	field1686	tileHeights
+	f	LDeque2;	field1689	graphicsObjects
+	f	I	field1690	sizeY
+	f	I	field1694	sizeX
+	f	I	field1697	id
+	f	[[[B	field1700	tileSettings
+	f	I	field1706	baseX
+	f	I	field1707	baseY
+	f	I	field1708	plane
+	f	Z	field1710	instance
+	f	[I	field1711	mapRegions
+	f	[[[I	field1712	instanceTemplateChunks
 	f	[LCollisionData;	field1685	collisionMaps
 	f	LScene;	field1687	scene
 	f	LIndexedObjectSet;	field1692	players

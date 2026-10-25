@@ -154,3 +154,23 @@ NPC.method3464	NPC	ac	getDisplayName	method	T4	A	nameOverride if non-empty else 
 classEB.method3820	classEB	bs	resolveFacing	method	T4	A	Per cycle after turn start: picks angle, area, entity or path heading into orientation; snap flag copies to currentOrientation	game-state::actor_movement (facing)	03-actor-motion
 classGA.method5325	classGA	ex	applyNpcComposition	method	T4	A	Static; copies size, turn rate and all 15 pose animations from NPCComposition into the NPC	cache::osrs240 (NPC definition adapter)	03-actor-motion
 classKN.method6539	classKN	bq	updateActorTurn	method	T4	A	Top of the per-cycle actor update: runMovementCycle, turn step, classKB.method6491 animation advance, clearUpdatingActor	game-state::actor_movement (facing)	03-actor-motion
+Actor.field1434	Actor	bq	idlePoseAnimation	field	T1	A	getter:Actor.getIdlePoseAnimation()	-	03-actor-motion
+Actor.field1442	Actor	bf	idleRotateLeft	field	T1	A	getter:Actor.getIdleRotateLeft()	-	03-actor-motion
+Actor.field1443	Actor	bd	walkAnimation	field	T1	A	getter:Actor.getWalkAnimation()	-	03-actor-motion
+Actor.field1446	Actor	bh	walkRotateRight	field	T1	A	getter:Actor.getWalkRotateRight()	-	03-actor-motion
+Actor.field1447	Actor	bz	runAnimation	field	T1	A	getter:Actor.getRunAnimation()	-	03-actor-motion
+Actor.field1448	Actor	bv	walkRotateLeft	field	T1	A	getter:Actor.getWalkRotateLeft()	-	03-actor-motion
+Actor.field1455	Actor	bs	idleRotateRight	field	T1	A	getter:Actor.getIdleRotateRight()	-	03-actor-motion
+Actor.field1457	Actor	cy	overheadCycle	field	T1	A	getter:Actor.getOverheadCycle()	-	03-actor-motion
+Actor.field1459	Actor	cd	overheadText	field	T1	A	getter:Actor.getOverheadText()	-	03-actor-motion
+Actor.field1460	Actor	bl	walkRotate180	field	T1	A	getter:Actor.getWalkRotate180()	-	03-actor-motion
+Actor.field1468	Actor	du	logicalHeight	field	T1	A	getter:Actor.getLogicalHeight()	-	03-actor-motion
+Actor.field1485	Actor	be	currentOrientation	field	T1	A	getter:Actor.getCurrentOrientation()	-	03-actor-motion
+Actor.field1493	Actor	dt	orientation	field	T1	A	getter:Actor.getOrientation()	-	03-actor-motion
+Actor.field1502	Actor	ww	dead	field	T1	A	getter:Actor.isDead()	-	03-actor-motion
+NPC.field1580	NPC	aj	chatheadOverrides	field	T1	A	getter:NPC.getChatheadOverrides()	-	03-actor-motion
+NPC.field1581	NPC	al	modelOverrides	field	T1	A	getter:NPC.getModelOverrides()	-	03-actor-motion
+Player.field1258	Player	bc	footprintSize	field	T1	A	getter:Player.getFootprintSize()	-	03-actor-motion
+Player.field1259	Player	ac	combatLevel	field	T1	A	getter:Player.getCombatLevel()	-	03-actor-motion
+Player.field1263	Player	av	team	field	T1	A	getter:Player.getTeam()	-	03-actor-motion
+Player.field1269	Player	ag	skullIcon	field	T1	A	getter:Player.getSkullIcon()	-	03-actor-motion

@@ -95,5 +95,6 @@ shards or ledgers. It checks those and the original input for changes before com
 
 This workflow improves inspectability and surfaces uncertainty. It does not type-check a complete
 recompiled client or recover all missing Java. The existing reading bundle still has five unresolved
-source files and a separate production mapping validation failure; see
+source files. The subsequent [mapping baseline repair](../../docs/reference/client-240/MAPPING-BASELINE.md)
+cleared the previously reported 179 mechanical validation problems; semantic naming review remains separate. See
 [Decompiler quality](../../docs/reference/client-240/DECOMPILER-QUALITY.md).
