@@ -107,3 +107,15 @@ Broader actor effects, social lists and complete renderer parity are outside thi
 Speech quads occupy the world widget's painter boundary, beneath subsequently painted mounted
 interfaces. Their timers continue while obscured. Context-menu labels share widget rich-text
 parsing/measurement, so cache colour tags control styling rather than appearing as literal text.
+
+## Screen brightness correction, 2026-10-25
+
+Live cache scripts 3961/3966 read/write device option 6 as a 0..100 brightness percentage.
+The earlier SoundEffectQuality mapping was incorrect and is superseded by this evidence.
+The 240 classBY.method1359 clamps that percentage, inverts it, then computes gamma as
+`0.5 + (100 - percent) / 200`. GameState's interface preferences own one typed brightness
+value, default 40 (gamma 0.8); profile ids and aliases stay in cache/script adapters.
+The frame projects that value into the world camera uniform for both textures and untextured
+HSL. Changing brightness must invalidate a cached uniform even with a stationary camera.
+Session reset follows existing interface-preference lifecycle; disk persistence is separate.
+Brightness participates in fingerprint schema 26 and existing interface events/replay.

@@ -310,6 +310,8 @@ const OPCODES: &[(u16, Opcode)] = &[
     (3143, Opcode::Setrememberusername),
     (3144, Opcode::Getrememberusername),
     (3145, Opcode::ShowIosReview),
+    (3181, Opcode::Setbrightness),
+    (3182, Opcode::Getbrightness),
     (3200, Opcode::SoundSynth),
     (3201, Opcode::SoundSong),
     (3202, Opcode::SoundJingle),

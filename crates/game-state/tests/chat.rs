@@ -61,3 +61,38 @@ fn chat_status_and_viewport_preserve_bounds_replay_and_session_cleanup() {
         rustclient_model::ViewportSettings::default()
     );
 }
+
+#[test]
+fn brightness_is_one_typed_preference_with_replay_and_session_reset() {
+    let mut state = GameState::new();
+    let begin = SemanticOperation::BeginSession {
+        revision: rustclient_model::REVISION_240,
+    };
+    state.apply_operation(begin.clone()).unwrap();
+    let before = state.semantic_fingerprint();
+    let bright = rustclient_model::ScreenBrightness::new(100).unwrap();
+    let operation =
+        SemanticOperation::Interface(rustclient_model::InterfaceUpdate::ScreenBrightness(bright));
+    let commit = state.apply_operation(operation.clone()).unwrap();
+    assert!(commit.delta().interfaces_changed());
+    assert_eq!(state.interfaces().brightness(), bright);
+    assert_ne!(before, state.semantic_fingerprint());
+    assert!(
+        state
+            .apply_operation(operation.clone())
+            .unwrap()
+            .delta()
+            .is_empty()
+    );
+    let mut replay = GameState::new();
+    replay.apply_operation(begin).unwrap();
+    replay
+        .replay_envelopes(&[ReplayEnvelope::new(operation, commit)])
+        .unwrap();
+    assert_eq!(state.semantic_fingerprint(), replay.semantic_fingerprint());
+    assert!(rustclient_model::ScreenBrightness::new(101).is_none());
+    state
+        .apply_operation(SemanticOperation::EndSession)
+        .unwrap();
+    assert_eq!(state.interfaces().brightness().percent(), 40);
+}

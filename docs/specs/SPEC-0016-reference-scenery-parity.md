@@ -15,7 +15,7 @@ Source hashes, notices, scratch-only oracle adjustments and input manifests must
 recorded. Reference trees and server/cache remain read-only; no RustClient Cargo
 path or runtime dependency may point into references. Fixture tests run standalone.
 
-Settings: brightness 0.8; remove color banding on; bright textures off; fog off;
+Settings: default brightness gamma 0.8 (the authored numeric preference may adjust it); remove color banding on; bright textures off; fog off;
 black clear; draw distance 50 tiles; 4x MSAA; animation smoothing off; terrain
 smoothing and decoration snapping off. Default roof behavior is reference cutaway.
 World projection uses the reference non-sRGB target, reverse-Z/strict Greater,

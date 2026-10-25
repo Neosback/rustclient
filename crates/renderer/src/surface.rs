@@ -410,6 +410,7 @@ impl SurfaceRenderer {
             bounds,
             frame.viewport_settings,
             top_level,
+            frame.scene_brightness,
         );
         self.ui
             .as_mut()

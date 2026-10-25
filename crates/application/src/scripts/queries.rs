@@ -19,6 +19,11 @@ fn script_option<S: ReadOnlyBlobs>(
             .game_option(option, |id| h.state.scenery().variable(id))?
     })
 }
+fn set_brightness<S: ReadOnlyBlobs>(h: &mut ScriptHost<'_, S>, value: i32) -> Result<()> {
+    let percent = u8::try_from(value.clamp(0, 100)).map_err(|_| "brightness range")?;
+    let brightness = rustclient_model::ScreenBrightness::new(percent).ok_or("brightness range")?;
+    h.apply(InterfaceUpdate::ScreenBrightness(brightness))
+}
 fn id(n: i32) -> Result<u32> {
     u32::try_from(n).map_err(|_| "negative definition ID".into())
 }
@@ -44,9 +49,16 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
         ViewportGeteffectivesize,
     };
     let number = match op {
+        Opcode::Setbrightness => {
+            let value = s.int()?;
+            set_brightness(h, value)?;
+            None
+        }
+        Opcode::Getbrightness => Some(i32::from(h.state.interfaces().brightness().percent())),
         Opcode::SetDeviceOption | Opcode::SetGameOption => {
             let [option, value] = s.ints()?;
             match script_option(h, op == Opcode::SetDeviceOption, option)? {
+                ScriptOption::Brightness => set_brightness(h, value)?,
                 ScriptOption::Volume(variable) => {
                     if !(0..=100).contains(&value) {
                         return Err("master volume percentage range".into());
@@ -67,6 +79,9 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
             let option = s.int()?;
             Some(
                 match script_option(h, op == Opcode::GetDeviceOption, option)? {
+                    ScriptOption::Brightness => {
+                        i32::from(h.state.interfaces().brightness().percent())
+                    }
                     ScriptOption::Volume(variable) => h.state.scenery().variable(variable),
                     ScriptOption::Number { id, default } => h
                         .state
@@ -843,23 +858,37 @@ mod tests {
     }
 
     #[test]
-    fn device_option_6_defaults_on_and_is_a_boolean_setting() {
+    fn device_option_6_is_a_clamped_numeric_scene_brightness() {
         let (mut scripts, mut state) = (scripts(), state());
         assert_eq!(
             run(&mut scripts, &mut state, Opcode::GetDeviceOption, &[6]).unwrap(),
-            [1]
+            [40]
         );
-        run(&mut scripts, &mut state, Opcode::SetDeviceOption, &[6, 0]).unwrap();
+        for (value, expected) in [(-1, 0), (35, 35), (80, 80), (150, 100)] {
+            run(
+                &mut scripts,
+                &mut state,
+                Opcode::SetDeviceOption,
+                &[6, value],
+            )
+            .unwrap();
+            assert_eq!(
+                run(&mut scripts, &mut state, Opcode::GetDeviceOption, &[6]).unwrap(),
+                [expected]
+            );
+            assert_eq!(
+                i32::from(state.interfaces().brightness().percent()),
+                expected
+            );
+        }
+        run(&mut scripts, &mut state, Opcode::Setbrightness, &[25]).unwrap();
         assert_eq!(
             run(&mut scripts, &mut state, Opcode::GetDeviceOption, &[6]).unwrap(),
-            [0]
+            [25]
         );
         assert_eq!(
-            state
-                .interfaces()
-                .settings()
-                .get(&ClientSetting::SoundEffectQuality),
-            Some(&false)
+            run(&mut scripts, &mut state, Opcode::Getbrightness, &[]).unwrap(),
+            [25]
         );
     }
 

@@ -87,6 +87,7 @@ pub enum InterfaceUpdate {
     Window(WindowMetrics),
     DefaultWindowMode(WindowMode),
     Viewport(crate::ViewportSettings),
+    ScreenBrightness(crate::ScreenBrightness),
     Setting {
         key: ClientSetting,
         value: bool,
@@ -179,8 +180,6 @@ pub enum ClientSetting {
     MouseCamera,
     /// Game option 1: roofs removed from the scene.
     RoofsHidden,
-    /// Device option 6: boolean sound-effect synthesis preference (default on).
-    SoundEffectQuality,
 }
 impl ClientSetting {
     #[must_use]
@@ -194,7 +193,6 @@ impl ClientSetting {
             Self::FollowerOpsLowPriority => 5,
             Self::MouseCamera => 6,
             Self::RoofsHidden => 7,
-            Self::SoundEffectQuality => 8,
         }
     }
 }

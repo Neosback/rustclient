@@ -92,6 +92,7 @@ pub struct UiFrame {
     /// Painter boundary of the world widget, before interfaces mounted above it.
     pub world_overlay_index: Option<usize>,
     pub viewport_settings: rustclient_model::ViewportSettings,
+    pub scene_brightness: rustclient_model::ScreenBrightness,
     /// Mask sprites authored on the minimap and compass widgets; absent when not laid out.
     pub minimap_sprite: Option<rustclient_model::SpriteId>,
     pub compass_sprite: Option<rustclient_model::SpriteId>,

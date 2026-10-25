@@ -28,6 +28,7 @@ pub struct InterfaceState {
     window: rustclient_model::WindowMetrics,
     default_window_mode: rustclient_model::WindowMode,
     viewport: rustclient_model::ViewportSettings,
+    brightness: rustclient_model::ScreenBrightness,
     settings: BTreeMap<rustclient_model::ClientSetting, bool>,
     device_preferences: BTreeMap<u8, i32>,
     epoch: u64,
@@ -50,6 +51,10 @@ impl InterfaceState {
     #[must_use]
     pub const fn viewport(&self) -> rustclient_model::ViewportSettings {
         self.viewport
+    }
+    #[must_use]
+    pub const fn brightness(&self) -> rustclient_model::ScreenBrightness {
+        self.brightness
     }
     /// Disposable invalidation token, excluded from semantic fingerprints.
     #[must_use]
@@ -137,6 +142,11 @@ impl InterfaceState {
             InterfaceUpdate::DefaultWindowMode(value) => {
                 let changed = self.default_window_mode != value;
                 self.default_window_mode = value;
+                Ok(changed)
+            }
+            InterfaceUpdate::ScreenBrightness(value) => {
+                let changed = self.brightness != value;
+                self.brightness = value;
                 Ok(changed)
             }
             InterfaceUpdate::Viewport(value) => {
@@ -427,7 +437,8 @@ impl InterfaceState {
                 }
                 resync_events = Some(candidate);
             }
-            InterfaceUpdate::Viewport(_)
+            InterfaceUpdate::ScreenBrightness(_)
+            | InterfaceUpdate::Viewport(_)
             | InterfaceUpdate::Window(_)
             | InterfaceUpdate::DefaultWindowMode(_)
             | InterfaceUpdate::Setting { .. }

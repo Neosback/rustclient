@@ -1,5 +1,6 @@
-// Classic reference materials: baked HSL/lightness, no directional relighting.
-struct Camera { view_projection: mat4x4<f32>, cycle: u32, top_level: u32, _pad1:u32,_pad2:u32 }
+// RuneLite GPU material transfer: runelite-gpu/vert.glsl + frag.glsl.
+// HSL gamma is applied in the vertex conversion; texture gamma in the fragment shader.
+struct Camera { view_projection: mat4x4<f32>, cycle: u32, top_level: u32, brightness:f32, _pad2:u32 }
 struct Animations { values:array<vec4<f32>,256> }
 @group(0) @binding(0) var<uniform> camera:Camera;
 @group(0) @binding(1) var textures:texture_2d_array<f32>;
@@ -29,7 +30,7 @@ fn hsl_rgb(packed:u32)->vec3<f32> {
  var q=lum+sat-lum*sat;
  if lum<0.5 {q=lum*(1.0+sat);}
  let p=2.0*lum-q;
- return pow(vec3<f32>(hue_channel(p,q,hue+0.3333333333333333),hue_channel(p,q,hue),hue_channel(p,q,hue-0.3333333333333333)),vec3<f32>(0.8));
+ return pow(vec3<f32>(hue_channel(p,q,hue+0.3333333333333333),hue_channel(p,q,hue),hue_channel(p,q,hue-0.3333333333333333)),vec3<f32>(camera.brightness));
 }
 @vertex fn vs_main(input:Input)->Vertex {
  var out:Vertex;
@@ -55,11 +56,12 @@ fn hsl_rgb(packed:u32)->vec3<f32> {
  return out;
 }
 @fragment fn fs_main(input:Vertex)->@location(0) vec4<f32> {
+ // RustOSRS: derivatives precede material branching and alpha discard.
+ let dx=dpdx(input.uv);let dy=dpdy(input.uv);
  if input.texture>0u {
     let layer=i32(input.texture-1u);
-    let dx=dpdx(input.uv);let dy=dpdy(input.uv);
     if textureSampleLevel(textures,tex_sampler,input.uv,layer,0.0).a<1.0 {discard;}
-    let rgb=pow(textureSampleGrad(textures,tex_sampler,input.uv,layer,dx,dy).rgb,vec3<f32>(0.8));
+    let rgb=pow(textureSampleGrad(textures,tex_sampler,input.uv,layer,dx,dy).rgb,vec3<f32>(camera.brightness));
     return vec4<f32>(rgb*(input.hsl/127.0),input.alpha);
  }
  return vec4<f32>(input.color,input.alpha);

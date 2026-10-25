@@ -71,6 +71,7 @@ pub fn project_widgets_with_drag(
     frame.compass_sprite = None;
     frame.canvas = Some(state.interfaces().window().canvas);
     frame.viewport_settings = state.interfaces().viewport();
+    frame.scene_brightness = state.interfaces().brightness();
     let tree = WidgetTree::build_with_drag(
         state.interfaces(),
         definitions,

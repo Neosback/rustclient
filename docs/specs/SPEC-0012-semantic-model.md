@@ -394,3 +394,10 @@ Public speech carries text, colour/effect/pattern metadata, autotyper state and 
 profile adapter. `ActorOverhead` in GameState owns the committed text and remaining client
 cycles; the actor incarnation owns its reset/removal lifecycle. History identities remain
 owned by ChatState. See SPEC-0017; fingerprint schema 25 includes speech and its countdown.
+
+### Screen brightness
+
+`ScreenBrightness` is a validated 0..100 scene-brightness percentage, default 40.
+InterfaceState owns the preference independently of revision device-option ids. Rendering
+projects it into gamma; model/game-state contain no shader or GPU types. SPEC-0017 defines
+source evidence, reset and fingerprint schema 26 implications.

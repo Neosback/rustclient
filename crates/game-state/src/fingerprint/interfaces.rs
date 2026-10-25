@@ -41,6 +41,7 @@ pub(super) fn write(f: &mut StableFingerprint64, state: &InterfaceState) {
         f.write_u32(size.width);
         f.write_u32(size.height);
     }
+    f.write_u8(state.brightness().percent());
     let viewport = state.viewport();
     f.write_u32(viewport.follow_height);
     for value in viewport

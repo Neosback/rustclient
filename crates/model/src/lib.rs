@@ -6,7 +6,9 @@
 
 #![forbid(unsafe_code)]
 
+mod brightness;
 pub mod coords;
+pub use brightness::ScreenBrightness;
 mod destination;
 pub use destination::MapDestination;
 pub mod entity;

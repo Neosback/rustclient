@@ -120,3 +120,11 @@ NEXTUID/PREVUID traversal now follows the reference global queue directions. See
 [the implementation/validation record](../../plan/CHAT-ACTORS-240.md). Remaining actor effects,
 social-list filtering, full facing/pose coupling and full renderer parity stay open; the legacy
 pose projector is still disposable and never supplies live actor position authority.
+
+## Brightness continuation (2026-10-25)
+
+LIVE cache scripts 3961/3966 and classBY.method1359 establish device option 6 as
+a percentage, replacing the incorrect boolean mapping. InterfaceState owns a typed
+0..100 preference; script aliases and UI projection feed classic HSL/texture gamma.
+Contract tests and workspace gates pass; live slider and visual response remain pending.
+See [the continuation](../../plan/RENDER-GAMEFRAME-CONTINUATION-240.md).

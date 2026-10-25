@@ -590,6 +590,8 @@ pub enum Opcode {
     CcDiscardRetiredFlag,
     IfDiscardRetiredFlag,
     CcFindByParameters,
+    Setbrightness,
+    Getbrightness,
     SetDeviceOption,
     GetDeviceOption,
     SetGameOption,

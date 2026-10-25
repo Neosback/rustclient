@@ -11,6 +11,8 @@ use std::collections::BTreeMap;
 /// Semantic owner of a script-visible game or device option.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ScriptOption {
+    /// Numeric scene brightness percentage (live scripts 3961/3966; classBY.method1359).
+    Brightness,
     /// A percentage stored in the existing client-variable owner.
     Volume(rustclient_model::VarpId),
     /// An integer device preference stored in `GameState`'s interface state; `default` applies
@@ -335,12 +337,9 @@ impl CacheProfile {
     /// # Errors
     /// Rejects option ids outside the script-visible preference range.
     pub fn device_option(self, option: i32) -> std::result::Result<ScriptOption, String> {
-        use rustclient_model::{ClientSetting, VarpId};
+        use rustclient_model::VarpId;
         match (self, option) {
-            (Self::OpenRune240, 6) => Ok(ScriptOption::Flag {
-                setting: ClientSetting::SoundEffectQuality,
-                default: true,
-            }),
+            (Self::OpenRune240, 6) => Ok(ScriptOption::Brightness),
             (Self::OpenRune240, 19) => Ok(ScriptOption::Volume(VarpId::new(3796))),
             // Option 14 defaults to 25 in the 240 client's device preferences; the other ids
             // are the preference slots the cache scripts read and write (settings, graphics and
