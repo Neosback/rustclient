@@ -366,3 +366,70 @@ fn player_carried_chat_notifies_the_cache_chat_listener_after_history_commits() 
         "movement-only updates do not synthesize chat callbacks"
     );
 }
+
+#[test]
+fn run_energy_and_weight_updates_notify_the_misc_listener_only_when_they_change() {
+    let (mut scripts, mut state) = setup();
+    state
+        .apply_operation(SemanticOperation::EndSession)
+        .unwrap();
+    state
+        .apply_operation(SemanticOperation::AuthenticateSession {
+            revision: REVISION_240,
+            player: rustclient_game_state::AuthenticatedPlayer {
+                profile: ServerProfileId::new(1),
+                player: PlayerIndex::new(1),
+                member: false,
+                staff_level: 0,
+            },
+        })
+        .unwrap();
+    state
+        .apply_operation(SemanticOperation::EstablishInitialPlacement(
+            rustclient_game_state::InitialPlacement {
+                position: WorldTile::new(3220, 3220, Plane::MIN),
+                map_anchor: WorldTile::new(3216, 3216, Plane::MIN),
+                area: None,
+            },
+        ))
+        .unwrap();
+    let group = InterfaceId::new(1);
+    let mut widget = scripts.interfaces[&group]
+        .widgets()
+        .values()
+        .next()
+        .unwrap()
+        .clone();
+    widget
+        .listeners
+        .insert(WidgetListener::Misc, vec![ScriptValue::Int(90002)]);
+    scripts.interfaces.insert(
+        group,
+        InterfaceDefinition::from_widgets(group, vec![widget]).unwrap(),
+    );
+    commit(
+        &mut scripts,
+        &mut state,
+        InterfaceUpdate::ClientVariable {
+            id: 7,
+            value: ScriptValue::Int(0),
+        },
+    );
+    commit(
+        &mut scripts,
+        &mut state,
+        InterfaceUpdate::SetRoot(Some(group)),
+    );
+    assert_eq!(observed(&state), 1);
+    for (update, expected) in [
+        (PlayerStatusUpdate::RunEnergy(5000), 12),
+        (PlayerStatusUpdate::RunEnergy(5000), 12),
+        (PlayerStatusUpdate::RunWeight(3), 122),
+    ] {
+        let errors = scripts
+            .commit(&mut state, SemanticOperation::PlayerStatus(update))
+            .unwrap();
+        assert!(errors.is_empty(), "{errors:?}");
+        assert_eq!(observed(&state), expected);
+    }
+}

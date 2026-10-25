@@ -9,6 +9,9 @@ pub struct ScriptEnum {
     pub output: u8,
     pub default: ScriptValue,
     pub entries: BTreeMap<i32, ScriptValue>,
+    /// Keys and values in cache order, duplicates kept: the arrays scripts read through `enum_keys`/`enum_values`.
+    pub keys: Vec<i32>,
+    pub values: Vec<ScriptValue>,
 }
 impl CacheProfile {
     /// # Errors
@@ -52,6 +55,8 @@ impl CacheProfile {
             output: 0,
             default: ScriptValue::Int(0),
             entries: BTreeMap::new(),
+            keys: Vec::new(),
+            values: Vec::new(),
         };
         loop {
             match r.u8()? {
@@ -77,6 +82,8 @@ impl CacheProfile {
                         } else {
                             ScriptValue::Int(r.u32()?.cast_signed())
                         };
+                        out.keys.push(k);
+                        out.values.push(v.clone());
                         out.entries.insert(k, v);
                     }
                 }

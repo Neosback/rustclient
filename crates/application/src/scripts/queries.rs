@@ -55,6 +55,11 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
             None
         }
         Opcode::Getbrightness => Some(i32::from(h.state.interfaces().brightness().percent())),
+        Opcode::ClientBuild => {
+            // The 240 client pushes these two literals (traced live: stack +2 integers, no objects).
+            s.integers.extend([240, 1]);
+            None
+        }
         Opcode::SetDeviceOption | Opcode::SetGameOption => {
             let [option, value] = s.ints()?;
             match script_option(h, op == Opcode::SetDeviceOption, option)? {

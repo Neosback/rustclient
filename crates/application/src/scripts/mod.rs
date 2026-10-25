@@ -101,6 +101,11 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
             SemanticOperation::PlayerStatus(PlayerStatusUpdate::Skill { id, .. }) => {
                 Some((WidgetListener::Stat, Some(id.get().cast_signed())))
             }
+            // Observed live in the pinned client: the run orb fill (interface 160) only follows run energy
+            // through its misc listener, so an energy update must notify it.
+            SemanticOperation::PlayerStatus(
+                PlayerStatusUpdate::RunEnergy(_) | PlayerStatusUpdate::RunWeight(_),
+            ) => Some((WidgetListener::Misc, None)),
             SemanticOperation::Scenery(
                 rustclient_game_state::SceneryOperation::SynchronizeVariables
                 | rustclient_game_state::SceneryOperation::ResetVariables,
