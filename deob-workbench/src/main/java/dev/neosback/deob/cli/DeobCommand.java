@@ -18,6 +18,10 @@ import picocli.CommandLine.Command;
         PacketReadsCommand.class,
         PacketTimelinesCommand.class,
         PacketProfileCommand.class,
+        ProtocolFingerprintCommand.class,
+        PacketReaderGeometryCommand.class,
+        BufferInfrastructureCommand.class,
+        ReflectionHooksCommand.class,
         BitAccessCommand.class,
         SyncCandidatesCommand.class,
         UpdateMasksCommand.class,
@@ -31,7 +35,8 @@ public final class DeobCommand implements Callable<Integer> {
     public Integer call() {
         System.out.println(
             "Use --help or a subcommand: index, cfg, cfg-structure, hierarchy, provenance, "
-                + "decoders, packet-reads, packet-timelines, packet-profile, bit-access, "
+                + "decoders, packet-reads, packet-timelines, packet-profile, protocol-fingerprint, "
+                + "packet-reader-geometry, buffer-infra, reflection-hooks, bit-access, "
                 + "sync-candidates, update-masks, lineage, protocol, sources."
         );
         return 0;
