@@ -1,0 +1,86 @@
+{
+  "profile": "osrs-240",
+  "behavioralAuthority": "original-1.12.39",
+  "sources": [
+    {
+      "id": "original-1.12.39",
+      "role": "ORIGINAL_EXACT",
+      "status": "READY",
+      "revision": "240",
+      "version": "1.12.39",
+      "locator": "../references/gamepacks/osrs-240/injected-client-1.12.39.jar",
+      "license": "evidence artifact; do not redistribute from this project",
+      "notes": "Untouched bytecode is the sole behavioral authority for revision-240 reconstruction."
+    },
+    {
+      "id": "semantic-1.12.39",
+      "role": "IDENTITY_OVERLAY",
+      "status": "READY",
+      "revision": "240",
+      "version": "1.12.39",
+      "locator": "../docs/reference/client-240/inputs/injected-client-1.12.39-deob-semantic.jar",
+      "license": "analysis artifact",
+      "notes": "Identity/readability overlay only. Known transformations mean this jar is not behavioral authority."
+    },
+    {
+      "id": "rl-suite-1.12.34",
+      "role": "STRUCTURAL_NEIGHBOR",
+      "status": "REMOTE_REFERENCE",
+      "revision": "240",
+      "version": "1.12.34",
+      "locator": "https://github.com/Tonic-Box/rl-suite/blob/main/data/rev-240/deob/injected-client-1.12.34-deob.jar",
+      "license": "artifact provenance must be reviewed before redistribution",
+      "notes": "Neighboring rev-240 structural deob. Use for lineage evidence, never as 1.12.39 behavior truth."
+    },
+    {
+      "id": "rl-suite-1.12.34.1",
+      "role": "STRUCTURAL_NEIGHBOR",
+      "status": "REMOTE_REFERENCE",
+      "revision": "240",
+      "version": "1.12.34.1",
+      "locator": "https://github.com/Tonic-Box/rl-suite/blob/main/data/rev-240/deob/injected-client-1.12.34.1-deob.jar",
+      "license": "artifact provenance must be reviewed before redistribution",
+      "notes": "Neighboring rev-240 structural deob for cross-build lineage."
+    },
+    {
+      "id": "rl-suite-1.12.35",
+      "role": "STRUCTURAL_NEIGHBOR",
+      "status": "REMOTE_REFERENCE",
+      "revision": "240",
+      "version": "1.12.35",
+      "locator": "https://github.com/Tonic-Box/rl-suite/blob/main/data/rev-240/deob/injected-client-1.12.35-deob.jar",
+      "license": "artifact provenance must be reviewed before redistribution",
+      "notes": "Neighboring rev-240 structural deob for cross-build lineage."
+    },
+    {
+      "id": "rl-suite-1.12.36",
+      "role": "STRUCTURAL_NEIGHBOR",
+      "status": "REMOTE_REFERENCE",
+      "revision": "240",
+      "version": "1.12.36-SNAPSHOT",
+      "locator": "https://github.com/Tonic-Box/rl-suite/blob/main/data/rev-240/deob/injected-client-1.12.36-SNAPSHOT-deob.jar",
+      "license": "artifact provenance must be reviewed before redistribution",
+      "notes": "Closest currently identified rl-suite rev-240 neighbor. Structural names are generated, not full semantic names."
+    },
+    {
+      "id": "runelite-rev240-semantic",
+      "role": "SEMANTIC_ORACLE",
+      "status": "NEEDS_PIN",
+      "revision": "240",
+      "version": "historical commit required",
+      "locator": "https://github.com/runelite/runelite",
+      "license": "BSD-2-Clause; verify per-file headers",
+      "notes": "Use the historical RuneLite API/client snapshot nearest 1.12.39 as semantic vocabulary. Do not promote current-master concepts into rev 240 without lineage evidence."
+    },
+    {
+      "id": "devious-deob-algorithms",
+      "role": "ALGORITHM_REFERENCE",
+      "status": "REFERENCE_ONLY",
+      "revision": "",
+      "version": "repository reference",
+      "locator": "https://github.com/melxin/devious-client/tree/master/deobfuscator",
+      "license": "BSD-2-Clause; preserve attribution when directly reusing code",
+      "notes": "Algorithm reference for CFG, symbolic execution, modular arithmetic, packet discovery, and cross-revision mapping. Prefer ASM-native implementations here."
+    }
+  ]
+}

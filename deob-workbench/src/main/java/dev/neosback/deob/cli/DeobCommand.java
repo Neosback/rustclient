@@ -7,12 +7,17 @@ import picocli.CommandLine.Command;
     name = "deob-workbench",
     mixinStandardHelpOptions = true,
     version = "client-deob-workbench 0.1.0-SNAPSHOT",
-    description = "Evidence-first OSRS client deobfuscation workbench"
+    description = "Evidence-first OSRS client deobfuscation workbench",
+    subcommands = {
+        IndexCommand.class,
+        CfgCommand.class,
+        SourcesCommand.class
+    }
 )
 public final class DeobCommand implements Callable<Integer> {
     @Override
     public Integer call() {
-        System.out.println("Use --help to inspect available evidence commands.");
+        System.out.println("Use --help or a subcommand: index, cfg, sources.");
         return 0;
     }
 }
