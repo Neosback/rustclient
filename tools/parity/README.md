@@ -119,3 +119,33 @@ pointer. A fully headless JVM is not possible because the client creates an AWT 
 `target/runelite-240-runtime/recordings/` (not committed); curated summaries are copied into
 `docs/reference/client-240/inputs/`. `tools/client-240/menu-actions.py` extracts the matching static table (menu action
 id to outbound packet) from the decompiled dispatcher.
+
+#### Replaying a session through the widget and script path
+
+`apps/native/src/bin/reference_replay.rs` feeds the interface, variable, inventory, status and chat packets of the same
+stream through the unmodified connection decoder, `ClientScripts` and `WidgetTree`, then prints the resulting layout.
+`compare-layout.py` diffs that against a widget dump (`record_ui.py dump NAME`) taken from the same live session
+(take the dump at the end of the capture; the stream keeps growing while the client runs):
+
+```sh
+cargo run -p rustclient-native --bin reference_replay -- CACHE_DIR STREAM.log MAX_PACKETS fixed LOCAL_INDEX > rust.tsv
+python3 tools/parity/compare-layout.py rust.tsv target/runelite-240-runtime/recordings/NAME.json
+```
+
+`REPLAY_CYCLES=N` also advances N client cycles for timer listeners (the stream carries none). The comparer drops
+reference widgets the client never laid out (`bounds` of `-1, -1`) and children of zero-area containers, and Rust nodes
+whose clip is empty, because neither is drawn.
+
+Result, 2026-10-25, fixed layout, one 9,733-packet session, dump taken at the end: 0 script diagnostics; 211 widgets
+compared, 208 with identical bounds. Rust now also draws the run orb fill like the client: the fill widgets follow run
+energy through the misc listener, which Rust did not notify before (found by this diff, fixed in `scripts/mod.rs`).
+What still differs, and why:
+
+- Side-tab slot (live interface 320, Rust 149): the live tab was changed by a click; the selection is client-local state
+  that no inbound packet carries, so a replay cannot reproduce it. Not a Rust defect.
+- Chatbox rows: the live snapshot reported chat tab 1 and shows only the first of two game messages (types 108 and 117);
+  Rust shows both. The tab choice is client-local too, but it is not verified that Rust's default tab matches the
+  client's default, so this stays open until a dump is taken right after login with no clicks.
+- Interface 122 component 25 (one 85x19 widget at 399,34): live positions it, Rust leaves the cache default of 1x1.
+  The script that does it is not identified; still open.
+

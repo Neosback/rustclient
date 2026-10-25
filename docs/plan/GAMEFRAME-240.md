@@ -281,3 +281,27 @@ Clippy, **325 workspace tests**, web Wasm check and native binary build pass. Lo
 The source ledger records these branches as contract-tested and the containing methods as partial.
 No fresh live login, pixel review, widget-model animation acceptance or script-2358 correction is
 claimed. An already-running native client needs a restart to load the rebuilt executable.
+
+## 2026-10-25 live reference replay
+
+The pinned 240 client was run live under the new read-only probes (see `tools/parity/README.md`) and one session's
+inbound payloads were replayed through the Rust connection decoder, `ClientScripts` and `WidgetTree`, then diffed against a
+widget dump of the same session in the fixed layout. 9,733 replayed packets produced 0 script diagnostics; 208 of 211
+compared widgets have identical bounds. This is runtime evidence about one session (ADR-0005 tier TR), not acceptance of
+every layout or mode.
+
+Rust changes made from it, each with focused tests:
+
+- Script array and enum opcodes 8002 and 8020-8029, and 6531 (client build, pushes 240 then 1), which the cache's own
+  scripts use during gameframe setup and which previously aborted them. `ScriptEnum` now keeps cache entry order so enum
+  key/value arrays match the client. `crates/client-script/tests/arrays.rs` covers growth, bounds, types and read-only views.
+- Run energy and run weight updates now notify the misc widget listener (the run orb fill is driven by it). Previously the
+  fill kept its first value.
+
+Differences that remain: side-tab selection is a client-local click that no packet carries; the chatbox shows one of two
+game messages live (chat tab 1) and both in Rust, and whether Rust's default chat tab matches the client's is unverified
+until a dump is taken right after login without clicks; interface 122 component 25 gets a runtime position from a script
+not yet identified. Pixel, resize, DPI and
+other-layout (classic resizable, modern) acceptance is unchanged: those layouts have not been dumped from the live client yet.
+Chat that needs the Huffman table, emotes and combat were not part of the captured session.
+

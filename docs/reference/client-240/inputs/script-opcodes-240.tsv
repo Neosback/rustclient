@@ -853,7 +853,7 @@ opcode	rust_name	runelite_name	status	live_uses	handlers	traced_handler	int_delt
 6526	MobileWifiavailable	MOBILE_WIFIAVAILABLE	adapter		classBB.method896,classBB.method897,classSU.method10737					
 6527			handler-only	2	classBB.method896,classBB.method897,classSU.method10737					
 6528			handler-only		classBB.method896,classBB.method897,classSU.method10737					
-6531			handler-only	3	classBB.method896,classBB.method897,classSU.method10737	classQR.method9824	2	0	0	4
+6531	ClientBuild		adapter		classBB.method896,classBB.method897,classSU.method10737	classQR.method9824	2	0	0	4
 6599		RUNELITE_EXECUTE	named-only							
 6600			handler-only		classBB.method899,classBB.method900,classHS.method6139					
 6601	WorldmapGetmapname	WORLDMAP_GETMAPNAME	adapter		classBB.method899,classBB.method900,classHS.method6139	classHS.method6139	-1	1	0	52
@@ -1091,7 +1091,7 @@ opcode	rust_name	runelite_name	status	live_uses	handlers	traced_handler	int_delt
 7901			handler-only		classBB.method920,classBB.method921,classBB.method922,classKR.method6597					
 8000	ArraySort		adapter		classBB.method923,classBB.method924,classFW.method5091	classFW.method5091	0	-2	0	4
 8001			handler-only	1	classBB.method923,classBB.method924,classFW.method5091					
-8002			handler-only	1	classBB.method923,classBB.method924,classFW.method5091					
+8002	ArrayIsNull		adapter		classBB.method923,classBB.method924,classFW.method5091					
 8003	ArrayLength		adapter		classBB.method924,classFW.method5091	classFW.method5091	1	-1	0	2
 8004			handler-only		classBB.method924,classFW.method5091					
 8005	ArrayIndexOf		adapter		classBB.method923,classBB.method924,classFW.method5091					
@@ -1109,16 +1109,16 @@ opcode	rust_name	runelite_name	status	live_uses	handlers	traced_handler	int_delt
 8017			handler-only		classBB.method923,classBB.method924,classFW.method5091					
 8018			handler-only	6	classBB.method924,classFW.method5091					
 8019			handler-only	12	classBB.method924,classFW.method5091					
-8020			handler-only	2	classBB.method923,classBB.method924,classFW.method5091	classFW.method5091	-2	1	0	2
-8021			handler-only	9	classBB.method923,classBB.method924,classFW.method5091					
-8022			handler-only	64	classBB.method924,classFW.method5091					
-8023			handler-only	129	classBB.method924,classFW.method5091					
-8024			handler-only	145	classBB.method924,classFW.method5091					
-8025			handler-only	1	classBB.method924,classFW.method5091					
-8026			handler-only	61	classBB.method923,classBB.method924,classFW.method5091					
-8027			handler-only	3	classBB.method923,classBB.method924,classFW.method5091					
-8028			handler-only		classBB.method924,classFW.method5091					
-8029			handler-only		classBB.method924,classFW.method5091					
+8020	EnumKeys		adapter		classBB.method923,classBB.method924,classFW.method5091	classFW.method5091	-2	1	0	2
+8021	EnumValues		adapter		classBB.method923,classBB.method924,classFW.method5091					
+8022	ArrayNew		adapter		classBB.method924,classFW.method5091					
+8023	ArrayResize		adapter		classBB.method924,classFW.method5091					
+8024	ArrayPush		adapter		classBB.method924,classFW.method5091					
+8025	ArrayInsert		adapter		classBB.method924,classFW.method5091					
+8026	ArrayRemove		adapter		classBB.method923,classBB.method924,classFW.method5091					
+8027	ArrayAppendAll		adapter		classBB.method923,classBB.method924,classFW.method5091					
+8028	ArrayInsertAll		adapter		classBB.method924,classFW.method5091					
+8029	ArrayRemoveRange		adapter		classBB.method924,classFW.method5091					
 8501			handler-only		classBB.method925,classBB.method927,classBB.method928,classFS.method5002					
 8520			handler-only		classBB.method925,classBB.method927,classBB.method928,classFS.method5002					
 8521			handler-only		classBB.method925,classBB.method926,classBB.method927,classFS.method5002					
