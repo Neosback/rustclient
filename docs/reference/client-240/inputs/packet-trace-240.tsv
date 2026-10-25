@@ -1,50 +1,54 @@
 direction	opcode	name	table_length	client_length	length_ok	seen	payload_min	payload_max	short_reads	callers	status
-in	9	UPDATE_IGNORELIST	-2	-2	yes	1	0	0	0		ok
-in	10	RUNCLIENTSCRIPT	-2	-2	yes	257	5	40	0		ok
-in	11	IF_SETTEXT	-2	-2	yes	2	12	22	0		ok
-in	17	CAM_RESET	0	0	yes	1	0	0	0		ok
-in	18	CHAT_FILTER_SETTINGS	2	2	yes	1	2	2	0		ok
-in	19	UPDATE_RUNWEIGHT	2	2	yes	1	2	2	0		ok
-in	20	SET_ACTIVE_WORLD_V2	3	3	yes	494	3	3	0		ok
-in	24	UPDATE_FRIENDLIST	-2	-2	yes	1	0	0	0		ok
-in	35	IF_OPENTOP	2	2	yes	1	2	2	0		ok
-in	45	IF_OPENSUB	7	7	yes	27	7	7	0		ok
-in	49	UPDATE_ZONE_PARTIAL_ENCLOSED	-2	-2	yes	7	11	18	0		ok
-in	55	HIDELOCOPS	1	1	yes	1	1	1	0		ok
-in	58	RESET_ANIMS	0	0	yes	1	0	0	0		ok
-in	63	UPDATE_STAT_V2	7	7	yes	25	7	7	0		ok
-in	68	VARP_RESET	0	0	yes	1	0	0	0		ok
-in	70	FRIENDLIST_LOADED	0	0	yes	1	0	0	0		ok
-in	73	MESSAGE_GAME	-1	-1	yes	2	23	128	0		ok
-in	74	UPDATE_INV_FULL	-2	-2	yes	2	8	8	0		ok
-in	76	CHAT_FILTER_SETTINGS_PRIVATECHAT	1	1	yes	1	1	1	0		ok
+in	1	IF_SETOBJECT	10	10	yes	1	10	10	0		ok
+in	9	UPDATE_IGNORELIST	-2	-2	yes	3	0	0	0		ok
+in	10	RUNCLIENTSCRIPT	-2	-2	yes	626	5	145	0		ok
+in	11	IF_SETTEXT	-2	-2	yes	7	12	46	0		ok
+in	17	CAM_RESET	0	0	yes	3	0	0	0		ok
+in	18	CHAT_FILTER_SETTINGS	2	2	yes	3	2	2	0		ok
+in	19	UPDATE_RUNWEIGHT	2	2	yes	3	2	2	0		ok
+in	20	SET_ACTIVE_WORLD_V2	3	3	yes	1192	3	3	0		ok
+in	24	UPDATE_FRIENDLIST	-2	-2	yes	3	0	0	0		ok
+in	35	IF_OPENTOP	2	2	yes	3	2	2	0		ok
+in	45	IF_OPENSUB	7	7	yes	81	7	7	0		ok
+in	49	UPDATE_ZONE_PARTIAL_ENCLOSED	-2	-2	yes	11	11	18	0		ok
+in	55	HIDELOCOPS	1	1	yes	3	1	1	0		ok
+in	58	RESET_ANIMS	0	0	yes	3	0	0	0		ok
+in	63	UPDATE_STAT_V2	7	7	yes	75	7	7	0		ok
+in	68	VARP_RESET	0	0	yes	3	0	0	0		ok
+in	70	FRIENDLIST_LOADED	0	0	yes	3	0	0	0		ok
+in	73	MESSAGE_GAME	-1	-1	yes	7	23	198	0		ok
+in	74	UPDATE_INV_FULL	-2	-2	yes	8	8	8	0		ok
+in	76	CHAT_FILTER_SETTINGS_PRIVATECHAT	1	1	yes	3	1	1	0		ok
 in	77	TRIGGER_ONDIALOGABORT	0	0	yes	1	0	0	0		ok
-in	80	WORLDENTITY_INFO_V7	-2	-2	yes	247	1	1	0		ok
-in	85	SET_PLAYER_OP	-1	-1	yes	5	7	13	0		ok
-in	91	PLAYER_INFO	-2	-2	yes	247	3	87	0		ok
-in	92	SERVER_TICK_END	0	0	yes	247	0	0	0		ok
-in	94	VARP_LARGE	6	6	yes	662	6	6	0		ok
-in	106	IF_SETEVENTS_V2	16	16	yes	22	16	16	0		ok
-in	110	HIDENPCOPS	1	1	yes	1	1	1	0		ok
-in	111	SET_NPC_UPDATE_ORIGIN	2	2	yes	247	2	2	0		ok
-in	112	HIDEOBJOPS	1	1	yes	1	1	1	0		ok
+in	80	WORLDENTITY_INFO_V7	-2	-2	yes	596	1	1	0		ok
+in	85	SET_PLAYER_OP	-1	-1	yes	15	7	13	0		ok
+in	91	PLAYER_INFO	-2	-2	yes	596	3	87	0		ok
+in	92	SERVER_TICK_END	0	0	yes	596	0	0	0		ok
+in	94	VARP_LARGE	6	6	yes	1610	6	6	0		ok
+in	106	IF_SETEVENTS_V2	16	16	yes	66	16	16	0		ok
+in	110	HIDENPCOPS	1	1	yes	3	1	1	0		ok
+in	111	SET_NPC_UPDATE_ORIGIN	2	2	yes	596	2	2	0		ok
+in	112	HIDEOBJOPS	1	1	yes	3	1	1	0		ok
 in	116	IF_CLOSESUB	4	4	yes	1	4	4	0		ok
-in	120	UPDATE_RUNENERGY	2	2	yes	138	2	2	0		ok
-in	122	MINIMAP_TOGGLE	1	1	yes	1	1	1	0		ok
-in	126	UPDATE_ZONE_FULL_FOLLOWS	3	3	yes	91	3	3	0		ok
-in	127	VARP_SMALL	3	3	yes	63	3	3	0		ok
-in	136	SET_MAP_FLAG_V2	4	4	yes	18	4	4	0		ok
-in	150	NPC_INFO_SMALL_V6	-2	-2	yes	247	2	62	0		ok
-out	1	IF_BUTTONX	9	9	yes	3	9	9	0		ok
-out	27	MAP_BUILD_COMPLETE	0	0	yes	1	0	0	0		ok
-out	29	CONNECTION_TELEMETRY	-1	-1	yes	1	14	14	0		ok
-out	30	EVENT_APPLET_FOCUS	1	1	yes	5	1	1	0		ok
-out	40	EVENT_MOUSE_CLICK_V2	7	7	yes	12	7	7	0		ok
-out	44	WINDOW_STATUS	5	5	yes	1	5	5	0		ok
-out	47	EVENT_KEYBOARD	-2	-2	yes	27	4	4	0		ok
-out	55	EVENT_CAMERA_POSITION	4	4	yes	60	4	4	0		ok
+in	120	UPDATE_RUNENERGY	2	2	yes	193	2	2	0		ok
+in	122	MINIMAP_TOGGLE	1	1	yes	3	1	1	0		ok
+in	126	UPDATE_ZONE_FULL_FOLLOWS	3	3	yes	196	3	3	0		ok
+in	127	VARP_SMALL	3	3	yes	211	3	3	0		ok
+in	136	SET_MAP_FLAG_V2	4	4	yes	24	4	4	0		ok
+in	150	NPC_INFO_SMALL_V6	-2	-2	yes	596	2	74	0		ok
+out	-1	RAW_NO_PROT			n/a	8	0	553	0	client.ie	raw
+out	1	IF_BUTTONX	9	9	yes	28	9	9	0	ea.fo	ok
+out	27	MAP_BUILD_COMPLETE	0	0	yes	3	0	0	0	client.ng	ok
+out	29	CONNECTION_TELEMETRY	-1	-1	yes	3	14	14	0	client.ih	ok
+out	30	EVENT_APPLET_FOCUS	1	1	yes	11	1	1	0	client.ih	ok
+out	40	EVENT_MOUSE_CLICK_V2	7	7	yes	43	7	7	0	client.aez	ok
+out	44	WINDOW_STATUS	5	5	yes	3	5	5	0	bd.au	ok
+out	46	SOUND_JINGLEEND	4	4	yes	1	4	4	0	client.il	ok
+out	47	EVENT_KEYBOARD	-2	-2	yes	64	4	4	0	client.ih	ok
+out	55	EVENT_CAMERA_POSITION	4	4	yes	106	4	4	0	client.ih	ok
 out	61	MOVE_MINIMAPCLICK	-1	-1	yes	7	18	18	0		ok
-out	83	EVENT_MOUSE_SCROLL	2	2	yes	23	2	2	0		ok
-out	99	NO_TIMEOUT	0	0	yes	101	0	0	0		ok
-out	102	MOVE_GAMECLICK	-1	-1	yes	2	5	5	0		ok
-out	114	EVENT_MOUSE_MOVE	-1	-1	yes	34	4	84	0		ok
+out	83	EVENT_MOUSE_SCROLL	2	2	yes	81	2	2	0	client.ih	ok
+out	98	CLOSE_MODAL	0	0	yes	1	0	0	0	tb.gp	ok
+out	99	NO_TIMEOUT	0	0	yes	264	0	0	0	client.ih	ok
+out	102	MOVE_GAMECLICK	-1	-1	yes	5	5	5	0	client.ih	ok
+out	114	EVENT_MOUSE_MOVE	-1	-1	yes	82	4	91	0	client.ih	ok

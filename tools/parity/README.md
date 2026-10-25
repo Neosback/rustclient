@@ -72,10 +72,15 @@ counts packets where it read fewer or more than the payload). Stored multipliers
 python3 tools/client-240/packet-trace.py OUT.tsv     # writes inputs/packet-trace-240.tsv
 ```
 
-Checked in the live pinned client on 2026-10-25 (one session, login plus a few interface visits and one Walk here):
-49 opcodes (36 inbound, 13 outbound) agree with `server-packets.tsv` / `client-packets.tsv` on declared length, fixed
-sizes and consumed bytes. Walk here sends `MOVE_GAMECLICK` (102) with only the destination tile (y, a one-byte modifier that was 0 in both clicks, x):
-no client-side path. This does not validate update-mask order; it shows the client consumed exactly the payload.
+Checked in the live pinned client on 2026-10-25 (two sessions: login, interface tabs, several Walk here clicks):
+53 opcodes (37 inbound, 16 outbound) agree with `server-packets.tsv` / `client-packets.tsv` on declared length, fixed
+sizes and, inbound, consumed bytes (`short-read` would flag a handler that read fewer or more than the payload).
+Outbound packets written without a `ClientProt` (the login handshake, from `client.ie`) are listed as `RAW_NO_PROT`.
+Walk here sends `MOVE_GAMECLICK` (102) with only the destination tile (y, a one-byte modifier that was 0 in every
+click, x): no client-side path. Eight outbound opcodes (walk, mouse move/click/scroll, no-timeout, applet focus, and
+others) are all written inline by one method, `client.ih`, so a caller frame does not separate them; the other writers
+are `client.aez` (mouse click), `bd.au` (window status), `client.il`, `client.ng` (map build), `ea.fo`, `tb.gp`.
+This does not validate update-mask order; it shows the client consumed exactly the payload.
 
 ### Automation driver and UI recorder
 

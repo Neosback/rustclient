@@ -63,6 +63,10 @@ def main():
             entry["callers"].update(c for c in fields.get("callers", "").split(",") if c)
     rows, problems = [], 0
     for (direction, opcode), entry in sorted(seen.items()):
+        if direction == "out" and opcode == -1:  # written without a ClientProt (login handshake and similar)
+            rows.append([direction, opcode, "RAW_NO_PROT", "", "", "n/a", entry["count"], entry["min"], entry["max"],
+                         0, ",".join(sorted(entry["callers"])), "raw"])
+            continue
         name, expected = tables[direction].get(opcode, ("UNKNOWN", None))
         client = ",".join(str(v) for v in sorted(entry["declared"]))
         ok = expected is not None and entry["declared"] == {expected}
@@ -82,7 +86,7 @@ def main():
     inbound = sum(1 for row in rows if row[0] == "in")
     print(f"{len(rows)} opcodes seen ({inbound} inbound, {len(rows) - inbound} outbound), {problems} flagged: {args.output}")
     for row in rows:
-        if row[-1] != "ok":
+        if row[-1] not in ("ok", "raw"):
             print("  ", *row)
 
 
