@@ -19,3 +19,27 @@ encoding and FNV regression vectors. This is a diagnostic, not a security hash.
 The parity specification is SPEC-0016. A successful capture is evidence of oracle
 execution, not proof that RustClient matches it. Required differences remain
 failures until resolved and measured.
+
+## Live RuneLite 240 reference client
+
+`runelite240.py` builds an isolated Open RuneLite shell (copy of `references/open-runelite-rev-240`, never
+modified in place) around the pinned original `injected-client-1.12.39.jar` and launches it against a local server.
+Requires JDK 11 and Gradle; output goes under `target/runelite-240-runtime/`.
+
+```sh
+python3 tools/parity/runelite240.py \
+  --java-home /opt/homebrew/opt/openjdk@11/libexec/openjdk.jdk/Contents/Home \
+  --public-key "<server>/.data/client.key" \
+  --jav-config target/runelite-240-runtime/jav_local_240.ws
+```
+
+`--prepare-only` builds without launching. `Local240Agent.java` is a javaagent that replaces only the RSA modulus
+constant in `bq.<clinit>`. `reference/ReferencePlugin.java` is a developer plugin that serves a read-only,
+token-protected API on `127.0.0.1` (the token is generated per run into `endpoint.json`, mode 0600).
+`reference_mcp.py` exposes it as the `rustclient-reference` MCP server (`reference_status`, `_snapshot`, `_widget`,
+`_tile`, `_class`, `_trace_start`, `_trace`, `_trace_stop`); `install-reference-mcp.py` registers it with the Codex
+CLI. `verify-reference.py` checks the protocol offline and `--live` exercises every tool against a running client.
+
+Rules: the bridge exposes the public RuneLite API only and has no mutation operations. Log in with a disposable
+account; passwords are typed into the client and never stored in this repository. Runtime evidence is a reference
+only (see ADR-0005); it never changes the `original-exact` jar and never replaces the pinned inputs.
