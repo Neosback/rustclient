@@ -93,3 +93,20 @@ cloning this repository, and none of the supplied source trees is modified by se
 
 See [NOTICE](NOTICE), [LGPL license](LICENSE) and [incorporated GPL text](GPL-3.0.txt). The original remote
 of the user-supplied MCP fork was not available; its provenance is stated rather than invented.
+
+## Promoting a reviewed draft
+
+`save_mappings` writes `draft.tiny` in the original obfuscated namespace. `tools/client-240/enigma-promote.py`
+translates the renames in it to stable semantic keys (`classKY`, `field4053`, `method6623`) by matching the
+semantic jar's `@ObfuscatedName` values, then writes a cluster shard and ledger shard:
+
+```bash
+python3 tools/client-240/enigma-promote.py --session .cache/client-240/enigma/sessions/<session> \
+  --cluster 19-widgets --tier T4 --confidence B --evidence "cited method and reason" --dry-run
+tools/client-240/check-shard.sh 19-widgets
+```
+
+It fails closed on unmatched or ambiguous entries, symbols that are API-named, collisions with other shards,
+illegal identifiers and missing evidence. Per-symbol evidence can be supplied with `--evidence-file`.
+`bytecode_*` keyword aliases and unrenamed entries are ignored. Parameter renames are not promoted yet.
+`tools/client-240/test-promote.py` covers the translation and every refusal offline.
