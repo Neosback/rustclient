@@ -58,6 +58,25 @@ python3 tools/client-240/opcode-table.py              # adds traced handler and 
 The agent bytecode was checked offline against the pinned jar (48 classes instrumented, ASM verifier clean); a live
 session is still needed to produce data. Unreliable deltas print as `?`.
 
+### Packet trace
+
+`--trace-packets OUT.tsv` attaches `Packet240Agent` (read-only, original obfuscated names, argument separator `|`).
+Outbound: one call at the entry of `GameConnection.queuePacket` (`dj.ae`), recording the prot opcode, declared length,
+encoded size, the first bytes and, in newer builds, the calling method. Inbound: one call just before each store of
+`null` to `GameConnection.currentServerProt` in the packet loop (`client.ia` and its two duplicates), after the handler
+ran, recording the prot, declared and actual payload length and the bytes the handler consumed (`consumed_mismatches`
+counts packets where it read fewer or more than the payload). Stored multipliers are decoded in
+`runelite240.py` (`PACKET_ARGUMENT`).
+
+```sh
+python3 tools/client-240/packet-trace.py OUT.tsv     # writes inputs/packet-trace-240.tsv
+```
+
+Checked in the live pinned client on 2026-10-25 (one session, login plus a few interface visits and one Walk here):
+49 opcodes (36 inbound, 13 outbound) agree with `server-packets.tsv` / `client-packets.tsv` on declared length, fixed
+sizes and consumed bytes. Walk here sends `MOVE_GAMECLICK` (102) with only the destination tile (y, a one-byte modifier that was 0 in both clicks, x):
+no client-side path. This does not validate update-mask order; it shows the client consumed exactly the payload.
+
 ### Automation driver and UI recorder
 
 The bridge also offers an input driver and unattended recorders (`reference_input`, `reference_record_menu`,

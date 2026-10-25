@@ -53,6 +53,29 @@ def trace_argument(out):
     return f"out={out.resolve()};script={classes['Script']};{sizes}"
 
 
+def _decoder(encoder):
+    """Stored-value multipliers in the gamepack encode on write; reads multiply by the modular inverse."""
+    return str(pow(encoder, -1, 1 << 32) - (1 << 32) if pow(encoder, -1, 1 << 32) >= 1 << 31 else pow(encoder, -1, 1 << 32))
+
+
+# Original obfuscated names in the pinned 240 jar (sha in README). `real = stored * decoder`. Evidence: ClientProt and
+# ServerProt constructors store `encoder * value`; Buffer.offset and GameConnection.payloadLength decoders come from
+# the equality `offset * 702114061 == 1265354011 * payloadLength` in the update-packet reader.
+PACKET_ARGUMENT = (
+    "send=dj.ae:(Ljl;I)V|sendVar=1|field.send.prot=as|field.send.buffer=ac|"
+    "field.prot.opcode=er|field.prot.length=eo|"
+    f"mul.send.opcode={_decoder(-910918935)}|mul.send.length={_decoder(-1719371919)}|"
+    "field.buffer.array=aj|field.buffer.offset=ay|mul.buffer.offset=702114061|"
+    "recv=dj.as:20|field.recv.prot=as|field.recv.buffer=ag|field.recv.length=ax|mul.recv.payload=1265354011|"
+    f"field.sprot.opcode=fc|field.sprot.length=fm|mul.recv.opcode={_decoder(2135382271)}|"
+    f"mul.recv.length={_decoder(111526941)}"
+)
+
+
+def packet_argument(out):
+    return f"out={out.resolve()}|{PACKET_ARGUMENT}"
+
+
 def run(args, cwd, env, log):
     with log.open("ab") as output:
         result = subprocess.run(list(map(str, args)), cwd=cwd, env=env,
@@ -130,10 +153,12 @@ def prepare(args):
     classes = output / "agent-classes"
     classes.mkdir(exist_ok=True)
     run([java_home / "bin/javac", "--release", "11", "-cp", os.pathsep.join(map(str, asm)),
-         "-d", classes, ROOT / "tools/parity/Local240Agent.java", ROOT / "tools/parity/Trace240Agent.java"],
+         "-d", classes, ROOT / "tools/parity/Local240Agent.java", ROOT / "tools/parity/Trace240Agent.java",
+         ROOT / "tools/parity/Packet240Agent.java"],
         ROOT, env, output / "build.log")
     agent = build_agent(output / "local240-agent.jar", "Local240Agent", asm, classes)
     build_agent(output / "trace240-agent.jar", "Trace240Agent", asm, classes)
+    build_agent(output / "packet240-agent.jar", "Packet240Agent", asm, classes)
     print(f"Built reference shell: {output}", flush=True)
     return output, java, classpath, agent, bridge
 
@@ -171,6 +196,8 @@ def main():
     parser.add_argument("--public-key", type=Path, help="OpenRune public client.key")
     parser.add_argument("--trace-opcodes", type=Path, metavar="OUT.tsv",
                         help="also attach the read-only script-interpreter probe and aggregate to OUT.tsv")
+    parser.add_argument("--trace-packets", type=Path, metavar="OUT.tsv",
+                        help="also attach the read-only packet probe and aggregate to OUT.tsv")
     args = parser.parse_args()
     if not args.prepare_only and (not args.jav_config or not args.public_key):
         parser.error("Running requires --jav-config and --public-key")
@@ -205,6 +232,8 @@ def main():
                    "-javaagent:" + str(agent) + "=" + str(args.public_key.resolve()),
                    *(["-javaagent:" + str(output / "trace240-agent.jar") + "=" + trace_argument(args.trace_opcodes)]
                      if args.trace_opcodes else []),
+                   *(["-javaagent:" + str(output / "packet240-agent.jar") + "=" + packet_argument(args.trace_packets)]
+                     if args.trace_packets else []),
                    "-cp", str(bridge) + os.pathsep + classpath.read_text(), "net.runelite.client.RuneLite",
                    "--safe-mode", "--developer-mode", "--noupdate", "--jav_config",
                    f"http://127.0.0.1:{server.server_port}/jav_config.ws"]
