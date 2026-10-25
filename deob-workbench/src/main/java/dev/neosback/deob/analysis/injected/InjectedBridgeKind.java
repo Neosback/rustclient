@@ -1,0 +1,11 @@
+package dev.neosback.deob.analysis.injected;
+
+public enum InjectedBridgeKind {
+    DIRECT_FIELD_GETTER,
+    DIRECT_DECODED_INT_GETTER,
+    DIRECT_DECODED_LONG_GETTER,
+    DIRECT_FIELD_SETTER,
+    DIRECT_ENCODED_INT_SETTER,
+    DIRECT_ENCODED_LONG_SETTER,
+    DIRECT_METHOD_INVOKER
+}
