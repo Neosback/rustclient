@@ -31,11 +31,12 @@ import org.objectweb.asm.tree.VarInsnNode;
  * (handler, opcode, result, deltas). A result of 2 means "not handled here", so only handlers that really executed
  * an opcode appear. The probe never changes behavior: it adds side-effect-free static calls before the body and
  * before each IRETURN. Raw deltas are in stored units; {@code opcode-trace.py} converts them with the field
- * multipliers. This resolves which handler ran and each opcode's real stack effect despite the flattened dispatch.
+ * multipliers. The opcode is captured on entry because handlers rewrite it (IF variants fold into the CC number
+ * after popping the widget id). This resolves which handler ran and each opcode's real stack effect despite the flattened dispatch.
  */
 public final class Trace240Agent {
     private static final int MAX_DEPTH = 256;
-    private static final int[][] before = new int[MAX_DEPTH][3];
+    private static final int[][] before = new int[MAX_DEPTH][4];
     private static int depth;
     private static final Map<String, long[]> counts = new TreeMap<>();
     private static Path out;
@@ -92,21 +93,21 @@ public final class Trace240Agent {
                 continue;
             }
             InsnList enter = new InsnList();
+            enter.add(new VarInsnNode(Opcodes.ILOAD, 0));
             for (String size : sizes) {
                 enter.add(sizeField(size));
             }
-            enter.add(new MethodInsnNode(Opcodes.INVOKESTATIC, "Trace240Agent", "enter", "(III)V", false));
+            enter.add(new MethodInsnNode(Opcodes.INVOKESTATIC, "Trace240Agent", "enter", "(IIII)V", false));
             for (var insn : method.instructions.toArray()) {
                 if (insn.getOpcode() == Opcodes.IRETURN) {
                     InsnList exit = new InsnList();
                     exit.add(new InsnNode(Opcodes.DUP));
                     exit.add(new LdcInsnNode(node.name + "." + method.name));
-                    exit.add(new VarInsnNode(Opcodes.ILOAD, 0));
                     for (String size : sizes) {
                         exit.add(sizeField(size));
                     }
                     exit.add(new MethodInsnNode(Opcodes.INVOKESTATIC, "Trace240Agent", "exit",
-                            "(ILjava/lang/String;IIII)V", false));
+                            "(ILjava/lang/String;III)V", false));
                     method.instructions.insertBefore(insn, exit);
                 }
             }
@@ -126,8 +127,9 @@ public final class Trace240Agent {
         return new FieldInsnNode(Opcodes.GETSTATIC, qualified.substring(0, dot), qualified.substring(dot + 1), "I");
     }
 
-    public static synchronized void enter(int intSize, int objSize, int longSize) {
+    public static synchronized void enter(int opcode, int intSize, int objSize, int longSize) {
         if (depth < MAX_DEPTH) {
+            before[depth][3] = opcode;
             before[depth][0] = intSize;
             before[depth][1] = objSize;
             before[depth][2] = longSize;
@@ -135,15 +137,14 @@ public final class Trace240Agent {
         depth++;
     }
 
-    public static synchronized void exit(int result, String handler, int opcode, int intSize, int objSize,
-                                         int longSize) {
+    public static synchronized void exit(int result, String handler, int intSize, int objSize, int longSize) {
         if (depth > 0) {
             depth--;
         }
         if (result == 2 || depth >= MAX_DEPTH) {
             return;
         }
-        String key = handler + "\t" + opcode + "\t" + result + "\t" + (intSize - before[depth][0]) + "\t"
+        String key = handler + "\t" + before[depth][3] + "\t" + result + "\t" + (intSize - before[depth][0]) + "\t"
                 + (objSize - before[depth][1]) + "\t" + (longSize - before[depth][2]);
         counts.computeIfAbsent(key, ignored -> new long[1])[0]++;
         dirty = true;

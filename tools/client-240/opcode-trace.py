@@ -29,7 +29,7 @@ def stable_handlers(dump):
             parts = line.rstrip("\n").split("\t")
             if parts[0] == "C":
                 classes[parts[5]] = parts[1]
-            elif parts[0] == "M" and parts[3].startswith("(I"):
+            elif parts[0] == "M" and parts[3].startswith("(ILScript;Z"):
                 handlers[(parts[1], parts[5] if parts[5] != "-" else parts[2])].append(parts[2])
     return classes, handlers
 

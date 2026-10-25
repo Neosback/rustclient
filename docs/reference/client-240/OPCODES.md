@@ -72,4 +72,4 @@ older deob jars (1.12.34 to 1.12.36). It has no opcode table. The older jars cou
 
 `tools/parity/Trace240Agent.java` (attached with `runelite240.py --trace-opcodes`) records which handler really executes each
 opcode and its stack effect in a live session of the pinned client. `tools/client-240/opcode-trace.py` joins it to stable
-symbols and `opcode-table.py` adds the `traced_*` columns. No live trace has been recorded yet, so those columns are empty.
+symbols and `opcode-table.py` adds the `traced_*` columns. The agent captures the opcode on entry because handlers rewrite it (an IF opcode folds into its CC number after popping the widget id, so 2100 and 1100 pop 3 and 2 ints). A handler that delegates to another appears as two rows with the same stack effect. The first login and interface load traced 200 opcodes, all already named by the adapter; the 329 unnamed opcodes need sessions that open the interfaces that use them (world map, quests, social lists, settings, stock market).

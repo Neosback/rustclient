@@ -46,16 +46,16 @@ opcode	rust_name	runelite_name	status	live_uses	handlers	traced_handler	int_delt
 73		IF_LCMPGE	named-only							
 74	GetVarclansetting	GET_VARCLANSETTING	adapter							
 76	GetVarclan	GET_VARCLAN	adapter							
-100	CcCreate	CC_CREATE	adapter		classBB.method798,classGD.method5429					
+100	CcCreate	CC_CREATE	adapter		classBB.method798,classGD.method5429	classGD.method5429	-4	0	0	4830
 101	CcDelete	CC_DELETE	adapter		classBB.method798,classGD.method5429					
-102	CcDeleteall	CC_DELETEALL	adapter		classBB.method798,classGD.method5429					
+102	CcDeleteall	CC_DELETEALL	adapter		classBB.method798,classGD.method5429	classGD.method5429	-1	0	0	374
 103			unknown	51						
 104			unknown	20						
 105	CcClone		adapter		classBB.method798,classGD.method5429					
 106	CcCreateNested		adapter		classBB.method798,classGD.method5429					
 107	CcCreateSibling		adapter		classBB.method798,classGD.method5429					
-200	CcFind	CC_FIND	adapter		classBB.method798,classGD.method5429					
-201	IfFind	IF_FIND	adapter		classBB.method798,classGD.method5429					
+200	CcFind	CC_FIND	adapter		classBB.method798,classGD.method5429	classGD.method5429	-1	0	0	21189
+201	IfFind	IF_FIND	adapter		classBB.method798,classGD.method5429	classGD.method5429	0	0	0	123
 202			unknown	49						
 203			unknown	8						
 204			handler-only	58	classBB.method798,classGD.method5429					
@@ -64,7 +64,7 @@ opcode	rust_name	runelite_name	status	live_uses	handlers	traced_handler	int_delt
 207			handler-only		classBB.method798,classGD.method5429					
 208			handler-only	1	classBB.method798,classGD.method5429					
 209			handler-only	3	classBB.method798,classGD.method5429					
-210	CcFindByParameters		adapter		classBB.method798,classGD.method5429					
+210	CcFindByParameters		adapter		classBB.method798,classGD.method5429	classGD.method5429	-6	0	0	1665
 211			handler-only	33	classBB.method798,classGD.method5429					
 212			handler-only	34	classBB.method798,classGD.method5429					
 213			handler-only	83	classBB.method798,classGD.method5429					
@@ -77,31 +77,31 @@ opcode	rust_name	runelite_name	status	live_uses	handlers	traced_handler	int_delt
 220			handler-only		classBB.method798,classGD.method5429					
 221			handler-only		classBB.method798,classGD.method5429					
 222			handler-only	4	classBB.method798,classGD.method5429					
-1000	CcSetposition	CC_SETPOSITION	adapter		classBB.method805,classBB.method806,classIG.method6251					
-1001	CcSetsize	CC_SETSIZE	adapter		classBB.method805,classBB.method806,classIG.method6251					
-1003	CcSethide	CC_SETHIDE	adapter		classBB.method805,classBB.method806,classIG.method6251					
-1005	CcSetnoclickthrough	CC_SETNOCLICKTHROUGH	adapter		classBB.method805,classBB.method806,classIG.method6251					
+1000	CcSetposition	CC_SETPOSITION	adapter		classBB.method805,classBB.method806,classIG.method6251	classIG.method6251	-4	0	0	3329
+1001	CcSetsize	CC_SETSIZE	adapter		classBB.method805,classBB.method806,classIG.method6251	classIG.method6251	-4	0	0	3045
+1003	CcSethide	CC_SETHIDE	adapter		classBB.method805,classBB.method806,classIG.method6251	classIG.method6251	-1	0	0	21178
+1005	CcSetnoclickthrough	CC_SETNOCLICKTHROUGH	adapter		classBB.method805,classBB.method806,classIG.method6251	classIG.method6251	-1	0	0	27
 1006	CcSetnoscrollthrough	CC_SETNOSCROLLTHROUGH	adapter		classBB.method805,classBB.method806,classIG.method6251					
 1100	CcSetscrollpos	CC_SETSCROLLPOS	adapter		classBB.method807,classBB.method808,classCD.method1429					
-1101	CcSetcolour	CC_SETCOLOUR	adapter		classBB.method807,classCD.method1429					
-1102	CcSetfill	CC_SETFILL	adapter		classBB.method808,classCD.method1429					
-1103	CcSettrans	CC_SETTRANS	adapter		classBB.method807,classCD.method1429					
+1101	CcSetcolour	CC_SETCOLOUR	adapter		classBB.method807,classCD.method1429	classCD.method1429	-1	0	0	2866
+1102	CcSetfill	CC_SETFILL	adapter		classBB.method808,classCD.method1429	classCD.method1429	-1	0	0	50
+1103	CcSettrans	CC_SETTRANS	adapter		classBB.method807,classCD.method1429	classCD.method1429	-1	0	0	704
 1104	CcSetlinewid	CC_SETLINEWID	adapter		classBB.method808,classCD.method1429					
-1105	CcSetgraphic	CC_SETGRAPHIC	adapter		classBB.method807,classCD.method1429					
+1105	CcSetgraphic	CC_SETGRAPHIC	adapter		classBB.method807,classCD.method1429	classCD.method1429	-1	0	0	1293
 1106	CcSet2Dangle	CC_SET2DANGLE	adapter		classCD.method1429					
-1107	CcSettiling	CC_SETTILING	adapter		classBB.method807,classCD.method1429					
+1107	CcSettiling	CC_SETTILING	adapter		classBB.method807,classCD.method1429	classCD.method1429	-1	0	0	358
 1108	CcSetmodel	CC_SETMODEL	adapter		classBB.method808,classCD.method1429					
 1109	CcSetmodelangle	CC_SETMODELANGLE	adapter		classBB.method808,classCD.method1429					
 1110	CcSetmodelanim	CC_SETMODELANIM	adapter		classCD.method1429					
 1111	CcSetmodelorthog	CC_SETMODELORTHOG	adapter		classBB.method808,classCD.method1429					
-1112	CcSettext	CC_SETTEXT	adapter		classBB.method807,classBB.method808,classCD.method1429					
-1113	CcSettextfont	CC_SETTEXTFONT	adapter		classBB.method807,classBB.method808,classCD.method1429					
-1114	CcSettextalign	CC_SETTEXTALIGN	adapter		classBB.method807,classBB.method808,classCD.method1429					
-1115	CcSettextshadow	CC_SETTEXTSHADOW	adapter		classBB.method807,classBB.method808,classCD.method1429					
-1116	CcSetoutline	CC_SETOUTLINE	adapter		classBB.method807,classBB.method808,classCD.method1429					
-1117	CcSetgraphicshadow	CC_SETGRAPHICSHADOW	adapter		classCD.method1429					
+1112	CcSettext	CC_SETTEXT	adapter		classBB.method807,classBB.method808,classCD.method1429	classCD.method1429	0	-1	0	13411
+1113	CcSettextfont	CC_SETTEXTFONT	adapter		classBB.method807,classBB.method808,classCD.method1429	classCD.method1429	-1	0	0	2682
+1114	CcSettextalign	CC_SETTEXTALIGN	adapter		classBB.method807,classBB.method808,classCD.method1429	classCD.method1429	-3	0	0	2675
+1115	CcSettextshadow	CC_SETTEXTSHADOW	adapter		classBB.method807,classBB.method808,classCD.method1429	classCD.method1429	-1	0	0	1175
+1116	CcSetoutline	CC_SETOUTLINE	adapter		classBB.method807,classBB.method808,classCD.method1429	classCD.method1429	-1	0	0	40
+1117	CcSetgraphicshadow	CC_SETGRAPHICSHADOW	adapter		classCD.method1429	classCD.method1429	-1	0	0	63
 1118	CcSetvflip	CC_SETVFLIP	adapter		classBB.method808,classCD.method1429					
-1119	CcSethflip	CC_SETHFLIP	adapter		classBB.method808,classCD.method1429					
+1119	CcSethflip	CC_SETHFLIP	adapter		classBB.method808,classCD.method1429	classCD.method1429	-1	0	0	8
 1120	CcSetscrollsize	CC_SETSCROLLSIZE	adapter		classBB.method808,classCD.method1429					
 1121	CcResumePausebutton	CC_RESUME_PAUSEBUTTON	adapter		classBB.method807,classCD.method1429					
 1122	CcSetsecondarygraphic		adapter		classBB.method807,classCD.method1429					
@@ -135,10 +135,10 @@ opcode	rust_name	runelite_name	status	live_uses	handlers	traced_handler	int_delt
 1150			handler-only		classCD.method1429					
 1151			handler-only	10	classBB.method807,classBB.method808,classCD.method1429					
 1152			handler-only	2	classBB.method807,classBB.method808,classCD.method1429					
-1200	CcSetobject	CC_SETOBJECT	adapter		classBB.method809,classBB.method810,classKD.method6504					
+1200	CcSetobject	CC_SETOBJECT	adapter		classBB.method809,classBB.method810,classKD.method6504	classKD.method6504	-2	0	0	448
 1201	CcSetnpchead	CC_SETNPCHEAD	adapter		classBB.method809,classBB.method810,classKD.method6504					
 1202	CcSetplayerheadSelf	CC_SETPLAYERHEAD_SELF	adapter		classBB.method810,classKD.method6504					
-1205	CcSetobjectNonum	CC_SETOBJECT_NONUM	adapter		classBB.method810,classKD.method6504					
+1205	CcSetobjectNonum	CC_SETOBJECT_NONUM	adapter		classBB.method810,classKD.method6504	classKD.method6504	-2	0	0	1
 1207			handler-only		classBB.method809,classBB.method810,classKD.method6504					
 1208			handler-only		classBB.method810,classKD.method6504					
 1209			handler-only		classBB.method810,classKD.method6504					
@@ -146,42 +146,42 @@ opcode	rust_name	runelite_name	status	live_uses	handlers	traced_handler	int_delt
 1212	CcSetobjectAlwaysNum	CC_SETOBJECT_ALWAYS_NUM	adapter		classBB.method809,classBB.method810,classKD.method6504					
 1214			handler-only	1	classBB.method810,classKD.method6504					
 1215			handler-only		classBB.method810,classKD.method6504					
-1300	CcSetop	CC_SETOP	adapter		classBB.method811,classBB.method812,classQI.method9633					
-1301	CcSetdraggable	CC_SETDRAGGABLE	adapter		classBB.method811,classBB.method812,classQI.method9633					
-1302	CcSetdraggablebehavior	CC_SETDRAGGABLEBEHAVIOR	adapter		classBB.method812,classBB.method813,classQI.method9633					
-1303	CcSetdragdeadzone	CC_SETDRAGDEADZONE	adapter		classBB.method812,classBB.method813,classQI.method9633					
-1304	CcSetdragdeadtime	CC_SETDRAGDEADTIME	adapter		classBB.method811,classBB.method812,classBB.method813,classQI.method9633					
-1305	CcSetopbase	CC_SETOPBASE	adapter		classBB.method811,classBB.method812,classBB.method813,classQI.method9633					
-1306	CcSettargetverb	CC_SETTARGETVERB	adapter		classBB.method811,classBB.method812,classQI.method9633					
-1307	CcClearops	CC_CLEAROPS	adapter		classBB.method812,classBB.method813,classQI.method9633					
+1300	CcSetop	CC_SETOP	adapter		classBB.method811,classBB.method812,classQI.method9633	classQI.method9633	-1	-1	0	5716
+1301	CcSetdraggable	CC_SETDRAGGABLE	adapter		classBB.method811,classBB.method812,classQI.method9633	classQI.method9633	-2	0	0	8
+1302	CcSetdraggablebehavior	CC_SETDRAGGABLEBEHAVIOR	adapter		classBB.method812,classBB.method813,classQI.method9633	classQI.method9633	-1	0	0	8
+1303	CcSetdragdeadzone	CC_SETDRAGDEADZONE	adapter		classBB.method812,classBB.method813,classQI.method9633	classQI.method9633	-1	0	0	28
+1304	CcSetdragdeadtime	CC_SETDRAGDEADTIME	adapter		classBB.method811,classBB.method812,classBB.method813,classQI.method9633	classQI.method9633	-1	0	0	476
+1305	CcSetopbase	CC_SETOPBASE	adapter		classBB.method811,classBB.method812,classBB.method813,classQI.method9633	classQI.method9633	0	-1	0	1571
+1306	CcSettargetverb	CC_SETTARGETVERB	adapter		classBB.method811,classBB.method812,classQI.method9633	classQI.method9633	0	-1	0	448
+1307	CcClearops	CC_CLEAROPS	adapter		classBB.method812,classBB.method813,classQI.method9633	classQI.method9633	0	0	0	504
 1308			handler-only		classBB.method811,classBB.method812,classBB.method813,classQI.method9633					
 1309	CcDiscardRetiredFlag		adapter		classBB.method812,classBB.method813,classQI.method9633					
 1310			handler-only		classBB.method812,classBB.method813,classQI.method9633					
 1311			handler-only	1	classBB.method811,classBB.method812,classBB.method813,classQI.method9633					
-1312	CcSettargetpriority		adapter		classBB.method812,classQI.method9633					
+1312	CcSettargetpriority		adapter		classBB.method812,classQI.method9633	classQI.method9633	-1	0	0	448
 1350	CcSetopkey	CC_SETOPKEY	adapter		classBB.method812,classBB.method813,classQI.method9633					
 1351	CcSetoptkey	CC_SETOPTKEY	adapter		classBB.method811,classBB.method812,classBB.method813,classQI.method9633					
 1352	CcSetopkeyrate	CC_SETOPKEYRATE	adapter		classBB.method811,classBB.method812,classBB.method813,classQI.method9633					
 1353	CcSetoptkeyrate	CC_SETOPTKEYRATE	adapter		classBB.method811,classBB.method812,classQI.method9633					
 1354	CcSetopkeyignoreheld	CC_SETOPKEYIGNOREHELD	adapter		classBB.method811,classBB.method812,classBB.method813,classQI.method9633					
 1355	CcSetoptkeyignoreheld	CC_SETOPTKEYIGNOREHELD	adapter		classBB.method812,classBB.method813,classQI.method9633					
-1400	CcSetonclick	CC_SETONCLICK	adapter		classBB.method822,classGP.method5623					
-1401	CcSetonhold	CC_SETONHOLD	adapter		classGP.method5623					
+1400	CcSetonclick	CC_SETONCLICK	adapter		classBB.method822,classGP.method5623	classGP.method5623	-4	-1	0	8
+1401	CcSetonhold	CC_SETONHOLD	adapter		classGP.method5623	classGP.method5623	-3	-1	0	16
 1402	CcSetonrelease	CC_SETONRELEASE	adapter		classBB.method822,classGP.method5623					
-1403	CcSetonmouseover	CC_SETONMOUSEOVER	adapter		classBB.method822,classGP.method5623					
-1404	CcSetonmouseleave	CC_SETONMOUSELEAVE	adapter		classGP.method5623					
-1405	CcSetondrag	CC_SETONDRAG	adapter		classGP.method5623					
+1403	CcSetonmouseover	CC_SETONMOUSEOVER	adapter		classBB.method822,classGP.method5623	classGP.method5623	-4	-1	0	1060
+1404	CcSetonmouseleave	CC_SETONMOUSELEAVE	adapter		classGP.method5623	classGP.method5623	-4	-1	0	1060
+1405	CcSetondrag	CC_SETONDRAG	adapter		classGP.method5623	classGP.method5623	-1	-1	0	448
 1406	CcSetontargetleave	CC_SETONTARGETLEAVE	adapter		classBB.method822,classGP.method5623					
-1407	CcSetonvartransmit	CC_SETONVARTRANSMIT	adapter		classBB.method822,classGP.method5623					
-1408	CcSetontimer	CC_SETONTIMER	adapter		classBB.method822,classGP.method5623					
-1409	CcSetonop	CC_SETONOP	adapter		classGP.method5623					
-1410	CcSetondragcomplete	CC_SETONDRAGCOMPLETE	adapter		classBB.method822,classGP.method5623					
+1407	CcSetonvartransmit	CC_SETONVARTRANSMIT	adapter		classBB.method822,classGP.method5623	classGP.method5623	-11	-1	0	24
+1408	CcSetontimer	CC_SETONTIMER	adapter		classBB.method822,classGP.method5623	classGP.method5623	-1	-1	0	520
+1409	CcSetonop	CC_SETONOP	adapter		classGP.method5623	classGP.method5623	-1	-1	0	448
+1410	CcSetondragcomplete	CC_SETONDRAGCOMPLETE	adapter		classBB.method822,classGP.method5623	classGP.method5623	-1	-1	0	448
 1411	CcSetonclickrepeat	CC_SETONCLICKREPEAT	adapter		classBB.method822,classGP.method5623					
-1412	CcSetonmouserepeat	CC_SETONMOUSEREPEAT	adapter		classGP.method5623					
+1412	CcSetonmouserepeat	CC_SETONMOUSEREPEAT	adapter		classGP.method5623	classGP.method5623	-1	-1	0	448
 1414	CcSetoninvtransmit	CC_SETONINVTRANSMIT	adapter		classGP.method5623					
 1415	CcSetonstattransmit	CC_SETONSTATTRANSMIT	adapter		classGP.method5623					
 1416	CcSetontargetenter	CC_SETONTARGETENTER	adapter		classBB.method822,classGP.method5623					
-1417	CcSetonscrollwheel	CC_SETONSCROLLWHEEL	adapter		classGP.method5623					
+1417	CcSetonscrollwheel	CC_SETONSCROLLWHEEL	adapter		classGP.method5623	classGP.method5623	-4	-1	0	8
 1418	CcSetonchattransmit	CC_SETONCHATTRANSMIT	adapter		classBB.method822,classGP.method5623					
 1419	CcSetonkey	CC_SETONKEY	adapter		classBB.method822,classGP.method5623					
 1420	CcSetonfriendtransmit	CC_SETONFRIENDTRANSMIT	adapter		classGP.method5623					
@@ -203,16 +203,16 @@ opcode	rust_name	runelite_name	status	live_uses	handlers	traced_handler	int_delt
 1437			handler-only		classBB.method822,classGP.method5623					
 1438			handler-only	7	classGP.method5623					
 1439			handler-only	6	classBB.method822,classGP.method5623					
-1500	CcGetx	CC_GETX	adapter		classBB.method824,classME.method7604					
-1501	CcGety	CC_GETY	adapter		classME.method7604					
-1502	CcGetwidth	CC_GETWIDTH	adapter		classBB.method823,classME.method7604					
-1503	CcGetheight	CC_GETHEIGHT	adapter		classBB.method823,classME.method7604					
+1500	CcGetx	CC_GETX	adapter		classBB.method824,classME.method7604	classME.method7604	1	0	0	79
+1501	CcGety	CC_GETY	adapter		classME.method7604	classME.method7604	1	0	0	67
+1502	CcGetwidth	CC_GETWIDTH	adapter		classBB.method823,classME.method7604	classME.method7604	1	0	0	223
+1503	CcGetheight	CC_GETHEIGHT	adapter		classBB.method823,classME.method7604	classME.method7604	1	0	0	240
 1504	CcGethide	CC_GETHIDE	adapter		classME.method7604					
-1505	CcGetlayer	CC_GETLAYER	adapter		classBB.method823,classBB.method824,classME.method7604					
+1505	CcGetlayer	CC_GETLAYER	adapter		classBB.method823,classBB.method824,classME.method7604	classME.method7604	1	0	0	4
 1506			handler-only	4	classBB.method823,classBB.method824,classME.method7604					
-1600	CcGetscrollx	CC_GETSCROLLX	adapter		classBB.method825,classQM.method9704					
-1601	CcGetscrolly	CC_GETSCROLLY	adapter		classBB.method826,classQM.method9704					
-1602	CcGettext	CC_GETTEXT	adapter		classBB.method825,classBB.method826,classQM.method9704					
+1600	CcGetscrollx	CC_GETSCROLLX	adapter		classBB.method825,classQM.method9704	classQM.method9704	1	0	0	8
+1601	CcGetscrolly	CC_GETSCROLLY	adapter		classBB.method826,classQM.method9704	classQM.method9704	1	0	0	8
+1602	CcGettext	CC_GETTEXT	adapter		classBB.method825,classBB.method826,classQM.method9704	classQM.method9704	0	1	0	519
 1603	CcGetscrollwidth	CC_GETSCROLLWIDTH	adapter		classQM.method9704					
 1604	CcGetscrollheight	CC_GETSCROLLHEIGHT	adapter		classQM.method9704					
 1605	CcGetmodelzoom	CC_GETMODELZOOM	adapter		classBB.method826,classQM.method9704					
@@ -247,9 +247,9 @@ opcode	rust_name	runelite_name	status	live_uses	handlers	traced_handler	int_delt
 1634			handler-only		classBB.method826,classQM.method9704					
 1700	CcGetinvobject	CC_GETINVOBJECT	adapter		classBB.method827,classPZ.method9457					
 1701	CcGetinvcount	CC_GETINVCOUNT	adapter		classBB.method827,classPZ.method9457					
-1702	CcGetid	CC_GETID	adapter		classBB.method827,classPZ.method9457					
-1703	CcGetparam		adapter		classBB.method827,classPZ.method9457					
-1704	CcSetparam		adapter		classBB.method827,classPZ.method9457					
+1702	CcGetid	CC_GETID	adapter		classBB.method827,classPZ.method9457	classPZ.method9457	1	0	0	167
+1703	CcGetparam		adapter		classBB.method827,classPZ.method9457	classPZ.method9457	0	0	0	87
+1704	CcSetparam		adapter		classBB.method827,classPZ.method9457	classPZ.method9457	-3	0	0	152
 1707			handler-only	2	classBB.method827,classPZ.method9457					
 1708			handler-only	1	classBB.method827,classPZ.method9457					
 1709			handler-only		classBB.method827,classPZ.method9457					
@@ -258,34 +258,34 @@ opcode	rust_name	runelite_name	status	live_uses	handlers	traced_handler	int_delt
 1802	CcGetopbase	CC_GETOPBASE	adapter		classBB.method835,classBB.method836,classLI.method7150					
 1927	CcCallonresize	CC_CALLONRESIZE	adapter		classBB.method837,classBB.method838,classBB.method839,classJG.method6408					
 1928	CcTriggerop	CC_TRIGGEROP	adapter		classJG.method6408					
-2000	IfSetposition	IF_SETPOSITION	adapter							
-2001	IfSetsize	IF_SETSIZE	adapter							
-2003	IfSethide	IF_SETHIDE	adapter							
-2005	IfSetnoclickthrough	IF_SETNOCLICKTHROUGH	adapter							
-2006	IfSetnoscrollthrough	IF_SETNOSCROLLTHROUGH	adapter							
-2100	IfSetscrollpos	IF_SETSCROLLPOS	adapter							
-2101	IfSetcolour	IF_SETCOLOUR	adapter							
+2000	IfSetposition	IF_SETPOSITION	adapter			classIG.method6251	-5	0	0	1267
+2001	IfSetsize	IF_SETSIZE	adapter			classIG.method6251	-5	0	0	5683
+2003	IfSethide	IF_SETHIDE	adapter			classIG.method6251	-2	0	0	7107
+2005	IfSetnoclickthrough	IF_SETNOCLICKTHROUGH	adapter			classIG.method6251	-2	0	0	98
+2006	IfSetnoscrollthrough	IF_SETNOSCROLLTHROUGH	adapter			classIG.method6251	-2	0	0	12
+2100	IfSetscrollpos	IF_SETSCROLLPOS	adapter			classCD.method1429	-3	0	0	17
+2101	IfSetcolour	IF_SETCOLOUR	adapter			classCD.method1429	-2	0	0	231
 2102	IfSetfill	IF_SETFILL	adapter							
-2103	IfSettrans	IF_SETTRANS	adapter							
+2103	IfSettrans	IF_SETTRANS	adapter			classCD.method1429	-2	0	0	1254
 2104	IfSetlinewid	IF_SETLINEWID	adapter							
-2105	IfSetgraphic	IF_SETGRAPHIC	adapter							
+2105	IfSetgraphic	IF_SETGRAPHIC	adapter			classCD.method1429	-2	0	0	3840
 2106	IfSet2Dangle	IF_SET2DANGLE	adapter							
 2107	IfSettiling	IF_SETTILING	adapter							
 2108	IfSetmodel	IF_SETMODEL	adapter							
 2109	IfSetmodelangle	IF_SETMODELANGLE	adapter							
 2110	IfSetmodelanim	IF_SETMODELANIM	adapter							
 2111	IfSetmodelorthog	IF_SETMODELORTHOG	adapter							
-2112	IfSettext	IF_SETTEXT	adapter							
-2113	IfSettextfont	IF_SETTEXTFONT	adapter							
-2114	IfSettextalign	IF_SETTEXTALIGN	adapter							
-2115	IfSettextshadow	IF_SETTEXTSHADOW	adapter							
+2112	IfSettext	IF_SETTEXT	adapter			classCD.method1429	-1	-1	0	356
+2113	IfSettextfont	IF_SETTEXTFONT	adapter			classCD.method1429	-2	0	0	2
+2114	IfSettextalign	IF_SETTEXTALIGN	adapter			classCD.method1429	-4	0	0	7
+2115	IfSettextshadow	IF_SETTEXTSHADOW	adapter			classCD.method1429	-2	0	0	8
 2116	IfSetoutline	IF_SETOUTLINE	adapter							
 2117	IfSetgraphicshadow	IF_SETGRAPHICSHADOW	adapter							
 2118	IfSetvflip	IF_SETVFLIP	adapter							
 2119	IfSethflip	IF_SETHFLIP	adapter							
-2120	IfSetscrollsize	IF_SETSCROLLSIZE	adapter							
+2120	IfSetscrollsize	IF_SETSCROLLSIZE	adapter			classCD.method1429	-3	0	0	15
 2121	IfResumePausebutton	IF_RESUME_PAUSEBUTTON	adapter							
-2122	IfSetsecondarygraphic		adapter-unconfirmed							
+2122	IfSetsecondarygraphic		adapter-unconfirmed			classCD.method1429	-2	0	0	118
 2123	IfSetfillcolour	IF_SETFILLCOLOUR	adapter							
 2124			unknown	8						
 2125			unknown	4						
@@ -298,15 +298,15 @@ opcode	rust_name	runelite_name	status	live_uses	handlers	traced_handler	int_delt
 2212	IfSetobjectAlwaysNum	IF_SETOBJECT_ALWAYS_NUM	adapter							
 2214			unknown	2						
 2215			unknown	1						
-2300	IfSetop	IF_SETOP	adapter							
-2301	IfSetdraggable	IF_SETDRAGGABLE	adapter							
+2300	IfSetop	IF_SETOP	adapter			classQI.method9633	-2	-1	0	771
+2301	IfSetdraggable	IF_SETDRAGGABLE	adapter			classQI.method9633	-3	0	0	4
 2302	IfSetdraggablebehavior	IF_SETDRAGGABLEBEHAVIOR	adapter							
-2303	IfSetdragdeadzone	IF_SETDRAGDEADZONE	adapter							
-2304	IfSetdragdeadtime	IF_SETDRAGDEADTIME	adapter							
-2305	IfSetopbase	IF_SETOPBASE	adapter							
+2303	IfSetdragdeadzone	IF_SETDRAGDEADZONE	adapter			classQI.method9633	-2	0	0	4
+2304	IfSetdragdeadtime	IF_SETDRAGDEADTIME	adapter			classQI.method9633	-2	0	0	4
+2305	IfSetopbase	IF_SETOPBASE	adapter			classQI.method9633	-1	-1	0	237
 2306	IfSettargetverb	IF_SETTARGETVERB	adapter							
-2307	IfClearops	IF_CLEAROPS	adapter							
-2309	IfDiscardRetiredFlag		adapter-unconfirmed							
+2307	IfClearops	IF_CLEAROPS	adapter			classQI.method9633	-1	0	0	4324
+2309	IfDiscardRetiredFlag		adapter-unconfirmed			classQI.method9633	-2	0	0	13
 2310			unknown	1						
 2311			unknown	4						
 2312	IfSettargetpriority		adapter-unconfirmed							
@@ -316,49 +316,49 @@ opcode	rust_name	runelite_name	status	live_uses	handlers	traced_handler	int_delt
 2353	IfSetoptkeyrate	IF_SETOPTKEYRATE	adapter							
 2354	IfSetopkeyignoreheld	IF_SETOPKEYIGNOREHELD	adapter							
 2355	IfSetoptkeyignoreheld	IF_SETOPTKEYIGNOREHELD	adapter							
-2400	IfSetonclick	IF_SETONCLICK	adapter							
+2400	IfSetonclick	IF_SETONCLICK	adapter			classGP.method5623	-6	-1	0	7
 2401	IfSetonhold	IF_SETONHOLD	adapter							
 2402	IfSetonrelease	IF_SETONRELEASE	adapter							
-2403	IfSetonmouseover	IF_SETONMOUSEOVER	adapter							
-2404	IfSetonmouseleave	IF_SETONMOUSELEAVE	adapter							
-2405	IfSetondrag	IF_SETONDRAG	adapter							
-2406	IfSetontargetleave	IF_SETONTARGETLEAVE	adapter							
-2407	IfSetonvartransmit	IF_SETONVARTRANSMIT	adapter							
-2408	IfSetontimer	IF_SETONTIMER	adapter							
-2409	IfSetonop	IF_SETONOP	adapter							
-2410	IfSetondragcomplete	IF_SETONDRAGCOMPLETE	adapter							
+2403	IfSetonmouseover	IF_SETONMOUSEOVER	adapter			classGP.method5623	-2	-1	0	4000
+2404	IfSetonmouseleave	IF_SETONMOUSELEAVE	adapter			classGP.method5623	-2	-1	0	4227
+2405	IfSetondrag	IF_SETONDRAG	adapter			classGP.method5623	-5	-1	0	5
+2406	IfSetontargetleave	IF_SETONTARGETLEAVE	adapter			classGP.method5623	-5	-1	0	101
+2407	IfSetonvartransmit	IF_SETONVARTRANSMIT	adapter			classGP.method5623	-19	-1	0	126
+2408	IfSetontimer	IF_SETONTIMER	adapter			classGP.method5623	-13	-1	0	126
+2409	IfSetonop	IF_SETONOP	adapter			classGP.method5623	-2	-1	0	4183
+2410	IfSetondragcomplete	IF_SETONDRAGCOMPLETE	adapter			classGP.method5623	-5	-1	0	5
 2411	IfSetonclickrepeat	IF_SETONCLICKREPEAT	adapter							
-2412	IfSetonmouserepeat	IF_SETONMOUSEREPEAT	adapter							
-2414	IfSetoninvtransmit	IF_SETONINVTRANSMIT	adapter							
-2415	IfSetonstattransmit	IF_SETONSTATTRANSMIT	adapter							
-2416	IfSetontargetenter	IF_SETONTARGETENTER	adapter							
-2417	IfSetonscrollwheel	IF_SETONSCROLLWHEEL	adapter							
-2418	IfSetonchattransmit	IF_SETONCHATTRANSMIT	adapter							
-2419	IfSetonkey	IF_SETONKEY	adapter							
-2420	IfSetonfriendtransmit	IF_SETONFRIENDTRANSMIT	adapter							
-2421	IfSetonclantransmit	IF_SETONCLANTRANSMIT	adapter							
-2422	IfSetonmisctransmit	IF_SETONMISCTRANSMIT	adapter							
+2412	IfSetonmouserepeat	IF_SETONMOUSEREPEAT	adapter			classGP.method5623	-2	-1	0	229
+2414	IfSetoninvtransmit	IF_SETONINVTRANSMIT	adapter			classGP.method5623	-9	-1	0	11
+2415	IfSetonstattransmit	IF_SETONSTATTRANSMIT	adapter			classGP.method5623	-9	-1	0	24
+2416	IfSetontargetenter	IF_SETONTARGETENTER	adapter			classGP.method5623	-5	-1	0	101
+2417	IfSetonscrollwheel	IF_SETONSCROLLWHEEL	adapter			classGP.method5623	-3	-1	0	13
+2418	IfSetonchattransmit	IF_SETONCHATTRANSMIT	adapter			classGP.method5623	-2	-1	0	1
+2419	IfSetonkey	IF_SETONKEY	adapter			classGP.method5623	-5	-1	0	13
+2420	IfSetonfriendtransmit	IF_SETONFRIENDTRANSMIT	adapter			classGP.method5623	-11	-1	0	1
+2421	IfSetonclantransmit	IF_SETONCLANTRANSMIT	adapter			classGP.method5623	-2	-1	0	1
+2422	IfSetonmisctransmit	IF_SETONMISCTRANSMIT	adapter			classGP.method5623	-9	-1	0	6
 2423	IfSetondialogabort	IF_SETONDIALOGABORT	adapter							
-2424	IfSetonsubchange	IF_SETONSUBCHANGE	adapter							
+2424	IfSetonsubchange	IF_SETONSUBCHANGE	adapter			classGP.method5623	-13	-1	0	126
 2425	IfSetonstocktransmit	IF_SETONSTOCKTRANSMIT	adapter							
-2427	IfSetonresize	IF_SETONRESIZE	adapter							
-2428	IfSetonclansettingstransmit	IF_SETONCLANSETTINGSTRANSMIT	adapter							
+2427	IfSetonresize	IF_SETONRESIZE	adapter			classGP.method5623	-13	-1	0	126
+2428	IfSetonclansettingstransmit	IF_SETONCLANSETTINGSTRANSMIT	adapter			classGP.method5623	-2	-1	0	1
 2429	IfSetonclanchanneltransmit	IF_SETONCLANCHANNELTRANSMIT	adapter							
-2430	IfSetonkeypress		adapter-unconfirmed							
-2431	IfSetonkeyrelease		adapter-unconfirmed							
+2430	IfSetonkeypress		adapter-unconfirmed			classGP.method5623	-4	-1	0	6
+2431	IfSetonkeyrelease		adapter-unconfirmed			classGP.method5623	-7	-1	0	1
 2433			unknown	2						
-2500	IfGetx	IF_GETX	adapter		classBB.method843,classBB.method844,classIP.method6274					
-2501	IfGety	IF_GETY	adapter		classBB.method844,classIP.method6274					
-2502	IfGetwidth	IF_GETWIDTH	adapter		classBB.method844,classIP.method6274					
-2503	IfGetheight	IF_GETHEIGHT	adapter		classBB.method842,classBB.method844,classIP.method6274					
-2504	IfGethide	IF_GETHIDE	adapter		classBB.method843,classBB.method844,classIP.method6274					
-2505	IfGetlayer	IF_GETLAYER	adapter		classBB.method843,classBB.method844,classIP.method6274					
+2500	IfGetx	IF_GETX	adapter		classBB.method843,classBB.method844,classIP.method6274	classIP.method6274	0	0	0	49
+2501	IfGety	IF_GETY	adapter		classBB.method844,classIP.method6274	classIP.method6274	0	0	0	28
+2502	IfGetwidth	IF_GETWIDTH	adapter		classBB.method844,classIP.method6274	classIP.method6274	0	0	0	8220
+2503	IfGetheight	IF_GETHEIGHT	adapter		classBB.method842,classBB.method844,classIP.method6274	classIP.method6274	0	0	0	8826
+2504	IfGethide	IF_GETHIDE	adapter		classBB.method843,classBB.method844,classIP.method6274	classIP.method6274	0	0	0	362
+2505	IfGetlayer	IF_GETLAYER	adapter		classBB.method843,classBB.method844,classIP.method6274	classIP.method6274	0	0	0	3098
 2506			handler-only	10	classBB.method842,classBB.method843,classBB.method844,classIP.method6274					
-2600	IfGetscrollx	IF_GETSCROLLX	adapter		classBB.method845,classML.method7640					
-2601	IfGetscrolly	IF_GETSCROLLY	adapter		classBB.method845,classML.method7640					
+2600	IfGetscrollx	IF_GETSCROLLX	adapter		classBB.method845,classML.method7640	classML.method7640	0	0	0	17
+2601	IfGetscrolly	IF_GETSCROLLY	adapter		classBB.method845,classML.method7640	classML.method7640	0	0	0	36
 2602	IfGettext	IF_GETTEXT	adapter		classBB.method845,classML.method7640					
 2603	IfGetscrollwidth	IF_GETSCROLLWIDTH	adapter		classBB.method845,classML.method7640					
-2604	IfGetscrollheight	IF_GETSCROLLHEIGHT	adapter		classBB.method845,classML.method7640					
+2604	IfGetscrollheight	IF_GETSCROLLHEIGHT	adapter		classBB.method845,classML.method7640	classML.method7640	0	0	0	39
 2605	IfGetmodelzoom	IF_GETMODELZOOM	adapter		classBB.method845,classML.method7640					
 2606	IfGetmodelangleX	IF_GETMODELANGLE_X	adapter		classML.method7640					
 2607	IfGetmodelangleZ	IF_GETMODELANGLE_Z	adapter		classML.method7640					
@@ -389,14 +389,14 @@ opcode	rust_name	runelite_name	status	live_uses	handlers	traced_handler	int_delt
 2634			handler-only		classML.method7640					
 2700	IfGetinvobject	IF_GETINVOBJECT	adapter		classGA.method5324					
 2701	IfGetinvcount	IF_GETINVCOUNT	adapter		classBB.method847,classBB.method848,classGA.method5324					
-2702	IfHassub	IF_HASSUB	adapter		classBB.method846,classBB.method847,classGA.method5324					
+2702	IfHassub	IF_HASSUB	adapter		classBB.method846,classBB.method847,classGA.method5324	classGA.method5324	0	0	0	3027
 2703	IfGetparam		adapter		classBB.method847,classBB.method848,classGA.method5324					
 2704	IfSetparam		adapter		classGA.method5324					
-2706	IfGettop	IF_GETTOP	adapter		classBB.method846,classGA.method5324					
+2706	IfGettop	IF_GETTOP	adapter		classBB.method846,classGA.method5324	classGA.method5324	1	0	0	12556
 2707			handler-only		classBB.method846,classBB.method848,classGA.method5324					
 2708			handler-only		classBB.method846,classBB.method847,classBB.method848,classGA.method5324					
 2709			handler-only		classBB.method846,classBB.method847,classGA.method5324					
-2800	IfGettargetmask	IF_GETTARGETMASK	adapter		Actor.method3274,classBB.method849,classBB.method850,classBB.method851					
+2800	IfGettargetmask	IF_GETTARGETMASK	adapter		Actor.method3274,classBB.method849,classBB.method850,classBB.method851	Actor.method3274	0	0	0	196
 2801	IfGetop	IF_GETOP	adapter		Actor.method3274,classBB.method849,classBB.method850,classBB.method851					
 2802	IfGetopbase	IF_GETOPBASE	adapter		Actor.method3274,classBB.method849,classBB.method850,classBB.method851					
 2927	IfCallonresize	IF_CALLONRESIZE	adapter		classBB.method838,classBB.method839,classJG.method6408					
@@ -412,28 +412,28 @@ opcode	rust_name	runelite_name	status	live_uses	handlers	traced_handler	int_delt
 3107	Opplayer	OPPLAYER	adapter		classBB.method853,classBB.method854,classBB.method855,classKU.method6609					
 3108	IfDragpickup	IF_DRAGPICKUP	adapter		classBB.method852,classBB.method853,classKU.method6609					
 3109	CcDragpickup	CC_DRAGPICKUP	adapter		classBB.method852,classBB.method853,classBB.method854,classKU.method6609					
-3110	Mousecam	MOUSECAM	adapter		classBB.method852,classBB.method853,classKU.method6609					
+3110	Mousecam	MOUSECAM	adapter		classBB.method852,classBB.method853,classKU.method6609	classKU.method6609	-1	0	0	13
 3111	Getremoveroofs	GETREMOVEROOFS	adapter		classBB.method852,classBB.method853,classKU.method6609					
 3112	Setremoveroofs	SETREMOVEROOFS	adapter		classBB.method853,classKU.method6609					
 3113	Openurl	OPENURL	adapter		classBB.method853,classBB.method855,classKU.method6609					
 3114			handler-only		classBB.method853,classBB.method854,classKU.method6609					
 3115	ResumeObjdialog	RESUME_OBJDIALOG	adapter		classBB.method852,classBB.method853,classBB.method854,classKU.method6609					
 3116	BugReport	BUG_REPORT	adapter		classBB.method853,classBB.method854,classKU.method6609					
-3117	Setshiftclickdrop	SETSHIFTCLICKDROP	adapter		classBB.method853,classBB.method855,classKU.method6609					
-3118	Setshowmouseovertext	SETSHOWMOUSEOVERTEXT	adapter		classBB.method852,classBB.method853,classBB.method854,classBB.method855,classKU.method6609					
-3119	Renderself	RENDERSELF	adapter		classBB.method852,classBB.method853,classBB.method854,classKU.method6609					
+3117	Setshiftclickdrop	SETSHIFTCLICKDROP	adapter		classBB.method853,classBB.method855,classKU.method6609	classKU.method6609	-1	0	0	13
+3118	Setshowmouseovertext	SETSHOWMOUSEOVERTEXT	adapter		classBB.method852,classBB.method853,classBB.method854,classBB.method855,classKU.method6609	classKU.method6609	-1	0	0	16
+3119	Renderself	RENDERSELF	adapter		classBB.method852,classBB.method853,classBB.method854,classKU.method6609	classKU.method6609	-1	0	0	1
 3120			handler-only	1	classBB.method852,classBB.method853,classBB.method854,classKU.method6609					
 3121			handler-only		classBB.method853,classBB.method855,classKU.method6609					
 3122			handler-only	1	classBB.method852,classBB.method853,classBB.method855,classKU.method6609					
 3123			handler-only		classBB.method853,classBB.method854,classKU.method6609					
 3124			handler-only	1	classBB.method852,classBB.method853,classKU.method6609					
-3125	Setshowmousecross	SETSHOWMOUSECROSS	adapter		classBB.method853,classKU.method6609					
-3126	Setshowloadingmessages	SETSHOWLOADINGMESSAGES	adapter		classBB.method852,classBB.method853,classBB.method854,classKU.method6609					
-3127	Settaptodrop	SETTAPTODROP	adapter		classBB.method852,classBB.method853,classKU.method6609					
+3125	Setshowmousecross	SETSHOWMOUSECROSS	adapter		classBB.method853,classKU.method6609	classKU.method6609	-1	0	0	16
+3126	Setshowloadingmessages	SETSHOWLOADINGMESSAGES	adapter		classBB.method852,classBB.method853,classBB.method854,classKU.method6609	classKU.method6609	-1	0	0	16
+3127	Settaptodrop	SETTAPTODROP	adapter		classBB.method852,classBB.method853,classKU.method6609	classKU.method6609	-1	0	0	13
 3128	Gettaptodrop	GETTAPTODROP	adapter		classBB.method853,classBB.method854,classKU.method6609					
 3129			handler-only	9	classBB.method852,classBB.method853,classBB.method854,classBB.method855,classKU.method6609					
-3130	DiscardMobileOffsets		adapter		classBB.method852,classBB.method853,classBB.method855,classKU.method6609					
-3131	DiscardMobileFlag		adapter		classBB.method852,classBB.method853,classBB.method854,classKU.method6609					
+3130	DiscardMobileOffsets		adapter		classBB.method852,classBB.method853,classBB.method855,classKU.method6609	classKU.method6609	-2	0	0	3
+3131	DiscardMobileFlag		adapter		classBB.method852,classBB.method853,classBB.method854,classKU.method6609	classKU.method6609	-1	0	0	3
 3132	Getcanvassize	GETCANVASSIZE	adapter		classBB.method852,classBB.method853,classKU.method6609					
 3133	MobileSetfps	MOBILE_SETFPS	adapter		classBB.method852,classBB.method853,classBB.method854,classKU.method6609					
 3134	MobileOpenstore	MOBILE_OPENSTORE	adapter		classBB.method853,classBB.method854,classKU.method6609					
@@ -488,7 +488,7 @@ opcode	rust_name	runelite_name	status	live_uses	handlers	traced_handler	int_delt
 3185			handler-only		classBB.method852,classBB.method853,classBB.method854,classBB.method855,classKU.method6609					
 3186			handler-only		classBB.method852,classBB.method853,classKU.method6609					
 3189			handler-only	1	classBB.method853,classBB.method854,classKU.method6609					
-3200	SoundSynth	SOUND_SYNTH	adapter		Renderable.method3851,classBB.method858					
+3200	SoundSynth	SOUND_SYNTH	adapter		Renderable.method3851,classBB.method858	Renderable.method3851	-3	0	0	14
 3201	SoundSong	SOUND_SONG	adapter		Renderable.method3851,classBB.method856,classBB.method858					
 3202	SoundJingle	SOUND_JINGLE	adapter		Renderable.method3851,classBB.method858					
 3203			handler-only		Renderable.method3851,classBB.method856,classBB.method857,classBB.method858					
@@ -500,9 +500,9 @@ opcode	rust_name	runelite_name	status	live_uses	handlers	traced_handler	int_delt
 3209			handler-only		Renderable.method3851,classBB.method856,classBB.method857,classBB.method858					
 3210			handler-only		Renderable.method3851,classBB.method856,classBB.method858					
 3211			handler-only		Renderable.method3851,classBB.method858					
-3212	SetDeviceOption		adapter		Renderable.method3851,classBB.method856,classBB.method857,classBB.method858					
-3213	SetGameOption		adapter		Renderable.method3851,classBB.method856,classBB.method858					
-3214	GetDeviceOption		adapter		Renderable.method3851,classBB.method858					
+3212	SetDeviceOption		adapter		Renderable.method3851,classBB.method856,classBB.method857,classBB.method858	Renderable.method3851	-2	0	0	19
+3213	SetGameOption		adapter		Renderable.method3851,classBB.method856,classBB.method858	Renderable.method3851	-2	0	0	49
+3214	GetDeviceOption		adapter		Renderable.method3851,classBB.method858	Renderable.method3851	0	0	0	2
 3215	GetGameOption		adapter		Renderable.method3851,classBB.method858					
 3216			handler-only		Renderable.method3851,classBB.method856,classBB.method857,classBB.method858					
 3217			handler-only	1	Renderable.method3851,classBB.method858					
@@ -516,26 +516,26 @@ opcode	rust_name	runelite_name	status	live_uses	handlers	traced_handler	int_delt
 3225			unknown	2						
 3228			handler-only		Renderable.method3851,classBB.method857,classBB.method858					
 3229			handler-only		Renderable.method3851,classBB.method858					
-3300	Clientclock	CLIENTCLOCK	adapter		BufferProvider.method13367					
-3301	InvGetobj	INV_GETOBJ	adapter		BufferProvider.method13367					
-3302	InvGetnum	INV_GETNUM	adapter		BufferProvider.method13367					
-3303	InvTotal	INV_TOTAL	adapter		BufferProvider.method13367					
-3304	InvSize	INV_SIZE	adapter		BufferProvider.method13367					
-3305	Stat	STAT	adapter		BufferProvider.method13367					
-3306	StatBase	STAT_BASE	adapter		BufferProvider.method13367					
-3307	StatXp	STAT_XP	adapter		BufferProvider.method13367					
-3308	Coord	COORD	adapter		BufferProvider.method13367					
-3309	Coordx	COORDX	adapter		BufferProvider.method13367					
+3300	Clientclock	CLIENTCLOCK	adapter		BufferProvider.method13367	BufferProvider.method13367	1	0	0	3334
+3301	InvGetobj	INV_GETOBJ	adapter		BufferProvider.method13367	BufferProvider.method13367	-1	0	0	940
+3302	InvGetnum	INV_GETNUM	adapter		BufferProvider.method13367	BufferProvider.method13367	-1	0	0	448
+3303	InvTotal	INV_TOTAL	adapter		BufferProvider.method13367	BufferProvider.method13367	-1	0	0	1
+3304	InvSize	INV_SIZE	adapter		BufferProvider.method13367	BufferProvider.method13367	0	0	0	17
+3305	Stat	STAT	adapter		BufferProvider.method13367	BufferProvider.method13367	0	0	0	202
+3306	StatBase	STAT_BASE	adapter		BufferProvider.method13367	BufferProvider.method13367	0	0	0	362
+3307	StatXp	STAT_XP	adapter		BufferProvider.method13367	BufferProvider.method13367	0	0	0	144
+3308	Coord	COORD	adapter		BufferProvider.method13367	BufferProvider.method13367	1	0	0	22
+3309	Coordx	COORDX	adapter		BufferProvider.method13367	BufferProvider.method13367	0	0	0	50
 3310	Coordz	COORDZ	adapter		BufferProvider.method13367					
 3311	Coordy	COORDY	adapter		BufferProvider.method13367					
-3312	MapMembers	MAP_MEMBERS	adapter		BufferProvider.method13367					
+3312	MapMembers	MAP_MEMBERS	adapter		BufferProvider.method13367	BufferProvider.method13367	1	0	0	485
 3313	InvotherGetobj	INVOTHER_GETOBJ	adapter		BufferProvider.method13367					
 3314	InvotherGetnum	INVOTHER_GETNUM	adapter		BufferProvider.method13367					
 3315	InvotherTotal	INVOTHER_TOTAL	adapter		BufferProvider.method13367					
 3316	Staffmodlevel	STAFFMODLEVEL	adapter		BufferProvider.method13367					
-3317	Reboottimer	REBOOTTIMER	adapter		BufferProvider.method13367					
-3318	MapWorld	MAP_WORLD	adapter		BufferProvider.method13367					
-3321	RunenergyVisible	RUNENERGY_VISIBLE	adapter		BufferProvider.method13367					
+3317	Reboottimer	REBOOTTIMER	adapter		BufferProvider.method13367	BufferProvider.method13367	1	0	0	20
+3318	MapWorld	MAP_WORLD	adapter		BufferProvider.method13367	BufferProvider.method13367	1	0	0	2
+3321	RunenergyVisible	RUNENERGY_VISIBLE	adapter		BufferProvider.method13367	BufferProvider.method13367	1	0	0	67
 3322	RunweightVisible	RUNWEIGHT_VISIBLE	adapter		BufferProvider.method13367					
 3323	Playermod	PLAYERMOD	adapter		BufferProvider.method13367					
 3324	Worldflags	WORLDFLAGS	adapter		BufferProvider.method13367					
@@ -551,12 +551,12 @@ opcode	rust_name	runelite_name	status	live_uses	handlers	traced_handler	int_delt
 3334			handler-only		BufferProvider.method13367					
 3339			handler-only		BufferProvider.method13367					
 3400	EnumString	ENUM_STRING	adapter		classBB.method859,classBB.method860,classBB.method861,classEF.method3884					
-3408	Enum	ENUM	adapter		classBB.method860,classBB.method861,classBB.method862,classEF.method3884					
-3411	EnumGetoutputcount	ENUM_GETOUTPUTCOUNT	adapter		classBB.method859,classBB.method861,classEF.method3884					
-3500	KeyHeld		adapter		classHR.method6134					
+3408	Enum	ENUM	adapter		classBB.method860,classBB.method861,classBB.method862,classEF.method3884	classEF.method3884	-3	0	0	26964
+3411	EnumGetoutputcount	ENUM_GETOUTPUTCOUNT	adapter		classBB.method859,classBB.method861,classEF.method3884	classEF.method3884	0	0	0	221
+3500	KeyHeld		adapter		classHR.method6134	classHR.method6134	0	0	0	17
 3501			handler-only	3	classBB.method864,classHR.method6134					
 3502			handler-only		classBB.method863,classHR.method6134					
-3600	FriendCount	FRIEND_COUNT	adapter		classHU.method6157					
+3600	FriendCount	FRIEND_COUNT	adapter		classHU.method6157	classHU.method6157	1	0	0	1
 3601	FriendGetname	FRIEND_GETNAME	adapter		classBB.method865,classHU.method6157					
 3602	FriendGetworld	FRIEND_GETWORLD	adapter		classHU.method6157					
 3603	FriendGetrank	FRIEND_GETRANK	adapter		classHU.method6157					
@@ -617,7 +617,7 @@ opcode	rust_name	runelite_name	status	live_uses	handlers	traced_handler	int_delt
 3701			unknown	4						
 3702			unknown	2						
 3800	ActiveclansettingsFindListened	ACTIVECLANSETTINGS_FIND_LISTENED	adapter		WorldEntityConfig.method8536,classBB.method869,classBB.method871					
-3801	ActiveclansettingsFindAffined	ACTIVECLANSETTINGS_FIND_AFFINED	adapter		WorldEntityConfig.method8536,classBB.method869,classBB.method870,classBB.method871					
+3801	ActiveclansettingsFindAffined	ACTIVECLANSETTINGS_FIND_AFFINED	adapter		WorldEntityConfig.method8536,classBB.method869,classBB.method870,classBB.method871	WorldEntityConfig.method8536	0	0	0	8
 3802	ActiveclansettingsGetclanname	ACTIVECLANSETTINGS_GETCLANNAME	adapter		WorldEntityConfig.method8536,classBB.method869,classBB.method871					
 3803	ActiveclansettingsGetallowunaffined	ACTIVECLANSETTINGS_GETALLOWUNAFFINED	adapter		WorldEntityConfig.method8536,classBB.method869,classBB.method870,classBB.method871					
 3804	ActiveclansettingsGetranktalk	ACTIVECLANSETTINGS_GETRANKTALK	adapter		WorldEntityConfig.method8536,classBB.method869,classBB.method870,classBB.method871					
@@ -677,25 +677,25 @@ opcode	rust_name	runelite_name	status	live_uses	handlers	traced_handler	int_delt
 3931			handler-only	4	classBB.method872,classGL.method5528					
 3932			unknown	4						
 3939			handler-only		classBB.method872,classGL.method5528					
-4000	Add	ADD	adapter		classBB.method873,classMC.method7575					
-4001	Sub	SUB	adapter		classBB.method873,classMC.method7575					
-4002	Multiply	MULTIPLY	adapter		classBB.method873,classMC.method7575					
-4003	Div	DIV	adapter		classBB.method873,classMC.method7575					
+4000	Add	ADD	adapter		classBB.method873,classMC.method7575	classMC.method7575	-1	0	0	37460
+4001	Sub	SUB	adapter		classBB.method873,classMC.method7575	classMC.method7575	-1	0	0	5274
+4002	Multiply	MULTIPLY	adapter		classBB.method873,classMC.method7575	classMC.method7575	-1	0	0	23571
+4003	Div	DIV	adapter		classBB.method873,classMC.method7575	classMC.method7575	-1	0	0	2940
 4004	Random	RANDOM	adapter		classBB.method873,classMC.method7575					
 4005	Randominc	RANDOMINC	adapter		classBB.method873,classMC.method7575					
 4006	Interpolate	INTERPOLATE	adapter		classBB.method873,classMC.method7575					
 4007	Addpercent	ADDPERCENT	adapter		classBB.method873,classMC.method7575					
-4008	Setbit	SETBIT	adapter		classBB.method873,classMC.method7575					
-4009	Clearbit	CLEARBIT	adapter		classBB.method873,classMC.method7575					
-4010	Testbit	TESTBIT	adapter		classBB.method873,classMC.method7575					
-4011	Mod	MOD	adapter		classBB.method873,classMC.method7575					
-4012	Pow	POW	adapter		classBB.method873,classMC.method7575					
+4008	Setbit	SETBIT	adapter		classBB.method873,classMC.method7575	classMC.method7575	-1	0	0	134
+4009	Clearbit	CLEARBIT	adapter		classBB.method873,classMC.method7575	classMC.method7575	-1	0	0	44
+4010	Testbit	TESTBIT	adapter		classBB.method873,classMC.method7575	classMC.method7575	-1	0	0	6066
+4011	Mod	MOD	adapter		classBB.method873,classMC.method7575	classMC.method7575	-1	0	0	4442
+4012	Pow	POW	adapter		classBB.method873,classMC.method7575	classMC.method7575	-1	0	0	212
 4013	Invpow	INVPOW	adapter		classBB.method873,classMC.method7575					
 4014	And	AND	adapter		classBB.method873,classMC.method7575					
-4015	Or	OR	adapter		classBB.method873,classMC.method7575					
-4016	Min		adapter		classBB.method873,classMC.method7575					
-4017	Max		adapter		classBB.method873,classMC.method7575					
-4018	Scale	SCALE	adapter		classBB.method873,classMC.method7575					
+4015	Or	OR	adapter		classBB.method873,classMC.method7575	classMC.method7575	-1	0	0	282
+4016	Min		adapter		classBB.method873,classMC.method7575	classMC.method7575	-1	0	0	27
+4017	Max		adapter		classBB.method873,classMC.method7575	classMC.method7575	-1	0	0	38
+4018	Scale	SCALE	adapter		classBB.method873,classMC.method7575	classMC.method7575	-2	0	0	79
 4025	Bitcount	BITCOUNT	adapter		classBB.method873,classMC.method7575					
 4026	Togglebit	TOGGLEBIT	adapter		classBB.method873,classMC.method7575					
 4027	SetbitRange	SETBIT_RANGE	adapter		classBB.method873,classMC.method7575					
@@ -731,27 +731,27 @@ opcode	rust_name	runelite_name	status	live_uses	handlers	traced_handler	int_delt
 4060			handler-only		classBB.method873,classMC.method7575					
 4061			handler-only		classBB.method873,classMC.method7575					
 4100	AppendNum	APPEND_NUM	adapter		classBB.method875,classBB.method876,classJF.method6405					
-4101	Append	APPEND	adapter		classBB.method874,classBB.method875,classBB.method876,classJF.method6405					
+4101	Append	APPEND	adapter		classBB.method874,classBB.method875,classBB.method876,classJF.method6405	classJF.method6405	0	-1	0	64
 4102	AppendSignnum	APPEND_SIGNNUM	adapter		classBB.method874,classBB.method875,classBB.method876,classJF.method6405					
 4103	Lowercase	LOWERCASE	adapter		classBB.method875,classBB.method876,classJF.method6405					
 4104	Fromdate	FROMDATE	adapter		classBB.method875,classBB.method876,classJF.method6405					
 4105	TextGender	TEXT_GENDER	adapter							
-4106	Tostring	TOSTRING	adapter		classBB.method875,classBB.method876,classJF.method6405					
-4107	Compare	COMPARE	adapter		classBB.method875,classBB.method876,classJF.method6405					
-4108	Paraheight	PARAHEIGHT	adapter		classBB.method874,classBB.method875,classBB.method876,classJF.method6405					
-4109	Parawidth	PARAWIDTH	adapter		classBB.method874,classBB.method875,classBB.method876,classJF.method6405					
+4106	Tostring	TOSTRING	adapter		classBB.method875,classBB.method876,classJF.method6405	classJF.method6405	-1	1	0	1143
+4107	Compare	COMPARE	adapter		classBB.method875,classBB.method876,classJF.method6405	classJF.method6405	1	-2	0	275
+4108	Paraheight	PARAHEIGHT	adapter		classBB.method874,classBB.method875,classBB.method876,classJF.method6405	classJF.method6405	-1	-1	0	232
+4109	Parawidth	PARAWIDTH	adapter		classBB.method874,classBB.method875,classBB.method876,classJF.method6405	classJF.method6405	-1	-1	0	13
 4110	TextSwitch	TEXT_SWITCH	adapter		classBB.method875,classBB.method876,classJF.method6405					
-4111	Escape	ESCAPE	adapter		classBB.method874,classBB.method875,classBB.method876,classJF.method6405					
+4111	Escape	ESCAPE	adapter		classBB.method874,classBB.method875,classBB.method876,classJF.method6405	classJF.method6405	0	0	0	7
 4112	AppendChar	APPEND_CHAR	adapter		classBB.method874,classBB.method875,classBB.method876,classJF.method6405					
 4113	CharIsprintable	CHAR_ISPRINTABLE	adapter		classBB.method874,classBB.method875,classBB.method876,classJF.method6405					
 4114	CharIsalphanumeric	CHAR_ISALPHANUMERIC	adapter		classBB.method874,classBB.method875,classBB.method876,classJF.method6405					
 4115	CharIsalpha	CHAR_ISALPHA	adapter		classBB.method874,classBB.method875,classBB.method876,classJF.method6405					
 4116	CharIsnumeric	CHAR_ISNUMERIC	adapter		classBB.method875,classBB.method876,classJF.method6405					
-4117	StringLength	STRING_LENGTH	adapter		classBB.method874,classBB.method875,classBB.method876,classJF.method6405					
-4118	Substring	SUBSTRING	adapter		classBB.method874,classBB.method875,classBB.method876,classJF.method6405					
-4119	Removetags	REMOVETAGS	adapter		classBB.method875,classBB.method876,classJF.method6405					
+4117	StringLength	STRING_LENGTH	adapter		classBB.method874,classBB.method875,classBB.method876,classJF.method6405	classJF.method6405	1	-1	0	1491
+4118	Substring	SUBSTRING	adapter		classBB.method874,classBB.method875,classBB.method876,classJF.method6405	classJF.method6405	-2	0	0	834
+4119	Removetags	REMOVETAGS	adapter		classBB.method875,classBB.method876,classJF.method6405	classJF.method6405	0	0	0	8
 4120	StringIndexofChar	STRING_INDEXOF_CHAR	adapter		classBB.method874,classBB.method875,classBB.method876,classJF.method6405					
-4121	StringIndexofString	STRING_INDEXOF_STRING	adapter		classBB.method875,classBB.method876,classJF.method6405					
+4121	StringIndexofString	STRING_INDEXOF_STRING	adapter		classBB.method875,classBB.method876,classJF.method6405	classJF.method6405	0	-2	0	839
 4122			handler-only	1	classBB.method874,classBB.method875,classBB.method876,classJF.method6405					
 4123			handler-only	10	classBB.method874,classBB.method875,classBB.method876,classJF.method6405					
 4124			handler-only	30	classBB.method874,classBB.method875,classBB.method876,classJF.method6405					
@@ -782,48 +782,48 @@ opcode	rust_name	runelite_name	status	live_uses	handlers	traced_handler	int_delt
 4222			handler-only	4	classBB.method877,classKI.method6526					
 4223			handler-only	1	classBB.method877,classKI.method6526					
 4224			handler-only	2	classBB.method877,classKI.method6526					
-5000	ChatGetfilterPublic	CHAT_GETFILTER_PUBLIC	adapter		classBB.method878,classBB.method879,classQO.method9743					
+5000	ChatGetfilterPublic	CHAT_GETFILTER_PUBLIC	adapter		classBB.method878,classBB.method879,classQO.method9743	classQO.method9743	1	0	0	7
 5001	ChatSetfilter	CHAT_SETFILTER	adapter		classBB.method878,classBB.method879,classQO.method9743					
 5002	ChatSendabusereport	CHAT_SENDABUSEREPORT	adapter		classBB.method878,classBB.method879,classBB.method880,classQO.method9743					
 5003	ChatGethistoryBytypeandline	CHAT_GETHISTORY_BYTYPEANDLINE	adapter		classBB.method878,classBB.method879,classBB.method880,classQO.method9743					
 5004	ChatGethistoryByuid	CHAT_GETHISTORY_BYUID	adapter		classBB.method878,classBB.method879,classBB.method880,classQO.method9743					
-5005	ChatGetfilterPrivate	CHAT_GETFILTER_PRIVATE	adapter		classBB.method878,classBB.method879,classBB.method880,classQO.method9743					
+5005	ChatGetfilterPrivate	CHAT_GETFILTER_PRIVATE	adapter		classBB.method878,classBB.method879,classBB.method880,classQO.method9743	classQO.method9743	1	0	0	13
 5008	ChatSendpublic	CHAT_SENDPUBLIC	adapter		classBB.method878,classBB.method879,classBB.method880,classQO.method9743					
 5009	ChatSendprivate	CHAT_SENDPRIVATE	adapter		classBB.method879,classQO.method9743					
 5010	ChatSendclan	CHAT_SENDCLAN	adapter		classBB.method878,classBB.method879,classBB.method880,classQO.method9743					
-5015	ChatPlayername	CHAT_PLAYERNAME	adapter		classBB.method879,classQO.method9743					
-5016	ChatGetfilterTrade	CHAT_GETFILTER_TRADE	adapter		classBB.method879,classBB.method880,classQO.method9743					
-5017	ChatGethistorylength	CHAT_GETHISTORYLENGTH	adapter		classBB.method879,classQO.method9743					
+5015	ChatPlayername	CHAT_PLAYERNAME	adapter		classBB.method879,classQO.method9743	classQO.method9743	0	1	0	20
+5016	ChatGetfilterTrade	CHAT_GETFILTER_TRADE	adapter		classBB.method879,classBB.method880,classQO.method9743	classQO.method9743	1	0	0	7
+5017	ChatGethistorylength	CHAT_GETHISTORYLENGTH	adapter		classBB.method879,classQO.method9743	classQO.method9743	0	0	0	2261
 5018	ChatGetnextuid	CHAT_GETNEXTUID	adapter		classBB.method878,classBB.method879,classQO.method9743					
-5019	ChatGetprevuid	CHAT_GETPREVUID	adapter		classBB.method878,classBB.method879,classBB.method880,classQO.method9743					
+5019	ChatGetprevuid	CHAT_GETPREVUID	adapter		classBB.method878,classBB.method879,classBB.method880,classQO.method9743	classQO.method9743	0	0	0	16
 5020	Docheat	DOCHEAT	adapter		classBB.method879,classBB.method880,classQO.method9743					
-5021	ChatSetmessagefilter	CHAT_SETMESSAGEFILTER	adapter		classBB.method878,classBB.method879,classBB.method880,classQO.method9743					
-5022	ChatGetmessagefilter	CHAT_GETMESSAGEFILTER	adapter		classBB.method879,classBB.method880,classQO.method9743					
+5021	ChatSetmessagefilter	CHAT_SETMESSAGEFILTER	adapter		classBB.method878,classBB.method879,classBB.method880,classQO.method9743	classQO.method9743	0	-1	0	1
+5022	ChatGetmessagefilter	CHAT_GETMESSAGEFILTER	adapter		classBB.method879,classBB.method880,classQO.method9743	classQO.method9743	0	1	0	8
 5023	Writeconsole	WRITECONSOLE	adapter		classBB.method879,classQO.method9743					
 5024			unknown	1						
 5025			unknown	2						
-5030	ChatGethistoryexBytypeandline	CHAT_GETHISTORYEX_BYTYPEANDLINE	adapter		classBB.method878,classBB.method879,classBB.method880,classQO.method9743					
-5031	ChatGethistoryexByuid	CHAT_GETHISTORYEX_BYUID	adapter		classBB.method878,classBB.method879,classQO.method9743					
-5306	Getwindowmode	GETWINDOWMODE	adapter		classBB.method881,classBB.method882,classBB.method883,classXO.method12926					
-5307	Setwindowmode	SETWINDOWMODE	adapter		classBB.method881,classBB.method882,classBB.method883,classXO.method12926					
-5308	Getdefaultwindowmode	GETDEFAULTWINDOWMODE	adapter		classBB.method881,classBB.method882,classBB.method883,classXO.method12926					
-5309	Setdefaultwindowmode	SETDEFAULTWINDOWMODE	adapter		classBB.method881,classBB.method882,classBB.method883,classXO.method12926					
+5030	ChatGethistoryexBytypeandline	CHAT_GETHISTORYEX_BYTYPEANDLINE	adapter		classBB.method878,classBB.method879,classBB.method880,classQO.method9743	classQO.method9743	2	4	0	38
+5031	ChatGethistoryexByuid	CHAT_GETHISTORYEX_BYUID	adapter		classBB.method878,classBB.method879,classQO.method9743	classQO.method9743	3	4	0	16
+5306	Getwindowmode	GETWINDOWMODE	adapter		classBB.method881,classBB.method882,classBB.method883,classXO.method12926	classQR.method9824	1	0	0	143
+5307	Setwindowmode	SETWINDOWMODE	adapter		classBB.method881,classBB.method882,classBB.method883,classXO.method12926	classQR.method9824	-1	0	0	1
+5308	Getdefaultwindowmode	GETDEFAULTWINDOWMODE	adapter		classBB.method881,classBB.method882,classBB.method883,classXO.method12926	classQR.method9824	1	0	0	1
+5309	Setdefaultwindowmode	SETDEFAULTWINDOWMODE	adapter		classBB.method881,classBB.method882,classBB.method883,classXO.method12926	classQR.method9824	-1	0	0	1
 5310			handler-only		classBB.method881,classBB.method882,classBB.method883,classXO.method12926					
 5504	CamForceangle	CAM_FORCEANGLE	adapter		classBB.method884,classBB.method885,classFC.method4613					
 5505	CamGetangleXa	CAM_GETANGLE_XA	adapter		classBB.method884,classBB.method885,classFC.method4613					
 5506	CamGetangleYa	CAM_GETANGLE_YA	adapter		classBB.method884,classBB.method885,classFC.method4613					
-5530	CamSetfollowheight	CAM_SETFOLLOWHEIGHT	adapter		classBB.method884,classBB.method885,classFC.method4613					
+5530	CamSetfollowheight	CAM_SETFOLLOWHEIGHT	adapter		classBB.method884,classBB.method885,classFC.method4613	classFC.method4613	-1	0	0	118
 5531	CamGetfollowheight	CAM_GETFOLLOWHEIGHT	adapter		classBB.method884,classBB.method885,classBB.method886,classFC.method4613					
 5630	Logout	LOGOUT	adapter		classBB.method887,classBB.method888,classBB.method889,classTK.method10981					
 5631			unknown	2						
 5632			unknown	1						
 5633			unknown	3						
-6200	ViewportSetfov	VIEWPORT_SETFOV	adapter		classBB.method894,classBB.method895,classLO.method7180					
+6200	ViewportSetfov	VIEWPORT_SETFOV	adapter		classBB.method894,classBB.method895,classLO.method7180	classLO.method7180	-2	0	0	118
 6201	ViewportSetzoom	VIEWPORT_SETZOOM	adapter		classBB.method894,classBB.method895,classLO.method7180					
-6202	ViewportClampfov	VIEWPORT_CLAMPFOV	adapter		classBB.method895,classLO.method7180					
-6203	ViewportGeteffectivesize	VIEWPORT_GETEFFECTIVESIZE	adapter		classBB.method894,classBB.method895,classLO.method7180					
+6202	ViewportClampfov	VIEWPORT_CLAMPFOV	adapter		classBB.method895,classLO.method7180	classLO.method7180	-4	0	0	118
+6203	ViewportGeteffectivesize	VIEWPORT_GETEFFECTIVESIZE	adapter		classBB.method894,classBB.method895,classLO.method7180	classLO.method7180	2	0	0	331
 6204	ViewportGetzoom	VIEWPORT_GETZOOM	adapter		classBB.method895,classLO.method7180					
-6205	ViewportGetfov	VIEWPORT_GETFOV	adapter		classBB.method894,classBB.method895,classLO.method7180					
+6205	ViewportGetfov	VIEWPORT_GETFOV	adapter		classBB.method894,classBB.method895,classLO.method7180	classLO.method7180	2	0	0	13
 6214			unknown	1						
 6220	ViewportGetx		adapter		classBB.method895,classLO.method7180					
 6221	ViewportGety		adapter		classBB.method895,classLO.method7180					
@@ -837,13 +837,13 @@ opcode	rust_name	runelite_name	status	live_uses	handlers	traced_handler	int_delt
 6506	WorldlistSpecific	WORLDLIST_SPECIFIC	adapter		classBB.method896,classBB.method897,classSU.method10737					
 6507	WorldlistSort	WORLDLIST_SORT	adapter		classBB.method896,classBB.method897,classSU.method10737					
 6511			handler-only		classBB.method896,classBB.method897,classSU.method10737					
-6512	Setfolloweropslowpriority	SETFOLLOWEROPSLOWPRIORITY	adapter		classBB.method896,classBB.method897,classSU.method10737					
+6512	Setfolloweropslowpriority	SETFOLLOWEROPSLOWPRIORITY	adapter		classBB.method896,classBB.method897,classSU.method10737	classQR.method9824	-1	0	0	13
 6513	NcParam	NC_PARAM	adapter		classBB.method896,classBB.method897,classSU.method10737					
 6514	LcParam	LC_PARAM	adapter		classBB.method896,classBB.method897,classSU.method10737					
-6515	OcParam	OC_PARAM	adapter		classBB.method896,classBB.method897,classSU.method10737					
-6516	StructParam	STRUCT_PARAM	adapter		classBB.method896,classBB.method897,classSU.method10737					
-6518	OnMobile	ON_MOBILE	adapter		classBB.method896,classBB.method897,classSU.method10737					
-6519	Clienttype	CLIENTTYPE	adapter		classBB.method896,classBB.method897,classSU.method10737					
+6515	OcParam	OC_PARAM	adapter		classBB.method896,classBB.method897,classSU.method10737	classQR.method9824	-1	0	0	1519
+6516	StructParam	STRUCT_PARAM	adapter		classBB.method896,classBB.method897,classSU.method10737	classQR.method9824	-1	0	0	242
+6518	OnMobile	ON_MOBILE	adapter		classBB.method896,classBB.method897,classSU.method10737	classQR.method9824	1	0	0	1599
+6519	Clienttype	CLIENTTYPE	adapter		classBB.method896,classBB.method897,classSU.method10737	classQR.method9824	1	0	0	2706
 6520			handler-only		classBB.method896,classBB.method897,classSU.method10737					
 6521	MobileKeyboardhide	MOBILE_KEYBOARDHIDE	adapter		classBB.method896,classBB.method897,classSU.method10737					
 6522			handler-only	1	classBB.method896,classBB.method897,classSU.method10737					
@@ -1029,13 +1029,13 @@ opcode	rust_name	runelite_name	status	live_uses	handlers	traced_handler	int_delt
 7466			unknown	2						
 7470			unknown	2						
 7471			unknown	1						
-7500	DbFindWithCount	DB_FIND_WITH_COUNT	adapter		Friend.method10202,classBB.method917,classBB.method918					
-7501	DbFindnext	DB_FINDNEXT	adapter		Friend.method10202,classBB.method917					
-7502	DbGetfield	DB_GETFIELD	adapter		Friend.method10202,classBB.method917					
-7503	DbGetfieldcount	DB_GETFIELDCOUNT	adapter		Friend.method10202,classBB.method917,classBB.method918					
-7504	DbFindallWithCount	DB_FINDALL_WITH_COUNT	adapter		Friend.method10202,classBB.method917					
-7505	DbGetrowtable	DB_GETROWTABLE	adapter		Friend.method10202,classBB.method917					
-7506	DbGetrow	DB_GETROW	adapter		Friend.method10202,classBB.method917,classBB.method918					
+7500	DbFindWithCount	DB_FIND_WITH_COUNT	adapter		Friend.method10202,classBB.method917,classBB.method918	Friend.method10202	-2	0	0	430
+7501	DbFindnext	DB_FINDNEXT	adapter		Friend.method10202,classBB.method917	Friend.method10202	1	0	0	429
+7502	DbGetfield	DB_GETFIELD	adapter		Friend.method10202,classBB.method917	Friend.method10202	-2	0	0	6766
+7503	DbGetfieldcount	DB_GETFIELDCOUNT	adapter		Friend.method10202,classBB.method917,classBB.method918	Friend.method10202	-1	0	0	1577
+7504	DbFindallWithCount	DB_FINDALL_WITH_COUNT	adapter		Friend.method10202,classBB.method917	Friend.method10202	0	0	0	1
+7505	DbGetrowtable	DB_GETROWTABLE	adapter		Friend.method10202,classBB.method917	Friend.method10202	0	0	0	1658
+7506	DbGetrow	DB_GETROW	adapter		Friend.method10202,classBB.method917,classBB.method918	Friend.method10202	0	0	0	1706
 7507	DbFindFilterWithCount	DB_FIND_FILTER_WITH_COUNT	adapter		Friend.method10202,classBB.method917,classBB.method918					
 7508	DbFind	DB_FIND	adapter							
 7509	DbFindall	DB_FINDALL	adapter							
@@ -1089,14 +1089,14 @@ opcode	rust_name	runelite_name	status	live_uses	handlers	traced_handler	int_delt
 7824			unknown	2						
 7900			handler-only		classBB.method920,classBB.method921,classBB.method922,classKR.method6597					
 7901			handler-only		classBB.method920,classBB.method921,classBB.method922,classKR.method6597					
-8000	ArraySort		adapter		classBB.method923,classBB.method924,classFW.method5091					
+8000	ArraySort		adapter		classBB.method923,classBB.method924,classFW.method5091	classFW.method5091	0	-2	0	2
 8001			handler-only	1	classBB.method923,classBB.method924,classFW.method5091					
 8002			handler-only	1	classBB.method923,classBB.method924,classFW.method5091					
 8003	ArrayLength		adapter		classBB.method924,classFW.method5091					
 8004			handler-only		classBB.method924,classFW.method5091					
 8005	ArrayIndexOf		adapter		classBB.method923,classBB.method924,classFW.method5091					
 8006	ArrayLastIndexOf		adapter		classBB.method924,classFW.method5091					
-8007	ArrayCount		adapter		classBB.method923,classBB.method924,classFW.method5091					
+8007	ArrayCount		adapter		classBB.method923,classBB.method924,classFW.method5091	classFW.method5091	-3	-1	0	2559
 8008			handler-only		classBB.method923,classBB.method924,classFW.method5091					
 8009			handler-only	3	classBB.method923,classBB.method924,classFW.method5091					
 8010			handler-only	7	classBB.method924,classFW.method5091					
