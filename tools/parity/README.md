@@ -82,6 +82,24 @@ others) are all written inline by one method, `client.ih`, so a caller frame doe
 are `client.aez` (mouse click), `bd.au` (window status), `client.il`, `client.ng` (map build), `ea.fo`, `tb.gp`.
 This does not validate update-mask order; it shows the client consumed exactly the payload.
 
+#### Replaying a session through the Rust decoders
+
+`--packet-stream OUT.log` (with `--trace-packets`) appends every inbound payload in arrival order, whole, as
+`sequence opcode length hex`. The log is live session data (other players' names): keep it under `.cache`, never commit it.
+The opt-in test `crates/protocol/src/openrune_240/replay_tests.rs` feeds it through the player-info (91), NPC-info
+(150/141), NPC-origin (111) and rebuild (39) decoders, which reject trailing bytes:
+
+```sh
+RUSTCLIENT_PACKET_REPLAY=OUT.log RUSTCLIENT_PACKET_LOCAL=<local player index> \
+  cargo test -p rustclient-protocol replay -- --ignored --nocapture
+```
+
+First run, 2026-10-25, Lumbridge, about ten minutes of walking: 195 player-info, 195 NPC-info and 195 NPC-origin
+packets, 0 failures. Coverage is thin for players (193 of 195 packets are 3 bytes: nothing changed; one 87-byte packet
+is the local appearance) and moderate for NPCs (10 packets of 40+ bytes, 2 of 100+). It did not exercise public chat
+(needs the cache Huffman table), emotes, combat or hits, the large NPC variant (141), or map rebuilds after login.
+It shows the decoders consume exactly what the pinned client sent; it does not prove every mask's meaning.
+
 ### Automation driver and UI recorder
 
 The bridge also offers an input driver and unattended recorders (`reference_input`, `reference_record_menu`,

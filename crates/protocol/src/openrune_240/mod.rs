@@ -48,5 +48,8 @@ pub fn login_checksums(tables: impl IntoIterator<Item = (u8, u32)>) -> Result<[u
 
 mod chat;
 
+#[cfg(test)]
+mod replay_tests;
+
 mod minimap;
 pub use minimap::MinimapClick;

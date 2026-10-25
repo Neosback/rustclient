@@ -72,8 +72,8 @@ PACKET_ARGUMENT = (
 )
 
 
-def packet_argument(out):
-    return f"out={out.resolve()}|{PACKET_ARGUMENT}"
+def packet_argument(out, stream=None):
+    return f"out={out.resolve()}|{PACKET_ARGUMENT}" + (f"|stream={stream.resolve()}" if stream else "")
 
 
 def run(args, cwd, env, log):
@@ -198,6 +198,8 @@ def main():
                         help="also attach the read-only script-interpreter probe and aggregate to OUT.tsv")
     parser.add_argument("--trace-packets", type=Path, metavar="OUT.tsv",
                         help="also attach the read-only packet probe and aggregate to OUT.tsv")
+    parser.add_argument("--packet-stream", type=Path, metavar="OUT.log",
+                        help="with --trace-packets, also append every inbound payload in order for decoder replay")
     args = parser.parse_args()
     if not args.prepare_only and (not args.jav_config or not args.public_key):
         parser.error("Running requires --jav-config and --public-key")
@@ -232,7 +234,7 @@ def main():
                    "-javaagent:" + str(agent) + "=" + str(args.public_key.resolve()),
                    *(["-javaagent:" + str(output / "trace240-agent.jar") + "=" + trace_argument(args.trace_opcodes)]
                      if args.trace_opcodes else []),
-                   *(["-javaagent:" + str(output / "packet240-agent.jar") + "=" + packet_argument(args.trace_packets)]
+                   *(["-javaagent:" + str(output / "packet240-agent.jar") + "=" + packet_argument(args.trace_packets, args.packet_stream)]
                      if args.trace_packets else []),
                    "-cp", str(bridge) + os.pathsep + classpath.read_text(), "net.runelite.client.RuneLite",
                    "--safe-mode", "--developer-mode", "--noupdate", "--jav_config",

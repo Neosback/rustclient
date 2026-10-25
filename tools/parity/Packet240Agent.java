@@ -34,6 +34,8 @@ import org.objectweb.asm.tree.VarInsnNode;
  * <li>{@code recv=OWNER.FIELD:MIN} connection field holding the current server prot; in every method with at least
  * MIN stores of {@code null} to it (the packet loop), the probe runs just before each such store, i.e. after the
  * handler consumed the payload and while the prot, payload length and buffer cursor are still intact.</li>
+ * <li>{@code stream=FILE} optional: append every inbound packet in arrival order as {@code seq opcode length hex}
+ * (the whole payload), flushed once a second, so a session can be replayed through another decoder.</li>
  * <li>{@code field.*} reflective field names and {@code mul.*} decoders (real value = stored value * multiplier),
  * so the probe never needs to touch private state through generated field accesses.</li>
  * </ul>
@@ -48,6 +50,8 @@ public final class Packet240Agent {
     private static Map<String, String> options;
     private static Path out;
     private static boolean dirty;
+    private static final StringBuilder pending = new StringBuilder();
+    private static long sequence;
 
     private static final class Entry {
         long count;
@@ -76,6 +80,21 @@ public final class Packet240Agent {
         }, "packet240-flush");
         flusher.setDaemon(true);
         flusher.start();
+        if (options.get("stream") != null) {
+            Thread streamer = new Thread(() -> {
+                while (true) {
+                    try {
+                        Thread.sleep(1_000);
+                    } catch (InterruptedException stop) {
+                        return;
+                    }
+                    flushStream();
+                }
+            }, "packet240-stream");
+            streamer.setDaemon(true);
+            streamer.start();
+            Runtime.getRuntime().addShutdownHook(new Thread(Packet240Agent::flushStream));
+        }
         String send = options.get("send");
         String recv = options.get("recv");
                 instrumentation.addTransformer(new ClassFileTransformer() {
@@ -239,6 +258,9 @@ public final class Packet240Agent {
             byte[] array = (byte[]) read(buffer, "field.buffer.array");
             int end = Math.min(length, array.length);
             record("in", opcode, declared, length, "consumed=" + consumed + ":" + hex(array, 0, end), null, consumed);
+            if (options.get("stream") != null) {
+                stream(opcode, array, end);
+            }
         } catch (ReflectiveOperationException | RuntimeException failure) {
             failure("recv", failure);
         }
@@ -250,6 +272,28 @@ public final class Packet240Agent {
                 .filter(name -> !name.startsWith("Packet240Agent.") && !name.equals(options.get("send")
                         .substring(0, options.get("send").indexOf(':'))))
                 .skip(0).findFirst().orElse(null));
+    }
+
+    private static synchronized void stream(int opcode, byte[] array, int end) {
+        StringBuilder text = new StringBuilder();
+        for (int i = 0; i < end; i++) {
+            text.append(String.format("%02x", array[i] & 255));
+        }
+        pending.append(sequence++).append(' ').append(opcode).append(' ').append(end).append(' ').append(text)
+                .append('\n');
+    }
+
+    private static synchronized void flushStream() {
+        if (pending.length() == 0) {
+            return;
+        }
+        try {
+            Files.writeString(Path.of(options.get("stream")), pending, StandardCharsets.UTF_8,
+                    java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND);
+            pending.setLength(0);
+        } catch (IOException ignored) {
+            // Keep the lines and retry on the next flush.
+        }
     }
 
     private static synchronized void failure(String where, Exception failure) {
