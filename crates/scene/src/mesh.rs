@@ -39,6 +39,19 @@ pub struct SceneGeometry {
     pub models: Vec<std::ops::Range<usize>>,
     /// Ordered vertex spans emitted for the same posed models submitted to the GPU.
     pub picks: Vec<PickRange>,
+    /// Disposable overhead anchors extracted from the posed actor geometry.
+    pub actor_labels: Vec<ActorLabelAnchor>,
+}
+#[derive(Debug, Clone, Copy)]
+pub enum ActorLabelId {
+    Player(rustclient_model::PlayerIndex, rustclient_model::PlayerInstanceId),
+    Npc(rustclient_model::NpcIndex, rustclient_model::NpcInstanceId),
+}
+#[derive(Debug, Clone, Copy)]
+pub struct ActorLabelAnchor {
+    pub actor: ActorLabelId,
+    pub position: [i32; 3],
+    pub level: u8,
 }
 #[derive(Debug, Clone)]
 pub struct PickRange {
@@ -60,6 +73,7 @@ impl SceneGeometry {
         self.opaque.clear();
         self.transparent.clear();
         self.picks.clear();
+        self.actor_labels.clear();
         self.models.clear();
     }
     pub(crate) fn model_triangle(

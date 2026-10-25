@@ -112,6 +112,7 @@ fn npc_path_policy_catch_up_and_current_orientation_participate_in_canonical_sta
         state.entities.npcs.insert(
             NpcIndex::new(1),
             crate::NpcEntity {
+                overhead: None,
                 index: NpcIndex::new(1),
                 instance: NpcInstanceId::new(1),
                 definition_id: NpcDefinitionId::new(1),
@@ -193,6 +194,7 @@ fn active_sequence_timing_resolution_participates_in_canonical_state() {
         state.entities.npcs.insert(
             NpcIndex::new(1),
             crate::NpcEntity {
+                overhead: None,
                 index: NpcIndex::new(1),
                 instance: NpcInstanceId::new(1),
                 definition_id: NpcDefinitionId::new(1),

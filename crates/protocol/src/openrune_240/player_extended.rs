@@ -30,12 +30,13 @@ pub(super) struct Extended {
     pub temporary_speed: Option<MoveSpeed>,
     pub persistent_speed: Option<MoveSpeed>,
     pub exact_move: Option<ExactMove>,
+    pub speech: Vec<rustclient_model::SpeechUpdate>,
 }
 #[expect(
     clippy::too_many_lines,
     reason = "verified writer order stays beside every mask's field reads"
 )]
-pub(super) fn decode_extended(r: &mut Reader<'_>) -> Result<Extended> {
+pub(super) fn decode_extended(r: &mut Reader<'_>, chat: Option<&super::huffman::Huffman>) -> Result<Extended> {
     let mut out = Extended::default();
     let mask = read_mask(r)?;
     if mask & !KNOWN != 0 {
@@ -55,15 +56,7 @@ pub(super) fn decode_extended(r: &mut Reader<'_>) -> Result<Extended> {
         }
     }
     if mask & 0x1000 != 0 {
-        let style = r.u16()?;
-        r.u8_add()?;
-        r.u8_neg()?;
-        let length = r.u8_add()?;
-        r.take(usize::from(length))?;
-        let colour = style >> 8;
-        if (13..=20).contains(&colour) {
-            r.take(usize::from(colour - 12))?;
-        }
+        out.speech.push(super::speech::public(r, chat)?);
     }
     if mask & 0x20000 != 0 {
         let count = r.u8_sub()?;
@@ -141,7 +134,7 @@ pub(super) fn decode_extended(r: &mut Reader<'_>) -> Result<Extended> {
         r.u8_neg()?;
     }
     if mask & 1 != 0 {
-        while r.u8()? != 0 {}
+        out.speech.push(rustclient_model::SpeechUpdate::Say(super::speech::say(r)?));
     }
     Ok(out)
 }
@@ -180,7 +173,7 @@ mod tests {
             b'i', 0,
         ];
         let mut reader = Reader::new(&bytes, "player family fixture");
-        let value = decode_extended(&mut reader).unwrap();
+        let value = decode_extended(&mut reader, None).unwrap();
         assert_eq!(reader.offset, bytes.len());
         assert_eq!(
             value.sequence,
@@ -203,7 +196,7 @@ mod tests {
         let mut extended = Reader::new(&[0x80, 0x20, 0x10], "mask");
         assert_eq!(read_mask(&mut extended).unwrap(), 0x10_2080);
         for end in 0..bytes.len() {
-            assert!(decode_extended(&mut Reader::new(&bytes[..end], "truncation")).is_err());
+            assert!(decode_extended(&mut Reader::new(&bytes[..end], "truncation")).is_err(), None);
         }
     }
 
@@ -216,7 +209,7 @@ mod tests {
             3, 5, 4, 3, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             0, 255, 255, 0,
         ];
-        let appearance = decode_extended(&mut Reader::new(&bytes, "appearance vector"))
+        let appearance = decode_extended(&mut Reader::new(&bytes, "appearance vector"), None)
             .unwrap()
             .appearance
             .unwrap();
@@ -232,10 +225,10 @@ mod tests {
         );
         // Persistent run, temporary crawl; temporary reset-to-position sentinel 127.
         let speed =
-            decode_extended(&mut Reader::new(&[0x80, 0x48, 126, 0], "speed vector")).unwrap();
+            decode_extended(&mut Reader::new(&[0x80, 0x48, 126, 0], "speed vector"), None).unwrap();
         assert_eq!(speed.persistent_speed, Some(MoveSpeed::Run));
         assert_eq!(speed.temporary_speed, Some(MoveSpeed::Crawl));
-        let reset = decode_extended(&mut Reader::new(&[0x80, 8, 129], "reset vector")).unwrap();
+        let reset = decode_extended(&mut Reader::new(&[0x80, 8, 129], "reset vector"), None).unwrap();
         assert_eq!(reset.temporary_speed, Some(MoveSpeed::Stationary));
     }
 }

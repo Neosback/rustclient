@@ -483,6 +483,7 @@ fn build_player(
         pose_model(asset, catalog, &mut model, base, base_cycle, false)?;
     }
 
+    let first_vertex = geometry.vertices.len();
     emit_model(
         asset,
         &model,
@@ -500,7 +501,9 @@ fn build_player(
         },
         Light::entity(64, 850),
         geometry,
-    )
+    )?;
+    label_anchor(geometry, first_vertex, crate::ActorLabelId::Player(player.index, player.instance));
+    Ok(())
 }
 
 fn build_npc(
@@ -603,6 +606,7 @@ fn build_npc(
         ),
         geometry,
     )?;
+    label_anchor(geometry, first_vertex, crate::ActorLabelId::Npc(npc.index, npc.instance));
     if geometry.vertices.len() > first_vertex {
         geometry.picks.push(crate::PickRange {
             vertices: first_vertex..geometry.vertices.len(),
@@ -615,6 +619,20 @@ fn build_npc(
         });
     }
     Ok(())
+}
+
+/// Use posed bounds from the same CPU vertices submitted for drawing, with no GPU readback.
+fn label_anchor(geometry: &mut SceneGeometry, first: usize, actor: crate::ActorLabelId) {
+    let points = &geometry.vertices[first..];
+    let Some(vertex) = points.first() else { return; };
+    let mut min = vertex.position.map(i32::from);
+    let mut max = min;
+    for vertex in points {
+        for i in 0..3 { min[i] = min[i].min(i32::from(vertex.position[i])); max[i] = max[i].max(i32::from(vertex.position[i])); }
+    }
+    geometry.actor_labels.push(crate::ActorLabelAnchor {
+        actor, position: [(min[0] + max[0]) / 2, min[1], (min[2] + max[2]) / 2], level: vertex.render_level(),
+    });
 }
 
 /// The client's default actor footprint, `(int)(0.4F * (size * 128))`.

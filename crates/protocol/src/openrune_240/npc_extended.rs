@@ -73,7 +73,7 @@ pub(super) fn decode_attributes(r: &mut Reader<'_>, index: NpcIndex) -> Result<N
         ))));
     }
     if mask & 0x10 != 0 {
-        read_text(r)?;
+        changes.push(NpcProperty::Overhead(super::speech::say(r)?));
     }
     if mask & 1 != 0 {
         r.take(5)?;

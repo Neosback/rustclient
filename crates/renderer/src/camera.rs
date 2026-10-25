@@ -265,6 +265,20 @@ impl GameplayCameraController {
             Mat4::from_translation(-Vec3::from_array(pose.position.map(|v| v as f32)));
         scale * projection * Mat4::from_rotation_x(pitch) * Mat4::from_rotation_y(yaw) * translation
     }
+    /// Project a scene-local point through the world render matrix into logical viewport pixels.
+    /// Returns absence for points behind the near plane or outside the shaped viewport.
+    #[must_use]
+    #[expect(clippy::cast_precision_loss, reason = "bounded scene and logical viewport coordinates")]
+    pub fn project_point(self, viewport: CameraViewport, point: [i32; 3]) -> Option<[f32; 2]> {
+        let clip = self.matrix(viewport) * Vec3::from_array(point.map(|v| v as f32)).extend(1.);
+        if !clip.is_finite() || clip.w < 50. { return None; }
+        let ndc = clip.truncate() / clip.w;
+        if ndc.x.abs() > 1. || ndc.y.abs() > 1. { return None; }
+        Some([
+            viewport.inset[0] as f32 + (ndc.x + 1.) * viewport.width as f32 / 2.,
+            viewport.inset[1] as f32 + (1. - ndc.y) * viewport.height as f32 / 2.,
+        ])
+    }
     /// Scene-local fine-unit ray through a logical pointer, using the exact
     /// world rendering matrix. No GPU readback or semantic mutation is involved.
     #[must_use]

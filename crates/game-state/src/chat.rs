@@ -46,12 +46,7 @@ impl ChatState {
             .rev()
             .filter(move |e| e.message.channel == channel)
     }
-    pub(crate) fn push(
-        &mut self,
-        message: GameMessage,
-        cycle: ClientCycle,
-    ) -> Result<u32, ChatError> {
-        let next = self.next_id.checked_add(1).ok_or(ChatError)?;
+    pub(crate) fn validate_message(&self, message: &GameMessage) -> Result<(), ChatError> {
         if message.sender.len() > 320
             || message.text.len() > 4096
             || message.sender.contains('\0')
@@ -59,6 +54,15 @@ impl ChatState {
         {
             return Err(ChatError);
         }
+        Ok(())
+    }
+    pub(crate) fn push(
+        &mut self,
+        message: GameMessage,
+        cycle: ClientCycle,
+    ) -> Result<u32, ChatError> {
+        let next = self.next_id.checked_add(1).ok_or(ChatError)?;
+        self.validate_message(&message)?;
         if self.channel(message.channel).count() >= 100
             && let Some(index) = self
                 .entries

@@ -194,6 +194,10 @@ fn open_session(
     })?;
     drop(entropy);
     let (mut decoder, authenticated) = ConnectionDecoder::new(options.profile, login);
+    let sizes = cache.huffman_sizes().map_err(|e| failure(LoginFailure::CacheMismatch, format!("chat Huffman table: {e}")))?
+        .ok_or_else(|| failure(LoginFailure::CacheMismatch, "cache has no chat Huffman table".into()))?;
+    decoder.set_chat_codec(rustclient_protocol::Huffman::from_sizes(&sizes)
+        .map_err(|e| failure(LoginFailure::CacheMismatch, e.to_string()))?);
     emit(NetworkEvent::Operation(0, 0, authenticated));
     pollster::block_on(
         stream.send(

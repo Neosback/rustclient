@@ -40,6 +40,7 @@ pub enum Locomotion {
 /// Authoritative live player entity.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PlayerEntity {
+    pub overhead: Option<crate::ActorOverhead>,
     pub index: PlayerIndex,
     pub instance: rustclient_model::PlayerInstanceId,
     pub tracking_grid: Option<rustclient_model::PlayerTrackingGrid>,
@@ -66,6 +67,7 @@ pub struct PlayerEntity {
 /// Authoritative live NPC entity.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NpcEntity {
+    pub overhead: Option<crate::ActorOverhead>,
     pub index: NpcIndex,
     pub instance: rustclient_model::NpcInstanceId,
     pub definition_id: NpcDefinitionId,
@@ -255,6 +257,7 @@ impl WorldEntitiesState {
 
             let timings = &self.sequence_timings;
             for player in self.players.values_mut() {
+                crate::ActorOverhead::advance(&mut player.overhead, 1);
                 player.animation_cycle = player.animation_cycle.wrapping_add(1);
                 let timing = player
                     .sequence
@@ -267,6 +270,7 @@ impl WorldEntitiesState {
                 }
             }
             for npc in self.npcs.values_mut() {
+                crate::ActorOverhead::advance(&mut npc.overhead, 1);
                 npc.animation_cycle = npc.animation_cycle.wrapping_add(1);
                 let timing = npc
                     .sequence
@@ -323,6 +327,7 @@ impl WorldEntitiesState {
             .players
             .entry(local_idx)
             .or_insert_with(|| PlayerEntity {
+                overhead: None,
                 index: local_idx,
                 instance: rustclient_model::PlayerInstanceId::new(0),
                 tracking_grid: None,

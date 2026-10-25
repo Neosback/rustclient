@@ -268,6 +268,8 @@ pub enum SequenceChange {
 /// Consolidated player info update for one tick.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct PlayerInfoUpdate {
+    /// Speech blocks in source order; actors/appearances are installed before applying them.
+    pub speech: Vec<crate::PlayerSpeech>,
     pub local_movement: Option<PlayerMovement>,
     /// Effective traversal speed for this tick, or the persistent speed when it changed.
     pub local_movement_speed: Option<MoveSpeed>,
@@ -419,6 +421,7 @@ pub struct NpcAttributeUpdate {
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NpcProperty {
+    Overhead(String),
     ExactMove(ExactMove),
     Definition(crate::NpcDefinitionId),
     Sequence {

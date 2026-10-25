@@ -27,6 +27,8 @@ mod movement;
 pub use movement::PathAccelerationPolicy;
 pub mod orientation;
 pub mod revision;
+mod speech;
+pub use speech::{ChatAccount, OverheadText, PlayerSpeech, SpeechUpdate};
 mod sequence;
 mod sequence_timing;
 pub mod time;

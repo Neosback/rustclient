@@ -107,6 +107,9 @@ impl StateDelta {
                 | if title_changed { 4 } else { 0 },
         }
     }
+    pub(crate) const fn with_chat(self, changed: bool) -> Self {
+        Self { changed: self.changed | if changed { 2048 } else { 0 } }
+    }
     pub(crate) const CHAT: Self = Self { changed: 2048 };
     #[must_use]
     pub const fn chat_changed(self) -> bool {

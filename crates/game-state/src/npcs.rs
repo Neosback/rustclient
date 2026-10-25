@@ -172,6 +172,7 @@ impl WorldEntitiesState {
             }
             for change in &attributes.changes {
                 match change {
+                    NpcProperty::Overhead(text) => { npc.overhead = Some(crate::ActorOverhead::say(text, 100)); changed = true; }
                     NpcProperty::ExactMove(request) => {
                         let tile = if let Some(new) =
                             update.new_npcs.iter().find(|n| n.index == attributes.index)
@@ -190,6 +191,9 @@ impl WorldEntitiesState {
                                 .map_or(Ok(npc.tile), |m| path(npc, m).map(NpcPath::endpoint))?
                         };
                         crate::player_movement::exact_movement(tile, cycle, *request)?;
+                    }
+                    NpcProperty::Overhead(text) if text.len() > 4096 || text.contains('\0') => {
+                        return Err(EntityUpdateError::InvalidNpcBatch);
                     }
                     NpcProperty::Name(Some(name)) if name.len() > 1024 => {
                         return Err(EntityUpdateError::InvalidNpcBatch);
@@ -226,9 +230,11 @@ impl WorldEntitiesState {
             self.npc_serial += 1;
             let mut path_queue = crate::ActorPathQueue::default();
             path_queue.set_acceleration_policy(acceleration_policy(update, npc.definition_id));
+            path_queue.ensure_position(WorldTile::new(origin.x + npc.delta_x, origin.y + npc.delta_y, origin.plane));
             self.npcs.insert(
                 npc.index,
                 NpcEntity {
+                overhead: None,
                     index: npc.index,
                     instance: rustclient_model::NpcInstanceId::new(self.npc_serial),
                     definition_id: npc.definition_id,
@@ -267,6 +273,7 @@ impl WorldEntitiesState {
             npc.locomotion = locomotion;
             if let Some(movement) = movement {
                 let path = path(npc, movement).expect("validated NPC path");
+                npc.path_queue.ensure_position(npc.tile);
                 npc.path_queue.enqueue(path.first, movement.speed);
                 if let Some(second) = path.second {
                     npc.path_queue.enqueue(second, movement.speed);
@@ -285,6 +292,7 @@ impl WorldEntitiesState {
             };
             for change in &attributes.changes {
                 match change {
+                    NpcProperty::Overhead(text) => { npc.overhead = Some(crate::ActorOverhead::say(text, 100)); changed = true; }
                     NpcProperty::ExactMove(request) => {
                         let exact =
                             crate::player_movement::exact_movement(npc.tile, cycle, *request)

@@ -85,7 +85,7 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
     /// # Errors
     /// Returns state/cache errors; script failures are explicit diagnostics in the result.
     pub fn commit(&mut self, state: &mut GameState, op: SemanticOperation) -> Result<Vec<String>> {
-        let notification = match &op {
+        let mut notification = match &op {
             SemanticOperation::Interface(
                 InterfaceUpdate::Open(_)
                 | InterfaceUpdate::Close(_)
@@ -141,6 +141,9 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
             }
         }
 
+        if commit.delta().chat_changed() && notification.is_none() {
+            notification = Some((WidgetListener::Chat, None));
+        }
         if !commit.delta().is_empty()
             && let Some((kind, id)) = notification
         {

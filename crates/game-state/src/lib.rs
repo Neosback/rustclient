@@ -5,6 +5,8 @@
 
 #![forbid(unsafe_code)]
 
+mod speech;
+pub use speech::ActorOverhead;
 mod actor_movement;
 mod actor_path;
 pub use actor_path::{ACTOR_PATH_CAPACITY, ActorFinePosition, ActorPathEntry, ActorPathQueue};

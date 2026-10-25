@@ -8,7 +8,11 @@ pub struct Huffman {
     sizes: [u8; 256],
     /// Code for each byte, left-aligned in 32 bits.
     masks: [u32; 256],
+    tree: Vec<DecodeNode>,
 }
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+struct DecodeNode { children: [Option<usize>; 2], symbol: Option<u8> }
 
 impl Huffman {
     /// Assign codes from per-byte code lengths exactly as the reference constructor does.
@@ -55,7 +59,59 @@ impl Huffman {
                 }
             }
         }
-        Ok(Self { sizes, masks })
+        let mut tree = vec![DecodeNode::default()];
+        for (symbol, &size) in sizes.iter().enumerate().filter(|(_, size)| **size != 0) {
+            let mut node = 0;
+            for shift in (32 - size..32).rev() {
+                if tree[node].symbol.is_some() {
+                    return Err(ProtocolError::new("huffman", "overlapping prefix codes"));
+                }
+                let branch = usize::from((masks[symbol] >> shift & 1) != 0);
+                node = if let Some(next) = tree[node].children[branch] { next } else {
+                    let next = tree.len();
+                    tree.push(DecodeNode::default());
+                    tree[node].children[branch] = Some(next);
+                    next
+                };
+            }
+            if tree[node].symbol.is_some() || tree[node].children.iter().any(Option::is_some) {
+                return Err(ProtocolError::new("huffman", "overlapping codes"));
+            }
+            tree[node].symbol = u8::try_from(symbol).ok();
+        }
+        Ok(Self { sizes, masks, tree })
+    }
+    /// Decode a smart-length, bounded CP1252 message.
+    /// # Errors
+    /// Rejects truncated codes and decoded lengths above 32767 bytes.
+    pub fn decode_message(&self, bytes: &[u8]) -> Result<String> {
+        let fail = |detail| ProtocolError::new("chat decode", detail);
+        let (&first, rest) = bytes.split_first().ok_or_else(|| fail("empty message"))?;
+        let (length, data) = if first < 128 {
+            (usize::from(first), rest)
+        } else {
+            let (&second, data) = rest.split_first().ok_or_else(|| fail("truncated length"))?;
+            (usize::from(u16::from_be_bytes([first, second]) - 0x8000), data)
+        };
+        if length > 32767 {
+            return Err(fail("message length limit"));
+        }
+        let mut out = String::with_capacity(length);
+        let mut bit = 0_usize;
+        for _ in 0..length {
+            let mut node = 0;
+            let byte = loop {
+                let value = data.get(bit / 8).ok_or_else(|| fail("truncated code bits"))?;
+                let branch = usize::from(value & (0x80 >> (bit % 8)) != 0);
+                node = self.tree[node].children[branch].ok_or_else(|| fail("unassigned code"))?;
+                bit += 1;
+                if let Some(symbol) = self.tree[node].symbol { break symbol; }
+            };
+            out.push(crate::wire::decode_cp1252(
+                byte,
+            ));
+        }
+        Ok(out)
     }
     /// Frame a chat string: its byte length as a one- or two-byte smart, then the coded bits.
     /// # Errors
@@ -63,7 +119,7 @@ impl Huffman {
     pub fn encode_message(&self, text: &str) -> Result<Vec<u8>> {
         let bytes: Vec<u8> = text
             .chars()
-            .map(|ch| u8::try_from(u32::from(ch)).unwrap_or(b'?'))
+            .map(|ch| crate::wire::cp1252(ch).unwrap_or(b'?'))
             .collect();
         if bytes.is_empty() || bytes.len() > 255 {
             return Err(ProtocolError::new(

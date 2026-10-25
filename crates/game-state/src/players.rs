@@ -179,6 +179,7 @@ impl WorldEntitiesState {
                         self.players.insert(
                             index,
                             PlayerEntity {
+                overhead: None,
                                 index,
                                 instance: PlayerInstanceId::new(self.player_serial),
                                 tracking_grid: Some(player.grid),

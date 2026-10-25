@@ -78,3 +78,28 @@ minimap coordinate/rotation/mask tests, captured world-menu destinations, and ex
 Full instance/multi-world routing, transformed-player footprint sizes, special actor route expansion,
 all minimap toggle modes, complete tab/interface content and desktop pixel parity remain open until
 separately verified. A passing headless test does not establish perfect visual parity.
+
+## Actor chat and projection continuation, 2026-10-25
+
+Player public/forced speech is committed with the corresponding player update. GameState owns
+actor text, presentation metadata and cycle lifetime independently of bounded chat history.
+Public messages add one history entry on receipt, never on outbound submission. Simple player
+speech strips a leading `~`; it enters history for the local player or when prefixed. Player
+speech expires after 150 client cycles; NPC speech after 100. Actor removal/index reuse and
+session teardown clear speech. New observable speech participates in fingerprint schema 25.
+
+The profile decoder receives the selected cache Huffman codec explicitly. Transformed bytes,
+account-type tables and CP1252 conversion stay in protocol adapters; missing codec or malformed
+chat produces a contextual error rather than silently dropping a public message. Cache-script
+chat listeners run after history commits, including messages carried by player updates.
+
+Overhead presentation uses posed actor bounds, the world camera/viewport, cache bold font,
+clipping, overlap resolution and received style metadata. Rendering does not own speech timers.
+NPC spawn cursors are initialized before movement endpoints change. Projection observes the
+same committed client cycle as minimap/camera consumers. Context menus do not consume camera
+arrow press/release state; mouse selection, Enter and Escape retain their menu roles.
+
+Acceptance: bounded chat vectors; history/speech lifecycle and replay contracts; NPC packet
+bursts and ordered turns; camera held-key/menu cases; baseline Cargo gates. Visual acceptance
+is recorded separately for fixed/classic/modern layouts, feet contact and NPC routes.
+Broader actor effects, social lists and complete renderer parity are outside this continuation.

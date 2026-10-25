@@ -393,11 +393,12 @@ impl GameState {
         self.entities
             .validate_player_info(update, self.scenery.cycle())
             .map_err(OperationError::EntityUpdate)?;
+        let speech = self.prepare_speech(update).map_err(OperationError::Chat)?;
+        let has_speech = !speech.is_empty();
         let previous_plane = self.entities.local_player().map(|p| p.tile.plane);
-        if !self
-            .entities
-            .apply_player_info(update, self.scenery.cycle())
-        {
+        let changed = self.entities.apply_player_info(update, self.scenery.cycle());
+        let chat_changed = self.commit_speech(speech);
+        if !changed && !has_speech {
             return Ok(OperationCommit::new(None, StateDelta::default()));
         }
         if let Some(player) = self.entities.local_player()
@@ -406,12 +407,12 @@ impl GameState {
             self.change_map_plane(player.tile);
             return Ok(OperationCommit::new(
                 Some(SemanticEvent::EntitiesUpdated),
-                StateDelta::PLAYER_PLANE,
+                StateDelta::PLAYER_PLANE.with_chat(chat_changed),
             ));
         }
         Ok(OperationCommit::new(
             Some(SemanticEvent::EntitiesUpdated),
-            StateDelta::ENTITIES,
+            StateDelta::ENTITIES.with_chat(chat_changed),
         ))
     }
 

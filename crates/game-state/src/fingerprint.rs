@@ -11,7 +11,7 @@ use crate::{GameState, OperationCommit, SemanticEvent, SessionLifecycle};
 ///
 /// Any change to field ordering, tags, integer encoding, or fingerprint
 /// algorithm that changes canonical output must increment this version.
-pub const SEMANTIC_FINGERPRINT_VERSION: u16 = 24;
+pub const SEMANTIC_FINGERPRINT_VERSION: u16 = 25;
 
 const FNV_OFFSET_BASIS: u64 = 0xCBF2_9CE4_8422_2325;
 const FNV_PRIME: u64 = 0x0000_0100_0000_01B3;
@@ -272,6 +272,7 @@ impl GameState {
             fingerprint.write_u8(player.tile.plane.get());
             fingerprint.write_u16(player.orientation);
             fingerprint.write_u16(player.current_orientation);
+            write_overhead(&mut fingerprint, player.overhead.as_ref());
             write_speed(&mut fingerprint, player.path_speed);
             write_speed(&mut fingerprint, player.movement_speed);
             write_actor_path(&mut fingerprint, player.path_queue, player.tile);
@@ -336,6 +337,7 @@ impl GameState {
             fingerprint.write_u8(npc.tile.plane.get());
             fingerprint.write_u16(npc.orientation);
             fingerprint.write_u16(npc.current_orientation);
+            write_overhead(&mut fingerprint, npc.overhead.as_ref());
             match npc.path {
                 None => fingerprint.write_u8(0),
                 Some(path) => {
@@ -915,4 +917,17 @@ fn write_destination(
             f.write_bytes(&value.y.to_le_bytes());
         }
     }
+}
+
+fn write_overhead(f: &mut StableFingerprint64, value: Option<&crate::ActorOverhead>) {
+    if let Some(value) = value {
+        f.write_u8(1);
+        f.write_u32(u32::try_from(value.text.text.len()).expect("bounded speech"));
+        f.write_bytes(value.text.text.as_bytes());
+        f.write_u8(value.text.colour); f.write_u8(value.text.effect);
+        f.write_u8(u8::try_from(value.text.pattern.len()).expect("bounded pattern"));
+        f.write_bytes(&value.text.pattern);
+        f.write_u32(value.remaining);
+        f.write_u8(u8::from(value.autotyper)); f.write_u8(u8::from(value.filtered));
+    } else { f.write_u8(0); }
 }

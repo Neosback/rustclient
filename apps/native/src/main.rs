@@ -1369,11 +1369,17 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                     });
                     return;
                 }
+                let held = event.state == ElementState::Pressed;
+                match &event.logical_key {
+                    Key::Named(NamedKey::ArrowLeft) => self.scene.input.left = held,
+                    Key::Named(NamedKey::ArrowRight) => self.scene.input.right = held,
+                    Key::Named(NamedKey::ArrowUp) => self.scene.input.up = held,
+                    Key::Named(NamedKey::ArrowDown) => self.scene.input.down = held,
+                    _ => {}
+                }
                 if self.widget_menu.is_open() {
                     if event.state == ElementState::Pressed {
                         match &event.logical_key {
-                            Key::Named(NamedKey::ArrowUp) => self.widget_menu.navigate(-1),
-                            Key::Named(NamedKey::ArrowDown) => self.widget_menu.navigate(1),
                             Key::Named(NamedKey::Escape) => self.widget_menu.close(),
                             Key::Named(NamedKey::Enter) => {
                                 if let Some(action) = self.widget_menu.activate()
@@ -1391,8 +1397,6 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                 if self.context_menu.is_open() {
                     if event.state == ElementState::Pressed {
                         match &event.logical_key {
-                            Key::Named(NamedKey::ArrowUp) => self.context_menu.navigate(-1),
-                            Key::Named(NamedKey::ArrowDown) => self.context_menu.navigate(1),
                             Key::Named(NamedKey::Escape) => self.context_menu.close(),
                             Key::Named(NamedKey::Enter) => {
                                 if let Some(choice) = self.context_menu.activate() {
@@ -1410,14 +1414,6 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                         window.request_redraw();
                     }
                     return;
-                }
-                let held = event.state == ElementState::Pressed;
-                match &event.logical_key {
-                    Key::Named(NamedKey::ArrowLeft) => self.scene.input.left = held,
-                    Key::Named(NamedKey::ArrowRight) => self.scene.input.right = held,
-                    Key::Named(NamedKey::ArrowUp) => self.scene.input.up = held,
-                    Key::Named(NamedKey::ArrowDown) => self.scene.input.down = held,
-                    _ => {}
                 }
                 if held {
                     self.keyboard(event_loop, &window, event);
@@ -1463,28 +1459,6 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
             while now >= self.next_step && steps < 5 {
                 steps += 1;
                 advanced = true;
-                self.scene
-                    .motion
-                    .observe(self.state.entities(), self.state.scenery().cycle());
-                self.scene.motion.advance(1);
-                if let (Some(camera), Some(loaded)) = (&mut self.scene.camera, &self.scene.loaded) {
-                    let target = if let Some(player) = self.state.entities().local_player() {
-                        let position = self
-                            .scene
-                            .motion
-                            .player(player.index)
-                            .unwrap_or([player.tile.x * 128, player.tile.y * 128]);
-                        scene::player_target(loaded, position, player.tile.plane)
-                    } else {
-                        scene::target(loaded)
-                    };
-                    camera.set_follow_height(self.state.interfaces().viewport().follow_height);
-                    camera.step(target, self.scene.input);
-                    if let Some(scripts) = &mut self.scripts {
-                        scripts
-                            .set_camera_angles(i32::from(camera.pitch()), i32::from(camera.yaw()));
-                    }
-                }
                 let operation = SemanticOperation::Scenery(
                     rustclient_game_state::SceneryOperation::AdvanceCycles(1),
                 );
@@ -1507,6 +1481,28 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                         }
                     }
                     Err(error) => eprintln!("client cycle: {error}"),
+                }
+                self.scene
+                    .motion
+                    .observe(self.state.entities(), self.state.scenery().cycle());
+                self.scene.motion.advance(1);
+                if let (Some(camera), Some(loaded)) = (&mut self.scene.camera, &self.scene.loaded) {
+                    let target = if let Some(player) = self.state.entities().local_player() {
+                        let position = self
+                            .scene
+                            .motion
+                            .player(player.index)
+                            .unwrap_or([player.tile.x * 128, player.tile.y * 128]);
+                        scene::player_target(loaded, position, player.tile.plane)
+                    } else {
+                        scene::target(loaded)
+                    };
+                    camera.set_follow_height(self.state.interfaces().viewport().follow_height);
+                    camera.step(target, self.scene.input);
+                    if let Some(scripts) = &mut self.scripts {
+                        scripts
+                            .set_camera_angles(i32::from(camera.pitch()), i32::from(camera.yaw()));
+                    }
                 }
                 self.widget_pointer_cycle();
                 self.flush_script_intents();
