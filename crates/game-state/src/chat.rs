@@ -46,7 +46,21 @@ impl ChatState {
             .rev()
             .filter(move |e| e.message.channel == channel)
     }
-    pub(crate) fn validate_message(&self, message: &GameMessage) -> Result<(), ChatError> {
+    /// Next newer message in the global history, matching the stock queue's previous link.
+    #[must_use]
+    pub fn newer_uid(&self, uid: u32) -> Option<u32> {
+        let index = self.entries.iter().position(|entry| entry.id == uid)?;
+        self.entries.get(index + 1).map(|entry| entry.id)
+    }
+    /// Next older message in the global history, matching the stock queue's next link.
+    #[must_use]
+    pub fn older_uid(&self, uid: u32) -> Option<u32> {
+        let index = self.entries.iter().position(|entry| entry.id == uid)?;
+        self.entries
+            .get(index.checked_sub(1)?)
+            .map(|entry| entry.id)
+    }
+    pub(crate) fn validate_message(message: &GameMessage) -> Result<(), ChatError> {
         if message.sender.len() > 320
             || message.text.len() > 4096
             || message.sender.contains('\0')
@@ -62,7 +76,7 @@ impl ChatState {
         cycle: ClientCycle,
     ) -> Result<u32, ChatError> {
         let next = self.next_id.checked_add(1).ok_or(ChatError)?;
-        self.validate_message(&message)?;
+        Self::validate_message(&message)?;
         if self.channel(message.channel).count() >= 100
             && let Some(index) = self
                 .entries

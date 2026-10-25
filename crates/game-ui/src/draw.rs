@@ -89,6 +89,8 @@ pub struct UiFrame {
     pub canvas: Option<rustclient_model::CanvasSize>,
     /// Cache-authored world viewport in the same logical coordinates as UI quads.
     pub world_viewport: Option<Rect>,
+    /// Painter boundary of the world widget, before interfaces mounted above it.
+    pub world_overlay_index: Option<usize>,
     pub viewport_settings: rustclient_model::ViewportSettings,
     /// Mask sprites authored on the minimap and compass widgets; absent when not laid out.
     pub minimap_sprite: Option<rustclient_model::SpriteId>,

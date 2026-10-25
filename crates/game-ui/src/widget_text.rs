@@ -54,6 +54,16 @@ fn tokens(text: &str) -> impl Iterator<Item = (usize, usize, Token<'_>)> {
         None
     })
 }
+/// Visible glyphs after the shared rich-text escape/token policy.
+pub(crate) fn glyphs(text: &str) -> impl Iterator<Item = u8> + '_ {
+    tokens(text).filter_map(|(_, _, token)| {
+        if let Token::Glyph(byte) = token {
+            Some(byte)
+        } else {
+            None
+        }
+    })
+}
 /// Measure a formatted line; style tags have no advance.
 #[must_use]
 pub fn width(text: &str, font: &BitmapFont) -> i32 {
@@ -238,7 +248,7 @@ pub(crate) fn paint(
         paint_line(
             frame,
             font,
-            id,
+            |byte| UiImageId::WidgetGlyph(id, byte),
             line,
             [x, baseline],
             clip,
@@ -256,7 +266,7 @@ pub(crate) fn paint(
 fn paint_line(
     frame: &mut UiFrame,
     font: &BitmapFont,
-    id: FontId,
+    image: impl Fn(u8) -> UiImageId,
     line: &str,
     origin: [i32; 2],
     clip: Rect,
@@ -283,13 +293,13 @@ fn paint_line(
                     );
                     if let Some(color) = style.shadow {
                         frame.image_tinted(
-                            UiImageId::WidgetGlyph(id, byte),
+                            image(byte),
                             Rect::new(rect.x + 1., rect.y + 1., rect.width, rect.height),
                             clip,
                             color,
                         );
                     }
-                    frame.image_tinted(UiImageId::WidgetGlyph(id, byte), rect, clip, style.color);
+                    frame.image_tinted(image(byte), rect, clip, style.color);
                 }
                 for (color, y) in [
                     (
@@ -316,6 +326,35 @@ fn paint_line(
             }
         }
     }
+}
+
+/// Cache rich-text menu labels use the title bold font atlas and the same tag parser as widgets.
+pub(crate) fn menu_line(
+    frame: &mut UiFrame,
+    assets: &rustclient_cache::TitleAssets,
+    value: &str,
+    origin: [i32; 2],
+    color: [u8; 4],
+    clip: Rect,
+) {
+    let base = Style {
+        color,
+        shadow: Some([0, 0, 0, 255]),
+        underline: None,
+        strike: None,
+    };
+    let mut style = base;
+    paint_line(
+        frame,
+        &assets.fonts[2],
+        |byte| UiImageId::Glyph(2, byte),
+        value,
+        origin,
+        clip,
+        &mut style,
+        base,
+        0,
+    );
 }
 
 /// Stock item-icon quantity label and RGB (distinct from long-form examine quantities).

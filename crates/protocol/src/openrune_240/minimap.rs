@@ -93,7 +93,7 @@ mod tests {
 
     #[test]
     fn packed_flag_preserves_world_coordinates_ignores_plane_and_has_explicit_absence() {
-        let packed = (3_u32 << 28) | (3221 << 14) | 3218;
+        let packed = (3_u32 << 28) | (3221 << 14) | 0x0c92;
         assert_eq!(
             flag(&packed.to_be_bytes()).unwrap(),
             Some(MapDestination { x: 3221, y: 3218 })

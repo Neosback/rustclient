@@ -385,3 +385,12 @@ The model does not encode revision-240 opcode numbers, archive/group layout, fra
 `PlayerInfoUpdate` and `NpcInfoUpdate` may carry a sorted `(SequenceId, SequenceTiming)` table attached by application orchestration alongside `sequence_policies`. Protocol decoders leave that table empty. Direct semantic fixtures may also leave timing unresolved; authoritative schedulers must not invent legacy frame durations or classify a sequence as cached-model without definition evidence.
 
 For revision 240, this timing is required by exact/forced movement because the legacy interpolation branch may advance only on the action frame boundary, while cached-model actions bypass that legacy frame-boundary test. Rendering is not an acceptable source for this decision: the timing must be available to `GameState` before forced movement becomes authoritative.
+
+### Actor speech
+
+`PlayerSpeech` associates source-ordered `SpeechUpdate` values with a player index.
+Public speech carries text, colour/effect/pattern metadata, autotyper state and a resolved
+`ChatAccount` presentation (icon, moderator, ignorable). Account wire ids/tables stay in the
+profile adapter. `ActorOverhead` in GameState owns the committed text and remaining client
+cycles; the actor incarnation owns its reset/removal lifecycle. History identities remain
+owned by ChatState. See SPEC-0017; fingerprint schema 25 includes speech and its countdown.

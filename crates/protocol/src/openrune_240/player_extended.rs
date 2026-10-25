@@ -32,11 +32,10 @@ pub(super) struct Extended {
     pub exact_move: Option<ExactMove>,
     pub speech: Vec<rustclient_model::SpeechUpdate>,
 }
-#[expect(
-    clippy::too_many_lines,
-    reason = "verified writer order stays beside every mask's field reads"
-)]
-pub(super) fn decode_extended(r: &mut Reader<'_>, chat: Option<&super::huffman::Huffman>) -> Result<Extended> {
+pub(super) fn decode_extended(
+    r: &mut Reader<'_>,
+    chat: Option<&super::huffman::Huffman>,
+) -> Result<Extended> {
     let mut out = Extended::default();
     let mask = read_mask(r)?;
     if mask & !KNOWN != 0 {
@@ -134,7 +133,8 @@ pub(super) fn decode_extended(r: &mut Reader<'_>, chat: Option<&super::huffman::
         r.u8_neg()?;
     }
     if mask & 1 != 0 {
-        out.speech.push(rustclient_model::SpeechUpdate::Say(super::speech::say(r)?));
+        out.speech
+            .push(rustclient_model::SpeechUpdate::Say(super::speech::say(r)?));
     }
     Ok(out)
 }
@@ -180,6 +180,10 @@ mod tests {
             SequenceChange::Set(Some(SequenceId::new(0x1234)))
         );
         assert_eq!(value.sequence_delay, 5);
+        assert_eq!(
+            value.speech,
+            vec![rustclient_model::SpeechUpdate::Say("Hi".into())]
+        );
         assert_eq!(value.temporary_speed, Some(MoveSpeed::Run));
         assert_eq!(
             value.exact_move,
@@ -196,7 +200,7 @@ mod tests {
         let mut extended = Reader::new(&[0x80, 0x20, 0x10], "mask");
         assert_eq!(read_mask(&mut extended).unwrap(), 0x10_2080);
         for end in 0..bytes.len() {
-            assert!(decode_extended(&mut Reader::new(&bytes[..end], "truncation")).is_err(), None);
+            assert!(decode_extended(&mut Reader::new(&bytes[..end], "truncation"), None).is_err());
         }
     }
 
@@ -224,11 +228,15 @@ mod tests {
             Some(SequenceId::new(824))
         );
         // Persistent run, temporary crawl; temporary reset-to-position sentinel 127.
-        let speed =
-            decode_extended(&mut Reader::new(&[0x80, 0x48, 126, 0], "speed vector"), None).unwrap();
+        let speed = decode_extended(
+            &mut Reader::new(&[0x80, 0x48, 126, 0], "speed vector"),
+            None,
+        )
+        .unwrap();
         assert_eq!(speed.persistent_speed, Some(MoveSpeed::Run));
         assert_eq!(speed.temporary_speed, Some(MoveSpeed::Crawl));
-        let reset = decode_extended(&mut Reader::new(&[0x80, 8, 129], "reset vector"), None).unwrap();
+        let reset =
+            decode_extended(&mut Reader::new(&[0x80, 8, 129], "reset vector"), None).unwrap();
         assert_eq!(reset.temporary_speed, Some(MoveSpeed::Stationary));
     }
 }

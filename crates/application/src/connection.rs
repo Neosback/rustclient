@@ -35,7 +35,9 @@ impl ConnectionDecoder {
         )
     }
     /// Supply the selected cache's chat codec before authenticated packet consumption.
-    pub fn set_chat_codec(&mut self, codec: rustclient_protocol::Huffman) { self.codec.set_chat_codec(codec); }
+    pub fn set_chat_codec(&mut self, codec: rustclient_protocol::Huffman) {
+        self.codec.set_chat_codec(codec);
+    }
     /// Profile packet count for diagnostics; not semantic time.
     #[must_use]
     pub const fn framed_packets(&self) -> u64 {

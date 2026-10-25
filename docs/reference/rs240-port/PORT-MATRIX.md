@@ -111,3 +111,12 @@ separate verification/evidence in SYMBOL-LEDGER.tsv. See
 matrix and remaining gaps. Use `python3 tools/port_audit.py --check` to detect
 ledger/source/owner drift; generated declarations remain untriaged until explicitly
 mapped and never imply a semantic port percentage.
+
+## Actor chat continuation (2026-10-25)
+
+Public/simple speech now crosses the 240 profile adapter into committed actor text, cycle expiry
+and bounded history. Cache chat-transmit listeners observe player-carried history changes.
+NEXTUID/PREVUID traversal now follows the reference global queue directions. See
+[the implementation/validation record](../../plan/CHAT-ACTORS-240.md). Remaining actor effects,
+social-list filtering, full facing/pose coupling and full renderer parity stay open; the legacy
+pose projector is still disposable and never supplies live actor position authority.

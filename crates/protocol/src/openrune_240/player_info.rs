@@ -58,7 +58,11 @@ impl PlayerInfoDecoder {
     pub fn decode(&mut self, payload: &[u8]) -> Result<PlayerInfoUpdate> {
         self.decode_with_chat(payload, None)
     }
-    pub fn decode_with_chat(&mut self, payload: &[u8], chat: Option<&super::huffman::Huffman>) -> Result<PlayerInfoUpdate> {
+    pub fn decode_with_chat(
+        &mut self,
+        payload: &[u8],
+        chat: Option<&super::huffman::Huffman>,
+    ) -> Result<PlayerInfoUpdate> {
         if self.local == 0 || self.local >= PLAYER_CAPACITY {
             return Err(error("invalid local player index"));
         }
@@ -132,7 +136,19 @@ impl PlayerInfoDecoder {
         let mut reader = Reader::new(bits.remaining_bytes(), "player extended info");
         for index in extended {
             let values = decode_extended(&mut reader, chat)?;
-            update.speech.extend(values.speech.into_iter().map(|update| rustclient_model::PlayerSpeech { index: rustclient_model::PlayerIndex::new(u32::try_from(index).unwrap_or(0)), update }));
+            update
+                .speech
+                .extend(
+                    values
+                        .speech
+                        .into_iter()
+                        .map(|update| rustclient_model::PlayerSpeech {
+                            index: rustclient_model::PlayerIndex::new(
+                                u32::try_from(index).unwrap_or(0),
+                            ),
+                            update,
+                        }),
+                );
             let speed = values.temporary_speed.or(values.persistent_speed);
             if let Some((_, _, override_speed)) = pending_moves.iter_mut().find(|m| m.0 == index) {
                 *override_speed = speed;

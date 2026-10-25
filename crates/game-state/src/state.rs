@@ -214,7 +214,7 @@ impl GameState {
             self.entities.players.insert(
                 auth.player,
                 crate::PlayerEntity {
-                overhead: None,
+                    overhead: None,
                     index: auth.player,
                     instance: rustclient_model::PlayerInstanceId::new(1),
                     tracking_grid: None,

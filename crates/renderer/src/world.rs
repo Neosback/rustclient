@@ -220,6 +220,10 @@ impl WorldGpu {
         clippy::cast_possible_truncation,
         reason = "bounded logical/physical viewport values converted for GPU projection"
     )]
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "explicit world viewport, material cycle and roof-level inputs"
+    )]
     pub fn prepare_viewport(
         &mut self,
         queue: &wgpu::Queue,

@@ -11,11 +11,11 @@ pub struct SceneVertex {
     pub texture_uv: [u16; 4],
 }
 impl SceneVertex {
-    /// Highest "top level" at which this vertex is still drawn: tiles, locations and actors
+    /// Lowest "top level" at which this vertex is drawn: tiles, locations and actors
     /// are culled when the frame's top level (see `roofs::top_level`) is below it.
     #[must_use]
-    pub const fn render_level(&self) -> u8 {
-        self.texture_uv[3] as u8
+    pub fn render_level(&self) -> u8 {
+        u8::try_from(self.texture_uv[3]).unwrap_or(u8::MAX)
     }
 }
 #[derive(Debug, Clone, Copy, Default)]
@@ -44,7 +44,10 @@ pub struct SceneGeometry {
 }
 #[derive(Debug, Clone, Copy)]
 pub enum ActorLabelId {
-    Player(rustclient_model::PlayerIndex, rustclient_model::PlayerInstanceId),
+    Player(
+        rustclient_model::PlayerIndex,
+        rustclient_model::PlayerInstanceId,
+    ),
     Npc(rustclient_model::NpcIndex, rustclient_model::NpcInstanceId),
 }
 #[derive(Debug, Clone, Copy)]

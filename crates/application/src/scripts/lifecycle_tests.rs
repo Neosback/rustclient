@@ -280,3 +280,89 @@ fn group_loads_follow_component_index_even_if_definitions_arrive_out_of_order() 
     );
     assert_eq!(observed(&state), 12);
 }
+
+#[test]
+fn player_carried_chat_notifies_the_cache_chat_listener_after_history_commits() {
+    let (mut scripts, mut state) = setup();
+    state
+        .apply_operation(SemanticOperation::EndSession)
+        .unwrap();
+    state
+        .apply_operation(SemanticOperation::AuthenticateSession {
+            revision: REVISION_240,
+            player: rustclient_game_state::AuthenticatedPlayer {
+                profile: ServerProfileId::new(1),
+                player: PlayerIndex::new(1),
+                member: false,
+                staff_level: 0,
+            },
+        })
+        .unwrap();
+    state
+        .apply_operation(SemanticOperation::EstablishInitialPlacement(
+            rustclient_game_state::InitialPlacement {
+                position: WorldTile::new(3220, 3220, Plane::MIN),
+                map_anchor: WorldTile::new(3216, 3216, Plane::MIN),
+                area: None,
+            },
+        ))
+        .unwrap();
+    let group = InterfaceId::new(1);
+    let mut widget = scripts.interfaces[&group]
+        .widgets()
+        .values()
+        .next()
+        .unwrap()
+        .clone();
+    widget
+        .listeners
+        .insert(WidgetListener::Chat, vec![ScriptValue::Int(90002)]);
+    scripts.interfaces.insert(
+        group,
+        InterfaceDefinition::from_widgets(group, vec![widget]).unwrap(),
+    );
+    commit(
+        &mut scripts,
+        &mut state,
+        InterfaceUpdate::ClientVariable {
+            id: 7,
+            value: ScriptValue::Int(0),
+        },
+    );
+    commit(
+        &mut scripts,
+        &mut state,
+        InterfaceUpdate::SetRoot(Some(group)),
+    );
+    assert_eq!(observed(&state), 1);
+    let errors = scripts
+        .commit(
+            &mut state,
+            SemanticOperation::UpdatePlayers(PlayerInfoUpdate {
+                local_appearance: Some(PlayerAppearance {
+                    display_name: "Test".into(),
+                    ..Default::default()
+                }),
+                speech: vec![PlayerSpeech {
+                    index: PlayerIndex::new(1),
+                    update: SpeechUpdate::Say("Hi".into()),
+                }],
+                ..Default::default()
+            }),
+        )
+        .unwrap();
+    assert!(errors.is_empty(), "{errors:?}");
+    assert_eq!(observed(&state), 12);
+    assert_eq!(state.chat().entries().len(), 1);
+    scripts
+        .commit(
+            &mut state,
+            SemanticOperation::UpdatePlayers(PlayerInfoUpdate::default()),
+        )
+        .unwrap();
+    assert_eq!(
+        observed(&state),
+        12,
+        "movement-only updates do not synthesize chat callbacks"
+    );
+}

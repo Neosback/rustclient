@@ -678,6 +678,10 @@ fn write_commit(fingerprint: &mut StableFingerprint64, commit: OperationCommit) 
     fingerprint.write_u8(u8::from(delta.interfaces_changed()));
 }
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "canonical event tags stay in one ordered encoder"
+)]
 fn write_event(fingerprint: &mut StableFingerprint64, event: SemanticEvent) {
     match event {
         SemanticEvent::DestinationChanged(destination) => {
@@ -924,10 +928,14 @@ fn write_overhead(f: &mut StableFingerprint64, value: Option<&crate::ActorOverhe
         f.write_u8(1);
         f.write_u32(u32::try_from(value.text.text.len()).expect("bounded speech"));
         f.write_bytes(value.text.text.as_bytes());
-        f.write_u8(value.text.colour); f.write_u8(value.text.effect);
+        f.write_u8(value.text.colour);
+        f.write_u8(value.text.effect);
         f.write_u8(u8::try_from(value.text.pattern.len()).expect("bounded pattern"));
         f.write_bytes(&value.text.pattern);
         f.write_u32(value.remaining);
-        f.write_u8(u8::from(value.autotyper)); f.write_u8(u8::from(value.filtered));
-    } else { f.write_u8(0); }
+        f.write_u8(u8::from(value.autotyper));
+        f.write_u8(u8::from(value.filtered));
+    } else {
+        f.write_u8(0);
+    }
 }

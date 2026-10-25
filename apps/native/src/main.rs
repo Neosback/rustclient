@@ -1,4 +1,6 @@
 #![forbid(unsafe_code)]
+mod actor_overlays;
+mod camera_input;
 mod capture;
 mod interaction;
 mod network;
@@ -383,6 +385,10 @@ impl NativeApp {
         }
     }
     /// Actor markers in scene-relative tile units, drawn from the animated positions.
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "world fine positions originate from i32 tiles and fit the f64 mantissa"
+    )]
     fn minimap_dots(
         &self,
         origin: rustclient_model::WorldTile,
@@ -435,6 +441,10 @@ impl NativeApp {
         clippy::too_many_lines,
         reason = "one frame projects every interface layer in paint order"
     )]
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "validated world fine positions fit the f64 minimap projection"
+    )]
     fn redraw(&mut self, event_loop: &ActiveEventLoop) {
         let Some(window) = self.window.clone() else {
             return;
@@ -472,6 +482,14 @@ impl NativeApp {
                         }
                     }
                 }
+                let top_level = self.roof_top_level(&window);
+                actor_overlays::project(
+                    &self.scene,
+                    &self.state,
+                    assets,
+                    &mut self.frame,
+                    top_level,
+                );
                 interaction::project_pointer_overlays(
                     &mut self.frame,
                     assets,
@@ -1297,8 +1315,7 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                     };
                     self.apply(operation);
                     match self.walk_click(&window, x, y) {
-                        Ok(true) => {}
-                        Ok(false) => {}
+                        Ok(_) => {}
                         Err(error) => {
                             eprintln!("movement: {error}");
                             window.set_title(&format!("RustClient - {error}"));
@@ -1370,12 +1387,14 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                     return;
                 }
                 let held = event.state == ElementState::Pressed;
-                match &event.logical_key {
-                    Key::Named(NamedKey::ArrowLeft) => self.scene.input.left = held,
-                    Key::Named(NamedKey::ArrowRight) => self.scene.input.right = held,
-                    Key::Named(NamedKey::ArrowUp) => self.scene.input.up = held,
-                    Key::Named(NamedKey::ArrowDown) => self.scene.input.down = held,
-                    _ => {}
+                if camera_input::route(
+                    &mut self.scene.input,
+                    &event.logical_key,
+                    held,
+                    self.widget_menu.is_open() || self.context_menu.is_open(),
+                ) {
+                    window.request_redraw();
+                    return;
                 }
                 if self.widget_menu.is_open() {
                     if event.state == ElementState::Pressed {

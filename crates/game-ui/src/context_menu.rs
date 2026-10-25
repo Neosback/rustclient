@@ -55,7 +55,7 @@ impl<A: Copy> ContextMenu<A> {
         let width = (self
             .entries
             .iter()
-            .map(|(label, _)| font.width(label))
+            .map(|(label, _)| crate::widget_text::width(label, font))
             .max()
             .unwrap_or(0)
             .max(font.width("Choose Option"))
@@ -154,13 +154,14 @@ impl<A: Copy> ContextMenu<A> {
             bounds,
         );
         for (i, (label, _)) in self.entries.iter().enumerate() {
-            crate::presentation::text(
+            crate::widget_text::menu_line(
                 frame,
-                &assets.fonts[2],
-                2,
+                assets,
                 label,
-                bounds.x as i32 + 3,
-                bounds.y as i32 + 31 + i32::try_from(i).unwrap_or(0) * 15,
+                [
+                    bounds.x as i32 + 3,
+                    bounds.y as i32 + 31 + i32::try_from(i).unwrap_or(0) * 15,
+                ],
                 if self.selected == Some(i) {
                     [255, 255, 0, 255]
                 } else {

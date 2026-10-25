@@ -527,6 +527,10 @@ fn plain_label(label: &str) -> String {
 }
 
 /// Draw the mouse-over text and the click cross above the world view and widgets.
+#[expect(
+    clippy::cast_precision_loss,
+    reason = "cache sprite trim offsets are bounded logical pixels"
+)]
 pub(super) fn project_pointer_overlays(
     frame: &mut rustclient_game_ui::UiFrame,
     assets: &rustclient_cache::TitleAssets,

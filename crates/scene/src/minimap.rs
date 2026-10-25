@@ -461,10 +461,6 @@ pub fn draw_dots(
 }
 
 /// Draw an upright cache sprite at its rotated minimap position, retaining canvas trim offsets.
-#[expect(
-    clippy::too_many_arguments,
-    reason = "one CPU marker projection contract"
-)]
 pub fn draw_marker(
     out: &mut [u8],
     mask_rgba: &[u8],

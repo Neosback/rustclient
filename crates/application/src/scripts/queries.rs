@@ -255,20 +255,15 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
         }
         Opcode::ChatGetnextuid | Opcode::ChatGetprevuid => {
             let uid = s.int()?.cast_unsigned();
-            let entries = h.state.chat().entries();
-            let index = entries.iter().position(|e| e.id == uid);
-            Some(
-                index
-                    .and_then(|index| {
-                        if op == Opcode::ChatGetnextuid {
-                            index.checked_sub(1).and_then(|i| entries.get(i))
-                        } else {
-                            entries.get(index + 1)
-                        }
-                    })
-                    .map_or(-1, |e| e.id.cast_signed()),
-            )
+            // classVX.method12332 / classIW.method6366: NEXT is newer, PREV is older.
+            let entry = if op == Opcode::ChatGetnextuid {
+                h.state.chat().newer_uid(uid)
+            } else {
+                h.state.chat().older_uid(uid)
+            };
+            Some(entry.map_or(-1, u32::cast_signed))
         }
+
         Opcode::DiscardMobileOffsets => {
             s.ints::<2>()?;
             None
@@ -777,6 +772,50 @@ mod tests {
         };
         instruction(&mut host, op, 0, &mut stacks)?;
         Ok(stacks.integers)
+    }
+
+    #[test]
+    fn cache_chat_history_walk_visits_all_rows_in_both_directions() {
+        let (mut scripts, mut state) = (scripts(), state());
+        for (channel, text) in [
+            (2, "first"),
+            (0, "game message"),
+            (2, "second"),
+            (2, "third"),
+        ] {
+            state
+                .apply_operation(SemanticOperation::GameMessage(
+                    rustclient_model::GameMessage {
+                        channel: rustclient_model::ids::ChatChannelId::new(channel),
+                        sender: "Test".into(),
+                        text: text.into(),
+                    },
+                ))
+                .unwrap();
+        }
+        assert_eq!(
+            run(&mut scripts, &mut state, Opcode::ChatGethistorylength, &[2]).unwrap(),
+            [3]
+        );
+        let mut uid = 3;
+        let mut rows = Vec::new();
+        while uid != -1 {
+            rows.push(uid);
+            uid = run(&mut scripts, &mut state, Opcode::ChatGetprevuid, &[uid]).unwrap()[0];
+        }
+        assert_eq!(rows, [3, 2, 1, 0]);
+        assert_eq!(
+            run(&mut scripts, &mut state, Opcode::ChatGetnextuid, &[0]).unwrap(),
+            [1]
+        );
+        assert_eq!(
+            run(&mut scripts, &mut state, Opcode::ChatGetnextuid, &[3]).unwrap(),
+            [-1]
+        );
+        assert_eq!(
+            run(&mut scripts, &mut state, Opcode::ChatGetprevuid, &[99]).unwrap(),
+            [-1]
+        );
     }
 
     #[test]

@@ -478,8 +478,8 @@ fn build_player(
         } else {
             (base, base_cycle, false)
         };
-    let played = pose_model(asset, catalog, &mut model, sequence, cycle, action)?;
-    if !played {
+    let posed_action = pose_model(asset, catalog, &mut model, sequence, cycle, action)?;
+    if !posed_action {
         pose_model(asset, catalog, &mut model, base, base_cycle, false)?;
     }
 
@@ -496,16 +496,27 @@ fn build_player(
             height_offset: sequence_height_offset(
                 asset,
                 catalog,
-                if played { sequence } else { base },
+                if posed_action { sequence } else { base },
             ),
         },
         Light::entity(64, 850),
         geometry,
     )?;
-    label_anchor(geometry, first_vertex, crate::ActorLabelId::Player(player.index, player.instance));
+    label_anchor(
+        geometry,
+        first_vertex,
+        crate::ActorLabelId::Player(player.index, player.instance),
+        asset,
+        position,
+        1,
+    );
     Ok(())
 }
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "one ordered NPC model construction and pose path"
+)]
 fn build_npc(
     asset: &SceneAsset,
     catalog: &EntityCatalog,
@@ -570,8 +581,8 @@ fn build_npc(
     } else {
         (base, base_cycle, false)
     };
-    let played = pose_model(asset, catalog, &mut model, sequence, cycle, action)?;
-    if !played {
+    let posed_action = pose_model(asset, catalog, &mut model, sequence, cycle, action)?;
+    if !posed_action {
         pose_model(asset, catalog, &mut model, base, base_cycle, false)?;
     }
     // The reference scales the animated model, so bone translations stay in unscaled units.
@@ -597,7 +608,7 @@ fn build_npc(
             height_offset: sequence_height_offset(
                 asset,
                 catalog,
-                if played { sequence } else { base },
+                if posed_action { sequence } else { base },
             ),
         },
         Light::entity(
@@ -606,7 +617,14 @@ fn build_npc(
         ),
         geometry,
     )?;
-    label_anchor(geometry, first_vertex, crate::ActorLabelId::Npc(npc.index, npc.instance));
+    label_anchor(
+        geometry,
+        first_vertex,
+        crate::ActorLabelId::Npc(npc.index, npc.instance),
+        asset,
+        position,
+        def.size.max(1),
+    );
     if geometry.vertices.len() > first_vertex {
         geometry.picks.push(crate::PickRange {
             vertices: first_vertex..geometry.vertices.len(),
@@ -622,16 +640,31 @@ fn build_npc(
 }
 
 /// Use posed bounds from the same CPU vertices submitted for drawing, with no GPU readback.
-fn label_anchor(geometry: &mut SceneGeometry, first: usize, actor: crate::ActorLabelId) {
+fn label_anchor(
+    geometry: &mut SceneGeometry,
+    first: usize,
+    actor: crate::ActorLabelId,
+    asset: &SceneAsset,
+    position: [i32; 2],
+    size: u8,
+) {
     let points = &geometry.vertices[first..];
-    let Some(vertex) = points.first() else { return; };
-    let mut min = vertex.position.map(i32::from);
-    let mut max = min;
-    for vertex in points {
-        for i in 0..3 { min[i] = min[i].min(i32::from(vertex.position[i])); max[i] = max[i].max(i32::from(vertex.position[i])); }
-    }
+    let Some(vertex) = points.first() else {
+        return;
+    };
+    let height = points
+        .iter()
+        .map(|v| i32::from(v.position[1]))
+        .min()
+        .unwrap_or(0);
     geometry.actor_labels.push(crate::ActorLabelAnchor {
-        actor, position: [(min[0] + max[0]) / 2, min[1], (min[2] + max[2]) / 2], level: vertex.render_level(),
+        actor,
+        position: [
+            position[0] - asset.descriptor().origin().x * 128 + i32::from(size) * 64,
+            height,
+            position[1] - asset.descriptor().origin().y * 128 + i32::from(size) * 64,
+        ],
+        level: vertex.render_level(),
     });
 }
 

@@ -12,7 +12,10 @@ pub struct Huffman {
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
-struct DecodeNode { children: [Option<usize>; 2], symbol: Option<u8> }
+struct DecodeNode {
+    children: [Option<usize>; 2],
+    symbol: Option<u8>,
+}
 
 impl Huffman {
     /// Assign codes from per-byte code lengths exactly as the reference constructor does.
@@ -66,8 +69,10 @@ impl Huffman {
                 if tree[node].symbol.is_some() {
                     return Err(ProtocolError::new("huffman", "overlapping prefix codes"));
                 }
-                let branch = usize::from((masks[symbol] >> shift & 1) != 0);
-                node = if let Some(next) = tree[node].children[branch] { next } else {
+                let branch = usize::from((masks[symbol] >> shift & 0x1) != 0);
+                node = if let Some(next) = tree[node].children[branch] {
+                    next
+                } else {
                     let next = tree.len();
                     tree.push(DecodeNode::default());
                     tree[node].children[branch] = Some(next);
@@ -91,7 +96,10 @@ impl Huffman {
             (usize::from(first), rest)
         } else {
             let (&second, data) = rest.split_first().ok_or_else(|| fail("truncated length"))?;
-            (usize::from(u16::from_be_bytes([first, second]) - 0x8000), data)
+            (
+                usize::from(u16::from_be_bytes([first, second]) - 0x8000),
+                data,
+            )
         };
         if length > 32767 {
             return Err(fail("message length limit"));
@@ -101,15 +109,17 @@ impl Huffman {
         for _ in 0..length {
             let mut node = 0;
             let byte = loop {
-                let value = data.get(bit / 8).ok_or_else(|| fail("truncated code bits"))?;
+                let value = data
+                    .get(bit / 8)
+                    .ok_or_else(|| fail("truncated code bits"))?;
                 let branch = usize::from(value & (0x80 >> (bit % 8)) != 0);
                 node = self.tree[node].children[branch].ok_or_else(|| fail("unassigned code"))?;
                 bit += 1;
-                if let Some(symbol) = self.tree[node].symbol { break symbol; }
+                if let Some(symbol) = self.tree[node].symbol {
+                    break symbol;
+                }
             };
-            out.push(crate::wire::decode_cp1252(
-                byte,
-            ));
+            out.push(crate::wire::decode_cp1252(byte));
         }
         Ok(out)
     }

@@ -103,3 +103,7 @@ Acceptance: bounded chat vectors; history/speech lifecycle and replay contracts;
 bursts and ordered turns; camera held-key/menu cases; baseline Cargo gates. Visual acceptance
 is recorded separately for fixed/classic/modern layouts, feet contact and NPC routes.
 Broader actor effects, social lists and complete renderer parity are outside this continuation.
+
+Speech quads occupy the world widget's painter boundary, beneath subsequently painted mounted
+interfaces. Their timers continue while obscured. Context-menu labels share widget rich-text
+parsing/measurement, so cache colour tags control styling rather than appearing as literal text.

@@ -10,16 +10,29 @@ pub struct OverheadText {
 }
 
 /// Resolved account presentation; profile-specific account ids stay in the adapter.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ChatAccount {
     pub icon: Option<u16>,
     pub moderator: bool,
     pub ignorable: bool,
 }
+impl Default for ChatAccount {
+    fn default() -> Self {
+        Self {
+            icon: None,
+            moderator: false,
+            ignorable: true,
+        }
+    }
+}
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SpeechUpdate {
     Say(String),
-    Public { text: OverheadText, account: ChatAccount, autotyper: bool },
+    Public {
+        text: OverheadText,
+        account: ChatAccount,
+        autotyper: bool,
+    },
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PlayerSpeech {

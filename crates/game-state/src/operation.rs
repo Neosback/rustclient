@@ -396,8 +396,13 @@ impl GameState {
         let speech = self.prepare_speech(update).map_err(OperationError::Chat)?;
         let has_speech = !speech.is_empty();
         let previous_plane = self.entities.local_player().map(|p| p.tile.plane);
-        let changed = self.entities.apply_player_info(update, self.scenery.cycle());
+        let changed = self
+            .entities
+            .apply_player_info(update, self.scenery.cycle());
         let chat_changed = self.commit_speech(speech);
+        if has_speech && !changed {
+            self.entities.generation = self.entities.generation.wrapping_add(1);
+        }
         if !changed && !has_speech {
             return Ok(OperationCommit::new(None, StateDelta::default()));
         }

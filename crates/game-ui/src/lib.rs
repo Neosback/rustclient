@@ -5,6 +5,7 @@ mod controller;
 mod draw;
 mod flame;
 pub mod gameframe;
+pub mod overhead;
 pub mod pointer;
 mod text;
 pub mod widgets;

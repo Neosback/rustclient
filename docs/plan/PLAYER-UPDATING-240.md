@@ -111,7 +111,7 @@ acceptance claim in this checkpoint.
 | Turning/path scheduling | Instant facing remains; entity-target tracking, turn rate, turn/walk directional sequences, action movement blocking and catch-up scheduling are incomplete. |
 | Pose composition | One selected action or locomotion pose; interleave/bone-mask blending is incomplete. |
 | Appearance | NPC transform and custom appearance details are consumed or omitted rather than fully represented/rendered. Current fixture verifies the modeled core only. |
-| Other extended state | Several known masks are bounds-checked/consumed but not retained: chat overhead, hits/headbars, spots, freeze/reset, tint and transparency. Correct framing does not establish their semantic behavior. |
+| Other extended state | Several known masks are bounds-checked/consumed but not retained: hits/headbars, spots, freeze/reset, tint and transparency. Correct framing does not establish their semantic behavior. Public/simple speech is now retained; see CHAT-ACTORS-240.md. |
 | NPC paths | Superseded by NPC-ANIMATION-240.md: ordered run steps, crawl speed and forced movement now survive state/projection. Full scheduling/mask semantics and visual acceptance remain open. |
 | Rendering/interfaces | This checkpoint does not accept complete z/priority rendering parity or world-map content. Prior input fixes and the server guide-price close patch retain their separately documented acceptance limits. |
 

@@ -36,8 +36,8 @@ mod terrain;
 mod uv;
 use core::fmt;
 pub use mesh::{
-    ActorLabelAnchor, ActorLabelId, PickRange, SceneGeometry, SceneStats, SceneVertex, WorldMesh, build_dynamic, build_mesh,
-    build_mesh_with_inputs,
+    ActorLabelAnchor, ActorLabelId, PickRange, SceneGeometry, SceneStats, SceneVertex, WorldMesh,
+    build_dynamic, build_mesh, build_mesh_with_inputs,
 };
 use rustclient_cache::world::{TerrainTile, WorldAssets};
 use rustclient_model::{Plane, SceneAssetId, SceneDescriptor, WorldTile};

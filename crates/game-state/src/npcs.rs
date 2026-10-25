@@ -172,7 +172,6 @@ impl WorldEntitiesState {
             }
             for change in &attributes.changes {
                 match change {
-                    NpcProperty::Overhead(text) => { npc.overhead = Some(crate::ActorOverhead::say(text, 100)); changed = true; }
                     NpcProperty::ExactMove(request) => {
                         let tile = if let Some(new) =
                             update.new_npcs.iter().find(|n| n.index == attributes.index)
@@ -230,11 +229,15 @@ impl WorldEntitiesState {
             self.npc_serial += 1;
             let mut path_queue = crate::ActorPathQueue::default();
             path_queue.set_acceleration_policy(acceleration_policy(update, npc.definition_id));
-            path_queue.ensure_position(WorldTile::new(origin.x + npc.delta_x, origin.y + npc.delta_y, origin.plane));
+            path_queue.ensure_position(WorldTile::new(
+                origin.x + npc.delta_x,
+                origin.y + npc.delta_y,
+                origin.plane,
+            ));
             self.npcs.insert(
                 npc.index,
                 NpcEntity {
-                overhead: None,
+                    overhead: None,
                     index: npc.index,
                     instance: rustclient_model::NpcInstanceId::new(self.npc_serial),
                     definition_id: npc.definition_id,
@@ -292,7 +295,10 @@ impl WorldEntitiesState {
             };
             for change in &attributes.changes {
                 match change {
-                    NpcProperty::Overhead(text) => { npc.overhead = Some(crate::ActorOverhead::say(text, 100)); changed = true; }
+                    NpcProperty::Overhead(text) => {
+                        npc.overhead = Some(crate::ActorOverhead::say(text, 100));
+                        changed = true;
+                    }
                     NpcProperty::ExactMove(request) => {
                         let exact =
                             crate::player_movement::exact_movement(npc.tile, cycle, *request)

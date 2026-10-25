@@ -268,12 +268,19 @@ impl GameplayCameraController {
     /// Project a scene-local point through the world render matrix into logical viewport pixels.
     /// Returns absence for points behind the near plane or outside the shaped viewport.
     #[must_use]
-    #[expect(clippy::cast_precision_loss, reason = "bounded scene and logical viewport coordinates")]
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "bounded scene and logical viewport coordinates"
+    )]
     pub fn project_point(self, viewport: CameraViewport, point: [i32; 3]) -> Option<[f32; 2]> {
         let clip = self.matrix(viewport) * Vec3::from_array(point.map(|v| v as f32)).extend(1.);
-        if !clip.is_finite() || clip.w < 50. { return None; }
+        if !clip.is_finite() || clip.w < 100. {
+            return None;
+        }
         let ndc = clip.truncate() / clip.w;
-        if ndc.x.abs() > 1. || ndc.y.abs() > 1. { return None; }
+        if ndc.x.abs() > 1. || ndc.y.abs() > 1. {
+            return None;
+        }
         Some([
             viewport.inset[0] as f32 + (ndc.x + 1.) * viewport.width as f32 / 2.,
             viewport.inset[1] as f32 + (1. - ndc.y) * viewport.height as f32 / 2.,

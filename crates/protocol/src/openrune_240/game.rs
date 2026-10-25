@@ -443,7 +443,9 @@ impl SessionCodec {
         }
     }
     /// Supply the selected cache's immutable Huffman codec before receiving player chat.
-    pub fn set_chat_codec(&mut self, codec: super::huffman::Huffman) { self.chat_codec = Some(codec); }
+    pub fn set_chat_codec(&mut self, codec: super::huffman::Huffman) {
+        self.chat_codec = Some(codec);
+    }
     /// Diagnostic count, never used as semantic game time.
     #[must_use]
     pub const fn framed_packets(&self) -> u64 {
@@ -511,7 +513,9 @@ impl SessionCodec {
                     ));
                 }
                 91 => {
-                    let update = self.players.decode_with_chat(&packet.payload, self.chat_codec.as_ref())?;
+                    let update = self
+                        .players
+                        .decode_with_chat(&packet.payload, self.chat_codec.as_ref())?;
                     ServerUpdate::PlayerInfo(update)
                 }
                 58 => ServerUpdate::ResetActorAnimations,

@@ -66,6 +66,7 @@ pub fn project_widgets_with_drag(
 ) -> Result<crate::widgets::WidgetTree, String> {
     use crate::widgets::{WidgetBounds, WidgetTree, resolve_widget};
     frame.world_viewport = None;
+    frame.world_overlay_index = None;
     frame.minimap_sprite = None;
     frame.compass_sprite = None;
     frame.canvas = Some(state.interfaces().window().canvas);
@@ -87,6 +88,7 @@ pub fn project_widgets_with_drag(
         }
         if widget.content == WidgetContent::WorldViewport {
             frame.world_viewport = Some(rect);
+            frame.world_overlay_index = Some(frame.quads.len());
             continue;
         }
         if widget.content == WidgetContent::Minimap {
