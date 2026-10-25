@@ -10,13 +10,20 @@ original exact jar
       +--> immutable corpus + opcode instruction ids
       |          |
       |          +--> exact CFG
-      |          +--> symbolic value provenance       (next)
-      |          +--> decoder/multiplier proof        (next)
-      |          +--> packet read timelines           (later)
+      |          +--> exact class hierarchy
+      |          |          |
+      |          |          +--> virtual method families
+      |          |
+      |          +--> stack/local value provenance
+      |          |          |
+      |          |          +--> decoder/multiplier evidence
+      |          |          +--> packet read timelines       (next)
+      |          |
+      |          +--> dominators/natural loops              (later)
       |
       +--> structural neighbor revisions
       |          |
-      |          +--> explainable lineage matcher     (later)
+      |          +--> explainable lineage matcher           (later)
       |
       +--> identity overlay
       |
@@ -66,7 +73,33 @@ Neither hash alone proves semantic identity. The future lineage matcher will com
 - switch case/default
 - exception handlers
 
-The current `backward` flag means only that an edge targets an earlier lexical instruction range. Dominator/post-dominator and natural-loop analysis will be a separate pass so the workbench does not overstate what was proven.
+The current `backward` flag means only that an edge targets an earlier lexical instruction range. Dominator/post-dominator and natural-loop analysis remain separate so the workbench does not overstate what was proven.
+
+## Hierarchy and virtual families
+
+`ClassHierarchy` records exact in-corpus superclass/interface relationships and deterministic ancestor/descendant traversal. `VirtualMethodFamilies` links non-static, non-private declarations only when the same JVM name and descriptor exist in an ancestor/interface chain.
+
+This is dispatch evidence, not semantic naming. A family key is stable only for the analyzed corpus and exists so later lineage/semantic passes can reason about override groups as one unit.
+
+## Value provenance
+
+`ValueProvenanceAnalyzer` uses ASM source analysis over the exact method body. Each executable instruction reports the producer instructions or argument/local origins feeding the values it consumes.
+
+The analysis intentionally keeps incomplete input shapes explicit for stack-manipulation instructions whose logical consumption depends on category-1/category-2 values. Missing precision is reported as incomplete evidence rather than guessed.
+
+This provenance graph is the substrate for packet reads, decoder arithmetic, field-flow explanations, and future semantic proposals.
+
+## Decoder proof
+
+`DecoderEvidenceAnalyzer` follows provenance through local copies and arithmetic to find integer/long multiplication associated with exact field reads and writes.
+
+A site is only a candidate until the analyzer finds a same-field read multiplier and write multiplier that satisfy:
+
+```text
+readMultiplier * writeMultiplier == 1 (mod 2^N)
+```
+
+where `N` is 32 or 64 from the field descriptor. Proven pairs are evidence records only. The original bytecode is not normalized or rewritten.
 
 ## Evidence source policy
 
@@ -74,10 +107,9 @@ The current `backward` flag means only that an edge targets an earlier lexical i
 
 ## Next passes
 
-1. Virtual method family index from the exact hierarchy.
-2. Symbolic stack/local value provenance over ASM frames.
-3. Modular arithmetic/encoder-decoder proof with stated/proven/inferred confidence.
-4. Packet-buffer read discovery and packet timeline evidence.
-5. Multi-feature 1.12.34 -> 1.12.39 lineage matching.
-6. Historical RuneLite semantic-oracle extraction.
-7. Static workbench pages linking every semantic proposal back to exact instructions.
+1. Packet-buffer read discovery and packet timeline evidence.
+2. Dominators, post-dominators, and natural-loop evidence.
+3. Multi-feature 1.12.34 -> 1.12.39 lineage matching using hierarchy, CFG, fingerprints, and value flow.
+4. Historical RuneLite semantic-oracle extraction.
+5. Field/method semantic candidate scoring with explicit evidence weights.
+6. Static workbench pages linking every semantic proposal back to exact instructions.

@@ -6,7 +6,7 @@ Standalone Java tooling for making the OSRS client explainable without confusing
 
 > Original bytecode defines behavior. Other sources identify, explain, correlate, and name it.
 
-The workbench is intentionally separate from the Rust workspace. Its job is to build a traceable evidence graph from exact gamepack instructions to structural identities, control flow, value flow, packet reads, decoder arithmetic, cross-revision lineage, decompiler views, RuneLite semantic vocabulary, and eventually human-reviewed readable names.
+The workbench is intentionally separate from the Rust workspace. Its job is to build a traceable evidence graph from exact gamepack instructions to structural identities, control flow, hierarchy, value flow, decoder arithmetic, packet reads, cross-revision lineage, decompiler views, RuneLite semantic vocabulary, and eventually human-reviewed readable names.
 
 ## Implemented foundation
 
@@ -15,8 +15,11 @@ The workbench is intentionally separate from the Rust workspace. Its job is to b
 - Exact and rename-insensitive structural method fingerprints.
 - Bytecode class/member metric index.
 - Exact basic-block CFG with branch, switch, fallthrough, and exception edges.
+- Exact class hierarchy and override-equivalent virtual method families.
+- Stack/local value provenance using ASM source analysis.
+- Integer/long multiplier evidence with same-field inverse-pair proof.
 - Revision-240 evidence-source manifest.
-- JSON CLI surfaces for indexing and CFG inspection.
+- JSON CLI surfaces for indexing and focused analysis.
 
 Nothing here has been promoted to behavioral truth beyond the original bytecode.
 
@@ -24,7 +27,7 @@ Nothing here has been promoted to behavioral truth beyond the original bytecode.
 
 1. **original-exact**: untouched gamepack bytecode and stable instruction identities.
 2. **identity**: structural aliases and preserved obfuscated metadata.
-3. **analysis**: CFG, symbolic provenance, decoder proofs, packet timelines, virtual families, and revision matching.
+3. **analysis**: CFG, hierarchy, symbolic provenance, decoder proofs, packet timelines, virtual families, and revision matching.
 4. **semantic**: RuneLite/API/domain vocabulary and human-reviewed mappings.
 5. **presentation**: JSON/TSV evidence, decompiler source, and an offline workbench UI.
 
@@ -56,7 +59,7 @@ java -jar target/client-deob-workbench-0.1.0-SNAPSHOT.jar --help
 
 Those commands are documentation only until validation is explicitly run on the development branch.
 
-## Initial CLI
+## CLI
 
 From `deob-workbench/`:
 
@@ -69,12 +72,34 @@ java -jar target/client-deob-workbench-0.1.0-SNAPSHOT.jar index \
   --jar ../references/gamepacks/osrs-240/injected-client-1.12.39.jar \
   --out .cache/rev240/original-index.json
 
-# Build an exact method CFG. Descriptor must be the exact JVM descriptor.
+# Build an exact method CFG
 java -jar target/client-deob-workbench-0.1.0-SNAPSHOT.jar cfg \
   --jar ../references/gamepacks/osrs-240/injected-client-1.12.39.jar \
   --class aa --method bb --desc '(I)V' \
   --out .cache/rev240/cfg-aa-bb.json
+
+# Index class hierarchy and virtual dispatch families
+java -jar target/client-deob-workbench-0.1.0-SNAPSHOT.jar hierarchy \
+  --jar ../references/gamepacks/osrs-240/injected-client-1.12.39.jar \
+  --out .cache/rev240/hierarchy.json
+
+# Trace stack/local producers for one method
+java -jar target/client-deob-workbench-0.1.0-SNAPSHOT.jar provenance \
+  --jar ../references/gamepacks/osrs-240/injected-client-1.12.39.jar \
+  --class aa --method bb --desc '(I)V' \
+  --out .cache/rev240/provenance-aa-bb.json
+
+# Discover multiplier sites and prove inverse read/write pairs
+java -jar target/client-deob-workbench-0.1.0-SNAPSHOT.jar decoders \
+  --jar ../references/gamepacks/osrs-240/injected-client-1.12.39.jar \
+  --out .cache/rev240/decoders.json
 ```
+
+## Decoder confidence
+
+A multiplication site is reported as `CANDIDATE` when exact value provenance links it to a field read or write and a literal multiplier. A field becomes `PROVEN_INVERSE_PAIR` only when a read multiplier and write multiplier for that same field multiply to one modulo `2^32` or `2^64`.
+
+The analyzer does not rewrite multipliers or normalize bytecode. It reports evidence only.
 
 ## Source roles for rev 240
 
