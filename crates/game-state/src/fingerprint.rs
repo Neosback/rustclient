@@ -11,7 +11,7 @@ use crate::{GameState, OperationCommit, SemanticEvent, SessionLifecycle};
 ///
 /// Any change to field ordering, tags, integer encoding, or fingerprint
 /// algorithm that changes canonical output must increment this version.
-pub const SEMANTIC_FINGERPRINT_VERSION: u16 = 23;
+pub const SEMANTIC_FINGERPRINT_VERSION: u16 = 24;
 
 const FNV_OFFSET_BASIS: u64 = 0xCBF2_9CE4_8422_2325;
 const FNV_PRIME: u64 = 0x0000_0100_0000_01B3;
@@ -163,6 +163,7 @@ impl GameState {
                 write_scene(&mut fingerprint, scene);
             }
         }
+        write_destination(&mut fingerprint, self.destination());
         let scenery = self.scenery();
         fingerprint.write_u64(scenery.cycle().get());
         fingerprint.write_bytes(
@@ -677,6 +678,10 @@ fn write_commit(fingerprint: &mut StableFingerprint64, commit: OperationCommit) 
 
 fn write_event(fingerprint: &mut StableFingerprint64, event: SemanticEvent) {
     match event {
+        SemanticEvent::DestinationChanged(destination) => {
+            fingerprint.write_u8(21);
+            write_destination(fingerprint, destination);
+        }
         SemanticEvent::LocationAreaReset { origin, size } => {
             fingerprint.write_u8(20);
             write_tile(fingerprint, origin);
@@ -897,3 +902,17 @@ fn write_placement(f: &mut StableFingerprint64, placement: InitialPlacement) {
 mod interfaces;
 #[cfg(test)]
 mod tests;
+
+fn write_destination(
+    f: &mut StableFingerprint64,
+    destination: Option<rustclient_model::MapDestination>,
+) {
+    match destination {
+        None => f.write_u8(0),
+        Some(value) => {
+            f.write_u8(1);
+            f.write_bytes(&value.x.to_le_bytes());
+            f.write_bytes(&value.y.to_le_bytes());
+        }
+    }
+}

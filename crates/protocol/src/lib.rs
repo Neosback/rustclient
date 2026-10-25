@@ -51,3 +51,5 @@ pub use openrune_240::login_checksums;
 
 /// The selected desktop profile's immutable login integrity block.
 pub type LoginChecksums = [u32; 23];
+
+pub use openrune_240::MinimapClick;

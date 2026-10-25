@@ -344,15 +344,23 @@ fn draw_wall_edge(minimap: &mut MinimapImage, px: usize, py: usize, rot: u8, col
     }
 }
 
-/// Convert screen minimap offset (dx, dy) into target world coordinates (tx, ty).
+/// Revision-240 minimap click: integer rotation and footprint-centred world fine coordinates.
 #[must_use]
-pub fn screen_to_tile(dx: f32, dy: f32, camera: (f64, f64), yaw: f32) -> (f64, f64) {
-    let (sin, cos) = yaw.sin_cos();
-    let (right, forward) = (dx / (TILE_PX as f32), -dy / (TILE_PX as f32));
-    (
-        camera.0 + f64::from(right * cos - forward * sin),
-        camera.1 + f64::from(right * sin + forward * cos),
-    )
+pub fn click_destination(
+    offset: [i32; 2],
+    fine: [i64; 2],
+    yaw: u16,
+) -> Option<rustclient_model::MapDestination> {
+    let radians = f64::from(yaw & 2047) * std::f64::consts::TAU / 2048.;
+    let sin = (radians.sin() * 65536.) as i64;
+    let cos = (radians.cos() * 65536.) as i64;
+    let [dx, dy] = offset.map(i64::from);
+    let x = fine[0].checked_add((cos * dx + sin * dy) >> 11)?;
+    let y = fine[1].checked_sub((cos * dy - sin * dx) >> 11)?;
+    Some(rustclient_model::MapDestination {
+        x: i32::try_from(x >> 7).ok()?,
+        y: i32::try_from(y >> 7).ok()?,
+    })
 }
 
 /// Reference 16.16 sine/cosine for a 0..2047 camera angle. The client divides by `326.11`
@@ -445,43 +453,80 @@ pub fn draw_dots(
     if out.len() != mask_width * mask_height * 4 || mask_rgba.len() != out.len() {
         return;
     }
-    let (sin, cos) = rotation_16_16(angle);
-    let (focus_x, focus_y) = (
-        (camera.0 * TILE_PX as f64).floor() as i64,
-        (camera.1 * TILE_PX as f64).floor() as i64,
-    );
-    let (half_w, half_h) = ((mask_width / 2) as i64, (mask_height / 2) as i64);
     for dot in dots {
-        let Some(sprite) = sprites.get(dot.frame) else {
-            continue;
-        };
-        // Source-space offset in minimap pixels; source rows grow southwards.
-        let offset_x = (dot.tile.0 * TILE_PX as f64).floor() as i64 - focus_x;
-        let offset_y = focus_y - (dot.tile.1 * TILE_PX as f64).floor() as i64;
-        let centre_x = half_w + ((offset_x * cos - offset_y * sin) >> 16);
-        let centre_y = half_h + ((offset_x * sin + offset_y * cos) >> 16);
-        let (width, height) = (
-            i64::from(sprite.image.width()),
-            i64::from(sprite.image.height()),
-        );
-        let (left, top) = (centre_x - width / 2, centre_y - height / 2);
-        for row in 0..height {
-            for column in 0..width {
-                let at = ((row * width + column) * 4) as usize;
-                let pixel = &sprite.image.pixels()[at..at + 4];
-                let (x, y) = (left + column, top + row);
-                if pixel[3] == 0
-                    || x < 0
-                    || y < 0
-                    || x >= mask_width as i64
-                    || y >= mask_height as i64
-                {
-                    continue;
-                }
-                let target = ((y as usize) * mask_width + x as usize) * 4;
-                if mask_rgba[target + 3] == 0 {
-                    out[target..target + 4].copy_from_slice(pixel);
-                }
+        if let Some(sprite) = sprites.get(dot.frame) {
+            draw_marker(out, mask_rgba, mask_size, sprite, dot.tile, camera, angle);
+        }
+    }
+}
+
+/// Draw an upright cache sprite at its rotated minimap position, retaining canvas trim offsets.
+#[expect(
+    clippy::too_many_arguments,
+    reason = "one CPU marker projection contract"
+)]
+pub fn draw_marker(
+    out: &mut [u8],
+    mask_rgba: &[u8],
+    mask_size: [usize; 2],
+    sprite: &rustclient_cache::Sprite,
+    tile: (f64, f64),
+    camera: (f64, f64),
+    angle: u16,
+) {
+    let [mask_width, mask_height] = mask_size;
+    if out.len() != mask_width * mask_height * 4 || mask_rgba.len() != out.len() {
+        return;
+    }
+    let radians = f64::from(angle & 2047) * std::f64::consts::TAU / 2048.;
+    let (sin, cos) = (
+        (radians.sin() * 65536.) as i64,
+        (radians.cos() * 65536.) as i64,
+    );
+    let offset_x = (tile.0 * 4.).floor() as i64 - (camera.0 * 4.).floor() as i64;
+    let offset_y = (camera.1 * 4.).floor() as i64 - (tile.1 * 4.).floor() as i64;
+    if offset_x.unsigned_abs() > 80
+        || offset_y.unsigned_abs() > 80
+        || offset_x * offset_x + offset_y * offset_y > 6400
+    {
+        return;
+    }
+    let centre_x = (mask_width / 2) as i64 + ((offset_x * cos - offset_y * sin) >> 16);
+    let centre_y = (mask_height / 2) as i64 + ((offset_x * sin + offset_y * cos) >> 16);
+    let left = centre_x - i64::from(sprite.canvas[0] / 2) + i64::from(sprite.offset[0]);
+    let top = centre_y - i64::from(sprite.canvas[1] / 2) + i64::from(sprite.offset[1]);
+    let (width, height) = (
+        i64::from(sprite.image.width()),
+        i64::from(sprite.image.height()),
+    );
+    for row in 0..height {
+        for column in 0..width {
+            let at = ((row * width + column) * 4) as usize;
+            let pixel = &sprite.image.pixels()[at..at + 4];
+            let (x, y) = (left + column, top + row);
+            if pixel[3] == 0 || x < 0 || y < 0 || x >= mask_width as i64 || y >= mask_height as i64
+            {
+                continue;
+            }
+            let target = (y as usize * mask_width + x as usize) * 4;
+            if mask_rgba[target + 3] == 0 {
+                out[target..target + 4].copy_from_slice(pixel);
+            }
+        }
+    }
+}
+
+/// The reference local-player marker is a three-pixel white square at the integer mask centre.
+pub fn draw_local_player(out: &mut [u8], mask: &[u8], size: [usize; 2]) {
+    let [width, height] = size;
+    if width < 3 || height < 3 || out.len() != width * height * 4 || mask.len() != out.len() {
+        return;
+    }
+    for y in height / 2 - 1..=height / 2 + 1 {
+        for x in width / 2 - 1..=width / 2 + 1 {
+            let at = (y * width + x) * 4;
+            if mask[at + 3] == 0 {
+                out[at..at + 4].fill(255);
             }
         }
     }

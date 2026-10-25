@@ -59,13 +59,13 @@ pub fn gameplay_pointer(
     {
         let width = mask.size[0] as f32;
         let height = mask.size[1] as f32;
-        let px = (x - quad.rect.x) * width / quad.rect.width;
-        let py = (y - quad.rect.y) * height / quad.rect.height;
+        let px = ((x - quad.rect.x) * width / quad.rect.width).floor();
+        let py = ((y - quad.rect.y) * height / quad.rect.height).floor();
         let index = ((py.floor() as usize) * mask.size[0] as usize + px.floor() as usize) * 4 + 3;
         return if mask.pixels.get(index) == Some(&0) {
             GameplayPointer::Minimap {
-                dx: px - width / 2.,
-                dy: py - height / 2.,
+                dx: px - (mask.size[0] / 2) as f32,
+                dy: py - (mask.size[1] / 2) as f32,
             }
         } else {
             GameplayPointer::Blocked

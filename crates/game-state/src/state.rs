@@ -76,6 +76,7 @@ pub struct GameState {
     pub(crate) inventories: crate::InventoryState,
     pub(crate) entities: crate::WorldEntitiesState,
     pub(crate) selected_tab: Option<usize>,
+    pub(crate) destination: Option<rustclient_model::MapDestination>,
 }
 
 impl GameState {
@@ -100,6 +101,7 @@ impl GameState {
             inventories: crate::InventoryState::default(),
             interfaces: crate::InterfaceState::default(),
             selected_tab: Some(3),
+            destination: None,
         }
     }
 
@@ -305,6 +307,7 @@ impl GameState {
         self.inventories = crate::InventoryState::default();
         self.interfaces = crate::InterfaceState::default();
         self.selected_tab = Some(3);
+        self.destination = None;
         self.lifecycle = SessionLifecycle::Active;
         Ok(())
     }
@@ -335,6 +338,7 @@ impl GameState {
         self.inventories = crate::InventoryState::default();
         self.interfaces = crate::InterfaceState::default();
         self.selected_tab = Some(3);
+        self.destination = None;
         self.lifecycle = SessionLifecycle::Inactive;
         Ok(())
     }

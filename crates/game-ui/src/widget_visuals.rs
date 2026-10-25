@@ -9,6 +9,8 @@ pub struct WidgetVisualAssets {
     pub images: BTreeMap<UiImageId, Image>,
     pub fonts: BTreeMap<FontId, BitmapFont>,
     pub quantity_font: Option<FontId>,
+    pub destination_flag: Option<rustclient_cache::Sprite>,
+    pub cross_frames: BTreeMap<u8, SpriteFrame>,
     /// Untrimmed canvas and trim offset; widget geometry scales the canvas, not the trimmed image.
     pub sprite_frames: BTreeMap<SpriteId, SpriteFrame>,
     pub failures: Vec<String>,
@@ -19,6 +21,10 @@ impl WidgetVisualAssets {
         self.images.extend(later.images);
         self.fonts.extend(later.fonts);
         self.quantity_font = later.quantity_font.or(self.quantity_font);
+        if later.destination_flag.is_some() {
+            self.destination_flag = later.destination_flag;
+        }
+        self.cross_frames.extend(later.cross_frames);
         self.sprite_frames.extend(later.sprite_frames);
         self.failures.extend(later.failures);
     }

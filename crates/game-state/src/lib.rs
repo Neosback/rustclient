@@ -27,6 +27,7 @@ pub use player_movement::ExactMovement;
 pub use players::TrackedPlayer;
 
 mod commit;
+mod destination;
 mod fingerprint;
 mod operation;
 mod replay;

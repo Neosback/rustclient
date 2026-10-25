@@ -390,11 +390,11 @@ impl NativeApp {
         };
         let entities = self.state.entities();
         let local = entities.local_player().map(|player| player.index);
-        let centre = |position: [i32; 2], size: u8| {
+        let centre = |position: [i64; 2], size: u8| {
             let half = f64::from(size) / 2.;
             (
-                f64::from(position[0]) / 128. + half - f64::from(origin.x),
-                f64::from(position[1]) / 128. + half - f64::from(origin.y),
+                position[0] as f64 / 128. + half - f64::from(origin.x),
+                position[1] as f64 / 128. + half - f64::from(origin.y),
             )
         };
         let mut dots = Vec::new();
@@ -402,11 +402,7 @@ impl NativeApp {
             if Some(player.index) == local {
                 continue;
             }
-            let position = self
-                .scene
-                .motion
-                .player(player.index)
-                .unwrap_or([player.tile.x * 128, player.tile.y * 128]);
+            let position = player.path_queue.fine_position(player.tile).units();
             dots.push(MinimapDot {
                 tile: centre(position, 1),
                 frame: 2,
@@ -423,11 +419,7 @@ impl NativeApp {
             if !definition.draw_minimap_dot {
                 continue;
             }
-            let position = self
-                .scene
-                .motion
-                .npc(npc.index)
-                .unwrap_or([npc.tile.x * 128, npc.tile.y * 128]);
+            let position = npc.path_queue.fine_position(npc.tile).units();
             dots.push(MinimapDot {
                 tile: centre(position, definition.size.max(1)),
                 frame: 1,
@@ -483,6 +475,7 @@ impl NativeApp {
                     &self.widget_assets,
                     self.hover.as_ref(),
                     &mut self.click_cross,
+                    &self.state,
                 );
                 self.context_menu.project(assets, &mut self.frame);
                 self.widget_menu.project(assets, &mut self.frame);
@@ -507,17 +500,15 @@ impl NativeApp {
                     );
                     let camera_focus_tile =
                         if let Some(player) = self.state.entities().local_player() {
-                            // Follow the drawn position so the minimap scrolls with the walk.
-                            let [x, y] = self
-                                .scene
-                                .motion
-                                .player(player.index)
-                                .unwrap_or([player.tile.x * 128, player.tile.y * 128]);
-                            (f64::from(x) / 128. + 0.5, f64::from(y) / 128. + 0.5)
+                            let position = player.path_queue.fine_position(player.tile);
+                            (
+                                (position.x as f64 + 64.) / 128.,
+                                (position.y as f64 + 64.) / 128.,
+                            )
                         } else {
                             (
-                                f64::from(origin.x) + (f64::from(camera.focal()[0]) / 128.0),
-                                f64::from(origin.y) + (f64::from(camera.focal()[2]) / 128.0),
+                                f64::from(origin.x) + f64::from(camera.focal()[0]) / 128.,
+                                f64::from(origin.y) + f64::from(camera.focal()[2]) / 128.,
                             )
                         };
                     let angle = camera.yaw();
@@ -548,6 +539,35 @@ impl NativeApp {
                                 &dots,
                                 relative,
                                 angle,
+                            );
+                        }
+                        if let (Some(destination), Some(sprite)) = (
+                            self.state.destination().filter(|value| value.x != origin.x),
+                            self.widget_assets.destination_flag.as_ref(),
+                        ) {
+                            rustclient_scene::minimap::draw_marker(
+                                &mut self.minimap_pixels,
+                                &mask.pixels,
+                                [mask.size[0] as usize, mask.size[1] as usize],
+                                sprite,
+                                (
+                                    f64::from(destination.x) + 0.5,
+                                    f64::from(destination.y) + 0.5,
+                                ),
+                                camera_focus_tile,
+                                angle,
+                            );
+                        }
+                        if self.state.entities().local_player().is_some_and(|player| {
+                            player
+                                .appearance
+                                .as_ref()
+                                .is_none_or(|appearance| !appearance.hidden)
+                        }) {
+                            rustclient_scene::minimap::draw_local_player(
+                                &mut self.minimap_pixels,
+                                &mask.pixels,
+                                [mask.size[0] as usize, mask.size[1] as usize],
                             );
                         }
                     }
@@ -1265,7 +1285,7 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                     };
                     self.apply(operation);
                     match self.walk_click(&window, x, y) {
-                        Ok(true) => self.show_cross(interaction::CrossKind::Walk, x, y),
+                        Ok(true) => {}
                         Ok(false) => {}
                         Err(error) => {
                             eprintln!("movement: {error}");

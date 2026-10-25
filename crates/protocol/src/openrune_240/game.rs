@@ -224,6 +224,11 @@ pub enum ClientIntent {
         destination: WorldTile,
         invert_run: bool,
     },
+    MinimapWalk {
+        destination: WorldTile,
+        invert_run: bool,
+        click: super::MinimapClick,
+    },
     /// The selected map has finished loading.
     MapBuildComplete,
     WidgetAction(rustclient_model::WidgetAction),
@@ -286,6 +291,11 @@ impl ClientIntent {
                 slot,
                 control,
             } => super::actions::location(tile, object, slot, control)?,
+            Self::MinimapWalk {
+                destination,
+                invert_run,
+                click,
+            } => super::minimap::movement(destination, invert_run, click)?,
             Self::MapBuildComplete => (27, vec![]),
             Self::Walk {
                 destination,
@@ -366,6 +376,7 @@ pub enum ServerUpdate {
     },
     PlayerInfo(PlayerInfoUpdate),
     NpcInfo(NpcInfoUpdate),
+    MapFlag(Option<rustclient_model::MapDestination>),
     ResetActorAnimations,
     LocationAnim(LocAnimUpdate),
     LocationZoneReset(super::zone::ZoneOrigin),
@@ -542,6 +553,7 @@ impl SessionCodec {
                     &packet.payload,
                 )?),
                 68 | 94 | 100 | 127 => ServerUpdate::Variable(decode_variable(&packet)?),
+                136 => ServerUpdate::MapFlag(super::minimap::flag(&packet.payload)?),
                 92 => ServerUpdate::Tick,
                 56 => {
                     let [reason] = packet.payload.as_slice() else {

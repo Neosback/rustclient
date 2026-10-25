@@ -7,6 +7,8 @@
 #![forbid(unsafe_code)]
 
 pub mod coords;
+mod destination;
+pub use destination::MapDestination;
 pub mod entity;
 pub mod ids;
 mod interaction;

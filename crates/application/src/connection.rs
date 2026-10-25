@@ -110,6 +110,9 @@ impl ConnectionDecoder {
             ServerUpdate::NpcInfo(info) => deliver(ConnectionInput::Operation(
                 SemanticOperation::UpdateNpcs(info),
             )),
+            ServerUpdate::MapFlag(destination) => deliver(ConnectionInput::Operation(
+                SemanticOperation::SetDestination(destination),
+            )),
             ServerUpdate::ResetActorAnimations => deliver(ConnectionInput::Operation(
                 SemanticOperation::ResetActorAnimations,
             )),

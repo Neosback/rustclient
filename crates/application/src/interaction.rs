@@ -2,12 +2,12 @@
 use rustclient_game_state::GameState;
 use rustclient_model::{SceneDescriptor, WorldTile};
 use rustclient_protocol::ClientIntent;
-use rustclient_scene::{CollisionMap, SceneAsset};
+use rustclient_scene::SceneAsset;
 
 /// Validate a movement click against the currently committed map and entities.
 /// The request does not predict or mutate the confirmed position.
 /// # Errors
-/// Rejects stale projections, missing sessions, wrong-plane or unreachable tiles.
+/// Rejects stale projections, missing sessions, wrong-plane or out-of-map tiles.
 pub fn validate_walk(
     state: &GameState,
     asset: &SceneAsset,
@@ -28,11 +28,8 @@ pub fn validate_walk(
     if !expected.contains(destination) || player.tile.plane != destination.plane {
         return Err("destination is outside the current map or plane".into());
     }
-    let collision =
-        CollisionMap::build(asset, &state.scenery().into()).map_err(|e| e.to_string())?;
-    if !collision.reachable(player.tile, destination) {
-        return Err("destination is not reachable in the loaded map".into());
-    }
+    // Stock click requests carry the selected tile. Server routing may choose a
+    // reachable fallback; a disposable local collision map must not veto the request.
     Ok(ClientIntent::Walk {
         destination,
         invert_run,

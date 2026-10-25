@@ -115,11 +115,22 @@ pub fn load_widget_visuals<S: ReadOnlyBlobs>(
         Ok(frames) => {
             for (index, sprite) in frames.into_iter().take(8).enumerate() {
                 if let Ok(index) = u8::try_from(index) {
+                    assets.cross_frames.insert(
+                        index,
+                        rustclient_game_ui::widget_visuals::SpriteFrame {
+                            canvas: sprite.canvas.map(u32::from),
+                            offset: sprite.offset.map(u32::from),
+                        },
+                    );
                     assets.images.insert(UiImageId::Cross(index), sprite.image);
                 }
             }
         }
         Err(e) => assets.failures.push(e.to_string()),
+    }
+    match cache.named_sprites("mapmarker") {
+        Ok(frames) => assets.destination_flag = frames.into_iter().next(),
+        Err(error) => assets.failures.push(error.to_string()),
     }
     for id in &request.fonts {
         match profile.load_widget_font(cache, *id) {

@@ -235,13 +235,15 @@ impl GameState {
         self.scenery.cycle = current;
         let reboot_active = self.entities.reboot_cycles() != 0;
         self.entities.advance_cycles(previous, cycles);
+        let destination_changed = self.clear_reached_destination();
         Ok(OperationCommit::new(
             Some(SemanticEvent::ClientCyclesAdvanced { previous, current }),
             StateDelta::client_cycle(
                 reboot_active
                     || !self.entities.players().is_empty()
                     || !self.entities.npcs().is_empty(),
-            ),
+            )
+            .with_gameframe(destination_changed),
         ))
     }
 

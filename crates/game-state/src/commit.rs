@@ -41,6 +41,7 @@ pub enum SemanticEvent {
     EntitiesUpdated,
     /// Active gameframe tab selection changed.
     GameFrameTabSelected(Option<usize>),
+    DestinationChanged(Option<rustclient_model::MapDestination>),
     /// A server authenticated this session.
     SessionAuthenticated {
         revision: Revision,
@@ -127,6 +128,11 @@ impl StateDelta {
     pub(crate) const fn client_cycle(entities_changed: bool) -> Self {
         Self {
             changed: 64 | if entities_changed { 128 } else { 0 },
+        }
+    }
+    pub(crate) const fn with_gameframe(self, changed: bool) -> Self {
+        Self {
+            changed: self.changed | if changed { 256 } else { 0 },
         }
     }
     #[must_use]

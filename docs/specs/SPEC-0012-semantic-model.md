@@ -74,6 +74,13 @@ world tile coordinates. It carries no region size, wire width or scene extent.
 player plane supplies that input. This avoids manufacturing a plane in rebuild
 packets that carry no plane. SPEC-0018 owns its map-selection lifecycle.
 
+### MapDestination
+
+`MapDestination` is the requested flag target in signed world-tile x/y units, independent of plane.
+It is distinct from a map-window centre and from confirmed actor position. GameState owns its optional
+presence and lifecycle; protocol adapters translate packed coordinates and absence sentinels. A flag
+never authorizes a movement transition or supplies actor position. See SPEC-0017 for arrival/reset rules.
+
 ### RegionCoord and RegionTile
 
 A map region is 64×64 tiles.

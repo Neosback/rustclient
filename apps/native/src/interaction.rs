@@ -1,7 +1,7 @@
 //! Native pointer normalization; gameplay validation remains in application.
 use crate::{NativeApp, network};
 use rustclient_game_ui::gameframe::{GameplayPointer, gameplay_pointer};
-use rustclient_model::{WorldAction, WorldTarget, WorldTile};
+use rustclient_model::{SceneDescriptor, WorldAction, WorldTarget, WorldTile};
 use rustclient_renderer::CameraViewport;
 use std::time::Instant;
 use winit::window::Window;
@@ -10,10 +10,10 @@ use winit::window::Window;
 #[derive(Debug, Clone, Copy)]
 pub(super) enum WorldChoice {
     Action(WorldAction),
-    /// Walk to the tile under the pointer position the menu was opened at.
+    /// Captured world tile and map identity from when the menu was opened.
     Walk {
-        x: f32,
-        y: f32,
+        scene: SceneDescriptor,
+        destination: WorldTile,
     },
 }
 
@@ -35,71 +35,123 @@ pub(super) struct HoverText {
 impl NativeApp {
     #[expect(
         clippy::cast_possible_truncation,
-        reason = "bounded logical pointer/window and map coordinates"
+        reason = "bounded mask pixel offsets"
     )]
-    pub(super) fn walk_click(
-        &self,
-        window: &Window,
-        title_x: f32,
-        title_y: f32,
-    ) -> Result<bool, String> {
-        let (Some(loaded), Some(camera), Some(connection)) =
-            (&self.scene.loaded, self.scene.camera, &self.connection)
-        else {
+    pub(super) fn walk_click(&mut self, window: &Window, x: f32, y: f32) -> Result<bool, String> {
+        let (Some(loaded), Some(camera), Some(player)) = (
+            &self.scene.loaded,
+            self.scene.camera,
+            self.state.entities().local_player(),
+        ) else {
             return Ok(false);
         };
-        if self.scene.loading || self.scene.diagnostics {
+        if self.scene.loading || self.scene.diagnostics || self.connection.is_none() {
             return Ok(false);
         }
-        let Some(player) = self.state.entities().local_player() else {
-            return Ok(false);
-        };
-        let descriptor = loaded.asset.descriptor();
-        let destination = match gameplay_pointer(
+        let scene = loaded.asset.descriptor();
+        let (destination, click) = match gameplay_pointer(
             &self.frame,
             self.minimap_mask.as_ref().map(|(_, mask)| mask),
-            title_x,
-            title_y,
+            x,
+            y,
         ) {
             GameplayPointer::Blocked => return Ok(false),
             GameplayPointer::Minimap { dx, dy } => {
-                let yaw = f32::from(camera.yaw()) * std::f32::consts::TAU / 2048.;
-                let (x, y) = rustclient_scene::minimap::screen_to_tile(
-                    dx,
-                    dy,
-                    (
-                        f64::from(player.tile.x) + 0.5,
-                        f64::from(player.tile.y) + 0.5,
-                    ),
-                    yaw,
-                );
-                WorldTile::new(x.floor() as i32, y.floor() as i32, player.tile.plane)
-            }
-            GameplayPointer::World => {
-                let Some((origin, direction)) = self.world_ray(window, title_x, title_y) else {
-                    return Ok(false);
-                };
-                let Some(tile) =
-                    rustclient_scene::pick_terrain(&loaded.mesh, descriptor, origin, direction)
+                let offset = [dx as i32, dy as i32];
+                let position = player.path_queue.fine_position(player.tile);
+                let fine = [position.x + 64, position.y + 64];
+                let Some(target) =
+                    rustclient_scene::minimap::click_destination(offset, fine, camera.yaw())
                 else {
                     return Ok(false);
                 };
-                tile
+                let origin = scene.origin();
+                let local = [
+                    fine[0] - i64::from(origin.x) * 128,
+                    fine[1] - i64::from(origin.y) * 128,
+                ];
+                let click = rustclient_protocol::MinimapClick {
+                    offset: [
+                        i8::try_from(offset[0])
+                            .map_err(|_| "minimap x offset exceeds telemetry range")?,
+                        i8::try_from(offset[1])
+                            .map_err(|_| "minimap y offset exceeds telemetry range")?,
+                    ],
+                    camera_yaw: camera.yaw(),
+                    fine_position: [
+                        u16::try_from(local[0]).map_err(|_| "minimap fine x outside build area")?,
+                        u16::try_from(local[1]).map_err(|_| "minimap fine y outside build area")?,
+                    ],
+                    shift: self.modifiers.shift_key(),
+                };
+                (
+                    WorldTile::new(target.x, target.y, player.tile.plane),
+                    Some(click),
+                )
+            }
+            GameplayPointer::World => {
+                let Some((origin, direction)) = self.world_ray(window, x, y) else {
+                    return Ok(false);
+                };
+                let Some(tile) =
+                    rustclient_scene::pick_terrain(&loaded.mesh, scene, origin, direction)
+                else {
+                    return Ok(false);
+                };
+                (tile, None)
             }
         };
-        let intent = rustclient_application::validate_walk(
+        self.send_walk_destination(scene, destination, click)?;
+        if click.is_none() {
+            self.show_cross(CrossKind::Walk, x, y);
+        }
+        Ok(true)
+    }
+
+    fn send_walk_destination(
+        &mut self,
+        scene: SceneDescriptor,
+        destination: WorldTile,
+        click: Option<rustclient_protocol::MinimapClick>,
+    ) -> Result<(), String> {
+        let loaded = self
+            .scene
+            .loaded
+            .as_ref()
+            .ok_or("walk requires a loaded scene")?;
+        let connection = self
+            .connection
+            .as_ref()
+            .ok_or("walk requires a connection")?;
+        let invert_run = self.modifiers.control_key();
+        let ordinary = rustclient_application::validate_walk(
             &self.state,
             &loaded.asset,
-            descriptor,
+            scene,
             destination,
-            self.modifiers.control_key(),
+            invert_run,
         )?;
+        let intent = click.map_or(ordinary, |click| {
+            rustclient_protocol::ClientIntent::MinimapWalk {
+                destination,
+                invert_run,
+                click,
+            }
+        });
         connection.send(network::Outbound {
             map_epoch: self.map_epoch,
             interface_epoch: None,
             intent,
         })?;
-        Ok(true)
+        self.state
+            .apply_operation(rustclient_game_state::SemanticOperation::SetDestination(
+                Some(rustclient_model::MapDestination {
+                    x: destination.x,
+                    y: destination.y,
+                }),
+            ))
+            .map_err(|error| error.to_string())?;
+        Ok(())
     }
 
     pub(super) fn acknowledge_map(&self) {
@@ -169,7 +221,7 @@ impl NativeApp {
         )
     }
     pub(super) fn send_world_action(
-        &self,
+        &mut self,
         action: rustclient_model::WorldAction,
     ) -> Result<(), String> {
         let loaded = self
@@ -188,11 +240,28 @@ impl NativeApp {
             action,
             self.modifiers.control_key(),
         )?;
+        let destination = match action.target {
+            WorldTarget::Npc { index, .. } => {
+                self.state.entities().npcs().get(&index).map(|npc| npc.tile)
+            }
+            WorldTarget::Location { key, .. } => Some(key.tile),
+        };
         connection.send(network::Outbound {
             map_epoch: self.map_epoch,
             interface_epoch: None,
             intent,
-        })
+        })?;
+        if let Some(tile) = destination {
+            self.state
+                .apply_operation(rustclient_game_state::SemanticOperation::SetDestination(
+                    Some(rustclient_model::MapDestination {
+                        x: tile.x,
+                        y: tile.y,
+                    }),
+                ))
+                .map_err(|error| error.to_string())?;
+        }
+        Ok(())
     }
     /// Start the click-cross animation at a UI position.
     pub(super) fn show_cross(&mut self, kind: CrossKind, x: f32, y: f32) {
@@ -201,7 +270,7 @@ impl NativeApp {
     /// Carry out a world menu entry chosen by a click or key press at `(x, y)`.
     pub(super) fn run_world_choice(
         &mut self,
-        window: &Window,
+        _window: &Window,
         choice: WorldChoice,
         x: f32,
         y: f32,
@@ -211,10 +280,9 @@ impl NativeApp {
                 self.send_world_action(action)?;
                 self.show_cross(CrossKind::Interact, x, y);
             }
-            WorldChoice::Walk { x: wx, y: wy } => {
-                if self.walk_click(window, wx, wy)? {
-                    self.show_cross(CrossKind::Walk, x, y);
-                }
+            WorldChoice::Walk { scene, destination } => {
+                self.send_walk_destination(scene, destination, None)?;
+                self.show_cross(CrossKind::Walk, x, y);
             }
         }
         Ok(())
@@ -243,8 +311,24 @@ impl NativeApp {
                 .map(|(label, action)| (label, WorldChoice::Action(action), Some(target))),
             );
         }
-        if self.pointer_over_world(x, y) && self.scene.loaded.is_some() {
-            entries.push(("Walk here".to_owned(), WorldChoice::Walk { x, y }, None));
+        if self.pointer_over_world(x, y)
+            && let Some(loaded) = &self.scene.loaded
+            && let Some((origin, direction)) = self.world_ray(window, x, y)
+            && let Some(destination) = rustclient_scene::pick_terrain(
+                &loaded.mesh,
+                loaded.asset.descriptor(),
+                origin,
+                direction,
+            )
+        {
+            entries.push((
+                "Walk here".to_owned(),
+                WorldChoice::Walk {
+                    scene: loaded.asset.descriptor(),
+                    destination,
+                },
+                None,
+            ));
         }
         Ok(entries)
     }
@@ -356,9 +440,9 @@ impl NativeApp {
             }
             return Ok(true);
         }
-        // The default action is the first entry; "Walk here" is left to the movement click.
+        // Both movement and interaction retain the selected entry and its map identity.
         match entries.into_iter().next() {
-            Some((_, choice @ WorldChoice::Action(_), _)) => {
+            Some((_, choice, _)) => {
                 self.run_world_choice(window, choice, x, y)?;
                 Ok(true)
             }
@@ -392,10 +476,22 @@ pub(super) fn project_pointer_overlays(
     widget_assets: &rustclient_game_ui::widget_visuals::WidgetVisualAssets,
     hover: Option<&HoverText>,
     cross: &mut Option<(Instant, CrossKind, f32, f32)>,
+    state: &rustclient_game_state::GameState,
 ) {
     use rustclient_game_ui::{Rect, UiImageId, shadowed_text};
     let clip = Rect::new(0., 0., 16384., 16384.);
-    if let (Some(hover), Some(viewport)) = (hover, frame.world_viewport) {
+    let enabled = |key| {
+        state
+            .interfaces()
+            .settings()
+            .get(&key)
+            .copied()
+            .unwrap_or(true)
+    };
+    if let (Some(hover), Some(viewport)) = (
+        hover.filter(|_| enabled(rustclient_model::ClientSetting::ShowMouseOverText)),
+        frame.world_viewport,
+    ) {
         #[expect(clippy::cast_possible_truncation, reason = "bounded logical viewport")]
         let (x, y) = (viewport.x as i32 + 4, viewport.y as i32 + 15);
         let mut x = x;
@@ -416,10 +512,20 @@ pub(super) fn project_pointer_overlays(
             CrossKind::Interact => 4,
         };
         let image = UiImageId::Cross(base + u8::try_from(frame_index).unwrap_or(0));
-        if let Some(sprite) = widget_assets.images.get(&image) {
+        if enabled(rustclient_model::ClientSetting::ShowMouseCross)
+            && let Some(sprite) = widget_assets.images.get(&image)
+        {
             #[expect(clippy::cast_precision_loss, reason = "small sprite extents")]
             let (w, h) = (sprite.width() as f32, sprite.height() as f32);
-            frame.image(image, Rect::new(x - w / 2., y - h / 2., w, h), clip);
+            let offset = widget_assets
+                .cross_frames
+                .get(&(base + u8::try_from(frame_index).unwrap_or(0)))
+                .map_or([0; 2], |metadata| metadata.offset);
+            frame.image(
+                image,
+                Rect::new(x - 8. + offset[0] as f32, y - 8. + offset[1] as f32, w, h),
+                clip,
+            );
         }
     }
 }

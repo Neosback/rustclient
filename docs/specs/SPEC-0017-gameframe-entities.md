@@ -50,3 +50,31 @@ Acceptance: semantic host tests cover repeated root/subinterface opens, unchange
 opened at another parent, callback order, invalid topology and repeated resource synchronization.
 This continuation does not accept widget-model frame reset/advancement, root-close callback ordering,
 all mutable widget unload behavior or rendering parity; those remain tracked separately.
+
+## Destination and pointer continuation, 2026-10-25
+
+GameState owns one optional plane-independent world-tile `MapDestination` for the minimap flag.
+Accepted local movement/action requests and server map-flag updates enter through typed operations;
+confirmed player position is never predicted from a click. Session teardown clears the destination.
+Ordinary map rebases preserve its world coordinate. Client-cycle advancement clears it when the
+local player's footprint-centred fine position enters the destination tile, or no local player exists.
+Destination state, changes and replay participate in fingerprint schema 24; the gameframe delta marks
+explicit changes and automatic arrival clearing.
+
+Movement click validation rejects stale maps, wrong planes and out-of-map coordinates. It does not
+reject an in-bounds request based on disposable local reachability: the server owns the requested
+walk's resulting movement. The client BFS used for special actor traversal remains a distinct concern.
+Minimap clicks use the displayed player's authoritative fine position and integer camera rotation,
+and the revision adapter emits the dedicated minimap movement packet with its pointer/camera/fine
+telemetry. World clicks emit ordinary movement packets. Minimap clicks do not start a yellow cross.
+
+Cache-authored tabs and their sprites continue through widget/script operations. Pointer feedback
+honours mouse-cross/mouseover preferences; cross animation uses four 100 ms frames and the reference
+eight-pixel anchor with sprite trim offsets. Minimap flag frame zero comes from the cache `mapmarker`
+group, stays upright while its position rotates, and is clipped by the displayed aperture.
+
+Acceptance: focused semantic destination/reset/arrival/replay contracts, byte-level packet vectors,
+minimap coordinate/rotation/mask tests, captured world-menu destinations, and existing interface tests.
+Full instance/multi-world routing, transformed-player footprint sizes, special actor route expansion,
+all minimap toggle modes, complete tab/interface content and desktop pixel parity remain open until
+separately verified. A passing headless test does not establish perfect visual parity.

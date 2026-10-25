@@ -29,6 +29,8 @@ pub enum SemanticOperation {
     ResetActorAnimations,
     /// Select or unselect active gameframe tab.
     SelectGameFrameTab(Option<usize>),
+    /// Requested minimap flag target; never a predicted actor position.
+    SetDestination(Option<rustclient_model::MapDestination>),
     /// Change non-secret pre-session title navigation/feedback.
     SetTitleScreen(TitleScreen),
     /// Begin a new semantic game session for an explicit compatibility revision.
@@ -236,6 +238,7 @@ impl GameState {
                 })
             }
             SemanticOperation::SelectGameFrameTab(tab) => self.apply_select_tab(tab),
+            SemanticOperation::SetDestination(destination) => self.apply_destination(destination),
             SemanticOperation::RebuildMap(anchor) => {
                 let placement = self
                     .rebuild_map(anchor)
@@ -374,7 +377,7 @@ impl GameState {
         }
     }
 
-    fn require_active(&self) -> Result<(), OperationError> {
+    pub(crate) fn require_active(&self) -> Result<(), OperationError> {
         if self.lifecycle() == SessionLifecycle::Active {
             Ok(())
         } else {
