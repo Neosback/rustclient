@@ -49,14 +49,14 @@ opcode	rust_name	runelite_name	status	live_uses	handlers
 100	CcCreate	CC_CREATE	adapter		classBB.method798,classGD.method5429
 101	CcDelete	CC_DELETE	adapter		classBB.method798,classGD.method5429
 102	CcDeleteall	CC_DELETEALL	adapter		classBB.method798,classGD.method5429
-103			unknown	53	
-104			unknown	21	
+103			unknown	51	
+104			unknown	20	
 105	CcClone		adapter		classBB.method798,classGD.method5429
 106	CcCreateNested		adapter		classBB.method798,classGD.method5429
 107	CcCreateSibling		adapter		classBB.method798,classGD.method5429
 200	CcFind	CC_FIND	adapter		classBB.method798,classGD.method5429
 201	IfFind	IF_FIND	adapter		classBB.method798,classGD.method5429
-202			unknown	51	
+202			unknown	49	
 203			unknown	8	
 204			handler-only	58	classBB.method798,classGD.method5429
 205			handler-only		classBB.method798,classGD.method5429
@@ -514,8 +514,8 @@ opcode	rust_name	runelite_name	status	live_uses	handlers
 3223			unknown	5	
 3224			unknown	2	
 3225			unknown	2	
-3228			handler-only	78	Renderable.method3851,classBB.method857,classBB.method858
-3229			handler-only	1	Renderable.method3851,classBB.method858
+3228			handler-only		Renderable.method3851,classBB.method857,classBB.method858
+3229			handler-only		Renderable.method3851,classBB.method858
 3300	Clientclock	CLIENTCLOCK	adapter		BufferProvider.method13367
 3301	InvGetobj	INV_GETOBJ	adapter		BufferProvider.method13367
 3302	InvGetnum	INV_GETNUM	adapter		BufferProvider.method13367
@@ -777,7 +777,7 @@ opcode	rust_name	runelite_name	status	live_uses	handlers
 4216			handler-only		classBB.method877,classKI.method6526
 4217			handler-only		classBB.method877,classKI.method6526
 4218			handler-only	2	classBB.method877,classKI.method6526
-4219			handler-only	1	classBB.method877,classKI.method6526
+4219			handler-only		classBB.method877,classKI.method6526
 4220			handler-only		classBB.method877,classKI.method6526
 4222			handler-only	4	classBB.method877,classKI.method6526
 4223			handler-only	1	classBB.method877,classKI.method6526
@@ -912,8 +912,8 @@ opcode	rust_name	runelite_name	status	live_uses	handlers
 6708			unknown	6	
 6709			unknown	5	
 6750			unknown	2	
-6751			unknown	59	
-6752			unknown	59	
+6751			unknown	58	
+6752			unknown	58	
 6753			unknown	20	
 6754			handler-only	16	classBB.method901,classBB.method902,classBB.method903,classOY.method8858
 6758			unknown	12	
@@ -921,8 +921,8 @@ opcode	rust_name	runelite_name	status	live_uses	handlers
 6762			unknown	5	
 6764			handler-only		classBB.method901,classBB.method902,classBB.method903,classOY.method8858
 6765			handler-only		classBB.method901,classBB.method902,classBB.method903,classOY.method8858
-6801			unknown	26	
-6802			unknown	37	
+6801			unknown	23	
+6802			unknown	34	
 6803			unknown	9	
 6806			unknown	1	
 6807			unknown	5	
@@ -998,7 +998,7 @@ opcode	rust_name	runelite_name	status	live_uses	handlers
 7121			unknown	1	
 7122			unknown	1	
 7200			unknown	6	
-7201			unknown	8	
+7201			unknown	7	
 7203			unknown	8	
 7204			unknown	6	
 7206			unknown	3	

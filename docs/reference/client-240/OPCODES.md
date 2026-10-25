@@ -3,7 +3,7 @@
 `inputs/script-opcodes-240.tsv` joins four sources per opcode number: the adapter table in
 `crates/cache/src/osrs240/script_opcodes.rs`, RuneLite's rev-240 `Opcodes.java`/`RuneLiteOpcodes.java`, the
 bytecode handler scan (`tools/client-240/java/ScriptOpcodeScan.java` over the rl-suite semantic jar) and a
-live-use tally from the cache (`script_probe CACHE --find-opcode summary`, build-240 cache). Regenerate with
+live-use tally from the cache (`script_probe CACHE --find-opcode summary`, the `~/Desktop/LIVE` build-240 cache). Regenerate with
 `tools/client-240/opcode-table.py`. It is evidence only; the adapter table stays the behavioural owner.
 
 ## Status counts
@@ -18,9 +18,9 @@ live-use tally from the cache (`script_probe CACHE --find-opcode summary`, build
 
 ## Opcodes the cache uses that the adapter does not name
 
-332 opcode numbers, 2903 uses. None has a RuneLite rev-240 name, and none is named in the 235 or
+329 opcode numbers, 2809 uses. None has a RuneLite rev-240 name, and none is named in the 235 or
 rustosrs references either, so the names have to come from reading handler behavior (Phase B scripts wave).
-131 of them have a scanned handler branch; the other 201 have none. Top by use:
+128 of them have a scanned handler branch; the other 201 have none. Top by use:
 
 | opcode | uses | scanned handlers |
 |---|---|---|
