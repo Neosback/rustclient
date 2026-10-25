@@ -28,6 +28,7 @@ pub(super) fn sequence(bytes: &[u8], id: SequenceId, source: Source) -> Result<S
         restart: 2,
         skeletal: None,
         range: None,
+        height_offset: 0,
     };
     loop {
         match r.u8()? {
@@ -52,9 +53,7 @@ pub(super) fn sequence(bytes: &[u8], id: SequenceId, source: Source) -> Result<S
             5 => out.priority = r.u8()?,
             9 => movement_gate_with_backlog = Some(r.u8()?),
             10 => movement_gate_without_backlog = Some(r.u8()?),
-            16 => {
-                r.u8()?;
-            }
+            16 => out.height_offset = i8::from_be_bytes([r.u8()?]),
             6 | 7 => {
                 r.u16()?;
             }

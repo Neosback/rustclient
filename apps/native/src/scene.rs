@@ -135,7 +135,6 @@ impl SceneView {
     pub fn start_animator(
         &mut self,
         asset: std::sync::Arc<rustclient_scene::SceneAsset>,
-        placement: InitialPlacement,
         session: u64,
         proxy: EventLoopProxy<LoadEvent>,
     ) -> Result<(), String> {
@@ -149,8 +148,7 @@ impl SceneView {
                         inputs = next;
                     }
                     let result =
-                        rustclient_scene::build_dynamic(&asset, placement.position, &inputs)
-                            .map_err(|e| e.to_string());
+                        rustclient_scene::build_dynamic(&asset, &inputs).map_err(|e| e.to_string());
                     if proxy
                         .send_event(LoadEvent::DynamicReady(
                             session,

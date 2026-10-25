@@ -28,7 +28,9 @@ mod locations;
 pub use locations::location_key;
 mod mesh;
 mod picking;
+mod roofs;
 pub use picking::{SurfaceHit, pick_surface, pick_terrain};
+pub use roofs::RoofView;
 mod shapes;
 mod terrain;
 mod uv;
@@ -52,7 +54,12 @@ type Result<T> = std::result::Result<T, SceneError>;
 pub struct SceneAsset {
     descriptor: SceneDescriptor,
     assets: WorldAssets,
+    /// `ObjectComposition.floor_lift` of each tile's floor decoration, keyed by the plane the
+    /// client files the decoration under (bridge decks sit one plane lower) and world tile.
+    floor_lifts: std::collections::HashMap<(u8, i32, i32), u8>,
 }
+/// Shape code of a floor decoration, the client's "ground object".
+const FLOOR_DECORATION: u8 = 22;
 impl SceneAsset {
     /// # Errors
     /// Rejects inconsistent extents, tile counts or missing height borders.
@@ -70,7 +77,11 @@ impl SceneAsset {
             height,
         )
         .ok_or_else(|| SceneError("invalid scene footprint".into()))?;
-        let this = Self { descriptor, assets };
+        let mut this = Self {
+            descriptor,
+            assets,
+            floor_lifts: std::collections::HashMap::new(),
+        };
         for x in 0..=width {
             for y in 0..=height {
                 if this
@@ -87,7 +98,35 @@ impl SceneAsset {
                 }
             }
         }
+        this.index_floor_lifts();
         Ok(this)
+    }
+    fn index_floor_lifts(&mut self) {
+        let mut lifts = std::collections::HashMap::new();
+        for loc in self.assets.squares.iter().flat_map(|s| &s.locations) {
+            let lift = self
+                .assets
+                .objects
+                .get(&loc.object)
+                .map_or(0, |def| def.floor_lift);
+            if loc.shape != FLOOR_DECORATION {
+                continue;
+            }
+            let tile = loc.tile;
+            let deck = self
+                .tile(Plane::new(1).expect("plane"), tile.x, tile.y)
+                .is_some_and(|t| t.bridge());
+            // Under a bridge the ground-floor tile is the deck's lower link, not the tile an
+            // actor on the bridge stands on.
+            if deck && tile.plane.get() == 0 {
+                continue;
+            }
+            let plane = tile.plane.get() - u8::from(deck);
+            // One decoration per tile: a later one replaces the earlier, as in the client.
+            lifts.insert((plane, tile.x, tile.y), lift);
+        }
+        lifts.retain(|_, lift| *lift != 0);
+        self.floor_lifts = lifts;
     }
     #[must_use]
     pub const fn descriptor(&self) -> SceneDescriptor {
@@ -131,8 +170,9 @@ impl SceneAsset {
             .ok_or_else(|| SceneError("location definition unavailable".into()))?;
         locations::resolve(self, definition, inputs)
     }
-    /// Bridge-aware scene-local floor height, in reference negative-up fine units: the drawn
-    /// floor triangle where the tile has one, otherwise a bilinear corner blend.
+    /// Bridge-aware scene-local floor height, in reference negative-up fine units, as the 240
+    /// client reports it (`WorldView.method3794`): the drawn floor triangle where the tile has
+    /// one, otherwise a bilinear corner blend, raised by the tile's floor-decoration lift.
     /// # Errors
     /// Rejects points outside the retained terrain height border.
     #[expect(
@@ -143,7 +183,7 @@ impl SceneAsset {
         let origin = self.descriptor.origin();
         let x = origin.x + fine[0].div_euclid(128);
         let y = origin.y + fine[1].div_euclid(128);
-        let plane = if plane.get() < 3
+        let floor_plane = if plane.get() < 3
             && self
                 .tile(Plane::new(1).expect("plane"), x, y)
                 .is_some_and(|t| t.bridge())
@@ -154,16 +194,51 @@ impl SceneAsset {
         };
         let fx = fine[0].rem_euclid(128);
         let fy = fine[1].rem_euclid(128);
-        if let Some(height) = terrain::floor_height(self, plane, x, y, fx, fy)? {
-            return Ok(height);
+        let lift = i32::from(
+            self.floor_lifts
+                .get(&(plane.get(), x, y))
+                .copied()
+                .unwrap_or(0),
+        );
+        if let Some(height) = terrain::floor_height(self, floor_plane, x, y, fx, fy)? {
+            return Ok(height - lift);
         }
-        let a = (-self.elevation(plane, x, y)? * (128 - fx)
-            - self.elevation(plane, x + 1, y)? * fx)
+        let a = (-self.elevation(floor_plane, x, y)? * (128 - fx)
+            - self.elevation(floor_plane, x + 1, y)? * fx)
             >> 7;
-        let b = (-self.elevation(plane, x, y + 1)? * (128 - fx)
-            - self.elevation(plane, x + 1, y + 1)? * fx)
+        let b = (-self.elevation(floor_plane, x, y + 1)? * (128 - fx)
+            - self.elevation(floor_plane, x + 1, y + 1)? * fx)
             >> 7;
-        Ok((a * (128 - fy) + b * fy) >> 7)
+        Ok(((a * (128 - fy) + b * fy) >> 7) - lift)
+    }
+    /// Height an actor of `footprint` fine units stands at (`classKC.method6499`): the highest
+    /// floor among the centre, the four corners of the footprint square and every tile corner
+    /// inside it, so a foot on the uphill side of a slope is never buried. A zero footprint (forced
+    /// movement) is the centre alone.
+    /// # Errors
+    /// Rejects a centre outside the retained terrain height border; samples that fall outside
+    /// it are skipped.
+    pub fn footprint_height(&self, plane: Plane, center: [i32; 2], footprint: i32) -> Result<i32> {
+        let mut highest = self.ground_height(plane, center)?;
+        if footprint == 0 {
+            return Ok(highest);
+        }
+        let half = footprint / 2;
+        let [x, y] = center;
+        let mut sample = |point: [i32; 2]| {
+            if let Ok(height) = self.ground_height(plane, point) {
+                highest = highest.min(height);
+            }
+        };
+        for tile_x in ((x - half) >> 7) + 1..=(x + half) >> 7 {
+            for tile_y in ((y - half) >> 7) + 1..=(y + half) >> 7 {
+                sample([tile_x << 7, tile_y << 7]);
+            }
+        }
+        for (dx, dy) in [(-half, -half), (-half, half), (half, -half), (half, half)] {
+            sample([x + dx, y + dy]);
+        }
+        Ok(highest)
     }
     pub(crate) fn elevation(&self, plane: Plane, x: i32, y: i32) -> Result<i32> {
         self.tile(plane, x, y)

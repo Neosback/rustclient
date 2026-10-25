@@ -309,6 +309,7 @@ mod tests {
             movement_gate_without_backlog: 0,
             skeletal: None,
             range: None,
+            height_offset: 0,
         };
         assert_eq!(actor_frame(&sequence, 6, false).unwrap(), Some(0));
         assert_eq!(actor_frame(&sequence, 11, false).unwrap(), Some(1));
@@ -337,6 +338,7 @@ mod tests {
             movement_gate_without_backlog: 0,
             skeletal: None,
             range: None,
+            height_offset: 0,
         };
         for (cycle, frame) in [
             (0, 0),

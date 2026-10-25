@@ -1,6 +1,6 @@
 use crate::{
     Result, SceneAsset, SceneError, WorldMesh, color,
-    mesh::visible,
+    mesh::render_level,
     shapes::{FACE_CODES, VERTEX_CODES},
 };
 use rustclient_model::Plane;
@@ -49,7 +49,6 @@ fn lighting(
 pub(crate) fn build(
     asset: &SceneAsset,
     mesh: &mut WorldMesh,
-    selected: Plane,
     inputs: &crate::SceneryInputs,
 ) -> Result<()> {
     let d = asset.descriptor;
@@ -65,9 +64,7 @@ pub(crate) fn build(
             for y in 1..height.saturating_sub(1) {
                 let wx = origin.x + x as i32;
                 let wy = origin.y + y as i32;
-                if !visible(asset, plane, wx, wy, selected) {
-                    continue;
-                }
+                let level = render_level(asset, plane, wx, wy);
                 let tile = asset
                     .tile(plane, wx, wy)
                     .ok_or_else(|| SceneError("missing terrain tile".into()))?;
@@ -164,6 +161,7 @@ pub(crate) fn build(
                         uv,
                         0,
                         0,
+                        level,
                     )?;
                     mesh.stats.terrain_triangles += 1;
                 }

@@ -1,5 +1,5 @@
 // Classic reference materials: baked HSL/lightness, no directional relighting.
-struct Camera { view_projection: mat4x4<f32>, cycle: u32, _pad0:u32,_pad1:u32,_pad2:u32 }
+struct Camera { view_projection: mat4x4<f32>, cycle: u32, top_level: u32, _pad1:u32,_pad2:u32 }
 struct Animations { values:array<vec4<f32>,256> }
 @group(0) @binding(0) var<uniform> camera:Camera;
 @group(0) @binding(1) var textures:texture_2d_array<f32>;
@@ -33,6 +33,13 @@ fn hsl_rgb(packed:u32)->vec3<f32> {
 }
 @vertex fn vs_main(input:Input)->Vertex {
  var out:Vertex;
+ if input.texture_uv.w>camera.top_level {
+    // Tile render level above this frame's top level (roofs, upper floors): all three
+    // vertices collapse to one point, so the triangle is dropped before rasterization.
+    out.clip=vec4<f32>(2.0,2.0,2.0,1.0);
+    out.alpha=0.0;out.hsl=0.0;out.texture=0u;out.uv=vec2<f32>(0.0);out.color=vec3<f32>(0.0);
+    return out;
+ }
  out.clip=camera.view_projection*vec4<f32>(vec3<f32>(input.position.xyz),1.0);
  out.clip.z+=f32((input.abhsl>>16u)&255u)/128.0;
  out.alpha=1.0-f32(input.abhsl>>24u)/255.0;

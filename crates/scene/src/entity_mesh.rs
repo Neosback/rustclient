@@ -478,7 +478,8 @@ fn build_player(
         } else {
             (base, base_cycle, false)
         };
-    if !pose_model(asset, catalog, &mut model, sequence, cycle, action)? {
+    let played = pose_model(asset, catalog, &mut model, sequence, cycle, action)?;
+    if !played {
         pose_model(asset, catalog, &mut model, base, base_cycle, false)?;
     }
 
@@ -489,7 +490,13 @@ fn build_player(
             position,
             plane: player.tile.plane,
             size: 1,
+            footprint: default_footprint(1),
             orientation,
+            height_offset: sequence_height_offset(
+                asset,
+                catalog,
+                if played { sequence } else { base },
+            ),
         },
         Light::entity(64, 850),
         geometry,
@@ -560,7 +567,8 @@ fn build_npc(
     } else {
         (base, base_cycle, false)
     };
-    if !pose_model(asset, catalog, &mut model, sequence, cycle, action)? {
+    let played = pose_model(asset, catalog, &mut model, sequence, cycle, action)?;
+    if !played {
         pose_model(asset, catalog, &mut model, base, base_cycle, false)?;
     }
     // The reference scales the animated model, so bone translations stay in unscaled units.
@@ -579,7 +587,15 @@ fn build_npc(
             position,
             plane: npc.tile.plane,
             size: def.size.max(1),
+            footprint: def
+                .footprint
+                .map_or_else(|| default_footprint(def.size.max(1)), i32::from),
             orientation,
+            height_offset: sequence_height_offset(
+                asset,
+                catalog,
+                if played { sequence } else { base },
+            ),
         },
         Light::entity(
             i32::from(def.ambient) + 64,
@@ -601,6 +617,26 @@ fn build_npc(
     Ok(())
 }
 
+/// The client's default actor footprint, `(int)(0.4F * (size * 128))`.
+#[expect(
+    clippy::cast_possible_truncation,
+    reason = "reference footprint is a float cast to int"
+)]
+fn default_footprint(size: u8) -> i32 {
+    (0.4_f32 * (f32::from(size) * 128.)) as i32
+}
+
+/// Animation height offset of `sequence`, in fine units (`Renderable.getAnimationHeightOffset`).
+fn sequence_height_offset(
+    asset: &SceneAsset,
+    catalog: &EntityCatalog,
+    sequence: Option<SequenceId>,
+) -> i32 {
+    sequence
+        .and_then(|id| catalog.animations.sequence(asset, id))
+        .map_or(0, |sequence| i32::from(sequence.height_offset))
+}
+
 #[derive(Clone, Copy)]
 pub(crate) struct Placement {
     /// South-west corner of the footprint in world units (tile centres are `tile * 128`).
@@ -608,7 +644,11 @@ pub(crate) struct Placement {
     pub(crate) plane: rustclient_model::Plane,
     /// Footprint edge in tiles; the model is centred on the whole footprint.
     pub(crate) size: u8,
+    /// Fine-unit square the actor stands on; see [`SceneAsset::footprint_height`].
+    pub(crate) footprint: i32,
     pub(crate) orientation: u16,
+    /// Animation height offset in fine units; the model is drawn this much higher.
+    pub(crate) height_offset: i32,
 }
 
 pub(crate) fn emit_model(
@@ -622,15 +662,24 @@ pub(crate) fn emit_model(
         position,
         plane,
         size,
+        footprint,
         orientation,
+        height_offset,
     } = placement;
     let origin = asset.descriptor().origin();
     let half_footprint = i32::from(size) * 64;
     let center_fine_x = position[0] - origin.x * 128 + half_footprint;
     let center_fine_z = position[1] - origin.y * 128 + half_footprint;
     let ground_height = asset
-        .ground_height(plane, [center_fine_x, center_fine_z])
-        .unwrap_or(0);
+        .footprint_height(plane, [center_fine_x, center_fine_z], footprint)
+        .unwrap_or(0)
+        - height_offset;
+    let level = crate::mesh::render_level(
+        asset,
+        plane,
+        origin.x + center_fine_x.div_euclid(128),
+        origin.y + center_fine_z.div_euclid(128),
+    );
 
     let normals = crate::lighting::calculate(&model.vertices, &model.faces);
     let merged = vec![None; model.vertices.len()];
@@ -670,7 +719,7 @@ pub(crate) fn emit_model(
             ]
         });
 
-        geometry.model_triangle(points, face_colors, uv, face)?;
+        geometry.model_triangle(points, face_colors, uv, face, level)?;
     }
 
     if geometry.vertices.len() > first {

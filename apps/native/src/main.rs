@@ -603,6 +603,7 @@ impl NativeApp {
                     &mut self.frame,
                 );
             }
+            let top_level = self.roof_top_level(&window);
             self.renderer.as_mut().map(|renderer| {
                 if let (Some(descriptor), Some(camera)) =
                     (self.state.loaded_scene(), self.scene.camera)
@@ -610,6 +611,7 @@ impl NativeApp {
                     return renderer.render_world(
                         descriptor.id(),
                         camera,
+                        top_level,
                         self.state.scenery().cycle(),
                         &self.frame,
                         rustclient_renderer::DynamicImages {
@@ -760,14 +762,11 @@ impl NativeApp {
                 ) {
                     eprintln!("entity asset worker: {e}");
                 }
-                if let Some(placement) = self.state.initial_placement()
-                    && let Err(e) = self.scene.start_animator(
-                        scene.asset.clone(),
-                        placement,
-                        self.scene.generation,
-                        self.proxy.clone(),
-                    )
-                {
+                if let Err(e) = self.scene.start_animator(
+                    scene.asset.clone(),
+                    self.scene.generation,
+                    self.proxy.clone(),
+                ) {
                     eprintln!("animation worker: {e}");
                 }
                 if let Some(placement) = self.state.initial_placement() {

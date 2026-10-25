@@ -354,6 +354,7 @@ impl SurfaceRenderer {
         &mut self,
         asset: rustclient_model::SceneAssetId,
         camera: GameplayCameraController,
+        top_level: u8,
         cycle: rustclient_model::ClientCycle,
         frame: &UiFrame,
         images: crate::ui::DynamicImages<'_>,
@@ -408,6 +409,7 @@ impl SurfaceRenderer {
             (cycle.get() & 127) as u32,
             bounds,
             frame.viewport_settings,
+            top_level,
         );
         self.ui
             .as_mut()

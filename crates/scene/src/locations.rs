@@ -1,4 +1,4 @@
-use crate::{Result, SceneAsset, SceneError, WorldMesh, mesh::visible};
+use crate::{Result, SceneAsset, SceneError, WorldMesh, mesh::render_level};
 use rustclient_cache::world::{ObjectDefinition, StaticLocation};
 use rustclient_model::{ModelPoint, Plane};
 use std::collections::BTreeMap;
@@ -6,7 +6,6 @@ use std::hash::{Hash, Hasher};
 pub(crate) fn build(
     asset: &SceneAsset,
     mesh: &mut WorldMesh,
-    plane: Plane,
     inputs: &crate::SceneryInputs,
     dynamic: bool,
 ) -> Result<()> {
@@ -51,7 +50,6 @@ pub(crate) fn build(
                 || loc.tile.y < origin.y
                 || i64::from(loc.tile.x) >= i64::from(origin.x) + i64::from(d.width())
                 || i64::from(loc.tile.y) >= i64::from(origin.y) + i64::from(d.height())
-                || !visible(asset, loc.tile.plane, loc.tile.x, loc.tile.y, plane)
             {
                 continue;
             }
@@ -99,7 +97,7 @@ pub(crate) fn build(
     for model in prepared {
         let first = mesh.geometry.vertices.len();
         let target = model.target;
-        emit(mesh, model)?;
+        emit(asset, mesh, model)?;
         if mesh.geometry.vertices.len() > first {
             mesh.geometry
                 .models
@@ -466,7 +464,13 @@ fn pose(
     Ok(())
 }
 
-fn emit(mesh: &mut WorldMesh, prepared: PreparedModel) -> Result<()> {
+fn emit(asset: &SceneAsset, mesh: &mut WorldMesh, prepared: PreparedModel) -> Result<()> {
+    let level = render_level(
+        asset,
+        prepared.loc.tile.plane,
+        prepared.loc.tile.x,
+        prepared.loc.tile.y,
+    );
     let PreparedModel {
         model,
         normals,
@@ -504,7 +508,8 @@ fn emit(mesh: &mut WorldMesh, prepared: PreparedModel) -> Result<()> {
             let p = points[v as usize];
             [p.x, p.y, p.z]
         });
-        mesh.geometry.model_triangle(points, colors, uv, face)?;
+        mesh.geometry
+            .model_triangle(points, colors, uv, face, level)?;
         mesh.stats.model_triangles += 1;
     }
     Ok(())

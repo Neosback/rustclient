@@ -57,6 +57,7 @@ mod tests {
             restart: 1,
             skeletal: None,
             range: None,
+            height_offset: 0,
         };
 
         let policy = asset.policy();

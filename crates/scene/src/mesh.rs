@@ -7,7 +7,16 @@ pub struct SceneVertex {
     /// XYZ fine units; W retains the authored face priority for CPU ordering.
     pub position: [i16; 4],
     pub abhsl: u32,
+    /// Texture+1, signed 8.8 U and V, and the tile render level (see [`SceneVertex::render_level`]).
     pub texture_uv: [u16; 4],
+}
+impl SceneVertex {
+    /// Highest "top level" at which this vertex is still drawn: tiles, locations and actors
+    /// are culled when the frame's top level (see `roofs::top_level`) is below it.
+    #[must_use]
+    pub const fn render_level(&self) -> u8 {
+        self.texture_uv[3] as u8
+    }
 }
 #[derive(Debug, Clone, Copy, Default)]
 pub struct SceneStats {
@@ -59,6 +68,7 @@ impl SceneGeometry {
         colors: [i32; 3],
         uv: [[f32; 2]; 3],
         face: rustclient_cache::world::ModelFace,
+        level: u8,
     ) -> Result<()> {
         if face.priority > 11 {
             return Err(SceneError("face priority outside 0..11".into()));
@@ -69,7 +79,7 @@ impl SceneGeometry {
         } else {
             face.alpha.cast_unsigned()
         };
-        self.triangle(points, colors, face.texture, uv, alpha, face.bias)?;
+        self.triangle(points, colors, face.texture, uv, alpha, face.bias, level)?;
         for vertex in &mut self.vertices[first..] {
             vertex.position[3] = i16::from(face.priority);
         }
@@ -79,6 +89,10 @@ impl SceneGeometry {
         clippy::cast_possible_truncation,
         reason = "UVs use reference truncated and clamped signed 8.8"
     )]
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "one packed reference vertex record is assembled from its independent fields"
+    )]
     pub(crate) fn triangle(
         &mut self,
         points: [[i32; 3]; 3],
@@ -87,6 +101,7 @@ impl SceneGeometry {
         uv: [[f32; 2]; 3],
         alpha: u8,
         bias: i8,
+        level: u8,
     ) -> Result<bool> {
         if self.vertices.len() + 3 > 3_000_000 {
             return Err(SceneError("scene vertex allocation limit exceeded".into()));
@@ -116,7 +131,12 @@ impl SceneGeometry {
                 | (u32::from(bias.cast_unsigned()) << 16)
                 | (colors[i].cast_unsigned() & 65535);
             let [u, v] = uv[i].map(|v| ((v * 256.) as i32).clamp(-32768, 32767) as i16);
-            vertices[i].texture_uv = [texture, u.cast_unsigned(), v.cast_unsigned(), 0];
+            vertices[i].texture_uv = [
+                texture,
+                u.cast_unsigned(),
+                v.cast_unsigned(),
+                u16::from(level),
+            ];
         }
         let dest = if alpha != 0 {
             &mut self.transparent
@@ -168,10 +188,10 @@ pub fn build_mesh_with_inputs(
         stats: SceneStats::default(),
         textures: asset.assets.textures.clone(),
     };
-    super::terrain::build(asset, &mut mesh, spawn.plane, inputs)?;
-    super::locations::build(asset, &mut mesh, spawn.plane, inputs, false)?;
+    super::terrain::build(asset, &mut mesh, inputs)?;
+    super::locations::build(asset, &mut mesh, inputs, false)?;
     let mut dynamic = empty_mesh(asset, mesh.focus);
-    super::locations::build(asset, &mut dynamic, spawn.plane, inputs, true)?;
+    super::locations::build(asset, &mut dynamic, inputs, true)?;
     mesh.stats.model_triangles += dynamic.stats.model_triangles;
     mesh.stats.locations += dynamic.stats.locations;
     mesh.stats.no_model += dynamic.stats.no_model;
@@ -180,21 +200,26 @@ pub fn build_mesh_with_inputs(
     mesh.dynamic = dynamic.geometry;
     Ok(mesh)
 }
-pub(crate) fn visible(asset: &SceneAsset, source: Plane, x: i32, y: i32, selected: Plane) -> bool {
+/// The lowest frame "top level" at which a tile (and everything standing on it) is drawn.
+///
+/// The 240 client assigns each scene tile this level while loading (`classDI` tile pass): a
+/// tile flagged `0x8` always draws (level 0); a tile above a bridge deck (`0x2` on plane 1)
+/// drops one level, so the deck itself draws with the ground floor; every other tile draws at
+/// its own plane. A tile is rendered when its level is at most the frame's top level.
+pub(crate) fn render_level(asset: &SceneAsset, source: Plane, x: i32, y: i32) -> u8 {
     let forced = asset
         .tile(source, x, y)
         .is_some_and(|t| t.settings & 8 != 0);
     let bridged = asset
         .tile(Plane::new(1).expect("plane"), x, y)
         .is_some_and(|t| t.bridge());
-    let minimum = if forced {
+    if forced {
         0
     } else if bridged {
         source.get().saturating_sub(1)
     } else {
         source.get()
-    };
-    minimum <= selected.get()
+    }
 }
 
 fn empty_mesh(asset: &SceneAsset, focus: [f32; 3]) -> WorldMesh {
@@ -210,13 +235,9 @@ fn empty_mesh(asset: &SceneAsset, focus: [f32; 3]) -> WorldMesh {
 /// Extract only posed/morphing locations for the explicit committed cycle.
 /// # Errors
 /// Returns missing pose/model dependencies and extraction errors.
-pub fn build_dynamic(
-    asset: &SceneAsset,
-    spawn: WorldTile,
-    inputs: &crate::SceneryInputs,
-) -> Result<SceneGeometry> {
+pub fn build_dynamic(asset: &SceneAsset, inputs: &crate::SceneryInputs) -> Result<SceneGeometry> {
     let mut mesh = empty_mesh(asset, [0.; 3]);
-    super::locations::build(asset, &mut mesh, spawn.plane, inputs, true)?;
+    super::locations::build(asset, &mut mesh, inputs, true)?;
     Ok(mesh.geometry)
 }
 impl WorldMesh {

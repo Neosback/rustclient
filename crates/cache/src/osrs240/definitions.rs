@@ -76,6 +76,7 @@ pub fn object(bytes: &[u8], id: ObjectDefinitionId, source: Source) -> Result<Ob
         ambient: 0,
         contrast: 0,
         decoration_displacement: 16,
+        floor_lift: 0,
     };
     let mut has_actions = false;
     let mut solid = false;
@@ -122,9 +123,10 @@ pub fn object(bytes: &[u8], id: ObjectDefinitionId, source: Source) -> Result<Ob
             64 => out.clipped = false,
             89 => out.random_start = false,
             19 => out.int1 = i32::from(r.u8()?),
-            69 | 75 | 91 | 95 | 96 => {
+            69 | 75 | 91 | 95 => {
                 r.u8()?;
             }
+            96 => out.floor_lift = r.u8()?,
             21 => out.contour = Some(0),
             24 => {
                 let id = r.u16()?;
@@ -302,6 +304,7 @@ fn npc_with_path_acceleration(
         actions: [None, None, None, None, None],
         draw_minimap_dot: true,
         interactable: true,
+        footprint: None,
         morphs: None,
     };
     loop {
@@ -357,9 +360,10 @@ fn npc_with_path_acceleration(
                 out.walk_left_sequence = (wl != 65535).then_some(SequenceId::new(u32::from(wl)));
                 out.walk_right_sequence = (wr != 65535).then_some(SequenceId::new(u32::from(wr)));
             }
-            18 | 42 | 74..=79 | 103 | 124 | 126 | 146 => {
+            18 | 42 | 74..=79 | 103 | 124 | 146 => {
                 r.u16()?;
             }
+            126 => out.footprint = Some(r.u16()?),
             30..=34 => {
                 let s = r.string_value()?;
                 if !s.eq_ignore_ascii_case("Hidden") {

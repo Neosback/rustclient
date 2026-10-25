@@ -3,7 +3,8 @@ use crate::WorldMesh;
 use rustclient_model::{SceneDescriptor, WorldTile};
 
 /// Pick the closest terrain triangle using the ray supplied by the rendering
-/// camera. Coordinates are scene-local fine units, matching packed vertices.
+/// camera. Coordinates are scene-local fine units, matching packed vertices. Triangles above
+/// `top_level` (hidden roofs and upper floors) are not pickable.
 #[must_use]
 #[expect(
     clippy::cast_possible_truncation,
@@ -14,6 +15,7 @@ pub fn pick_terrain(
     descriptor: SceneDescriptor,
     origin: [f32; 3],
     direction: [f32; 3],
+    top_level: u8,
 ) -> Option<WorldTile> {
     if mesh.asset != descriptor.id() || origin.iter().chain(&direction).any(|n| !n.is_finite()) {
         return None;
@@ -21,6 +23,9 @@ pub fn pick_terrain(
     let triangle_count = usize::try_from(mesh.stats.terrain_triangles).ok()?;
     let mut nearest = f32::INFINITY;
     for triangle in mesh.geometry.vertices.chunks_exact(3).take(triangle_count) {
+        if triangle[0].render_level() > top_level {
+            continue;
+        }
         let points = std::array::from_fn(|i| {
             std::array::from_fn(|axis| f32::from(triangle[i].position[axis]))
         });
@@ -90,13 +95,14 @@ pub fn pick_surface(
     geometry: &crate::SceneGeometry,
     origin: [f32; 3],
     direction: [f32; 3],
+    top_level: u8,
 ) -> Option<SurfaceHit> {
     if origin.iter().chain(&direction).any(|v| !v.is_finite()) {
         return None;
     }
     let mut hit = None;
     for (i, triangle) in geometry.vertices.chunks_exact(3).enumerate() {
-        if triangle.iter().all(|v| v.abhsl >> 24 == 255) {
+        if triangle.iter().all(|v| v.abhsl >> 24 == 255) || triangle[0].render_level() > top_level {
             continue;
         }
         let points = std::array::from_fn(|i| {

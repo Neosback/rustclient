@@ -82,6 +82,7 @@ fn definition() -> ObjectDefinition {
         ambient: 0,
         contrast: 0,
         decoration_displacement: 16,
+        floor_lift: 0,
     }
 }
 fn with_model() -> WorldAssets {
@@ -183,6 +184,9 @@ fn all_floor_shapes_and_rotations_cover_exactly_the_same_tile_area() {
             let m = build_mesh(&a, a.descriptor(), WorldTile::new(0, 0, Plane::MIN)).unwrap();
             let mut area = 0_f32;
             for triangle in m.geometry.vertices.chunks_exact(3) {
+                if triangle[0].render_level() != 0 {
+                    continue;
+                }
                 let a = triangle[0].position.map(f32::from);
                 let b = triangle[1].position.map(f32::from);
                 let c = triangle[2].position.map(f32::from);
@@ -200,9 +204,9 @@ fn bridges_retain_upper_surface_and_asset_identity_is_enforced() {
     let mut a = assets();
     a.squares[0].tiles[4096].settings = 2;
     let a = scene(a);
-    assert!(mesh::visible(&a, Plane::new(1).unwrap(), 0, 0, Plane::MIN));
-    assert!(!mesh::visible(&a, Plane::new(1).unwrap(), 1, 1, Plane::MIN));
-    assert!(!mesh::visible(&a, Plane::new(2).unwrap(), 0, 0, Plane::MIN));
+    assert_eq!(mesh::render_level(&a, Plane::new(1).unwrap(), 0, 0), 0);
+    assert_eq!(mesh::render_level(&a, Plane::new(1).unwrap(), 1, 1), 1);
+    assert_eq!(mesh::render_level(&a, Plane::new(2).unwrap(), 0, 0), 1);
     let wrong =
         SceneDescriptor::new(SceneAssetId::new([8; 32]), a.descriptor().origin(), 2, 2).unwrap();
     assert!(build_mesh(&a, wrong, WorldTile::new(0, 0, Plane::MIN)).is_err());
@@ -416,7 +420,9 @@ fn entity_models_stand_on_the_ground_with_their_tops_above_it() {
             position: [0, 0],
             plane: Plane::MIN,
             size: 1,
+            footprint: 0,
             orientation: 0,
+            height_offset: 0,
         },
         lighting::Light::entity(64, 850),
         &mut geometry,
@@ -449,4 +455,107 @@ fn ground_height_follows_the_drawn_floor_triangle_not_a_corner_blend() {
     // Halfway up the north-east half the plane reaches half of the corner's height; the
     // bilinear blend would give about -56.
     assert!((at(96, 96) + 50).abs() <= 1, "{}", at(96, 96));
+}
+fn roof_scene(roofs: &[(usize, usize)]) -> SceneAsset {
+    let mut a = assets();
+    for &(x, y) in roofs {
+        a.squares[0].tiles[x * 64 + y].settings = 4;
+    }
+    SceneAsset::new(a, WorldTile::new(0, 0, Plane::MIN), 12, 12).unwrap()
+}
+fn roof_view(subject: (i32, i32), camera: (i32, i32), pitch: u16) -> RoofView {
+    RoofView {
+        plane: Plane::MIN,
+        subject: [subject.0 * 128 + 64, subject.1 * 128 + 64],
+        camera: [camera.0 * 128 + 64, camera.1 * 128 + 64],
+        pitch,
+        roofs_hidden: false,
+    }
+}
+#[test]
+fn roofs_show_unless_a_roofed_tile_sits_on_the_camera_line_or_under_the_player() {
+    let scene = roof_scene(&[(5, 5)]);
+    // Looking down a clear line from a steep pitch shows everything, roofs included.
+    assert_eq!(roof_view((8, 5), (2, 5), 320).top_level(&scene), 3);
+    // Standing under the roof cuts the scene at the player's plane at any pitch.
+    assert_eq!(roof_view((5, 5), (5, 2), 383).top_level(&scene), 0);
+    // A roofed tile between the camera and the player cuts it, but only at a shallow pitch.
+    assert_eq!(roof_view((8, 5), (2, 5), 200).top_level(&scene), 0);
+    assert_eq!(roof_view((8, 5), (2, 5), 310).top_level(&scene), 3);
+    // The camera tile itself counts, and so do tiles the diagonal walk crosses.
+    assert_eq!(roof_view((9, 9), (5, 5), 200).top_level(&scene), 0);
+    assert_eq!(roof_view((9, 9), (3, 3), 200).top_level(&scene), 0);
+    assert_eq!(roof_view((9, 2), (2, 2), 200).top_level(&scene), 3);
+    // A camera outside the scene falls back to the player's plane.
+    assert_eq!(roof_view((8, 5), (-3, 5), 200).top_level(&scene), 0);
+}
+#[test]
+fn hide_roofs_option_always_caps_the_scene_at_the_player_plane() {
+    let scene = roof_scene(&[]);
+    let mut view = roof_view((8, 5), (2, 5), 383);
+    assert_eq!(view.top_level(&scene), 3);
+    view.roofs_hidden = true;
+    assert_eq!(view.top_level(&scene), 0);
+    view.plane = Plane::new(2).unwrap();
+    assert_eq!(view.top_level(&scene), 2);
+}
+#[test]
+fn every_plane_is_meshed_and_tagged_with_the_level_that_reveals_it() {
+    let mut a = assets();
+    // A forced-visible upper tile and a bridge deck over plane 0 at (1, 1).
+    a.squares[0].tiles[4096 + 2 * 64 + 2].settings = 8;
+    a.squares[0].tiles[4096 + 64 + 1].settings = 2;
+    let a = SceneAsset::new(a, WorldTile::new(0, 0, Plane::MIN), 4, 4).unwrap();
+    let mesh = build_mesh(&a, a.descriptor(), WorldTile::new(1, 1, Plane::MIN)).unwrap();
+    let mut by_level = [0; 4];
+    for triangle in mesh.geometry.vertices.chunks_exact(3) {
+        by_level[usize::from(triangle[0].render_level())] += 1;
+    }
+    // Level 0: plane 0, the forced-visible plane-1 tile and the bridge deck; the rest of
+    // planes 1..3 draws at its own plane, except plane 2 above the bridge which drops to 1.
+    assert!(by_level.iter().all(|&count| count > 0), "{by_level:?}");
+    assert!(mesh.geometry.vertices.iter().all(|v| v.render_level() <= 3));
+}
+#[test]
+fn actors_stand_on_the_highest_floor_inside_their_footprint() {
+    // Elevation rises by 128 per tile eastwards, so the uphill edge of a footprint is higher.
+    let scene = scene(assets());
+    let center = [192, 192];
+    let at = |x| scene.ground_height(Plane::MIN, [x, 192]).unwrap();
+    assert_eq!(
+        scene.footprint_height(Plane::MIN, center, 0).unwrap(),
+        at(192)
+    );
+    // A 51-unit footprint reaches 25 units each way: the east side wins (negative is up).
+    let stood = scene.footprint_height(Plane::MIN, center, 51).unwrap();
+    assert_eq!(stood, at(217));
+    assert!(stood < at(192));
+    // A footprint spanning a tile corner also samples that corner.
+    let wide = scene.footprint_height(Plane::MIN, [128, 192], 153).unwrap();
+    assert_eq!(wide, at(128 + 76));
+}
+fn decorated_scene(lift: u8, plane: Plane, bridge: bool) -> SceneAsset {
+    let mut a = with_model();
+    a.objects
+        .get_mut(&ObjectDefinitionId::new(1))
+        .unwrap()
+        .floor_lift = lift;
+    a.squares[0].locations[0].shape = 22;
+    a.squares[0].locations[0].tile = WorldTile::new(0, 0, plane);
+    if bridge {
+        a.squares[0].tiles[4096].settings = 2;
+    }
+    scene(a)
+}
+#[test]
+fn floor_decoration_lift_raises_the_tile_and_bridge_decks_shift_it_down_a_plane() {
+    let height = |s: &SceneAsset| s.ground_height(Plane::MIN, [64, 64]).unwrap();
+    let plain = height(&decorated_scene(0, Plane::MIN, false));
+    assert_eq!(height(&decorated_scene(12, Plane::MIN, false)), plain - 12);
+    // A decoration on plane 1 belongs to the deck of a bridge, which ground-level actors cross.
+    let upper = Plane::new(1).unwrap();
+    let flat_bridge = height(&decorated_scene(0, upper, true));
+    assert_eq!(height(&decorated_scene(12, upper, true)), flat_bridge - 12);
+    // The decoration under the bridge is on the lower link, not the deck.
+    assert_eq!(height(&decorated_scene(12, Plane::MIN, true)), flat_bridge);
 }

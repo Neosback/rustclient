@@ -93,9 +93,14 @@ impl NativeApp {
                 let Some((origin, direction)) = self.world_ray(window, x, y) else {
                     return Ok(false);
                 };
-                let Some(tile) =
-                    rustclient_scene::pick_terrain(&loaded.mesh, scene, origin, direction)
-                else {
+                let top_level = self.roof_top_level(window);
+                let Some(tile) = rustclient_scene::pick_terrain(
+                    &loaded.mesh,
+                    scene,
+                    origin,
+                    direction,
+                    top_level,
+                ) else {
                     return Ok(false);
                 };
                 (tile, None)
@@ -185,21 +190,40 @@ impl NativeApp {
             return None;
         }
         let (origin, direction) = self.world_ray(window, x, y)?;
-        let hit = rustclient_scene::pick_surface(&loaded.mesh.geometry, origin, direction);
+        let top_level = self.roof_top_level(window);
+        let hit =
+            rustclient_scene::pick_surface(&loaded.mesh.geometry, origin, direction, top_level);
         // Static scenery wins exact ties, matching the previous two-way comparison.
         let overlays = [&loaded.mesh.dynamic, &self.scene.entity_geometry]
             .into_iter()
-            .filter_map(|geometry| rustclient_scene::pick_surface(geometry, origin, direction));
+            .filter_map(|geometry| {
+                rustclient_scene::pick_surface(geometry, origin, direction, top_level)
+            });
         hit.into_iter()
             .chain(overlays)
             .min_by(|a, b| a.distance.total_cmp(&b.distance))
             .and_then(|hit| hit.target)
     }
+    fn world_ray(&self, window: &Window, x: f32, y: f32) -> Option<([f32; 3], [f32; 3])> {
+        let (camera, bounds, viewport) = self.world_camera(window)?;
+        if !bounds.contains(x, y) {
+            return None;
+        }
+        camera.pointer_ray(viewport, [x - bounds.x, y - bounds.y])
+    }
+    /// The gameplay camera with the logical bounds and shaped viewport it renders through.
     #[expect(
         clippy::cast_possible_truncation,
         reason = "bounded logical viewport coordinates"
     )]
-    fn world_ray(&self, window: &Window, x: f32, y: f32) -> Option<([f32; 3], [f32; 3])> {
+    fn world_camera(
+        &self,
+        window: &Window,
+    ) -> Option<(
+        rustclient_renderer::GameplayCameraController,
+        rustclient_game_ui::Rect,
+        CameraViewport,
+    )> {
         let mut camera = self.scene.camera?;
         let settings = self.state.interfaces().viewport();
         camera.set_zoom(i32::from(settings.zoom[0]), i32::from(settings.zoom[1]));
@@ -212,13 +236,45 @@ impl NativeApp {
                 (f64::from(size.height) / window.scale_factor()) as f32,
             )
         });
-        if !bounds.contains(x, y) {
-            return None;
+        let viewport =
+            CameraViewport::new(bounds.width as i32, bounds.height as i32).with_settings(settings);
+        Some((camera, bounds, viewport))
+    }
+    /// Highest tile render level drawn this frame: the roof line-of-sight rule, or the player's
+    /// plane when the "hide roofs" game option is on. Every level draws before a player exists.
+    pub(super) fn roof_top_level(&self, window: &Window) -> u8 {
+        const ALL_LEVELS: u8 = 3;
+        let (Some(loaded), Some((camera, _, viewport)), Some(player)) = (
+            self.scene.loaded.as_ref(),
+            self.world_camera(window),
+            self.state.entities().local_player(),
+        ) else {
+            return ALL_LEVELS;
+        };
+        let origin = loaded.asset.descriptor().origin();
+        let corner = self
+            .scene
+            .motion
+            .player(player.index)
+            .unwrap_or([player.tile.x * 128, player.tile.y * 128]);
+        let eye = camera.pose(viewport).position;
+        rustclient_scene::RoofView {
+            plane: player.tile.plane,
+            subject: [
+                corner[0] - origin.x * 128 + 64,
+                corner[1] - origin.y * 128 + 64,
+            ],
+            camera: [eye[0], eye[2]],
+            pitch: camera.pitch(),
+            roofs_hidden: self
+                .state
+                .interfaces()
+                .settings()
+                .get(&rustclient_model::ClientSetting::RoofsHidden)
+                .copied()
+                .unwrap_or(false),
         }
-        camera.pointer_ray(
-            CameraViewport::new(bounds.width as i32, bounds.height as i32).with_settings(settings),
-            [x - bounds.x, y - bounds.y],
-        )
+        .top_level(&loaded.asset)
     }
     pub(super) fn send_world_action(
         &mut self,
@@ -319,6 +375,7 @@ impl NativeApp {
                 loaded.asset.descriptor(),
                 origin,
                 direction,
+                self.roof_top_level(window),
             )
         {
             entries.push((

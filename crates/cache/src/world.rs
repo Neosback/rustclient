@@ -89,6 +89,9 @@ pub struct ObjectDefinition {
     pub ambient: i16,
     pub contrast: i16,
     pub decoration_displacement: u8,
+    /// Opcode 96. Actors stand this many fine units higher on a tile whose floor decoration
+    /// this is (the client subtracts it from the tile height it reports).
+    pub floor_lift: u8,
 }
 
 /// Variable-driven NPC transformation (client opcodes 106 and 118).
@@ -130,6 +133,8 @@ pub struct NpcDefinition {
     pub actions: [Option<String>; 5],
     pub draw_minimap_dot: bool,
     pub interactable: bool,
+    /// Opcode 126: explicit actor clearance in fine units; otherwise `0.4 * size * 128`.
+    pub footprint: Option<u16>,
     pub morphs: Option<NpcMorphs>,
 }
 
@@ -266,6 +271,9 @@ pub struct SequenceAsset {
     pub restart: u8,
     pub skeletal: Option<u32>,
     pub range: Option<(u16, u16)>,
+    /// Opcode 16 (signed). The drawn actor is raised by this many fine units while the
+    /// sequence plays (`Renderable.getAnimationHeightOffset`).
+    pub height_offset: i8,
 }
 #[derive(Debug, Clone, Copy)]
 pub struct VarbitDefinition {

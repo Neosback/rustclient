@@ -5,13 +5,17 @@ use rustclient_scene::{SceneVertex, WorldMesh};
 
 /// World WGSL group/binding map. The shader declares exactly this layout.
 const WORLD_GROUP: u32 = 0;
+/// Top level that draws every tile render level, for captures that have no player plane.
+const ALL_LEVELS: u8 = 3;
 const DEPTH: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 struct CameraUniform {
     view_projection: [[f32; 4]; 4],
     cycle: u32,
-    padding: [u32; 3],
+    /// Highest tile render level drawn this frame (see `rustclient_scene::RoofView`).
+    top_level: u32,
+    padding: [u32; 2],
 }
 pub(crate) struct WorldGpu {
     pub asset: SceneAssetId,
@@ -28,7 +32,7 @@ pub(crate) struct WorldGpu {
     surface_format: wgpu::TextureFormat,
     size: SurfaceSize,
     physical_viewport: [f32; 4],
-    last_camera: Option<(GameplayCameraController, crate::CameraViewport, u32)>,
+    last_camera: Option<(GameplayCameraController, crate::CameraViewport, u32, u8)>,
 }
 impl WorldGpu {
     #[expect(
@@ -208,6 +212,7 @@ impl WorldGpu {
             cycle,
             None,
             rustclient_model::ViewportSettings::default(),
+            ALL_LEVELS,
         );
     }
     #[expect(
@@ -223,6 +228,7 @@ impl WorldGpu {
         cycle: u32,
         bounds: Option<rustclient_game_ui::Rect>,
         settings: rustclient_model::ViewportSettings,
+        top_level: u8,
     ) {
         camera.set_zoom(i32::from(settings.zoom[0]), i32::from(settings.zoom[1]));
         let logical = bounds.unwrap_or(rustclient_game_ui::Rect::new(
@@ -245,14 +251,15 @@ impl WorldGpu {
             self.physical_viewport[2].min(self.size.width as f32 - self.physical_viewport[0]);
         self.physical_viewport[3] =
             self.physical_viewport[3].min(self.size.height as f32 - self.physical_viewport[1]);
-        if self.last_camera == Some((camera, viewport, cycle)) {
+        if self.last_camera == Some((camera, viewport, cycle, top_level)) {
             return;
         }
         let pose = camera.pose(viewport);
         let uniform = CameraUniform {
             view_projection: camera.matrix(viewport).to_cols_array_2d(),
             cycle,
-            padding: [0; 3],
+            top_level: u32::from(top_level),
+            padding: [0; 2],
         };
         queue.write_buffer(&self.camera, 0, bytemuck::bytes_of(&uniform));
         let eye = Vec3::from_array(pose.position.map(|v| v as f32));
@@ -271,7 +278,7 @@ impl WorldGpu {
             |source, index| sources[source].alpha_depth(index, eye, direction),
             &mut self.transparent_runs,
         );
-        self.last_camera = Some((camera, viewport, cycle));
+        self.last_camera = Some((camera, viewport, cycle, top_level));
     }
     pub fn render_scene(&self, encoder: &mut wgpu::CommandEncoder) {
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
