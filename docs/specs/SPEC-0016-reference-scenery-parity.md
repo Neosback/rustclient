@@ -99,3 +99,45 @@ placement orientation around the pose. The model is assembled/scaled/lit before
 animation and contoured afterward, as in ObjectComposition.method8629. Asset
 arrival is asynchronous; missing/failed dependencies do not pass acceptance.
 These changes do not establish the visual/priority/coplanar acceptance gate.
+
+## Render levels, roofs, actor height and depth (2026-10-25)
+
+Evidence: the 240 client (`classCZ.method2850`, `classDI` tile pass, `WorldView.method3794`,
+`classKC.method6499`, `Renderable.draw`) and RuneLite's GPU plugin (`vert.glsl`,
+`GpuPlugin.drawTemp`, `ModelUploader`), both read-only.
+
+**Render levels.** `mesh::render_level` is the client's per-tile level: `0` when the tile
+setting `0x8` is set, one below the tile's plane when plane 1 carries the bridge flag `0x2`
+at that tile, otherwise the tile's own plane. The scene meshes all four planes; every terrain,
+location and actor vertex carries its tile's level in `SceneVertex::texture_uv[3]`
+(`SceneVertex::render_level`). A frame draws a vertex only when its level is at most the
+frame's *top level*. Culling is a vertex-stage degenerate triangle, so changing the top level
+never uploads geometry. Picking skips triangles above the top level.
+
+**Top level.** `RoofView::top_level` ports `classCZ.method2850`. The "hide roofs" game option
+(`ClientSetting::RoofsHidden`) returns the local player's plane. Otherwise the result is 3,
+except that below camera pitch 310 (gameplay units; the client compares `310 << 3` in its
+finer units) a Bresenham-style walk from the camera tile to the player tile on the player's
+plane, plus the player's own tile, lowers it to the player's plane when any visited tile has
+setting `0x4`. A camera or player outside the scene returns the player's plane. The native
+composition root computes it per frame from the pose, the smoothed player position and the
+setting, and passes it to `render_world` and to picking; neither renderer nor scene stores it.
+The RuneLite roof-removal flood fill (`Scene.roofRemovalMode`) is a plugin feature and not part
+of vanilla behaviour; it is not ported.
+
+**Actor height.** Actors stand at `SceneAsset::footprint_height`: the highest floor among the
+centre, the four corners of a `footprint`-sized square and every tile corner inside it
+(`classKC.method6499`). The footprint is `(int)(0.4F * size * 128)` for players and NPCs
+(NPC opcode 126 overrides it), and zero during forced movement. Each sample is
+`ground_height`: the drawn floor triangle (bridge-aware), else the bilinear corner blend, minus
+the floor decoration's `floor_lift` (object opcode 96). The drawn model is raised by the
+playing sequence's signed `height_offset` (sequence opcode 16, `Renderable.vmethod98`).
+
+**Depth and order.** Wgpu has no polygon-order guarantee beyond draw order, so the scheme is
+explicit and identical to RuneLite's: reverse-Z `Depth32Float`, clear 0, strict `Greater`,
+back-face culling, and the authored per-face bias added to clip-space z (`z += bias / 128`)
+in the vertex stage. That bias, not face priority, separates coplanar layers; opaque faces draw
+in authored order (RuneLite uploads them unsorted via `uploadTempModel`). Face priority and
+distance only order the blended pass, per model, with the `(1,2)/(3,4)/(6,8)` thresholds; the
+blend pass has depth writes off. No `wgpu` slope-scaled depth bias is used, because it would
+break bias parity.

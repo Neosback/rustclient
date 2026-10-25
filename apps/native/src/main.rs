@@ -108,6 +108,8 @@ struct NativeApp {
     widget_cache_dir: std::path::PathBuf,
     widget_cache_profile: rustclient_cache::CacheProfile,
     minimap: Option<MinimapImage>,
+    /// Plane the cached minimap image was built for; the client rebuilds it when the player changes plane.
+    minimap_plane: Option<rustclient_model::Plane>,
     minimap_pixels: Vec<u8>,
     compass_pixels: Vec<u8>,
     /// Widget-authored mask sprites expanded onto their canvas; replaced with the widget assets.
@@ -194,6 +196,7 @@ impl NativeApp {
             widget_cache_dir: options.cache_dir.clone(),
             widget_cache_profile: options.profile,
             minimap: None,
+            minimap_plane: None,
             minimap_pixels: Vec::new(),
             compass_pixels: Vec::new(),
             minimap_mask: None,
@@ -491,6 +494,15 @@ impl NativeApp {
                         rustclient_game_ui::Rect::new(0., 0., 16384., 16384.),
                     );
                 }
+                if let (Some(loaded), Some(player), Some(_)) = (
+                    &self.scene.loaded,
+                    self.state.entities().local_player(),
+                    &self.minimap,
+                ) && self.minimap_plane != Some(player.tile.plane)
+                {
+                    self.minimap = Some(build_scene_minimap(&loaded.asset, player.tile.plane));
+                    self.minimap_plane = Some(player.tile.plane);
+                }
                 if let (Some(gameframe), Some(minimap), Some(camera)) =
                     (&assets.gameframe, &self.minimap, self.scene.camera)
                 {
@@ -772,6 +784,7 @@ impl NativeApp {
                 if let Some(placement) = self.state.initial_placement() {
                     self.minimap =
                         Some(build_scene_minimap(&scene.asset, placement.position.plane));
+                    self.minimap_plane = Some(placement.position.plane);
                 }
                 self.scene.loaded = Some(scene);
                 if first {
