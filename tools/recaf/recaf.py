@@ -14,6 +14,7 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'tools/client-240'))
 from toolchain import output_path, runtime  # noqa: E402
+from metadata_view import build_metadata_view
 
 HERE = Path(__file__).resolve().parent
 LOCK = json.loads((HERE / 'recaf.lock.json').read_text())
@@ -66,12 +67,20 @@ def build():
     subprocess.run([str(gradlew), ':recaf-ui:shadowJar', '-x', 'test', '--no-daemon', '--console=plain'],
                    cwd=SOURCE, env=env, check=True)
     CLASSES.mkdir(parents=True, exist_ok=True)
+    sources = sorted((HERE / 'src').glob('*.java'))
     subprocess.run([javac, '--release', str(LOCK['java_target']), '-cp', str(RECAF_JAR), '-d', str(CLASSES),
-                    str(HERE / 'src/RecafMcp.java')], check=True)
+                    *map(str, sources)], check=True)
     record = {'recaf_commit': LOCK['commit'], 'recaf_jar_sha256': sha(RECAF_JAR),
-              'bridge_source_sha256': sha(HERE / 'src/RecafMcp.java'),
+              'bridge_sources': {str(path.relative_to(HERE)): sha(path) for path in sources},
               'bridge_classes': {str(path.relative_to(CLASSES)): sha(path) for path in sorted(CLASSES.rglob('*.class'))}}
     (CACHE / 'build.json').write_text(json.dumps(record, indent=2) + '\n')
+    inputs = json.loads((ROOT / 'tools/client-240/inputs.json').read_text())['artifacts']
+    original = next(item for item in inputs if item['role'] == 'original')
+    artifact = ROOT / original['path']
+    if sha(artifact) != original['sha256']:
+        raise ValueError('pinned original client checksum mismatch')
+    # Do the one-time corpus preparation during setup, rather than MCP startup.
+    build_metadata_view(artifact, CACHE / 'views/original-metadata.jar')
     print('Recaf and MCP bridge built; metadata: ' + str(CACHE / 'build.json'))
 
 
@@ -79,7 +88,8 @@ def check_build():
     record = json.loads((CACHE / 'build.json').read_text())
     if record['recaf_commit'] != LOCK['commit'] or record['recaf_jar_sha256'] != sha(RECAF_JAR):
         raise ValueError('Recaf artifact changed; rebuild')
-    if record['bridge_source_sha256'] != sha(HERE / 'src/RecafMcp.java'):
+    sources = {str(path.relative_to(HERE)): sha(path) for path in sorted((HERE / 'src').glob('*.java'))}
+    if record.get('bridge_sources') != sources:
         raise ValueError('Bridge source changed; rebuild')
     actual = {str(path.relative_to(CLASSES)): sha(path) for path in sorted(CLASSES.rglob('*.class'))}
     if actual != record['bridge_classes']:
@@ -97,10 +107,25 @@ def main():
         return
     if sys.argv[1:]:
         raise ValueError('Usage: recaf.py [--build|--check]')
-    # The MCP workspace has one fixed input, copied byte-for-byte from the pinned corpus.
+    # Inputs are limited to the repository's checksum-pinned original/semantic corpora.
     manifest = json.loads((ROOT / 'tools/client-240/inputs.json').read_text())
-    original = ROOT / 'references/gamepacks/osrs-240/injected-client-1.12.39.jar'
-    expected = next(item['sha256'] for item in manifest['artifacts'] if (ROOT / item['path']) == original)
+    input_view = os.environ.get('CLIENT240_RECAF_INPUT_VIEW', 'original')
+    if input_view not in {'original', 'semantic', 'reading'}:
+        raise ValueError('CLIENT240_RECAF_INPUT_VIEW must be original, semantic or reading')
+    if input_view == 'reading':
+        view = ROOT / '.cache/client-240/recaf/views/java-safe'
+        evidence = json.loads((view / 'manifest.json').read_text())
+        original = view / 'client-java-safe.jar'
+        expected = evidence['java_safe_sha256']
+        authority = next(item for item in manifest['artifacts'] if item['role'] == 'original')
+        if evidence['input_sha256'] != authority['sha256'] or sha(ROOT / authority['path']) != authority['sha256']:
+            raise ValueError('reading view does not trace to the pinned original')
+        if sha(view / 'java-keywords.tiny') != evidence['mapping_sha256'] or 'IDENTICAL, 735 classes' not in evidence['roundtrip']:
+            raise ValueError('reading view lacks its verified mapping roundtrip')
+    else:
+        entry = next(item for item in manifest['artifacts'] if item['role'] == input_view)
+        original = ROOT / entry['path']
+        expected = entry['sha256']
     if sha(original) != expected:
         raise ValueError('Pinned original client checksum mismatch')
     sessions = CACHE / 'sessions'
@@ -109,8 +134,10 @@ def main():
     session = Path(tempfile.mkdtemp(prefix='mcp-', dir=sessions))
     artifact = session / 'client-analysis.jar'
     artifact.write_bytes(original.read_bytes())
+    metadata = CACHE / 'views' / (input_view + '-metadata.jar')
+    build_metadata_view(original, metadata)
     command = [java, '-cp', os.pathsep.join([str(RECAF_JAR), str(CLASSES)]), 'dev.neosback.recaf.RecafMcp',
-               str(artifact), str(session / 'data')]
+               str(artifact), str(session / 'data'), str(metadata)]
     os.execv(java, command)
 
 

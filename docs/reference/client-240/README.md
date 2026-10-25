@@ -116,6 +116,9 @@ under `references/` changed, and the readable jar decompiles.
 
 Does not prove: that a **name is right**. That is why T3 and T4 entries are read by hand against the cited
 method before a cluster is committed, and why uncertain names are left generic.
+The source-regeneration gate counts files and explicit failed-body markers; it does not parse/type-check
+Java or prove source behavior. The [decompiler quality workflow](DECOMPILER-QUALITY.md) adds syntax and
+cross-renderer checks and can flag problems even when a naming roundtrip passes.
 
 ## Caveats
 

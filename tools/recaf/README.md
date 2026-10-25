@@ -45,6 +45,69 @@ Every successful tool response includes the loaded artifact's SHA-256. Search `a
 nodes including labels/debug/frame nodes; workbench `opcodeIndex` counts opcode-bearing instructions
 only. Do not interchange these coordinate systems.
 
+Decompilation now defaults to **Vineflower** and a `metadata-clean` view. The view removes top-level
+`javax.inject.Named`/`jakarta.inject.Named` annotations while preserving every opaque JVM `Code`
+attribute, constant pool, member identity, other attribute and non-Named annotation. `bytecodeView:
+"original"` explicitly restores the noisy original view. Responses identify both the input JAR and
+the selected reading JAR hashes. All outlines, string searches and method disassembly still use the
+original workspace. Annotation reflection changes in the derived view; it is analysis-only.
+
+After updating/rebuilding the bridge, reload its MCP connection to replace an already-running older
+process. `verify.py --registered` tests a fresh process using the registered command.
+
+## Compare and export readable code
+
+```bash
+# A new output directory is required for each comparison.
+python3 tools/recaf/compare.py --out .cache/client-240/quality-comparison-new
+# Optional local experiment; JADX is not a required production dependency.
+python3 tools/recaf/compare.py --out .cache/client-240/quality-with-jadx \
+  --jadx "/path/to/Java Deob/jadx/bin/jadx"
+
+# Build class-identity/Java-keyword aliases and prove the rename roundtrip.
+python3 tools/recaf/java_safe.py --identity
+# Export all classes and run uncapped syntax diagnostics; fresh output only.
+python3 tools/recaf/export.py --out .cache/client-240/reading-export-new
+# Inspect whole-class alternatives only for files flagged by that export.
+python3 tools/recaf/fallbacks.py --reading .cache/client-240/reading-export-new
+python3 tools/recaf/fallbacks.py --reading .cache/client-240/reading-export-new --procyon-only
+python3 tools/recaf/assemble.py --reading .cache/client-240/reading-export-new \
+  --out .cache/client-240/reading-bundle-new
+
+# Render one original class with bundled Vineflower 1.12 and complete type context.
+python3 tools/recaf/render.py xs
+```
+
+`compare.py` benchmarks Recaf Vineflower 1.11.2, CFR 0.152 and Procyon 0.6.0, then bundled Vineflower
+1.12.0. `SourceMetrics.java` uses the JDK parser without type attribution. It sets a high diagnostic
+limit so one broken file cannot silently hide errors in later files. Parse success is not type checking
+or behavioral equivalence. Timeouts, failure markers and method-name review flags remain in manifests;
+source from different renderers is never spliced together.
+
+`java_safe.py --identity` reuses only exact class identities from the pinned semantic index. It retains
+original member names apart from documented Java-keyword aliases, and proves the full forward/reverse
+rename against the metadata view across 735 classes. The complete tiny mapping and original-to-stable
+member index accompany exports. This avoids inheriting control-flow/exception/constant-dynamic changes
+from the semantic JAR. Production naming shards remain a separate reviewed layer.
+Each export and assembled bundle snapshots its reading JAR, mapping, source hashes and identity index,
+so a later export cannot silently replace the bytecode used for an earlier reading session.
+
+`export.py` returns `REVIEW_REQUIRED` if any source is missing, fails syntax parsing, contains a failed
+body, an unresugared constructor or constant-dynamic pseudo-Java. Such an export remains useful evidence;
+its status must not be presented as compilable or behavior-verified code. It has a 15-minute process cap;
+class rendering and fallback tools have shorter caps.
+`export.py` and `assemble.py` deliberately exit with code 1 for `REVIEW_REQUIRED`; inspect their manifests
+and proceed with fallback research rather than treating the files as approved source.
+
+`assemble.py` chooses only whole-class alternatives with successful exit, zero syntax/failure markers,
+and represented non-synthetic field/method names. It leaves unresolved files flagged and attaches
+complete original-code ASM dumps through `dump_unresolved.py`. These checks help choose a reading view;
+they do not prove that the Java has identical behavior or compiles against all dependencies.
+
+Run focused tooling checks with `test_metadata.py`, `test_source_metrics.py`, and `verify.py --registered`.
+See [the measured comparison](../../docs/reference/client-240/DECOMPILER-QUALITY.md) for results and
+remaining limitations.
+
 The bridge exposes inspection only. Mapping promotion remains in tiny-v2 shards and the reviewed ledger.
 There is no arbitrary script execution, client-method evaluation, workspace mutation or export tool.
 Recaf is used headlessly here; this server does not control a separately opened GUI window.

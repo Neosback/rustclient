@@ -72,6 +72,9 @@ Optional Recaf browsing is available through `tools/recaf/recaf.py` and its repo
 see `tools/recaf/README.md`. It needs a separate JDK 24+ build and is not a naming verification gate.
 Use its decompiled output as a reading aid, and retain exact class/member/instruction citations from
 the original corpus. Do not delete or simplify original bytecode to improve decompiler output.
+For rendering quality, use `tools/recaf/compare.py` and `tools/recaf/export.py`; see
+`docs/reference/client-240/DECOMPILER-QUALITY.md`. File counts and zero explicit failed-body markers do
+not prove that generated Java parses, type-checks or preserves behavior. Respect `REVIEW_REQUIRED`.
 
 ### 2. Pick clusters with disjoint class sets
 

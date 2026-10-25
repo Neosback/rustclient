@@ -77,6 +77,13 @@ def main():
             assert bytecode['totalChars'] > 0
             source = call('decompile_class', {'className': 'aa'})
             assert source['view']['totalChars'] > 0
+            assert source['bytecodeView'] == 'metadata-clean'
+            assert source['viewSha256'] == status['metadataSha256']
+            assert source['view']['totalChars'] < 1000
+            assert '@Named' not in source['view']['text']
+            raw = call('decompile_class', {'className': 'aa', 'bytecodeView': 'original', 'maxChars': 1500})
+            assert raw['view']['totalChars'] > 500000
+            assert raw['viewSha256'] == original_hash
             search = call('search_strings', {'query': 'RuneScape', 'limit': 3})
             assert search['total'] > 0, search
             missing = rpc('tools/call', {'name': 'class_outline', 'arguments': {'className': 'missing/NoSuchClass'}})
@@ -87,7 +94,8 @@ def main():
             print(json.dumps({'status': 'PASS', 'tools': len(catalog), 'classes': status['classCount'],
                 'decompiler': source['decompiler'], 'artifactSha256': original_hash,
                 'checks': ['initialize', 'initialized notification', 'tools/list', 'status', 'class pagination',
-                    'class outline', 'outline pagination', 'method disassembly', 'decompilation', 'string search', 'missing-class error',
+                    'class outline', 'outline pagination', 'method disassembly', 'metadata-clean decompilation',
+                    'original decompilation control', 'string search', 'missing-class error',
                     'mutation unavailable', 'original checksum unchanged']}, indent=2))
         finally:
             selector.close()

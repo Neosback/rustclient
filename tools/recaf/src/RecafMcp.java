@@ -10,6 +10,8 @@ import software.coley.recaf.Main;
 import software.coley.recaf.info.JvmClassInfo;
 import software.coley.recaf.services.decompile.DecompilerManager;
 import software.coley.recaf.services.workspace.WorkspaceManager;
+import software.coley.recaf.services.workspace.io.ResourceImporter;
+import software.coley.recaf.workspace.model.BasicWorkspace;
 import software.coley.recaf.workspace.model.Workspace;
 
 import java.io.*;
@@ -23,14 +25,19 @@ import java.util.concurrent.TimeUnit;
 public final class RecafMcp {
     private static final Gson JSON = new GsonBuilder().disableHtmlEscaping().create();
     private final Workspace workspace;
+    private final Workspace metadataWorkspace;
     private final DecompilerManager decompilers;
     private final String artifactSha256;
+    private final String metadataSha256;
 
     private RecafMcp(String[] args) throws Exception {
         Path artifact = Path.of(args[0]);
         artifactSha256 = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(artifact)));
         Main.main(new String[]{"--headless", "--datadir", args[1], "--input", artifact.toString()});
         workspace = Bootstrap.get().get(WorkspaceManager.class).getCurrent();
+        Path metadata = Path.of(args[2]);
+        metadataSha256 = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(metadata)));
+        metadataWorkspace = new BasicWorkspace(Bootstrap.get().get(ResourceImporter.class).importResource(metadata));
         decompilers = Bootstrap.get().get(DecompilerManager.class);
         if (workspace.jvmClassesStream(false).findAny().isEmpty())
             throw new IllegalStateException("Recaf did not load the selected analysis JAR");
@@ -40,7 +47,7 @@ public final class RecafMcp {
         // Reserve the original stdout descriptor for newline-delimited MCP JSON only.
         PrintWriter protocol = new PrintWriter(new OutputStreamWriter(new FileOutputStream(FileDescriptor.out), StandardCharsets.UTF_8), true);
         System.setOut(System.err);
-        if (args.length != 2) throw new IllegalArgumentException("expected analysis JAR and isolated data directory");
+        if (args.length != 3) throw new IllegalArgumentException("expected input JAR, isolated data directory and metadata view");
         RecafMcp server = new RecafMcp(args);
         try (BufferedReader input = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8))) {
             for (String line; (line = input.readLine()) != null;) {
@@ -77,7 +84,7 @@ public final class RecafMcp {
     private Object dispatch(String method, JsonObject params) throws Exception {
         return switch (method) {
             case "initialize" -> Map.of("protocolVersion", "2024-11-05", "capabilities", Map.of("tools", Map.of("listChanged", false)),
-                    "serverInfo", Map.of("name", "rustclient-recaf", "version", "0.1.0"));
+                    "serverInfo", Map.of("name", "rustclient-recaf", "version", "0.2.0"));
             case "ping" -> Map.of();
             case "tools/list" -> Map.of("tools", tools());
             case "tools/call" -> {
@@ -104,7 +111,7 @@ public final class RecafMcp {
             tool("workspace_status", "Describe the fixed Recaf analysis workspace and available decompilers", Map.of(), List.of()),
             tool("list_classes", "Page through exact class names", Map.of("prefix", string, "offset", nonnegative, "limit", limit), List.of()),
             tool("class_outline", "Read class hierarchy and paginated field/method descriptors from bytecode", Map.of("className", className, "fieldsOffset", nonnegative, "methodsOffset", nonnegative, "limit", limit), List.of("className")),
-            tool("decompile_class", "Read a derived Java view; compare with bytecode before inferring behavior", Map.of("className", className, "decompiler", string, "offset", nonnegative, "maxChars", chars), List.of("className")),
+            tool("decompile_class", "Read Java with annotation noise removed by default; original bytecode remains authoritative", Map.of("className", className, "decompiler", string, "bytecodeView", Map.of("type", "string", "enum", List.of("original", "metadata-clean")), "offset", nonnegative, "maxChars", chars), List.of("className")),
             tool("method_bytecode", "Read ASM method disassembly from the loaded class bytes", Map.of("className", className, "methodName", string, "descriptor", string, "offset", nonnegative, "maxChars", chars), List.of("className", "methodName", "descriptor")),
             tool("search_strings", "Find bytecode LDC string constants; return exact method and ASM instruction index", Map.of("query", string, "offset", nonnegative, "limit", limit), List.of("query"))
         );
@@ -130,6 +137,7 @@ public final class RecafMcp {
     private Object call(String name, JsonObject args) throws Exception {
         return switch (name) {
             case "workspace_status" -> Map.of("classCount", workspace.jvmClassesStream(false).count(), "mode", "read-only derived copy",
+                "decompileDefault", "metadata-clean", "metadataSha256", metadataSha256,
                 "decompilers", decompilers.getJvmDecompilers().stream().map(d -> Map.of("name", d.getName(), "version", d.getVersion())).toList());
             case "list_classes" -> {
                 var names = workspace.jvmClassesStream(false).map(p -> p.getValue().getName()).filter(n -> n.startsWith(optional(args, "prefix", ""))).sorted().toList();
@@ -148,14 +156,21 @@ public final class RecafMcp {
                     "methods", cls.methods.stream().skip(methodsOffset).limit(limit).map(m -> Map.of("name", m.name, "descriptor", m.desc, "access", m.access)).toList());
             }
             case "decompile_class" -> {
-                var decompiler = args.has("decompiler") ? decompilers.getJvmDecompiler(required(args, "decompiler")) : decompilers.getTargetJvmDecompiler();
+                var decompiler = decompilers.getJvmDecompiler(optional(args, "decompiler", "Vineflower"));
                 if (decompiler == null) throw new IllegalArgumentException("Unknown decompiler; see workspace_status");
-                var future = decompilers.decompile(decompiler, workspace, info(args));
+                String view = optional(args, "bytecodeView", "metadata-clean");
+                if (!view.equals("original") && !view.equals("metadata-clean")) throw new IllegalArgumentException("Unknown bytecodeView");
+                Workspace selected = view.equals("original") ? workspace : metadataWorkspace;
+                var path = selected.findJvmClass(false, required(args, "className"));
+                if (path == null) throw new IllegalArgumentException("Class not found");
+                var future = decompilers.decompile(decompiler, selected, path.getValue().asJvmClass());
                 software.coley.recaf.services.decompile.DecompileResult result;
                 try { result = future.get(45, TimeUnit.SECONDS); }
                 catch (Exception error) { future.cancel(true); throw error; }
                 if (result.getText() == null) throw new IllegalStateException("Decompile failed: " + result.getType());
-                yield Map.of("decompiler", decompiler.getName(), "view", page(result.getText(), args));
+                yield Map.of("decompiler", decompiler.getName(), "bytecodeView", view,
+                    "viewSha256", view.equals("original") ? artifactSha256 : metadataSha256,
+                    "view", page(result.getText(), args));
             }
             case "method_bytecode" -> {
                 ClassNode cls = node(info(args));
@@ -193,6 +208,10 @@ public final class RecafMcp {
         int offset = integer(args, "offset", 0, 0, Integer.MAX_VALUE);
         int start = Math.min(offset, value.length());
         int end = (int) Math.min((long) value.length(), (long) start + integer(args, "maxChars", 30000, 1, 100000));
+        if (end > start && end < value.length() && Character.isHighSurrogate(value.charAt(end - 1))
+                && Character.isLowSurrogate(value.charAt(end))) {
+            end += end - start == 1 ? 1 : -1;
+        }
         return Map.of("totalChars", value.length(), "offset", start, "nextOffset", end, "text", value.substring(start, end));
     }
 

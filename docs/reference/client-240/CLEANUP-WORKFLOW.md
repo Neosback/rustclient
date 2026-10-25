@@ -56,3 +56,8 @@ The [portable naming report](verification/portable-setup-20261024.md) records a 
 mapping baseline: 735-class normalized roundtrip identity, 27,052 preserved annotation lines, and
 735 generated Java sources with zero failed bodies. It does not certify uncommitted/new mapping shards.
 See [Recaf setup](../../../tools/recaf/README.md) for MCP build and smoke-test commands.
+
+For measured renderer results and the current readable export, use
+[Decompiler quality](DECOMPILER-QUALITY.md). Its syntax checks found defects beyond the older
+file-count/failed-body-marker gate. The checked bundle retains complete original bytecode for Java
+that cannot yet be reconstructed, and does not certify the current production naming shards.
