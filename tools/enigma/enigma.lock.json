@@ -1,0 +1,27 @@
+{
+  "upstream": "https://github.com/FabricMC/Enigma",
+  "commit": "29993f13872f25bcf7e2a354750a6756c5882ca6",
+  "source_url": "https://codeload.github.com/FabricMC/Enigma/zip/29993f13872f25bcf7e2a354750a6756c5882ca6",
+  "source_sha256": "dad374dd0ee198eb9454197d31ab353f0619c67776bda0b9dc8eeea428c0919c",
+  "gradle_version": "9.3.0",
+  "gradle_sha256": "0d585f69da091fc5b2beced877feab55a3064d43b8a1d46aeb07996b0915e0e0",
+  "mcp_patch_sha256": "1eb0f1e994eb235e3df64c947298c0e1798d6e5af8419b4fe7afdd83d59e7aeb",
+  "mcp_provenance": "User-supplied Enigma-MCP-master snapshot; original remote unknown. Delta against the verified Fabric snapshot is included in full.",
+  "mcp_changed_files": [
+    "README.md",
+    "enigma-swing/src/main/java/cuchaz/enigma/gui/Gui.java",
+    "enigma-swing/src/main/java/cuchaz/enigma/gui/GuiController.java",
+    "enigma-swing/src/main/java/cuchaz/enigma/gui/config/McpConfig.java",
+    "enigma-swing/src/main/java/cuchaz/enigma/gui/dialog/McpServerDialog.java",
+    "enigma-swing/src/main/java/cuchaz/enigma/gui/elements/McpLogPanel.java",
+    "enigma-swing/src/main/java/cuchaz/enigma/gui/elements/MenuBar.java",
+    "enigma-swing/src/main/java/cuchaz/enigma/gui/mcp/McpEntryRef.java",
+    "enigma-swing/src/main/java/cuchaz/enigma/gui/mcp/McpException.java",
+    "enigma-swing/src/main/java/cuchaz/enigma/gui/mcp/McpHttpServer.java",
+    "enigma-swing/src/main/java/cuchaz/enigma/gui/mcp/McpProtocol.java",
+    "enigma-swing/src/main/java/cuchaz/enigma/gui/mcp/McpTools.java",
+    "enigma/src/main/resources/lang/en_us.json",
+    "enigma/src/main/resources/lang/zh_cn.json"
+  ],
+  "java_release": 17
+}

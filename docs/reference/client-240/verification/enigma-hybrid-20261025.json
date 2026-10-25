@@ -1,0 +1,165 @@
+{
+  "originalSha256": "25f42961c400bd9dfff1554402441c0ba6d1cffd011163cb9b0b4c42ae194f85",
+  "workbenchSourceSha256": "926ad69e9d4877737575a4e58a7637bd79fa07eb7f0f06b6214acbce31c87cd4",
+  "workbenchJarSha256": "6af20c807a08a7e045c28adb57ea86cfd0bbdbb889208193a6aa61f6c7b4b025",
+  "policyRegistrySha256": "2a8d86ec8169fd2b596c8e61777a3a1381f3230ad3c4bc803f00aca6fff59a55",
+  "probeSources": {
+    "hybrid-review.py": "f6d76a57303541795309fa3f48850168c80e37be8284316e56cb1d07115bb099",
+    "AgentPatternProbe.java": "ebb586437a9bb884066eab4e906d265a3d90a59b35118334e6e8a0afa12786a1",
+    "RlSuiteDecoderProbe.java": "4b307e226c028a92561a86964846a733643d43788a53f084898acaa89e8dbc98"
+  },
+  "transformsApplied": [],
+  "automaticMappingsWritten": false,
+  "suiteJarSha256": "7f0d65bc300a87f45e0c6748cf61e8969deb3caac6c3f998b7b640ac2dff8353",
+  "suiteSourceCorrespondence": "NOT_VERIFIED: source inventory and prebuilt binary are separate evidence",
+  "decoderComparison": {
+    "workbenchPairs": 786,
+    "workbenchFields": 715,
+    "suiteCandidates": 1473,
+    "suiteConfidence": {
+      "INFERRED": 517,
+      "PROVEN": 575,
+      "STATED": 381
+    },
+    "outcomes": {
+      "no-workbench-pair": 780,
+      "agrees-with-pair": 493,
+      "different-candidate": 61,
+      "ambiguous-descriptor": 77,
+      "agrees-with-one-of-multiple-pairs": 62
+    },
+    "byConfidence": {
+      "INFERRED": {
+        "no-workbench-pair": 330,
+        "agrees-with-pair": 108,
+        "different-candidate": 12,
+        "ambiguous-descriptor": 60,
+        "agrees-with-one-of-multiple-pairs": 7
+      },
+      "PROVEN": {
+        "agrees-with-pair": 194,
+        "no-workbench-pair": 323,
+        "ambiguous-descriptor": 17,
+        "different-candidate": 30,
+        "agrees-with-one-of-multiple-pairs": 11
+      },
+      "STATED": {
+        "agrees-with-pair": 191,
+        "different-candidate": 19,
+        "no-workbench-pair": 127,
+        "agrees-with-one-of-multiple-pairs": 44
+      }
+    },
+    "workbenchFieldsWithoutSuiteCandidate": 99
+  },
+  "agentPatterns": {
+    "error-report-literal": 8,
+    "menu-api-entry": 3,
+    "menu-api-call": 7,
+    "mouse-init-call": 1,
+    "actor-animation-api": 1,
+    "actor-animation-field": 2,
+    "actor-animation-numeric-literal": 1,
+    "focus-name": 3,
+    "hierarchy-event-handle": 1,
+    "runtime-arguments-call": 2,
+    "platform-constructor-signature": 1,
+    "device-command-literal": 6
+  },
+  "protectedInputsUnchanged": true,
+  "sources": {
+    "agent": {
+      "inventorySha256": "e2b43fdee56f4c820fea3ec81963d5a89e7677d39aca3ead2e91c14e84f720ca",
+      "inventoriedFiles": 13,
+      "selectedFiles": {
+        "build.gradle.kts": "7377fb3d5f0641b339656eb0c2980257a8202f75cb8e74d4451237c5269771e9",
+        "src/main/java/net/runelite/Agent.java": "8434244dd2f63ea8d858f02a6897771d231d3e1086cb8e588a70de8acd698585",
+        "src/main/java/net/runelite/transformers/ActorGetAnimationTransformer.java": "77d631f6e9145b5ea05d0e8f760acb38f903186814190a89ab45eafc59813cf8",
+        "src/main/java/net/runelite/transformers/MenuActionTransformer.java": "911b53fa1a52c9ed412f9cfb5f8db9f4c507d00479f935de204d7b4a5bafa4bd",
+        "src/main/java/net/runelite/transformers/PlatformInfoTransformer.java": "a6721b9bbfd417aa7b3d50c9d816b6a94b13521ac3644b19903cef0635e32d5d",
+        "src/main/java/net/runelite/transformers/RuneLiteGetInputArgumentsTransformer.java": "ccb006613e449e0f0f9d9aab51e5548daa1142ff414ac17000f19925ca5c08a5",
+        "src/main/java/net/runelite/transformers/RuneLiteMouseClickPacketTransformer.java": "c48f5f0d88fdd921472755580d9296ffb6f18851c310764198021855f2542a55"
+      }
+    },
+    "vanilla": {
+      "inventorySha256": "17603da954e57ce311d0abb1e04192a295c55e88357762f0b131af93f451def8",
+      "inventoriedFiles": 393,
+      "selectedFiles": {
+        "src/main/java/net/runelite/asm/Type.java": "2d0ebf34267d2c473ae176fa95c0739c48ab8f473e2716fc07b7f4ac6ee30858",
+        "src/main/java/net/runelite/asm/attributes/code/InstructionType.java": "b12aeadedd23f0ee38eb653afad6e1627840c7e3cabc33a5f1297f27445428ab",
+        "src/main/java/net/runelite/asm/attributes/code/instruction/types/LVTInstructionType.java": "b78e22adcba6ed391d96362d94a043c2179082eff8ee804e53d462a817e36d96",
+        "src/main/java/net/runelite/asm/attributes/code/instructions/InvokeDynamic.java": "4a4f639249cf40be087279a68daef8cb9360504584e063d838a98faac43d64e1",
+        "src/main/java/net/runelite/deob/Deob.java": "904f4e45e365225ca234832aa7da1d13f833e3bf549e2a10ddcb20f0de9f3d97",
+        "src/main/java/net/runelite/deob/Deobfuscator.java": "02f29e4fca79291e7e50a7dc37c9bfe5c57e25c77150a4b6822ee518172b0c9d",
+        "src/main/java/net/runelite/deob/deobfuscators/EnumDeobfuscator.java": "93b534c6ec33ee1a0caebf29eaacc0e19b374a0ca8f0ccaeee177331659ae78e",
+        "src/main/java/net/runelite/deob/deobfuscators/RuntimeExceptions.java": "2eb9b50c0020d60bfe6d10a087c21d83cf4b3d5cfdf2f96d6e4ab5a17c76c111",
+        "src/main/java/net/runelite/deob/deobfuscators/UnusedMethods.java": "68ea7b5fe68cdae903bf2a276ceea71dbbac03ed4f6cad28ad258b1d1ea91511",
+        "src/main/java/net/runelite/deob/deobfuscators/UnusedParameters.java": "b77a373995e11eac9d5eaa7567cbd14313a469ed760ef7de2b07625c6ff09fe4",
+        "src/main/java/net/runelite/deob/deobfuscators/arithmetic/DupDeobfuscator.java": "7aa60c82e60e833c33ab7b0527668e47775162403b2ea9862e8d9c78576aaa3f",
+        "src/main/java/net/runelite/deob/deobfuscators/arithmetic/MultiplicationDeobfuscator.java": "9993c21aa2731fa84eebfa1936acf131bcf33356d972baf2bc13f6853b9c0d7c",
+        "src/main/java/net/runelite/deob/deobfuscators/arithmetic/MultiplyOneDeobfuscator.java": "2060f08bcd711ba28e9aeb803a908ff1f531fd372e536c5c370d3e5d3e77bc44",
+        "src/main/java/net/runelite/deob/deobfuscators/arithmetic/MultiplyZeroDeobfuscator.java": "42b0b48b0abc06d55e25b70a9455264bad959078b1c30449b0966a857274615d",
+        "src/main/java/net/runelite/deob/deobfuscators/cfg/ControlFlowDeobfuscator.java": "e4b356681637573fc21e0e3e6795ee5770e9e736b32669e475fc713a05a5f44f",
+        "src/main/java/net/runelite/deob/deobfuscators/lvt/LVTType.java": "feba4b6bdbc328a9b7d9064d83cb637ac78f3e92598b139987f9566144d5a8a4",
+        "src/main/java/net/runelite/deob/deobfuscators/menuaction/MenuActionDeobfuscator.java": "7a1e00a8fad39ccc3b75a40effdecf5f8855ee6e702437a622dcb0c9d3c0f020",
+        "src/main/java/net/runelite/deob/deobfuscators/packetwrite/PacketWriteDeobfuscator.java": "0478fb331c96b2d728cf11796a53f5fa81162132a5d909f1a943efc09ec31f1f"
+      }
+    },
+    "suite": {
+      "inventorySha256": "55c1a9441cd47fb91389757e18e293647d34d3baaecda9061ec0ead13f132de1",
+      "inventoriedFiles": 1462,
+      "selectedFiles": {
+        "semantics/injected-client-1.12.14-sources/DbRowType.java": "05d0103324a461a21a7e5c7b4c8e1660b6cbb111c0f296a7161ad322b6bb5bae",
+        "semantics/injected-client-1.12.14-sources/DbTableType.java": "50f70223612b511128ea97a6bb6c114f9cee018f003b845d3576aa9a0d297e1a",
+        "semantics/injected-client-1.12.14-sources/HttpContentType.java": "e766e871d6de7ef1f05d5cfa2314b07fbc1476858cca602fb4095a8688b26947",
+        "semantics/injected-client-1.12.14-sources/LoginType.java": "75e5f72d5a2f631aae4723ef7a59a81e01c4a53f5d61284243eae5cb53063b5c",
+        "semantics/injected-client-1.12.14-sources/PlayerType.java": "f0727389be8b158242cc8b709c95e3d7b16b21a656408faaedc3ec0eba8ea711",
+        "semantics/injected-client-1.12.14-sources/WorldEntityOwnerType.java": "934add1230eddd4306f755410e1cad7752a37e5195d46fee9ff513db404c7d0b",
+        "semantics/injected-client-1.12.14-sources/WorldMapDecorationType.java": "8983bb62baa91c57515049d71536d9b862d788c6ef6a9bb61dd80041e989466e",
+        "semantics/injected-client-1.12.14-sources/WorldMapSectionType.java": "49abff3d23d08a2c179253beec47953684b6d42add461e2f6d134c3feda02ec3",
+        "semantics/injected-client-1.12.37-sources/AccountType.java": "d872386cb9c21288592e4581829d3479201a57907e3415b4a5135cd677c1133d",
+        "semantics/injected-client-1.12.37-sources/DbRowType.java": "e934bed8d7a3435df7c4a15081c104623a556bdc82d542e90daea31218822fa3",
+        "transform-jar/src/main/java/dev/rl/suite/Deobfuscator.java": "c645566c42af6c47b978f3b59f2c2d8a1e3bc482aaa906fe2683e7876ab84e81",
+        "transform-jar/src/main/java/dev/rl/suite/pass/UnusedMemberMarker.java": "09f20aa4a113e325824e09a626a5fdb9686c24508232a015c6b10d11b3efbeba",
+        "transform-jar/src/main/java/dev/rl/suite/rename/RenamePolicy.java": "0ddfb49007a518232a93ee0fdab491c62dd4626c43cedf099edd2d82cfedada7",
+        "transform-jar/src/main/java/dev/rl/suite/util/DecoderTable.java": "d3d200b40d3fea725886b31058770985ff8dc999dcde6f0389dbfc12bdb0f399"
+      }
+    }
+  },
+  "outputSha256": {
+    "agent-patterns.json": "489c243c7ee40da4bb1ccc84313ec09b0c325aac01db00a03fff80d6e8329823",
+    "decoder-comparison.json": "501e918c6a7bdfc5d1b326cf42a882d05df83a9fc503c3035cdbb6a4812f9651",
+    "decoders.json": "f3d79c52f2489444d748c907231f27584dad6466c37af6e43ff2a717fe404a2f",
+    "injected-anchors.json": "2c2a4e5027ee870adaa21982525ebe1d6bbe333e28b5e45cc25fb34b77768566",
+    "rl-suite-decoders.tsv": "8d7680f2891a29331d7ef2b3c9e015959d5ea7509900f735edd89a81d1aac1cc"
+  },
+  "enigmaBuild": {
+    "recipe_sha256": "2fe638d8a4bd50d348c46a49c28f4eb6a596dafcb14560b58c38f40c38bf46c3",
+    "jar_sha256": "5b9b2db4309e81ec846fe979d2813d7a1b59d2ffd25b28472b0c715e1c70cb54",
+    "source_commit": "29993f13872f25bcf7e2a354750a6756c5882ca6",
+    "jar": ".cache/client-240/enigma/build-2fe638d8a4bd50d348c4/Enigma-29993f13872f25bcf7e2a354750a6756c5882ca6/enigma-swing/build/libs/enigma-swing-4.0.2+local-all.jar"
+  },
+  "enigmaSmoke": {
+    "status": "PASS",
+    "tools": 16,
+    "classes": 735,
+    "fields": 7350,
+    "methods": 18967,
+    "checks": [
+      "initialize/notification/ping",
+      "all 16 tools",
+      "default-package and member pagination",
+      "hierarchy",
+      "references",
+      "method family",
+      "valid/invalid/colliding rename checks",
+      "constructor rejection",
+      "reversible sandbox rename/javadoc/mark/reset",
+      "paginated decompilation",
+      "completed draft save",
+      "invalid request errors",
+      "original references and production mappings unchanged"
+    ],
+    "original_sha256": "25f42961c400bd9dfff1554402441c0ba6d1cffd011163cb9b0b4c42ae194f85"
+  }
+}

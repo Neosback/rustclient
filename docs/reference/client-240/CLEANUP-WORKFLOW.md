@@ -21,6 +21,12 @@ The workbench has deterministic passes and JSON reports. Recaf supplies convenie
 through its workspace and multiple decompilers. Reusable evidence extraction belongs in the workbench;
 interactive experiments do not silently become production mappings.
 
+The optional [Enigma MCP integration](../../../tools/enigma/README.md) adds GUI-backed hierarchy,
+reference and method-family queries plus validated draft renaming. Its isolated drafts do not write
+production mappings. The [hybrid resource workflow](../../../tools/deob/README.md) combines injected
+rl-suite evidence, vanilla-deob analysis ideas and revision-240 agent search patterns without running
+their default transformation pipelines. See the [measured setup](verification/enigma-hybrid-20261025.md).
+
 ## Safe readability improvements
 
 Prefer mapping overlays, method-scoped decompilation, collapsible injection methods, exact API anchors,

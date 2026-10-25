@@ -1,0 +1,1919 @@
+--- a/README.md
++++ b/README.md
+@@ -27,3 +27,47 @@
+ ### On the command line
+ 
+ `java -cp enigma.jar cuchaz.enigma.command.Main`
++
++## MCP Server
++
++This fork adds a built-in HTTP [MCP](https://modelcontextprotocol.io/) server so AI
++clients can read and edit the mappings of the currently loaded project.
++
++### Starting
++
++Use the **MCP** menu in the GUI:
++
++- **Start / Stop MCP Server** — start or stop the server.
++- **Configure** — set the listen port (default `32412`), whether to start
++  automatically on launch, and whether to listen on `0.0.0.0` (all interfaces)
++  instead of loopback only.
++
++The server binds to `127.0.0.1` by default and speaks JSON-RPC 2.0 / MCP over a
++single `POST /mcp` endpoint (Streamable HTTP, no extra dependencies — JDK
++`HttpServer` + Gson). Edits are routed through the GUI controller, so the class
++tree, decompiler view and collaboration server stay in sync.
++
++### Tools
++
++| Tool | Description |
++| --- | --- |
++| `list_packages` | List packages by prefix, in the obfuscated or deobfuscated namespace |
++| `list_classes` | List classes in a package |
++| `list_members` | List a class's fields, methods and parameters with their status |
++| `rename` | Rename a class, field, method or parameter |
++| `mark_deobfuscated` / `reset_obfuscated` | Mark as not needing deobfuscation, or revert to obfuscated |
++| `get_javadoc` / `set_javadoc` | Read or set javadoc |
++| `search` | Search classes, methods and fields by name |
++| `decompile_class` | Decompile a class with mappings applied (selectable decompiler) |
++| `save_mappings` | Save mappings to the file chosen in Enigma |
++
++Every obfuscated/deobfuscated name and renamable entry is reported with its
++status (`obfuscated` / `deobfuscated` / `proposed` / `unobfuscated`). Names may
++be supplied in either the obfuscated or deobfuscated namespace.
++
++### Log panel
++
++While the MCP server is running an **MCP Log** tab appears in the bottom-right
++docked panel (alongside the collaboration tabs). It shows a table of operations
++(time / operation / class / detail); double-click a row to jump to the affected
++class. Operations are also printed to the console with an `[MCP]` prefix.
+--- a/enigma-swing/src/main/java/cuchaz/enigma/gui/Gui.java
++++ b/enigma-swing/src/main/java/cuchaz/enigma/gui/Gui.java
+@@ -15,6 +15,7 @@
+ import java.awt.Container;
+ import java.awt.Point;
+ import java.awt.event.ActionEvent;
++import java.io.IOException;
+ import java.nio.file.Path;
+ import java.util.Collection;
+ import java.util.List;
+@@ -46,6 +47,7 @@
+ import cuchaz.enigma.Enigma;
+ import cuchaz.enigma.analysis.EntryReference;
+ import cuchaz.enigma.api.service.GuiService;
++import cuchaz.enigma.gui.config.McpConfig;
+ import cuchaz.enigma.gui.config.Themes;
+ import cuchaz.enigma.gui.config.UiConfig;
+ import cuchaz.enigma.gui.dialog.JavadocDialog;
+@@ -56,6 +58,7 @@
+ import cuchaz.enigma.gui.elements.ImplementationsTree;
+ import cuchaz.enigma.gui.elements.InheritanceTree;
+ import cuchaz.enigma.gui.elements.MainWindow;
++import cuchaz.enigma.gui.elements.McpLogPanel;
+ import cuchaz.enigma.gui.elements.MenuBar;
+ import cuchaz.enigma.gui.elements.ValidatableUi;
+ import cuchaz.enigma.gui.panels.DeobfPanel;
+@@ -116,6 +119,8 @@
+ 	private final JScrollPane messageScrollPane = new JScrollPane(this.messages);
+ 	private final JTextField chatBox = new JTextField();
+ 
++	private McpLogPanel mcpLogPanel;
++
+ 	private final JLabel connectionStatusLabel = new JLabel();
+ 
+ 	public final JFileChooser jarFileChooser = new JFileChooser();
+@@ -132,6 +137,7 @@
+ 		this.infoPanel = new IdentifierPanel(this);
+ 		this.obfPanel = new ObfPanel(this);
+ 		this.menuBar = new MenuBar(this);
++		this.mcpLogPanel = new McpLogPanel(this);
+ 		this.inheritanceTree = new InheritanceTree(this);
+ 		this.implementationsTree = new ImplementationsTree(this);
+ 		this.callsTree = new CallsTree(this);
+@@ -145,6 +151,14 @@
+ 
+ 		for (GuiService guiService : enigma.getServices().get(GuiService.TYPE)) {
+ 			guiService.onStart(controller);
++		}
++
++		if (McpConfig.isAutoStart()) {
++			try {
++				this.controller.startMcpServer(McpConfig.getPort(), McpConfig.isBindAll());
++			} catch (IOException e) {
++				System.err.println("Failed to auto-start MCP server: " + e);
++			}
+ 		}
+ 
+ 		this.mainWindow.setVisible(true);
+@@ -191,6 +205,7 @@
+ 		messagePanel.add(chatPanel, BorderLayout.SOUTH);
+ 		logTabs.addTab(I18n.translate("log_panel.users"), new JScrollPane(this.users));
+ 		logTabs.addTab(I18n.translate("log_panel.messages"), messagePanel);
++		logTabs.addTab(I18n.translate("log_panel.mcp"), this.mcpLogPanel);
+ 		logSplit.setResizeWeight(0.5);
+ 		logSplit.resetToPreferredSizes();
+ 		splitRight.setResizeWeight(1); // let the left side take all the slack
+@@ -244,6 +259,10 @@
+ 
+ 	public GuiController getController() {
+ 		return this.controller;
++	}
++
++	public McpLogPanel getMcpLogPanel() {
++		return this.mcpLogPanel;
+ 	}
+ 
+ 	public void setSingleClassTree(boolean singleClassTree) {
+@@ -482,6 +501,8 @@
+ 		if (searchDialog != null) {
+ 			searchDialog.dispose();
+ 		}
++
++		this.controller.stopMcpServer();
+ 
+ 		this.mainWindow.frame().dispose();
+ 		System.exit(0);
+@@ -613,12 +634,14 @@
+ 
+ 		connectionStatusLabel.setText(I18n.translate(connectionState == ConnectionState.NOT_CONNECTED ? "status.disconnected" : "status.connected"));
+ 
+-		if (connectionState == ConnectionState.NOT_CONNECTED) {
++		boolean showLogPanel = connectionState != ConnectionState.NOT_CONNECTED || this.controller.isMcpRunning();
++
++		if (showLogPanel) {
++			splitRight.setRightComponent(logSplit);
++			logSplit.setLeftComponent(tabs);
++		} else {
+ 			logSplit.setLeftComponent(null);
+ 			splitRight.setRightComponent(tabs);
+-		} else {
+-			splitRight.setRightComponent(logSplit);
+-			logSplit.setLeftComponent(tabs);
+ 		}
+ 
+ 		splitRight.setDividerLocation(splitRight.getDividerLocation());
+@@ -633,6 +656,8 @@
+ 		this.tabs.setTitleAt(3, I18n.translate("info_panel.tree.calls"));
+ 		this.logTabs.setTitleAt(0, I18n.translate("log_panel.users"));
+ 		this.logTabs.setTitleAt(1, I18n.translate("log_panel.messages"));
++		this.logTabs.setTitleAt(2, I18n.translate("log_panel.mcp"));
++		this.mcpLogPanel.retranslateUi();
+ 		this.connectionStatusLabel.setText(I18n.translate(connectionState == ConnectionState.NOT_CONNECTED ? "status.disconnected" : "status.connected"));
+ 
+ 		this.updateUiState();
+--- a/enigma-swing/src/main/java/cuchaz/enigma/gui/GuiController.java
++++ b/enigma-swing/src/main/java/cuchaz/enigma/gui/GuiController.java
+@@ -60,6 +60,7 @@
+ import cuchaz.enigma.gui.config.NetConfig;
+ import cuchaz.enigma.gui.config.UiConfig;
+ import cuchaz.enigma.gui.dialog.ProgressDialog;
++import cuchaz.enigma.gui.mcp.McpHttpServer;
+ import cuchaz.enigma.gui.newabstraction.EntryValidation;
+ import cuchaz.enigma.gui.panels.EditorPanel;
+ import cuchaz.enigma.gui.stats.StatsGenerator;
+@@ -117,6 +118,8 @@
+ 	private EnigmaClient client;
+ 	private EnigmaServer server;
+ 
++	private McpHttpServer mcpServer;
++
+ 	private History<EntryReference<Entry<?>, Entry<?>>> referenceHistory;
+ 
+ 	public GuiController(Gui gui, Enigma enigma) {
+@@ -651,6 +654,39 @@
+ 		return server;
+ 	}
+ 
++	public boolean isMcpRunning() {
++		return mcpServer != null && mcpServer.isRunning();
++	}
++
++	public int getMcpPort() {
++		return mcpServer != null ? mcpServer.getPort() : -1;
++	}
++
++	public void startMcpServer(int port, boolean bindAll) throws IOException {
++		if (mcpServer != null) {
++			return;
++		}
++
++		mcpServer = new McpHttpServer(gui, port, bindAll);
++
++		try {
++			mcpServer.start();
++		} catch (IOException e) {
++			mcpServer = null;
++			throw e;
++		}
++
++		gui.updateUiState();
++	}
++
++	public void stopMcpServer() {
++		if (mcpServer != null) {
++			mcpServer.stop();
++			mcpServer = null;
++			gui.updateUiState();
++		}
++	}
++
+ 	public void createClient(String username, String ip, int port, char[] password) throws IOException {
+ 		client = new EnigmaClient(this, ip, port);
+ 		client.connect();
+--- /dev/null
++++ b/enigma-swing/src/main/java/cuchaz/enigma/gui/config/McpConfig.java
+@@ -0,0 +1,40 @@
++package cuchaz.enigma.gui.config;
++
++import cuchaz.enigma.config.ConfigContainer;
++
++public final class McpConfig {
++	public static final int DEFAULT_PORT = 32412;
++
++	private static final ConfigContainer cfg = ConfigContainer.getOrCreate("enigma/mcp");
++
++	private McpConfig() {
++	}
++
++	public static void save() {
++		cfg.save();
++	}
++
++	public static int getPort() {
++		return cfg.data().section("Server").setIfAbsentInt("Port", DEFAULT_PORT);
++	}
++
++	public static void setPort(int port) {
++		cfg.data().section("Server").setInt("Port", port);
++	}
++
++	public static boolean isAutoStart() {
++		return cfg.data().section("Server").setIfAbsentBool("AutoStart", false);
++	}
++
++	public static void setAutoStart(boolean autoStart) {
++		cfg.data().section("Server").setBool("AutoStart", autoStart);
++	}
++
++	public static boolean isBindAll() {
++		return cfg.data().section("Server").setIfAbsentBool("BindAll", false);
++	}
++
++	public static void setBindAll(boolean bindAll) {
++		cfg.data().section("Server").setBool("BindAll", bindAll);
++	}
++}
+--- /dev/null
++++ b/enigma-swing/src/main/java/cuchaz/enigma/gui/dialog/McpServerDialog.java
+@@ -0,0 +1,100 @@
++package cuchaz.enigma.gui.dialog;
++
++import java.awt.Component;
++import java.awt.Dimension;
++import java.awt.Frame;
++import java.util.Arrays;
++import java.util.List;
++
++import javax.swing.JCheckBox;
++
++import cuchaz.enigma.gui.config.McpConfig;
++import cuchaz.enigma.gui.elements.ValidatableTextField;
++import cuchaz.enigma.gui.util.ScaleUtil;
++import cuchaz.enigma.utils.Pair;
++import cuchaz.enigma.utils.validation.StandardValidation;
++
++public class McpServerDialog extends AbstractDialog {
++	private ValidatableTextField portField;
++	private JCheckBox autoStartBox;
++	private JCheckBox bindAllBox;
++
++	public McpServerDialog(Frame owner) {
++		super(owner, "menu.mcp", "prompt.ok", "prompt.cancel");
++
++		Dimension preferredSize = getPreferredSize();
++		preferredSize.width = ScaleUtil.scale(400);
++		setPreferredSize(preferredSize);
++		pack();
++		setLocationRelativeTo(owner);
++	}
++
++	@Override
++	protected List<Pair<String, Component>> createComponents() {
++		portField = new ValidatableTextField(Integer.toString(McpConfig.getPort()));
++		autoStartBox = new JCheckBox("", McpConfig.isAutoStart());
++		bindAllBox = new JCheckBox("", McpConfig.isBindAll());
++
++		portField.addActionListener(event -> confirm());
++
++		return Arrays.asList(
++				new Pair<>("prompt.mcp.port", portField),
++				new Pair<>("prompt.mcp.autostart", autoStartBox),
++				new Pair<>("prompt.mcp.bindall", bindAllBox));
++	}
++
++	@Override
++	public void validateInputs() {
++		vc.setActiveElement(portField);
++		StandardValidation.isIntInRange(vc, portField.getText(), 1, 65535);
++	}
++
++	public Result getResult() {
++		if (!isActionConfirm()) {
++			return null;
++		}
++
++		vc.reset();
++		validateInputs();
++
++		if (!vc.canProceed()) {
++			return null;
++		}
++
++		return new Result(Integer.parseInt(portField.getText()), autoStartBox.isSelected(), bindAllBox.isSelected());
++	}
++
++	public static Result show(Frame parent) {
++		McpServerDialog dialog = new McpServerDialog(parent);
++
++		dialog.setVisible(true);
++		Result result = dialog.getResult();
++
++		dialog.dispose();
++		return result;
++	}
++
++	public static class Result {
++		private final int port;
++		private final boolean autoStart;
++		private final boolean bindAll;
++
++		public Result(int port, boolean autoStart, boolean bindAll) {
++			this.port = port;
++			this.autoStart = autoStart;
++			this.bindAll = bindAll;
++		}
++
++		public int getPort() {
++			return port;
++		}
++
++		public boolean isAutoStart() {
++			return autoStart;
++		}
++
++		public boolean isBindAll() {
++			return bindAll;
++		}
++	}
++}
+--- /dev/null
++++ b/enigma-swing/src/main/java/cuchaz/enigma/gui/elements/McpLogPanel.java
+@@ -0,0 +1,175 @@
++package cuchaz.enigma.gui.elements;
++
++import java.awt.BorderLayout;
++import java.awt.FlowLayout;
++import java.awt.event.MouseAdapter;
++import java.awt.event.MouseEvent;
++import java.time.LocalTime;
++import java.time.format.DateTimeFormatter;
++import java.util.ArrayList;
++import java.util.List;
++import java.util.Set;
++
++import javax.swing.JButton;
++import javax.swing.JCheckBox;
++import javax.swing.JPanel;
++import javax.swing.JScrollBar;
++import javax.swing.JScrollPane;
++import javax.swing.JTable;
++import javax.swing.ListSelectionModel;
++import javax.swing.SwingUtilities;
++import javax.swing.table.DefaultTableModel;
++
++import cuchaz.enigma.gui.Gui;
++import cuchaz.enigma.translation.representation.entry.ClassEntry;
++import cuchaz.enigma.translation.representation.entry.Entry;
++import cuchaz.enigma.utils.I18n;
++
++/**
++ * A docked panel (sibling of the collab Users/Messages tabs) that shows a table of
++ * MCP operations. Double-clicking a row navigates to the affected class.
++ */
++public class McpLogPanel extends JPanel {
++	private static final int MAX_ROWS = 1000;
++	private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm:ss");
++	private static final Set<String> READ_ONLY_OPS = Set.of(
++			"list_packages", "list_classes", "list_members", "search", "decompile_class", "get_javadoc", "ping");
++
++	private final Gui gui;
++	private final DefaultTableModel model;
++	private final JTable table;
++	private final JScrollPane scrollPane;
++	private final JCheckBox hideQueriesBox = new JCheckBox();
++	private final JButton clearButton = new JButton();
++	private final List<String> rowObfClasses = new ArrayList<>();
++	private final List<Entry<?>> rowTargets = new ArrayList<>();
++
++	public McpLogPanel(Gui gui) {
++		super(new BorderLayout());
++		this.gui = gui;
++
++		this.model = new DefaultTableModel(0, 4) {
++			@Override
++			public boolean isCellEditable(int row, int column) {
++				return false;
++			}
++		};
++
++		this.table = new JTable(this.model);
++		this.table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
++		this.table.setAutoCreateRowSorter(true);
++		this.table.addMouseListener(new MouseAdapter() {
++			@Override
++			public void mouseClicked(MouseEvent e) {
++				if (e.getClickCount() == 2) {
++					onRowActivated();
++				}
++			}
++		});
++
++		this.clearButton.addActionListener(e -> clear());
++
++		JPanel toolbar = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
++		toolbar.add(this.clearButton);
++		toolbar.add(this.hideQueriesBox);
++
++		retranslateUi();
++		this.scrollPane = new JScrollPane(this.table);
++		this.add(toolbar, BorderLayout.NORTH);
++		this.add(this.scrollPane, BorderLayout.CENTER);
++	}
++
++	public final void retranslateUi() {
++		this.model.setColumnIdentifiers(new Object[]{
++				I18n.translate("mcp.log.column.time"),
++				I18n.translate("mcp.log.column.operation"),
++				I18n.translate("mcp.log.column.class"),
++				I18n.translate("mcp.log.column.detail"),
++		});
++		this.clearButton.setText(I18n.translate("mcp.log.clear"));
++		this.hideQueriesBox.setText(I18n.translate("mcp.log.hide_queries"));
++	}
++
++	public void clear() {
++		SwingUtilities.invokeLater(() -> {
++			this.model.setRowCount(0);
++			this.rowObfClasses.clear();
++			this.rowTargets.clear();
++		});
++	}
++
++	/**
++	 * Appends a log row. Safe to call from any thread.
++	 *
++	 * @param operation the MCP tool name
++	 * @param obfClass the affected obfuscated class full name, or {@code null}
++	 * @param navTarget the resolved entry to jump to on double-click, or {@code null}
++	 * @param detail a short result or error description
++	 */
++	public void log(String operation, String obfClass, Entry<?> navTarget, String detail) {
++		if (this.hideQueriesBox.isSelected() && READ_ONLY_OPS.contains(operation)) {
++			return;
++		}
++
++		SwingUtilities.invokeLater(() -> {
++			boolean atBottom = isScrolledToBottom();
++
++			if (this.model.getRowCount() >= MAX_ROWS) {
++				this.model.removeRow(0);
++				this.rowObfClasses.remove(0);
++				this.rowTargets.remove(0);
++			}
++
++			this.model.addRow(new Object[]{LocalTime.now().format(TIME_FORMAT), operation, obfClass == null ? "" : obfClass, detail});
++			this.rowObfClasses.add(obfClass);
++			this.rowTargets.add(navTarget);
++
++			if (atBottom) {
++				int last = this.model.getRowCount() - 1;
++				this.table.scrollRectToVisible(this.table.getCellRect(last, 0, true));
++			}
++		});
++	}
++
++	private boolean isScrolledToBottom() {
++		JScrollBar bar = this.scrollPane.getVerticalScrollBar();
++
++		if (bar == null || !bar.isVisible()) {
++			return true;
++		}
++
++		return bar.getValue() + bar.getVisibleAmount() >= bar.getMaximum() - 2;
++	}
++
++	private void onRowActivated() {
++		int viewRow = this.table.getSelectedRow();
++
++		if (viewRow < 0) {
++			return;
++		}
++
++		int modelRow = this.table.convertRowIndexToModel(viewRow);
++
++		if (modelRow < 0 || modelRow >= this.rowTargets.size() || this.gui.getController().getProject() == null) {
++			return;
++		}
++
++		Entry<?> target = this.rowTargets.get(modelRow);
++
++		if (target == null) {
++			String obfClass = this.rowObfClasses.get(modelRow);
++
++			if (obfClass == null || obfClass.isEmpty()) {
++				return;
++			}
++
++			target = new ClassEntry(obfClass);
++		}
++
++		try {
++			this.gui.getController().navigateTo(target);
++		} catch (RuntimeException ignored) {
++			// invalid/unknown reference, nothing to navigate to
++		}
++	}
++}
+--- a/enigma-swing/src/main/java/cuchaz/enigma/gui/elements/MenuBar.java
++++ b/enigma-swing/src/main/java/cuchaz/enigma/gui/elements/MenuBar.java
+@@ -27,6 +27,7 @@
+ import cuchaz.enigma.gui.Gui;
+ import cuchaz.enigma.gui.config.Decompiler;
+ import cuchaz.enigma.gui.config.LookAndFeel;
++import cuchaz.enigma.gui.config.McpConfig;
+ import cuchaz.enigma.gui.config.NetConfig;
+ import cuchaz.enigma.gui.config.UiConfig;
+ import cuchaz.enigma.gui.dialog.AboutDialog;
+@@ -34,6 +35,7 @@
+ import cuchaz.enigma.gui.dialog.ConnectToServerDialog;
+ import cuchaz.enigma.gui.dialog.CreateServerDialog;
+ import cuchaz.enigma.gui.dialog.FontDialog;
++import cuchaz.enigma.gui.dialog.McpServerDialog;
+ import cuchaz.enigma.gui.dialog.SearchDialog;
+ import cuchaz.enigma.gui.dialog.StatsDialog;
+ import cuchaz.enigma.gui.util.ExtensionFileFilter;
+@@ -77,6 +79,11 @@
+ 	private final JMenu collabMenu = new JMenu();
+ 	private final JMenuItem connectItem = new JMenuItem();
+ 	private final JMenuItem startServerItem = new JMenuItem();
++
++	private final JMenu mcpMenu = new JMenu();
++	private final JMenuItem mcpStartItem = new JMenuItem();
++	private final JMenuItem mcpStopItem = new JMenuItem();
++	private final JMenuItem mcpConfigureItem = new JMenuItem();
+ 
+ 	private final JMenu helpMenu = new JMenu();
+ 	private final JMenuItem aboutItem = new JMenuItem();
+@@ -136,6 +143,12 @@
+ 		this.collabMenu.add(this.startServerItem);
+ 		ui.add(this.collabMenu);
+ 
++		this.mcpMenu.add(this.mcpStartItem);
++		this.mcpMenu.add(this.mcpStopItem);
++		this.mcpMenu.addSeparator();
++		this.mcpMenu.add(this.mcpConfigureItem);
++		ui.add(this.mcpMenu);
++
+ 		this.helpMenu.add(this.aboutItem);
+ 		this.helpMenu.add(this.githubItem);
+ 		ui.add(this.helpMenu);
+@@ -163,6 +176,9 @@
+ 		this.searchFieldItem.addActionListener(_e -> this.onSearchClicked(SearchDialog.Type.FIELD));
+ 		this.connectItem.addActionListener(_e -> this.onConnectClicked());
+ 		this.startServerItem.addActionListener(_e -> this.onStartServerClicked());
++		this.mcpStartItem.addActionListener(_e -> this.onMcpStartClicked());
++		this.mcpStopItem.addActionListener(_e -> this.onMcpStopClicked());
++		this.mcpConfigureItem.addActionListener(_e -> this.onMcpConfigureClicked());
+ 		this.aboutItem.addActionListener(_e -> AboutDialog.show(this.gui.getFrame()));
+ 		this.githubItem.addActionListener(_e -> this.onGithubClicked());
+ 	}
+@@ -186,6 +202,10 @@
+ 		this.exportSourceItem.setEnabled(jarOpen);
+ 		this.exportJarItem.setEnabled(jarOpen);
+ 		this.statsItem.setEnabled(jarOpen);
++
++		boolean mcpRunning = this.gui.getController().isMcpRunning();
++		this.mcpStartItem.setEnabled(!mcpRunning);
++		this.mcpStopItem.setEnabled(mcpRunning);
+ 	}
+ 
+ 	public void retranslateUi() {
+@@ -222,6 +242,11 @@
+ 		this.connectItem.setText(I18n.translate("menu.collab.connect"));
+ 		this.startServerItem.setText(I18n.translate("menu.collab.server.start"));
+ 
++		this.mcpMenu.setText(I18n.translate("menu.mcp"));
++		this.mcpStartItem.setText(I18n.translate("menu.mcp.start"));
++		this.mcpStopItem.setText(I18n.translate("menu.mcp.stop"));
++		this.mcpConfigureItem.setText(I18n.translate("menu.mcp.configure"));
++
+ 		this.helpMenu.setText(I18n.translate("menu.help"));
+ 		this.aboutItem.setText(I18n.translate("menu.help.about"));
+ 		this.githubItem.setText(I18n.translate("menu.help.github"));
+@@ -401,6 +426,34 @@
+ 		}
+ 	}
+ 
++	private void onMcpStartClicked() {
++		try {
++			this.gui.getController().startMcpServer(McpConfig.getPort(), McpConfig.isBindAll());
++		} catch (IOException e) {
++			JOptionPane.showMessageDialog(this.gui.getFrame(), e.toString(), I18n.translate("menu.mcp.start.error"), JOptionPane.ERROR_MESSAGE);
++		}
++
++		this.updateUiState();
++	}
++
++	private void onMcpStopClicked() {
++		this.gui.getController().stopMcpServer();
++		this.updateUiState();
++	}
++
++	private void onMcpConfigureClicked() {
++		McpServerDialog.Result result = McpServerDialog.show(this.gui.getFrame());
++
++		if (result == null) {
++			return;
++		}
++
++		McpConfig.setPort(result.getPort());
++		McpConfig.setAutoStart(result.isAutoStart());
++		McpConfig.setBindAll(result.isBindAll());
++		McpConfig.save();
++	}
++
+ 	private void onGithubClicked() {
+ 		GuiUtil.openUrl("https://github.com/FabricMC/Enigma");
+ 	}
+--- /dev/null
++++ b/enigma-swing/src/main/java/cuchaz/enigma/gui/mcp/McpEntryRef.java
+@@ -0,0 +1,278 @@
++package cuchaz.enigma.gui.mcp;
++
++import java.util.ArrayList;
++import java.util.LinkedHashMap;
++import java.util.List;
++import java.util.Locale;
++import java.util.Map;
++
++import com.google.gson.JsonObject;
++
++import cuchaz.enigma.EnigmaProject;
++import cuchaz.enigma.analysis.index.EntryIndex;
++import cuchaz.enigma.source.RenamableTokenType;
++import cuchaz.enigma.translation.TranslateResult;
++import cuchaz.enigma.translation.mapping.EntryRemapper;
++import cuchaz.enigma.translation.mapping.ResolutionStrategy;
++import cuchaz.enigma.translation.representation.AccessFlags;
++import cuchaz.enigma.translation.representation.TypeDescriptor;
++import cuchaz.enigma.translation.representation.entry.ClassEntry;
++import cuchaz.enigma.translation.representation.entry.Entry;
++import cuchaz.enigma.translation.representation.entry.FieldEntry;
++import cuchaz.enigma.translation.representation.entry.LocalVariableEntry;
++import cuchaz.enigma.translation.representation.entry.MethodEntry;
++import cuchaz.enigma.translation.representation.entry.ParentedEntry;
++
++/**
++ * Helpers to resolve user-supplied names (obfuscated or deobfuscated) to Enigma entries
++ * and to describe entries in a stable JSON-friendly shape.
++ */
++public final class McpEntryRef {
++	private McpEntryRef() {
++	}
++
++	public static String normalize(String name) {
++		return name == null ? null : name.replace('.', '/');
++	}
++
++	public static ClassEntry resolveClass(EnigmaProject project, String rawName) {
++		if (rawName == null || rawName.isEmpty()) {
++			throw new McpException("Class name is required");
++		}
++
++		String name = normalize(rawName);
++		EntryIndex index = project.getJarIndex().getEntryIndex();
++
++		ClassEntry direct = null;
++
++		try {
++			direct = new ClassEntry(name);
++		} catch (IllegalArgumentException ignored) {
++			// not a valid obfuscated-form name, fall through to deobfuscated lookup
++		}
++
++		if (direct != null && index.hasClass(direct)) {
++			return direct;
++		}
++
++		EntryRemapper mapper = project.getMapper();
++
++		for (ClassEntry obf : index.getClasses()) {
++			if (mapper.deobfuscate(obf).getFullName().equals(name)) {
++				return obf;
++			}
++		}
++
++		throw new McpException("Class not found: " + rawName);
++	}
++
++	public static MethodEntry resolveMethod(EnigmaProject project, ClassEntry obfClass, String name, String desc) {
++		if (name == null || name.isEmpty()) {
++			throw new McpException("Method name is required");
++		}
++
++		EntryRemapper mapper = project.getMapper();
++		List<MethodEntry> matches = new ArrayList<>();
++
++		for (MethodEntry method : project.getJarIndex().getEntryIndex().getMethods()) {
++			if (!method.getParent().equals(obfClass)) {
++				continue;
++			}
++
++			MethodEntry deobf = mapper.deobfuscate(method);
++			boolean nameMatch = method.getName().equals(name) || deobf.getName().equals(name);
++
++			if (!nameMatch) {
++				continue;
++			}
++
++			if (desc != null && !method.getDesc().toString().equals(desc) && !deobf.getDesc().toString().equals(desc)) {
++				continue;
++			}
++
++			matches.add(method);
++		}
++
++		if (matches.isEmpty()) {
++			throw new McpException("Method not found: " + name + (desc == null ? "" : desc));
++		}
++
++		if (matches.size() > 1) {
++			throw new McpException("Ambiguous method '" + name + "', specify 'desc' to disambiguate");
++		}
++
++		return matches.get(0);
++	}
++
++	public static FieldEntry resolveField(EnigmaProject project, ClassEntry obfClass, String name, String desc) {
++		if (name == null || name.isEmpty()) {
++			throw new McpException("Field name is required");
++		}
++
++		EntryRemapper mapper = project.getMapper();
++		List<FieldEntry> matches = new ArrayList<>();
++
++		for (FieldEntry field : project.getJarIndex().getEntryIndex().getFields()) {
++			if (!field.getParent().equals(obfClass)) {
++				continue;
++			}
++
++			FieldEntry deobf = mapper.deobfuscate(field);
++			boolean nameMatch = field.getName().equals(name) || deobf.getName().equals(name);
++
++			if (!nameMatch) {
++				continue;
++			}
++
++			if (desc != null && !field.getDesc().toString().equals(desc) && !deobf.getDesc().toString().equals(desc)) {
++				continue;
++			}
++
++			matches.add(field);
++		}
++
++		if (matches.isEmpty()) {
++			throw new McpException("Field not found: " + name);
++		}
++
++		if (matches.size() > 1) {
++			throw new McpException("Ambiguous field '" + name + "', specify 'desc' to disambiguate");
++		}
++
++		return matches.get(0);
++	}
++
++	public static List<LocalVariableEntry> parametersOf(EnigmaProject project, MethodEntry method) {
++		AccessFlags access = project.getJarIndex().getEntryIndex().getMethodAccess(method);
++		boolean isStatic = access != null && access.isStatic();
++		List<TypeDescriptor> args = method.getDesc().getArgumentDescs();
++		List<LocalVariableEntry> result = new ArrayList<>();
++		int slot = isStatic ? 0 : 1;
++
++		for (TypeDescriptor arg : args) {
++			result.add(new LocalVariableEntry(method, slot, "", true, null));
++			slot += arg.getSize();
++		}
++
++		return result;
++	}
++
++	public static LocalVariableEntry resolveParameter(EnigmaProject project, MethodEntry method, int paramIndex) {
++		List<LocalVariableEntry> params = parametersOf(project, method);
++
++		if (paramIndex < 0 || paramIndex >= params.size()) {
++			throw new McpException("Parameter index out of range: " + paramIndex + " (method has " + params.size() + " parameters)");
++		}
++
++		return params.get(paramIndex);
++	}
++
++	public static String status(EntryRemapper mapper, Entry<?> obf) {
++		RenamableTokenType type = mapper.extendedDeobfuscate(obf).getType();
++		return (type == null ? RenamableTokenType.OBFUSCATED : type).name().toLowerCase(Locale.ROOT);
++	}
++
++	private static String arg(JsonObject args, String key) {
++		return args != null && args.has(key) && !args.get(key).isJsonNull() ? args.get(key).getAsString() : null;
++	}
++
++	/**
++	 * Resolves the entry targeted by an MCP edit tool's arguments, following overrides
++	 * to the root declaration so the result matches where Enigma stores the mapping.
++	 *
++	 * @param project the loaded project
++	 * @param args the tool arguments (kind, class, name, desc, paramIndex)
++	 * @return the resolved obfuscated entry
++	 */
++	public static Entry<?> resolveTarget(EnigmaProject project, JsonObject args) {
++		String kind = arg(args, "kind");
++		String className = arg(args, "class");
++
++		if (kind == null || className == null) {
++			throw new McpException("Missing required argument: kind/class");
++		}
++
++		ClassEntry classEntry = resolveClass(project, className);
++		Entry<?> entry;
++
++		switch (kind.toLowerCase(Locale.ROOT)) {
++		case "class":
++			entry = classEntry;
++			break;
++		case "field":
++			entry = resolveField(project, classEntry, arg(args, "name"), arg(args, "desc"));
++			break;
++		case "method":
++			entry = resolveMethod(project, classEntry, arg(args, "name"), arg(args, "desc"));
++			break;
++		case "parameter": {
++			MethodEntry method = resolveMethod(project, classEntry, arg(args, "name"), arg(args, "desc"));
++			entry = resolveParameter(project, method, args.get("paramIndex").getAsInt());
++			break;
++		}
++		default:
++			throw new McpException("Unknown kind: " + kind + " (expected class, field, method or parameter)");
++		}
++
++		java.util.Collection<Entry<?>> resolved = project.getMapper().getObfResolver().resolveEntry(entry, ResolutionStrategy.RESOLVE_ROOT);
++		return resolved.isEmpty() ? entry : resolved.iterator().next();
++	}
++
++	/**
++	 * Like {@link #resolveTarget} but returns {@code null} instead of throwing,
++	 * for best-effort navigation in the log panel.
++	 *
++	 * @param project the loaded project, may be {@code null}
++	 * @param args the tool arguments
++	 * @return the resolved entry, or {@code null} if it cannot be resolved
++	 */
++	public static Entry<?> resolveTargetSafe(EnigmaProject project, JsonObject args) {
++		if (project == null) {
++			return null;
++		}
++
++		try {
++			return resolveTarget(project, args);
++		} catch (RuntimeException e) {
++			return null;
++		}
++	}
++
++	public static Map<String, Object> describe(EnigmaProject project, Entry<?> obf) {
++		EntryRemapper mapper = project.getMapper();
++		Map<String, Object> map = new LinkedHashMap<>();
++		TranslateResult<? extends Entry<?>> result = mapper.extendedDeobfuscate(obf);
++		Entry<?> deobf = result.getValue();
++
++		if (obf instanceof ClassEntry classEntry) {
++			map.put("kind", "class");
++			map.put("obfuscated", classEntry.getFullName());
++			map.put("deobfuscated", ((ClassEntry) deobf).getFullName());
++		} else if (obf instanceof MethodEntry methodEntry) {
++			map.put("kind", "method");
++			map.put("class", methodEntry.getParent().getFullName());
++			map.put("obfuscated", methodEntry.getName());
++			map.put("deobfuscated", deobf.getName());
++			map.put("descriptor", methodEntry.getDesc().toString());
++			map.put("constructor", methodEntry.isConstructor());
++		} else if (obf instanceof FieldEntry fieldEntry) {
++			map.put("kind", "field");
++			map.put("class", fieldEntry.getParent().getFullName());
++			map.put("obfuscated", fieldEntry.getName());
++			map.put("deobfuscated", deobf.getName());
++			map.put("descriptor", fieldEntry.getDesc().toString());
++		} else if (obf instanceof LocalVariableEntry localVariableEntry) {
++			String mapped = deobf.getName();
++			map.put("kind", "parameter");
++			map.put("method", localVariableEntry.getParent().getName());
++			map.put("index", localVariableEntry.getIndex());
++			map.put("deobfuscated", mapped == null || mapped.isEmpty() ? null : mapped);
++		}
++
++		String javadoc = deobf instanceof ParentedEntry<?> parented ? parented.getJavadocs() : mapper.getDeobfMapping(obf).javadoc();
++		map.put("javadoc", javadoc);
++		map.put("status", status(mapper, obf));
++		map.put("renamable", project.isRenamable(obf));
++		return map;
++	}
++}
+--- /dev/null
++++ b/enigma-swing/src/main/java/cuchaz/enigma/gui/mcp/McpException.java
+@@ -0,0 +1,7 @@
++package cuchaz.enigma.gui.mcp;
++
++public class McpException extends RuntimeException {
++	public McpException(String message) {
++		super(message);
++	}
++}
+--- /dev/null
++++ b/enigma-swing/src/main/java/cuchaz/enigma/gui/mcp/McpHttpServer.java
+@@ -0,0 +1,106 @@
++package cuchaz.enigma.gui.mcp;
++
++import java.io.IOException;
++import java.io.InputStream;
++import java.io.OutputStream;
++import java.net.InetAddress;
++import java.net.InetSocketAddress;
++import java.nio.charset.StandardCharsets;
++import java.util.concurrent.Executors;
++
++import com.sun.net.httpserver.HttpExchange;
++import com.sun.net.httpserver.HttpServer;
++
++import cuchaz.enigma.gui.Gui;
++
++/**
++ * A small HTTP server exposing the Enigma project over the Model Context Protocol.
++ * Bound to the loopback interface only, so it is reachable from local MCP clients but
++ * not from the network.
++ */
++public final class McpHttpServer {
++	private final Gui gui;
++	private final int port;
++	private final boolean bindAll;
++
++	private HttpServer server;
++	private McpProtocol protocol;
++
++	public McpHttpServer(Gui gui, int port, boolean bindAll) {
++		this.gui = gui;
++		this.port = port;
++		this.bindAll = bindAll;
++	}
++
++	public synchronized void start() throws IOException {
++		if (this.server != null) {
++			return;
++		}
++
++		this.protocol = new McpProtocol(this.gui);
++		InetSocketAddress address = this.bindAll ? new InetSocketAddress(this.port) : new InetSocketAddress(InetAddress.getLoopbackAddress(), this.port);
++		this.server = HttpServer.create(address, 0);
++		this.server.createContext("/mcp", this::handle);
++		this.server.setExecutor(Executors.newSingleThreadExecutor(runnable -> {
++			Thread thread = new Thread(runnable, "enigma-mcp");
++			thread.setDaemon(true);
++			return thread;
++		}));
++		this.server.start();
++		System.out.println("[MCP] server started on " + (this.bindAll ? "0.0.0.0" : "127.0.0.1") + ":" + this.port);
++	}
++
++	public synchronized void stop() {
++		if (this.server != null) {
++			this.server.stop(0);
++			this.server = null;
++			this.protocol = null;
++			System.out.println("[MCP] server stopped");
++		}
++	}
++
++	public synchronized boolean isRunning() {
++		return this.server != null;
++	}
++
++	public int getPort() {
++		return this.port;
++	}
++
++	private void handle(HttpExchange exchange) throws IOException {
++		try {
++			if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
++				respond(exchange, 405, "application/json", "{\"error\":\"Only POST is supported\"}");
++				return;
++			}
++
++			String body;
++
++			try (InputStream in = exchange.getRequestBody()) {
++				body = new String(in.readAllBytes(), StandardCharsets.UTF_8);
++			}
++
++			String response = this.protocol.handle(body);
++
++			if (response == null) {
++				exchange.sendResponseHeaders(202, -1);
++				exchange.close();
++				return;
++			}
++
++			respond(exchange, 200, "application/json", response);
++		} catch (RuntimeException e) {
++			respond(exchange, 500, "application/json", "{\"error\":\"" + e.toString().replace("\"", "'") + "\"}");
++		}
++	}
++
++	private void respond(HttpExchange exchange, int status, String contentType, String body) throws IOException {
++		byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
++		exchange.getResponseHeaders().set("Content-Type", contentType);
++		exchange.sendResponseHeaders(status, bytes.length);
++
++		try (OutputStream out = exchange.getResponseBody()) {
++			out.write(bytes);
++		}
++	}
++}
+--- /dev/null
++++ b/enigma-swing/src/main/java/cuchaz/enigma/gui/mcp/McpProtocol.java
+@@ -0,0 +1,399 @@
++package cuchaz.enigma.gui.mcp;
++
++import com.google.gson.Gson;
++import com.google.gson.GsonBuilder;
++import com.google.gson.JsonArray;
++import com.google.gson.JsonElement;
++import com.google.gson.JsonObject;
++import com.google.gson.JsonParser;
++
++import cuchaz.enigma.EnigmaProject;
++import cuchaz.enigma.gui.Gui;
++import cuchaz.enigma.translation.representation.entry.Entry;
++
++/**
++ * Minimal JSON-RPC 2.0 / MCP dispatcher. Implements the subset of the Model Context
++ * Protocol needed by HTTP clients: initialize, tools/list, tools/call and ping.
++ */
++public final class McpProtocol {
++	private static final String SERVER_NAME = "enigma-mcp";
++	private static final String DEFAULT_PROTOCOL = "2024-11-05";
++	private static final String INSTRUCTIONS = """
++			This server edits the mappings of a Java deobfuscation project loaded in Enigma.
++
++			Renaming rules — rename / mark_deobfuscated / reset_obfuscated only work on \
++			renamable entries. Before calling them, check list_members: act ONLY on entries \
++			whose "renamable" is true. Never target:
++			- constructors / static initializers (obfuscated name "<init>" or "<clinit>", or \
++			"constructor": true);
++			- JDK Object overrides (equals, hashCode, toString, clone, finalize, getClass, \
++			notify, notifyAll, wait) and synthetic enum methods (values, valueOf);
++			- entries not present in the loaded jar.
++			Entries whose "status" is already "deobfuscated" or "unobfuscated" usually need no \
++			further action.
++
++			Names may be given in either the obfuscated or the deobfuscated namespace. For \
++			overloaded methods/fields pass "desc" to disambiguate. Prefer reading list_members \
++			or decompile_class for context before renaming.""";
++
++	private final Gson gson = new GsonBuilder().serializeNulls().create();
++	private final McpTools tools;
++	private final Gui gui;
++
++	public McpProtocol(Gui gui) {
++		this.gui = gui;
++		this.tools = new McpTools(gui);
++	}
++
++	/**
++	 * Handles a raw request body.
++	 *
++	 * @param body the JSON-RPC request text
++	 * @return the JSON response text, or {@code null} if the request was a notification
++	 */
++	public String handle(String body) {
++		JsonElement root;
++
++		try {
++			root = JsonParser.parseString(body);
++		} catch (RuntimeException e) {
++			return this.gson.toJson(errorResponse(null, -32700, "Parse error: " + e.getMessage()));
++		}
++
++		if (root.isJsonArray()) {
++			JsonArray responses = new JsonArray();
++
++			for (JsonElement element : root.getAsJsonArray()) {
++				JsonObject response = handleSingle(element.getAsJsonObject());
++
++				if (response != null) {
++					responses.add(response);
++				}
++			}
++
++			return responses.isEmpty() ? null : this.gson.toJson(responses);
++		}
++
++		JsonObject response = handleSingle(root.getAsJsonObject());
++		return response == null ? null : this.gson.toJson(response);
++	}
++
++	private JsonObject handleSingle(JsonObject request) {
++		JsonElement id = request.get("id");
++		String method = request.has("method") ? request.get("method").getAsString() : "";
++		JsonObject params = request.has("params") && request.get("params").isJsonObject() ? request.getAsJsonObject("params") : new JsonObject();
++
++		// notifications carry no id and expect no response
++		if (id == null || id.isJsonNull()) {
++			return null;
++		}
++
++		try {
++			switch (method) {
++			case "initialize":
++				return resultResponse(id, initialize(params));
++			case "ping":
++				return resultResponse(id, new JsonObject());
++			case "tools/list":
++				return resultResponse(id, listTools());
++			case "tools/call":
++				return resultResponse(id, callTool(params));
++			default:
++				return errorResponse(id, -32601, "Method not found: " + method);
++			}
++		} catch (McpException e) {
++			return errorResponse(id, -32000, e.getMessage());
++		} catch (RuntimeException e) {
++			return errorResponse(id, -32603, "Internal error: " + e);
++		}
++	}
++
++	private JsonObject initialize(JsonObject params) {
++		String protocol = params.has("protocolVersion") ? params.get("protocolVersion").getAsString() : DEFAULT_PROTOCOL;
++
++		JsonObject capabilities = new JsonObject();
++		capabilities.add("tools", new JsonObject());
++
++		JsonObject serverInfo = new JsonObject();
++		serverInfo.addProperty("name", SERVER_NAME);
++		serverInfo.addProperty("version", "4.0.2");
++
++		JsonObject result = new JsonObject();
++		result.addProperty("protocolVersion", protocol);
++		result.add("capabilities", capabilities);
++		result.add("serverInfo", serverInfo);
++		result.addProperty("instructions", INSTRUCTIONS);
++		return result;
++	}
++
++	private JsonObject callTool(JsonObject params) {
++		String name = params.has("name") ? params.get("name").getAsString() : "";
++		JsonObject arguments = params.has("arguments") && params.get("arguments").isJsonObject() ? params.getAsJsonObject("arguments") : new JsonObject();
++		String classArg = arguments.has("class") && !arguments.get("class").isJsonNull() ? arguments.get("class").getAsString() : null;
++		EnigmaProject project = this.gui == null ? null : this.gui.getController().getProject();
++		Entry<?> navTarget = McpEntryRef.resolveTargetSafe(project, arguments);
++		String obfClass = navTarget != null ? navTarget.getContainingClass().getFullName() : resolveObfClass(classArg);
++		String oldName = currentName(project, navTarget);
++
++		try {
++			Object toolResult = dispatch(name, arguments);
++			log(name, obfClass, navTarget, buildDetail(name, arguments, toolResult, project, navTarget, oldName), false);
++			return textContent(this.gson.toJson(toolResult), false);
++		} catch (McpException e) {
++			log(name, obfClass, navTarget, e.getMessage(), true);
++			throw e;
++		} catch (RuntimeException e) {
++			log(name, obfClass, navTarget, String.valueOf(e), true);
++			throw e;
++		}
++	}
++
++	private String currentName(EnigmaProject project, Entry<?> navTarget) {
++		if (project == null || navTarget == null) {
++			return null;
++		}
++
++		try {
++			Entry<?> deobf = project.getMapper().deobfuscate(navTarget);
++			return deobf instanceof cuchaz.enigma.translation.representation.entry.ClassEntry classEntry ? classEntry.getFullName() : deobf.getName();
++		} catch (RuntimeException e) {
++			return null;
++		}
++	}
++
++	private String buildDetail(String tool, JsonObject arguments, Object result, EnigmaProject project, Entry<?> navTarget, String oldName) {
++		switch (tool) {
++		case "rename": {
++			String newName = arguments.has("newName") && !arguments.get("newName").isJsonNull() ? arguments.get("newName").getAsString() : "?";
++			return (oldName == null ? "?" : oldName) + " -> " + newName;
++		}
++		case "mark_deobfuscated": {
++			String newName = "?";
++
++			if (project != null && navTarget != null) {
++				String target = project.getMapper().getDeobfMapping(navTarget).targetName();
++				newName = target != null ? target : "?";
++			}
++
++			return (oldName == null ? "?" : oldName) + " -> " + newName;
++		}
++		case "reset_obfuscated":
++			return (oldName == null ? "?" : oldName) + " -> (obfuscated)";
++		case "set_javadoc": {
++			String text = arguments.has("javadoc") && !arguments.get("javadoc").isJsonNull() ? arguments.get("javadoc").getAsString() : "";
++			return text.isEmpty() ? "javadoc cleared" : "javadoc set";
++		}
++		case "save_mappings":
++			return "saved";
++		default:
++			if (result instanceof java.util.Map<?, ?> map && map.containsKey("count")) {
++				return "count=" + map.get("count");
++			}
++
++			return "ok";
++		}
++	}
++
++	private Object dispatch(String name, JsonObject arguments) {
++		Object toolResult;
++
++		switch (name) {
++		case "list_packages":
++			toolResult = this.tools.listPackages(arguments);
++			break;
++		case "list_classes":
++			toolResult = this.tools.listClasses(arguments);
++			break;
++		case "list_members":
++			toolResult = this.tools.listMembers(arguments);
++			break;
++		case "rename":
++			toolResult = this.tools.rename(arguments);
++			break;
++		case "mark_deobfuscated":
++			toolResult = this.tools.markDeobfuscated(arguments);
++			break;
++		case "reset_obfuscated":
++			toolResult = this.tools.resetObfuscated(arguments);
++			break;
++		case "get_javadoc":
++			toolResult = this.tools.getJavadoc(arguments);
++			break;
++		case "set_javadoc":
++			toolResult = this.tools.setJavadoc(arguments);
++			break;
++		case "search":
++			toolResult = this.tools.search(arguments);
++			break;
++		case "decompile_class":
++			toolResult = this.tools.decompileClass(arguments);
++			break;
++		case "save_mappings":
++			toolResult = this.tools.saveMappings(arguments);
++			break;
++		default:
++			throw new McpException("Unknown tool: " + name);
++		}
++
++		return toolResult;
++	}
++
++	private String resolveObfClass(String classArg) {
++		if (classArg == null || this.gui == null || this.gui.getController().getProject() == null) {
++			return classArg;
++		}
++
++		try {
++			return McpEntryRef.resolveClass(this.gui.getController().getProject(), classArg).getFullName();
++		} catch (RuntimeException e) {
++			return classArg;
++		}
++	}
++
++	private void log(String operation, String obfClass, Entry<?> navTarget, String detail, boolean error) {
++		System.out.println("[MCP] " + operation + (obfClass == null ? "" : " " + obfClass) + (error ? " ERROR: " : " -> ") + detail);
++
++		if (this.gui != null) {
++			this.gui.getMcpLogPanel().log(operation, obfClass, navTarget, (error ? "ERROR: " : "") + detail);
++		}
++	}
++
++	private JsonObject textContent(String text, boolean isError) {
++		JsonObject content = new JsonObject();
++		content.addProperty("type", "text");
++		content.addProperty("text", text);
++
++		JsonArray contents = new JsonArray();
++		contents.add(content);
++
++		JsonObject result = new JsonObject();
++		result.add("content", contents);
++
++		if (isError) {
++			result.addProperty("isError", true);
++		}
++
++		return result;
++	}
++
++	private JsonObject listTools() {
++		JsonArray toolList = new JsonArray();
++
++		JsonObject listPackages = new JsonObject();
++		listPackages.add("prefix", simple("string", "Optional package name prefix"));
++		listPackages.add("domain", domainProp());
++		toolList.add(rawTool("list_packages", "List packages, optionally filtered by a name prefix. Works in the obfuscated or deobfuscated namespace.", listPackages, new String[0]));
++
++		JsonObject listClasses = new JsonObject();
++		listClasses.add("package", simple("string", "Package name (empty string for the default package)"));
++		listClasses.add("domain", domainProp());
++		toolList.add(rawTool("list_classes", "List top-level classes in a package, with their obfuscated/deobfuscated names and status.", listClasses, new String[]{"package"}));
++
++		JsonObject listMembers = new JsonObject();
++		listMembers.add("class", simple("string", "Class name, obfuscated or deobfuscated"));
++		toolList.add(rawTool("list_members", "List all renamable fields, methods and parameters of a class, each marked deobfuscated/obfuscated/proposed/unobfuscated.", listMembers, new String[]{"class"}));
++
++		toolList.add(targetTool("rename", "Rename a class, field, method or parameter. Only works on entries where list_members reports \"renamable\": true; never target constructors (<init>/<clinit>), JDK Object overrides or enum values/valueOf.", "newName", "The new deobfuscated name", new String[]{"kind", "class", "newName"}));
++		toolList.add(targetTool("mark_deobfuscated", "Mark a class/field/method/parameter as not needing deobfuscation (assigns its proposed or original name, same as the GUI right-click action). Only works on entries where list_members reports \"renamable\": true; never target constructors or non-renamable JDK/enum methods.", null, null, new String[]{"kind", "class"}));
++		toolList.add(targetTool("reset_obfuscated", "Clear the mapping of a class/field/method/parameter, reverting it to obfuscated. Only meaningful for renamable entries; never target constructors or non-renamable JDK/enum methods.", null, null, new String[]{"kind", "class"}));
++		toolList.add(targetTool("get_javadoc", "Get the javadoc attached to a class/field/method/parameter.", null, null, new String[]{"kind", "class"}));
++		toolList.add(targetTool("set_javadoc", "Set (or clear, when empty) the javadoc of a class/field/method/parameter.", "javadoc", "Javadoc text; empty string clears it", new String[]{"kind", "class"}));
++
++		JsonObject search = new JsonObject();
++		search.add("query", simple("string", "Case-insensitive substring to search for"));
++		search.add("domain", domainProp());
++		search.add("limit", simple("integer", "Maximum number of results (default 50)"));
++		toolList.add(rawTool("search", "Search classes, methods and fields by name substring.", search, new String[]{"query"}));
++
++		JsonObject decompile = new JsonObject();
++		decompile.add("class", simple("string", "Class name, obfuscated or deobfuscated"));
++		decompile.add("decompiler", enumProp("Decompiler to use (default VINEFLOWER)", "VINEFLOWER", "CFR", "PROCYON", "BYTECODE"));
++		toolList.add(rawTool("decompile_class", "Decompile a class with the current mappings applied and return its Java source.", decompile, new String[]{"class"}));
++
++		toolList.add(rawTool("save_mappings", "Save the current mappings to the file selected in Enigma.", new JsonObject(), new String[0]));
++
++		JsonObject result = new JsonObject();
++		result.add("tools", toolList);
++		return result;
++	}
++
++	private JsonObject targetTool(String name, String description, String extraKey, String extraDescription, String[] required) {
++		JsonObject props = new JsonObject();
++		props.add("kind", enumProp("Entry kind to target", "class", "field", "method", "parameter"));
++		props.add("class", simple("string", "Class name, obfuscated or deobfuscated"));
++		props.add("name", simple("string", "Member name (for field/method/parameter)"));
++		props.add("desc", simple("string", "Member descriptor, optional disambiguator"));
++		props.add("paramIndex", simple("integer", "0-based parameter index (for kind=parameter)"));
++
++		if (extraKey != null) {
++			props.add(extraKey, simple("string", extraDescription));
++		}
++
++		return rawTool(name, description, props, required);
++	}
++
++	private JsonObject domainProp() {
++		return enumProp("Namespace to operate in (default deobf)", "obf", "deobf");
++	}
++
++	private JsonObject simple(String type, String description) {
++		JsonObject schema = new JsonObject();
++		schema.addProperty("type", type);
++		schema.addProperty("description", description);
++		return schema;
++	}
++
++	private JsonObject enumProp(String description, String... values) {
++		JsonObject schema = new JsonObject();
++		schema.addProperty("type", "string");
++		schema.addProperty("description", description);
++		JsonArray enumValues = new JsonArray();
++
++		for (String value : values) {
++			enumValues.add(value);
++		}
++
++		schema.add("enum", enumValues);
++		return schema;
++	}
++
++	private JsonObject rawTool(String name, String description, JsonObject properties, String[] required) {
++		JsonObject schema = new JsonObject();
++		schema.addProperty("type", "object");
++		schema.add("properties", properties);
++
++		JsonArray requiredArray = new JsonArray();
++
++		for (String key : required) {
++			requiredArray.add(key);
++		}
++
++		schema.add("required", requiredArray);
++
++		JsonObject toolObject = new JsonObject();
++		toolObject.addProperty("name", name);
++		toolObject.addProperty("description", description);
++		toolObject.add("inputSchema", schema);
++		return toolObject;
++	}
++
++	private JsonObject resultResponse(JsonElement id, JsonElement result) {
++		JsonObject response = new JsonObject();
++		response.addProperty("jsonrpc", "2.0");
++		response.add("id", id);
++		response.add("result", result);
++		return response;
++	}
++
++	private JsonObject errorResponse(JsonElement id, int code, String message) {
++		JsonObject error = new JsonObject();
++		error.addProperty("code", code);
++		error.addProperty("message", message);
++
++		JsonObject response = new JsonObject();
++		response.addProperty("jsonrpc", "2.0");
++		response.add("id", id == null ? com.google.gson.JsonNull.INSTANCE : id);
++		response.add("error", error);
++		return response;
++	}
++}
+--- /dev/null
++++ b/enigma-swing/src/main/java/cuchaz/enigma/gui/mcp/McpTools.java
+@@ -0,0 +1,394 @@
++package cuchaz.enigma.gui.mcp;
++
++import java.io.File;
++import java.lang.reflect.InvocationTargetException;
++import java.util.ArrayList;
++import java.util.LinkedHashMap;
++import java.util.List;
++import java.util.Locale;
++import java.util.Map;
++import java.util.TreeSet;
++
++import javax.swing.SwingUtilities;
++
++import com.google.gson.JsonObject;
++
++import cuchaz.enigma.EnigmaProject;
++import cuchaz.enigma.classprovider.DecompilerInputTransformingClassProvider;
++import cuchaz.enigma.classprovider.ObfuscationFixClassProvider;
++import cuchaz.enigma.gui.Gui;
++import cuchaz.enigma.gui.config.Decompiler;
++import cuchaz.enigma.source.DecompiledClassSource;
++import cuchaz.enigma.source.Source;
++import cuchaz.enigma.source.SourceSettings;
++import cuchaz.enigma.translation.mapping.EntryChange;
++import cuchaz.enigma.translation.mapping.EntryRemapper;
++import cuchaz.enigma.translation.representation.entry.ClassEntry;
++import cuchaz.enigma.translation.representation.entry.Entry;
++import cuchaz.enigma.translation.representation.entry.FieldEntry;
++import cuchaz.enigma.translation.representation.entry.LocalVariableEntry;
++import cuchaz.enigma.translation.representation.entry.MethodEntry;
++import cuchaz.enigma.utils.validation.ParameterizedMessage;
++import cuchaz.enigma.utils.validation.PrintValidatable;
++import cuchaz.enigma.utils.validation.ValidationContext;
++
++/**
++ * Implements the MCP tool surface on top of the live Enigma project. Read operations
++ * use the mapper directly; write operations are routed through the GUI controller on
++ * the Swing thread so the tree, decompiler and collaboration server stay in sync.
++ */
++public final class McpTools {
++	private static final int DECOMPILE_TIMEOUT_SECONDS = 10;
++	private static final java.util.concurrent.ExecutorService DECOMPILE_EXECUTOR = java.util.concurrent.Executors.newCachedThreadPool(runnable -> {
++		Thread thread = new Thread(runnable, "enigma-mcp-decompile");
++		thread.setDaemon(true);
++		return thread;
++	});
++
++	private final Gui gui;
++
++	public McpTools(Gui gui) {
++		this.gui = gui;
++	}
++
++	private EnigmaProject requireProject() {
++		EnigmaProject project = this.gui.getController().getProject();
++
++		if (project == null) {
++			throw new McpException("No JAR is open in Enigma. Open one via File > Open Jar first.");
++		}
++
++		return project;
++	}
++
++	private static String str(JsonObject args, String key) {
++		return args.has(key) && !args.get(key).isJsonNull() ? args.get(key).getAsString() : null;
++	}
++
++	private static String reqStr(JsonObject args, String key) {
++		String value = str(args, key);
++
++		if (value == null || value.isEmpty()) {
++			throw new McpException("Missing required argument: " + key);
++		}
++
++		return value;
++	}
++
++	private Entry<?> resolveTarget(EnigmaProject project, JsonObject args) {
++		return McpEntryRef.resolveTarget(project, args);
++	}
++
++	@SuppressWarnings({"rawtypes", "unchecked"})
++	private void runEdit(EnigmaProject project, Entry<?> obf, java.util.function.Function<EntryChange, EntryChange> op) {
++		EntryChange change = op.apply(EntryChange.modify(obf));
++		boolean nameChange = !change.getDeobfName().isUnchanged();
++
++		if (nameChange) {
++			if (obf instanceof MethodEntry method && method.isConstructor()) {
++				throw new McpException("Constructors (<init>/<clinit>) cannot be renamed or marked - they have no obfuscated name.");
++			}
++
++			if (!project.isRenamable(obf)) {
++				throw new McpException("Entry is not renamable: " + obf);
++			}
++		}
++
++		String[] error = {null};
++		Runnable runnable = () -> {
++			ValidationContext vc = new ValidationContext();
++			vc.setActiveElement(PrintValidatable.INSTANCE);
++			this.gui.getController().applyChange(vc, change);
++
++			if (!vc.canProceed()) {
++				StringBuilder sb = new StringBuilder();
++
++				for (ParameterizedMessage message : vc.getMessages()) {
++					if (sb.length() > 0) {
++						sb.append("; ");
++					}
++
++					sb.append(message.getText());
++				}
++
++				error[0] = sb.toString();
++			}
++		};
++
++		try {
++			if (SwingUtilities.isEventDispatchThread()) {
++				runnable.run();
++			} else {
++				SwingUtilities.invokeAndWait(runnable);
++			}
++		} catch (InterruptedException | InvocationTargetException e) {
++			throw new McpException("Edit failed: " + e);
++		}
++
++		if (error[0] != null) {
++			throw new McpException("Edit rejected by Enigma validation: " + error[0]);
++		}
++	}
++
++	public Object listPackages(JsonObject args) {
++		EnigmaProject project = requireProject();
++		String prefix = McpEntryRef.normalize(str(args, "prefix"));
++		boolean deobf = !"obf".equalsIgnoreCase(str(args, "domain"));
++		EntryRemapper mapper = project.getMapper();
++		TreeSet<String> packages = new TreeSet<>();
++
++		for (ClassEntry obf : project.getJarIndex().getEntryIndex().getClasses()) {
++			String fullName = deobf ? mapper.deobfuscate(obf).getFullName() : obf.getFullName();
++			String pkg = ClassEntry.getParentPackage(fullName);
++
++			if (pkg != null && (prefix == null || pkg.startsWith(prefix))) {
++				packages.add(pkg);
++			}
++		}
++
++		Map<String, Object> result = new LinkedHashMap<>();
++		result.put("domain", deobf ? "deobf" : "obf");
++		result.put("packages", new ArrayList<>(packages));
++		return result;
++	}
++
++	public Object listClasses(JsonObject args) {
++		EnigmaProject project = requireProject();
++		String pkg = McpEntryRef.normalize(reqStr(args, "package"));
++		boolean deobf = !"obf".equalsIgnoreCase(str(args, "domain"));
++		EntryRemapper mapper = project.getMapper();
++		List<Object> classes = new ArrayList<>();
++
++		for (ClassEntry obf : project.getJarIndex().getEntryIndex().getClasses()) {
++			if (obf.isInnerClass()) {
++				continue;
++			}
++
++			String fullName = deobf ? mapper.deobfuscate(obf).getFullName() : obf.getFullName();
++			String classPkg = ClassEntry.getParentPackage(fullName);
++			boolean match = pkg.isEmpty() ? classPkg == null : pkg.equals(classPkg);
++
++			if (match) {
++				classes.add(McpEntryRef.describe(project, obf));
++			}
++		}
++
++		Map<String, Object> result = new LinkedHashMap<>();
++		result.put("domain", deobf ? "deobf" : "obf");
++		result.put("package", pkg);
++		result.put("classes", classes);
++		return result;
++	}
++
++	public Object listMembers(JsonObject args) {
++		EnigmaProject project = requireProject();
++		ClassEntry obfClass = McpEntryRef.resolveClass(project, reqStr(args, "class"));
++		EntryRemapper mapper = project.getMapper();
++
++		List<Object> fields = new ArrayList<>();
++
++		for (FieldEntry field : project.getJarIndex().getEntryIndex().getFields()) {
++			if (field.getParent().equals(obfClass)) {
++				fields.add(McpEntryRef.describe(project, field));
++			}
++		}
++
++		List<Object> methods = new ArrayList<>();
++
++		for (MethodEntry method : project.getJarIndex().getEntryIndex().getMethods()) {
++			if (!method.getParent().equals(obfClass)) {
++				continue;
++			}
++
++			Map<String, Object> methodInfo = McpEntryRef.describe(project, method);
++			List<Object> params = new ArrayList<>();
++			List<LocalVariableEntry> paramEntries = McpEntryRef.parametersOf(project, method);
++
++			for (int i = 0; i < paramEntries.size(); i++) {
++				Map<String, Object> paramInfo = McpEntryRef.describe(project, paramEntries.get(i));
++				paramInfo.put("paramIndex", i);
++				params.add(paramInfo);
++			}
++
++			methodInfo.put("parameters", params);
++			methods.add(methodInfo);
++		}
++
++		Map<String, Object> result = new LinkedHashMap<>();
++		result.put("class", McpEntryRef.describe(project, obfClass));
++		result.put("fields", fields);
++		result.put("methods", methods);
++		return result;
++	}
++
++	public Object rename(JsonObject args) {
++		EnigmaProject project = requireProject();
++		Entry<?> target = resolveTarget(project, args);
++		String newName = reqStr(args, "newName");
++		runEdit(project, target, change -> change.withDeobfName(newName));
++		return McpEntryRef.describe(project, target);
++	}
++
++	public Object markDeobfuscated(JsonObject args) {
++		EnigmaProject project = requireProject();
++		Entry<?> target = resolveTarget(project, args);
++		runEdit(project, target, change -> change.withDefaultDeobfName(project));
++		return McpEntryRef.describe(project, target);
++	}
++
++	public Object resetObfuscated(JsonObject args) {
++		EnigmaProject project = requireProject();
++		Entry<?> target = resolveTarget(project, args);
++		runEdit(project, target, EntryChange::clearDeobfName);
++		return McpEntryRef.describe(project, target);
++	}
++
++	public Object getJavadoc(JsonObject args) {
++		EnigmaProject project = requireProject();
++		Entry<?> target = resolveTarget(project, args);
++		Map<String, Object> described = McpEntryRef.describe(project, target);
++		Map<String, Object> result = new LinkedHashMap<>();
++		result.put("target", described);
++		result.put("javadoc", described.get("javadoc"));
++		return result;
++	}
++
++	public Object setJavadoc(JsonObject args) {
++		EnigmaProject project = requireProject();
++		Entry<?> target = resolveTarget(project, args);
++		String javadoc = str(args, "javadoc");
++
++		if (javadoc == null || javadoc.isEmpty()) {
++			runEdit(project, target, EntryChange::clearJavadoc);
++		} else {
++			runEdit(project, target, change -> change.withJavadoc(javadoc));
++		}
++
++		return McpEntryRef.describe(project, target);
++	}
++
++	public Object search(JsonObject args) {
++		EnigmaProject project = requireProject();
++		String query = reqStr(args, "query").toLowerCase(Locale.ROOT);
++		boolean deobf = !"obf".equalsIgnoreCase(str(args, "domain"));
++		int limit = args.has("limit") && !args.get("limit").isJsonNull() ? args.get("limit").getAsInt() : 50;
++		EntryRemapper mapper = project.getMapper();
++		List<Object> results = new ArrayList<>();
++
++		for (ClassEntry obf : project.getJarIndex().getEntryIndex().getClasses()) {
++			String name = deobf ? mapper.deobfuscate(obf).getFullName() : obf.getFullName();
++
++			if (name.toLowerCase(Locale.ROOT).contains(query)) {
++				results.add(McpEntryRef.describe(project, obf));
++
++				if (results.size() >= limit) {
++					return finishSearch(results, limit, true);
++				}
++			}
++		}
++
++		for (MethodEntry method : project.getJarIndex().getEntryIndex().getMethods()) {
++			String name = deobf ? mapper.deobfuscate(method).getName() : method.getName();
++
++			if (name.toLowerCase(Locale.ROOT).contains(query)) {
++				results.add(McpEntryRef.describe(project, method));
++
++				if (results.size() >= limit) {
++					return finishSearch(results, limit, true);
++				}
++			}
++		}
++
++		for (FieldEntry field : project.getJarIndex().getEntryIndex().getFields()) {
++			String name = deobf ? mapper.deobfuscate(field).getName() : field.getName();
++
++			if (name.toLowerCase(Locale.ROOT).contains(query)) {
++				results.add(McpEntryRef.describe(project, field));
++
++				if (results.size() >= limit) {
++					return finishSearch(results, limit, true);
++				}
++			}
++		}
++
++		return finishSearch(results, limit, false);
++	}
++
++	private static Object finishSearch(List<Object> results, int limit, boolean truncated) {
++		Map<String, Object> result = new LinkedHashMap<>();
++		result.put("count", results.size());
++		result.put("truncated", truncated);
++		result.put("results", results);
++		return result;
++	}
++
++	public Object decompileClass(JsonObject args) {
++		EnigmaProject project = requireProject();
++		ClassEntry obfClass = McpEntryRef.resolveClass(project, reqStr(args, "class"));
++		String decompilerName = str(args, "decompiler");
++		Decompiler decompiler = Decompiler.VINEFLOWER;
++
++		if (decompilerName != null) {
++			try {
++				decompiler = Decompiler.valueOf(decompilerName.toUpperCase(Locale.ROOT));
++			} catch (IllegalArgumentException e) {
++				throw new McpException("Unknown decompiler: " + decompilerName + " (expected VINEFLOWER, CFR, PROCYON or BYTECODE)");
++			}
++		}
++
++		cuchaz.enigma.source.Decompiler dc = decompiler.service.create(
++				new ObfuscationFixClassProvider(
++						new DecompilerInputTransformingClassProvider(project.getClassProvider(), project.getEnigma().getServices()),
++						project.getJarIndex()
++				),
++				new SourceSettings(true, true)
++		);
++
++		cuchaz.enigma.source.Decompiler finalDc = dc;
++		Decompiler finalDecompiler = decompiler;
++		java.util.concurrent.Future<String> future = DECOMPILE_EXECUTOR.submit(() -> {
++			Source raw = finalDc.getSource(obfClass.getFullName());
++			DecompiledClassSource decompiled = new DecompiledClassSource(obfClass, raw.index());
++			return decompiled.remapSource(project, project.getMapper().getDeobfuscator()).toString();
++		});
++
++		String source;
++
++		try {
++			source = future.get(DECOMPILE_TIMEOUT_SECONDS, java.util.concurrent.TimeUnit.SECONDS);
++		} catch (java.util.concurrent.TimeoutException e) {
++			future.cancel(true);
++			throw new McpException("Decompile timed out after " + DECOMPILE_TIMEOUT_SECONDS + "s with " + finalDecompiler.name + ". Retry with a different decompiler (e.g. CFR, PROCYON or BYTECODE).");
++		} catch (java.util.concurrent.ExecutionException e) {
++			throw new McpException("Decompile failed: " + (e.getCause() == null ? e : e.getCause()));
++		} catch (InterruptedException e) {
++			Thread.currentThread().interrupt();
++			throw new McpException("Decompile interrupted");
++		}
++
++		Map<String, Object> result = new LinkedHashMap<>();
++		result.put("class", McpEntryRef.describe(project, obfClass));
++		result.put("decompiler", decompiler.name);
++		result.put("source", source);
++		return result;
++	}
++
++	public Object saveMappings(JsonObject args) {
++		EnigmaProject project = requireProject();
++		File selected = this.gui.mappingsFileChooser.getSelectedFile();
++
++		if (selected == null) {
++			throw new McpException("No mappings file is set. Use File > Save Mappings As in the Enigma window once, then retry.");
++		}
++
++		try {
++			SwingUtilities.invokeAndWait(() -> this.gui.getController().saveMappings(selected.toPath()));
++		} catch (InterruptedException | InvocationTargetException e) {
++			throw new McpException("Save failed: " + e);
++		}
++
++		Map<String, Object> result = new LinkedHashMap<>();
++		result.put("saved", selected.getAbsolutePath());
++		return result;
++	}
++}
+--- a/enigma/src/main/resources/lang/en_us.json
++++ b/enigma/src/main/resources/lang/en_us.json
+@@ -70,6 +70,11 @@
+ 	"menu.collab.server.start": "Start Server",
+ 	"menu.collab.server.start.error": "Error starting server",
+ 	"menu.collab.server.stop": "Stop Server",
++	"menu.mcp": "MCP",
++	"menu.mcp.start": "Start MCP Server",
++	"menu.mcp.stop": "Stop MCP Server",
++	"menu.mcp.configure": "Configure...",
++	"menu.mcp.start.error": "Error starting MCP server",
+ 	"menu.help": "Help",
+ 	"menu.help.about": "About",
+ 	"menu.help.about.title": "%s - About",
+@@ -145,6 +150,13 @@
+ 
+ 	"log_panel.messages": "Messages",
+ 	"log_panel.users": "Users",
++	"log_panel.mcp": "MCP Log",
++	"mcp.log.column.time": "Time",
++	"mcp.log.column.operation": "Operation",
++	"mcp.log.column.class": "Class",
++	"mcp.log.column.detail": "Detail",
++	"mcp.log.clear": "Clear",
++	"mcp.log.hide_queries": "Hide queries",
+ 
+ 	"progress.done": "Done!",
+ 	"progress.operation": "%s - Operation in progress",
+@@ -192,6 +204,9 @@
+ 	"prompt.create_server.title": "Start Server",
+ 	"prompt.create_server.port": "Port:",
+ 	"prompt.create_server.confirm": "Start",
++	"prompt.mcp.port": "Port:",
++	"prompt.mcp.autostart": "Start automatically on launch:",
++	"prompt.mcp.bindall": "Listen on 0.0.0.0 (all interfaces):",
+ 	"prompt.password": "Password:",
+ 
+ 	"disconnect.disconnected": "Disconnected",
+--- a/enigma/src/main/resources/lang/zh_cn.json
++++ b/enigma/src/main/resources/lang/zh_cn.json
+@@ -39,6 +39,21 @@
+ 	"menu.view.languages.title": "更改语言",
+ 	"menu.view.languages.summary": "新语言将在下次重新启动后应用。",
+ 	"menu.search": "搜索",
++	"menu.mcp": "MCP",
++	"menu.mcp.start": "启动 MCP 服务",
++	"menu.mcp.stop": "停止 MCP 服务",
++	"menu.mcp.configure": "配置...",
++	"menu.mcp.start.error": "启动 MCP 服务出错",
++	"log_panel.mcp": "MCP 日志",
++	"mcp.log.column.time": "时间",
++	"mcp.log.column.operation": "操作",
++	"mcp.log.column.class": "类",
++	"mcp.log.column.detail": "详情",
++	"mcp.log.clear": "清空",
++	"mcp.log.hide_queries": "隐藏只读查询",
++	"prompt.mcp.port": "端口：",
++	"prompt.mcp.autostart": "启动时自动开启：",
++	"prompt.mcp.bindall": "监听 0.0.0.0（所有网卡）：",
+ 	"menu.help": "帮助",
+ 	"menu.help.about": "关于",
+ 	"menu.help.about.title": "%s - 关于",

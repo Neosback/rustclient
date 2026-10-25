@@ -1,0 +1,14 @@
+Fabric Enigma source: https://github.com/FabricMC/Enigma
+Pinned commit: 29993f13872f25bcf7e2a354750a6756c5882ca6
+License: GNU Lesser General Public License, version 3 (see LICENSE and GPL-3.0.txt).
+Existing source copyright notices remain in the downloaded source and supplied patch.
+
+The MCP additions in upstream-mcp.patch were supplied by the user as Enigma-MCP-master.
+That directory carried the Enigma LGPL-3.0 license. Its original remote was unavailable.
+The complete delta against the checksum-pinned Fabric source is included in this directory.
+
+RustClient modifications: isolated configuration and draft sessions, corpus identity guards,
+provenance envelopes, bounded output, hierarchy/reference/family queries, non-mutating rename
+validation, default-package and constructor metadata fixes, and completed asynchronous saves.
+The integration and launcher Java sources are provided under LGPL-3.0 with this Enigma integration.
+No upstream endorsement is implied.

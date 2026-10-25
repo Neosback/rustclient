@@ -44,6 +44,33 @@
         "destructive dead-code removal as behavioral evidence",
         "exception-removal passes as behavioral evidence"
       ]
+    },
+    "legacy-runelite": {
+      "role": "Reviewed vanilla-client pipeline; algorithm reference only, not an injected-client default pipeline",
+      "use": [
+        "CFG and arithmetic ideas adapted to the existing ASM workbench"
+      ],
+      "do_not_import": [
+        "RuntimeException handler removal",
+        "dead member/class removal",
+        "invokedynamic reachability model with empty target set"
+      ],
+      "review": "verification/enigma-hybrid-20261025.md"
+    },
+    "runelite-agent": {
+      "role": "Read-only pattern reference from the supplied revision-240 checkout",
+      "use": [
+        "API accessor target discovery",
+        "menu wrapper call targets",
+        "HierarchyEvent bootstrap handles",
+        "platform/error-report localization"
+      ],
+      "do_not_import": [
+        "runtime agent transformations into original-exact",
+        "identity/platform-data replacement",
+        "early-return suppression as behavior evidence"
+      ],
+      "review": "verification/enigma-hybrid-20261025.md"
     }
   },
   "safety_classes": {
@@ -59,35 +86,53 @@
       "title": "Original exact",
       "purpose": "Behavioral authority: the shipped revision-240 injected gamepack with no readability transforms.",
       "behavioral_authority": true,
-      "allowed_safety": ["evidence-only"]
+      "allowed_safety": [
+        "evidence-only"
+      ]
     },
     {
       "id": "identity",
       "title": "Identity overlay",
       "purpose": "Stable semantic and readable symbol identity without treating transformed control flow as truth.",
       "behavioral_authority": false,
-      "allowed_safety": ["evidence-only", "identity-safe"]
+      "allowed_safety": [
+        "evidence-only",
+        "identity-safe"
+      ]
     },
     {
       "id": "analysis-normalized",
       "title": "Analysis normalized",
       "purpose": "Optional easier-to-read bytecode for research. Every transform is recorded and linked back to original-exact.",
       "behavioral_authority": false,
-      "allowed_safety": ["evidence-only", "identity-safe", "analysis-equivalent", "analysis-only"]
+      "allowed_safety": [
+        "evidence-only",
+        "identity-safe",
+        "analysis-equivalent",
+        "analysis-only"
+      ]
     },
     {
       "id": "readable",
       "title": "Readable symbols",
       "purpose": "Evidence-backed tiny-v2 names applied as a presentation layer over an explicitly selected bytecode view.",
       "behavioral_authority": false,
-      "allowed_safety": ["evidence-only", "identity-safe"]
+      "allowed_safety": [
+        "evidence-only",
+        "identity-safe"
+      ]
     },
     {
       "id": "presentation",
       "title": "Presentation",
       "purpose": "Vineflower, CFR, graphs, tables, and the static workbench. Never behavioral authority.",
       "behavioral_authority": false,
-      "allowed_safety": ["evidence-only", "identity-safe", "analysis-equivalent", "analysis-only"]
+      "allowed_safety": [
+        "evidence-only",
+        "identity-safe",
+        "analysis-equivalent",
+        "analysis-only"
+      ]
     }
   ],
   "passes": [
@@ -125,32 +170,35 @@
       "id": "decoder-evidence",
       "stage": "semantic-analysis",
       "safety": "evidence-only",
-      "status": "planned",
+      "status": "implemented-partial",
       "default": true,
       "input_view": "original-exact",
       "output": "per-field encoder/decoder candidates with stated/proven/inferred confidence and cited sites",
       "inspiration": "rl-suite DecoderTable + devious ModArith",
-      "policy": "Only modular-inverse read/write pairs are PROVEN. One-sided candidates remain INFERRED and are annotation-only."
+      "policy": "Modular-inverse read/write pairs are arithmetic proof candidates, not proof of a unique semantic decoder. Preserve STATED/PROVEN/INFERRED labels from each analyzer. Descriptor ambiguity, multiple pairs and disagreements require review; never normalize disputed candidates automatically.",
+      "implementation": "deob-workbench decoders + injected-anchors; optional tools/deob/hybrid-review.py comparison"
     },
     {
       "id": "cfg-evidence",
       "stage": "semantic-analysis",
       "safety": "evidence-only",
-      "status": "planned",
+      "status": "implemented",
       "default": true,
       "input_view": "original-exact",
       "output": "basic blocks, edges, dominators, exception edges, loops, switch edges",
-      "inspiration": "devious ControlFlowGraph reimplemented on ASM"
+      "inspiration": "devious ControlFlowGraph reimplemented on ASM",
+      "implementation": "deob-workbench cfg + cfg-structure"
     },
     {
       "id": "symbolic-flow-evidence",
       "stage": "semantic-analysis",
       "safety": "evidence-only",
-      "status": "planned",
+      "status": "implemented-partial",
       "default": true,
       "input_view": "original-exact",
       "output": "stack/local value provenance, field-flow, argument-flow, constant propagation evidence",
-      "inspiration": "devious Execution/Frame/InstructionContext concepts reimplemented on ASM analysis"
+      "inspiration": "devious Execution/Frame/InstructionContext concepts reimplemented on ASM analysis",
+      "implementation": "deob-workbench provenance; unrestricted symbolic execution and complete constant propagation are not claimed"
     },
     {
       "id": "packet-discovery",
@@ -328,6 +376,18 @@
       "input_view": "all evidence views",
       "output": "offline searchable research UI",
       "inspiration": "local render-workbench.py"
+    },
+    {
+      "id": "agent-pattern-evidence",
+      "stage": "evidence",
+      "safety": "evidence-only",
+      "status": "implemented",
+      "default": false,
+      "input_view": "original-exact",
+      "output": "Candidate API/field/call/bootstrap/literal sites with original opcode indices",
+      "inspiration": "supplied runelite-agent patterns; implemented using existing workbench JarCorpus/InstructionIndex",
+      "implementation": "tools/deob/hybrid-review.py",
+      "policy": "No agent execution or automatic mapping promotion. Signatures and strings identify candidates, not vanilla behavior."
     }
   ]
 }

@@ -1,0 +1,2 @@
+# Literal unified-diff context retains upstream whitespace and checksum identity.
+upstream-mcp.patch -whitespace
