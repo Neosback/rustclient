@@ -21,6 +21,38 @@ def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def build_agent(path, premain, asm, classes):
+    with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("META-INF/MANIFEST.MF", f"Manifest-Version: 1.0\nPremain-Class: {premain}\n\n")
+        for dependency in asm:
+            with zipfile.ZipFile(dependency) as library:
+                for name in library.namelist():
+                    if name.endswith(".class") and name != "module-info.class":
+                        archive.writestr(name, library.read(name))
+        for p in classes.rglob("*.class"):
+            archive.write(p, str(p.relative_to(classes)))
+    return path
+
+
+def trace_argument(out):
+    """Original obfuscated names of the Script class and the three interpreter stack-size fields."""
+    dump = ROOT / ".cache/client-240/dump-240.tsv"
+    if not dump.is_file():
+        raise SystemExit("--trace-opcodes needs .cache/client-240/dump-240.tsv (tools/client-240 dump-classes)")
+    classes, fields = {}, {}
+    wanted = {"DynamicObject.field1676": "int", "classBB.field338": "obj", "classXT.field6937": "long"}
+    for line in dump.read_text(encoding="utf-8").splitlines():
+        parts = line.split("\t")
+        if parts[0] == "C":
+            classes[parts[1]] = parts[5]
+        elif parts[0] == "F" and f"{parts[1]}.{parts[2]}" in wanted:
+            fields[wanted[f"{parts[1]}.{parts[2]}"]] = (parts[1], parts[5])
+    if len(fields) != 3 or "Script" not in classes:
+        raise SystemExit("stack-size fields or Script class not found in the dump; the pinned jar may have changed")
+    sizes = ";".join(f"{kind}={classes[owner]}.{name}" for kind, (owner, name) in sorted(fields.items()))
+    return f"out={out.resolve()};script={classes['Script']};{sizes}"
+
+
 def run(args, cwd, env, log):
     with log.open("ab") as output:
         result = subprocess.run(list(map(str, args)), cwd=cwd, env=env,
@@ -98,17 +130,10 @@ def prepare(args):
     classes = output / "agent-classes"
     classes.mkdir(exist_ok=True)
     run([java_home / "bin/javac", "--release", "11", "-cp", os.pathsep.join(map(str, asm)),
-         "-d", classes, ROOT / "tools/parity/Local240Agent.java"], ROOT, env, output / "build.log")
-    agent = output / "local240-agent.jar"
-    with zipfile.ZipFile(agent, "w", zipfile.ZIP_DEFLATED) as archive:
-        archive.writestr("META-INF/MANIFEST.MF", "Manifest-Version: 1.0\nPremain-Class: Local240Agent\n\n")
-        for dependency in asm:
-            with zipfile.ZipFile(dependency) as library:
-                for name in library.namelist():
-                    if name.endswith(".class") and name != "module-info.class":
-                        archive.writestr(name, library.read(name))
-        for p in classes.rglob("*.class"):
-            archive.write(p, str(p.relative_to(classes)))
+         "-d", classes, ROOT / "tools/parity/Local240Agent.java", ROOT / "tools/parity/Trace240Agent.java"],
+        ROOT, env, output / "build.log")
+    agent = build_agent(output / "local240-agent.jar", "Local240Agent", asm, classes)
+    build_agent(output / "trace240-agent.jar", "Trace240Agent", asm, classes)
     print(f"Built reference shell: {output}", flush=True)
     return output, java, classpath, agent, bridge
 
@@ -144,6 +169,8 @@ def main():
     parser.add_argument("--prepare-only", action="store_true")
     parser.add_argument("--jav-config", type=Path, help="Revision-240 jav_config template")
     parser.add_argument("--public-key", type=Path, help="OpenRune public client.key")
+    parser.add_argument("--trace-opcodes", type=Path, metavar="OUT.tsv",
+                        help="also attach the read-only script-interpreter probe and aggregate to OUT.tsv")
     args = parser.parse_args()
     if not args.prepare_only and (not args.jav_config or not args.public_key):
         parser.error("Running requires --jav-config and --public-key")
@@ -176,6 +203,8 @@ def main():
                    "-Drustclient.reference.jar=" + str(ROOT / "references/gamepacks/osrs-240/injected-client-1.12.39.jar"),
                    "-Drustclient.reference.endpoint=" + str(output / "endpoint.json"),
                    "-javaagent:" + str(agent) + "=" + str(args.public_key.resolve()),
+                   *(["-javaagent:" + str(output / "trace240-agent.jar") + "=" + trace_argument(args.trace_opcodes)]
+                     if args.trace_opcodes else []),
                    "-cp", str(bridge) + os.pathsep + classpath.read_text(), "net.runelite.client.RuneLite",
                    "--safe-mode", "--developer-mode", "--noupdate", "--jav_config",
                    f"http://127.0.0.1:{server.server_port}/jav_config.ws"]

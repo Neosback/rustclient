@@ -43,3 +43,17 @@ CLI. `verify-reference.py` checks the protocol offline and `--live` exercises ev
 Rules: the bridge exposes the public RuneLite API only and has no mutation operations. Log in with a disposable
 account; passwords are typed into the client and never stored in this repository. Runtime evidence is a reference
 only (see ADR-0005); it never changes the `original-exact` jar and never replaces the pinned inputs.
+
+### Script opcode trace
+
+`--trace-opcodes OUT.tsv` also attaches `Trace240Agent` (read-only). It brackets every interpreter handler
+`(I<Script>Z…)I` and aggregates, per (handler, opcode, result, stack-size deltas), which handler really executed an
+opcode. A result of 2 means "not handled here" and is dropped. After a session that opens the interfaces you care about:
+
+```sh
+python3 tools/client-240/opcode-trace.py OUT.tsv      # writes inputs/script-opcode-trace-240.tsv
+python3 tools/client-240/opcode-table.py              # adds traced handler and real stack effect per opcode
+```
+
+The agent bytecode was checked offline against the pinned jar (48 classes instrumented, ASM verifier clean); a live
+session is still needed to produce data. Unreliable deltas print as `?`.

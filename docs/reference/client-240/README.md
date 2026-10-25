@@ -42,8 +42,9 @@ Every ledger row records the strongest evidence behind the name. Anything weaker
 
 | Tier | Source | Typical confidence |
 | --- | --- | --- |
-| T1 | RuneLite API getter implemented by the jar that returns one field (`Player.getSkullIcon()` returns `field1269`, so the field is `skullIcon`). Deterministic. | A |
+| T1 | RuneLite API getter implemented by the jar that returns one field (`Player.getSkullIcon()` returns `field1269`, so the field is `skullIcon`), or an injector call site that posts an API event (`Callbacks.post(new events.X)` makes the enclosing method the poster of `X`; see `inputs/hook-anchors-240.tsv`). Deterministic. | A or B |
 | T2 | Packet tables (`inputs/*-packets.tsv`) and the selected RSProt 240 sources, cross-checked against control flow. | A or B |
+| TR | Runtime-observed in the live pinned client through the read-only probes in `tools/parity` (`Trace240Agent`, `ReferencePlugin`): which handler ran for an opcode, its real stack effect, a packet's size. Evidence about one real session, never an exhaustive census and never a replacement for reading the code. Must name the trace file or snapshot. | B |
 | T3 | Carry-forward from the hand-named RuneLite 235 client, accepted only when structure matches (superclass chain, descriptors, constants, call shape). | B |
 | T4 | Behavior-derived: a cited method plus a one-line justification, ideally corroborated by cache or wire evidence. | B or C |
 

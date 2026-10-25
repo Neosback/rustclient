@@ -12,7 +12,7 @@ import sys
 
 COLUMNS = ["stable_symbol", "class", "original_obf", "readable", "kind", "tier", "confidence",
            "evidence", "rust_owner", "cluster"]
-TIERS = {"T1", "T2", "T3", "T4"}
+TIERS = {"T1", "T2", "T3", "T4", "TR"}
 CONFIDENCE = {"A", "B", "C"}
 
 
@@ -57,7 +57,7 @@ def main():
                     problems.append(f"{where}: bad tier {record['tier']}")
                 if record["confidence"] not in CONFIDENCE:
                     problems.append(f"{where}: bad confidence {record['confidence']}")
-                if record["tier"] in ("T3", "T4") and (not record["evidence"] or record["evidence"] == "-"):
+                if record["tier"] in ("T3", "T4", "TR") and (not record["evidence"] or record["evidence"] == "-"):
                     problems.append(f"{where}: {record['tier']} entries need cited evidence")
                 if record["stable_symbol"] in rows:
                     problems.append(f"{where}: duplicate ledger row {record['stable_symbol']}")

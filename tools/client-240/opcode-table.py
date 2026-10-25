@@ -38,6 +38,17 @@ def scan(path):
     return rows
 
 
+def trace(path):
+    """Most frequent executed handler per opcode from `opcode-trace.py` output (runtime evidence)."""
+    best = {}
+    if path and path.exists():
+        for line in path.read_text(encoding="utf-8").splitlines()[1:]:
+            op, handler, _, _, i, o, l, count = line.split("\t")
+            if int(op) not in best or int(count) > int(best[int(op)][4]):
+                best[int(op)] = (handler, i, o, l, count)
+    return best
+
+
 def live(path):
     uses = {}
     if path and path.exists():
@@ -50,10 +61,12 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--scan", default=ROOT / ".cache/client-240/opcodes/scan.tsv", type=Path)
     parser.add_argument("--live", default=ROOT / ".cache/client-240/opcodes/live-unsupported.txt", type=Path)
+    parser.add_argument("--trace", default=ROOT / "docs/reference/client-240/inputs/script-opcode-trace-240.tsv", type=Path)
     parser.add_argument("--rust", default=ROOT / "crates/cache/src/osrs240/script_opcodes.rs", type=Path)
     parser.add_argument("--out", default=ROOT / "docs/reference/client-240/inputs/script-opcodes-240.tsv", type=Path)
     args = parser.parse_args()
     rl, rust, found, uses = runelite(), adapter(args.rust), scan(args.scan), live(args.live)
+    traced = trace(args.trace)
     numbers = sorted(set(rl) | set(rust) | set(uses) | {n for n in found if n >= 100})
     rows = []
     stats = defaultdict(int)
@@ -70,10 +83,11 @@ def main():
         else:
             status = "unknown"
         stats[status] += 1
-        rows.append([n, rust.get(n, ""), rl.get(n, ""), status, uses.get(n, ""), ",".join(handlers)])
+        t = traced.get(n, ("", "", "", "", ""))
+        rows.append([n, rust.get(n, ""), rl.get(n, ""), status, uses.get(n, ""), ",".join(handlers), *t])
     args.out.parent.mkdir(parents=True, exist_ok=True)
     with args.out.open("w", encoding="utf-8") as out:
-        out.write("opcode\trust_name\trunelite_name\tstatus\tlive_uses\thandlers\n")
+        out.write("opcode\trust_name\trunelite_name\tstatus\tlive_uses\thandlers\ttraced_handler\tint_delta\tobj_delta\tlong_delta\ttraced_count\n")
         for row in rows:
             out.write("\t".join(map(str, row)) + "\n")
     for key in sorted(stats):

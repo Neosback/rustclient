@@ -67,3 +67,9 @@ rustosrs references either, so the names have to come from reading handler behav
 
 The upstream folder holds `mappings/{client,server}-packets.tsv` (byte-identical to our `inputs/` copies) and
 older deob jars (1.12.34 to 1.12.36). It has no opcode table. The older jars could feed the cross-revision mapper later.
+
+## Runtime trace
+
+`tools/parity/Trace240Agent.java` (attached with `runelite240.py --trace-opcodes`) records which handler really executes each
+opcode and its stack effect in a live session of the pinned client. `tools/client-240/opcode-trace.py` joins it to stable
+symbols and `opcode-table.py` adds the `traced_*` columns. No live trace has been recorded yet, so those columns are empty.

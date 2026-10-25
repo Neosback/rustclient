@@ -38,7 +38,7 @@ KEYWORDS = set(
     "package private protected public return short static strictfp super switch synchronized this throw "
     "throws transient try void volatile while true false null var record yield _".split()
 )
-TIERS = {"T1", "T2", "T3", "T4"}
+TIERS = {"T1", "T2", "T3", "T4", "TR"}
 CONFIDENCE = {"A", "B", "C"}
 LEDGER_COLUMNS = ["stable_symbol", "class", "original_obf", "readable", "kind", "tier", "confidence",
                   "evidence", "rust_owner", "cluster"]
