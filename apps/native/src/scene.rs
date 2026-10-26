@@ -31,6 +31,8 @@ pub struct SceneView {
     pub dynamic_cycle: rustclient_model::ClientCycle,
     /// Areas plugins force roofed; scenes are projected with these and rebuilt when they change.
     pub roof_areas: std::sync::Arc<[rustclient_scene::RoofArea]>,
+    /// Which animations plugins ask to be blended between frames.
+    pub interpolation: rustclient_scene::AnimationInterpolation,
 }
 impl SceneView {
     pub fn new(options: &crate::options::Options) -> Self {
@@ -52,6 +54,7 @@ impl SceneView {
             entity_loader: None,
             dynamic_cycle: rustclient_model::ClientCycle::ZERO,
             roof_areas: std::sync::Arc::default(),
+            interpolation: rustclient_scene::AnimationInterpolation::default(),
         }
     }
     pub fn scenery_inputs(
@@ -61,6 +64,7 @@ impl SceneView {
         let mut inputs = rustclient_scene::SceneryInputs::from(state);
         inputs.animations = self.entity_catalog.animation_assets();
         inputs.roof_areas = std::sync::Arc::clone(&self.roof_areas);
+        inputs.interpolation = self.interpolation.clone();
         inputs
     }
     pub fn clear(&mut self) {
@@ -294,5 +298,17 @@ pub fn pointer(x: f64, y: f64, scale: f64) -> [i32; 2] {
     [
         (x / scale).clamp(-16384., 16384.) as i32,
         (y / scale).clamp(-16384., 16384.) as i32,
+    ]
+}
+
+/// A pointer already in logical canvas pixels (stretched mode), as the camera input expects.
+#[expect(
+    clippy::cast_possible_truncation,
+    reason = "bounded logical pointer coordinates"
+)]
+pub fn canvas_pointer(x: f32, y: f32) -> [i32; 2] {
+    [
+        x.clamp(-16384., 16384.) as i32,
+        y.clamp(-16384., 16384.) as i32,
     ]
 }

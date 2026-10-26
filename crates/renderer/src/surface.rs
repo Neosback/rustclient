@@ -148,6 +148,7 @@ pub struct SurfaceRenderer {
     shell_staging: crate::shell::ShellStaging,
     shell_gpu: Option<crate::shell::ShellGpu>,
     game_width: Option<u32>,
+    stretch: Option<rustclient_game_ui::StretchedCanvas>,
     /// Latest posed geometry awaiting a presentable frame. wgpu retains every staged
     /// write until the next submission, so uploads are issued only when a frame will
     /// be submitted; a hidden window then costs one bounded CPU copy and no GPU memory.
@@ -231,6 +232,25 @@ impl SurfaceRenderer {
         self.game_width = width;
     }
 
+    /// Where stretched mode puts the logical canvas on the game framebuffer; `None` draws it
+    /// at the window scale, centered.
+    pub fn set_stretch(&mut self, stretch: Option<rustclient_game_ui::StretchedCanvas>) {
+        self.stretch = stretch;
+    }
+
+    fn viewport(&self, canvas_width: u32, scale: f64) -> TitleViewport {
+        TitleViewport {
+            canvas_width,
+            physical_width: self
+                .game_width
+                .unwrap_or(self.config.width)
+                .min(self.config.width),
+            physical_height: self.config.height,
+            scale,
+            stretch: self.stretch,
+        }
+    }
+
     #[must_use]
     pub fn shell_stats(&self) -> crate::ShellStats {
         self.shell_staging.stats
@@ -310,6 +330,7 @@ impl SurfaceRenderer {
             shell_staging: crate::shell::ShellStaging::default(),
             shell_gpu: None,
             game_width: None,
+            stretch: None,
             staged: StagedGeometry::default(),
             device_lost,
         };
@@ -432,6 +453,7 @@ impl SurfaceRenderer {
         if self.device_lost.load(Ordering::Relaxed) {
             return Ok(FrameOutcome::RecreateRequired);
         }
+        let viewport = self.viewport(frame.canvas.map_or(765, |s| s.width), scale);
         let world = self
             .world
             .as_mut()
@@ -457,23 +479,11 @@ impl SurfaceRenderer {
         if let Some(geometry) = self.staged.entities.take_pending() {
             world.update_entities(&self.device, &self.queue, geometry)?;
         }
-        let viewport = TitleViewport {
-            canvas_width: frame.canvas.map_or(765, |s| s.width),
-            physical_width: self
-                .game_width
-                .unwrap_or(self.config.width)
-                .min(self.config.width),
-            physical_height: self.config.height,
-            scale,
-        };
-        let bounds = frame.world_viewport.map(|mut r| {
-            r.x += viewport.origin_x();
-            r
-        });
+        let bounds = frame.world_viewport;
         world.prepare_viewport(
             &self.queue,
             camera,
-            scale,
+            viewport,
             (cycle.get() & 127) as u32,
             bounds,
             frame.viewport_settings,
@@ -484,22 +494,7 @@ impl SurfaceRenderer {
         self.ui
             .as_mut()
             .ok_or(RenderError::Ui("title fonts unavailable"))?
-            .prepare(
-                &self.device,
-                &self.queue,
-                frame,
-                &[],
-                images,
-                TitleViewport {
-                    canvas_width: frame.canvas.map_or(765, |s| s.width),
-                    physical_width: self
-                        .game_width
-                        .unwrap_or(self.config.width)
-                        .min(self.config.width),
-                    physical_height: self.config.height,
-                    scale,
-                },
-            )?;
+            .prepare(&self.device, &self.queue, frame, &[], images, viewport)?;
         Ok(self.present_frame(
             surface_texture,
             ClearColor {
@@ -541,15 +536,7 @@ impl SurfaceRenderer {
             Ok(texture) => texture,
             Err(outcome) => return outcome,
         };
-        let viewport = TitleViewport {
-            canvas_width: frame.canvas.map_or(765, |s| s.width),
-            physical_width: self
-                .game_width
-                .unwrap_or(self.config.width)
-                .min(self.config.width),
-            physical_height: self.config.height,
-            scale,
-        };
+        let viewport = self.viewport(frame.canvas.map_or(765, |s| s.width), scale);
         self.ui
             .as_mut()
             .ok_or(RenderError::Ui("title assets not uploaded"))?

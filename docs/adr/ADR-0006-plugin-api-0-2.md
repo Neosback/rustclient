@@ -48,6 +48,9 @@ process; that model is rejected by invariants 1 and 4.
 - Roof removal is a declarative scene output (`SceneFlags::roofs` mode bits plus `PluginOutput::roof_areas`). The scene
   crate owns roof regions and their render tags; plugins never see roof ids. A changed area set makes the host rebuild
   the scene projection, not the plugin mutate tile settings as the injected client allows.
+- Animation smoothing is a declarative scene output (`SceneFlags::smoothing` class bits plus
+  `PluginOutput::smoothing_denied` animation ids), the replacement for `Client.setAnimationInterpolationFilter`. The scene
+  crate owns the blend (`AnimationInterpolation`); plugins never see frames or models.
 - `ClientSnapshot::scene_base` is the loaded scene's south-west world tile and `scene_size` its extent, so plugins can
   resolve map regions as `Scene.getBaseX/Y` and `getMapRegions` would.
 - First-party plugins live in `crates/first-party-plugins`, are native `PluginInstance`s, take settings from

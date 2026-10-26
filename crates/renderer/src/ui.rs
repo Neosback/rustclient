@@ -636,17 +636,7 @@ fn add_quad(
             + (quad.uv.y + (y - rect.y) / rect.height * quad.uv.height) * region.height as f32)
             / th as f32
     };
-    #[expect(
-        clippy::cast_possible_truncation,
-        reason = "DPI scales are small bounded window-system values"
-    )]
-    let scale = viewport.scale as f32;
-    let position = |x: f32, y: f32| {
-        [
-            (x + viewport.origin_x()) * scale / viewport.physical_width as f32 * 2. - 1.,
-            1. - y * scale / viewport.physical_height as f32 * 2.,
-        ]
-    };
+    let position = |x: f32, y: f32| viewport.ndc(x, y);
     let tint = [
         linear(quad.tint[0]),
         linear(quad.tint[1]),
@@ -683,10 +673,6 @@ fn add_quad(
     ]);
 }
 /// Rotated sprites use a bounded eight-corner clip polygon; ordinary quads keep the fast path.
-#[expect(
-    clippy::cast_possible_truncation,
-    reason = "bounded DPI scale and texture coordinates"
-)]
 fn add_rotated_quad(
     vertices: &mut Vec<Vertex>,
     quad: &Quad,
@@ -767,13 +753,7 @@ fn add_rotated_quad(
         polygon = clipped;
     }
     for point in &mut polygon {
-        point.position = [
-            (point.position[0] + viewport.origin_x()) * viewport.scale as f32
-                / viewport.physical_width as f32
-                * 2.
-                - 1.,
-            1. - point.position[1] * viewport.scale as f32 / viewport.physical_height as f32 * 2.,
-        ];
+        point.position = viewport.ndc(point.position[0], point.position[1]);
     }
     for index in 1..polygon.len().saturating_sub(1) {
         vertices.extend_from_slice(&[polygon[0], polygon[index], polygon[index + 1]]);
@@ -816,6 +796,7 @@ mod tests {
             physical_width: 1800,
             physical_height: 1100,
             scale: 2.,
+            stretch: None,
         };
         let mut vertices = Vec::new();
         add_quad(&mut vertices, &quad, region, 20, 20, viewport);

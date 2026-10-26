@@ -44,7 +44,8 @@ sprite.override,infobox,viewport}`, `scene.control`, `camera.control`, `client.n
 The first denial of each capability per plugin is logged; repeats are silent.
 
 **Scene output.** `scene` carries RuneLite-style roof removal mode bits (`ROOF_FLAG_POSITION=1`, `HOVERED=2`,
-`DESTINATION=4`, `BETWEEN=8`) and animation-smoothing classes; `roof_areas` lists world-tile blocks forced roofed (the
+`DESTINATION=4`, `BETWEEN=8`) and animation-smoothing classes, with `smoothing_denied` listing animation ids that stay on whole frames
+(the source plugin's interpolation filter); `roof_areas` lists world-tile blocks forced roofed (the
 source plugin's area overrides). The scene crate owns roof regions (`RoofVolumes`): the host never exposes roof ids.
 `ClientSnapshot::scene_base/scene_size` are the loaded scene's south-west tile and extent (`Scene.getBaseX/Y`).
 

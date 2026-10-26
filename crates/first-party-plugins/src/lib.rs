@@ -6,7 +6,9 @@
 
 #![forbid(unsafe_code)]
 
+mod animsmoothing;
 mod roofremoval;
+mod stretchedmode;
 
 use rustclient_plugin_api::{
     Capability, CapabilitySet, GameEvent, OverlayLine, PluginApiVersion, PluginEvent, PluginId,
@@ -90,11 +92,23 @@ fn boxed<T: NativePlugin + 'static>(plugin: T) -> Box<dyn PluginInstance> {
     Box::new(Adapter(plugin))
 }
 
-const ENTRIES: &[Entry] = &[Entry {
-    name: "roofremoval",
-    capabilities: &[Capability::SceneControl, Capability::GameReadClient],
-    build: || boxed(roofremoval::RoofRemoval::new()),
-}];
+const ENTRIES: &[Entry] = &[
+    Entry {
+        name: "roofremoval",
+        capabilities: &[Capability::SceneControl, Capability::GameReadClient],
+        build: || boxed(roofremoval::RoofRemoval::new()),
+    },
+    Entry {
+        name: "animsmoothing",
+        capabilities: &[Capability::SceneControl],
+        build: || boxed(animsmoothing::AnimationSmoothingPlugin),
+    },
+    Entry {
+        name: "stretchedmode",
+        capabilities: &[Capability::UiViewport],
+        build: || boxed(stretchedmode::StretchedMode),
+    },
+];
 
 /// Register every first-party plugin, disabled until its configuration switches it on.
 ///

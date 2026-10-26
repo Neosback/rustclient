@@ -73,12 +73,14 @@ fn same_title_hit_geometry_is_used_after_resize_and_hidpi_transform() {
             physical_width: 765,
             physical_height: 503,
             scale: 1.,
+            stretch: None,
         },
         TitleViewport {
             canvas_width: 765,
             physical_width: 1800,
             physical_height: 1100,
             scale: 2.,
+            stretch: None,
         },
     ] {
         let physical_x = (f64::from(viewport.origin_x()) + 400.) * viewport.scale;

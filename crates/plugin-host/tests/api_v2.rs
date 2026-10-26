@@ -503,9 +503,11 @@ fn full_output() -> PluginOutput {
         ],
         stretch: Some(Stretch {
             keep_aspect_ratio: true,
+            integer_scaling: false,
             scale_percent: 5000,
             scaling: StretchScaling::Linear,
         }),
+        smoothing_denied: (0..5000).collect(),
     }
 }
 
@@ -607,6 +609,10 @@ fn granted_outputs_are_bounded_and_clamped() {
     assert_eq!(
         merged.stretch.map(|stretch| stretch.scale_percent),
         Some(800)
+    );
+    assert_eq!(
+        merged.smoothing_denied.len(),
+        rustclient_plugin_api::limits::SMOOTHING_DENIED
     );
 }
 

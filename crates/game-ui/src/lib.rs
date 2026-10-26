@@ -13,7 +13,8 @@ pub use context_menu::ContextMenu;
 mod presentation;
 
 pub use controller::{TitlePreferences, TitleUi};
-pub use draw::{Quad, Rect, TitleViewport, UiFrame, UiImageId};
+pub use draw::{Quad, Rect, StretchedCanvas, TitleViewport, UiFrame, UiImageId};
+pub mod stretch;
 pub use flame::Flames;
 pub use text::draw_text;
 

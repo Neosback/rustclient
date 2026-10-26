@@ -17,13 +17,21 @@ impl NativeApp {
         if size.width == 0 || size.height == 0 {
             return;
         }
-        let available = rustclient_model::CanvasSize {
-            width: (f64::from(size.width) / window.scale_factor())
-                .floor()
-                .clamp(765., 16_384.) as u32,
-            height: (f64::from(size.height) / window.scale_factor())
-                .floor()
-                .clamp(503., 16_384.) as u32,
+        let stretch = self.stretch_layout(window);
+        let available = if let Some(layout) = stretch {
+            rustclient_model::CanvasSize {
+                width: layout.real.0.clamp(765, 16_384),
+                height: layout.real.1.clamp(503, 16_384),
+            }
+        } else {
+            rustclient_model::CanvasSize {
+                width: (f64::from(size.width) / window.scale_factor())
+                    .floor()
+                    .clamp(765., 16_384.) as u32,
+                height: (f64::from(size.height) / window.scale_factor())
+                    .floor()
+                    .clamp(503., 16_384.) as u32,
+            }
         };
         let metrics = self
             .widget_cache_profile

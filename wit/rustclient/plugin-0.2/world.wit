@@ -210,7 +210,7 @@ interface types {
         max-plane: u8,
     }
 
-    record stretch { keep-aspect-ratio: bool, scale-percent: u16, scaling: stretch-scaling }
+    record stretch { keep-aspect-ratio: bool, integer-scaling: bool, scale-percent: s16, scaling: stretch-scaling }
 
     record plugin-output {
         overlay: list<layered-overlay>,
@@ -223,6 +223,7 @@ interface types {
         scene: option<scene-flags>,
         roof-areas: list<roof-area>,
         stretch: option<stretch>,
+        smoothing-denied: list<u32>,
     }
 
     enum log-level { trace, debug, info, warn, error }

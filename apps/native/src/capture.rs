@@ -31,6 +31,7 @@ pub(super) fn run(options: &super::options::Options) -> Result<(), String> {
         physical_width: 765,
         physical_height: 503,
         scale: 1.,
+        stretch: None,
     };
     ui.project(&assets, state.title_screen(), 150, &mut frame);
     let welcome = capture(&assets, &frame, &flames, viewport)?;
@@ -68,6 +69,7 @@ pub(super) fn run(options: &super::options::Options) -> Result<(), String> {
         physical_width: 1800,
         physical_height: 1100,
         scale: 2.,
+        stretch: None,
     };
     save(
         directory,

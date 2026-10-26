@@ -5,10 +5,54 @@ mod matrix;
 mod skeletal;
 
 use crate::{Result, SceneError};
-use rustclient_cache::world::{LegacyFrame, ModelFace, SequenceAsset, SkeletonTransform};
+use rustclient_cache::world::{
+    FrameTransform, LegacyFrame, ModelFace, SequenceAsset, SkeletonTransform,
+};
 use rustclient_model::ModelPoint;
 
 pub use skeletal::BakedAnimation;
+
+/// Which animations are drawn blended between frames (`Client.setAnimationInterpolationFilter`).
+///
+/// The reference filter is asked about an actor's or object's current animation id; an animation
+/// it rejects is posed on whole frames, and for an actor that includes its movement pose.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct AnimationInterpolation {
+    /// Blend player animations.
+    pub players: bool,
+    /// Blend NPC animations.
+    pub npcs: bool,
+    /// Blend scenery animations.
+    pub objects: bool,
+    /// Animation ids that are never blended, sorted.
+    denied: std::sync::Arc<[u32]>,
+}
+
+impl AnimationInterpolation {
+    /// Blend the given classes except for `denied` animation ids.
+    #[must_use]
+    pub fn new(players: bool, npcs: bool, objects: bool, mut denied: Vec<u32>) -> Self {
+        denied.sort_unstable();
+        denied.dedup();
+        Self {
+            players,
+            npcs,
+            objects,
+            denied: denied.into(),
+        }
+    }
+
+    /// Whether `animation` (the action animation of an actor, or an object's animation) is
+    /// drawn blended, given its class switch.
+    #[must_use]
+    pub(crate) fn blends(
+        &self,
+        class_enabled: bool,
+        animation: Option<rustclient_model::SequenceId>,
+    ) -> bool {
+        class_enabled && animation.is_none_or(|id| self.denied.binary_search(&id.get()).is_err())
+    }
+}
 pub(crate) use skeletal::pose as pose_skeletal;
 
 /// Animation frame of a cached-model sequence after `elapsed` client cycles.
@@ -40,12 +84,13 @@ pub(crate) fn skeletal_frame(
     }
     i32::try_from(length - step + (elapsed - first_pass) % step).ok()
 }
-/// Resolve a frame from an explicit initial random word and elapsed cycles.
-pub(crate) fn frame_index(
+/// The frame and how many client cycles into it the sequence is (`frameCycle`: 1 right after the
+/// frame changes, up to the frame's delay; 0 only before the first cycle has elapsed).
+pub(crate) fn frame_position(
     sequence: &SequenceAsset,
     elapsed: u64,
     random: Option<u64>,
-) -> Result<Option<usize>> {
+) -> Result<Option<(usize, u64)>> {
     if sequence.skeletal.is_some() {
         return Err(SceneError(format!(
             "sequence {} is a cached-model sequence; pose it with skeletal_frame",
@@ -85,7 +130,69 @@ pub(crate) fn frame_index(
             }
         }
     }
-    Ok(Some(frame))
+    Ok(Some((frame, cycle)))
+}
+/// Blend two legacy frames of one skeleton, as `Model.interpolateFrames` does when animation
+/// smoothing is active: `interval` cycles into a frame that lasts `count` cycles.
+///
+/// Returns `None` when the frame is posed as authored: no next frame, no elapsed interval, or a
+/// next frame on a different skeleton. Rotation components blend along the shorter way round the
+/// byte circle, scale blends from 128, alpha is never blended, and a label one frame moves and the
+/// other leaves alone blends from the identity value (0, or 128 for scale).
+#[must_use]
+pub(crate) fn blend_frames(
+    skeleton: &[SkeletonTransform],
+    frame: &LegacyFrame,
+    next: Option<&LegacyFrame>,
+    interval: i32,
+    count: i32,
+) -> Option<LegacyFrame> {
+    let next = next.filter(|next| next.skeleton == frame.skeleton)?;
+    if interval == 0 || count <= 0 {
+        return None;
+    }
+    let (mut current_index, mut next_index) = (0, 0);
+    let mut transforms = Vec::new();
+    for (slot, definition) in skeleton.iter().enumerate() {
+        let current = frame
+            .transforms
+            .get(current_index)
+            .filter(|transform| transform.slot == slot);
+        let following = next
+            .transforms
+            .get(next_index)
+            .filter(|transform| transform.slot == slot);
+        if current.is_none() && following.is_none() {
+            continue;
+        }
+        let identity = if matches!(definition.kind, 3 | 10) {
+            128
+        } else {
+            0
+        };
+        let from = current.map_or([identity; 3], |transform| transform.values);
+        let to = following.map_or([identity; 3], |transform| transform.values);
+        current_index += usize::from(current.is_some());
+        next_index += usize::from(following.is_some());
+        let values = match definition.kind {
+            2 => std::array::from_fn(|axis| {
+                let mut delta = (to[axis] - from[axis]) & 0xFF;
+                if delta >= 128 {
+                    delta -= 256;
+                }
+                (from[axis] + delta * interval / count) & 0xFF
+            }),
+            5 => [from[0], 0, 0],
+            _ => {
+                std::array::from_fn(|axis| from[axis] + (to[axis] - from[axis]) * interval / count)
+            }
+        };
+        transforms.push(FrameTransform { slot, values });
+    }
+    Some(LegacyFrame {
+        skeleton: frame.skeleton,
+        transforms,
+    })
 }
 #[expect(
     clippy::cast_possible_truncation,
@@ -126,11 +233,12 @@ pub(crate) fn pose_skeletal_oriented(
 }
 /// Actor movement loops indefinitely. Action playback honors the authored maximum
 /// loop count and then falls back to the actor's movement sequence.
-pub(crate) fn actor_frame(
+/// Frame and in-frame cycle of an actor sequence (see [`frame_position`]).
+pub(crate) fn actor_frame_position(
     sequence: &SequenceAsset,
     elapsed: u64,
     action: bool,
-) -> Result<Option<usize>> {
+) -> Result<Option<(usize, u64)>> {
     if sequence.frames.is_empty()
         || sequence.frames.len() != sequence.delays.len()
         || sequence.delays.contains(&0)
@@ -159,7 +267,7 @@ pub(crate) fn actor_frame(
     } else {
         elapsed % (duration + 1)
     };
-    frame_index(sequence, elapsed, None)
+    frame_position(sequence, elapsed, None)
 }
 pub(crate) fn actor_skeletal_frame(
     sequence: &SequenceAsset,
@@ -295,6 +403,16 @@ pub(crate) fn pose(
 mod tests {
     use super::*;
     use rustclient_model::SequenceId;
+    fn frame_index(
+        sequence: &SequenceAsset,
+        elapsed: u64,
+        random: Option<u64>,
+    ) -> Result<Option<usize>> {
+        Ok(frame_position(sequence, elapsed, random)?.map(|(frame, _)| frame))
+    }
+    fn actor_frame(sequence: &SequenceAsset, elapsed: u64, action: bool) -> Result<Option<usize>> {
+        Ok(actor_frame_position(sequence, elapsed, action)?.map(|(frame, _)| frame))
+    }
     #[test]
     fn actor_idle_loops_and_finite_actions_resume_movement_after_their_last_loop() {
         let mut sequence = SequenceAsset {
@@ -358,5 +476,120 @@ mod tests {
             ..seq
         };
         assert_eq!(frame_index(&seq, 10, None).unwrap(), None);
+    }
+
+    fn skeleton() -> Vec<SkeletonTransform> {
+        // origin, translate, rotate, scale, alpha
+        [0, 1, 2, 3, 5]
+            .into_iter()
+            .map(|kind| SkeletonTransform {
+                kind,
+                labels: vec![0],
+            })
+            .collect()
+    }
+    fn legacy(transforms: &[(usize, [i32; 3])]) -> LegacyFrame {
+        LegacyFrame {
+            skeleton: 7,
+            transforms: transforms
+                .iter()
+                .map(|&(slot, values)| FrameTransform { slot, values })
+                .collect(),
+        }
+    }
+    #[test]
+    fn frame_position_counts_cycles_into_the_current_frame() {
+        let seq = SequenceAsset {
+            id: SequenceId::new(1),
+            frames: vec![1, 2],
+            delays: vec![4, 3],
+            frame_step: None,
+            max_loops: 1,
+            restart: 2,
+            priority: 5,
+            movement_gate_with_backlog: 0,
+            movement_gate_without_backlog: 0,
+            skeletal: None,
+            range: None,
+            height_offset: 0,
+        };
+        let at = |elapsed| frame_position(&seq, elapsed, None).unwrap();
+        assert_eq!(at(0), Some((0, 0)));
+        assert_eq!(at(1), Some((0, 1)));
+        assert_eq!(at(4), Some((0, 4)));
+        assert_eq!(at(5), Some((1, 1)));
+        assert_eq!(at(7), Some((1, 3)));
+    }
+    #[test]
+    fn blending_mixes_linearly_and_takes_the_short_way_round_rotations() {
+        let skeleton = skeleton();
+        let frame = legacy(&[
+            (1, [0, 100, -40]),
+            (2, [250, 10, 0]),
+            (3, [128, 128, 128]),
+            (4, [8, 0, 0]),
+        ]);
+        let next = legacy(&[
+            (1, [40, 0, 40]),
+            (2, [10, 10, 0]),
+            (3, [256, 0, 128]),
+            (4, [64, 0, 0]),
+        ]);
+        let blended = blend_frames(&skeleton, &frame, Some(&next), 1, 4).unwrap();
+        let by_slot = |slot| {
+            blended
+                .transforms
+                .iter()
+                .find(|t| t.slot == slot)
+                .unwrap()
+                .values
+        };
+        // translation: a quarter of the way
+        assert_eq!(by_slot(1), [10, 75, -20]);
+        // rotation 250 -> 10 is +16 across the wrap, a quarter of that is +4
+        assert_eq!(by_slot(2), [254, 10, 0]);
+        // scale
+        assert_eq!(by_slot(3), [160, 96, 128]);
+        // alpha is not blended and carries no y/z
+        assert_eq!(by_slot(4), [8, 0, 0]);
+    }
+    #[test]
+    fn a_label_one_frame_leaves_alone_blends_from_the_identity() {
+        let skeleton = skeleton();
+        let frame = legacy(&[(1, [40, 40, 40])]);
+        let next = legacy(&[(3, [256, 256, 256])]);
+        let blended = blend_frames(&skeleton, &frame, Some(&next), 1, 2).unwrap();
+        let by_slot = |slot| {
+            blended
+                .transforms
+                .iter()
+                .find(|t| t.slot == slot)
+                .unwrap()
+                .values
+        };
+        assert_eq!(by_slot(1), [20, 20, 20]);
+        assert_eq!(by_slot(3), [192, 192, 192]);
+    }
+    #[test]
+    fn frames_are_posed_as_authored_without_something_to_blend() {
+        let skeleton = skeleton();
+        let frame = legacy(&[(1, [1, 2, 3])]);
+        let next = legacy(&[(1, [9, 9, 9])]);
+        assert!(blend_frames(&skeleton, &frame, None, 1, 4).is_none());
+        assert!(blend_frames(&skeleton, &frame, Some(&next), 0, 4).is_none());
+        let other = LegacyFrame {
+            skeleton: 8,
+            ..next
+        };
+        assert!(blend_frames(&skeleton, &frame, Some(&other), 1, 4).is_none());
+    }
+    #[test]
+    fn denied_animations_and_disabled_classes_are_not_blended() {
+        let filter = AnimationInterpolation::new(true, false, true, vec![8270, 244, 8270]);
+        assert!(filter.blends(filter.players, None));
+        assert!(filter.blends(filter.players, Some(SequenceId::new(1))));
+        assert!(!filter.blends(filter.players, Some(SequenceId::new(244))));
+        assert!(!filter.blends(filter.npcs, Some(SequenceId::new(1))));
+        assert!(!AnimationInterpolation::default().blends(false, None));
     }
 }

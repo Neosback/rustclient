@@ -73,7 +73,8 @@ fn if3_family_retains_revision_240_geometry_models_actions_and_typed_listeners()
             WidgetBody::Sprite { sprite, flip, .. } => {
                 assert_eq!(kind, 5);
                 assert_eq!(sprite.unwrap().get(), 1234);
-                assert_eq!(flip, [true, false]);
+                // The component stores vertical then horizontal flip; `flip` is [horizontal, vertical].
+                assert_eq!(flip, [false, true]);
             }
             WidgetBody::Model {
                 model,

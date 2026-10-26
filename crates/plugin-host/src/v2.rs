@@ -188,6 +188,8 @@ pub struct HostOutput {
     pub roof_areas: Vec<RoofArea>,
     /// Stretch request; the last plugin that sets one wins.
     pub stretch: Option<Stretch>,
+    /// Animation ids no plugin wants smoothed; sorted and unique.
+    pub smoothing_denied: Vec<u32>,
 }
 
 impl HostOutput {
@@ -222,6 +224,7 @@ impl HostOutput {
             self.scene.smoothing = self.scene.smoothing.union(scene.smoothing);
         }
         self.roof_areas.extend(output.roof_areas);
+        self.smoothing_denied.extend(output.smoothing_denied);
         if output.stretch.is_some() {
             self.stretch = output.stretch;
         }
@@ -231,6 +234,8 @@ impl HostOutput {
         self.overlay.sort_by_key(|item| item.layer);
         self.roof_areas.sort_unstable();
         self.roof_areas.dedup();
+        self.smoothing_denied.sort_unstable();
+        self.smoothing_denied.dedup();
     }
 }
 
@@ -355,6 +360,13 @@ pub(crate) fn validate(
     if refuse(Capability::SceneControl, !output.roof_areas.is_empty()) {
         output.roof_areas.clear();
     }
+    if refuse(
+        Capability::SceneControl,
+        !output.smoothing_denied.is_empty(),
+    ) {
+        output.smoothing_denied.clear();
+    }
+    output.smoothing_denied.truncate(limits::SMOOTHING_DENIED);
     output.roof_areas.truncate(limits::ROOF_AREAS);
     output.roof_areas.retain(|area| {
         area.min.0 <= area.max.0
@@ -366,7 +378,9 @@ pub(crate) fn validate(
         output.stretch = None;
     }
     if let Some(stretch) = &mut output.stretch {
-        stretch.scale_percent = stretch.scale_percent.clamp(25, 800);
+        stretch.scale_percent = stretch
+            .scale_percent
+            .clamp(Stretch::MIN_SCALE_PERCENT, Stretch::MAX_SCALE_PERCENT);
     }
     output
 }

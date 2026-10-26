@@ -554,6 +554,9 @@ fn availability(plugin: &str, key: &str) -> Option<String> {
                 | "panelToggleKey"
                 | "blockExtraMouseButtons"
         ),
+        "dev.rustclient.stretchedmode" => {
+            matches!(key, "keepAspectRatio" | "integerScaling" | "scalingFactor")
+        }
         _ => false,
     };
     (!implemented).then(|| pending_reason(plugin, key))
@@ -567,7 +570,12 @@ fn pending_reason(plugin: &str, key: &str) -> String {
             "Needs the player-owned-house roof override data, which is not ported yet.".into()
         }
         ("dev.rustclient.gpu", "uiScalingMode") => {
-            "Applies to stretched-mode scaling, which is not ported yet.".into()
+            "Stretched mode is ported, but this renderer draws the interface at window resolution with nearest sampling; the sampling modes do not apply."
+                .into()
+        }
+        ("dev.rustclient.stretchedmode", "increasedPerformance") => {
+            "The interface is always sampled nearest-neighbour when stretched, so there is no slower algorithm to turn off."
+                .into()
         }
         ("dev.rustclient.gpu", "unlockFps" | "fpsTarget") => {
             "Frames still render once per 20 ms game cycle; unlocked-frame interpolation is not ported yet."

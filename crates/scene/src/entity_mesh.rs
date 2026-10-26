@@ -310,6 +310,7 @@ pub fn build_entities_geometry(
     entities: &WorldEntitiesState,
     motion: &ActorMotion,
     variables: &BTreeMap<VarpId, i32>,
+    interpolation: &crate::AnimationInterpolation,
     geometry: &mut SceneGeometry,
 ) -> Result<()> {
     for player in entities.players().values() {
@@ -322,6 +323,7 @@ pub fn build_entities_geometry(
             player,
             position,
             motion.player_pose(player.index),
+            interpolation.blends(interpolation.players, player.sequence.sequence),
             geometry,
         )?;
     }
@@ -333,6 +335,7 @@ pub fn build_entities_geometry(
             npc,
             position,
             motion.npc_pose(npc.index),
+            interpolation.blends(interpolation.npcs, npc.sequence.sequence),
             variables,
             geometry,
         )?;
@@ -391,6 +394,9 @@ fn corner(tile: rustclient_model::WorldTile) -> [i32; 2] {
 ///
 /// A skeletal animation that failed to decode or prepare was already reported as an advisory;
 /// its sequence is drawn in rest pose rather than failing the whole scene.
+///
+/// With `blend`, a legacy frame is mixed toward the next one by how far into its delay the
+/// sequence is (animation smoothing); skeletal animations already evaluate per cycle.
 fn pose_model(
     asset: &SceneAsset,
     catalog: &EntityCatalog,
@@ -398,6 +404,7 @@ fn pose_model(
     sequence: Option<SequenceId>,
     cycle: u32,
     action: bool,
+    blend: bool,
 ) -> Result<bool> {
     let Some(sequence) = sequence else {
         return Ok(true);
@@ -423,7 +430,9 @@ fn pose_model(
         )?;
         return Ok(true);
     }
-    let Some(index) = crate::animation::actor_frame(sequence, u64::from(cycle), action)? else {
+    let Some((index, in_frame)) =
+        crate::animation::actor_frame_position(sequence, u64::from(cycle), action)?
+    else {
         return Ok(false);
     };
     if let Some(frame) = sequence
@@ -432,11 +441,26 @@ fn pose_model(
         .and_then(|id| catalog.animations.frame(asset, *id))
         && let Some(skeleton) = catalog.animations.skeleton(asset, frame.skeleton)
     {
+        let blended = blend
+            .then(|| {
+                let next = sequence
+                    .frames
+                    .get(index + 1)
+                    .and_then(|id| catalog.animations.frame(asset, *id));
+                crate::animation::blend_frames(
+                    &skeleton.transforms,
+                    frame,
+                    next,
+                    i32::try_from(in_frame.saturating_sub(1)).unwrap_or(0),
+                    i32::from(sequence.delays[index]),
+                )
+            })
+            .flatten();
         crate::animation::pose(
             &mut model.vertices,
             &mut model.faces,
             &model.vertex_skins,
-            frame,
+            blended.as_ref().unwrap_or(frame),
             &skeleton.transforms,
             0,
         )?;
@@ -450,6 +474,7 @@ fn build_player(
     player: &PlayerEntity,
     position: [i32; 2],
     drawn: Option<ActorPose>,
+    blend: bool,
     geometry: &mut SceneGeometry,
 ) -> Result<()> {
     let orientation = drawn.map_or(player.orientation, |drawn| drawn.rotation);
@@ -513,9 +538,9 @@ fn build_player(
         } else {
             (base, base_cycle, false)
         };
-    let posed_action = pose_model(asset, catalog, &mut model, sequence, cycle, action)?;
+    let posed_action = pose_model(asset, catalog, &mut model, sequence, cycle, action, blend)?;
     if !posed_action {
-        pose_model(asset, catalog, &mut model, base, base_cycle, false)?;
+        pose_model(asset, catalog, &mut model, base, base_cycle, false, blend)?;
     }
 
     let first_vertex = geometry.vertices.len();
@@ -552,12 +577,17 @@ fn build_player(
     clippy::too_many_lines,
     reason = "one ordered NPC model construction and pose path"
 )]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "immutable catalog, actor, drawn pose and smoothing inputs"
+)]
 fn build_npc(
     asset: &SceneAsset,
     catalog: &EntityCatalog,
     npc: &NpcEntity,
     position: [i32; 2],
     drawn: Option<ActorPose>,
+    blend: bool,
     variables: &BTreeMap<VarpId, i32>,
     geometry: &mut SceneGeometry,
 ) -> Result<()> {
@@ -616,9 +646,9 @@ fn build_npc(
     } else {
         (base, base_cycle, false)
     };
-    let posed_action = pose_model(asset, catalog, &mut model, sequence, cycle, action)?;
+    let posed_action = pose_model(asset, catalog, &mut model, sequence, cycle, action, blend)?;
     if !posed_action {
-        pose_model(asset, catalog, &mut model, base, base_cycle, false)?;
+        pose_model(asset, catalog, &mut model, base, base_cycle, false, blend)?;
     }
     // The reference scales the animated model, so bone translations stay in unscaled units.
     if def.scale_width != 128 || def.scale_height != 128 {

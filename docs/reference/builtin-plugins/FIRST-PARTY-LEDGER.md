@@ -40,3 +40,52 @@ Known differences and unverified assumptions:
   Actors carry no roof slot, so they are never hidden by a roof mode, only by the level cut.
 - Hovered tile: the pointer's terrain pick ignores hidden roofs by design (pointing at a roof removes it).
 - Roofs are 8-connected within one plane. RustOSRS additionally joins overhangs; that deviation is not ported.
+
+## animsmoothing
+
+Sources: `plugins/animsmoothing/AnimationSmoothingPlugin.java` (240 and the 235 tree are identical);
+the injected behaviour is in the 235 tree, `runelite-mixins/.../{RSSequenceDefinitionMixin,RSModelMixin,RSNPCMixin,RSPlayerMixin,RSDynamicObjectMixin}.java`
+(the 235->240 inventory lists no animation-smoothing change). The plugin has no settings besides its switch.
+
+| Source | Rust owner | Implemented | Verified |
+| --- | --- | --- | --- |
+| `setAnimationInterpolationFilter(isAnimationInterpolatable)` and its 23 rejected `AnimationID`s | `first-party-plugins::animsmoothing` -> `SceneFlags::smoothing` + `PluginOutput::smoothing_denied` -> `scene::AnimationInterpolation` | yes | unit: plugin output (23 ids, wyrm/mill sail present), class mask, denial of an id |
+| Filter asked with `Actor.getAnimation()` (the *action* animation, `-1` when none; a rejected one also stops the movement pose blending) | `AnimationInterpolation::blends(class, action sequence)` in `entity_mesh::build_{player,npc}` | yes | unit: filter; not exercised through a full actor build |
+| Filter asked with the object's animation id | `locations::pose` uses `blends(objects, Some(sequence))` | yes | not exercised through a scenery build |
+| Packed frame cycle: interval = `max(frameCycle - 1, 0)` of the current frame, count = that frame's delay | `animation::frame_position` returns the in-frame cycle; callers pass `in_frame - 1` and `delays[frame]` | yes | unit: frame/cycle at frame boundaries |
+| `Model.interpolateFrames`: linear blend of translate/origin/scale, byte-circle shortest-way blend of rotation, alpha not blended, missing label blends from the identity (128 for scale), no blend across skeletons or at the last frame | `animation::blend_frames` -> existing `animation::pose` | yes | unit: each rule, the no-op cases; no pixel or live-client comparison |
+| Skeletal (cached-model) animations | evaluated per cycle already; the source never blends them (`transform*` only handle legacy frames) | n/a | - |
+| Player/NPC spot animations (`ActorSpotAnim` frames) | not drawn by the client yet | no | - |
+| Widget model animations (`RSWidgetMixin`) | widget models are not drawn by the client yet; the class bit is requested but nothing consumes it | no | - |
+
+Known differences and unverified assumptions:
+
+- The client runs one game cycle per 20 ms like the source, so the blend advances once per cycle and matches the
+  injected client's cadence; GPU `unlockFps` (blending between cycles) is separate and not ported.
+- Frame transforms are walked in slot order with the source's pointer scheme, so a frame whose slots are not ascending
+  blends the same way the Java loop would.
+
+## stretchedmode
+
+Sources: `plugins/stretchedmode/{StretchedModePlugin,StretchedModeConfig,TranslateMouseListener}.java`; the behaviour
+is in the 235 tree, `runelite-mixins/.../{StretchedModeMixin,RSCanvasMixin}.java`; the GPU plugin draws the 3D scene
+at the stretched size and upscales the interface texture (`GpuPlugin.java` `drawUi`, viewport setup).
+
+| Source | Rust owner | Implemented | Verified |
+| --- | --- | --- | --- |
+| `setStretchedEnabled`, the four settings | `first-party-plugins::stretchedmode` -> `PluginOutput::stretch` -> `NativeApp::stretch_layout` | yes | unit: settings forwarded, factor bounded |
+| `getRealDimensions` (fixed 765x503; resizable: window / (1 + percent/100), refit when under 765x503) | `game_ui::stretch::StretchLayout::compute` | yes | unit: fixed, resizable, below-minimum cases |
+| `getStretchedDimensions` (keep aspect ratio, integer scaling) and the canvas centered horizontally, top aligned | `StretchLayout::compute`, `offset_x` | yes | unit: letterbox, integer rounding |
+| Game lays itself out in the real canvas | `NativeApp::synchronize_window` feeds `real` as the available canvas | yes | not exercised against a live session |
+| `TranslateMouseListener` | `TitleViewport::pointer` inverts the stretch; camera drags use canvas pixels | yes | unit: corner and midpoint mapping |
+| Scene/interface drawn at the stretched size | `TitleViewport::ndc` for interface quads, `World::prepare_viewport` for the 3D viewport rectangle | yes | unit: transform; no pixel capture |
+| `increasedPerformance` (fast vs smooth scaling) | none: the interface is always sampled nearest | no | - |
+| `ResizeableChanged` / `ConfigChanged` -> `invalidateStretching` | layout is recomputed from the window every frame | n/a | - |
+
+Known differences and unverified assumptions:
+
+- The 3D camera keeps the canvas aspect and the image is stretched with the viewport rectangle, which is what the
+  software stretch does; whether the GPU plugin's projection differs for non-uniform stretching was not checked.
+- The GPU `uiScalingMode` options do not apply: the interface is drawn at window resolution, not as a texture that is
+  resampled. Interface sprites are therefore nearest-sampled at non-integer ratios, as in the source's fast mode.
+- The clip of the world view at the stretched canvas edge and HiDPI rounding (`getScaledValue`) use plain rounding.

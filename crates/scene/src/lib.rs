@@ -9,6 +9,7 @@
     reason = "scene topology is expressed as fixed-width complete records and intentionally keeps reference chunk iteration"
 )]
 mod animation;
+pub use animation::AnimationInterpolation;
 mod animation_assets;
 pub use animation_assets::AnimationAssets;
 mod collision;

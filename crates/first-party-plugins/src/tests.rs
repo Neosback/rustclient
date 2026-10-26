@@ -1,5 +1,5 @@
 use super::*;
-use rustclient_plugin_api::{GameSnapshot, RoofModes};
+use rustclient_plugin_api::{AnimationSmoothing, GameSnapshot, RoofModes, Stretch, StretchScaling};
 use rustclient_plugin_host::{
     HostOutput, MemoryLogSink, MemoryStorage, PluginConfig, SnapshotView, StaticView,
     configuration::{ConfigValue, Configuration},
@@ -122,4 +122,77 @@ fn roofremoval_reports_override_areas_only_for_a_loaded_scene() {
     let loaded = harness.output(&snapshot(GameStateKind::LoggedIn));
     assert_eq!(loaded.roof_areas.len(), 1);
     assert_eq!(loaded.roof_areas[0].min, smoke_dungeon);
+}
+
+#[test]
+fn animsmoothing_blends_every_class_except_the_rejected_animations_once_enabled() {
+    let mut harness = Harness::new();
+    let snapshot = GameSnapshot::default();
+    let off = harness.output(&snapshot);
+    assert_eq!(off.scene.smoothing, AnimationSmoothing::default());
+    assert!(off.smoothing_denied.is_empty());
+    harness.enable("animsmoothing", &[]);
+    let on = harness.output(&snapshot);
+    assert!(on.scene.smoothing.contains(
+        AnimationSmoothing::PLAYERS
+            | AnimationSmoothing::NPCS
+            | AnimationSmoothing::OBJECTS
+            | AnimationSmoothing::WIDGETS
+    ));
+    assert_eq!(on.smoothing_denied.len(), 23);
+    // Wyrm melee attack and the Varrock mill sail are rejected by the source predicate.
+    assert!(on.smoothing_denied.contains(&8270));
+    assert!(on.smoothing_denied.contains(&6495));
+    assert!(!on.smoothing_denied.contains(&422));
+}
+
+#[test]
+fn stretchedmode_forwards_its_four_settings_once_enabled() {
+    let mut harness = Harness::new();
+    let snapshot = GameSnapshot::default();
+    assert_eq!(harness.output(&snapshot).stretch, None);
+    harness.enable("stretchedmode", &[]);
+    assert_eq!(
+        harness.output(&snapshot).stretch,
+        Some(Stretch {
+            keep_aspect_ratio: false,
+            integer_scaling: false,
+            scale_percent: 50,
+            scaling: StretchScaling::Linear,
+        })
+    );
+    harness.enable(
+        "stretchedmode",
+        &[
+            ("keepAspectRatio", ConfigValue::Boolean(true)),
+            ("integerScaling", ConfigValue::Boolean(true)),
+            ("increasedPerformance", ConfigValue::Boolean(true)),
+            ("scalingFactor", ConfigValue::Integer(-30)),
+        ],
+    );
+    assert_eq!(
+        harness.output(&snapshot).stretch,
+        Some(Stretch {
+            keep_aspect_ratio: true,
+            integer_scaling: true,
+            scale_percent: -30,
+            scaling: StretchScaling::Nearest,
+        })
+    );
+}
+
+#[test]
+fn stretchedmode_bounds_an_absurd_scaling_factor() {
+    let mut harness = Harness::new();
+    harness.enable(
+        "stretchedmode",
+        &[("scalingFactor", ConfigValue::Integer(i32::MAX))],
+    );
+    assert_eq!(
+        harness
+            .output(&GameSnapshot::default())
+            .stretch
+            .map(|stretch| stretch.scale_percent),
+        Some(Stretch::MAX_SCALE_PERCENT)
+    );
 }

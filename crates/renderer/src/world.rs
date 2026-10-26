@@ -266,7 +266,13 @@ impl WorldGpu {
         self.prepare_viewport(
             queue,
             camera,
-            scale,
+            rustclient_game_ui::TitleViewport {
+                canvas_width: 765,
+                physical_width: self.size.width,
+                physical_height: self.size.height,
+                scale,
+                stretch: None,
+            },
             cycle,
             None,
             rustclient_model::ViewportSettings::default(),
@@ -288,7 +294,7 @@ impl WorldGpu {
         &mut self,
         queue: &wgpu::Queue,
         mut camera: GameplayCameraController,
-        scale: f64,
+        transform: rustclient_game_ui::TitleViewport,
         cycle: u32,
         bounds: Option<rustclient_game_ui::Rect>,
         settings: rustclient_model::ViewportSettings,
@@ -297,21 +303,30 @@ impl WorldGpu {
         gpu: crate::GpuSettings,
     ) {
         camera.set_zoom(i32::from(settings.zoom[0]), i32::from(settings.zoom[1]));
-        let logical = bounds.unwrap_or(rustclient_game_ui::Rect::new(
-            0.,
-            0.,
-            (f64::from(self.size.width) / scale) as f32,
-            (f64::from(self.size.height) / scale) as f32,
-        ));
+        let (sx, sy) = transform.scales();
+        let (logical, origin) = bounds.map_or_else(
+            || {
+                (
+                    rustclient_game_ui::Rect::new(
+                        0.,
+                        0.,
+                        (f64::from(self.size.width) / sx) as f32,
+                        (f64::from(self.size.height) / sy) as f32,
+                    ),
+                    0.,
+                )
+            },
+            |bounds| (bounds, transform.physical_origin_x()),
+        );
         let viewport = crate::CameraViewport::new(logical.width as i32, logical.height as i32)
             .with_settings(settings);
         let inset = viewport.inset();
         let size = viewport.size();
         self.physical_viewport = [
-            ((logical.x + inset[0] as f32) * scale as f32).max(0.),
-            ((logical.y + inset[1] as f32) * scale as f32).max(0.),
-            (size[0] as f32 * scale as f32).min(self.size.width as f32),
-            (size[1] as f32 * scale as f32).min(self.size.height as f32),
+            (origin + f64::from(logical.x + inset[0] as f32) * sx).max(0.) as f32,
+            (f64::from(logical.y + inset[1] as f32) * sy).max(0.) as f32,
+            ((f64::from(size[0]) * sx) as f32).min(self.size.width as f32),
+            ((f64::from(size[1]) * sy) as f32).min(self.size.height as f32),
         ];
         self.physical_viewport[2] =
             self.physical_viewport[2].min(self.size.width as f32 - self.physical_viewport[0]);

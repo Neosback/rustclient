@@ -12,6 +12,8 @@ pub struct SceneryInputs {
     pub locations: BTreeMap<LocationKey, LocationOverride>,
     /// Areas forced roofed by a plugin; presentation input, not game state.
     pub roof_areas: std::sync::Arc<[crate::RoofArea]>,
+    /// Which animations are blended between frames; presentation input, not game state.
+    pub interpolation: crate::AnimationInterpolation,
 }
 impl From<&SceneryState> for SceneryInputs {
     fn from(state: &SceneryState) -> Self {
@@ -22,6 +24,7 @@ impl From<&SceneryState> for SceneryInputs {
             variables: state.variables().clone(),
             locations: state.locations().clone(),
             roof_areas: std::sync::Arc::default(),
+            interpolation: crate::AnimationInterpolation::default(),
         }
     }
 }

@@ -182,6 +182,49 @@ impl NativeApp {
         };
         self.plugins.update(&self.state, &inputs);
     }
+    /// The stretched-mode layout for this window, while a plugin asks for stretching.
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "window extents are validated platform values"
+    )]
+    fn stretch_layout(
+        &self,
+        window: &Window,
+    ) -> Option<rustclient_game_ui::stretch::StretchLayout> {
+        let stretch = self.plugins.output().stretch?;
+        let size = self.shell.game_size(window);
+        let scale = window.scale_factor();
+        let parent = (
+            (f64::from(size.width) / scale).floor() as u32,
+            (f64::from(size.height) / scale).floor() as u32,
+        );
+        let resizable = self.state.authenticated_player().is_some()
+            && self.state.interfaces().window().mode == rustclient_model::WindowMode::Resizable;
+        Some(rustclient_game_ui::stretch::StretchLayout::compute(
+            rustclient_game_ui::stretch::StretchSettings {
+                keep_aspect_ratio: stretch.keep_aspect_ratio,
+                integer_scaling: stretch.integer_scaling,
+                scaling_percent: i32::from(stretch.scale_percent),
+            },
+            resizable,
+            parent,
+        ))
+    }
+    /// Follow the animation smoothing plugins ask for; poses are rebuilt every cycle anyway.
+    fn sync_interpolation(&mut self) {
+        let output = self.plugins.output();
+        let smoothing = output.scene.smoothing;
+        let wanted = rustclient_scene::AnimationInterpolation::new(
+            smoothing.contains(rustclient_plugin_api::AnimationSmoothing::PLAYERS),
+            smoothing.contains(rustclient_plugin_api::AnimationSmoothing::NPCS),
+            smoothing.contains(rustclient_plugin_api::AnimationSmoothing::OBJECTS),
+            output.smoothing_denied.clone(),
+        );
+        if wanted != self.scene.interpolation {
+            self.scene.interpolation = wanted;
+        }
+    }
     /// Follow the roof areas plugins ask for, rebuilding the scene's roofs when they change.
     fn sync_roof_areas(&mut self) {
         let wanted: std::sync::Arc<[rustclient_scene::RoofArea]> = self
@@ -546,10 +589,14 @@ impl NativeApp {
         if self.occluded {
             return;
         }
-        if let Some(renderer) = &mut self.renderer
-            && let Err(error) = self.shell.stage(&window, renderer)
-        {
-            eprintln!("retained shell: {error}");
+        let stretch = self
+            .stretch_layout(&window)
+            .map(|layout| layout.canvas(window.scale_factor()));
+        if let Some(renderer) = &mut self.renderer {
+            renderer.set_stretch(stretch);
+            if let Err(error) = self.shell.stage(&window, renderer) {
+                eprintln!("retained shell: {error}");
+            }
         }
         let frame_start = Instant::now();
         let result = if let (Some(assets), Some(flames)) = (&self.assets, &self.flames) {
@@ -1353,8 +1400,13 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                 }
             }
             WindowEvent::CursorMoved { position, .. } => {
-                self.scene.input.pointer =
-                    scene::pointer(position.x, position.y, window.scale_factor());
+                self.scene.input.pointer = if self.stretch_layout(&window).is_some() {
+                    // Camera drags are measured in canvas pixels, not window pixels.
+                    let (x, y) = self.ui_pointer(&window, position.x, position.y);
+                    scene::canvas_pointer(x, y)
+                } else {
+                    scene::pointer(position.x, position.y, window.scale_factor())
+                };
                 self.cursor = Some((position.x, position.y));
                 let (x, y) = self.ui_pointer(&window, position.x, position.y);
                 self.ui.pointer(x, y);
@@ -1672,6 +1724,7 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                 self.plugins.advance(&self.state, steps);
                 self.update_plugins();
                 self.sync_roof_areas();
+                self.sync_interpolation();
             }
             if now >= self.next_step {
                 self.next_step = now + STEP;
@@ -1724,6 +1777,7 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                     self.state.entities(),
                     &self.scene.motion,
                     self.state.scenery().variables(),
+                    &self.scene.interpolation,
                     &mut self.scene.entity_geometry,
                 ) {
                     eprintln!("entity geometry: {e}");
@@ -1782,6 +1836,9 @@ impl NativeApp {
             physical_width: size.width,
             physical_height: size.height,
             scale: window.scale_factor(),
+            stretch: self
+                .stretch_layout(window)
+                .map(|layout| layout.canvas(window.scale_factor())),
         }
         .pointer(x, y)
     }

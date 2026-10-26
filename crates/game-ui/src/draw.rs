@@ -142,6 +142,59 @@ pub struct TitleViewport {
     pub physical_height: u32,
     /// Physical pixels per logical pixel.
     pub scale: f64,
+    /// Set when stretched mode scales the logical canvas to a different physical size per axis.
+    pub stretch: Option<StretchedCanvas>,
+}
+
+/// The framebuffer rectangle a logical canvas is stretched into (`Client.getStretchedDimensions`).
+///
+/// The canvas keeps its logical size for layout and picking; only drawing and the pointer
+/// transform change, so every draw and input path goes through [`TitleViewport`].
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct StretchedCanvas {
+    /// Logical canvas height.
+    pub canvas_height: u32,
+    /// Physical left edge of the stretched canvas.
+    pub x: f32,
+    /// Physical width of the stretched canvas.
+    pub width: f32,
+    /// Physical height of the stretched canvas; it starts at the top of the framebuffer.
+    pub height: f32,
+}
+impl TitleViewport {
+    /// Physical pixels per logical pixel on each axis.
+    #[must_use]
+    pub fn scales(self) -> (f64, f64) {
+        match self.stretch {
+            Some(stretch) => (
+                f64::from(stretch.width) / f64::from(self.canvas_width.max(1)),
+                f64::from(stretch.height) / f64::from(stretch.canvas_height.max(1)),
+            ),
+            None => (self.scale, self.scale),
+        }
+    }
+    /// Physical x of logical x = 0.
+    #[must_use]
+    pub fn physical_origin_x(self) -> f64 {
+        match self.stretch {
+            Some(stretch) => f64::from(stretch.x),
+            None => f64::from(self.origin_x()) * self.scale,
+        }
+    }
+    /// Normalised device coordinates of a logical canvas point.
+    #[must_use]
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "framebuffer coordinates are bounded window-system values"
+    )]
+    pub fn ndc(self, x: f32, y: f32) -> [f32; 2] {
+        let (sx, sy) = self.scales();
+        [
+            ((self.physical_origin_x() + f64::from(x) * sx) / f64::from(self.physical_width) * 2.
+                - 1.) as f32,
+            (1. - f64::from(y) * sy / f64::from(self.physical_height) * 2.) as f32,
+        ]
+    }
 }
 impl TitleViewport {
     /// Centered title origin in logical pixels, top aligned.
@@ -161,9 +214,10 @@ impl TitleViewport {
         reason = "window coordinates are intentionally projected to f32"
     )]
     pub fn pointer(self, x: f64, y: f64) -> (f32, f32) {
+        let (sx, sy) = self.scales();
         (
-            (x / self.scale) as f32 - self.origin_x(),
-            (y / self.scale) as f32,
+            ((x - self.physical_origin_x()) / sx) as f32,
+            (y / sy) as f32,
         )
     }
 }

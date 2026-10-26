@@ -448,18 +448,36 @@ fn pose(
                 orientation,
             )?;
         }
-    } else if let Some(index) = crate::animation::frame_index(seq, elapsed, random)? {
+    } else if let Some((index, in_frame)) = crate::animation::frame_position(seq, elapsed, random)?
+    {
         let Some(frame) = inputs.animations.frame(asset, seq.frames[index]) else {
             return Ok(());
         };
         let Some(skeleton) = inputs.animations.skeleton(asset, frame.skeleton) else {
             return Ok(());
         };
+        let blended = inputs
+            .interpolation
+            .blends(inputs.interpolation.objects, Some(id))
+            .then(|| {
+                let next = seq
+                    .frames
+                    .get(index + 1)
+                    .and_then(|next| inputs.animations.frame(asset, *next));
+                crate::animation::blend_frames(
+                    &skeleton.transforms,
+                    frame,
+                    next,
+                    i32::try_from(in_frame.saturating_sub(1)).unwrap_or(0),
+                    i32::from(seq.delays[index]),
+                )
+            })
+            .flatten();
         crate::animation::pose(
             &mut model.vertices,
             &mut model.faces,
             &model.skins,
-            frame,
+            blended.as_ref().unwrap_or(frame),
             &skeleton.transforms,
             orientation,
         )?;

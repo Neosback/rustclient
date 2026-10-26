@@ -290,15 +290,25 @@ pub enum StretchScaling {
     Linear,
 }
 
-/// Stretched-mode request.
+/// Stretched-mode request (`Client.setStretchedEnabled` and its companions).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Stretch {
     /// Keep the canvas aspect ratio, letterboxing the rest.
     pub keep_aspect_ratio: bool,
-    /// Scale factor in percent, 100 for exact fit.
-    pub scale_percent: u16,
-    /// Resampling.
+    /// Use whole-number scale factors only.
+    pub integer_scaling: bool,
+    /// `Client.setScalingFactor`: in resizable modes the game canvas is the window divided by
+    /// `1 + scale_percent / 100`, then stretched back up; fixed mode ignores it.
+    pub scale_percent: i16,
+    /// Resampling the source asks for (`increasedPerformance` selects [`StretchScaling::Nearest`]).
     pub scaling: StretchScaling,
+}
+
+impl Stretch {
+    /// Lowest `scale_percent` the host accepts (a factor of one half).
+    pub const MIN_SCALE_PERCENT: i16 = -50;
+    /// Highest `scale_percent` the host accepts.
+    pub const MAX_SCALE_PERCENT: i16 = 800;
 }
 
 /// Everything one plugin wants this update.
@@ -324,6 +334,9 @@ pub struct PluginOutput {
     pub roof_areas: Vec<RoofArea>,
     /// Stretched mode, if the plugin controls it.
     pub stretch: Option<Stretch>,
+    /// Animation ids that stay on whole frames while [`SceneFlags::smoothing`] is active
+    /// (`Client.setAnimationInterpolationFilter` rejecting them).
+    pub smoothing_denied: Vec<u32>,
 }
 
 impl PluginOutput {
@@ -350,6 +363,8 @@ pub mod limits {
     pub const SPRITE_OVERRIDES: usize = 64;
     /// Roof areas accepted per plugin.
     pub const ROOF_AREAS: usize = 4096;
+    /// Animation ids a plugin may exclude from smoothing.
+    pub const SMOOTHING_DENIED: usize = 4096;
     /// Camera commands accepted per plugin per update.
     pub const CAMERA_COMMANDS: usize = 8;
     /// Longest overlay/notification text in bytes.
