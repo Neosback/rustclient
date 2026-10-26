@@ -230,6 +230,23 @@ impl NativeApp {
             parent,
         ))
     }
+    /// Follow the camera preferences plugins ask for; no request means the unmodified client.
+    fn sync_camera_tuning(&mut self) {
+        use rustclient_plugin_api::CameraCommand;
+        let mut tuning = rustclient_renderer::CameraTuning::default();
+        for command in &self.plugins.output().camera {
+            match *command {
+                CameraCommand::Speed(speed) => tuning.speed = speed,
+                CameraCommand::InvertYaw(on) => tuning.invert_yaw = on,
+                CameraCommand::InvertPitch(on) => tuning.invert_pitch = on,
+                CameraCommand::RelaxPitch(on) => tuning.relax_pitch = on,
+                _ => {}
+            }
+        }
+        if let Some(camera) = &mut self.scene.camera {
+            camera.set_tuning(tuning);
+        }
+    }
     /// Follow the actors plugins ask to hide.
     fn sync_hidden_actors(&mut self) {
         use rustclient_plugin_api::ActorRef;
@@ -1777,6 +1794,7 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                 self.update_plugins();
                 self.sync_roof_areas();
                 self.sync_interpolation();
+                self.sync_camera_tuning();
                 self.sync_hidden_actors();
             }
             if now >= self.next_step {

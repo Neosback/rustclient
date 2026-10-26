@@ -272,7 +272,7 @@ fn bound_camera(commands: Vec<CameraCommand>) -> Vec<CameraCommand> {
             }
             CameraCommand::Speed(speed) => speed
                 .is_finite()
-                .then(|| CameraCommand::Speed(speed.clamp(0.1, 10.0))),
+                .then(|| CameraCommand::Speed(speed.clamp(0.2, 5.0))),
             CameraCommand::ZoomLimits { min, max } => {
                 (min <= max).then_some(CameraCommand::ZoomLimits { min, max })
             }

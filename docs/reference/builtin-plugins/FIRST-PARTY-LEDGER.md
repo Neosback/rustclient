@@ -178,3 +178,23 @@ Sources: `plugins/statusbars/{StatusBarsPlugin,StatusBarsConfig,StatusBarsOverla
 Known differences:
 
 - Sprites are drawn through the same widget-sprite worker as interface sprites; a sprite that is not decoded yet is skipped for that frame.
+
+## camera
+
+Sources: `plugins/camera/{CameraPlugin,CameraConfig}.java` (240) for settings and shutdown behavior. The 240 tree does not vendor the
+injected mixins, so the arithmetic follows `runelite-mixins/.../CameraMixin.java` from the 235 snapshot
+(`references/runelite-melxin-235`); 240 is assumed unchanged and has not been compared.
+
+| Source | Rust owner | Implemented | Verified |
+| --- | --- | --- | --- |
+| `setCameraSpeed` (clamp 0.2..=5.0): keyboard yaw/pitch targets `±24 * speed`, `±12 * speed`, `(int)` float cast | `CameraCommand::Speed` -> `renderer::CameraTuning::ease` | yes | unit: faster speed raises velocity; recorded deob trace still matches at speed 1 |
+| `setInvertYaw` / `setInvertPitch`: only the middle-button drag is inverted | `CameraTuning::{invert_yaw, invert_pitch}` | yes | unit: drag flips, keys do not |
+| `setCameraPitchRelaxerEnabled`: pitch upper limit 383 -> 512, disabling clamps back to 383 | `CameraTuning::relax_pitch`, `GameplayCameraController::set_tuning` | yes | unit |
+| Shutdown restores defaults | commands are level-triggered; the shell resets tuning when none arrive | yes | by construction; not seen on screen |
+| Zoom limits (`inner`, `outerLimit`), `controlFunction`, `ctrlZoomValue`, `zoomIncrement`, slider tooltip | none | no: varc rewrites and wheel script callbacks | - |
+| `disableCameraShake` | none | no: no shake exists | - |
+| Right-click moves camera, right-click objects/examine, menu blocks camera, middle-button menu | none | no: needs the menu model | - |
+
+Known differences:
+
+- `CameraCommand::{YawTarget, PitchTarget, ZoomTarget, ZoomLimits}` remain in the API without a consumer.

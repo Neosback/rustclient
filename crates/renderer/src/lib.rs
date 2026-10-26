@@ -31,7 +31,8 @@ mod world_geometry;
 mod world_target;
 mod world_textures;
 pub use camera::{
-    CameraInput, CameraTarget, CameraViewport, GameplayCameraController, ReferenceCameraPose,
+    CameraInput, CameraTarget, CameraTuning, CameraViewport, GameplayCameraController,
+    ReferenceCameraPose,
 };
 
 mod world_capture;

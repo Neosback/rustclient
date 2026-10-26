@@ -7,6 +7,7 @@
 #![forbid(unsafe_code)]
 
 mod animsmoothing;
+mod camera;
 mod entityhider;
 mod fps;
 mod idlenotifier;
@@ -156,6 +157,11 @@ const ENTRIES: &[Entry] = &[
             Capability::GameReadVars,
         ],
         build: || boxed(idlenotifier::IdleNotifier::new()),
+    },
+    Entry {
+        name: "camera",
+        capabilities: &[Capability::CameraControl],
+        build: || boxed(camera::Camera),
     },
 ];
 

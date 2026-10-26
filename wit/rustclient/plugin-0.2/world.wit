@@ -192,6 +192,7 @@ interface types {
         zoom-limits(tuple<s32, s32>),
         invert-yaw(bool),
         invert-pitch(bool),
+        relax-pitch(bool),
     }
 
     record entity-visibility {

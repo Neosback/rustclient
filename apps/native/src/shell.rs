@@ -571,6 +571,10 @@ fn availability(plugin: &str, key: &str) -> Option<String> {
         }
         "dev.rustclient.idlenotifier" => key != "interactionidle",
         "dev.rustclient.fps" => true,
+        "dev.rustclient.camera" => matches!(
+            key,
+            "cameraSpeed" | "invertYaw" | "invertPitch" | "relaxCameraPitch"
+        ),
         "dev.rustclient.statusbars" => key != "enableRestorationBars",
         _ => false,
     };
@@ -605,6 +609,18 @@ fn pending_reason(plugin: &str, key: &str) -> String {
             "Needs the player's interact target, which the client does not keep yet; the idle-logout warning also cannot tell when you are in combat."
                 .into()
         }
+        (
+            "dev.rustclient.camera",
+            "inner" | "outerLimit" | "controlFunction" | "ctrlZoomValue" | "zoomIncrement",
+        ) => "The zoom limits and scroll-wheel zoom are client-script variables and callbacks, which this client does not run yet.".into(),
+        ("dev.rustclient.camera", "disableCameraShake") => {
+            "Camera shake is not implemented, so there is nothing to disable.".into()
+        }
+        (
+            "dev.rustclient.camera",
+            "rightClickMovesCamera" | "rightClickObjects" | "rightClickExamine"
+            | "rightClickMenuBlocksCamera" | "middleClickMenu",
+        ) => "Remaps mouse buttons depending on the open menu, which the client does not model yet.".into(),
         ("dev.rustclient.statusbars", "enableRestorationBars") => {
             "The restore previews need item and food healing data, which the client does not keep yet.".into()
         }

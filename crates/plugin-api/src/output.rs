@@ -185,7 +185,7 @@ pub enum CameraCommand {
     YawTarget(i32),
     /// Ease the pitch toward a target in 128..=383 angle units.
     PitchTarget(i32),
-    /// Camera easing speed multiplier.
+    /// Keyboard camera speed multiplier, `0.2..=5.0` (`Client.setCameraSpeed`).
     Speed(f32),
     /// Zoom scale target.
     ZoomTarget(i32),
@@ -200,6 +200,8 @@ pub enum CameraCommand {
     InvertYaw(bool),
     /// Invert vertical mouse rotation.
     InvertPitch(bool),
+    /// Let the pitch go from 383 up to 512 (`Client.setCameraPitchRelaxerEnabled`).
+    RelaxPitch(bool),
 }
 
 /// Actors and effects the renderer must skip while drawing the scene.

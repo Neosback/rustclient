@@ -34,6 +34,50 @@ pub struct CameraInput {
     pub middle: bool,
     pub pointer: [i32; 2],
 }
+/// Player-facing camera preferences a plugin may set (`RuneLite` `CameraMixin`: `cameraSpeed`,
+/// `invertYaw`, `invertPitch`, `pitchRelaxEnabled`). The defaults are the unmodified client.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct CameraTuning {
+    /// Scales the keyboard turn targets; `0.2..=5.0`.
+    pub speed: f32,
+    /// Negate the yaw velocity while the camera is dragged with the middle button.
+    pub invert_yaw: bool,
+    /// Negate the pitch velocity while the camera is dragged with the middle button.
+    pub invert_pitch: bool,
+    /// Allow pitch above the vanilla 383 limit, up to 512.
+    pub relax_pitch: bool,
+}
+impl Default for CameraTuning {
+    fn default() -> Self {
+        Self {
+            speed: 1.,
+            invert_yaw: false,
+            invert_pitch: false,
+            relax_pitch: false,
+        }
+    }
+}
+impl CameraTuning {
+    const PITCH_MAX: i32 = 383;
+    const PITCH_MAX_RELAXED: i32 = 512;
+    const fn pitch_max(self) -> i32 {
+        if self.relax_pitch {
+            Self::PITCH_MAX_RELAXED
+        } else {
+            Self::PITCH_MAX
+        }
+    }
+    /// `(int) (v + (target * speed - v) / 2)` in single precision, as the injected client does.
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_precision_loss,
+        reason = "mirrors the reference float-to-int cast of small velocities"
+    )]
+    fn ease(self, velocity: i32, target: f32) -> i32 {
+        let current = velocity as f32;
+        (current + (target * self.speed - current) / 2.) as i32
+    }
+}
 /// Logical viewport shared by projection and pointer queries.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CameraViewport {
@@ -85,7 +129,7 @@ pub struct ReferenceCameraPose {
     pub zoom: i32,
 }
 /// Disposable camera state; retained independently of GPU resource recreation.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct GameplayCameraController {
     follow_height: i32,
     focal: [i32; 3],
@@ -97,6 +141,7 @@ pub struct GameplayCameraController {
     clicked: [i32; 2],
     zoom_height: i32,
     zoom_width: i32,
+    tuning: CameraTuning,
 }
 impl GameplayCameraController {
     #[must_use]
@@ -113,7 +158,16 @@ impl GameplayCameraController {
             clicked: [0; 2],
             zoom_height: 256,
             zoom_width: 320,
+            tuning: CameraTuning::default(),
         }
+    }
+    /// Apply plugin camera preferences; turning the relaxed pitch off pulls an over-limit pitch back.
+    pub fn set_tuning(&mut self, tuning: CameraTuning) {
+        self.tuning = CameraTuning {
+            speed: tuning.speed.clamp(0.2, 5.),
+            ..tuning
+        };
+        self.pitch = self.pitch.min(self.tuning.pitch_max());
     }
     /// Script-authored vertical camera offset in scene fine units.
     pub fn set_follow_height(&mut self, height: u32) {
@@ -182,8 +236,16 @@ impl GameplayCameraController {
         if input.middle {
             let dy = input.pointer[1] - self.clicked[1];
             let dx = self.clicked[0] - input.pointer[0];
-            self.pitch_velocity = dy * 2;
-            self.yaw_velocity = dx * 2;
+            self.pitch_velocity = if self.tuning.invert_pitch {
+                -dy * 2
+            } else {
+                dy * 2
+            };
+            self.yaw_velocity = if self.tuning.invert_yaw {
+                -dx * 2
+            } else {
+                dx * 2
+            };
             self.clicked[1] = if dy.abs() == 1 {
                 input.pointer[1]
             } else {
@@ -196,23 +258,23 @@ impl GameplayCameraController {
             };
         } else {
             if input.left {
-                self.yaw_velocity += (-24 - self.yaw_velocity) / 2;
+                self.yaw_velocity = self.tuning.ease(self.yaw_velocity, -24.);
             } else if input.right {
-                self.yaw_velocity += (24 - self.yaw_velocity) / 2;
+                self.yaw_velocity = self.tuning.ease(self.yaw_velocity, 24.);
             } else {
                 self.yaw_velocity /= 2;
             }
             if input.up {
-                self.pitch_velocity += (12 - self.pitch_velocity) / 2;
+                self.pitch_velocity = self.tuning.ease(self.pitch_velocity, 12.);
             } else if input.down {
-                self.pitch_velocity += (-12 - self.pitch_velocity) / 2;
+                self.pitch_velocity = self.tuning.ease(self.pitch_velocity, -12.);
             } else {
                 self.pitch_velocity /= 2;
             }
             self.clicked = input.pointer;
         }
         self.yaw = (self.yaw + self.yaw_velocity / 2) & 2047;
-        self.pitch = (self.pitch + self.pitch_velocity / 2).clamp(128, 383);
+        self.pitch = (self.pitch + self.pitch_velocity / 2).clamp(128, self.tuning.pitch_max());
     }
     /// Apply verified `VIEWPORT_SETZOOM` values. Wheel-script policy belongs above
     /// this arithmetic boundary and must supply the script's positive values.
@@ -385,5 +447,91 @@ mod tests {
                 v[0]
             );
         }
+    }
+
+    fn target() -> CameraTarget {
+        CameraTarget {
+            x: 6848,
+            height: -240,
+            z: 6464,
+            terrain_drop: 0,
+        }
+    }
+
+    fn held(camera: &mut GameplayCameraController, input: CameraInput, cycles: usize) {
+        for _ in 0..cycles {
+            camera.step(target(), input);
+        }
+    }
+
+    #[test]
+    fn camera_speed_scales_the_keyboard_turn_rate() {
+        let right = CameraInput {
+            right: true,
+            ..CameraInput::default()
+        };
+        let mut normal = GameplayCameraController::new(target());
+        held(&mut normal, right, 6);
+        let mut fast = GameplayCameraController::new(target());
+        fast.set_tuning(CameraTuning {
+            speed: 2.,
+            ..CameraTuning::default()
+        });
+        held(&mut fast, right, 6);
+        assert!(fast.yaw_velocity > normal.yaw_velocity);
+        // The velocity settles at about the scaled target (24 * 2), not the vanilla 24.
+        assert!(normal.yaw_velocity <= 24 && fast.yaw_velocity > 24);
+    }
+
+    #[test]
+    fn inverting_flips_only_the_middle_button_drag() {
+        let drag = CameraInput {
+            middle: true,
+            pointer: [100, 120],
+            ..CameraInput::default()
+        };
+        let mut plain = GameplayCameraController::new(target());
+        let mut inverted = GameplayCameraController::new(target());
+        inverted.set_tuning(CameraTuning {
+            invert_yaw: true,
+            invert_pitch: true,
+            ..CameraTuning::default()
+        });
+        plain.step(target(), drag);
+        inverted.step(target(), drag);
+        assert_eq!(inverted.yaw_velocity, -plain.yaw_velocity);
+        assert_eq!(inverted.pitch_velocity, -plain.pitch_velocity);
+        let up = CameraInput {
+            up: true,
+            ..CameraInput::default()
+        };
+        let mut plain = GameplayCameraController::new(target());
+        let mut inverted = GameplayCameraController::new(target());
+        inverted.set_tuning(CameraTuning {
+            invert_pitch: true,
+            ..CameraTuning::default()
+        });
+        held(&mut plain, up, 4);
+        held(&mut inverted, up, 4);
+        assert_eq!(inverted.pitch, plain.pitch, "keys are not inverted");
+    }
+
+    #[test]
+    fn relaxed_pitch_reaches_512_and_turning_it_off_restores_the_limit() {
+        let up = CameraInput {
+            up: true,
+            ..CameraInput::default()
+        };
+        let mut camera = GameplayCameraController::new(target());
+        held(&mut camera, up, 200);
+        assert_eq!(camera.pitch, 383);
+        camera.set_tuning(CameraTuning {
+            relax_pitch: true,
+            ..CameraTuning::default()
+        });
+        held(&mut camera, up, 200);
+        assert_eq!(camera.pitch, 512);
+        camera.set_tuning(CameraTuning::default());
+        assert_eq!(camera.pitch, 383);
     }
 }
