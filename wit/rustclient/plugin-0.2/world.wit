@@ -163,8 +163,11 @@ interface types {
 
     enum overlay-layer { scene, above-scene, top }
 
+    enum align { left, center, right }
     variant overlay-command {
-        text(tuple<string, s32, s32, u32>),
+        // Text, x, baseline y, colour, alignment of x.
+        text(tuple<string, s32, s32, u32, align>),
+        sprite(tuple<u32, s32, s32, align>),
         rect(tuple<rect, u32, bool>),
         line(tuple<tuple<s32, s32>, tuple<s32, s32>, u32>),
         tile(tuple<world-point, u32, u32>),
@@ -229,6 +232,7 @@ interface types {
         roof-areas: list<roof-area>,
         stretch: option<stretch>,
         smoothing-denied: list<u32>,
+        frame-limit: option<u32>,
     }
 
     enum log-level { trace, debug, info, warn, error }

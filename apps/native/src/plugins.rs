@@ -5,8 +5,12 @@
 
 use rustclient_cache::TitleAssets;
 use rustclient_game_state::GameState;
-use rustclient_game_ui::{Rect, UiFrame, draw_text};
-use rustclient_plugin_api::{Notification, OverlayCommand, PlayerPosition, PluginEvent};
+use rustclient_game_ui::{
+    Rect, UiFrame, UiImageId, draw_text, text_width, widget_visuals::WidgetVisualAssets,
+};
+use rustclient_plugin_api::{
+    HorizontalAlign, Notification, OverlayCommand, PlayerPosition, PluginEvent,
+};
 use rustclient_plugin_bridge::{Frame, Projector, Sources};
 use rustclient_plugin_host::{
     DirectoryStorage, HostOutput, HostView, PluginConfig, PluginSet, SnapshotView, StaticView,
@@ -233,12 +237,29 @@ impl Plugins {
         &self.output
     }
 
+    /// Cache sprites the last update's overlay wants drawn.
+    pub(super) fn requested_sprites(&self) -> impl Iterator<Item = u32> + '_ {
+        self.output
+            .overlay
+            .iter()
+            .filter_map(|item| match item.command {
+                OverlayCommand::Sprite { sprite, .. } => Some(sprite),
+                _ => None,
+            })
+    }
+
     /// Draw plugin overlay lines topmost in the `765x503` interface space.
-    pub(super) fn overlay(&mut self, state: &GameState, assets: &TitleAssets, frame: &mut UiFrame) {
+    pub(super) fn overlay(
+        &mut self,
+        state: &GameState,
+        assets: &TitleAssets,
+        sprites: &WidgetVisualAssets,
+        frame: &mut UiFrame,
+    ) {
         if self.set.is_empty() {
             return;
         }
-        self.draw_output(assets, frame);
+        self.draw_output(assets, sprites, frame);
         let view = SessionView::from_state(state, self.tick);
         let lines = self.set.overlay(&view, &mut self.storage, &mut self.logs);
         let clip = Rect::new(0., 0., 765., 503.);
@@ -259,7 +280,12 @@ impl Plugins {
 
 impl Plugins {
     /// Draw the 0.2 overlay primitives that need no world projection; the rest are reported once.
-    fn draw_output(&mut self, assets: &TitleAssets, frame: &mut UiFrame) {
+    fn draw_output(
+        &mut self,
+        assets: &TitleAssets,
+        sprites: &WidgetVisualAssets,
+        frame: &mut UiFrame,
+    ) {
         let clip = Rect::new(0., 0., 765., 503.);
         let canvas = frame.canvas.map_or(clip, |size| {
             Rect::new(
@@ -272,17 +298,41 @@ impl Plugins {
         let mut skipped = false;
         for item in &self.output.overlay {
             match &item.command {
-                OverlayCommand::Text { text, x, y, argb } => {
+                OverlayCommand::Text {
+                    text,
+                    x,
+                    y,
+                    argb,
+                    align,
+                } => {
                     let [alpha, red, green, blue] = argb.to_be_bytes();
+                    let left = aligned(px(*x), text_width(assets, text), *align);
                     draw_text(
                         frame,
                         assets,
                         text,
-                        px(*x),
+                        left,
                         px(*y),
                         [red, green, blue, alpha],
                         canvas,
                     );
+                }
+                OverlayCommand::Sprite {
+                    sprite,
+                    x,
+                    y,
+                    align,
+                } => {
+                    let id = UiImageId::Sprite(*sprite);
+                    if let Some(image) = sprites.images.get(&id) {
+                        #[expect(
+                            clippy::cast_precision_loss,
+                            reason = "sprite edges are far below f32 integer precision"
+                        )]
+                        let (width, height) = (image.width() as f32, image.height() as f32);
+                        let left = aligned(px(*x), width, *align);
+                        frame.image(id, Rect::new(left, px(*y), width, height), canvas);
+                    }
                 }
                 OverlayCommand::Rect {
                     x,
@@ -302,6 +352,15 @@ impl Plugins {
             self.unsupported_reported = true;
             eprintln!("plugin overlay: world-anchored primitives are not drawn by this client yet");
         }
+    }
+}
+
+/// The left edge of something `width` wide whose `align` edge is at `x`; integer halves as in the source.
+fn aligned(x: f32, width: f32, align: HorizontalAlign) -> f32 {
+    match align {
+        HorizontalAlign::Left => x,
+        HorizontalAlign::Center => x - (width / 2.).floor(),
+        HorizontalAlign::Right => x - width,
     }
 }
 

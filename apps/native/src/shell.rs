@@ -570,6 +570,8 @@ fn availability(plugin: &str, key: &str) -> Option<String> {
             matches!(key, "keepAspectRatio" | "integerScaling" | "scalingFactor")
         }
         "dev.rustclient.idlenotifier" => key != "interactionidle",
+        "dev.rustclient.fps" => true,
+        "dev.rustclient.statusbars" => key != "enableRestorationBars",
         _ => false,
     };
     (!implemented).then(|| pending_reason(plugin, key))
@@ -602,6 +604,9 @@ fn pending_reason(plugin: &str, key: &str) -> String {
         ("dev.rustclient.idlenotifier", "interactionidle") => {
             "Needs the player's interact target, which the client does not keep yet; the idle-logout warning also cannot tell when you are in combat."
                 .into()
+        }
+        ("dev.rustclient.statusbars", "enableRestorationBars") => {
+            "The restore previews need item and food healing data, which the client does not keep yet.".into()
         }
         ("dev.rustclient.stretchedmode", "increasedPerformance") => {
             "The interface is always sampled nearest-neighbour when stretched, so there is no slower algorithm to turn off."

@@ -8,9 +8,11 @@
 
 mod animsmoothing;
 mod entityhider;
+mod fps;
 mod idlenotifier;
 mod idlenotifier_animations;
 mod roofremoval;
+mod statusbars;
 mod stretchedmode;
 
 use rustclient_plugin_api::{
@@ -119,6 +121,29 @@ const ENTRIES: &[Entry] = &[
             Capability::GameReadNpcs,
         ],
         build: || boxed(entityhider::EntityHider),
+    },
+    Entry {
+        name: "fps",
+        capabilities: &[
+            Capability::UiOverlay,
+            Capability::ClientFrameLimit,
+            Capability::GameReadClient,
+            Capability::GameReadWidgets,
+        ],
+        build: || boxed(fps::Fps),
+    },
+    Entry {
+        name: "statusbars",
+        capabilities: &[
+            Capability::UiOverlay,
+            Capability::GameReadWidgets,
+            Capability::GameReadPlayers,
+            Capability::GameReadNpcs,
+            Capability::GameReadSkills,
+            Capability::GameReadVars,
+            Capability::GameReadClient,
+        ],
+        build: || boxed(statusbars::StatusBars::default()),
     },
     Entry {
         name: "idlenotifier",

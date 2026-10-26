@@ -12,6 +12,25 @@
 use crate::{Rect, UiFrame, UiImageId};
 use rustclient_cache::TitleAssets;
 
+/// Advance width of one line of CP1252 interface text, in logical pixels.
+#[must_use]
+pub fn text_width(assets: &TitleAssets, text: &str) -> f32 {
+    if assets.fonts.is_empty() {
+        return 0.;
+    }
+    let font = &assets.fonts[1.min(assets.fonts.len() - 1)];
+    text.chars()
+        .map(|ch| {
+            let byte = rustclient_cache::cp1252(ch).unwrap_or(b'?');
+            if font.glyphs.get(usize::from(byte)).is_some() {
+                font.advances.get(usize::from(byte)).copied().unwrap_or(7) as f32
+            } else {
+                7.0
+            }
+        })
+        .sum()
+}
+
 /// Draw one line of CP1252 interface text at logical `(x, y)`.
 pub fn draw_text(
     frame: &mut UiFrame,

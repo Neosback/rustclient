@@ -147,3 +147,34 @@ Known differences:
   rows light up with no plugin change.
 - `ClientSnapshot::run_energy` is in hundredths of a percent (0..=10000), as `Client.getEnergy`; its earlier doc comment
   said tenths and was corrected with this port.
+
+## fps
+
+Sources: `plugins/fps/{FpsPlugin,FpsConfig,FpsOverlay,FpsDrawListener}.java`.
+
+| Source | Rust owner | Implemented | Verified |
+| --- | --- | --- | --- |
+| `FpsOverlay`: text right aligned to the canvas edge (minus the logout button when shown), black shadow +1,+1, red when the limit is enforced, yellow otherwise | `first-party-plugins::fps` -> `OverlayCommand::Text { align: Right }`; `rustclient_game_ui::text_width` for alignment | yes | unit: placement, colours; not seen on screen |
+| `limitFps` / `limitFpsUnfocused` and the focus switch | `enforced_limit` over `ClientSnapshot` focus | yes | unit |
+| `FpsDrawListener` sleep to hold a target rate | `PluginOutput::frame_limit` (capability `client.frame_limit`, lowest limit across plugins wins) -> `apps/native/src/frame_limit.rs` declines frames sooner than one interval | yes, as pacing rather than sleeping | unit: spacing, skipped frames keep the schedule, lifting the limit; host merge test |
+
+Known differences:
+
+- Redraws are requested once per 20 ms game cycle plus input, so a limit above 50 fps has no effect.
+- The host clamps a requested limit to `MIN_FRAME_LIMIT..=MAX_FRAME_LIMIT`.
+
+## statusbars
+
+Sources: `plugins/statusbars/{StatusBarsPlugin,StatusBarsConfig,StatusBarsOverlay}.java` and the `Viewport` and `BarRenderer` helpers.
+
+| Source | Rust owner | Implemented | Verified |
+| --- | --- | --- | --- |
+| Viewport detection and bar anchoring for fixed, resizable classic and resizable bottom-line layouts | `first-party-plugins::statusbars` (`Viewport`, `offsets`) | yes, positions follow `StatusBarsOverlay` | unit: each layout |
+| Bar height scaling, fill, counter text, skill icon, `barWidth` (3..=40) | `bar_height`, `render_bar`, `bar_for` -> `OverlayCommand::{Rect, Text, Sprite}` | yes | unit |
+| Left and right bar modes | `BarMode` (hitpoints, prayer, run energy, special attack, ...) | yes | unit |
+| `hideAfterCombatDelay` | `check()` against `last_combat_tick` | partly: attacking an NPC with an Attack action and PvP-area interaction are read from the snapshot, but the interact target is not retained by `GameState`, so this stays dormant | unit with a synthetic target |
+| `enableRestorationBars` previews | none | no (needs item and food healing data) | - |
+
+Known differences:
+
+- Sprites are drawn through the same widget-sprite worker as interface sprites; a sprite that is not decoded yet is skipped for that frame.

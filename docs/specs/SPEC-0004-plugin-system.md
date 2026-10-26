@@ -39,7 +39,7 @@ owning subsystem. Plugins never call the renderer or mutate `GameState`.
 
 **Capabilities.** Each query, event class and output kind maps to one capability and is checked at the host boundary:
 `game.read.{players,npcs,inventory,widgets,vars,chat,skills,client}`, `ui.{overlay,menu.swap,entities.hide,
-sprite.override,infobox,viewport}`, `scene.control`, `camera.control`, `client.notify`. `ui.panel`, `ui.menu.decorate`,
+sprite.override,infobox,viewport}`, `scene.control`, `camera.control`, `client.notify`, `client.frame_limit`. `ui.panel`, `ui.menu.decorate`,
 `network.http`, `interaction.request` are reserved: no 0.2 operation exists for them, so granting them changes nothing.
 The first denial of each capability per plugin is logged; repeats are silent.
 
@@ -48,6 +48,11 @@ The first denial of each capability per plugin is logged; repeats are silent.
 (the source plugin's interpolation filter); `roof_areas` lists world-tile blocks forced roofed (the
 source plugin's area overrides). The scene crate owns roof regions (`RoofVolumes`): the host never exposes roof ids.
 `ClientSnapshot::scene_base/scene_size` are the loaded scene's south-west tile and extent (`Scene.getBaseX/Y`).
+
+**Overlay and pacing output.** Overlay `Text` and `Sprite` commands carry a `HorizontalAlign` (left, center, right) resolved by the
+shell with the font metrics, so a plugin never measures text. `Sprite` names a cache sprite; the shell requests it from the
+same worker that decodes widget sprites and skips it until it is loaded. `frame_limit` (capability `client.frame_limit`) asks the
+shell to present at most that many frames per second; the host clamps it and the lowest limit among plugins applies.
 
 **First-party plugins and configuration.** In-tree ports live in `crates/first-party-plugins` (one module each) and
 implement `NativePlugin`, which adapts to `PluginInstance`. Their settings are schema-driven like the required services:

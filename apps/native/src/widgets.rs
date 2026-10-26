@@ -68,13 +68,18 @@ impl NativeApp {
         let Some(scripts) = &self.scripts else {
             return;
         };
-        let request = match scripts.visual_request(&self.state) {
+        let mut request = match scripts.visual_request(&self.state) {
             Ok(r) => r,
             Err(e) => {
                 eprintln!("widget dependencies: {e}");
                 return;
             }
         };
+        request.sprites.extend(
+            self.plugins
+                .requested_sprites()
+                .map(rustclient_model::SpriteId::new),
+        );
         // Everything loaded stays loaded (the cache is immutable); only new visuals are decoded.
         let request = request.missing_from(&self.widget_requested);
         if request.is_empty() {

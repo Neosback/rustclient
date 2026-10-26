@@ -429,6 +429,7 @@ fn full_output() -> PluginOutput {
                 x: 1,
                 y: 2,
                 argb: 0xFFFF_FFFF,
+                align: rustclient_plugin_api::HorizontalAlign::Left,
             },
         }],
         notifications: vec![
@@ -509,6 +510,7 @@ fn full_output() -> PluginOutput {
             scaling: StretchScaling::Linear,
         }),
         smoothing_denied: (0..5000).collect(),
+        frame_limit: Some(100_000),
     }
 }
 
@@ -536,6 +538,7 @@ fn outputs_without_grants_are_stripped_and_reported() {
         Capability::CameraControl,
         Capability::SceneControl,
         Capability::UiViewport,
+        Capability::ClientFrameLimit,
     ] {
         assert!(
             denied
@@ -562,6 +565,7 @@ fn granted_outputs_are_bounded_and_clamped() {
             Capability::CameraControl,
             Capability::SceneControl,
             Capability::UiViewport,
+            Capability::ClientFrameLimit,
         ],
         full_output(),
         false,
@@ -616,6 +620,35 @@ fn granted_outputs_are_bounded_and_clamped() {
         merged.smoothing_denied.len(),
         rustclient_plugin_api::limits::SMOOTHING_DENIED
     );
+    assert_eq!(
+        merged.frame_limit,
+        Some(rustclient_plugin_api::limits::MAX_FRAME_LIMIT)
+    );
+}
+
+#[test]
+fn the_lowest_frame_limit_among_plugins_applies() {
+    let game = snapshot();
+    let mut harness = Harness::new();
+    let limit = |fps| PluginOutput {
+        frame_limit: Some(fps),
+        ..PluginOutput::default()
+    };
+    harness.add(
+        "dev.rustclient.a",
+        &[Capability::ClientFrameLimit],
+        limit(60),
+        false,
+    );
+    harness.add(
+        "dev.rustclient.b",
+        &[Capability::ClientFrameLimit],
+        limit(0),
+        false,
+    );
+    harness.add("dev.rustclient.c", &[], limit(1), false);
+    // The second asks for zero, which clamps up to one frame per second; the third has no grant.
+    assert_eq!(harness.output(&game).frame_limit, Some(1));
 }
 
 #[test]

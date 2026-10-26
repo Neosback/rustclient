@@ -21,6 +21,18 @@ pub enum OverlayLayer {
     Top,
 }
 
+/// Which horizontal edge of a text or sprite its `x` names.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum HorizontalAlign {
+    /// `x` is the left edge.
+    #[default]
+    Left,
+    /// `x` is the middle of the text.
+    Center,
+    /// `x` is the right edge.
+    Right,
+}
+
 /// One drawing primitive. Coordinates are canvas pixels unless anchored to the world.
 #[derive(Debug, Clone, PartialEq)]
 pub enum OverlayCommand {
@@ -28,12 +40,25 @@ pub enum OverlayCommand {
     Text {
         /// Text, at most 256 bytes.
         text: String,
-        /// Left edge.
+        /// Edge named by `align`.
         x: i32,
         /// Baseline y.
         y: i32,
         /// Packed `AARRGGBB`.
         argb: u32,
+        /// Which edge `x` names; the host measures the text, the plugin cannot.
+        align: HorizontalAlign,
+    },
+    /// An interface sprite from the cache, drawn at its stored pixel size.
+    Sprite {
+        /// Sprite archive id.
+        sprite: u32,
+        /// Edge of the sprite named by `align`.
+        x: i32,
+        /// Top edge of the sprite.
+        y: i32,
+        /// Which edge `x` names; the host knows the sprite's size, the plugin does not.
+        align: HorizontalAlign,
     },
     /// A rectangle.
     Rect {
@@ -339,6 +364,8 @@ pub struct PluginOutput {
     /// Animation ids that stay on whole frames while [`SceneFlags::smoothing`] is active
     /// (`Client.setAnimationInterpolationFilter` rejecting them).
     pub smoothing_denied: Vec<u32>,
+    /// Frames per second the client may present at most; the lowest request among plugins applies.
+    pub frame_limit: Option<u32>,
 }
 
 impl PluginOutput {
@@ -369,6 +396,10 @@ pub mod limits {
     pub const SMOOTHING_DENIED: usize = 4096;
     /// Camera commands accepted per plugin per update.
     pub const CAMERA_COMMANDS: usize = 8;
+    /// Lowest accepted frame limit.
+    pub const MIN_FRAME_LIMIT: u32 = 1;
+    /// Highest accepted frame limit.
+    pub const MAX_FRAME_LIMIT: u32 = 360;
     /// Longest overlay/notification text in bytes.
     pub const TEXT_BYTES: usize = 256;
     /// Largest sprite edge in pixels.

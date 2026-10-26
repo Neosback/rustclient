@@ -2,6 +2,7 @@
 mod actor_overlays;
 mod camera_input;
 mod capture;
+mod frame_limit;
 mod input_activity;
 mod interaction;
 mod network;
@@ -108,6 +109,7 @@ struct NativeApp {
     occluded: bool,
     window_focused: bool,
     input_activity: input_activity::InputActivity,
+    frame_limit: frame_limit::FrameLimit,
     scripts: Option<rustclient_application::scripts::ClientScripts<DirectoryBlobs>>,
     widget_assets: rustclient_game_ui::widget_visuals::WidgetVisualAssets,
     widget_requested: rustclient_application::scripts::WidgetAssetRequest,
@@ -185,6 +187,15 @@ impl NativeApp {
             },
         };
         self.plugins.update(&self.state, &inputs);
+        // Sprites a plugin draws are decoded by the same worker as widget sprites.
+        if self.plugins.requested_sprites().any(|sprite| {
+            !self
+                .widget_requested
+                .sprites
+                .contains(&rustclient_model::SpriteId::new(sprite))
+        }) {
+            self.request_widget_assets();
+        }
         let raised = self.plugins.take_notifications();
         if let (false, Some(window)) = (raised.is_empty(), &self.window) {
             notifications::deliver(window, self.window_focused, &raised);
@@ -354,6 +365,7 @@ impl NativeApp {
             occluded: false,
             window_focused: true,
             input_activity: input_activity::InputActivity::new(),
+            frame_limit: frame_limit::FrameLimit::default(),
             scripts: None,
             widget_assets: rustclient_game_ui::widget_visuals::WidgetVisualAssets::default(),
             widget_requested: rustclient_application::scripts::WidgetAssetRequest::default(),
@@ -620,6 +632,13 @@ impl NativeApp {
         if self.occluded {
             return;
         }
+        // A plugin's frame limit declines a frame that would come too soon after the last one.
+        if !self
+            .frame_limit
+            .allow(self.plugins.output().frame_limit, Instant::now())
+        {
+            return;
+        }
         let stretch = self
             .stretch_layout(&window)
             .map(|layout| layout.canvas(window.scale_factor()));
@@ -679,7 +698,8 @@ impl NativeApp {
                     .project(assets, &self.widget_assets.font_icons, &mut self.frame);
                 self.widget_menu
                     .project(assets, &self.widget_assets.font_icons, &mut self.frame);
-                self.plugins.overlay(&self.state, assets, &mut self.frame);
+                self.plugins
+                    .overlay(&self.state, assets, &self.widget_assets, &mut self.frame);
                 if self.state.loaded_scene().is_none() || self.scene.loading {
                     rustclient_game_ui::shadowed_text(
                         &mut self.frame,

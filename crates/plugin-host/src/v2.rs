@@ -190,6 +190,8 @@ pub struct HostOutput {
     pub stretch: Option<Stretch>,
     /// Animation ids no plugin wants smoothed; sorted and unique.
     pub smoothing_denied: Vec<u32>,
+    /// The lowest frame limit any plugin asked for.
+    pub frame_limit: Option<u32>,
 }
 
 impl HostOutput {
@@ -233,6 +235,10 @@ impl HostOutput {
         if output.stretch.is_some() {
             self.stretch = output.stretch;
         }
+        self.frame_limit = match (self.frame_limit, output.frame_limit) {
+            (Some(have), Some(ask)) => Some(have.min(ask)),
+            (have, ask) => have.or(ask),
+        };
     }
 
     fn finish(&mut self) {
@@ -273,6 +279,44 @@ fn bound_camera(commands: Vec<CameraCommand>) -> Vec<CameraCommand> {
             other => Some(other),
         })
         .collect()
+}
+
+/// The scene, viewport and frame-pacing part of [`validate`].
+fn validate_scene(refuse: &mut impl FnMut(Capability, bool) -> bool, output: &mut PluginOutput) {
+    if refuse(Capability::SceneControl, output.scene.is_some()) {
+        output.scene = None;
+    }
+    if refuse(Capability::SceneControl, !output.roof_areas.is_empty()) {
+        output.roof_areas.clear();
+    }
+    if refuse(
+        Capability::SceneControl,
+        !output.smoothing_denied.is_empty(),
+    ) {
+        output.smoothing_denied.clear();
+    }
+    output.smoothing_denied.truncate(limits::SMOOTHING_DENIED);
+    output.roof_areas.truncate(limits::ROOF_AREAS);
+    output.roof_areas.retain(|area| {
+        area.min.0 <= area.max.0
+            && area.min.1 <= area.max.1
+            && area.planes.0 <= area.planes.1
+            && area.planes.1 <= 3
+    });
+    if refuse(Capability::UiViewport, output.stretch.is_some()) {
+        output.stretch = None;
+    }
+    if let Some(stretch) = &mut output.stretch {
+        stretch.scale_percent = stretch
+            .scale_percent
+            .clamp(Stretch::MIN_SCALE_PERCENT, Stretch::MAX_SCALE_PERCENT);
+    }
+    if refuse(Capability::ClientFrameLimit, output.frame_limit.is_some()) {
+        output.frame_limit = None;
+    }
+    if let Some(limit) = &mut output.frame_limit {
+        *limit = (*limit).clamp(limits::MIN_FRAME_LIMIT, limits::MAX_FRAME_LIMIT);
+    }
 }
 
 /// Bound one plugin's output and strip everything its grants do not cover.
@@ -360,34 +404,7 @@ pub(crate) fn validate(
     }
     output.camera = bound_camera(output.camera);
 
-    if refuse(Capability::SceneControl, output.scene.is_some()) {
-        output.scene = None;
-    }
-    if refuse(Capability::SceneControl, !output.roof_areas.is_empty()) {
-        output.roof_areas.clear();
-    }
-    if refuse(
-        Capability::SceneControl,
-        !output.smoothing_denied.is_empty(),
-    ) {
-        output.smoothing_denied.clear();
-    }
-    output.smoothing_denied.truncate(limits::SMOOTHING_DENIED);
-    output.roof_areas.truncate(limits::ROOF_AREAS);
-    output.roof_areas.retain(|area| {
-        area.min.0 <= area.max.0
-            && area.min.1 <= area.max.1
-            && area.planes.0 <= area.planes.1
-            && area.planes.1 <= 3
-    });
-    if refuse(Capability::UiViewport, output.stretch.is_some()) {
-        output.stretch = None;
-    }
-    if let Some(stretch) = &mut output.stretch {
-        stretch.scale_percent = stretch
-            .scale_percent
-            .clamp(Stretch::MIN_SCALE_PERCENT, Stretch::MAX_SCALE_PERCENT);
-    }
+    validate_scene(&mut refuse, &mut output);
     output
 }
 

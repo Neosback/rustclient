@@ -16,7 +16,7 @@ pub use controller::{TitlePreferences, TitleUi};
 pub use draw::{Quad, Rect, StretchedCanvas, TitleViewport, UiFrame, UiImageId};
 pub mod stretch;
 pub use flame::Flames;
-pub use text::draw_text;
+pub use text::{draw_text, text_width};
 
 /// Draw one line of shadowed menu-font text at a baseline, returning its advance in pixels.
 pub fn shadowed_text(

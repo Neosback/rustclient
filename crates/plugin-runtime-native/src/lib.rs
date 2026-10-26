@@ -55,6 +55,7 @@ mod bindings_v2 {
             roof_areas: Vec::new(),
             stretch: None,
             smoothing_denied: Vec::new(),
+            frame_limit: None,
         };
         assert_eq!((point.x, point.plane), (3222, 0));
         assert!(matches!(event, GameEvent::AnimationChanged(_)));
