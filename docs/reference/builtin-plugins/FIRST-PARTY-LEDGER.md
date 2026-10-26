@@ -11,6 +11,24 @@ Platform context: plugins run on plugin API 0.2 (ADR-0006) in `crates/first-part
 The settings sidebar lists each plugin with its own switch; the switch is the schema's `enabled` setting
 (`PluginDescriptor.enabledByDefault`).
 
+## Port status
+
+| Plugin | Status | What is missing |
+| --- | --- | --- |
+| roofremoval, animsmoothing, stretchedmode | ported | see each section |
+| entityhider | ported | friend/clan/party/ignore lists, pets, dead NPCs, boats, projectiles |
+| fps | ported | frame limits above 50 have no effect |
+| statusbars | ported | restoration bars; hide-after-combat is dormant without the interact target |
+| idlenotifier | ported | interaction idle and the combat branch are dormant without interact target, spot animations and hitsplats |
+| camera | partly | zoom limits and scroll zoom, shake, mouse remaps |
+| npchighlight | partly | menu tagging, outline, dead/pet filters, respawn timer, minimap names |
+| playerindicators | partly | relationship lists (party, friends, chat, clan, team), rank icons, coloured menu, minimap names |
+| interfacestyles | partly | widget overrides (2005 side stones), HD health bars, menu options, cross sprites, always-stack |
+| menuentryswapper | not ported | the right-click menu is not exposed to plugins (entries, `PostMenuSort`, edits) |
+| devtools | not ported | widget, variable and script views are not exposed to plugins |
+
+No row below was compared against the live reference client; "verified" names automated tests only.
+
 ## roofremoval
 
 Sources: `plugins/roofremoval/{RoofRemovalPlugin,RoofRemovalConfig,RoofRemovalConfigOverride}.java`,

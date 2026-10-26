@@ -707,6 +707,14 @@ fn pending_reason(plugin: &str, key: &str) -> String {
         ("dev.rustclient.gpu", "removeVertexSnapping" | "numThreads") => {
             "Belongs to RuneLite's zone uploader, which this renderer does not have yet.".into()
         }
+        ("dev.rustclient.menuentryswapper", _) => {
+            "Not ported: swaps act on the right-click menu's entries, which the client does not expose to plugins yet."
+                .into()
+        }
+        ("dev.rustclient.devtools", _) => {
+            "Not ported: the inspectors need widget, variable and script views the client does not expose to plugins yet."
+                .into()
+        }
         _ => "Effect port pending; source default shown".into(),
     }
 }
