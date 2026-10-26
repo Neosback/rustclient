@@ -3760,6 +3760,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustclient-plugin-bridge"
+version = "0.0.0"
+dependencies = [
+ "rustclient-cache",
+ "rustclient-game-state",
+ "rustclient-game-ui",
+ "rustclient-model",
+ "rustclient-plugin-api",
+ "rustclient-protocol",
+]
+
+[[package]]
 name = "rustclient-plugin-host"
 version = "0.0.0"
 dependencies = [

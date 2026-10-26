@@ -21,6 +21,41 @@ Acceptance includes required-service enforcement, source-setting inventory,
 persistence/recovery, renderer reconstruction, and native/browser control behavior.
 Source inventory or stored settings alone do not establish implemented effects.
 
+## Plugin API 0.2 (approved 2026-10-25, ADR-0006)
+
+API 0.2 is Rust-native and RuneLite-readable: names, events and record shapes follow the RuneLite API so ported plugin
+code reads naturally, while plugins observe immutable projections and return declarative output instead of holding
+mutable client objects. Compatibility: `PluginApiVersion::current()` is `0.2`; 0.1 packages load unchanged.
+
+**Observation.** The host builds one `GameSnapshot` per update from `GameState` and immutable cache definitions
+(players, NPCs, skills, varps/varbits, containers, widgets with resolved bounds, chat, client facts). `GameEvent`s are
+derived by diffing consecutive projections in a fixed order: lifecycle/map, timing, players, NPCs, variables, stats,
+containers, widgets, chat. The projector (`rustclient-plugin-bridge`) retains only the previous projection.
+
+**Output.** `PluginOutput` is level-triggered per update: overlay primitives (layered), notifications, info boxes, menu
+edits, entity visibility, sprite overrides, camera commands, scene flags, stretch. The host validates every item
+against grants and bounds (`plugin_api::limits`), merges across plugins in load order and passes the result to the
+owning subsystem. Plugins never call the renderer or mutate `GameState`.
+
+**Capabilities.** Each query, event class and output kind maps to one capability and is checked at the host boundary:
+`game.read.{players,npcs,inventory,widgets,vars,chat,skills,client}`, `ui.{overlay,menu.swap,entities.hide,
+sprite.override,infobox,viewport}`, `scene.control`, `camera.control`, `client.notify`. `ui.panel`, `ui.menu.decorate`,
+`network.http`, `interaction.request` are reserved: no 0.2 operation exists for them, so granting them changes nothing.
+The first denial of each capability per plugin is logged; repeats are silent.
+
+**Facts the client does not retain yet** (spot animations, interact target, hitsplats, health bars, menu model) appear
+as absent fields/events, never guessed; each is a semantic-owner extension tracked in the plugin ledger.
+
+**Failure behavior.** A faulting plugin follows the existing isolation policy; required services are never disabled.
+Malformed output items (oversized sprites, non-finite camera speed, inverted zoom limits) are dropped individually.
+
+**WIT.** `wit/rustclient/plugin-0.2` mirrors these records for cross-language plugins. The wasm runtime still
+instantiates the `0.1.0` world; binding `0.2.0` is separate work. In-tree plugins implement `PluginInstance` directly.
+
+**Acceptance.** Denial tests for every gated query and output kind; event filtering by grant; deterministic event order;
+0.1 manifests load; `GameState` operations project to the documented snapshot fields; faults never disable required
+services.
+
 ## Goal
 
 Provide a powerful RuneLite-like developer experience while keeping plugins cross-platform, versionable, observable, sandboxable, and decoupled from Rust compiler ABI details.

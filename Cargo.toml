@@ -20,6 +20,7 @@ members = [
     "crates/platform-web",
     "crates/plugin-api",
     "crates/plugin-host",
+    "crates/plugin-bridge",
     "crates/plugin-runtime-native",
     "crates/plugin-runtime-web",
     "plugin-sdk/rust",

@@ -1,0 +1,269 @@
+// RustClient external plugin ABI, version 0.2.0 (ADR-0006, SPEC-0004).
+//
+// Mirrors the Rust records in `rustclient-plugin-api`: immutable snapshots and events in, declarative output
+// back. Plugins hold no live client objects; every host import is capability-checked by the host and every output
+// item is bounded and validated before it reaches an owning subsystem. Names follow the RuneLite API where one exists.
+//
+// The wasm runtime still instantiates the 0.1.0 world in `../plugin`; this contract is parse- and bindgen-checked
+// but not yet bound by a runtime. In-tree plugins implement the Rust trait directly.
+package rustclient:plugin@0.2.0;
+
+interface types {
+    record world-point { x: s32, y: s32, plane: u8 }
+    record rect { x: s32, y: s32, width: s32, height: s32 }
+
+    variant actor-ref { player(u16), npc(u16) }
+
+    record hitsplat { kind: u16, amount: s32, cycle: u32 }
+    record healthbar { kind: u16, amount: option<u16> }
+
+    record actor-state {
+        index: u16,
+        %world: world-point,
+        orientation: u16,
+        animation: option<u32>,
+        pose: option<u32>,
+        graphic: option<u32>,
+        overhead-text: option<string>,
+        interacting: option<actor-ref>,
+        hitsplats: list<hitsplat>,
+        healthbars: list<healthbar>,
+    }
+
+    record player {
+        actor: actor-state,
+        name: string,
+        combat-level: u8,
+        skill-level: u16,
+        is-local: bool,
+        hidden: bool,
+    }
+
+    record npc {
+        actor: actor-state,
+        id: u32,
+        name: option<string>,
+        combat-level: u8,
+        width: u8,
+        height: u8,
+        actions: list<option<string>>,
+    }
+
+    enum skill {
+        attack, defence, strength, hitpoints, ranged, prayer, magic, cooking, woodcutting, fletching, fishing,
+        firemaking, crafting, smithing, mining, herblore, agility, thieving, slayer, farming, runecraft, hunter,
+        construction,
+    }
+
+    record skill-level { real: u8, boosted: u8, experience: s32 }
+    record item-stack { id: u32, quantity: u32 }
+
+    record widget {
+        id: u32,
+        child-index: s32,
+        bounds: rect,
+        clip: rect,
+        text: option<string>,
+        sprite: option<u32>,
+        item: option<tuple<u32, u32>>,
+        hidden: bool,
+        actions: list<string>,
+    }
+
+    variant chat-kind { game, public, private, channel, other(u16) }
+    record chat-line { id: u32, kind: chat-kind, name: string, text: string }
+
+    enum game-state { login-screen, logging-in, loading, logged-in, connection-lost }
+
+    record camera { x: s32, y: s32, z: s32, pitch: s32, yaw: s32, zoom: s32 }
+
+    record client-snapshot {
+        state: game-state,
+        tick: u64,
+        cycle: u64,
+        fps: u32,
+        canvas-width: u32,
+        canvas-height: u32,
+        viewport: rect,
+        resizable: bool,
+        focused: bool,
+        camera: camera,
+        scene-base-x: s32,
+        scene-base-y: s32,
+        run-energy: u16,
+        weight: s16,
+    }
+
+    variant menu-kind {
+        walk,
+        cancel,
+        npc-option(u8),
+        player-option(u8),
+        object-option(u8),
+        ground-item-option(u8),
+        widget-option(u8),
+        other(u16),
+    }
+
+    record menu-entry {
+        %option: string,
+        target: string,
+        kind: menu-kind,
+        identifier: s32,
+        param0: s32,
+        param1: s32,
+        deprioritized: bool,
+    }
+
+    variant menu-edit {
+        move-to-top(u32),
+        remove(u32),
+        deprioritize(u32),
+        set-option(tuple<u32, string>),
+    }
+
+    enum var-kind { varp, varbit }
+
+    variant game-event {
+        game-state-changed(game-state),
+        client-tick,
+        game-tick(u64),
+        pre-map-load,
+        player-spawned(player),
+        player-despawned(player),
+        player-changed(u16),
+        npc-spawned(npc),
+        npc-despawned(npc),
+        npc-changed(tuple<u16, u32>),
+        animation-changed(tuple<actor-ref, option<u32>>),
+        graphic-changed(tuple<actor-ref, option<u32>>),
+        interacting-changed(tuple<actor-ref, option<actor-ref>>),
+        hitsplat-applied(tuple<actor-ref, hitsplat>),
+        overhead-text-changed(tuple<actor-ref, option<string>>),
+        varbit-changed(tuple<var-kind, u32, s32>),
+        stat-changed(tuple<skill, skill-level>),
+        item-container-changed(u32),
+        widget-loaded(u16),
+        widget-closed(u16),
+        chat-message(chat-line),
+        resizeable-changed(bool),
+        focus-changed(bool),
+        menu-entry-added(menu-entry),
+        menu-opened(list<menu-entry>),
+        post-menu-sort(list<menu-entry>),
+        menu-option-clicked(menu-entry),
+        script-post-fired(u32),
+    }
+
+    enum overlay-layer { scene, above-scene, top }
+
+    variant overlay-command {
+        text(tuple<string, s32, s32, u32>),
+        rect(tuple<rect, u32, bool>),
+        line(tuple<tuple<s32, s32>, tuple<s32, s32>, u32>),
+        tile(tuple<world-point, u32, u32>),
+        actor-hull(tuple<actor-ref, u32, u32>),
+        actor-text(tuple<actor-ref, string, s32, u32>),
+        minimap-dot(tuple<world-point, u32>),
+    }
+
+    record layered-overlay { layer: overlay-layer, command: overlay-command }
+
+    enum notification-kind { standard, flash }
+    record notification { title: string, body: string, kind: notification-kind }
+    record info-box { id: string, text: string, argb: u32, tooltip: string }
+
+    record sprite-override { sprite: u32, width: u16, height: u16, rgba: list<u8> }
+
+    variant camera-command {
+        yaw-target(s32),
+        pitch-target(s32),
+        speed(f32),
+        zoom-target(s32),
+        zoom-limits(tuple<s32, s32>),
+        invert-yaw(bool),
+        invert-pitch(bool),
+    }
+
+    record entity-visibility {
+        hidden: list<actor-ref>,
+        hide-projectiles: bool,
+        hide-graphics: bool,
+    }
+
+    enum roof-removal { off, all, above-player }
+
+    record scene-flags {
+        roofs: roof-removal,
+        // Bit set: 1 players, 2 npcs, 4 objects, 8 widgets.
+        smoothing: u8,
+    }
+
+    enum stretch-scaling { nearest, linear }
+    record stretch { keep-aspect-ratio: bool, scale-percent: u16, scaling: stretch-scaling }
+
+    record plugin-output {
+        overlay: list<layered-overlay>,
+        notifications: list<notification>,
+        info-boxes: list<info-box>,
+        menu-edits: list<menu-edit>,
+        entities: option<entity-visibility>,
+        sprite-overrides: list<sprite-override>,
+        camera: list<camera-command>,
+        scene: option<scene-flags>,
+        stretch: option<stretch>,
+    }
+
+    enum log-level { trace, debug, info, warn, error }
+}
+
+/// Host services. Each call below the log is gated by the capability named in its doc.
+interface host {
+    use types.{player, npc, skill-level, item-stack, widget, chat-line, client-snapshot, log-level};
+
+    /// Always permitted; rate-limited by the host.
+    log: func(level: log-level, message: string);
+
+    /// Requires `game.read.client`.
+    client: func() -> client-snapshot;
+    /// Requires `game.read.players`.
+    players: func() -> list<player>;
+    /// Requires `game.read.players`.
+    local-player: func() -> option<player>;
+    /// Requires `game.read.npcs`.
+    npcs: func() -> list<npc>;
+    /// Requires `game.read.skills`.
+    skills: func() -> list<skill-level>;
+    /// Requires `game.read.vars`.
+    varp: func(id: u32) -> s32;
+    /// Requires `game.read.vars`; none for an unknown varbit.
+    varbit: func(id: u32) -> option<s32>;
+    /// Requires `game.read.inventory`.
+    container: func(id: u32) -> option<list<option<item-stack>>>;
+    /// Requires `game.read.widgets`.
+    widgets: func() -> list<widget>;
+    /// Requires `game.read.chat`.
+    chat: func() -> list<chat-line>;
+
+    /// Requires `storage.plugin`.
+    config-get: func(key: string) -> option<string>;
+    /// Requires `storage.plugin`.
+    config-set: func(key: string, value: string);
+}
+
+interface guest {
+    use types.{game-event, plugin-output};
+
+    init: func();
+
+    /// Events already filtered to the plugin's grants, in committed order.
+    on-game-events: func(events: list<game-event>);
+
+    /// Declarative output for this update; the host validates and bounds every item.
+    output: func() -> plugin-output;
+}
+
+world plugin {
+    import host;
+    export guest;
+}

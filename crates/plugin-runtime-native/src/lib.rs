@@ -25,6 +25,41 @@ mod bindings {
 
 use bindings::rustclient::plugin::host as wit_host;
 
+/// The 0.2.0 contract is checked at compile time but not instantiated yet: the runtime still binds the
+/// 0.1.0 world until the host import and export adapters for 0.2 land (ADR-0006).
+#[cfg(test)]
+mod bindings_v2 {
+    wasmtime::component::bindgen!({
+        path: "../../wit/rustclient/plugin-0.2/world.wit",
+        world: "plugin",
+    });
+
+    #[test]
+    fn wit_0_2_generates_records_that_mirror_the_api_crate() {
+        use rustclient::plugin::types::{ActorRef, GameEvent, PluginOutput, WorldPoint};
+        let point = WorldPoint {
+            x: 3222,
+            y: 3218,
+            plane: 0,
+        };
+        let event = GameEvent::AnimationChanged((ActorRef::Npc(5), Some(422)));
+        let output = PluginOutput {
+            overlay: Vec::new(),
+            notifications: Vec::new(),
+            info_boxes: Vec::new(),
+            menu_edits: Vec::new(),
+            entities: None,
+            sprite_overrides: Vec::new(),
+            camera: Vec::new(),
+            scene: None,
+            stretch: None,
+        };
+        assert_eq!((point.x, point.plane), (3222, 0));
+        assert!(matches!(event, GameEvent::AnimationChanged(_)));
+        assert!(output.entities.is_none());
+    }
+}
+
 /// Fuel granted to one plugin entry point; a runaway plugin traps instead of hanging the client.
 const CALL_FUEL: u64 = 20_000_000;
 

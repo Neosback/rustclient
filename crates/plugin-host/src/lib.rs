@@ -11,12 +11,15 @@
 
 pub mod configuration;
 pub mod required;
+mod v2;
+
+pub use v2::{CapabilityDenied, HostOutput, SnapshotView};
 
 use rustclient_plugin_api::{
-    Capability, CapabilitySet, LogLevel, OverlayLine, PlayerPosition, PluginApiVersion,
-    PluginEvent, PluginId, PluginManifest,
+    Capability, CapabilitySet, GameEvent, GameSnapshot, LogLevel, OverlayLine, PlayerPosition,
+    PluginApiVersion, PluginEvent, PluginId, PluginManifest, PluginOutput,
 };
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 /// Plugin-local persisted key/value storage, namespaced by plugin identity.
 ///
@@ -101,6 +104,12 @@ pub trait HostView {
     fn player_position(&self) -> Option<PlayerPosition>;
     /// Current committed gameplay tick.
     fn tick(&self) -> u64;
+    /// Consistent snapshot of the committed game (API 0.2); `None` for 0.1-only views.
+    ///
+    /// Reads through this must go via [`PluginCall`] accessors, which enforce grants.
+    fn game(&self) -> Option<&GameSnapshot> {
+        None
+    }
 }
 
 /// A fixed view snapshot, used by probes and tests.
@@ -180,6 +189,8 @@ pub struct PluginCall<'a> {
     pub storage: &'a mut dyn PluginStorage,
     /// Diagnostic sink.
     pub logs: &'a mut dyn LogSink,
+    /// Capabilities already reported as denied, so diagnostics are not repeated every call.
+    denied: &'a mut BTreeSet<Capability>,
 }
 
 impl PluginCall<'_> {
@@ -213,6 +224,30 @@ pub trait PluginInstance {
     /// # Errors
     /// Runtime or contract failures described by [`PluginFault`].
     fn overlay(&mut self, call: &mut PluginCall<'_>) -> Result<Vec<OverlayLine>, PluginFault>;
+
+    /// Receive typed gameplay events (API 0.2), already filtered to the plugin's grants.
+    ///
+    /// The default ignores them, so 0.1 plugins are unaffected.
+    ///
+    /// # Errors
+    /// Runtime or contract failures described by [`PluginFault`].
+    fn on_game_events(
+        &mut self,
+        call: &mut PluginCall<'_>,
+        events: &[GameEvent],
+    ) -> Result<(), PluginFault> {
+        let _ = (call, events);
+        Ok(())
+    }
+
+    /// Declarative output for this update (API 0.2). The default asks for nothing.
+    ///
+    /// # Errors
+    /// Runtime or contract failures described by [`PluginFault`].
+    fn output(&mut self, call: &mut PluginCall<'_>) -> Result<PluginOutput, PluginFault> {
+        let _ = call;
+        Ok(PluginOutput::default())
+    }
 }
 
 /// Why a plugin call failed.
@@ -268,6 +303,7 @@ pub struct LoadedPlugin {
     faults: u32,
     enabled: bool,
     required: bool,
+    denied: BTreeSet<Capability>,
 }
 
 impl LoadedPlugin {
@@ -348,6 +384,7 @@ impl PluginSet {
             faults: 0,
             enabled: true,
             required: false,
+            denied: BTreeSet::new(),
         });
         Ok(())
     }
@@ -453,7 +490,10 @@ impl PluginSet {
         }
         let result = {
             let LoadedPlugin {
-                manifest, instance, ..
+                manifest,
+                instance,
+                denied,
+                ..
             } = plugin;
             let mut call = PluginCall {
                 plugin: &manifest.id,
@@ -461,6 +501,7 @@ impl PluginSet {
                 view,
                 storage,
                 logs,
+                denied,
             };
             action(instance.as_mut(), &mut call)
         };

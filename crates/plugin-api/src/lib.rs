@@ -11,13 +11,29 @@ use core::fmt;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 
+mod events;
+mod game;
 mod manifest;
+mod menu;
+mod output;
+pub use events::{GameEvent, VarKind};
+pub use game::{
+    ActorRef, ActorState, CameraSnapshot, ChatKind, ChatLine, ClientSnapshot, GameSnapshot,
+    GameStateKind, Healthbar, Hitsplat, ItemStack, NpcSnapshot, PlayerSnapshot, Rect, Skill,
+    SkillLevel, VarbitDef, Vars, WidgetSnapshot, WorldPoint,
+};
 pub use manifest::{ManifestError, PluginManifest};
+pub use menu::{MenuEdit, MenuEntry, MenuKind};
+pub use output::{
+    AnimationSmoothing, CameraCommand, EntityVisibility, InfoBox, LayeredOverlay, Notification,
+    NotificationKind, OverlayCommand, OverlayLayer, PluginOutput, RoofRemoval, SceneFlags,
+    SpriteOverride, Stretch, StretchScaling, limits,
+};
 
 /// Major version of the plugin API implemented by this client.
 pub const API_MAJOR: u16 = 0;
 /// Minor version of the plugin API implemented by this client.
-pub const API_MINOR: u16 = 1;
+pub const API_MINOR: u16 = 2;
 
 /// Logical reference size of the overlay coordinate space in interface pixels.
 pub const OVERLAY_WIDTH: u16 = 765;
@@ -193,11 +209,35 @@ pub enum Capability {
     NetworkHttp,
     /// Request player interactions subject to client policy.
     InteractionRequest,
+    /// Read varps and varbits (API 0.2).
+    GameReadVars,
+    /// Read chat lines (API 0.2).
+    GameReadChat,
+    /// Read skill levels and experience (API 0.2).
+    GameReadSkills,
+    /// Read client facts: fps, canvas, camera, focus, run energy (API 0.2).
+    GameReadClient,
+    /// Read the sorted menu and edit its entries (API 0.2).
+    UiMenuSwap,
+    /// Hide actors and effects from the scene (API 0.2).
+    UiEntitiesHide,
+    /// Replace interface sprites (API 0.2).
+    UiSpriteOverride,
+    /// Show info boxes (API 0.2).
+    UiInfobox,
+    /// Control stretched mode (API 0.2).
+    UiViewport,
+    /// Set roof and animation-smoothing scene flags (API 0.2).
+    SceneControl,
+    /// Move the camera (API 0.2).
+    CameraControl,
+    /// Raise user notifications (API 0.2).
+    ClientNotify,
 }
 
 impl Capability {
     /// Every capability understood by this client, in stable order.
-    pub const ALL: [Self; 10] = [
+    pub const ALL: [Self; 22] = [
         Self::GameReadPlayers,
         Self::GameReadNpcs,
         Self::GameReadInventory,
@@ -208,6 +248,18 @@ impl Capability {
         Self::StoragePlugin,
         Self::NetworkHttp,
         Self::InteractionRequest,
+        Self::GameReadVars,
+        Self::GameReadChat,
+        Self::GameReadSkills,
+        Self::GameReadClient,
+        Self::UiMenuSwap,
+        Self::UiEntitiesHide,
+        Self::UiSpriteOverride,
+        Self::UiInfobox,
+        Self::UiViewport,
+        Self::SceneControl,
+        Self::CameraControl,
+        Self::ClientNotify,
     ];
 
     /// Canonical dotted name used by manifests and diagnostics.
@@ -224,6 +276,18 @@ impl Capability {
             Self::StoragePlugin => "storage.plugin",
             Self::NetworkHttp => "network.http",
             Self::InteractionRequest => "interaction.request",
+            Self::GameReadVars => "game.read.vars",
+            Self::GameReadChat => "game.read.chat",
+            Self::GameReadSkills => "game.read.skills",
+            Self::GameReadClient => "game.read.client",
+            Self::UiMenuSwap => "ui.menu.swap",
+            Self::UiEntitiesHide => "ui.entities.hide",
+            Self::UiSpriteOverride => "ui.sprite.override",
+            Self::UiInfobox => "ui.infobox",
+            Self::UiViewport => "ui.viewport",
+            Self::SceneControl => "scene.control",
+            Self::CameraControl => "camera.control",
+            Self::ClientNotify => "client.notify",
         }
     }
 
@@ -390,9 +454,10 @@ mod tests {
         let host = PluginApiVersion::current();
         assert!(PluginApiVersion::new(0, 0).is_compatible_with(host));
         assert!(PluginApiVersion::new(0, 1).is_compatible_with(host));
-        assert!(!PluginApiVersion::new(0, 2).is_compatible_with(host));
+        assert!(PluginApiVersion::new(0, 2).is_compatible_with(host));
+        assert!(!PluginApiVersion::new(0, 3).is_compatible_with(host));
         assert!(!PluginApiVersion::new(1, 0).is_compatible_with(host));
-        assert_eq!(PluginApiVersion::parse("0.1"), Ok(host));
+        assert_eq!(PluginApiVersion::parse("0.2"), Ok(host));
         assert!(PluginApiVersion::parse("0").is_err());
     }
 

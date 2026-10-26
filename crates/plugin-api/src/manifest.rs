@@ -126,7 +126,10 @@ mod tests {
     fn valid_manifest_parses_with_grants() {
         let manifest = PluginManifest::parse(VALID).expect("manifest should parse");
         assert_eq!(manifest.id.as_str(), "dev.rustclient.hello-overlay");
-        assert_eq!(manifest.plugin_api, PluginApiVersion::current());
+        assert_eq!(manifest.plugin_api, PluginApiVersion::new(0, 1));
+        manifest
+            .check_api(PluginApiVersion::current())
+            .expect("0.1 packages keep loading on a 0.2 host");
         assert!(manifest.capabilities.contains(Capability::UiOverlay));
         assert!(!manifest.capabilities.contains(Capability::NetworkHttp));
         assert_eq!(
@@ -135,6 +138,20 @@ mod tests {
                 .expect("plain entry"),
             PathBuf::from("/plugins/hello/hello_overlay.wasm")
         );
+    }
+
+    #[test]
+    fn api_0_2_capabilities_parse_and_future_minors_are_rejected() {
+        let v2 = VALID
+            .replace("\"plugin-api\": \"0.1\"", "\"plugin-api\": \"0.2\"")
+            .replace("ui.overlay", "ui.entities.hide\", \"game.read.vars");
+        let manifest = PluginManifest::parse(&v2).expect("0.2 manifest parses");
+        assert!(manifest.capabilities.contains(Capability::UiEntitiesHide));
+        assert!(manifest.capabilities.contains(Capability::GameReadVars));
+        manifest
+            .check_api(PluginApiVersion::current())
+            .expect("0.2 package loads");
+        assert!(manifest.check_api(PluginApiVersion::new(0, 1)).is_err());
     }
 
     #[test]
