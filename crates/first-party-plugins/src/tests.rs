@@ -196,3 +196,70 @@ fn stretchedmode_bounds_an_absurd_scaling_factor() {
         Some(Stretch::MAX_SCALE_PERCENT)
     );
 }
+
+fn actor(
+    index: u16,
+    interacting: Option<rustclient_plugin_api::ActorRef>,
+) -> rustclient_plugin_api::ActorState {
+    rustclient_plugin_api::ActorState {
+        index,
+        world: rustclient_plugin_api::WorldPoint {
+            x: 0,
+            y: 0,
+            plane: 0,
+        },
+        orientation: 0,
+        animation: None,
+        pose: None,
+        graphic: None,
+        overhead_text: None,
+        interacting,
+        hitsplats: Vec::new(),
+        healthbars: Vec::new(),
+    }
+}
+
+#[test]
+fn entityhider_hides_other_players_by_default_but_never_the_local_player() {
+    use rustclient_plugin_api::{ActorRef, NpcSnapshot, PlayerSnapshot};
+    let player = |index, name: &str, is_local| PlayerSnapshot {
+        actor: actor(index, None),
+        name: name.into(),
+        combat_level: 3,
+        skill_level: 0,
+        is_local,
+        hidden: false,
+    };
+    let snapshot = GameSnapshot {
+        local_player: Some(1),
+        players: vec![player(1, "Me", true), player(2, "Them", false)],
+        npcs: vec![NpcSnapshot {
+            actor: actor(7, Some(ActorRef::Player(1))),
+            id: 3,
+            name: None,
+            combat_level: 0,
+            size: (1, 1),
+            actions: Vec::new(),
+        }],
+        ..GameSnapshot::default()
+    };
+    let mut harness = Harness::new();
+    assert!(harness.output(&snapshot).entities.hidden.is_empty());
+    harness.enable("entityhider", &[]);
+    let output = harness.output(&snapshot).entities;
+    // Source defaults: `hidePlayers` and `hidePlayers2D` on, everything else off.
+    assert_eq!(output.hidden, [ActorRef::Player(2)]);
+    assert_eq!(output.hidden_overlays, [ActorRef::Player(2)]);
+    assert!(!output.hide_projectiles);
+    harness.enable(
+        "entityhider",
+        &[
+            ("hideAttackers", ConfigValue::Boolean(true)),
+            ("hideProjectiles", ConfigValue::Boolean(true)),
+        ],
+    );
+    let output = harness.output(&snapshot).entities;
+    assert!(output.hidden.contains(&ActorRef::Npc(7)));
+    assert!(output.hidden_overlays.contains(&ActorRef::Npc(7)));
+    assert!(output.hide_projectiles);
+}

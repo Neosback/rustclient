@@ -211,6 +211,28 @@ impl NativeApp {
             parent,
         ))
     }
+    /// Follow the actors plugins ask to hide.
+    fn sync_hidden_actors(&mut self) {
+        use rustclient_plugin_api::ActorRef;
+        let entities = &self.plugins.output().entities;
+        let split = |actors: &[ActorRef]| {
+            let (mut players, mut npcs) = (Vec::new(), Vec::new());
+            for actor in actors {
+                match actor {
+                    ActorRef::Player(index) => players.push(u32::from(*index)),
+                    ActorRef::Npc(index) => npcs.push(u32::from(*index)),
+                }
+            }
+            rustclient_scene::entity_mesh::HiddenActors::new(players, npcs)
+        };
+        let (models, overlays) = (split(&entities.hidden), split(&entities.hidden_overlays));
+        if models != self.scene.hidden_models {
+            self.scene.hidden_models = models;
+        }
+        if overlays != self.scene.hidden_overlays {
+            self.scene.hidden_overlays = overlays;
+        }
+    }
     /// Follow the animation smoothing plugins ask for; poses are rebuilt every cycle anyway.
     fn sync_interpolation(&mut self) {
         let output = self.plugins.output();
@@ -1725,6 +1747,7 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                 self.update_plugins();
                 self.sync_roof_areas();
                 self.sync_interpolation();
+                self.sync_hidden_actors();
             }
             if now >= self.next_step {
                 self.next_step = now + STEP;
@@ -1777,7 +1800,10 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                     self.state.entities(),
                     &self.scene.motion,
                     self.state.scenery().variables(),
-                    &self.scene.interpolation,
+                    rustclient_scene::entity_mesh::EntityPresentation {
+                        interpolation: &self.scene.interpolation,
+                        hidden: &self.scene.hidden_models,
+                    },
                     &mut self.scene.entity_geometry,
                 ) {
                     eprintln!("entity geometry: {e}");

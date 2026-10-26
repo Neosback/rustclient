@@ -180,8 +180,10 @@ pub enum CameraCommand {
 /// Actors and effects the renderer must skip while drawing the scene.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct EntityVisibility {
-    /// Actors that are not drawn and not clickable.
+    /// Actors whose model is not drawn and not clickable.
     pub hidden: Vec<ActorRef>,
+    /// Actors whose 2D overlays (overhead text, health bars, hitsplats) are not drawn.
+    pub hidden_overlays: Vec<ActorRef>,
     /// Skip projectiles.
     pub hide_projectiles: bool,
     /// Skip spot animations and other graphics objects.

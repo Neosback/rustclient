@@ -554,6 +554,18 @@ fn availability(plugin: &str, key: &str) -> Option<String> {
                 | "panelToggleKey"
                 | "blockExtraMouseButtons"
         ),
+        "dev.rustclient.entityhider" => matches!(
+            key,
+            "hidePlayers"
+                | "hidePlayers2D"
+                | "hideLocalPlayer"
+                | "hideLocalPlayer2D"
+                | "hideNPCs"
+                | "hideNPCs2D"
+                | "hideAttackers"
+                | "hideThralls"
+                | "hideRandomEvents"
+        ),
         "dev.rustclient.stretchedmode" => {
             matches!(key, "keepAspectRatio" | "integerScaling" | "scalingFactor")
         }
@@ -572,6 +584,19 @@ fn pending_reason(plugin: &str, key: &str) -> String {
         ("dev.rustclient.gpu", "uiScalingMode") => {
             "Stretched mode is ported, but this renderer draws the interface at window resolution with nearest sampling; the sampling modes do not apply."
                 .into()
+        }
+        (
+            "dev.rustclient.entityhider",
+            "hidePartyMembers" | "hideFriends" | "hideClanMates" | "hideClanChatMembers" | "hideIgnores",
+        ) => "Needs the party, friends, friends chat, clan and ignore lists, which the client does not keep yet.".into(),
+        ("dev.rustclient.entityhider", "hidePets" | "hideDeadNpcs") => {
+            "Needs follower and death state for NPCs, which the client does not keep yet.".into()
+        }
+        ("dev.rustclient.entityhider", "hideWorldEntities") => {
+            "Boats are not loaded by this client yet.".into()
+        }
+        ("dev.rustclient.entityhider", "hideProjectiles") => {
+            "Projectiles are not drawn by this client yet.".into()
         }
         ("dev.rustclient.stretchedmode", "increasedPerformance") => {
             "The interface is always sampled nearest-neighbour when stretched, so there is no slower algorithm to turn off."

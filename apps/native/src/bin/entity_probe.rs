@@ -159,7 +159,10 @@ fn mesh_batches(
                 state.entities(),
                 &rustclient_scene::ActorMotion::default(),
                 &std::collections::BTreeMap::new(),
-                &rustclient_scene::AnimationInterpolation::default(),
+                entity_mesh::EntityPresentation {
+                    interpolation: &rustclient_scene::AnimationInterpolation::default(),
+                    hidden: &entity_mesh::HiddenActors::default(),
+                },
                 &mut geometry,
             )?;
             triangles += (geometry.opaque.len() + geometry.transparent.len()) / 3;

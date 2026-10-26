@@ -448,6 +448,7 @@ fn full_output() -> PluginOutput {
         menu_edits: vec![MenuEdit::MoveToTop { index: 0 }],
         entities: Some(EntityVisibility {
             hidden: vec![ActorRef::Npc(5)],
+            hidden_overlays: vec![ActorRef::Npc(6)],
             hide_projectiles: true,
             hide_graphics: false,
         }),
@@ -579,6 +580,7 @@ fn granted_outputs_are_bounded_and_clamped() {
     assert_eq!(merged.info_boxes[0].1.text.len(), 16);
     assert_eq!(merged.menu_edits, [MenuEdit::MoveToTop { index: 0 }]);
     assert_eq!(merged.entities.hidden, [ActorRef::Npc(5)]);
+    assert_eq!(merged.entities.hidden_overlays, [ActorRef::Npc(6)]);
     assert!(merged.entities.hide_projectiles);
     assert_eq!(
         merged

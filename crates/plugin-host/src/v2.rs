@@ -210,6 +210,11 @@ impl HostOutput {
                     self.entities.hidden.push(actor);
                 }
             }
+            for actor in entities.hidden_overlays {
+                if !self.entities.hidden_overlays.contains(&actor) {
+                    self.entities.hidden_overlays.push(actor);
+                }
+            }
             self.entities.hide_projectiles |= entities.hide_projectiles;
             self.entities.hide_graphics |= entities.hide_graphics;
         }
@@ -332,6 +337,7 @@ pub(crate) fn validate(
     }
     if let Some(entities) = &mut output.entities {
         entities.hidden.truncate(limits::HIDDEN_ACTORS);
+        entities.hidden_overlays.truncate(limits::HIDDEN_ACTORS);
     }
 
     if refuse(

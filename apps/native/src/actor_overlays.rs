@@ -45,6 +45,9 @@ pub fn project(
         let (speech, player, local) = match anchor.actor {
             ActorLabelId::Player(index, instance) => {
                 let actor = state.entities().players().get(&index)?;
+                if scene.hidden_overlays.player(actor.index.get()) {
+                    return None;
+                }
                 if actor.instance != instance {
                     return None;
                 }
@@ -56,6 +59,9 @@ pub fn project(
             }
             ActorLabelId::Npc(index, instance) => {
                 let actor = state.entities().npcs().get(&index)?;
+                if scene.hidden_overlays.npc(actor.index.get()) {
+                    return None;
+                }
                 if actor.instance != instance {
                     return None;
                 }

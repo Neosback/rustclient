@@ -33,6 +33,9 @@ pub struct SceneView {
     pub roof_areas: std::sync::Arc<[rustclient_scene::RoofArea]>,
     /// Which animations plugins ask to be blended between frames.
     pub interpolation: rustclient_scene::AnimationInterpolation,
+    /// Actors plugins remove from the scene (model) and from their 2D overlays.
+    pub hidden_models: rustclient_scene::entity_mesh::HiddenActors,
+    pub hidden_overlays: rustclient_scene::entity_mesh::HiddenActors,
 }
 impl SceneView {
     pub fn new(options: &crate::options::Options) -> Self {
@@ -55,6 +58,8 @@ impl SceneView {
             dynamic_cycle: rustclient_model::ClientCycle::ZERO,
             roof_areas: std::sync::Arc::default(),
             interpolation: rustclient_scene::AnimationInterpolation::default(),
+            hidden_models: rustclient_scene::entity_mesh::HiddenActors::default(),
+            hidden_overlays: rustclient_scene::entity_mesh::HiddenActors::default(),
         }
     }
     pub fn scenery_inputs(

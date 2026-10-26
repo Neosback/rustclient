@@ -301,6 +301,48 @@ pub fn rotate_y(p: ModelPoint, angle: u16) -> ModelPoint {
     ModelPoint::new(x, p.y, z)
 }
 
+/// Players and NPCs a presentation filter removes (`Hooks.RenderableDrawListener` returning false).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct HiddenActors {
+    players: std::collections::BTreeSet<u32>,
+    npcs: std::collections::BTreeSet<u32>,
+}
+
+impl HiddenActors {
+    /// Hide the given players and NPCs by scene index.
+    #[must_use]
+    pub fn new(
+        players: impl IntoIterator<Item = u32>,
+        npcs: impl IntoIterator<Item = u32>,
+    ) -> Self {
+        Self {
+            players: players.into_iter().collect(),
+            npcs: npcs.into_iter().collect(),
+        }
+    }
+
+    /// Whether the player at `index` is hidden.
+    #[must_use]
+    pub fn player(&self, index: u32) -> bool {
+        self.players.contains(&index)
+    }
+
+    /// Whether the NPC at `index` is hidden.
+    #[must_use]
+    pub fn npc(&self, index: u32) -> bool {
+        self.npcs.contains(&index)
+    }
+}
+
+/// Presentation choices applied while entities are built; none of them changes game state.
+#[derive(Debug, Clone, Copy)]
+pub struct EntityPresentation<'a> {
+    /// Which animations are blended between frames.
+    pub interpolation: &'a crate::AnimationInterpolation,
+    /// Actors that are not drawn.
+    pub hidden: &'a HiddenActors,
+}
+
 /// Append live entity geometry (players and NPCs) into `geometry`.
 /// # Errors
 /// Returns error on vertex allocation limit or pose failures.
@@ -310,10 +352,17 @@ pub fn build_entities_geometry(
     entities: &WorldEntitiesState,
     motion: &ActorMotion,
     variables: &BTreeMap<VarpId, i32>,
-    interpolation: &crate::AnimationInterpolation,
+    presentation: EntityPresentation<'_>,
     geometry: &mut SceneGeometry,
 ) -> Result<()> {
+    let EntityPresentation {
+        interpolation,
+        hidden,
+    } = presentation;
     for player in entities.players().values() {
+        if hidden.player(player.index.get()) {
+            continue;
+        }
         let position = motion
             .player(player.index)
             .unwrap_or_else(|| corner(player.tile));
@@ -328,6 +377,9 @@ pub fn build_entities_geometry(
         )?;
     }
     for npc in entities.npcs().values() {
+        if hidden.npc(npc.index.get()) {
+            continue;
+        }
         let position = motion.npc(npc.index).unwrap_or_else(|| corner(npc.tile));
         build_npc(
             asset,

@@ -7,6 +7,7 @@
 #![forbid(unsafe_code)]
 
 mod animsmoothing;
+mod entityhider;
 mod roofremoval;
 mod stretchedmode;
 
@@ -107,6 +108,15 @@ const ENTRIES: &[Entry] = &[
         name: "stretchedmode",
         capabilities: &[Capability::UiViewport],
         build: || boxed(stretchedmode::StretchedMode),
+    },
+    Entry {
+        name: "entityhider",
+        capabilities: &[
+            Capability::UiEntitiesHide,
+            Capability::GameReadPlayers,
+            Capability::GameReadNpcs,
+        ],
+        build: || boxed(entityhider::EntityHider),
     },
 ];
 

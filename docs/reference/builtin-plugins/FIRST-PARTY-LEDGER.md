@@ -89,3 +89,25 @@ Known differences and unverified assumptions:
 - The GPU `uiScalingMode` options do not apply: the interface is drawn at window resolution, not as a texture that is
   resampled. Interface sprites are therefore nearest-sampled at non-integer ratios, as in the source's fast mode.
 - The clip of the world view at the stretched canvas edge and HiDPI rounding (`getScaledValue`) use plain rounding.
+
+## entityhider
+
+Sources: `plugins/entityhider/{EntityHiderPlugin,EntityHiderConfig}.java`; `gameval/NpcID.java` for the thrall and
+random-event id sets (copied as numbers). The 235 and 240 plugin sources are identical in behavior.
+
+| Source | Rust owner | Implemented | Verified |
+| --- | --- | --- | --- |
+| `RenderableDrawListener.shouldDraw(Player)` for the local player, others and attackers, 3D and 2D separately | `first-party-plugins::entityhider::draws_player` -> `EntityVisibility::{hidden, hidden_overlays}` | yes | unit: each rule, 3D/2D split, unnamed players |
+| `shouldDraw(NPC)`: attackers (follow the dimension whose switch is on), thralls (18 ids), random events (41 ids), others | `draws_npc` | yes | unit: each rule |
+| Hidden model not drawn and not clickable | `scene::entity_mesh::HiddenActors` skipped in `build_entities_geometry`, so no pick geometry exists | yes | not exercised through a full actor build |
+| Hidden 2D (overhead text; health bars and hitsplats are not drawn by this client yet) | `actor_overlays::project` skips `hidden_overlays` | yes | not exercised |
+| Config applied on `ConfigChanged` | level-triggered: output recomputed each update | yes | unit: harness changes settings |
+| party / friends / friends chat / clan / ignore switches | none: membership is not in the snapshot | no | - |
+| `hidePets` (`isFollower`), `hideDeadNpcs` (`NpcUtil.isDying`), `hideWorldEntities` | none: NPC follower/dead state and boats are not retained | no | - |
+| `hideProjectiles`, `GraphicsObject` nylocas death | output flag exists; projectiles and graphics objects are not drawn by this client | no | - |
+
+Known differences:
+
+- A friend, friends-chat member, clan member, party member or ignored player is treated as an ordinary other player,
+  so `hidePlayers` hides them even when `hideFriends` (etc.) is off. In the source those switches take precedence.
+- The shell shows each of the unported switches with the reason.

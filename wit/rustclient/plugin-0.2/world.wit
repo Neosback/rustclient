@@ -189,6 +189,7 @@ interface types {
 
     record entity-visibility {
         hidden: list<actor-ref>,
+        hidden-overlays: list<actor-ref>,
         hide-projectiles: bool,
         hide-graphics: bool,
     }
