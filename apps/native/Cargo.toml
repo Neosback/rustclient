@@ -24,6 +24,7 @@ rustclient-game-state = { path = "../../crates/game-state" }
 rustclient-input = { path = "../../crates/input" }
 rustclient-platform-native = { path = "../../crates/platform-native" }
 rustclient-plugin-api = { path = "../../crates/plugin-api" }
+rustclient-plugin-bridge = { path = "../../crates/plugin-bridge" }
 rustclient-plugin-host = { path = "../../crates/plugin-host" }
 rustclient-plugin-runtime-native = { path = "../../crates/plugin-runtime-native" }
 

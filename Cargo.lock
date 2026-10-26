@@ -3714,6 +3714,7 @@ dependencies = [
  "rustclient-platform",
  "rustclient-platform-native",
  "rustclient-plugin-api",
+ "rustclient-plugin-bridge",
  "rustclient-plugin-host",
  "rustclient-plugin-runtime-native",
  "rustclient-protocol",

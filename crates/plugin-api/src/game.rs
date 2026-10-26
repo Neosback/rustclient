@@ -379,11 +379,11 @@ pub enum GameStateKind {
 /// Camera state in client units.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct CameraSnapshot {
-    /// Camera x in local units.
+    /// Camera x (east) in local units, as `RuneLite`'s `getCameraX`.
     pub x: i32,
-    /// Camera y in local units.
+    /// Camera y (height) in local units, as `RuneLite`'s `getCameraY`.
     pub y: i32,
-    /// Camera height in local units.
+    /// Camera z (north) in local units, as `RuneLite`'s `getCameraZ`.
     pub z: i32,
     /// Pitch in 0..2048 angle units.
     pub pitch: i32,

@@ -8,6 +8,7 @@ pub(super) struct Performance {
     pid: Pid,
     sample_start: Instant,
     presented: u32,
+    fps: u32,
     redraws: u32,
     frame_time: Duration,
     tick_time: Duration,
@@ -23,6 +24,7 @@ impl Performance {
             pid: Pid::from_u32(std::process::id()),
             sample_start: Instant::now(),
             presented: 0,
+            fps: 0,
             redraws: 0,
             frame_time: Duration::ZERO,
             tick_time: Duration::ZERO,
@@ -48,6 +50,11 @@ impl Performance {
         }
     }
 
+    /// Presented frames per second over the last completed one second sample.
+    pub(super) const fn fps(&self) -> u32 {
+        self.fps
+    }
+
     pub(super) fn tick(&mut self, start: Instant) {
         self.ticks += 1;
         self.tick_time += start.elapsed();
@@ -70,6 +77,10 @@ impl Performance {
             || "memory unavailable".into(),
             |p| format!("{} MiB RSS", p.memory() / (1024 * 1024)),
         );
+        let millis = u32::try_from(elapsed.as_millis())
+            .unwrap_or(u32::MAX)
+            .max(1);
+        self.fps = self.presented.saturating_mul(1000) / millis;
         let title = window.title();
         let title = title.split(" | ").next().unwrap_or("RustClient");
         window.set_title(&format!(

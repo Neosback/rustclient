@@ -6,10 +6,10 @@
 
 use crate::{HostView, LogSink, PluginCall, PluginSet, PluginStorage};
 use rustclient_plugin_api::{
-    CameraCommand, Capability, ChatLine, EntityVisibility, GameEvent, GameSnapshot, InfoBox,
-    ItemStack, LayeredOverlay, LogLevel, MenuEdit, Notification, OverlayCommand, PlayerPosition,
-    PlayerSnapshot, PluginId, PluginOutput, RoofRemoval, SceneFlags, SkillLevel, SpriteOverride,
-    Stretch, WidgetSnapshot, limits,
+    CameraCommand, Capability, CapabilitySet, ChatLine, EntityVisibility, GameEvent, GameSnapshot,
+    InfoBox, ItemStack, LayeredOverlay, LogLevel, MenuEdit, Notification, OverlayCommand,
+    PlayerPosition, PlayerSnapshot, PluginId, PluginOutput, RoofRemoval, SceneFlags, SkillLevel,
+    SpriteOverride, Stretch, WidgetSnapshot, limits,
 };
 use std::collections::BTreeSet;
 
@@ -364,6 +364,16 @@ pub(crate) fn validate(
 }
 
 impl PluginSet {
+    /// Union of the grants of every enabled plugin: what the projector must build.
+    #[must_use]
+    pub fn granted(&self) -> CapabilitySet {
+        self.plugins
+            .iter()
+            .filter(|plugin| plugin.enabled)
+            .flat_map(|plugin| plugin.manifest.capabilities.iter())
+            .collect()
+    }
+
     /// Deliver typed events to every enabled plugin, filtered to each plugin's grants.
     pub fn dispatch_game(
         &mut self,

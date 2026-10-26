@@ -102,6 +102,7 @@ struct NativeApp {
     entity_report: (Instant, String),
     /// Hidden or fully covered windows are not drawn: the OS blocks `get_current_texture` there.
     occluded: bool,
+    window_focused: bool,
     scripts: Option<rustclient_application::scripts::ClientScripts<DirectoryBlobs>>,
     widget_assets: rustclient_game_ui::widget_visuals::WidgetVisualAssets,
     widget_requested: rustclient_application::scripts::WidgetAssetRequest,
@@ -141,6 +142,44 @@ struct NativeApp {
     proxy: winit::event_loop::EventLoopProxy<LoadEvent>,
 }
 impl NativeApp {
+    /// Hand plugins the projected state: shell-owned facts plus the cache definitions in use.
+    fn update_plugins(&mut self) {
+        let window = self.state.interfaces().window();
+        let camera = self.scene.camera.map(|camera| {
+            let viewport = rustclient_renderer::CameraViewport::new(
+                i32::try_from(window.canvas.width).unwrap_or(i32::MAX),
+                i32::try_from(window.canvas.height).unwrap_or(i32::MAX),
+            )
+            .with_settings(self.state.interfaces().viewport());
+            let pose = camera.pose(viewport);
+            rustclient_plugin_api::CameraSnapshot {
+                x: pose.position[0],
+                y: pose.position[1],
+                z: pose.position[2],
+                pitch: i32::from(pose.pitch),
+                yaw: i32::from(pose.yaw),
+                zoom: pose.zoom,
+            }
+        });
+        let asset = self.scene.loaded.as_ref().map(|loaded| &loaded.asset);
+        let variables = self.state.scenery().variables();
+        let catalog = &self.scene.entity_catalog;
+        let resolve = |id| asset.and_then(|asset| catalog.resolve_npc(asset, id, variables));
+        let inputs = plugins::Inputs {
+            frame: rustclient_plugin_bridge::Frame {
+                fps: self.performance.fps(),
+                focused: self.window_focused,
+                loading: self.scene.loading,
+                camera: camera.unwrap_or_default(),
+            },
+            sources: rustclient_plugin_bridge::Sources {
+                npcs: Some(&resolve),
+                varbits: asset.map(|asset| &asset.sources().varbits),
+                interfaces: self.scripts.as_ref().map(|scripts| &scripts.interfaces),
+            },
+        };
+        self.plugins.update(&self.state, &inputs);
+    }
     fn new(
         options: &options::Options,
         proxy: winit::event_loop::EventLoopProxy<LoadEvent>,
@@ -197,6 +236,7 @@ impl NativeApp {
             reported_script_errors: std::collections::BTreeSet::default(),
             entity_report: (Instant::now(), String::new()),
             occluded: false,
+            window_focused: true,
             scripts: None,
             widget_assets: rustclient_game_ui::widget_visuals::WidgetVisualAssets::default(),
             widget_requested: rustclient_application::scripts::WidgetAssetRequest::default(),
@@ -1387,6 +1427,7 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                 }
             }
             WindowEvent::Focused(false) => {
+                self.window_focused = false;
                 self.scene.input = rustclient_renderer::CameraInput::default();
                 self.widget_pointer = widget_pointer::WidgetPointer::default();
                 self.modifiers = ModifiersState::default();
@@ -1394,7 +1435,10 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                     scripts.modifiers = [false; 3];
                 }
             }
-            WindowEvent::Focused(true) => window.request_redraw(),
+            WindowEvent::Focused(true) => {
+                self.window_focused = true;
+                window.request_redraw();
+            }
             WindowEvent::Occluded(occluded) => {
                 self.occluded = occluded;
                 if !occluded {
@@ -1571,6 +1615,7 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                 }
                 self.flush_script_intents();
                 self.plugins.advance(&self.state, steps);
+                self.update_plugins();
             }
             if now >= self.next_step {
                 self.next_step = now + STEP;

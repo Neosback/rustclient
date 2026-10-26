@@ -6,9 +6,11 @@
 use rustclient_cache::TitleAssets;
 use rustclient_game_state::GameState;
 use rustclient_game_ui::{Rect, UiFrame, draw_text};
-use rustclient_plugin_api::{PlayerPosition, PluginEvent};
+use rustclient_plugin_api::{OverlayCommand, PlayerPosition, PluginEvent};
+use rustclient_plugin_bridge::{Frame, Projector, Sources};
 use rustclient_plugin_host::{
-    DirectoryStorage, HostView, PluginSet, StaticView, StderrLogSink, required::Builtin,
+    DirectoryStorage, HostOutput, HostView, PluginSet, SnapshotView, StaticView, StderrLogSink,
+    required::Builtin,
 };
 use rustclient_plugin_runtime_native::NativeRuntime;
 use std::path::Path;
@@ -19,6 +21,15 @@ pub(super) struct Plugins {
     logs: StderrLogSink,
     started: bool,
     tick: u64,
+    projector: Projector,
+    output: HostOutput,
+    unsupported_reported: bool,
+}
+
+/// Shell-owned facts and cache definitions the projector consults.
+pub(super) struct Inputs<'a> {
+    pub frame: Frame,
+    pub sources: Sources<'a>,
 }
 
 impl Plugins {
@@ -43,6 +54,9 @@ impl Plugins {
                 logs,
                 started: false,
                 tick: 0,
+                projector: Projector::new(),
+                output: HostOutput::default(),
+                unsupported_reported: false,
             };
         }
         match NativeRuntime::new() {
@@ -84,6 +98,9 @@ impl Plugins {
             logs,
             started: false,
             tick: 0,
+            projector: Projector::new(),
+            output: HostOutput::default(),
+            unsupported_reported: false,
         }
     }
 
@@ -117,12 +134,35 @@ impl Plugins {
         );
     }
 
+    /// Project committed state, deliver typed events and collect validated plugin output.
+    ///
+    /// Nothing is projected unless an enabled plugin holds a grant, so an idle plugin set costs
+    /// only the capability union.
+    pub(super) fn update(&mut self, state: &GameState, inputs: &Inputs<'_>) {
+        let wanted = self.set.granted();
+        if wanted.is_empty() {
+            self.output = HostOutput::default();
+            return;
+        }
+        let (snapshot, events) =
+            self.projector
+                .project(state, &inputs.frame, &inputs.sources, &wanted);
+        let view = SnapshotView(&snapshot);
+        self.set
+            .dispatch_game(&events, &view, &mut self.storage, &mut self.logs);
+        self.output = self
+            .set
+            .collect_output(&view, &mut self.storage, &mut self.logs);
+    }
+
     /// Dispatch `Stopped` once when the session ends.
     pub(super) fn stop(&mut self, state: &GameState) {
         if !self.started {
             return;
         }
         self.started = false;
+        self.projector.reset();
+        self.output = HostOutput::default();
         let view = SessionView::from_state(state, self.tick);
         self.set.dispatch(
             &[PluginEvent::Stopped],
@@ -137,6 +177,7 @@ impl Plugins {
         if self.set.is_empty() {
             return;
         }
+        self.draw_output(assets, frame);
         let view = SessionView::from_state(state, self.tick);
         let lines = self.set.overlay(&view, &mut self.storage, &mut self.logs);
         let clip = Rect::new(0., 0., 765., 503.);
@@ -151,6 +192,109 @@ impl Plugins {
                 [red, green, blue, alpha],
                 clip,
             );
+        }
+    }
+}
+
+impl Plugins {
+    /// Draw the 0.2 overlay primitives that need no world projection; the rest are reported once.
+    fn draw_output(&mut self, assets: &TitleAssets, frame: &mut UiFrame) {
+        let clip = Rect::new(0., 0., 765., 503.);
+        let canvas = frame.canvas.map_or(clip, |size| {
+            Rect::new(
+                0.,
+                0.,
+                px(i32::try_from(size.width).unwrap_or(i32::MAX)),
+                px(i32::try_from(size.height).unwrap_or(i32::MAX)),
+            )
+        });
+        let mut skipped = false;
+        for item in &self.output.overlay {
+            match &item.command {
+                OverlayCommand::Text { text, x, y, argb } => {
+                    let [alpha, red, green, blue] = argb.to_be_bytes();
+                    draw_text(
+                        frame,
+                        assets,
+                        text,
+                        px(*x),
+                        px(*y),
+                        [red, green, blue, alpha],
+                        canvas,
+                    );
+                }
+                OverlayCommand::Rect {
+                    x,
+                    y,
+                    width,
+                    height,
+                    argb,
+                    filled,
+                } => draw_rect(frame, canvas, [*x, *y, *width, *height], *argb, *filled),
+                OverlayCommand::Line { from, to, argb } => {
+                    draw_line(frame, canvas, *from, *to, *argb);
+                }
+                _ => skipped = true,
+            }
+        }
+        if skipped && !self.unsupported_reported {
+            self.unsupported_reported = true;
+            eprintln!("plugin overlay: world-anchored primitives are not drawn by this client yet");
+        }
+    }
+}
+
+/// Canvas pixels fit `i16`; clamping keeps hostile coordinates harmless and the cast lossless.
+fn px(value: i32) -> f32 {
+    f32::from(i16::try_from(value.clamp(-32768, 32767)).unwrap_or(0))
+}
+
+fn color(argb: u32) -> [u8; 4] {
+    let [alpha, red, green, blue] = argb.to_be_bytes();
+    [red, green, blue, alpha]
+}
+
+fn draw_rect(
+    frame: &mut UiFrame,
+    clip: Rect,
+    [x, y, width, height]: [i32; 4],
+    argb: u32,
+    filled: bool,
+) {
+    let (x, y, w, h) = (px(x), px(y), px(width), px(height));
+    if filled {
+        frame.fill_rect(Rect::new(x, y, w, h), color(argb), clip);
+        return;
+    }
+    for edge in [
+        Rect::new(x, y, w, 1.),
+        Rect::new(x, y + h - 1., w, 1.),
+        Rect::new(x, y, 1., h),
+        Rect::new(x + w - 1., y, 1., h),
+    ] {
+        frame.fill_rect(edge, color(argb), clip);
+    }
+}
+
+/// One-pixel Bresenham line, bounded so a hostile plugin cannot stall the frame.
+fn draw_line(frame: &mut UiFrame, clip: Rect, from: (i32, i32), to: (i32, i32), argb: u32) {
+    let (mut x, mut y) = from;
+    let (dx, dy) = ((to.0 - x).abs(), -(to.1 - y).abs());
+    let (sx, sy) = (if x < to.0 { 1 } else { -1 }, if y < to.1 { 1 } else { -1 });
+    let mut error = dx + dy;
+    for _ in 0..4096 {
+        frame.fill_rect(Rect::new(px(x), px(y), 1., 1.), color(argb), clip);
+        if (x, y) == to {
+            break;
+        }
+        let doubled = 2 * error;
+        if doubled >= dy {
+            error += dy;
+            x += sx;
+        }
+        if doubled <= dx {
+            error += dx;
+            y += sy;
         }
     }
 }
