@@ -1,5 +1,9 @@
 //! Embedded native DOM and dirty-only CPU rasterization; no window or GPU ownership.
-use crate::{Shell, ShellChannel, components::CSS};
+use crate::{
+    Shell, ShellChannel,
+    assets::{Collector, EmbeddedAssets},
+    components::CSS,
+};
 use anyrender::ImageRenderer;
 use anyrender_vello_cpu::VelloCpuImageRenderer;
 use blitz_dom::{Document, DocumentConfig};
@@ -13,6 +17,7 @@ use blitz_traits::{
 use dioxus::prelude::{ScopeId, VirtualDom};
 use dioxus_native_dom::DioxusDocument;
 use keyboard_types::{Code, Key, Location, Modifiers};
+use std::sync::Arc;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct PanelStats {
@@ -33,6 +38,7 @@ pub struct RetainedPanel {
     stats: PanelStats,
     capture: Option<[f32; 4]>,
     channel: ShellChannel,
+    assets: Arc<Collector>,
 }
 impl RetainedPanel {
     /// Build a panel in physical pixels; generation work is deferred until visible.
@@ -46,10 +52,12 @@ impl RetainedPanel {
                 channel: channel.clone(),
             },
         );
+        let assets = Arc::new(Collector::default());
         let mut doc = DioxusDocument::new(
             vdom,
             DocumentConfig {
                 viewport: Some(Viewport::new(size[0], size[1], scale, ColorScheme::Dark)),
+                net_provider: Some(Arc::new(EmbeddedAssets(assets.clone()))),
                 ..DocumentConfig::default()
             },
         );
@@ -66,6 +74,7 @@ impl RetainedPanel {
             stats: PanelStats::default(),
             capture: None,
             channel,
+            assets,
         })
     }
     pub fn set_visible(&mut self, visible: bool) {
@@ -114,6 +123,14 @@ impl RetainedPanel {
             self.stats.component_updates += 1;
         }
         self.doc.resolve(0.);
+        // Icons requested during this layout decode synchronously; adopt them and lay out once more.
+        let loaded = self.assets.take();
+        if !loaded.is_empty() {
+            for resource in loaded {
+                self.doc.inner.load_resource(resource);
+            }
+            self.doc.resolve(0.);
+        }
         self.stats.layouts += 1;
         self.painter.reset();
         let dom = &self.doc.inner;

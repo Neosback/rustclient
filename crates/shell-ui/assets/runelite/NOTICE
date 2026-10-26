@@ -1,0 +1,5 @@
+These icons come from the Open RuneLite client source (runelite-client resources) and keep
+its BSD 2-Clause license, reproduced in LICENSE next to this file:
+config_icon, config_icon_lg, config_back_icon, config_edit_icon, refresh, star_on, profile_icon
+(plugins/config); runelite_16, runelite_128, open (ui); search, error (ui/components);
+devtools_icon (plugins/devtools); collapsed, expanded (plugins/loottracker).

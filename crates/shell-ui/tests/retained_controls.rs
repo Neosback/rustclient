@@ -1,9 +1,13 @@
 #![cfg(not(target_arch = "wasm32"))]
 use rustclient_plugin_host::{
-    configuration::{ConfigValue, Configuration},
+    configuration::{ConfigValue, Configuration, Hotkey},
     required::schemas,
 };
 use rustclient_shell_ui::{PluginPanel, RetainedPanel, ShellAction, ShellChannel};
+
+/// blitz-paint keeps process-global layer counters, so concurrent panels corrupt each other's painting;
+/// the app owns one panel and these tests take turns.
+static ONE_PANEL: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 fn click(panel: &mut RetainedPanel, selector: &str) {
     let [x, y, width, height] = panel
@@ -33,6 +37,9 @@ fn native_dom_emits_typed_changes_and_idle_world_frames_reuse_pixels() {
             Ok(())
         }
     }
+    let _turn = ONE_PANEL
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     let channel = ShellChannel::default();
     for schema in schemas().unwrap() {
         let config = Configuration::new(schema, None).unwrap();
@@ -138,10 +145,6 @@ fn native_dom_emits_typed_changes_and_idle_world_frames_reuse_pixels() {
         None,
     );
     panel.render();
-    eprintln!(
-        "checkbox bounds {:?}",
-        panel.element_bounds("input[type='checkbox']")
-    );
     image::save_buffer(
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target/shell-controls.png"),
         panel.pixels(),
@@ -150,7 +153,7 @@ fn native_dom_emits_typed_changes_and_idle_world_frames_reuse_pixels() {
         image::ColorType::Rgba8,
     )
     .unwrap();
-    click(&mut panel, "input[type='checkbox']");
+    click(&mut panel, "[role='switch']");
     let checkbox_actions = channel.drain();
     assert!(checkbox_actions.iter().any(|action| matches!(action,ShellAction::Configure { key,value:ConfigValue::Boolean(false),.. } if key=="hideUnrelatedMaps")), "checkbox actions: {checkbox_actions:?}");
     let [x, y, width, height] = panel.element_bounds("[role='slider']").unwrap();
@@ -186,4 +189,156 @@ fn native_dom_emits_typed_changes_and_idle_world_frames_reuse_pixels() {
     panel.invalidate();
     assert!(panel.render().is_none());
     assert_eq!(panel.stats(), before);
+}
+
+/// Every control type renders and emits its typed value; PNGs of each view land in `target/` for review.
+#[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "one scenario walks every control type through a single retained panel"
+)]
+fn every_control_type_emits_typed_values_and_views_render() {
+    let _turn = ONE_PANEL
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let channel = ShellChannel::default();
+    for schema in schemas().unwrap() {
+        let config = Configuration::new(schema, None).unwrap();
+        channel
+            .model
+            .borrow_mut()
+            .plugins
+            .push(PluginPanel::project(&config, |key| {
+                (key == "uiEnableCustomChrome")
+                    .then(|| "Custom window chrome is not available in this build.".to_owned())
+            }));
+    }
+    let out = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target");
+    let save = |panel: &RetainedPanel, name: &str| {
+        image::save_buffer(
+            out.join(name),
+            panel.pixels(),
+            370,
+            700,
+            image::ColorType::Rgba8,
+        )
+        .unwrap();
+    };
+    let mut panel = RetainedPanel::new(channel.clone(), [370, 700], 1.).unwrap();
+    panel.set_visible(true);
+    panel.render().unwrap();
+    save(&panel, "shell-list.png");
+    // Embedded icons are decoded: the rail icon region contains non-background pixels.
+    let [x, y, w, h] = panel.element_bounds("#plugins-nav img").unwrap();
+    assert!(w > 0. && h > 0., "rail icon has no layout box");
+    let distinct = panel
+        .pixels()
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .collect::<std::collections::HashSet<_>>()
+        .len();
+    assert!(distinct > 8, "icons did not rasterize ({x},{y})");
+    click(
+        &mut panel,
+        "[data-plugin='dev.rustclient.runelite'] .card-open",
+    );
+    save(&panel, "shell-runelite.png");
+    let scroll = panel.element_bounds("#settings-scroll").unwrap();
+    let reveal = |panel: &mut RetainedPanel, selector: &str| {
+        for _ in 0..40 {
+            if let Some([_, y, _, h]) = panel.element_bounds(selector)
+                && y > scroll[1]
+                && y + h < scroll[1] + scroll[3]
+            {
+                return;
+            }
+            panel.scroll(scroll[0] + 20., scroll[1] + 20., [0., -120.]);
+            panel.render();
+        }
+        panic!("{selector} never scrolled into view");
+    };
+    let configured = |channel: &ShellChannel, wanted: &str| {
+        channel
+            .drain()
+            .into_iter()
+            .find_map(|action| match action {
+                ShellAction::Configure { key, value, .. } if key == wanted => Some(value),
+                _ => None,
+            })
+            .unwrap_or_else(|| panic!("no change for {wanted}"))
+    };
+    let command = if cfg!(target_os = "macos") {
+        keyboard_types::Modifiers::SUPER
+    } else {
+        keyboard_types::Modifiers::CONTROL
+    };
+    let replace_text = |panel: &mut RetainedPanel, selector: &str, text: &str| {
+        reveal(panel, selector);
+        click(panel, selector);
+        panel.key(
+            keyboard_types::Key::Character("a".into()),
+            keyboard_types::Code::KeyA,
+            command,
+            true,
+            None,
+        );
+        panel.ime_commit(text.into());
+        panel.render();
+    };
+    let _ = channel.drain();
+
+    reveal(&mut panel, ".choice-current");
+    click(&mut panel, ".choice-current");
+    click(&mut panel, ".choice-option:not(.selected)");
+    assert!(
+        matches!(
+            configured(&channel, "automaticResizeType"),
+            ConfigValue::Choice(_)
+        ),
+        "choice option did not emit"
+    );
+
+    replace_text(&mut panel, ".dim", "800");
+    assert_eq!(
+        configured(&channel, "gameSize"),
+        ConfigValue::Size([800, 503])
+    );
+    replace_text(&mut panel, ".dim", "10");
+    assert!(
+        channel.drain().is_empty(),
+        "out-of-range width must not be emitted"
+    );
+
+    reveal(&mut panel, ".hotkey-capture");
+    click(&mut panel, ".hotkey-capture");
+    panel.key(
+        keyboard_types::Key::F5,
+        keyboard_types::Code::F5,
+        keyboard_types::Modifiers::CONTROL,
+        true,
+        None,
+    );
+    panel.render();
+    assert_eq!(
+        configured(&channel, "sidebarToggleKey"),
+        ConfigValue::Hotkey(Hotkey {
+            key: "F5".into(),
+            modifiers: 2
+        })
+    );
+
+    replace_text(&mut panel, ".hex", "#FF112233");
+    assert_eq!(
+        configured(&channel, "notificationFlashColor"),
+        ConfigValue::Color(0xFF11_2233)
+    );
+
+    reveal(&mut panel, ".style-toggle");
+    click(&mut panel, ".style-toggle");
+    let ConfigValue::Font(font) = configured(&channel, "fontType") else {
+        panic!("fontType emitted a non-font value");
+    };
+    assert!(font.bold && !font.italic);
+    save(&panel, "shell-runelite-font.png");
 }

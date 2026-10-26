@@ -2,6 +2,7 @@
 
 #![forbid(unsafe_code)]
 
+mod assets;
 mod components;
 mod model;
 pub use components::Shell;
