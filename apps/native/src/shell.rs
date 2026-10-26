@@ -82,8 +82,6 @@ pub(super) struct Shell {
     pub held: bool,
     pub composing: bool,
     visible: bool,
-    expanded: bool,
-    restore_expanded: bool,
     game_logical_width: f64,
     pending_window_width: Option<PendingResize>,
     arrow: SidebarArrow,
@@ -105,7 +103,7 @@ impl Shell {
             Ok(clipboard) => panel.set_clipboard(Box::new(clipboard)),
             Err(error) => eprintln!("shell clipboard unavailable: {error}"),
         }
-        panel.set_visible(true);
+        panel.set_visible(false);
         let arrow = SidebarArrow::decode()?;
         let shell = Self {
             panel,
@@ -114,9 +112,7 @@ impl Shell {
             focused: false,
             held: false,
             composing: false,
-            visible: true,
-            expanded: false,
-            restore_expanded: false,
+            visible: false,
             game_logical_width: 765.,
             pending_window_width: None,
             arrow,
@@ -142,13 +138,7 @@ impl Shell {
         self.configuration.iter()
     }
     pub fn width(&self) -> u32 {
-        if !self.visible {
-            0
-        } else if self.expanded {
-            278
-        } else {
-            36
-        }
+        if self.visible { 278 } else { 0 }
     }
     #[expect(
         clippy::cast_possible_truncation,
@@ -355,11 +345,11 @@ impl Shell {
             let result =
                 match action {
                     ShellAction::Open => {
-                        self.resize(window, true, true);
+                        self.resize(window, true);
                         Ok(())
                     }
                     ShellAction::Close => {
-                        self.resize(window, true, false);
+                        self.resize(window, false);
                         Ok(())
                     }
                     ShellAction::Configure {
@@ -449,16 +439,10 @@ impl Shell {
             .collect();
     }
     pub fn toggle_sidebar(&mut self, window: &Window) {
-        if self.visible {
-            self.restore_expanded = self.expanded;
-            self.resize(window, false, false);
-        } else {
-            self.resize(window, true, self.restore_expanded);
-        }
+        self.resize(window, !self.visible);
     }
     pub fn toggle_panel(&mut self, window: &Window) {
-        let open = !(self.visible && self.expanded);
-        self.resize(window, true, open);
+        self.toggle_sidebar(window);
     }
     pub fn hotkey(&self, key: &str, modifiers: u8) -> Option<bool> {
         let config = self.configuration.get("dev.rustclient.runelite")?;
@@ -483,7 +467,7 @@ impl Shell {
         clippy::cast_sign_loss,
         reason = "scale and window extents are validated platform values"
     )]
-    fn resize(&mut self, window: &Window, visible: bool, expanded: bool) {
+    fn resize(&mut self, window: &Window, visible: bool) {
         let scale = window.scale_factor();
         let keep_game = self.keep_game_size();
         if !keep_game || window.fullscreen().is_some() || window.is_maximized() {
@@ -496,14 +480,10 @@ impl Shell {
             self.game_logical_width = (f64::from(game_physical) / scale).max(765.);
         }
         self.visible = visible;
-        self.expanded = expanded;
-        if visible {
-            self.restore_expanded = expanded;
-        }
         self.focused = false;
         self.held = false;
         self.panel.clear_focus();
-        self.channel.model.borrow_mut().panel_visible = expanded;
+        self.channel.model.borrow_mut().panel_visible = visible;
         self.panel.invalidate();
         let after = self.width();
         if keep_game && window.fullscreen().is_none() && !window.is_maximized() {

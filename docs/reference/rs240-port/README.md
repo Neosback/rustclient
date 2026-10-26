@@ -76,6 +76,12 @@ can collapse into one typed Rust concept. RuneLite injected accessors, callbacks
 and hooks should normally become committed semantic events, immutable snapshots,
 or validated plugin commands rather than injected mutable fields.
 
+## Current implementation audit
+
+[The rebuilt domain matrix](PORT-MATRIX.md) and [current audit](CURRENT-AUDIT.md) distinguish
+implementation from test presence and live/visual acceptance, with a hash-bound TypeScript
+reference guide. The editable matrix is TSV, validated by `tools/port_matrix.py --check`.
+
 ## Corpus files
 
 - `PORT-MATRIX.md`: dependency-ordered domain inventory and current port state.

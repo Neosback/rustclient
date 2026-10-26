@@ -1,0 +1,59 @@
+{
+  "schema": 1,
+  "source": "User-supplied tsps-main/client, described as revision 237",
+  "authority": "Supporting implementation; module-by-module stock parity and revision identity are not independently established",
+  "files": [
+    {
+      "path": "package.json",
+      "sha256": "ca2bb2e7db35af5249aa457468f8fa000337015714b42ab586427ae4072c724a"
+    },
+    {
+      "path": "game/movement/NpcClientTick.ts",
+      "sha256": "b7b2881b1bc0beb9370c17581cbce7ed3268d8f5557c3d29095b86c43fce575f"
+    },
+    {
+      "path": "game/worldview/WorldViewManager.ts",
+      "sha256": "9a61494492cb71f62720054aa308f50ab7c3a437517bd346f9469df1fedf89a2"
+    },
+    {
+      "path": "game/worldview/WorldView.ts",
+      "sha256": "b7f630a75f3f101c55dab90d239619499db8a83c100697715d8d1cfb02977424"
+    },
+    {
+      "path": "game/worldview/WorldEntity.ts",
+      "sha256": "48be51d36d4416c7f7e1b8dbcff41081ca7cafb5868d751557791297f2eaca95"
+    },
+    {
+      "path": "game/actor/ActorAnimation.ts",
+      "sha256": "06d1909691c7a831aec8e973987fc713cedc692e7d867d6d42a75471ac1409a1"
+    },
+    {
+      "path": "game/chat/ChatTextMetrics.ts",
+      "sha256": "6bb9931592be9cc7e6000883e8d307f21591b69f819dcbca409a600589d73aa6"
+    },
+    {
+      "path": "runelite/client/ui/ClientToolbar.ts",
+      "sha256": "c8af08e911e61e79d52bca2ad3c63acfbea0b98d893613de4ff37b27165d7ece"
+    },
+    {
+      "path": "game/sidebar/Sidebar.tsx",
+      "sha256": "475e8c2c48647e44a9074a71647383f1f059631cca191a76a833c08287c819a2"
+    },
+    {
+      "path": "game/sidebar/SidebarRail.tsx",
+      "sha256": "25ced36f7110e2ca62a0aaf8786d931565071a8171a4279355c2fb54438e4e1d"
+    },
+    {
+      "path": "game/sidebar/SidebarStore.ts",
+      "sha256": "6eefef40d1bf175f55c76e079a4f688c47b3962b9a23d1f0310ca3cb8922a4e2"
+    },
+    {
+      "path": "game/worldMap/WorldMapController.ts",
+      "sha256": "e5bdb13a9f54c9bc57e8d11e504ff71fc5cc2ba7bcff6789412b9b261c4307c0"
+    },
+    {
+      "path": "rs/map/WorldMapArchiveRenderer.ts",
+      "sha256": "41179ef15182d680e5675838b7f7ba8c1785c974c0e42089c72a843cfea90e5e"
+    }
+  ]
+}

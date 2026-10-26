@@ -25,8 +25,8 @@ quests, widget ids, scripts) and are not listed individually.
 does not publish the injected client sources, and obfuscated names are re-randomised every revision, so
 that diff needs structural matching (`tools/client-240/carry235.py` finds only 66 confident class pairs).
 A quick member-shape comparison of the two rl-suite decompilations was tried and discarded: injected-API
-differences between builds swamp it. Treat engine behaviour that this page does not mention as
-*unchanged only by default* — the rule below still requires a check against 240 before a port claims parity.
+differences between builds swamp it. Treat engine behaviour that this page does not mention as an **unverified hypothesis of similarity**.
+Absence from this change list never proves equality; check the relevant 240 consumer before a port claims parity.
 
 Dates below are when upstream RuneLite *supported* a revision (`api: update N`, `cache: update N`), which
 can precede the live release (RuneLite works from betas). No upstream cache or API change is labelled 240;
@@ -274,7 +274,8 @@ loot tracker, skill calculator and the bot-generated `gameval` classes. They cha
 1. Port behaviour from the 235 tree. Cite the 235 file and its `@ObfuscatedName`.
 2. Before claiming 240 parity, check the topic against sections 3.1–3.12; if it is listed, read the 240
    evidence for that item (rl-suite `classXX`, rsprot 240 sources, the actual cache) and port the 240 form.
-3. If it is not listed, the 235 behaviour is assumed unchanged, with the limit stated in the first section.
+3. If it is not listed, use the 235 code as a readability aid and verify the corresponding 240 behavior.
+   An incomplete change inventory cannot establish that an unlisted method is unchanged.
 4. Never copy 235 packet ids, byte transforms, or definition opcode tables into the 240 profile.
 
 ## 5. Reproducing
@@ -289,3 +290,6 @@ python3 tools/rev-diff/packets.py /Users/tylercovalt/Documents/rl-suite-main/dat
 
 The diffs quoted in section 3 come from `git diff f2e65dce 2a0776b3 -- runelite-api cache` and
 `git log -S<symbol>` on the same range.
+
+Current implementation status and confirmed gaps: [the rebuilt port matrix](rs240-port/PORT-MATRIX.md)
+and [current audit](rs240-port/CURRENT-AUDIT.md). This historical change inventory is not an implementation ledger.

@@ -402,8 +402,22 @@ fn configuration_is_a_compact_panel_left_of_the_tools_and_collapses_without_a_hu
         panel.invalidate();
         panel.render().unwrap();
         assert!(panel.element_bounds(".panel").is_none());
-        assert_eq!(panel.element_bounds(".rail").unwrap(), [0., 0., 36., 600.]);
-        click(&mut panel, "#plugins-nav");
-        assert!(channel.drain().contains(&ShellAction::Open));
+        assert!(
+            panel.element_bounds(".rail").is_none(),
+            "closing the panel must remove the entire rail"
+        );
+        channel.model.borrow_mut().panel_visible = true;
+        panel
+            .resize(
+                [278 * scale, 600 * scale],
+                f32::from(u16::try_from(scale).unwrap()),
+            )
+            .unwrap();
+        panel.invalidate();
+        panel.render().unwrap();
+        assert_eq!(
+            panel.element_bounds(".rail").unwrap(),
+            [242., 0., 36., 600.]
+        );
     }
 }

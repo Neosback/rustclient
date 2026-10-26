@@ -55,3 +55,25 @@ The explicit vendor compatibility patch is documented under vendor/README.md.
 
 Keep this checkpoint and the source ledger current. Do not claim the full delivery
 from green host tests, a stored setting, source counts or a standalone panel demo.
+
+
+## 2026-10-26 reconciliation
+
+The current native implementation includes all descriptor control types, atomic application-level
+configuration transactions/recovery, adjacent cached shell composition, and plugin API 0.2 for native
+Rust plugins while preserving the external 0.1 component ABI. The GPU has additional settings effects
+and explicitly reports pending/limited effects; consult current code and per-setting ledgers rather
+than the earlier acceptance list as a claim that all those items are still absent.
+
+The latest requested collapse policy hides both panel and rail, with zero reserved width, and uses a
+single shell visibility value. The native retained-DOM contract covers close/reopen and 1x/2x geometry.
+Game UI raster viewport was corrected to match its normalized game extent. The native loop separately
+tracks shell-requested window widths to avoid feedback from intermediate platform sizes.
+
+Broader completion and verification remain open: [the rebuilt 42-domain matrix](../reference/rs240-port/PORT-MATRIX.md)
+and [current audit](../reference/rs240-port/CURRENT-AUDIT.md) are the current gap index. First-party
+plugins added in intervening commits have their own [scope ledger](../reference/builtin-plugins/FIRST-PARTY-LEDGER.md);
+these additions do not complete GPU/core behavior or browser gameplay.
+
+Validation of this reconciliation is recorded in `SIDEBAR-PORT-AUDIT-2026-10-26.md`; automated checks
+and desktop observations are separate.

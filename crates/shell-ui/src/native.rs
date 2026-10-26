@@ -124,6 +124,7 @@ impl RetainedPanel {
             self.stats.component_updates += 1;
         }
         self.doc.resolve(0.);
+        self.stats.layouts += 1;
         // Icons requested during this layout decode synchronously; adopt them and lay out once more.
         let loaded = self.assets.take();
         if !loaded.is_empty() {
@@ -131,8 +132,8 @@ impl RetainedPanel {
                 self.doc.inner.load_resource(resource);
             }
             self.doc.resolve(0.);
+            self.stats.layouts += 1;
         }
-        self.stats.layouts += 1;
         self.painter.reset();
         let dom = &self.doc.inner;
         self.painter.render_to_vec(

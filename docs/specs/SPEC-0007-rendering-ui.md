@@ -90,3 +90,24 @@ while browser readback can use its event loop. It does not acquire platform file
 Device-loss callbacks set a renderer-owned atomic signal; the next frame returns
 `RecreateRequired`, using the same composition-root recovery path as surface loss.
 This signal contains no semantic state and does not mutate `GameState`.
+
+
+## Sidebar visibility and viewport correction (approved 2026-10-26)
+
+The sidebar is application chrome adjacent to the game canvas. By the user's selected behavior,
+closing its panel also removes the tool rail: closed chrome reserves zero horizontal width, takes
+no game input and does no recurring component/layout/painting/upload work. One visibility owner
+projects both rail and panel state. The reopen affordance may use the existing RuneLite-style
+fallback arrow when native titlebar integration is unavailable; it is not a replacement game HUD.
+
+Tool navigation belongs to real tool/panel services. A plugin's configuration entry does not by
+itself create a toolbar navigation button. Required services remain active while their UI is hidden.
+
+The game UI's raster viewport/scissor must equal the physical extent used to normalize its vertices.
+A wider native surface containing shell chrome must not stretch game quads into that chrome.
+Picking, widget input, minimap input, overlay placement and stretched-mode rendering share the same
+canvas transform. Shell-driven asynchronous resizes must not be fed back as user changes to game size.
+
+Acceptance: closed/open DOM and idle-work contracts at 1x/2x, preserved game width, repeated open/close,
+DPI/resize/stretched tests and desktop fixed/classic/modern minimap/pointer checks. Compilation or a
+standalone panel PNG does not establish the desktop checks.

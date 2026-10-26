@@ -12,8 +12,8 @@ registration and last working renderer configuration, with actionable diagnostic
 Optional external plugins retain their existing fault-isolation policy and 0.1 ABI.
 
 Configuration descriptors carry source keys, sections, defaults, ranges, choices,
-colors and hotkeys. A validated candidate is applied through its owning service,
-then atomically persisted and published as a configuration change. Any failure
+colors and hotkeys. A validated candidate prepares its owning service effect without publishing,
+is atomically persisted, then commits the prepared effect and configuration-change publication. Any failure
 retains the previous accepted configuration. Application presentation preferences
 have one configuration owner; gameplay-affecting changes use GameState operations.
 

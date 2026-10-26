@@ -41,7 +41,7 @@ pub fn Shell(channel: ShellChannel) -> Element {
     let needle = query.read().to_lowercase();
     rsx! {
         div { id: "shell", class: "shell",
-            nav { class: "rail", "aria-label": "Application tools",
+            if snapshot.panel_visible { nav { class: "rail", "aria-label": "Application tools",
                 button { id: "plugins-nav", class: if expanded { "rail-button active" } else { "rail-button" },
                     title: "Configuration", "aria-label": "Plugin configuration", "aria-expanded": expanded,
                     onclick: move |_| {
@@ -54,7 +54,7 @@ pub fn Shell(channel: ShellChannel) -> Element {
                 }
                 span { class: "rail-spacer" }
             }
-            if snapshot.panel_visible { main { id: "shell-panel", class: "panel",
+            main { id: "shell-panel", class: "panel",
                 if let Some(error) = &snapshot.error {
                     div { class: "error", role: "alert", img { class: "mini", src: icon!("error"), alt: "" } span { "{error}" } }
                 }
