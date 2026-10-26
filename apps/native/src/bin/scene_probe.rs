@@ -142,6 +142,90 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         )?;
         assert_eq!(fingerprint, state.semantic_fingerprint());
         println!("fresh GPU reconstruction: byte-identical; second camera/size captured");
+        // GPU plugin options: each capture changes one setting from the source defaults.
+        let defaults = rustclient_renderer::GpuSettings::default();
+        let size = rustclient_renderer::SurfaceSize::new(1280, 720);
+        let render = |settings| {
+            pollster::block_on(rustclient_renderer::capture_world_with(
+                &mesh,
+                camera,
+                size,
+                rustclient_model::ClientCycle::ZERO,
+                settings,
+                |device| {
+                    let _ = device.poll(wgpu::PollType::wait_indefinitely());
+                },
+            ))
+        };
+        let baseline = render(defaults)?;
+        let neutral = render(rustclient_renderer::GpuSettings {
+            color_blind: rustclient_renderer::ColorBlind::Deuteranopia,
+            color_blind_intensity: 0,
+            ..defaults
+        })?;
+        if neutral != baseline {
+            return Err("zero-intensity color-blind correction changed pixels".into());
+        }
+        let corrected = render(rustclient_renderer::GpuSettings {
+            color_blind: rustclient_renderer::ColorBlind::Deuteranopia,
+            ..defaults
+        })?;
+        let changed = corrected
+            .iter()
+            .zip(&baseline)
+            .filter(|(a, b)| a != b)
+            .count();
+        if changed == 0 {
+            return Err("color-blind correction left every pixel unchanged".into());
+        }
+        println!(
+            "deuteranopia changed {changed} of {} channel bytes",
+            baseline.len()
+        );
+        for (name, settings) in [
+            (
+                "fog",
+                rustclient_renderer::GpuSettings {
+                    fog_depth: 12,
+                    draw_distance: 20,
+                    ..defaults
+                },
+            ),
+            (
+                "deuteranopia",
+                rustclient_renderer::GpuSettings {
+                    color_blind: rustclient_renderer::ColorBlind::Deuteranopia,
+                    ..defaults
+                },
+            ),
+            (
+                "msaa-off-aniso-16",
+                rustclient_renderer::GpuSettings {
+                    anti_aliasing: rustclient_renderer::AntiAliasing::Disabled,
+                    anisotropy: 16,
+                    ..defaults
+                },
+            ),
+        ] {
+            let pixels = pollster::block_on(rustclient_renderer::capture_world_with(
+                &mesh,
+                camera,
+                size,
+                rustclient_model::ClientCycle::ZERO,
+                settings,
+                |device| {
+                    let _ = device.poll(wgpu::PollType::wait_indefinitely());
+                },
+            ))?;
+            image::save_buffer(
+                path.join(format!("gpu-{name}.png")),
+                &pixels,
+                size.width,
+                size.height,
+                image::ColorType::Rgba8,
+            )?;
+            println!("captured gpu-{name}.png");
+        }
     }
     println!(
         "scene asset {:?}; state fingerprint {}",

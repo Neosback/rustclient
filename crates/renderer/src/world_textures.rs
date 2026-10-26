@@ -5,7 +5,7 @@ pub(crate) fn upload(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     mesh: &WorldMesh,
-) -> (wgpu::TextureView, wgpu::Sampler, wgpu::Buffer) {
+) -> (wgpu::TextureView, wgpu::Buffer) {
     let texture = device.create_texture(&wgpu::TextureDescriptor {
         label: Some("reference texture array"),
         size: wgpu::Extent3d {
@@ -66,21 +66,31 @@ pub(crate) fn upload(
         dimension: Some(wgpu::TextureViewDimension::D2Array),
         ..Default::default()
     });
-    let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-        label: Some("reference wrapping and filtering"),
-        address_mode_u: wgpu::AddressMode::ClampToEdge,
-        address_mode_v: wgpu::AddressMode::Repeat,
-        mag_filter: wgpu::FilterMode::Nearest,
-        min_filter: wgpu::FilterMode::Nearest,
-        mipmap_filter: wgpu::MipmapFilterMode::Linear,
-        ..Default::default()
-    });
     let animations = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("texture scroll vectors"),
         contents: bytemuck::cast_slice(&animations),
         usage: wgpu::BufferUsages::UNIFORM,
     });
-    (view, sampler, animations)
+    (view, animations)
+}
+/// Magnification stays nearest like `RuneLite`'s texture config; wgpu only permits anisotropy
+/// above 1 with every filter linear, so a filtered level also smooths magnification.
+pub(crate) fn sampler(device: &wgpu::Device, anisotropy: u16) -> wgpu::Sampler {
+    let filter = if anisotropy > 1 {
+        wgpu::FilterMode::Linear
+    } else {
+        wgpu::FilterMode::Nearest
+    };
+    device.create_sampler(&wgpu::SamplerDescriptor {
+        label: Some("reference wrapping and filtering"),
+        address_mode_u: wgpu::AddressMode::ClampToEdge,
+        address_mode_v: wgpu::AddressMode::Repeat,
+        mag_filter: filter,
+        min_filter: filter,
+        mipmap_filter: wgpu::MipmapFilterMode::Linear,
+        anisotropy_clamp: anisotropy.max(1),
+        ..Default::default()
+    })
 }
 fn mip(pixels: &[u8], width: usize) -> Vec<u8> {
     let next = width / 2;

@@ -211,6 +211,7 @@ fn SettingControl(row: SettingView, plugin: String, channel: ShellChannel) -> El
                 (Control::Boolean, ConfigValue::Boolean(_)) => rsx! {},
                 _ => rsx! { span { class: "value", "{row.value:?}" } },
             }
+            if let Some(note) = &row.note { small { class: "note", "{note}" } }
             if let Some(reason) = &row.unavailable { small { class: "unavailable", img { class: "mini", src: icon!("error"), alt: "" } "{reason}" } }
         }
     }

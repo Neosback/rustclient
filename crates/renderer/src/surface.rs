@@ -142,7 +142,9 @@ pub struct SurfaceRenderer {
     configured: bool,
     ui: Option<UiGpu>,
     world: Option<WorldGpu>,
-    material_options: crate::MaterialOptions,
+    settings: crate::GpuSettings,
+    effective: crate::EffectiveGpu,
+    capabilities: crate::GpuCapabilities,
     shell_staging: crate::shell::ShellStaging,
     shell_gpu: Option<crate::shell::ShellGpu>,
     game_width: Option<u32>,
@@ -190,8 +192,28 @@ struct StagedGeometry {
 
 impl SurfaceRenderer {
     /// Apply a validated projection; next present updates the shared shader uniform.
-    pub fn set_material_options(&mut self, options: crate::MaterialOptions) {
-        self.material_options = options;
+    /// Apply validated GPU preferences. Only resources the change affects are rebuilt.
+    /// Returns what this adapter actually does, including any requested-vs-effective deviations.
+    pub fn set_gpu_settings(&mut self, settings: crate::GpuSettings) -> &crate::EffectiveGpu {
+        let effective = settings.resolve(&self.capabilities);
+        if let Some(world) = &mut self.world {
+            world.set_samples(&self.device, effective.samples);
+            world.set_anisotropy(&self.device, effective.anisotropy);
+        }
+        if effective.present_mode != self.config.present_mode {
+            self.config.present_mode = effective.present_mode;
+            if self.configured {
+                self.reconfigure();
+            }
+        }
+        self.settings = settings;
+        self.effective = effective;
+        &self.effective
+    }
+    /// The behavior currently in effect, for diagnostics and the settings panel.
+    #[must_use]
+    pub fn effective_gpu(&self) -> &crate::EffectiveGpu {
+        &self.effective
     }
 
     /// Stage a retained panel only when its generation changes. Upload follows surface acquisition.
@@ -239,7 +261,7 @@ impl SurfaceRenderer {
             .await
             .map_err(|error| RendererInitError::Adapter(error.to_string().into()))?;
         let (device, queue) = adapter
-            .request_device(&wgpu::DeviceDescriptor::default())
+            .request_device(&crate::settings::device_descriptor(&adapter))
             .await
             .map_err(|error| RendererInitError::Device(error.to_string().into()))?;
 
@@ -250,6 +272,10 @@ impl SurfaceRenderer {
         });
 
         let capabilities = surface.get_capabilities(&adapter);
+        let gpu_capabilities =
+            crate::settings::capabilities(&adapter, &device, capabilities.present_modes.clone());
+        let settings = crate::GpuSettings::default();
+        let effective = settings.resolve(&gpu_capabilities);
         let surface_format = capabilities
             .formats
             .first()
@@ -265,7 +291,7 @@ impl SurfaceRenderer {
             width: size.width.max(1),
             height: size.height.max(1),
             desired_maximum_frame_latency: 2,
-            present_mode: wgpu::PresentMode::AutoVsync,
+            present_mode: effective.present_mode,
         };
 
         let mut renderer = Self {
@@ -278,7 +304,9 @@ impl SurfaceRenderer {
             configured: false,
             ui: None,
             world: None,
-            material_options: crate::MaterialOptions::default(),
+            settings,
+            effective,
+            capabilities: gpu_capabilities,
             shell_staging: crate::shell::ShellStaging::default(),
             shell_gpu: None,
             game_width: None,
@@ -333,7 +361,11 @@ impl SurfaceRenderer {
             self.view_format,
             SurfaceSize::new(self.config.width, self.config.height),
             mesh,
+            self.effective.samples,
         )?);
+        if let Some(world) = &mut self.world {
+            world.set_anisotropy(&self.device, self.effective.anisotropy);
+        }
         self.staged = StagedGeometry::default();
         Ok(())
     }
@@ -447,7 +479,7 @@ impl SurfaceRenderer {
             frame.viewport_settings,
             top_level,
             frame.scene_brightness,
-            self.material_options,
+            self.settings,
         );
         self.ui
             .as_mut()

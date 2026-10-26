@@ -17,7 +17,15 @@ struct CameraUniform {
     top_level: u32,
     brightness: f32,
     material_flags: u32,
+    /// x: fog depth in tiles (0 disables), y: draw distance in local units, z/w: eye x/z.
+    fog: [f32; 4],
+    fog_color: [f32; 4],
+    /// x: color-blind mode (0 off), y: intensity percent.
+    color: [f32; 4],
 }
+const CAMERA_BYTES: u64 = 128;
+/// Local units per tile, `Perspective.LOCAL_TILE_SIZE`.
+const LOCAL_TILE_SIZE: f32 = 128.;
 pub(crate) struct WorldGpu {
     pub asset: SceneAssetId,
     opaque_pipeline: wgpu::RenderPipeline,
@@ -29,6 +37,12 @@ pub(crate) struct WorldGpu {
     transparent_runs: Vec<super::transparency::TransparentRun>,
     camera: wgpu::Buffer,
     bind: wgpu::BindGroup,
+    bind_layout: wgpu::BindGroupLayout,
+    pipeline_layout: wgpu::PipelineLayout,
+    shader: wgpu::ShaderModule,
+    textures: wgpu::TextureView,
+    animations: wgpu::Buffer,
+    anisotropy: u16,
     pub target: super::world_target::WorldTarget,
     surface_format: wgpu::TextureFormat,
     size: SurfaceSize,
@@ -39,7 +53,7 @@ pub(crate) struct WorldGpu {
         u32,
         u8,
         rustclient_model::ScreenBrightness,
-        crate::MaterialOptions,
+        crate::GpuSettings,
     )>,
 }
 impl WorldGpu {
@@ -57,6 +71,7 @@ impl WorldGpu {
         format: wgpu::TextureFormat,
         size: SurfaceSize,
         mesh: &WorldMesh,
+        samples: u32,
     ) -> Result<Self, RenderError> {
         let data: &[u8] = bytemuck::cast_slice(&mesh.geometry.vertices);
         if data.len() as u64 > device.limits().max_buffer_size {
@@ -71,7 +86,7 @@ impl WorldGpu {
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
                         has_dynamic_offset: false,
-                        min_binding_size: wgpu::BufferSize::new(80),
+                        min_binding_size: wgpu::BufferSize::new(CAMERA_BYTES),
                     },
                     count: None,
                 },
@@ -105,33 +120,12 @@ impl WorldGpu {
         });
         let camera = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("world camera"),
-            size: 80,
+            size: CAMERA_BYTES,
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
-        let (textures, sampler, animations) = crate::world_textures::upload(device, queue, mesh);
-        let bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("world camera binding"),
-            layout: &layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: camera.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: wgpu::BindingResource::TextureView(&textures),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: wgpu::BindingResource::Sampler(&sampler),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: animations.as_entire_binding(),
-                },
-            ],
-        });
+        let (textures, animations) = crate::world_textures::upload(device, queue, mesh);
+        let bind = bind_group(device, &layout, &camera, &textures, 1, &animations);
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("world pipeline layout"),
             bind_group_layouts: &[Some(&layout)],
@@ -147,6 +141,7 @@ impl WorldGpu {
             &pipeline_layout,
             &shader,
             false,
+            samples,
         );
         let transparent_pipeline = pipeline(
             device,
@@ -154,6 +149,7 @@ impl WorldGpu {
             &pipeline_layout,
             &shader,
             true,
+            samples,
         );
         let geometry = super::world_geometry::GeometryGpu::new(device, &mesh.geometry)?;
         let dynamic = super::world_geometry::GeometryGpu::new(device, &mesh.dynamic)?;
@@ -161,7 +157,7 @@ impl WorldGpu {
             device,
             &rustclient_scene::SceneGeometry::default(),
         )?;
-        let target = super::world_target::WorldTarget::new(device, size, format);
+        let target = super::world_target::WorldTarget::new(device, size, format, samples);
         Ok(Self {
             asset: mesh.asset,
             opaque_pipeline,
@@ -171,6 +167,12 @@ impl WorldGpu {
             entities,
             camera,
             bind,
+            bind_layout: layout,
+            pipeline_layout,
+            shader,
+            textures,
+            animations,
+            anisotropy: 1,
             target,
             surface_format: format,
             size,
@@ -178,6 +180,48 @@ impl WorldGpu {
             last_camera: None,
             transparent_runs: Vec::new(),
         })
+    }
+    /// Rebuild only the sample-count dependent resources: both pipelines and the render target.
+    pub fn set_samples(&mut self, device: &wgpu::Device, samples: u32) {
+        if self.target.samples == samples {
+            return;
+        }
+        let format = super::world_target::FORMAT;
+        self.opaque_pipeline = pipeline(
+            device,
+            format,
+            &self.pipeline_layout,
+            &self.shader,
+            false,
+            samples,
+        );
+        self.transparent_pipeline = pipeline(
+            device,
+            format,
+            &self.pipeline_layout,
+            &self.shader,
+            true,
+            samples,
+        );
+        self.target =
+            super::world_target::WorldTarget::new(device, self.size, self.surface_format, samples);
+        self.last_camera = None;
+    }
+    /// Replace only the texture sampler (and the bind group that references it).
+    pub fn set_anisotropy(&mut self, device: &wgpu::Device, anisotropy: u16) {
+        if self.anisotropy == anisotropy {
+            return;
+        }
+        self.bind = bind_group(
+            device,
+            &self.bind_layout,
+            &self.camera,
+            &self.textures,
+            anisotropy,
+            &self.animations,
+        );
+        self.anisotropy = anisotropy;
+        self.last_camera = None;
     }
     pub fn update_dynamic(
         &mut self,
@@ -201,7 +245,12 @@ impl WorldGpu {
     }
     pub fn resize(&mut self, device: &wgpu::Device, size: SurfaceSize) {
         if self.size != size && !size.is_zero() {
-            self.target = super::world_target::WorldTarget::new(device, size, self.surface_format);
+            self.target = super::world_target::WorldTarget::new(
+                device,
+                size,
+                self.surface_format,
+                self.target.samples,
+            );
             self.size = size;
             self.last_camera = None;
         }
@@ -212,6 +261,7 @@ impl WorldGpu {
         camera: GameplayCameraController,
         scale: f64,
         cycle: u32,
+        gpu: crate::GpuSettings,
     ) {
         self.prepare_viewport(
             queue,
@@ -222,7 +272,7 @@ impl WorldGpu {
             rustclient_model::ViewportSettings::default(),
             ALL_LEVELS,
             rustclient_model::ScreenBrightness::default(),
-            crate::MaterialOptions::default(),
+            gpu,
         );
     }
     #[expect(
@@ -244,7 +294,7 @@ impl WorldGpu {
         settings: rustclient_model::ViewportSettings,
         top_level: u8,
         brightness: rustclient_model::ScreenBrightness,
-        material: crate::MaterialOptions,
+        gpu: crate::GpuSettings,
     ) {
         camera.set_zoom(i32::from(settings.zoom[0]), i32::from(settings.zoom[1]));
         let logical = bounds.unwrap_or(rustclient_game_ui::Rect::new(
@@ -267,19 +317,34 @@ impl WorldGpu {
             self.physical_viewport[2].min(self.size.width as f32 - self.physical_viewport[0]);
         self.physical_viewport[3] =
             self.physical_viewport[3].min(self.size.height as f32 - self.physical_viewport[1]);
-        if self.last_camera == Some((camera, viewport, cycle, top_level, brightness, material)) {
+        if self.last_camera == Some((camera, viewport, cycle, top_level, brightness, gpu)) {
             return;
         }
         let pose = camera.pose(viewport);
+        let eye = Vec3::from_array(pose.position.map(|v| v as f32));
         let uniform = CameraUniform {
             view_projection: camera.matrix(viewport).to_cols_array_2d(),
             cycle,
             top_level: u32::from(top_level),
             brightness: 0.5 + f32::from(100 - brightness.percent()) / 200.,
-            material_flags: material.shader_flags(),
+            material_flags: gpu.material.shader_flags(),
+            fog: [
+                gpu.fog_depth as f32,
+                gpu.draw_distance.min(184) as f32 * LOCAL_TILE_SIZE,
+                eye.x,
+                eye.z,
+            ],
+            // RuneLite fogs toward the sky color; the world clears to black until the skybox
+            // color is ported, so the fog target matches what lies behind the scene.
+            fog_color: [0., 0., 0., 1.],
+            color: [
+                gpu.color_blind.shader_mode() as f32,
+                gpu.color_blind_intensity as f32,
+                0.,
+                0.,
+            ],
         };
         queue.write_buffer(&self.camera, 0, bytemuck::bytes_of(&uniform));
-        let eye = Vec3::from_array(pose.position.map(|v| v as f32));
         let yaw = f32::from(pose.yaw) * std::f32::consts::TAU / 2048.;
         let pitch = f32::from(pose.pitch) * std::f32::consts::TAU / 2048.;
         let direction = Vec3::new(
@@ -295,18 +360,27 @@ impl WorldGpu {
             |source, index| sources[source].alpha_depth(index, eye, direction),
             &mut self.transparent_runs,
         );
-        self.last_camera = Some((camera, viewport, cycle, top_level, brightness, material));
+        self.last_camera = Some((camera, viewport, cycle, top_level, brightness, gpu));
     }
     pub fn render_scene(&self, encoder: &mut wgpu::CommandEncoder) {
+        // Without multisampling the pass renders straight into the texture that is composited.
+        let (view, resolve_target, store) = match &self.target.multisampled {
+            Some(multisampled) => (
+                multisampled,
+                Some(&self.target.resolved),
+                wgpu::StoreOp::Discard,
+            ),
+            None => (&self.target.resolved, None, wgpu::StoreOp::Store),
+        };
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("classic reference world"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view: &self.target.multisampled,
+                view,
                 depth_slice: None,
-                resolve_target: Some(&self.target.resolved),
+                resolve_target,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
-                    store: wgpu::StoreOp::Discard,
+                    store,
                 },
             })],
             depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
@@ -341,12 +415,45 @@ impl WorldGpu {
         }
     }
 }
+fn bind_group(
+    device: &wgpu::Device,
+    layout: &wgpu::BindGroupLayout,
+    camera: &wgpu::Buffer,
+    textures: &wgpu::TextureView,
+    anisotropy: u16,
+    animations: &wgpu::Buffer,
+) -> wgpu::BindGroup {
+    let sampler = crate::world_textures::sampler(device, anisotropy);
+    device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("world camera binding"),
+        layout,
+        entries: &[
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: camera.as_entire_binding(),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
+                resource: wgpu::BindingResource::TextureView(textures),
+            },
+            wgpu::BindGroupEntry {
+                binding: 2,
+                resource: wgpu::BindingResource::Sampler(&sampler),
+            },
+            wgpu::BindGroupEntry {
+                binding: 3,
+                resource: animations.as_entire_binding(),
+            },
+        ],
+    })
+}
 fn pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
     layout: &wgpu::PipelineLayout,
     shader: &wgpu::ShaderModule,
     transparent: bool,
+    samples: u32,
 ) -> wgpu::RenderPipeline {
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
         label: Some(if transparent {
@@ -377,7 +484,7 @@ fn pipeline(
             bias: wgpu::DepthBiasState::default(),
         }),
         multisample: wgpu::MultisampleState {
-            count: super::world_target::SAMPLES,
+            count: samples,
             ..Default::default()
         },
         fragment: Some(wgpu::FragmentState {

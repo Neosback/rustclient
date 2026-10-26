@@ -1663,9 +1663,9 @@
       "key": "drawDistance",
       "javaType": "int",
       "defaultExpression": "50",
-      "status": "unimplemented",
-      "rustOwner": null,
-      "verification": "not-run"
+      "status": "partial",
+      "rustOwner": "crates/renderer/src/shaders/world.wgsl (fog boundary only)",
+      "verification": "capture-run: visual only; geometry beyond the distance is not culled"
     },
     {
       "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPluginConfig.java",
@@ -1703,9 +1703,9 @@
       "key": "antiAliasingMode",
       "javaType": "AntiAliasingMode",
       "defaultExpression": "AntiAliasingMode.MSAA_2",
-      "status": "unimplemented",
-      "rustOwner": null,
-      "verification": "not-run"
+      "status": "implemented",
+      "rustOwner": "crates/renderer/src/settings.rs + world_target.rs",
+      "verification": "unit-test: resolution; capture-run: MSAA off and 4x on the dev GPU"
     },
     {
       "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPluginConfig.java",
@@ -1723,9 +1723,9 @@
       "key": "fogDepth",
       "javaType": "int",
       "defaultExpression": "0",
-      "status": "unimplemented",
-      "rustOwner": null,
-      "verification": "not-run"
+      "status": "implemented",
+      "rustOwner": "crates/renderer/src/shaders/world.wgsl (fog_amount)",
+      "verification": "capture-run: visual only, no pixel comparison with RuneLite"
     },
     {
       "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPluginConfig.java",
@@ -1733,9 +1733,9 @@
       "key": "anisotropicFilteringLevel",
       "javaType": "int",
       "defaultExpression": "1",
-      "status": "unimplemented",
-      "rustOwner": null,
-      "verification": "not-run"
+      "status": "partial",
+      "rustOwner": "crates/renderer/src/world_textures.rs (sampler)",
+      "verification": "capture-run: sampler validated at 16x; wgpu also smooths magnification"
     },
     {
       "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPluginConfig.java",
@@ -1743,9 +1743,9 @@
       "key": "colorBlindMode",
       "javaType": "ColorBlindMode",
       "defaultExpression": "ColorBlindMode.NONE",
-      "status": "unimplemented",
-      "rustOwner": null,
-      "verification": "not-run"
+      "status": "implemented",
+      "rustOwner": "crates/renderer/src/shaders/world.wgsl (colorblind)",
+      "verification": "capture-run: zero intensity is neutral, correction changes pixels; not compared with RuneLite"
     },
     {
       "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPluginConfig.java",
@@ -1753,9 +1753,9 @@
       "key": "colorBlindIntensity",
       "javaType": "int",
       "defaultExpression": "100",
-      "status": "unimplemented",
-      "rustOwner": null,
-      "verification": "not-run"
+      "status": "implemented",
+      "rustOwner": "crates/renderer/src/shaders/world.wgsl (colorblind)",
+      "verification": "capture-run: zero intensity is neutral; not compared with RuneLite"
     },
     {
       "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPluginConfig.java",
@@ -1783,9 +1783,9 @@
       "key": "vsyncMode",
       "javaType": "SyncMode",
       "defaultExpression": "SyncMode.OFF",
-      "status": "unimplemented",
-      "rustOwner": null,
-      "verification": "not-run"
+      "status": "partial",
+      "rustOwner": "crates/renderer/src/settings.rs + surface.rs (present mode)",
+      "verification": "unit-test: resolution; never run against a window surface in this session"
     },
     {
       "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPluginConfig.java",

@@ -29,6 +29,27 @@ pub async fn capture_world_at(
     cycle: rustclient_model::ClientCycle,
     drive_readback: impl FnOnce(&wgpu::Device),
 ) -> Result<Vec<u8>, RenderError> {
+    capture_world_with(
+        mesh,
+        camera,
+        size,
+        cycle,
+        crate::GpuSettings::default(),
+        drive_readback,
+    )
+    .await
+}
+/// Capture with explicit GPU preferences (fog, color-blind correction, materials, anisotropy, MSAA).
+/// # Errors
+/// Returns adapter, resource, dimension or readback failures.
+pub async fn capture_world_with(
+    mesh: &rustclient_scene::WorldMesh,
+    camera: GameplayCameraController,
+    size: SurfaceSize,
+    cycle: rustclient_model::ClientCycle,
+    settings: crate::GpuSettings,
+    drive_readback: impl FnOnce(&wgpu::Device),
+) -> Result<Vec<u8>, RenderError> {
     let (device, queue) = crate::capture::capture_device().await?;
     let width = size.width;
     let height = size.height;
@@ -36,8 +57,19 @@ pub async fn capture_world_at(
         return Err(RenderError::World("invalid capture dimensions"));
     }
     let format = super::world_target::FORMAT;
-    let mut world = WorldGpu::new(&device, &queue, format, size, mesh)?;
-    world.prepare(&queue, camera, 1., (cycle.get() & 127) as u32);
+    // Captures stay at four samples unless the caller changes the anti-aliasing option.
+    let effective = settings.resolve(&crate::GpuCapabilities {
+        sample_counts: vec![1, 2, 4, 8, 16],
+        present_modes: Vec::new(),
+    });
+    let samples = if settings.anti_aliasing == crate::GpuSettings::default().anti_aliasing {
+        super::world_target::CAPTURE_SAMPLES
+    } else {
+        effective.samples
+    };
+    let mut world = WorldGpu::new(&device, &queue, format, size, mesh, samples)?;
+    world.set_anisotropy(&device, effective.anisotropy);
+    world.prepare(&queue, camera, 1., (cycle.get() & 127) as u32, settings);
     let stride = (width * 4).div_ceil(256) * 256;
     let buffer = device.create_buffer(&wgpu::BufferDescriptor {
         label: Some("world capture readback"),

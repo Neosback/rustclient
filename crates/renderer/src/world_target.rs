@@ -1,12 +1,15 @@
-//! Non-sRGB four-sample world target and explicit display conversion.
+//! Non-sRGB multisampled world target and explicit display conversion.
 use crate::SurfaceSize;
 pub(crate) const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
-pub(crate) const SAMPLES: u32 = 4;
+/// Sample count of offscreen captures, which do not follow the user's GPU settings.
+pub(crate) const CAPTURE_SAMPLES: u32 = 4;
 pub(crate) struct WorldTarget {
     pub texture: wgpu::Texture,
     pub resolved: wgpu::TextureView,
-    pub multisampled: wgpu::TextureView,
+    /// `None` when the world renders straight into `resolved` without multisampling.
+    pub multisampled: Option<wgpu::TextureView>,
     pub depth: wgpu::TextureView,
+    pub samples: u32,
     bind: wgpu::BindGroup,
     pipeline: wgpu::RenderPipeline,
 }
@@ -15,7 +18,12 @@ impl WorldTarget {
         clippy::too_many_lines,
         reason = "one target/composite resource lifetime; no per-frame allocations"
     )]
-    pub fn new(device: &wgpu::Device, size: SurfaceSize, surface: wgpu::TextureFormat) -> Self {
+    pub fn new(
+        device: &wgpu::Device,
+        size: SurfaceSize,
+        surface: wgpu::TextureFormat,
+        samples: u32,
+    ) -> Self {
         let create = |label, samples, format, usage| {
             device.create_texture(&wgpu::TextureDescriptor {
                 label: Some(label),
@@ -41,16 +49,18 @@ impl WorldTarget {
                 | wgpu::TextureUsages::COPY_SRC,
         );
         let resolved = texture.create_view(&wgpu::TextureViewDescriptor::default());
-        let multisampled = create(
-            "reference world MSAA",
-            SAMPLES,
-            FORMAT,
-            wgpu::TextureUsages::RENDER_ATTACHMENT,
-        )
-        .create_view(&wgpu::TextureViewDescriptor::default());
+        let multisampled = (samples > 1).then(|| {
+            create(
+                "reference world MSAA",
+                samples,
+                FORMAT,
+                wgpu::TextureUsages::RENDER_ATTACHMENT,
+            )
+            .create_view(&wgpu::TextureViewDescriptor::default())
+        });
         let depth = create(
             "reference reverse Z",
-            SAMPLES,
+            samples,
             wgpu::TextureFormat::Depth32Float,
             wgpu::TextureUsages::RENDER_ATTACHMENT,
         )
@@ -132,6 +142,7 @@ impl WorldTarget {
             resolved,
             multisampled,
             depth,
+            samples,
             bind,
             pipeline,
         }

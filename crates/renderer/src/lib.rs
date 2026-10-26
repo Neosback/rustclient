@@ -18,9 +18,13 @@ pub use surface::{
 mod camera;
 mod face_priority;
 mod material_options;
+mod settings;
 mod transparency;
 mod world;
 pub use material_options::MaterialOptions;
+pub use settings::{
+    AntiAliasing, ColorBlind, Deviation, EffectiveGpu, GpuCapabilities, GpuSettings, VsyncMode,
+};
 mod shell;
 pub use shell::{ShellLayer, ShellStats};
 mod world_geometry;
@@ -31,4 +35,4 @@ pub use camera::{
 };
 
 mod world_capture;
-pub use world_capture::{capture_world, capture_world_at};
+pub use world_capture::{capture_world, capture_world_at, capture_world_with};

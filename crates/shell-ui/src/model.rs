@@ -11,6 +11,8 @@ pub struct SettingView {
     pub value: ConfigValue,
     /// A missing effect is shown explicitly and cannot produce an effective-looking control.
     pub unavailable: Option<String>,
+    /// Information about the effective behavior (for example a hardware limit); the control stays usable.
+    pub note: Option<String>,
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PluginPanel {
@@ -38,10 +40,21 @@ impl PluginPanel {
                         .unwrap_or(&descriptor.default)
                         .clone(),
                     unavailable: availability(&descriptor.key),
+                    note: None,
                     descriptor: descriptor.clone(),
                 })
                 .collect(),
         }
+    }
+}
+impl PluginPanel {
+    /// Attach effective-behavior notes (hardware limits, deviations) to settings that have one.
+    #[must_use]
+    pub fn with_notes(mut self, note: impl Fn(&str) -> Option<String>) -> Self {
+        for setting in &mut self.settings {
+            setting.note = note(&setting.descriptor.key);
+        }
+        self
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq)]

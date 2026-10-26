@@ -163,7 +163,7 @@ pub(crate) async fn capture_device() -> Result<(wgpu::Device, wgpu::Queue), Rend
         .await
         .map_err(|_| RenderError::Ui("capture adapter unavailable"))?;
     let (device, queue) = adapter
-        .request_device(&wgpu::DeviceDescriptor::default())
+        .request_device(&crate::settings::device_descriptor(&adapter))
         .await
         .map_err(|_| RenderError::Ui("capture device unavailable"))?;
 
