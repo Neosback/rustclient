@@ -8,10 +8,47 @@ use rustclient_renderer::{
 };
 use rustclient_shell_ui::{PluginPanel, RetainedPanel, ShellAction, ShellChannel};
 use std::collections::BTreeMap;
+use std::time::{Duration, Instant};
 use winit::{
     dpi::{LogicalSize, PhysicalSize},
     window::{Window, WindowLevel},
 };
+
+/// How long a window size we asked for may take to arrive before the window is trusted again.
+const RESIZE_SETTLE: Duration = Duration::from_millis(750);
+
+/// A window width requested by the shell itself (the panel opening or closing).
+///
+/// The platform applies it asynchronously and may report intermediate sizes first; those are
+/// not user resizes and must not change how wide the game is.
+#[derive(Clone, Copy, Debug)]
+struct PendingResize {
+    width: u32,
+    deadline: Instant,
+}
+impl PendingResize {
+    fn new(width: u32, now: Instant) -> Self {
+        Self {
+            width,
+            deadline: now + RESIZE_SETTLE,
+        }
+    }
+    /// Whether a reported window width should be treated as the user's (or the OS's) own resize.
+    fn accepts(pending: &mut Option<Self>, actual: u32, now: Instant) -> bool {
+        let Some(request) = *pending else {
+            return true;
+        };
+        if actual.abs_diff(request.width) <= 2 {
+            *pending = None;
+            return false;
+        }
+        if now < request.deadline {
+            return false;
+        }
+        *pending = None;
+        true
+    }
+}
 
 struct SidebarArrow {
     width: u32,
@@ -48,7 +85,7 @@ pub(super) struct Shell {
     expanded: bool,
     restore_expanded: bool,
     game_logical_width: f64,
-    pending_window_width: Option<u32>,
+    pending_window_width: Option<PendingResize>,
     arrow: SidebarArrow,
     /// Why an applied GPU option differs from the request on this adapter.
     gpu_notes: BTreeMap<String, String>,
@@ -120,12 +157,8 @@ impl Shell {
     )]
     pub fn on_window_resized(&mut self, window: &Window) {
         let actual = window.inner_size().width;
-        if let Some(expected) = self.pending_window_width {
-            if actual.abs_diff(expected) <= 2 {
-                self.pending_window_width = None;
-                return;
-            }
-            self.pending_window_width = None;
+        if !PendingResize::accepts(&mut self.pending_window_width, actual, Instant::now()) {
+            return;
         }
         let scale = window.scale_factor();
         let sidebar = (f64::from(self.width()) * scale).round() as u32;
@@ -142,6 +175,14 @@ impl Shell {
         let scale = window.scale_factor();
         if self.keep_game_size() && window.fullscreen().is_none() && !window.is_maximized() {
             let game = (self.game_logical_width * scale).round() as u32;
+            // While our own resize is in flight the window is still the old width; the game
+            // keeps its size and the panel is clipped. Once settled, never exceed the window.
+            let game = if self.pending_window_width.is_some() {
+                game
+            } else {
+                let sidebar = (f64::from(self.width()) * scale).round() as u32;
+                game.min(size.width.saturating_sub(sidebar).max(1))
+            };
             return PhysicalSize::new(game.max(1), size.height);
         }
         let sidebar = (f64::from(self.width()) * scale).round() as u32;
@@ -259,6 +300,10 @@ impl Shell {
         reason = "validated bounded shell extent and platform scale"
     )]
     pub fn stage(&mut self, window: &Window, renderer: &mut SurfaceRenderer) -> Result<(), String> {
+        // A requested size the platform never delivered (clamped to the screen) expires here.
+        if self.pending_window_width.is_some() {
+            self.on_window_resized(window);
+        }
         let game = self.game_size(window);
         renderer.set_game_width(Some(game.width));
         self.panel.set_visible(self.visible);
@@ -461,16 +506,19 @@ impl Shell {
         self.channel.model.borrow_mut().panel_visible = expanded;
         self.panel.invalidate();
         let after = self.width();
-        window.set_min_inner_size(Some(LogicalSize::new(765. + f64::from(after), 503.)));
         if keep_game && window.fullscreen().is_none() && !window.is_maximized() {
             let target_logical_width =
                 (self.game_logical_width + f64::from(after)).max(765. + f64::from(after));
             let target_physical_width = (target_logical_width * scale).round() as u32;
-            self.pending_window_width = Some(target_physical_width);
+            // Armed before the minimum size changes: enforcing it can report a size too.
+            self.pending_window_width =
+                Some(PendingResize::new(target_physical_width, Instant::now()));
+            window.set_min_inner_size(Some(LogicalSize::new(765. + f64::from(after), 503.)));
             let size = window.inner_size().to_logical::<f64>(scale);
             let _ = window.request_inner_size(LogicalSize::new(target_logical_width, size.height));
         } else {
             self.pending_window_width = None;
+            window.set_min_inner_size(Some(LogicalSize::new(765. + f64::from(after), 503.)));
             self.on_window_resized(window);
         }
         window.request_redraw();
@@ -640,5 +688,30 @@ mod tests {
                 setting.key
             );
         }
+    }
+
+    #[test]
+    fn intermediate_sizes_during_our_own_resize_are_not_user_resizes() {
+        let start = Instant::now();
+        let mut pending = Some(PendingResize::new(1_043, start));
+        assert!(!PendingResize::accepts(&mut pending, 801, start));
+        assert!(!PendingResize::accepts(&mut pending, 950, start));
+        assert!(pending.is_some());
+        assert!(!PendingResize::accepts(&mut pending, 1_044, start));
+        assert!(pending.is_none());
+        assert!(PendingResize::accepts(&mut pending, 900, start));
+    }
+
+    #[test]
+    fn a_size_the_platform_never_delivers_expires() {
+        let start = Instant::now();
+        let mut pending = Some(PendingResize::new(1_043, start));
+        assert!(!PendingResize::accepts(&mut pending, 900, start));
+        assert!(PendingResize::accepts(
+            &mut pending,
+            900,
+            start + RESIZE_SETTLE
+        ));
+        assert!(pending.is_none());
     }
 }
