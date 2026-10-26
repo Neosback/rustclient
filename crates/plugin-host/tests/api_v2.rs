@@ -468,9 +468,9 @@ fn full_output() -> PluginOutput {
             },
             SpriteOverride {
                 sprite: 3,
-                width: 512,
+                width: 2000,
                 height: 1,
-                rgba: Arc::from(vec![0u8; 2048]),
+                rgba: Arc::from(vec![0u8; 8000]),
             },
         ],
         camera: vec![

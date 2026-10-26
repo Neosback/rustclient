@@ -66,7 +66,7 @@ Schema controls: boolean, integer, choice, color, hotkey, size, font, text and d
 as absent fields/events, never guessed; each is a semantic-owner extension tracked in the plugin ledger.
 
 **Failure behavior.** A faulting plugin follows the existing isolation policy; required services are never disabled.
-Malformed output items (oversized sprites, non-finite camera speed, inverted zoom limits) are dropped individually.
+Sprite overrides are bounded to 1024 pixels per edge, 256 sprites and 4 MiB per plugin. Malformed output items (oversized sprites, non-finite camera speed, inverted zoom limits) are dropped individually.
 
 **WIT.** `wit/rustclient/plugin-0.2` mirrors these records for cross-language plugins. The wasm runtime still
 instantiates the `0.1.0` world; binding `0.2.0` is separate work. In-tree plugins implement `PluginInstance` directly.

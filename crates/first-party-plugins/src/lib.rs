@@ -12,6 +12,8 @@ mod entityhider;
 mod fps;
 mod idlenotifier;
 mod idlenotifier_animations;
+mod interfacestyles;
+mod interfacestyles_sprites;
 mod npchighlight;
 mod playerindicators;
 mod roofremoval;
@@ -160,6 +162,11 @@ const ENTRIES: &[Entry] = &[
             Capability::GameReadVars,
         ],
         build: || boxed(idlenotifier::IdleNotifier::new()),
+    },
+    Entry {
+        name: "interfacestyles",
+        capabilities: &[Capability::UiSpriteOverride],
+        build: || boxed(interfacestyles::InterfaceStyles::default()),
     },
     Entry {
         name: "npchighlight",

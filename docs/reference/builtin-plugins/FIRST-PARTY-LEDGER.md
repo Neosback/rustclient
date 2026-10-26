@@ -237,3 +237,23 @@ Sources: `plugins/playerindicators/{PlayerIndicatorsPlugin,PlayerIndicatorsServi
 Known differences:
 
 - Every non-local player counts as "others" (the source's others rule is "in no friends chat and no clan").
+
+## interfacestyles
+
+Sources: `plugins/interfacestyles/{InterfaceStylesPlugin,InterfaceStylesConfig,SpriteOverride,WidgetOverride,Skin}.java`,
+`gameval/SpriteID.java`, and the plugin's `2005/` and `2010/` resource PNGs (copied into `crates/first-party-plugins/assets/interfacestyles/`
+by `tools/builtin-plugins/interfacestyles_sprites.py`; the `rs3` folder is unused by the 240 plugin). 124 `SpriteOverride` rows give 167
+(skin, sprite) files.
+
+| Source | Rust owner | Implemented | Verified |
+| --- | --- | --- | --- |
+| `overrideSprites`: skin selects rows (a skin matches only rows that list it; 2006 reads the 2005 directory); `DEFAULT` removes everything | `first-party-plugins::interfacestyles` + generated `interfacestyles_sprites.rs` -> `PluginOutput::sprite_overrides` | yes | unit: every PNG decodes within the host limits; table keys unique |
+| `Client.getSpriteOverrides()` stands in for the cache sprite; removal restores it | `WidgetVisualAssets::set_sprite_overrides` (+ re-upload in `apps/native/src/main.rs::sync_sprite_overrides`) | yes; an override draws at its own size with no trim offset | unit: replace, late cache load, restore, unloaded sprite; not seen on screen |
+| Compass sprite (`client.setCompass`) | listed as an ordinary sprite override | partly: the compass is also composed through a mask, so whether the override shows is unchecked | - |
+| Widget overrides (2005 side-stone frames by widget id) | none | no | - |
+| `hdHealthBars`, `hdMenu`, `menuAlpha`, `rsCrossSprites`, `alwaysStack`, `condensePlayerOptions` | none | no | - |
+
+Known differences:
+
+- The host raised the per-sprite edge to 1024 pixels and the count to 256, with a 4 MiB total budget per plugin, because the 2005 skin has sprites up to
+  717 pixels wide (about 1 MB decoded in total).

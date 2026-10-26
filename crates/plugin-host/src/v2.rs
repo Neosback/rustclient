@@ -407,6 +407,14 @@ pub(crate) fn validate(
             && sprite.height <= limits::SPRITE_EDGE
             && sprite.rgba.len() == usize::from(sprite.width) * usize::from(sprite.height) * 4
     });
+    let mut budget = limits::SPRITE_OVERRIDE_BYTES;
+    output.sprite_overrides.retain(|sprite| {
+        let fits = budget >= sprite.rgba.len();
+        if fits {
+            budget -= sprite.rgba.len();
+        }
+        fits
+    });
 
     if refuse(Capability::CameraControl, !output.camera.is_empty()) {
         output.camera.clear();

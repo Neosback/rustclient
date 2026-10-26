@@ -571,6 +571,7 @@ fn availability(plugin: &str, key: &str) -> Option<String> {
         }
         "dev.rustclient.idlenotifier" => key != "interactionidle",
         "dev.rustclient.fps" => true,
+        "dev.rustclient.interfacestyles" => key == "gameframe",
         "dev.rustclient.npchighlight" => matches!(
             key,
             "npcToHighlight"
@@ -602,6 +603,10 @@ fn availability(plugin: &str, key: &str) -> Option<String> {
     };
     (!implemented).then(|| pending_reason(plugin, key))
 }
+#[expect(
+    clippy::too_many_lines,
+    reason = "one arm per unported setting, grouped by plugin"
+)]
 fn pending_reason(plugin: &str, key: &str) -> String {
     match (plugin, key) {
         ("dev.rustclient.gpu", "hideUnrelatedMaps" | "expandedMapLoadingChunks") => {
@@ -643,6 +648,22 @@ fn pending_reason(plugin: &str, key: &str) -> String {
             "rightClickMovesCamera" | "rightClickObjects" | "rightClickExamine"
             | "rightClickMenuBlocksCamera" | "middleClickMenu",
         ) => "Remaps mouse buttons depending on the open menu, which the client does not model yet.".into(),
+        ("dev.rustclient.interfacestyles", "hdHealthBars") => {
+            "Needs the health bar renderer to take the 2010 bar sprites, which the client does not expose yet."
+                .into()
+        }
+        ("dev.rustclient.interfacestyles", "hdMenu" | "menuAlpha" | "condensePlayerOptions") => {
+            "Changes the right-click menu, which the client does not model as a plugin surface yet."
+                .into()
+        }
+        ("dev.rustclient.interfacestyles", "rsCrossSprites") => {
+            "Replaces the click cross sprites, which this client does not let plugins override yet."
+                .into()
+        }
+        ("dev.rustclient.interfacestyles", "alwaysStack") => {
+            "Changes a client-script callback result, and callbacks are not exposed to plugins yet."
+                .into()
+        }
         ("dev.rustclient.npchighlight", "highlightOutline" | "outlineFeather") => {
             "The model outline needs an outline renderer, which this client does not have yet."
                 .into()

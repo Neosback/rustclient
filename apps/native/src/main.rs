@@ -111,6 +111,8 @@ struct NativeApp {
     window_focused: bool,
     input_activity: input_activity::InputActivity,
     frame_limit: frame_limit::FrameLimit,
+    /// The plugin sprite replacements currently standing in the widget sprites.
+    applied_sprite_overrides: Vec<rustclient_plugin_api::SpriteOverride>,
     scripts: Option<rustclient_application::scripts::ClientScripts<DirectoryBlobs>>,
     widget_assets: rustclient_game_ui::widget_visuals::WidgetVisualAssets,
     widget_requested: rustclient_application::scripts::WidgetAssetRequest,
@@ -230,6 +232,43 @@ impl NativeApp {
             resizable,
             parent,
         ))
+    }
+    /// Swap the interface sprites plugins replace into the widget assets and re-upload them.
+    fn sync_sprite_overrides(&mut self) {
+        let wanted = &self.plugins.output().sprite_overrides;
+        if *wanted == self.applied_sprite_overrides {
+            return;
+        }
+        let source = |id| {
+            rustclient_cache::Source::group(
+                rustclient_cache::IndexId(8),
+                rustclient_cache::GroupId(id),
+            )
+        };
+        let images = wanted
+            .iter()
+            .filter_map(|sprite| {
+                rustclient_cache::Image::new(
+                    u32::from(sprite.width),
+                    u32::from(sprite.height),
+                    sprite.rgba.to_vec(),
+                    source(sprite.sprite),
+                )
+                .ok()
+                .map(|image| (sprite.sprite, image))
+            })
+            .collect();
+        self.applied_sprite_overrides.clone_from(wanted);
+        if !self.widget_assets.set_sprite_overrides(images) {
+            return;
+        }
+        if let (Some(renderer), Some(title)) = (&mut self.renderer, &self.assets)
+            && let Err(error) = renderer.set_widget_images(title, &self.widget_assets.images)
+        {
+            eprintln!("sprite override GPU upload: {error}");
+        }
+        self.minimap_mask = None;
+        self.compass_mask = None;
     }
     /// Follow the camera preferences plugins ask for; no request means the unmodified client.
     fn sync_camera_tuning(&mut self) {
@@ -384,6 +423,7 @@ impl NativeApp {
             window_focused: true,
             input_activity: input_activity::InputActivity::new(),
             frame_limit: frame_limit::FrameLimit::default(),
+            applied_sprite_overrides: Vec::new(),
             scripts: None,
             widget_assets: rustclient_game_ui::widget_visuals::WidgetVisualAssets::default(),
             widget_requested: rustclient_application::scripts::WidgetAssetRequest::default(),
@@ -1803,6 +1843,7 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                 self.sync_roof_areas();
                 self.sync_interpolation();
                 self.sync_camera_tuning();
+                self.sync_sprite_overrides();
                 self.sync_hidden_actors();
             }
             if now >= self.next_step {

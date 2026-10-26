@@ -192,9 +192,9 @@ pub struct InfoBox {
 pub struct SpriteOverride {
     /// Sprite archive id being replaced.
     pub sprite: u32,
-    /// Replacement width in pixels, at most 256.
+    /// Replacement width in pixels, at most 1024.
     pub width: u16,
-    /// Replacement height in pixels, at most 256.
+    /// Replacement height in pixels, at most 1024.
     pub height: u16,
     /// Row-major RGBA8, `width * height * 4` bytes.
     pub rgba: Arc<[u8]>,
@@ -413,7 +413,7 @@ pub mod limits {
     /// Hidden actors accepted per plugin.
     pub const HIDDEN_ACTORS: usize = 2048;
     /// Sprite overrides accepted per plugin.
-    pub const SPRITE_OVERRIDES: usize = 64;
+    pub const SPRITE_OVERRIDES: usize = 256;
     /// Roof areas accepted per plugin.
     pub const ROOF_AREAS: usize = 4096;
     /// Animation ids a plugin may exclude from smoothing.
@@ -428,8 +428,10 @@ pub mod limits {
     pub const MIN_FRAME_LIMIT: u32 = 1;
     /// Highest accepted frame limit.
     pub const MAX_FRAME_LIMIT: u32 = 360;
+    /// Combined RGBA bytes of all sprite overrides one plugin may hold.
+    pub const SPRITE_OVERRIDE_BYTES: usize = 4 * 1024 * 1024;
     /// Longest overlay/notification text in bytes.
     pub const TEXT_BYTES: usize = 256;
     /// Largest sprite edge in pixels.
-    pub const SPRITE_EDGE: u16 = 256;
+    pub const SPRITE_EDGE: u16 = 1024;
 }

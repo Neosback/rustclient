@@ -15,10 +15,73 @@ pub struct WidgetVisualAssets {
     /// Untrimmed canvas and trim offset; widget geometry scales the canvas, not the trimmed image.
     pub sprite_frames: BTreeMap<SpriteId, SpriteFrame>,
     pub failures: Vec<String>,
+    /// Replacement sprites a plugin asked for, by sprite id; they stand in `images` and `sprite_frames`.
+    overrides: BTreeMap<u32, Image>,
+    /// What each overridden sprite held before (absent when it was not loaded), restored on removal.
+    originals: BTreeMap<u32, (Option<Image>, Option<SpriteFrame>)>,
 }
 impl WidgetVisualAssets {
+    /// Replace interface sprites with `wanted` and restore the ones no longer listed.
+    ///
+    /// A replacement is shown at its own size with no trim offset, as the reference client draws a
+    /// `SpritePixels` override. Returns whether anything changed (the GPU images then need re-uploading).
+    pub fn set_sprite_overrides(&mut self, wanted: BTreeMap<u32, Image>) -> bool {
+        if wanted == self.overrides {
+            return false;
+        }
+        for (id, (image, frame)) in std::mem::take(&mut self.originals) {
+            match image {
+                Some(image) => self.images.insert(UiImageId::Sprite(id), image),
+                None => self.images.remove(&UiImageId::Sprite(id)),
+            };
+            match frame {
+                Some(frame) => self.sprite_frames.insert(SpriteId::new(id), frame),
+                None => self.sprite_frames.remove(&SpriteId::new(id)),
+            };
+        }
+        for (id, image) in &wanted {
+            self.originals.insert(
+                *id,
+                (
+                    self.images.get(&UiImageId::Sprite(*id)).cloned(),
+                    self.sprite_frames.get(&SpriteId::new(*id)).copied(),
+                ),
+            );
+            self.show_override(*id, image.clone());
+        }
+        self.overrides = wanted;
+        true
+    }
+    fn show_override(&mut self, id: u32, image: Image) {
+        self.sprite_frames.insert(
+            SpriteId::new(id),
+            SpriteFrame {
+                canvas: [image.width(), image.height()],
+                offset: [0; 2],
+            },
+        );
+        self.images.insert(UiImageId::Sprite(id), image);
+    }
     /// Fold a later load into this set; the cache is immutable, so equal keys are equal values.
     pub fn merge(&mut self, later: Self) {
+        // A sprite loaded after it was overridden updates what is restored, never what is shown.
+        for (id, original) in &mut self.originals {
+            original.0 = later
+                .images
+                .get(&UiImageId::Sprite(*id))
+                .cloned()
+                .or(original.0.take());
+            original.1 = later
+                .sprite_frames
+                .get(&SpriteId::new(*id))
+                .copied()
+                .or(original.1);
+        }
+        let shown: Vec<(u32, Image)> = self
+            .overrides
+            .iter()
+            .map(|(id, image)| (*id, image.clone()))
+            .collect();
         self.images.extend(later.images);
         self.fonts.extend(later.fonts);
         self.quantity_font = later.quantity_font.or(self.quantity_font);
@@ -30,6 +93,9 @@ impl WidgetVisualAssets {
         }
         self.cross_frames.extend(later.cross_frames);
         self.sprite_frames.extend(later.sprite_frames);
+        for (id, image) in shown {
+            self.show_override(id, image);
+        }
         self.failures.extend(later.failures);
     }
 }
@@ -542,5 +608,59 @@ mod tests {
         )
         .unwrap();
         assert_eq!(placement.sprites[0].rect, Rect::new(0., 0., 12., 8.));
+    }
+
+    #[test]
+    fn sprite_overrides_stand_in_and_restore_the_cache_sprites() {
+        let source = rustclient_cache::Source::group(
+            rustclient_cache::IndexId(8),
+            rustclient_cache::GroupId(7),
+        );
+        let image = |value: u8, size: u32| {
+            rustclient_cache::Image::new(size, 1, vec![value; size as usize * 4], source).unwrap()
+        };
+        let mut assets = WidgetVisualAssets::default();
+        assets.images.insert(UiImageId::Sprite(7), image(1, 1));
+        let original_frame = SpriteFrame {
+            canvas: [5, 5],
+            offset: [2, 2],
+        };
+        assets
+            .sprite_frames
+            .insert(SpriteId::new(7), original_frame);
+
+        // An override of a loaded sprite and one of a sprite that was never loaded.
+        let wanted = BTreeMap::from([(7, image(9, 3)), (8, image(8, 2))]);
+        assert!(assets.set_sprite_overrides(wanted.clone()));
+        assert!(!assets.set_sprite_overrides(wanted));
+        assert_eq!(assets.images[&UiImageId::Sprite(7)].width(), 3);
+        assert_eq!(
+            assets.sprite_frames[&SpriteId::new(7)],
+            SpriteFrame {
+                canvas: [3, 1],
+                offset: [0; 2]
+            }
+        );
+        assert!(assets.images.contains_key(&UiImageId::Sprite(8)));
+
+        // A later cache load of the overridden sprite must not replace what is shown.
+        let mut later = WidgetVisualAssets::default();
+        later.images.insert(UiImageId::Sprite(7), image(2, 4));
+        later.sprite_frames.insert(
+            SpriteId::new(7),
+            SpriteFrame {
+                canvas: [4, 4],
+                offset: [0; 2],
+            },
+        );
+        assets.merge(later);
+        assert_eq!(assets.images[&UiImageId::Sprite(7)].width(), 3);
+
+        // Removing the overrides restores the newest cache values and drops the unloaded sprite.
+        assert!(assets.set_sprite_overrides(BTreeMap::new()));
+        assert_eq!(assets.images[&UiImageId::Sprite(7)].width(), 4);
+        assert_eq!(assets.sprite_frames[&SpriteId::new(7)].canvas, [4, 4]);
+        assert!(!assets.images.contains_key(&UiImageId::Sprite(8)));
+        assert!(!assets.sprite_frames.contains_key(&SpriteId::new(8)));
     }
 }
