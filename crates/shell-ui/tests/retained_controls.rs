@@ -128,7 +128,7 @@ fn native_dom_emits_typed_changes_and_idle_world_frames_reuse_pixels() {
     );
     assert_eq!(clipboard.0.borrow().as_str(), "GPU");
     panel.clear_focus();
-    for _ in 0..2 {
+    for _ in 0..3 {
         panel.key(
             keyboard_types::Key::Tab,
             keyboard_types::Code::Tab,
@@ -341,4 +341,69 @@ fn every_control_type_emits_typed_values_and_views_render() {
     };
     assert!(font.bold && !font.italic);
     save(&panel, "shell-runelite-font.png");
+}
+
+#[test]
+fn configuration_is_a_compact_panel_left_of_the_tools_and_collapses_without_a_hud() {
+    let _turn = ONE_PANEL
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    for scale in [1_u32, 2] {
+        let channel = ShellChannel::default();
+        for schema in schemas().unwrap() {
+            let configuration = Configuration::new(schema, None).unwrap();
+            channel
+                .model
+                .borrow_mut()
+                .plugins
+                .push(PluginPanel::project(&configuration, |_| None));
+        }
+        let mut panel = RetainedPanel::new(
+            channel.clone(),
+            [278 * scale, 600 * scale],
+            f32::from(u16::try_from(scale).unwrap()),
+        )
+        .unwrap();
+        panel.set_visible(true);
+        panel.render().unwrap();
+        let rail = panel.element_bounds(".rail").unwrap();
+        let body = panel.element_bounds(".panel").unwrap();
+        assert_eq!(rail, [242., 0., 36., 600.]);
+        assert_eq!(body, [0., 0., 242., 600.]);
+        assert!(
+            panel.element_bounds(".card-open .glyph").is_none(),
+            "plugin configuration is a flat list, not a grid of icon cards"
+        );
+        assert_eq!(
+            panel.pixels().last(),
+            Some(&255),
+            "application chrome must fill the entire window height"
+        );
+        if scale == 1 {
+            image::save_buffer(
+                std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                    .join("../../target/sidebar-configuration.png"),
+                panel.pixels(),
+                278,
+                600,
+                image::ColorType::Rgba8,
+            )
+            .unwrap();
+        }
+        click(&mut panel, "#plugins-nav");
+        assert!(channel.drain().contains(&ShellAction::Close));
+        channel.model.borrow_mut().panel_visible = false;
+        panel
+            .resize(
+                [36 * scale, 600 * scale],
+                f32::from(u16::try_from(scale).unwrap()),
+            )
+            .unwrap();
+        panel.invalidate();
+        panel.render().unwrap();
+        assert!(panel.element_bounds(".panel").is_none());
+        assert_eq!(panel.element_bounds(".rail").unwrap(), [0., 0., 36., 600.]);
+        click(&mut panel, "#plugins-nav");
+        assert!(channel.drain().contains(&ShellAction::Open));
+    }
 }

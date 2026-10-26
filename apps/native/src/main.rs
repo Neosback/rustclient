@@ -597,8 +597,10 @@ impl NativeApp {
                     &mut self.click_cross,
                     &self.state,
                 );
-                self.context_menu.project(assets, &mut self.frame);
-                self.widget_menu.project(assets, &mut self.frame);
+                self.context_menu
+                    .project(assets, &self.widget_assets.font_icons, &mut self.frame);
+                self.widget_menu
+                    .project(assets, &self.widget_assets.font_icons, &mut self.frame);
                 self.plugins.overlay(&self.state, assets, &mut self.frame);
                 if self.state.loaded_scene().is_none() || self.scene.loading {
                     rustclient_game_ui::shadowed_text(
@@ -732,6 +734,9 @@ impl NativeApp {
                     &mut self.frame,
                 );
             }
+            let pointer = self.cursor.map(|(x, y)| self.ui_pointer(&window, x, y));
+            self.shell
+                .project_overlay(&mut self.frame, &self.widget_tree, pointer);
             let visibility = self.roof_visibility(&window);
             self.renderer.as_mut().map(|renderer| {
                 if let (Some(descriptor), Some(camera)) =
@@ -1289,12 +1294,16 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                 event_loop.exit();
             }
             WindowEvent::Resized(size) => {
+                self.shell.on_window_resized(&window);
+                self.synchronize_window();
                 if let Some(renderer) = &mut self.renderer {
                     renderer.resize(SurfaceSize::new(size.width, size.height));
                 }
                 window.request_redraw();
             }
             WindowEvent::ScaleFactorChanged { .. } => {
+                self.shell.on_window_resized(&window);
+                self.synchronize_window();
                 let size = window.inner_size();
                 if let Some(renderer) = &mut self.renderer {
                     renderer.resize(SurfaceSize::new(size.width, size.height));
@@ -1700,7 +1709,11 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                     );
                     self.entity_report.0 = Instant::now();
                     if report != self.entity_report.1 {
-                        eprintln!("entities: {report}");
+                        if self.scene.diagnostics
+                            || !report.ends_with("undrawable npc model ids []")
+                        {
+                            eprintln!("entities: {report}");
+                        }
                         self.entity_report.1 = report;
                     }
                 }

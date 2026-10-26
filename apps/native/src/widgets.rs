@@ -133,6 +133,24 @@ impl NativeApp {
         self.request_widget_assets();
         Ok(())
     }
+    pub(super) fn ensure_widget_tree(&mut self) {
+        if !self.widget_tree.nodes.is_empty()
+            || self.state.authenticated_player().is_none()
+            || self.state.interfaces().root().is_none()
+        {
+            return;
+        }
+        let Some(scripts) = &self.scripts else {
+            return;
+        };
+        if let Ok(tree) = rustclient_game_ui::widgets::WidgetTree::build(
+            self.state.interfaces(),
+            &scripts.interfaces,
+            rustclient_game_ui::widgets::WidgetBounds::canvas(self.state.interfaces()),
+        ) {
+            self.widget_tree = tree;
+        }
+    }
     pub(super) fn widget_click(&mut self, x: f32, y: f32, right: bool) -> Result<bool, String> {
         if self.state.interfaces().root().is_none() {
             return Ok(false);
@@ -144,6 +162,7 @@ impl NativeApp {
             return Ok(true);
         }
         self.widget_menu.close();
+        self.ensure_widget_tree();
         let Some(scripts) = &self.scripts else {
             return Ok(true);
         };
@@ -156,7 +175,7 @@ impl NativeApp {
             }
             let widget = resolve_widget(self.state.interfaces(), &scripts.interfaces, node.address)
                 .map_err(|e| e.to_string())?;
-            if widget.content == WidgetContent::Compass {
+            if widget.content == WidgetContent::Compass && !right {
                 if let Some(camera) = &mut self.scene.camera {
                     camera.set_yaw(0);
                 }
@@ -180,7 +199,8 @@ impl NativeApp {
                             x,
                             y,
                             entries,
-                            assets,
+                            &assets.fonts[2],
+                            &self.widget_assets.font_icons,
                             self.state.interfaces().window().canvas,
                         );
                         self.context_menu.close();
@@ -197,6 +217,17 @@ impl NativeApp {
                     ..
                 }
             ) {
+                if right && let Some(assets) = &self.assets {
+                    self.widget_menu.open(
+                        x,
+                        y,
+                        Vec::new(),
+                        &assets.fonts[2],
+                        &self.widget_assets.font_icons,
+                        self.state.interfaces().window().canvas,
+                    );
+                    self.context_menu.close();
+                }
                 return Ok(true);
             }
         }

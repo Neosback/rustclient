@@ -13,6 +13,26 @@ use winit::{
     window::{Window, WindowLevel},
 };
 
+struct SidebarArrow {
+    width: u32,
+    height: u32,
+    pixels: Vec<[u8; 4]>,
+}
+impl SidebarArrow {
+    fn decode() -> Result<Self, String> {
+        let image = image::load_from_memory(rustclient_shell_ui::OPEN_RS_PNG)
+            .map_err(|error| format!("sidebar arrow asset: {error}"))?
+            .into_rgba8();
+        let (width, height) = image.dimensions();
+        let pixels = image.as_raw().as_chunks::<4>().0.to_vec();
+        Ok(Self {
+            width,
+            height,
+            pixels,
+        })
+    }
+}
+
 #[expect(
     clippy::struct_excessive_bools,
     reason = "independent input-routing and visibility flags"
@@ -26,6 +46,10 @@ pub(super) struct Shell {
     pub composing: bool,
     visible: bool,
     expanded: bool,
+    restore_expanded: bool,
+    game_logical_width: f64,
+    pending_window_width: Option<u32>,
+    arrow: SidebarArrow,
     /// Why an applied GPU option differs from the request on this adapter.
     gpu_notes: BTreeMap<String, String>,
 }
@@ -39,12 +63,13 @@ impl Shell {
         channel.model.borrow_mut().panel_visible = false;
         channel.model.borrow_mut().error =
             (!diagnostics.is_empty()).then(|| diagnostics.join("\n"));
-        let mut panel = RetainedPanel::new(channel.clone(), [48, 503], 1.)?;
+        let mut panel = RetainedPanel::new(channel.clone(), [36, 503], 1.)?;
         match rustclient_platform_native::NativeClipboard::new() {
             Ok(clipboard) => panel.set_clipboard(Box::new(clipboard)),
             Err(error) => eprintln!("shell clipboard unavailable: {error}"),
         }
         panel.set_visible(true);
+        let arrow = SidebarArrow::decode()?;
         let shell = Self {
             panel,
             channel,
@@ -54,10 +79,24 @@ impl Shell {
             composing: false,
             visible: true,
             expanded: false,
+            restore_expanded: false,
+            game_logical_width: 765.,
+            pending_window_width: None,
+            arrow,
             gpu_notes: BTreeMap::new(),
         };
         shell.project();
         Ok(shell)
+    }
+    fn keep_game_size(&self) -> bool {
+        let config = self
+            .configuration
+            .get("dev.rustclient.runelite")
+            .expect("embedded RuneLite schema");
+        matches!(
+            config.value("automaticResizeType"),
+            Some(ConfigValue::Choice(value)) if value == "KEEP_GAME_SIZE"
+        )
     }
     /// Every accepted plugin configuration, required services first.
     pub fn configurations(
@@ -69,10 +108,29 @@ impl Shell {
         if !self.visible {
             0
         } else if self.expanded {
-            370
+            278
         } else {
-            48
+            36
         }
+    }
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "scale and window extents are validated platform values"
+    )]
+    pub fn on_window_resized(&mut self, window: &Window) {
+        let actual = window.inner_size().width;
+        if let Some(expected) = self.pending_window_width {
+            if actual.abs_diff(expected) <= 2 {
+                self.pending_window_width = None;
+                return;
+            }
+            self.pending_window_width = None;
+        }
+        let scale = window.scale_factor();
+        let sidebar = (f64::from(self.width()) * scale).round() as u32;
+        let game_physical = actual.saturating_sub(sidebar).max(1);
+        self.game_logical_width = (f64::from(game_physical) / scale).max(765.);
     }
     #[expect(
         clippy::cast_possible_truncation,
@@ -81,8 +139,100 @@ impl Shell {
     )]
     pub fn game_size(&self, window: &Window) -> PhysicalSize<u32> {
         let size = window.inner_size();
-        let sidebar = (f64::from(self.width()) * window.scale_factor()).round() as u32;
+        let scale = window.scale_factor();
+        if self.keep_game_size() && window.fullscreen().is_none() && !window.is_maximized() {
+            let game = (self.game_logical_width * scale).round() as u32;
+            return PhysicalSize::new(game.max(1), size.height);
+        }
+        let sidebar = (f64::from(self.width()) * scale).round() as u32;
         PhysicalSize::new(size.width.saturating_sub(sidebar).max(1), size.height)
+    }
+    /// Logical bounds of the `open_rs.png` sidebar toggle button on the game canvas (`ClientUI.paintOverlays`).
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "canvas and widget dimensions fit f32"
+    )]
+    pub fn overlay_button_rect(
+        &self,
+        canvas_width: u32,
+        widget_tree: &rustclient_game_ui::widgets::WidgetTree,
+    ) -> rustclient_game_ui::Rect {
+        let x = canvas_width.saturating_sub(self.arrow.width + 5) as f32;
+        let stone10 = rustclient_model::WidgetAddress::component(rustclient_model::WidgetId::new(
+            rustclient_model::InterfaceId::new(161),
+            36,
+        ));
+        let y = widget_tree
+            .nodes
+            .iter()
+            .find(|node| {
+                node.address == stone10
+                    && node.bounds.width > 0
+                    && node.bounds.height > 0
+                    && node.clip.width > 0
+                    && node.clip.height > 0
+            })
+            .map_or(5., |node| (node.bounds.y + node.bounds.height) as f32);
+        rustclient_game_ui::Rect::new(x, y, self.arrow.width as f32, self.arrow.height as f32)
+    }
+    /// Paint the `open_rs.png` (or horizontally flipped `open_rs.png` when the sidebar is visible)
+    /// overlay on the top-right of the game canvas.
+    #[expect(clippy::cast_precision_loss, reason = "small icon dimensions fit f32")]
+    pub fn project_overlay(
+        &self,
+        frame: &mut rustclient_game_ui::UiFrame,
+        widget_tree: &rustclient_game_ui::widgets::WidgetTree,
+        pointer: Option<(f32, f32)>,
+    ) {
+        let canvas_width = frame.canvas.map_or(765, |canvas| canvas.width);
+        let rect = self.overlay_button_rect(canvas_width, widget_tree);
+        let in_range = !self.visible
+            || pointer.is_some_and(|(px, py)| {
+                px >= rect.x - 15. && px <= canvas_width as f32 + 36. && py >= 0.
+            });
+        if !in_range {
+            return;
+        }
+        let clip = rustclient_game_ui::Rect::new(0., 0., 16_384., 16_384.);
+        let flip_h = self.visible;
+        for py in 0..self.arrow.height {
+            let mut px = 0;
+            while px < self.arrow.width {
+                let src_x = if flip_h {
+                    self.arrow.width - 1 - px
+                } else {
+                    px
+                };
+                let color = self.arrow.pixels[(py * self.arrow.width + src_x) as usize];
+                if color[3] == 0 {
+                    px += 1;
+                    continue;
+                }
+                let start = px;
+                px += 1;
+                while px < self.arrow.width {
+                    let next_x = if flip_h {
+                        self.arrow.width - 1 - px
+                    } else {
+                        px
+                    };
+                    if self.arrow.pixels[(py * self.arrow.width + next_x) as usize] != color {
+                        break;
+                    }
+                    px += 1;
+                }
+                frame.fill_rect(
+                    rustclient_game_ui::Rect::new(
+                        rect.x + start as f32,
+                        rect.y + py as f32,
+                        (px - start) as f32,
+                        1.,
+                    ),
+                    color,
+                    clip,
+                );
+            }
+        }
     }
     /// Physical window coordinates use the exact same split as surface composition and game picking.
     #[expect(
@@ -105,6 +255,7 @@ impl Shell {
     }
     #[expect(
         clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
         reason = "validated bounded shell extent and platform scale"
     )]
     pub fn stage(&mut self, window: &Window, renderer: &mut SurfaceRenderer) -> Result<(), String> {
@@ -116,14 +267,13 @@ impl Shell {
                 .set_shell_layer(None)
                 .map_err(|error| error.to_string());
         }
-        let size = [
-            window.inner_size().width.saturating_sub(game.width).max(1),
-            window.inner_size().height,
-        ];
+        let scale = window.scale_factor();
+        let sidebar = (f64::from(self.width()) * scale).round() as u32;
+        let size = [sidebar.max(1), window.inner_size().height];
         if size[1] == 0 {
             return Ok(());
         }
-        self.panel.resize(size, window.scale_factor() as f32)?;
+        self.panel.resize(size, scale as f32)?;
         self.panel.render();
         renderer
             .set_shell_layer(Some(ShellLayer {
@@ -254,10 +404,16 @@ impl Shell {
             .collect();
     }
     pub fn toggle_sidebar(&mut self, window: &Window) {
-        self.resize(window, !self.visible, self.expanded);
+        if self.visible {
+            self.restore_expanded = self.expanded;
+            self.resize(window, false, false);
+        } else {
+            self.resize(window, true, self.restore_expanded);
+        }
     }
     pub fn toggle_panel(&mut self, window: &Window) {
-        self.resize(window, true, !self.expanded);
+        let open = !(self.visible && self.expanded);
+        self.resize(window, true, open);
     }
     pub fn hotkey(&self, key: &str, modifiers: u8) -> Option<bool> {
         let config = self.configuration.get("dev.rustclient.runelite")?;
@@ -277,28 +433,45 @@ impl Shell {
             .and_then(|config| config.value("blockExtraMouseButtons"))
             == Some(&ConfigValue::Boolean(true))
     }
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "scale and window extents are validated platform values"
+    )]
     fn resize(&mut self, window: &Window, visible: bool, expanded: bool) {
-        let before = self.width();
+        let scale = window.scale_factor();
+        let keep_game = self.keep_game_size();
+        if !keep_game || window.fullscreen().is_some() || window.is_maximized() {
+            let before_sidebar = (f64::from(self.width()) * scale).round() as u32;
+            let game_physical = window
+                .inner_size()
+                .width
+                .saturating_sub(before_sidebar)
+                .max(1);
+            self.game_logical_width = (f64::from(game_physical) / scale).max(765.);
+        }
         self.visible = visible;
         self.expanded = expanded;
+        if visible {
+            self.restore_expanded = expanded;
+        }
         self.focused = false;
         self.held = false;
         self.panel.clear_focus();
         self.channel.model.borrow_mut().panel_visible = expanded;
         self.panel.invalidate();
         let after = self.width();
-        let config = self
-            .configuration
-            .get("dev.rustclient.runelite")
-            .expect("embedded RuneLite schema");
-        let keep_game = matches!(config.value("automaticResizeType"),Some(ConfigValue::Choice(value)) if value=="KEEP_GAME_SIZE");
         window.set_min_inner_size(Some(LogicalSize::new(765. + f64::from(after), 503.)));
         if keep_game && window.fullscreen().is_none() && !window.is_maximized() {
-            let size = window.inner_size().to_logical::<f64>(window.scale_factor());
-            let _ = window.request_inner_size(LogicalSize::new(
-                (size.width + f64::from(after) - f64::from(before)).max(765. + f64::from(after)),
-                size.height,
-            ));
+            let target_logical_width =
+                (self.game_logical_width + f64::from(after)).max(765. + f64::from(after));
+            let target_physical_width = (target_logical_width * scale).round() as u32;
+            self.pending_window_width = Some(target_physical_width);
+            let size = window.inner_size().to_logical::<f64>(scale);
+            let _ = window.request_inner_size(LogicalSize::new(target_logical_width, size.height));
+        } else {
+            self.pending_window_width = None;
+            self.on_window_resized(window);
         }
         window.request_redraw();
     }

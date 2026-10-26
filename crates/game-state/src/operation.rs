@@ -334,10 +334,6 @@ impl GameState {
                 | rustclient_model::InterfaceUpdate::Close(_)
                 | rustclient_model::InterfaceUpdate::Move { .. }
                 | rustclient_model::InterfaceUpdate::Resync { .. }
-                | rustclient_model::InterfaceUpdate::CloneChild { .. }
-                | rustclient_model::InterfaceUpdate::CreateChild { .. }
-                | rustclient_model::InterfaceUpdate::DeleteChild(_)
-                | rustclient_model::InterfaceUpdate::DeleteChildren(_)
         );
         if self
             .interfaces
@@ -789,5 +785,42 @@ mod tests {
         assert_eq!(state.lifecycle(), before_lifecycle);
         assert_eq!(state.session_revision(), before_revision);
         assert_eq!(state.current_tick(), before_tick);
+    }
+
+    #[test]
+    fn dynamic_child_mutations_advance_revision_without_invalidating_interface_epoch() {
+        use rustclient_model::{InterfaceId, InterfaceUpdate, WidgetBody, WidgetId};
+        let mut state = GameState::new();
+        state.apply_operation(BEGIN_240).unwrap();
+        let root = InterfaceId::new(116);
+        state
+            .apply_operation(SemanticOperation::Interface(InterfaceUpdate::SetRoot(
+                Some(root),
+            )))
+            .unwrap();
+        let epoch_before = state.interfaces().epoch();
+        let rev_before = state.interfaces().revision();
+        let parent = WidgetId::new(root, 135);
+        state
+            .apply_operation(SemanticOperation::Interface(InterfaceUpdate::CreateChild {
+                parent,
+                parent_child: None,
+                reject_replace: false,
+                index: 0,
+                body: WidgetBody::Rectangle {
+                    color: 0,
+                    filled: true,
+                    transparency: 0,
+                },
+            }))
+            .unwrap();
+        assert_eq!(state.interfaces().epoch(), epoch_before);
+        assert!(state.interfaces().revision() > rev_before);
+        state
+            .apply_operation(SemanticOperation::Interface(
+                InterfaceUpdate::DeleteChildren(parent),
+            ))
+            .unwrap();
+        assert_eq!(state.interfaces().epoch(), epoch_before);
     }
 }

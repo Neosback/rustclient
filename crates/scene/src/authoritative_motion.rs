@@ -28,9 +28,13 @@ impl ActorMotion {
             .retain(|index, _| entities.npcs().contains_key(index));
 
         for (index, player) in entities.players() {
-            self.player_positions.insert(
+            let position = scene_position(player.path_queue.fine_position(player.tile));
+            let previous = self.player_positions.insert(*index, position);
+            self.legacy.committed_player(
                 *index,
-                scene_position(player.path_queue.fine_position(player.tile)),
+                position,
+                previous,
+                player.exact_move.map(|_| player.current_orientation),
             );
         }
 
@@ -41,9 +45,13 @@ impl ActorMotion {
                 self.npc_positions.remove(index);
                 continue;
             }
-            self.npc_positions.insert(
+            let position = scene_position(npc.path_queue.fine_position(npc.tile));
+            let previous = self.npc_positions.insert(*index, position);
+            self.legacy.committed_npc(
                 *index,
-                scene_position(npc.path_queue.fine_position(npc.tile)),
+                position,
+                previous,
+                npc.exact_move.map(|_| npc.current_orientation),
             );
         }
     }

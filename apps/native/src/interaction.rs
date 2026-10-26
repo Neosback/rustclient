@@ -530,9 +530,6 @@ impl NativeApp {
         self.context_menu.close();
         let entries = self.world_entries(window, x, y)?;
         if right {
-            if entries.is_empty() {
-                return Ok(false);
-            }
             if let Some(assets) = &self.assets {
                 self.context_menu.open(
                     x,
@@ -541,7 +538,8 @@ impl NativeApp {
                         .into_iter()
                         .map(|(label, choice, _)| (label, choice))
                         .collect(),
-                    assets,
+                    &assets.fonts[2],
+                    &self.widget_assets.font_icons,
                     self.state.interfaces().window().canvas,
                 );
                 self.scene.input = rustclient_renderer::CameraInput::default();

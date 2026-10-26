@@ -92,6 +92,8 @@ struct Actor {
     turning: u32,
     pose: Pose,
     pose_cycle: u32,
+    committed_delta: Option<[i32; 2]>,
+    committed_rotation: Option<u16>,
 }
 
 impl Actor {
@@ -112,6 +114,8 @@ impl Actor {
             turning: 0,
             pose: Pose::Idle,
             pose_cycle: 0,
+            committed_delta: None,
+            committed_rotation: None,
         }
     }
 
@@ -232,6 +236,23 @@ impl Actor {
     fn advance(&mut self) {
         self.cycle = self.cycle.saturating_add(1);
         self.pose_cycle = self.pose_cycle.saturating_add(1);
+        if let Some(delta) = self.committed_delta.take() {
+            let speed = delta[0].abs().max(delta[1].abs());
+            let moving = if speed == 0 {
+                Pose::Idle
+            } else {
+                self.movement_pose(speed)
+            };
+            let pose = if let Some(rotation) = self.committed_rotation.take() {
+                self.rotation = i32::from(rotation);
+                self.turning = 0;
+                moving
+            } else {
+                self.turn(moving)
+            };
+            self.set_pose(pose);
+            return;
+        }
         if let Some(exact) = self.exact {
             self.force_position(exact);
             if self.cycle <= exact.ends_at.get() {
@@ -271,18 +292,6 @@ impl Actor {
             self.queue.pop_front();
             return Pose::Idle;
         }
-        let relative = (self.heading - self.rotation) & (FULL_TURN - 1);
-        let relative = if relative > FULL_TURN / 2 {
-            relative - FULL_TURN
-        } else {
-            relative
-        };
-        let facing = match relative {
-            -256..=256 => Facing::Forward,
-            257..768 => Facing::Right,
-            -768..=-257 => Facing::Left,
-            _ => Facing::Back,
-        };
         let backlog = self.queue.len();
         let mut speed = 4;
         if self.heading != self.rotation {
@@ -299,13 +308,6 @@ impl Actor {
             MoveSpeed::Crawl => speed >>= 1,
             MoveSpeed::Walk | MoveSpeed::Stationary => {}
         }
-        let pace = if speed >= 8 {
-            Pace::Run
-        } else if speed <= 2 {
-            Pace::Crawl
-        } else {
-            Pace::Walk
-        };
         let speed = speed.max(1);
         for (position, target) in self.position.iter_mut().zip(target) {
             *position += (target - *position).clamp(-speed, speed);
@@ -313,7 +315,45 @@ impl Actor {
         if self.position == target {
             self.queue.pop_front();
         }
+        self.movement_pose(speed)
+    }
+
+    fn movement_pose(&self, speed: i32) -> Pose {
+        let relative = (self.heading - self.rotation) & (FULL_TURN - 1);
+        let relative = if relative > FULL_TURN / 2 {
+            relative - FULL_TURN
+        } else {
+            relative
+        };
+        let facing = match relative {
+            -256..=256 => Facing::Forward,
+            257..768 => Facing::Right,
+            -768..=-257 => Facing::Left,
+            _ => Facing::Back,
+        };
+        let pace = if speed >= 8 {
+            Pace::Run
+        } else if speed <= 2 {
+            Pace::Crawl
+        } else {
+            Pace::Walk
+        };
         Pose::Move { facing, pace }
+    }
+    fn committed_position(
+        &mut self,
+        position: [i32; 2],
+        previous: Option<[i32; 2]>,
+        rotation: Option<u16>,
+    ) {
+        let delta = std::array::from_fn(|axis| {
+            position[axis].saturating_sub(previous.unwrap_or(position)[axis])
+        });
+        self.position = position;
+        self.queue.clear();
+        self.exact = None;
+        self.committed_delta = Some(delta);
+        self.committed_rotation = rotation;
     }
 
     /// `classKN.method6539`: turn toward the heading, replacing a standing pose with the turn
@@ -410,6 +450,28 @@ impl ActorMotion {
         }
     }
 
+    pub(crate) fn committed_player(
+        &mut self,
+        index: PlayerIndex,
+        position: [i32; 2],
+        previous: Option<[i32; 2]>,
+        rotation: Option<u16>,
+    ) {
+        if let Some((_, actor)) = self.players.get_mut(&index) {
+            actor.committed_position(position, previous, rotation);
+        }
+    }
+    pub(crate) fn committed_npc(
+        &mut self,
+        index: NpcIndex,
+        position: [i32; 2],
+        previous: Option<[i32; 2]>,
+        rotation: Option<u16>,
+    ) {
+        if let Some((_, _, actor)) = self.npcs.get_mut(&index) {
+            actor.committed_position(position, previous, rotation);
+        }
+    }
     /// Advance every actor by `cycles` client cycles.
     pub fn advance(&mut self, cycles: u32) {
         for _ in 0..cycles {

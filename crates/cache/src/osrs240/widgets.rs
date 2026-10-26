@@ -246,7 +246,11 @@ fn body(r: &mut Reader<'_>, kind: u8, modes: [i8; 2], source: Source) -> Result<
             transparency: r.u8()?,
             outline: r.u8()?,
             shadow: r.u32()?,
-            flip: [r.u8()? == 1, r.u8()? == 1],
+            flip: {
+                let v = r.u8()? == 1;
+                let h = r.u8()? == 1;
+                [h, v]
+            },
         },
         6 => WidgetBody::Model {
             model: match r.u32()? {
@@ -271,4 +275,43 @@ fn body(r: &mut Reader<'_>, kind: u8, modes: [i8; 2], source: Source) -> Result<
         },
         _ => return Err(source.error("widget", format!("unsupported IF3 component type {kind}"))),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{GroupId, IndexId};
+    use rustclient_model::InterfaceId;
+
+    #[test]
+    fn if3_sprite_decodes_vertical_then_horizontal_flip_into_horizontal_vertical_pair() {
+        // IF3 header: 0xFF, type=5 (sprite), content=0, x=0, y=0, w=12, h=30,
+        // w_mode=0, h_mode=0, x_mode=0, y_mode=0, parent=0xFFFF, hidden=0,
+        // sprite_id=1906, angle=0, tiled=0, transparency=0, outline=0, shadow=0,
+        // spriteFlipV=0, spriteFlipH=1, no ops/listeners.
+        let mut bytes = vec![
+            0xFF, 5, 0, 0, 0, 0, 0, 0, 0, 12, 0, 30, 0, 0, 0, 0, 0xFF, 0xFF, 0, 0, 0, 0x07, 0x72,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
+        ];
+        // flags(3), data_text(1), action_count(1), drag(3), target_verb(1), listeners(18), triggers(3)
+        bytes.extend_from_slice(&[0; 30]);
+        let def = decode(
+            &bytes,
+            WidgetId::new(InterfaceId::new(116), 64),
+            Source::group(IndexId(3), GroupId(116)),
+        )
+        .unwrap();
+        assert_eq!(
+            def.body,
+            WidgetBody::Sprite {
+                sprite: Some(SpriteId::new(1906)),
+                angle: 0,
+                tiled: false,
+                transparency: 0,
+                outline: 0,
+                shadow: 0,
+                flip: [true, false],
+            }
+        );
+    }
 }

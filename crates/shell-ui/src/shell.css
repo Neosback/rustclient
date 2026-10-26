@@ -96,3 +96,55 @@ input.invalid { border-color:#d9604f; }
 .text-input { width:100%; box-sizing:border-box; }
 .decimal { display:flex; align-items:center; gap:10px; }
 .plugin-description { margin:0 12px 8px; color:#b8bdc6; font-size:12px; line-height:1.4; }
+
+/* Application chrome lives to the right of the game canvas. Config rows mirror RuneLite's list. */
+html, body, #main { min-height:0; overflow:hidden; }
+.shell { flex-direction:row-reverse; min-height:0; overflow:hidden; font:12px sans-serif; color:#c6c6c6; background:#282828; }
+.rail { width:36px; height:100%; min-height:0; gap:2px; padding:4px 0; border-right:0; border-left:1px solid #141414; background:#1e1e1e; }
+.rail-button { width:30px; height:26px; min-height:26px; flex:none; border-radius:0; }
+.rail-button:hover { background:#282828; }
+.rail-button.active { background:#282828; border-left:2px solid #dc8a00; }
+.rail-button.active::before { display:none; }
+.rail-icon { width:16px; height:16px; }
+.tip { left:auto; right:38px; border-radius:2px; background:#1e1e1e; border:1px solid #4d4d4d; color:#fff; }
+.panel { height:100%; min-height:0; padding:10px 8px 6px; gap:7px; background:#282828; }
+.bar { min-height:24px; gap:6px; padding-bottom:2px; }
+h1 { font-size:14px; font-weight:bold; color:#fff; white-space:nowrap; overflow:hidden; }
+.icon-button { width:22px; height:22px; border-radius:2px; }
+.icon-button:hover { background:#393939; }
+.search { height:30px; min-height:30px; padding:0 8px; background:#1e1e1e; border:0; border-radius:0; }
+.placeholder { left:32px; color:#a5a5a5; font-size:12px; }
+.search input { height:28px; color:#fff; }
+.cards { gap:2px; }
+.plugin-card { gap:6px; padding:2px 2px; min-height:22px; flex:none; background:transparent; border:0; border-radius:0; }
+.plugin-card:hover { background:transparent; }
+.pin-star { width:14px; height:14px; flex:none; opacity:0.35; }
+.card-open { font-weight:normal; font-size:12px; color:#fff; gap:4px; }
+.card-open:hover { color:#dc8a00; }
+.card-text { white-space:nowrap; overflow:hidden; }
+.configure-plugin { width:18px; height:18px; flex:none; opacity:0.8; }
+.configure-plugin:hover { opacity:1; }
+.switch { width:26px; height:14px; padding:1px; border-radius:7px; background:#1e1e1e; border:1px solid #4d4d4d; }
+.knob { width:10px; height:10px; border-radius:5px; background:#a5a5a5; }
+.switch.on { background:#dc8a00; border-color:#dc8a00; }
+.switch.on .knob { background:#fff; }
+.switch.locked { opacity:0.65; }
+.settings { gap:6px; }
+.group { background:transparent; border:0; border-radius:0; padding:0; }
+.section { color:#dc8a00; font-size:12px; font-weight:bold; padding:5px 0 4px; border-bottom:1px solid #4d4d4d; margin-bottom:2px; }
+.chevron { width:10px; height:10px; margin:0 4px 0 0; }
+.setting { gap:4px; padding:4px 0; border-top:0; }
+.setting label { font-weight:normal; font-size:12px; color:#c6c6c6; }
+input { background:#1e1e1e; border:1px solid #393939; border-radius:2px; padding:3px 6px; color:#fff; font-size:12px; }
+.choice-current { background:#1e1e1e; border:1px solid #393939; border-radius:2px; padding:3px 8px; font-size:12px; min-width:96px; color:#fff; }
+.choice-list { background:#1e1e1e; border:1px solid #4d4d4d; border-radius:2px; }
+.choice-option { padding:4px 8px; font-size:12px; }
+.choice-option:hover { background:#393939; }
+.swatch { width:22px; height:22px; border-radius:2px; border:1px solid #4d4d4d; }
+.hex { width:84px; }
+.dim { width:46px; }
+.number-input { width:48px; }
+.style-toggle { width:24px; height:24px; border-radius:2px; }
+.panel-footer { display:flex; flex-direction:column; gap:4px; padding:8px 0 4px; border-top:1px solid #4d4d4d; margin-top:4px; }
+.footer-button { width:100%; height:24px; background:#1e1e1e; border:1px solid #393939; border-radius:2px; color:#c6c6c6; font-size:12px; text-align:center; }
+.footer-button:hover { background:#393939; color:#fff; }

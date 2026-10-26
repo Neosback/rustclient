@@ -225,6 +225,10 @@ fn spawn_and_queued_corner_before_any_cycle_preserve_each_server_step() {
         rustclient_game_state::ActorFinePosition::from_tile(first_corner)
     );
     assert_eq!(npc.path_queue.len(), 1);
+    assert_eq!(
+        npc.orientation, 1536,
+        "the actor still faces the first eastward leg at the corner"
+    );
     state
         .apply_operation(SemanticOperation::UpdateNpcs(NpcInfoUpdate {
             attributes: vec![NpcAttributeUpdate {
@@ -245,6 +249,10 @@ fn spawn_and_queued_corner_before_any_cycle_preserve_each_server_step() {
         rustclient_game_state::ActorFinePosition::from_tile(npc.tile)
     );
     assert_eq!(npc.overhead.as_ref().unwrap().remaining, 68);
+    assert_eq!(
+        npc.orientation, 1024,
+        "only the second path leg turns north"
+    );
     state
         .apply_operation(SemanticOperation::Scenery(SceneryOperation::AdvanceCycles(
             68,

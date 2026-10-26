@@ -149,6 +149,7 @@ pub(crate) struct UiGpu {
     vertex_buffer: wgpu::Buffer,
     vertices: Vec<Vertex>,
     draws: Vec<Draw>,
+    draw_extent: [u32; 2],
     pub(crate) stats: UiStats,
 }
 impl UiGpu {
@@ -264,6 +265,7 @@ impl UiGpu {
             vertex_buffer,
             vertices: Vec::with_capacity(MAX_QUADS * 6),
             draws: Vec::with_capacity(16),
+            draw_extent: [1, 1],
             stats: UiStats::default(),
         })
     }
@@ -309,6 +311,7 @@ impl UiGpu {
         {
             return Err(RenderError::Ui("invalid UI upload or viewport"));
         }
+        self.draw_extent = [viewport.physical_width, viewport.physical_height];
         self.vertices.clear();
         self.draws.clear();
         self.stats = UiStats::default();
@@ -402,6 +405,21 @@ impl UiGpu {
         Ok(())
     }
     pub(crate) fn draw(&self, pass: &mut wgpu::RenderPass<'_>) {
+        // Vertices are normalized to the game canvas, which excludes application chrome.
+        // The raster viewport MUST use that same extent, even on a wider window surface.
+        #[expect(
+            clippy::cast_precision_loss,
+            reason = "bounded physical framebuffer extents"
+        )]
+        pass.set_viewport(
+            0.,
+            0.,
+            self.draw_extent[0] as f32,
+            self.draw_extent[1] as f32,
+            0.,
+            1.,
+        );
+        pass.set_scissor_rect(0, 0, self.draw_extent[0], self.draw_extent[1]);
         pass.set_pipeline(&self.pipeline);
         pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
         for draw in &self.draws {

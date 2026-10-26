@@ -24,6 +24,8 @@ pub enum UiImageId {
     /// Static gameframe / interface sprite by ID.
     Sprite(u32),
     WidgetGlyph(rustclient_model::FontId, u8),
+    /// Index in the cache-selected global inline font sprite group.
+    FontIcon(u16),
     ItemIcon(rustclient_model::ItemDefinitionId),
     /// One frame of the click-cross animation (yellow 0-3, red 4-7).
     Cross(u8),

@@ -53,3 +53,5 @@ mod replay_tests;
 
 mod minimap;
 pub use minimap::MinimapClick;
+
+pub mod outgoing_chat;

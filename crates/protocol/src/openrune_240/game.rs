@@ -203,9 +203,11 @@ fn decode_map_anchor(payload: &[u8]) -> Result<rustclient_model::MapAnchor> {
 /// A message entered in the chatbox: a public message or a `::` command.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ChatIntent {
-    /// Public message of the given chat type with default colour and effect; `message` is the
-    /// length-prefixed Huffman coding from [`super::huffman::Huffman::encode_message`].
-    Public { chat_type: u8, message: Vec<u8> },
+    /// Public message with parsed style and Huffman text from the selected cache codec.
+    Public {
+        chat_type: u8,
+        message: super::outgoing_chat::PublicChatMessage,
+    },
     /// Developer/console command without its leading `::`.
     Command(String),
 }
@@ -259,14 +261,14 @@ impl ClientIntent {
                 // MESSAGE_PUBLIC and CLIENT_CHEAT are both VAR_BYTE.
                 let (opcode, body) = match chat {
                     ChatIntent::Public { chat_type, message } => {
-                        let mut body = vec![chat_type, 0, 0];
-                        body.extend(message);
+                        let mut body = vec![chat_type];
+                        message.append(chat_type, &mut body);
                         (56, body)
                     }
                     ChatIntent::Command(text) => {
                         let mut body: Vec<u8> = text
                             .chars()
-                            .map(|ch| u8::try_from(u32::from(ch)).unwrap_or(b'?'))
+                            .map(|ch| crate::wire::cp1252(ch).unwrap_or(b'?'))
                             .collect();
                         body.push(0);
                         (79, body)

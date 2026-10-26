@@ -90,6 +90,20 @@ pub fn load_widget_visuals<S: ReadOnlyBlobs>(
     request: &WidgetAssetRequest,
 ) -> WidgetVisualAssets {
     let mut assets = WidgetVisualAssets::default();
+    match profile.font_icons(cache) {
+        Ok(icons) => {
+            for (index, icon) in icons.iter().enumerate() {
+                if let Ok(index) = u16::try_from(index) {
+                    assets
+                        .images
+                        .insert(UiImageId::FontIcon(index), icon.image.clone());
+                }
+            }
+            assets.font_icons = icons;
+        }
+        Err(error) => assets.failures.push(error.to_string()),
+    }
+
     if !request.items.is_empty() {
         assets.quantity_font = profile.quantity_font(cache).ok();
     }

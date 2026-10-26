@@ -37,6 +37,29 @@ impl CacheProfile {
         }
     }
 
+    /// The global inline-font sprites selected by 240 graphics defaults (classAAM.field70).
+    /// # Errors
+    /// Reports missing/corrupt graphics defaults or sprite data with source context.
+    pub fn font_icons<S: ReadOnlyBlobs>(self, cache: &Cache<S>) -> Result<Vec<Sprite>> {
+        let source = Source::group(IndexId(17), GroupId(3));
+        let files = cache.group_files(IndexId(17), GroupId(3))?;
+        let bytes = &files
+            .iter()
+            .find(|(id, _)| id.0 == 0)
+            .ok_or_else(|| source.error("font icons", "missing graphics defaults"))?
+            .1;
+        let Some(group) = graphics_defaults(bytes, source)?.font_icons else {
+            return Ok(Vec::new());
+        };
+        let source = Source::group(IndexId(8), group);
+        let files = cache.group_files(IndexId(8), group)?;
+        let bytes = &files
+            .first()
+            .ok_or_else(|| source.error("font icons", "missing sprite file"))?
+            .1;
+        decode_sprites(bytes, source)
+    }
+
     /// Load only title assets, reporting named decode milestones.
     ///
     /// # Errors
@@ -169,7 +192,7 @@ fn load_240<S: ReadOnlyBlobs>(
         .find(|(id, _)| id.0 == 0)
         .ok_or_else(|| defaults_source.error("graphics defaults", "missing file"))?;
     reports.push(report("graphics defaults", defaults_source, &defaults.1));
-    let flame_colors = flame_colors(&defaults.1, defaults_source)?;
+    let flame_colors = graphics_defaults(&defaults.1, defaults_source)?.flame_colors;
     let gameframe = load_gameframe_sprites(cache);
     Ok(TitleAssets {
         background,
@@ -257,22 +280,35 @@ fn first(mut sprites: Vec<Sprite>, name: &str) -> Result<Sprite> {
     }
     Ok(sprites.remove(0))
 }
-fn flame_colors(bytes: &[u8], source: Source) -> Result<[[u32; 5]; 3]> {
+struct GraphicsDefaults {
+    flame_colors: [[u32; 5]; 3],
+    font_icons: Option<GroupId>,
+}
+
+fn graphics_defaults(bytes: &[u8], source: Source) -> Result<GraphicsDefaults> {
     let mut r = Reader::new(bytes, source);
     let mut colors = None;
+    let mut font_icons = None;
     loop {
         match r.u8()? {
             0 => {
                 r.finish()?;
-                return colors
-                    .ok_or_else(|| source.error("graphics defaults", "missing flame palettes"));
+                return Ok(GraphicsDefaults {
+                    flame_colors: colors.ok_or_else(|| {
+                        source.error("graphics defaults", "missing flame palettes")
+                    })?,
+                    font_icons,
+                });
             }
             1 => {
                 r.u24()?;
             }
             2 => {
-                for _ in 0..11 {
-                    r.count(7)?;
+                for index in 0..11 {
+                    let id = r.count(7)?;
+                    if index == 10 {
+                        font_icons = (id != 32767).then_some(GroupId(id));
+                    }
                 }
             }
             3 => {
@@ -296,8 +332,11 @@ fn flame_colors(bytes: &[u8], source: Source) -> Result<[[u32; 5]; 3]> {
                 r.u32()?;
             }
             6 => {
-                for _ in 0..12 {
-                    r.count(7)?;
+                for index in 0..12 {
+                    let id = r.count(7)?;
+                    if index == 10 {
+                        font_icons = (id != 32767).then_some(GroupId(id));
+                    }
                 }
             }
             opcode => {
@@ -320,7 +359,9 @@ mod tests {
             "a7b3038174bfab8344550aac92443c93806425654a57ed645bc512fb631de6ca"
         );
         let source = Source::group(IndexId(17), GroupId(3));
-        let colors = flame_colors(bytes, source).unwrap();
+        let defaults = graphics_defaults(bytes, source).unwrap();
+        let colors = defaults.flame_colors;
+        assert_eq!(defaults.font_icons, Some(GroupId(423)));
         assert_eq!(
             colors[0],
             [0, 0x00ff_0000, 0x00ff_ff00, 0x00ff_ffff, 0x00ff_ffff]
@@ -334,7 +375,7 @@ mod tests {
             [0, 0x0000_00ff, 0x00ff_00ff, 0x00ff_ffff, 0x00ff_ffff]
         );
         for n in 0..bytes.len() {
-            assert!(flame_colors(&bytes[..n], source).is_err());
+            assert!(graphics_defaults(&bytes[..n], source).is_err());
         }
         assert!(CacheProfile::parse("osrs-241").is_err());
     }

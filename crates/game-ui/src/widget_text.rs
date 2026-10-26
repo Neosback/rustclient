@@ -12,6 +12,7 @@ enum Token<'a> {
     Glyph(u8),
     Tag(&'a str),
     Break,
+    Image(u16),
 }
 fn tokens(text: &str) -> impl Iterator<Item = (usize, usize, Token<'_>)> {
     let mut offset = 0;
@@ -33,7 +34,10 @@ fn tokens(text: &str) -> impl Iterator<Item = (usize, usize, Token<'_>)> {
                     "at" => Token::Glyph(b'@'),
                     "nbh" => Token::Glyph(b'-'),
                     "br" | "n" => Token::Break,
-                    _ => Token::Tag(tag),
+                    _ => tag
+                        .strip_prefix("img=")
+                        .and_then(|index| index.parse().ok())
+                        .map_or(Token::Tag(tag), Token::Image),
                 };
                 return Some((start, offset, token));
             }
@@ -67,6 +71,11 @@ pub(crate) fn glyphs(text: &str) -> impl Iterator<Item = u8> + '_ {
 /// Measure a formatted line; style tags have no advance.
 #[must_use]
 pub fn width(text: &str, font: &BitmapFont) -> i32 {
+    width_with_icons(text, font, &[])
+}
+/// Measure with the same inline sprites and kerning reset used by the font painter.
+#[must_use]
+pub fn width_with_icons(text: &str, font: &BitmapFont, icons: &[rustclient_cache::Sprite]) -> i32 {
     let mut previous = None;
     tokens(text)
         .map(|(_, _, token)| match token {
@@ -75,6 +84,10 @@ pub fn width(text: &str, font: &BitmapFont) -> i32 {
                 previous = Some(byte);
                 n
             }
+            Token::Image(index) => icons.get(usize::from(index)).map_or(0, |icon| {
+                previous = None;
+                i32::from(icon.canvas[0])
+            }),
             Token::Break | Token::Tag(_) => 0,
         })
         .sum()
@@ -82,6 +95,16 @@ pub fn width(text: &str, font: &BitmapFont) -> i32 {
 /// Preserve tags while wrapping at spaces/hyphens; explicit breaks reset formatting at paint.
 #[must_use]
 pub fn wrap(text: &str, font: &BitmapFont, maximum: i32) -> Vec<String> {
+    wrap_with_icons(text, font, maximum, &[])
+}
+/// Wrap inline sprites as indivisible advances; sprite boundaries reset glyph kerning.
+#[must_use]
+pub fn wrap_with_icons(
+    text: &str,
+    font: &BitmapFont,
+    maximum: i32,
+    icons: &[rustclient_cache::Sprite],
+) -> Vec<String> {
     let mut lines = Vec::new();
     let (mut start, mut length, mut previous, mut split) = (0, 0, None, None);
     for (from, end, token) in tokens(text) {
@@ -107,17 +130,33 @@ pub fn wrap(text: &str, font: &BitmapFont, maximum: i32) -> Vec<String> {
                 {
                     lines.push(text[start..visible].to_owned());
                     start = after;
-                    length = width(&text[start..end], font);
-                    previous = tokens(&text[start..end])
-                        .filter_map(|(_, _, t)| {
-                            if let Token::Glyph(b) = t {
-                                Some(b)
-                            } else {
-                                None
-                            }
-                        })
-                        .last();
+                    length = width_with_icons(&text[start..end], font, icons);
+                    previous =
+                        tokens(&text[start..end]).fold(
+                            None,
+                            |previous, (_, _, token)| match token {
+                                Token::Glyph(byte) => Some(byte),
+                                Token::Image(index) if icons.get(usize::from(index)).is_some() => {
+                                    None
+                                }
+                                _ => previous,
+                            },
+                        );
                     split = None;
+                }
+            }
+            Token::Image(index) => {
+                if let Some(icon) = icons.get(usize::from(index)) {
+                    length += i32::from(icon.canvas[0]);
+                    previous = None;
+                    if length > maximum
+                        && let Some((visible, after)) = split
+                    {
+                        lines.push(text[start..visible].to_owned());
+                        start = after;
+                        length = width_with_icons(&text[start..end], font, icons);
+                        split = None;
+                    }
                 }
             }
             Token::Tag(_) => {}
@@ -183,6 +222,7 @@ pub(crate) fn paint(
     frame: &mut UiFrame,
     font: &BitmapFont,
     id: FontId,
+    icons: &[rustclient_cache::Sprite],
     text: TextBox<'_>,
     clip: Rect,
 ) {
@@ -198,7 +238,7 @@ pub(crate) fn paint(
         } else {
             b.width
         };
-    let lines = wrap(text.text, font, maximum);
+    let lines = wrap_with_icons(text.text, font, maximum, icons);
     let count = i32::try_from(lines.len()).unwrap_or(4096);
     if count == 0 {
         return;
@@ -230,7 +270,7 @@ pub(crate) fn paint(
     };
     let mut style = base;
     for (index, line) in lines.iter().enumerate() {
-        let line_width = width(line, font);
+        let line_width = width_with_icons(line, font, icons);
         let x = b.x
             + match text.alignment[0] {
                 1 => (b.width - line_width) / 2,
@@ -248,6 +288,7 @@ pub(crate) fn paint(
         paint_line(
             frame,
             font,
+            icons,
             |byte| UiImageId::WidgetGlyph(id, byte),
             line,
             [x, baseline],
@@ -266,6 +307,7 @@ pub(crate) fn paint(
 fn paint_line(
     frame: &mut UiFrame,
     font: &BitmapFont,
+    icons: &[rustclient_cache::Sprite],
     image: impl Fn(u8) -> UiImageId,
     line: &str,
     origin: [i32; 2],
@@ -278,6 +320,22 @@ fn paint_line(
     let (mut previous, mut fraction) = (None, 0);
     for (from, end, token) in tokens(line) {
         match token {
+            Token::Image(index) => {
+                if let Some(icon) = icons.get(usize::from(index)) {
+                    let rect = Rect::new(
+                        (x + i32::from(icon.offset[0])) as f32,
+                        (baseline - i32::from(icon.canvas[1]) + i32::from(icon.offset[1])) as f32,
+                        icon.image.width() as f32,
+                        icon.image.height() as f32,
+                    );
+                    // IndexedSprite.drawAt retains original colors; text shadow/tint never recolors crowns.
+                    if icon.image.width() > 0 && icon.image.height() > 0 {
+                        frame.image(UiImageId::FontIcon(index), rect, clip);
+                    }
+                    x += i32::from(icon.canvas[0]);
+                    previous = None;
+                }
+            }
             Token::Tag(tag) => style.tag(tag, base),
             Token::Break => *style = base,
             Token::Glyph(byte) => {
@@ -332,6 +390,7 @@ fn paint_line(
 pub(crate) fn menu_line(
     frame: &mut UiFrame,
     assets: &rustclient_cache::TitleAssets,
+    icons: &[rustclient_cache::Sprite],
     value: &str,
     origin: [i32; 2],
     color: [u8; 4],
@@ -347,6 +406,7 @@ pub(crate) fn menu_line(
     paint_line(
         frame,
         &assets.fonts[2],
+        icons,
         |byte| UiImageId::Glyph(2, byte),
         value,
         origin,
@@ -374,6 +434,81 @@ mod tests {
     use super::*;
     use rustclient_cache::{GroupId, Image, IndexId, Source, Sprite};
     use rustclient_model::SpriteId;
+    #[test]
+    fn inline_crowns_measure_wrap_and_paint_original_pixels_at_the_font_baseline() {
+        let source = Source::group(IndexId(8), GroupId(1));
+        let glyph = Sprite {
+            id: SpriteId::new(1),
+            frame: 0,
+            canvas: [1, 1],
+            offset: [0, 0],
+            image: Image::new(1, 1, vec![255; 4], source).unwrap(),
+        };
+        let mut metrics = vec![5; 256];
+        metrics.push(8);
+        let font = BitmapFont::decode(&metrics, vec![glyph; 256], source).unwrap();
+        let icons = vec![Sprite {
+            id: SpriteId::new(7),
+            frame: 0,
+            canvas: [11, 12],
+            offset: [2, 3],
+            image: Image::new(4, 5, vec![255; 4 * 4 * 5], source).unwrap(),
+        }];
+        assert_eq!(width_with_icons("A<img=0>B", &font, &icons), 21);
+        assert_eq!(width_with_icons("A<img=99><img=bad>B", &font, &icons), 10);
+        assert_eq!(
+            wrap_with_icons("A <img=0>B", &font, 16, &icons),
+            vec!["A", "<img=0>B"]
+        );
+        let base = Style {
+            color: rgba(0x00ff_0000),
+            shadow: Some(rgba(0)),
+            underline: None,
+            strike: None,
+        };
+        let mut style = base;
+        let mut frame = UiFrame::default();
+        paint_line(
+            &mut frame,
+            &font,
+            &icons,
+            |byte| UiImageId::Glyph(2, byte),
+            "A<img=0>B",
+            [10, 100],
+            Rect::new(0., 0., 200., 200.),
+            &mut style,
+            base,
+            0,
+        );
+        let icon = frame
+            .quads
+            .iter()
+            .find(|quad| quad.image == UiImageId::FontIcon(0))
+            .unwrap();
+        assert_eq!(icon.rect, Rect::new(17., 91., 4., 5.));
+        assert_eq!(
+            icon.tint, [255; 4],
+            "text color and shadow must not recolor or duplicate crowns"
+        );
+        assert_eq!(
+            frame
+                .quads
+                .iter()
+                .filter(|quad| quad.image == UiImageId::FontIcon(0))
+                .count(),
+            1
+        );
+        assert_eq!(
+            frame
+                .quads
+                .iter()
+                .find(|quad| quad.image == UiImageId::Glyph(2, b'B'))
+                .unwrap()
+                .rect
+                .x,
+            27.
+        );
+    }
     #[test]
     fn markup_wraps_without_losing_style_and_distinguishes_literal_escape_and_nonbreaking_spaces() {
         let source = Source::group(IndexId(13), GroupId(1));

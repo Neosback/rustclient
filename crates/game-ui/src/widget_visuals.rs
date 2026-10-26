@@ -9,6 +9,7 @@ pub struct WidgetVisualAssets {
     pub images: BTreeMap<UiImageId, Image>,
     pub fonts: BTreeMap<FontId, BitmapFont>,
     pub quantity_font: Option<FontId>,
+    pub font_icons: Vec<rustclient_cache::Sprite>,
     pub destination_flag: Option<rustclient_cache::Sprite>,
     pub cross_frames: BTreeMap<u8, SpriteFrame>,
     /// Untrimmed canvas and trim offset; widget geometry scales the canvas, not the trimmed image.
@@ -21,6 +22,9 @@ impl WidgetVisualAssets {
         self.images.extend(later.images);
         self.fonts.extend(later.fonts);
         self.quantity_font = later.quantity_font.or(self.quantity_font);
+        if !later.font_icons.is_empty() {
+            self.font_icons = later.font_icons;
+        }
         if later.destination_flag.is_some() {
             self.destination_flag = later.destination_flag;
         }
@@ -223,6 +227,7 @@ pub fn project_widgets_with_drag(
                         frame,
                         font,
                         id,
+                        &assets.font_icons,
                         crate::widget_text::TextBox {
                             text: &text,
                             bounds: node.bounds,

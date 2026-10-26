@@ -12,6 +12,7 @@ pub use openrune_240::js5::verify_cache;
 pub use openrune_240::login::{
     Credentials, LoginAttempt, LoginEntropy, LoginSession, PublicKey, authenticate,
 };
+pub use openrune_240::outgoing_chat::PublicChatMessage;
 pub use rustclient_model::ServerProfileId;
 pub use wire::{ProtocolError, Result};
 

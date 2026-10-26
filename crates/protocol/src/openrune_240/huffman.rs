@@ -225,7 +225,7 @@ mod tests {
             let key = mirror.next_word().to_le_bytes()[0];
             (bytes[0].wrapping_sub(key), bytes[1..].to_vec())
         };
-        let message = flat().encode_message("Hi").unwrap();
+        let message = flat().encode_public_chat("Hi").unwrap();
         assert_eq!(
             encode(ChatIntent::Public {
                 chat_type: 0,

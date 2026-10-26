@@ -343,14 +343,25 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
                         .map_err(|e| e.to_string())?,
                 );
             }
+            if h.resources.font_icons.is_none() {
+                h.resources.font_icons = Some(
+                    h.resources
+                        .profile
+                        .font_icons(&h.resources.cache)
+                        .map_err(|error| error.to_string())?,
+                );
+            }
+            let icons = h.resources.font_icons.as_deref().unwrap_or_default();
             let font = &h.resources.fonts[&id];
-            let lines = rustclient_game_ui::widget_visuals::wrap(&text, font, width);
+            let lines = rustclient_game_ui::widget_text::wrap_with_icons(&text, font, width, icons);
             Some(if op == Paraheight {
                 i32::try_from(lines.len()).map_err(|_| "text line count")?
             } else {
                 lines
                     .iter()
-                    .map(|line| rustclient_game_ui::widget_text::width(line, font))
+                    .map(|line| {
+                        rustclient_game_ui::widget_text::width_with_icons(line, font, icons)
+                    })
                     .max()
                     .unwrap_or(0)
             })

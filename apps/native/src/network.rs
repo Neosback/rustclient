@@ -251,19 +251,22 @@ fn run(
     let mut last_received = Instant::now();
     let mut map_epoch = 0_u64;
     let mut interface_epoch = 0_u64;
+    let mut pending_action = None;
     loop {
         if cancel.is_cancelled() {
             return Ok(());
         }
-        stream.deadline_after(Duration::from_millis(200));
-        match pollster::block_on(stream.receive(&mut bytes)) {
-            Ok(0) => {
+        stream.deadline_after(Duration::from_secs(2));
+        let mut received_data = false;
+        match stream.receive_available(&mut bytes) {
+            Ok(Some(0)) => {
                 return Err(failure(
                     LoginFailure::Disconnected,
                     "server closed the connection".into(),
                 ));
             }
-            Ok(n) => {
+            Ok(Some(n)) => {
+                received_data = true;
                 last_received = Instant::now();
                 let mut policy_error = None;
                 let connected = decoder
@@ -319,10 +322,15 @@ fn run(
                     ));
                 }
             }
-            Err(TransportError::Timeout) => {}
+            Ok(None) | Err(TransportError::Timeout) => {}
             Err(e) => return Err(failure(LoginFailure::Disconnected, e.to_string())),
         }
-        for action in actions.try_iter().take(32) {
+        for action in pending_action
+            .take()
+            .into_iter()
+            .chain(actions.try_iter())
+            .take(32)
+        {
             if map_epoch != action.map_epoch
                 || action
                     .interface_epoch
@@ -366,6 +374,11 @@ fn run(
             )
             .map_err(|e| failure(LoginFailure::Disconnected, e.to_string()))?;
             next_heartbeat = Instant::now() + Duration::from_secs(5);
+        }
+        if !received_data {
+            // A click wakes this wait immediately. Idle inbound polling stays at the 50 Hz client
+            // cadence instead of blocking outgoing input behind a 200 ms socket deadline.
+            pending_action = actions.recv_timeout(Duration::from_millis(20)).ok();
         }
     }
 }

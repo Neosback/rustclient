@@ -4,14 +4,6 @@ use rustclient_plugin_host::configuration::{ConfigValue, Control, ENABLED_KEY, F
 
 pub(crate) const CSS: &str = include_str!("shell.css");
 
-/// Navigation icon for a built-in plugin; unknown (external) plugins fall back to a monogram.
-fn plugin_icon(id: &str) -> Option<&'static str> {
-    match id {
-        "dev.rustclient.runelite" => Some(icon!("runelite_16")),
-        _ => None,
-    }
-}
-
 /// `windowSettings` -> `Window settings`, matching how `RuneLite` titles its config sections.
 /// Names that already read as titles (`Area overrides`) and the unsectioned group pass through.
 fn humanize(section: &str) -> String {
@@ -36,17 +28,6 @@ fn humanize(section: &str) -> String {
 }
 
 #[component]
-fn PluginGlyph(id: String, name: String) -> Element {
-    rsx! {
-        if let Some(src) = plugin_icon(&id) {
-            img { class: "glyph", src: "{src}", alt: "" }
-        } else {
-            span { class: "glyph monogram", "{name.chars().next().unwrap_or('?')}" }
-        }
-    }
-}
-
-#[component]
 pub fn Shell(channel: ShellChannel) -> Element {
     let mut query = use_signal(String::new);
     let mut selected = use_signal(|| None::<String>);
@@ -55,85 +36,83 @@ pub fn Shell(channel: ShellChannel) -> Element {
         .read()
         .as_ref()
         .and_then(|id| snapshot.plugins.iter().find(|plugin| plugin.id == *id));
-    let close = channel.clone();
+    let expanded = snapshot.panel_visible;
     let open_list = channel.clone();
     let needle = query.read().to_lowercase();
     rsx! {
         div { id: "shell", class: "shell",
-            nav { class: "rail", "aria-label": "Sidebar",
-                button { id: "plugins-nav", class: if current.is_none() { "rail-button active" } else { "rail-button" },
-                    title: "Plugin configuration", "aria-label": "Plugin configuration",
-                    onclick: move |_| { selected.set(None); open_list.send(ShellAction::Open); },
-                    img { class: "rail-icon", src: icon!("config_icon_lg"), alt: "" }
+            nav { class: "rail", "aria-label": "Application tools",
+                button { id: "plugins-nav", class: if expanded { "rail-button active" } else { "rail-button" },
+                    title: "Configuration", "aria-label": "Plugin configuration", "aria-expanded": expanded,
+                    onclick: move |_| {
+                        let close = expanded && selected.read().is_none();
+                        selected.set(None);
+                        open_list.send(if close { ShellAction::Close } else { ShellAction::Open });
+                    },
+                    img { class: "rail-icon", src: icon!("config_icon"), alt: "" }
                     span { class: "tip", "Configuration" }
                 }
-                for plugin in &snapshot.plugins {
-                    { let id = plugin.id.clone(); let open = channel.clone();
-                      let active = current.is_some_and(|c| c.id == plugin.id);
-                      rsx! { button { key: "{plugin.id}", class: if active { "rail-button active" } else { "rail-button" },
-                          title: "{plugin.name}", "aria-label": "{plugin.name}",
-                          onclick: move |_| { selected.set(Some(id.clone())); open.send(ShellAction::Open); },
-                          PluginGlyph { id: plugin.id.clone(), name: plugin.name.clone() }
-                          span { class: "tip", "{plugin.name}" }
-                      } } }
-                }
                 span { class: "rail-spacer" }
-                button { id: "close-shell", class: "rail-button", title: "Close sidebar", "aria-label": "Close sidebar",
-                    onclick: move |_| close.send(ShellAction::Close),
-                    span { class: "close-glyph", "×" }
-                    span { class: "tip", "Close" }
-                }
             }
-            if snapshot.panel_visible { main { class: "panel",
+            if snapshot.panel_visible { main { id: "shell-panel", class: "panel",
                 if let Some(error) = &snapshot.error {
                     div { class: "error", role: "alert", img { class: "mini", src: icon!("error"), alt: "" } span { "{error}" } }
                 }
                 if let Some(plugin) = current {
                     header { class: "bar",
-                        button { class: "icon-button", title: "Back to plugins", "aria-label": "Back to plugins", onclick: move |_| selected.set(None),
+                        button { class: "icon-button", title: "Back", "aria-label": "Back to plugins", onclick: move |_| selected.set(None),
                             img { class: "mini", src: icon!("config_back_icon"), alt: "" } }
-                        h1 { "{plugin.name}" }
-                        { let channel = channel.clone(); let id = plugin.id.clone(); rsx! {
-                            button { class: "icon-button reset", title: "Reset {plugin.name} settings", "aria-label": "Reset settings",
-                                onclick: move |_| channel.send(ShellAction::Reset { plugin: id.clone() }),
-                                img { class: "mini", src: icon!("refresh"), alt: "" } }
-                        } }
+                        h1 { title: "{plugin.description}", "{plugin.name}" }
+                        if plugin.required {
+                            span { class: "switch on locked", role: "img", title: "Required plugin: always on", "aria-label": "Always on", span { class: "knob" } }
+                        } else {
+                            { let channel = channel.clone(); let id = plugin.id.clone();
+                              rsx! { PluginSwitch { enabled: plugin.enabled, name: plugin.name.clone(), channel, id } } }
+                        }
                     }
-                    div { class: "plugin-meta",
-                        if plugin.required { span { class: "badge", "Always on" } }
-                        else { { let channel = channel.clone(); let id = plugin.id.clone();
-                            rsx! { PluginSwitch { enabled: plugin.enabled, name: plugin.name.clone(), channel, id } } } }
-                        span { class: "muted", "{plugin.settings.len()} settings" } }
-                    if !plugin.description.is_empty() { p { class: "plugin-description", "{plugin.description}" } }
                     div { class: "settings", id: "settings-scroll",
                         for section in sections(&plugin.settings) {
                             Section { key: "{section}", title: humanize(&section),
                                 rows: plugin.settings.iter().filter(|setting| setting.descriptor.section == section).cloned().collect(),
                                 plugin: plugin.id.clone(), channel: channel.clone() }
                         }
+                        div { class: "panel-footer",
+                            { let channel = channel.clone(); let id = plugin.id.clone(); rsx! {
+                                button { class: "footer-button reset", title: "Reset {plugin.name} settings to default", "aria-label": "Reset settings",
+                                    onclick: move |_| channel.send(ShellAction::Reset { plugin: id.clone() }),
+                                    "Reset"
+                                }
+                            } }
+                            button { class: "footer-button", title: "Back to plugin list", "aria-label": "Back",
+                                onclick: move |_| selected.set(None),
+                                "Back"
+                            }
+                        }
                     }
                 } else {
-                    header { class: "bar", h1 { "Plugins" } span { class: "count", "{snapshot.plugins.len()}" } }
                     div { class: "search",
                         img { class: "mini", src: icon!("search"), alt: "" }
-                        if query.read().is_empty() { span { class: "placeholder", "Search plugins" } }
-                        input { id: "plugin-search", r#type: "text", placeholder: "Search plugins", "aria-label": "Search plugins",
+                        if query.read().is_empty() { span { class: "placeholder", "Search" } }
+                        input { id: "plugin-search", r#type: "text", placeholder: "Search", "aria-label": "Search plugins",
                             value: "{query}", oninput: move |event| query.set(event.value()) }
                     }
                     div { class: "cards",
                         for plugin in snapshot.plugins.iter().filter(|plugin| matches_query(plugin, &needle)) {
-                            { let id = plugin.id.clone(); rsx! {
+                            { let id = plugin.id.clone(); let configurable = !plugin.settings.is_empty(); rsx! {
                                 div { key: "{plugin.id}", class: "plugin-card", "data-plugin": "{plugin.id}",
-                                    button { class: "card-open", onclick: move |_| selected.set(Some(id.clone())),
-                                        PluginGlyph { id: plugin.id.clone(), name: plugin.name.clone() }
-                                        span { class: "card-text",
-                                            strong { "{plugin.name}" }
-                                            span { class: "muted", if plugin.description.is_empty() { "{plugin.settings.len()} settings" } else { "{plugin.description}" } }
-                                        }
+                                    img { class: "pin-star", src: icon!("star_on"), alt: "" }
+                                    button { class: "card-open", title: "{plugin.description}", onclick: move |_| if configurable { selected.set(Some(id.clone())); },
+                                        span { class: "card-text", "{plugin.name}" }
+                                    }
+                                    if configurable {
+                                        { let id = plugin.id.clone(); rsx! {
+                                            button { class: "configure-plugin", title: "Edit {plugin.name} configuration", "aria-label": "Configure {plugin.name}", onclick: move |_| selected.set(Some(id.clone())),
+                                                img { class: "mini", src: icon!("config_edit_icon"), alt: "" }
+                                            }
+                                        } }
                                     }
                                     if plugin.required {
-                                        span { class: "badge", "Always on" }
-                                        span { class: "switch on locked", role: "img", "aria-label": "Always on", span { class: "knob" } }
+                                        span { class: "switch on locked", role: "img", title: "Required plugin: always on", "aria-label": "Always on", span { class: "knob" } }
                                     } else { { let channel = channel.clone(); let id = plugin.id.clone();
                                         rsx! { PluginSwitch { enabled: plugin.enabled, name: plugin.name.clone(), channel, id } } } }
                                 }
@@ -196,7 +175,9 @@ fn Section(
     rsx! {
         section { class: "group",
             button { class: "section", "aria-expanded": "{open}", onclick: move |_| expanded.set(!open),
-                img { class: "chevron", src: if open { icon!("expanded") } else { icon!("collapsed") }, alt: "" } span { "{title}" } span { class: "count", "{rows.len()}" } }
+                img { class: "chevron", src: if open { icon!("expanded") } else { icon!("collapsed") }, alt: "" }
+                span { "{title}" }
+            }
             if open {
                 for row in rows { SettingControl { key: "{row.descriptor.key}", row, plugin: plugin.clone(), channel: channel.clone() } }
             }
@@ -216,33 +197,36 @@ fn SettingControl(row: SettingView, plugin: String, channel: ShellChannel) -> El
             value,
         });
     });
+    let tooltip = row.descriptor.description.replace("<br>", " ");
     rsx! {
-        div { class: if disabled { "setting unavailable-row" } else { "setting" }, title: "{row.descriptor.description}",
+        div { class: if disabled { "setting unavailable-row" } else { "setting" }, title: "{tooltip}",
             div { class: "setting-head",
-                label { "{row.descriptor.label}" }
+                label { title: "{tooltip}", "{row.descriptor.label}" }
                 match (&row.descriptor.control, &row.value) {
                     (Control::Boolean, ConfigValue::Boolean(value)) => rsx! {
                         Switch { value: *value, disabled, label: row.descriptor.label.clone(), onchange: move |value| emit.call(ConfigValue::Boolean(value)) }
                     },
+                    (Control::Choice { options }, ConfigValue::Choice(value)) => rsx! {
+                        ChoiceControl { options: options.clone(), value: value.clone(), disabled, onchange: move |value| emit.call(ConfigValue::Choice(value)) }
+                    },
+                    (Control::Color, ConfigValue::Color(value)) => rsx! {
+                        ColorControl { value: *value, disabled, onchange: move |value| emit.call(ConfigValue::Color(value)) }
+                    },
+                    (Control::Decimal { min, max }, ConfigValue::Decimal(value)) => rsx! {
+                        DecimalControl { min: *min, max: *max, value: *value, disabled, onchange: move |value| emit.call(ConfigValue::Decimal(value)) }
+                    },
+                    (Control::Size, ConfigValue::Size(value)) => rsx! {
+                        SizeControl { value: *value, disabled, onchange: move |value| emit.call(ConfigValue::Size(value)) }
+                    },
                     _ => rsx! {},
                 }
             }
-            if !row.descriptor.description.is_empty() { p { class: "description", "{row.descriptor.description.replace(\"<br>\", \" \")}" } }
             match (&row.descriptor.control, &row.value) {
                 (Control::Integer { min, max }, ConfigValue::Integer(value)) => rsx! {
                     IntegerControl { min: *min, max: *max, value: *value, disabled, channel: pointer_channel, onchange: move |value| emit.call(ConfigValue::Integer(value)) }
                 },
-                (Control::Choice { options }, ConfigValue::Choice(value)) => rsx! {
-                    ChoiceControl { options: options.clone(), value: value.clone(), disabled, onchange: move |value| emit.call(ConfigValue::Choice(value)) }
-                },
-                (Control::Color, ConfigValue::Color(value)) => rsx! {
-                    ColorControl { value: *value, disabled, onchange: move |value| emit.call(ConfigValue::Color(value)) }
-                },
                 (Control::Hotkey, ConfigValue::Hotkey(value)) => rsx! {
                     HotkeyControl { value: value.clone(), disabled, onchange: move |value| emit.call(ConfigValue::Hotkey(value)) }
-                },
-                (Control::Size, ConfigValue::Size(value)) => rsx! {
-                    SizeControl { value: *value, disabled, onchange: move |value| emit.call(ConfigValue::Size(value)) }
                 },
                 (Control::Font, ConfigValue::Font(value)) => rsx! {
                     FontControl { value: value.clone(), disabled, onchange: move |value| emit.call(ConfigValue::Font(value)) }
@@ -250,10 +234,11 @@ fn SettingControl(row: SettingView, plugin: String, channel: ShellChannel) -> El
                 (Control::Text { max_len }, ConfigValue::Text(value)) => rsx! {
                     TextControl { max_len: *max_len, value: value.clone(), disabled, onchange: move |value| emit.call(ConfigValue::Text(value)) }
                 },
-                (Control::Decimal { min, max }, ConfigValue::Decimal(value)) => rsx! {
-                    DecimalControl { min: *min, max: *max, value: *value, disabled, onchange: move |value| emit.call(ConfigValue::Decimal(value)) }
-                },
-                (Control::Boolean, ConfigValue::Boolean(_)) => rsx! {},
+                (Control::Boolean, ConfigValue::Boolean(_))
+                | (Control::Choice { .. }, ConfigValue::Choice(_))
+                | (Control::Color, ConfigValue::Color(_))
+                | (Control::Decimal { .. }, ConfigValue::Decimal(_))
+                | (Control::Size, ConfigValue::Size(_)) => rsx! {},
                 _ => rsx! { span { class: "value", "{row.value:?}" } },
             }
             if let Some(note) = &row.note { small { class: "note", "{note}" } }

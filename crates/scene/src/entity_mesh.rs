@@ -37,6 +37,12 @@ pub struct EntityCatalog {
     requested_sequences: BTreeSet<SequenceId>,
 }
 
+enum NpcResolution<'a> {
+    Visible(&'a NpcDefinition),
+    HiddenMorph,
+    Unresolved,
+}
+
 impl EntityCatalog {
     /// Definitions that live entities reference and no earlier request covered.
     ///
@@ -142,18 +148,35 @@ impl EntityCatalog {
         id: NpcDefinitionId,
         variables: &BTreeMap<VarpId, i32>,
     ) -> Option<&'a NpcDefinition> {
+        match self.classify_npc(asset, id, variables) {
+            NpcResolution::Visible(def) => Some(def),
+            NpcResolution::HiddenMorph | NpcResolution::Unresolved => None,
+        }
+    }
+
+    fn classify_npc<'a>(
+        &'a self,
+        asset: &SceneAsset,
+        id: NpcDefinitionId,
+        variables: &BTreeMap<VarpId, i32>,
+    ) -> NpcResolution<'a> {
         let mut id = id;
         // A chain cannot visit more definitions than the catalog contains without cycling.
         for _ in 0..=self.npcs.len() {
-            let def = self.npcs.get(&id)?;
+            let Some(def) = self.npcs.get(&id) else {
+                return NpcResolution::Unresolved;
+            };
             let Some(morphs) = &def.morphs else {
-                return Some(def);
+                return NpcResolution::Visible(def);
             };
             let selector = if let Some(varbit) = morphs.varbit {
-                let bit = self
+                let Some(bit) = self
                     .varbits
                     .get(&varbit)
-                    .or_else(|| asset.sources().varbits.get(&varbit))?;
+                    .or_else(|| asset.sources().varbits.get(&varbit))
+                else {
+                    return NpcResolution::Unresolved;
+                };
                 let value = *variables.get(&bit.varp).unwrap_or(&0);
                 let width = u32::from(bit.high - bit.low) + 1;
                 let mask = if width == 32 {
@@ -167,14 +190,19 @@ impl EntityCatalog {
                     .varp
                     .map_or(-1, |varp| *variables.get(&varp).unwrap_or(&0))
             };
-            let last = morphs.transforms.len().checked_sub(1)?;
+            let Some(last) = morphs.transforms.len().checked_sub(1) else {
+                return NpcResolution::HiddenMorph;
+            };
             let index = usize::try_from(selector)
                 .ok()
                 .filter(|index| *index < last)
                 .unwrap_or(last);
-            id = (*morphs.transforms.get(index)?)?;
+            match morphs.transforms.get(index).copied().flatten() {
+                Some(next) => id = next,
+                None => return NpcResolution::HiddenMorph,
+            }
         }
-        None
+        NpcResolution::Unresolved
     }
 
     /// One-line account of why live actors are or are not drawable, for the dev diagnostics.
@@ -209,23 +237,30 @@ impl EntityCatalog {
             .filter(|npc| self.npcs.contains_key(&npc.definition_id))
             .count();
         let mut resolved = 0_usize;
+        let mut hidden_morphs = 0_usize;
         let mut npc_bases = 0_usize;
         let mut missing_models = BTreeSet::new();
         for npc in npcs.values() {
-            let Some(def) = self.resolve_npc(asset, npc.definition_id, variables) else {
-                continue;
-            };
-            resolved += 1;
-            if build_npc_base(def, |id| self.model(asset, id)).is_some() {
-                npc_bases += 1;
-            } else {
-                missing_models.extend(def.models.iter().map(|id| id.get()));
+            match self.classify_npc(asset, npc.definition_id, variables) {
+                NpcResolution::Visible(def) => {
+                    resolved += 1;
+                    if build_npc_base(def, |id| self.model(asset, id)).is_some() {
+                        npc_bases += 1;
+                    } else {
+                        missing_models.extend(def.models.iter().map(|id| id.get()));
+                    }
+                }
+                NpcResolution::HiddenMorph => {
+                    resolved += 1;
+                    hidden_morphs += 1;
+                }
+                NpcResolution::Unresolved => {}
             }
         }
         format!(
             "players {}/{with_appearance} appearance/{player_bases} drawable; npcs {}/{loaded} \
-             defined/{resolved} resolved/{npc_bases} drawable; kits {} items {} models {}; \
-             undrawable npc model ids {:?}",
+             defined/{resolved} resolved ({hidden_morphs} hidden)/{npc_bases} drawable; kits {} \
+             items {} models {}; undrawable npc model ids {:?}",
             players.len(),
             npcs.len(),
             asset.sources().kits.len(),

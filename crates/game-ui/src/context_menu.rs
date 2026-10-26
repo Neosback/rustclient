@@ -37,25 +37,25 @@ impl<A: Copy> ContextMenu<A> {
         x: f32,
         y: f32,
         entries: Vec<(String, A)>,
-        assets: &TitleAssets,
+        font: &rustclient_cache::BitmapFont,
+        icons: &[rustclient_cache::Sprite],
         canvas: rustclient_model::CanvasSize,
     ) {
         self.close();
-        if entries.is_empty() || !x.is_finite() || !y.is_finite() {
+        if !x.is_finite() || !y.is_finite() {
             return;
         }
         self.entries.extend(
             entries
                 .into_iter()
-                .take(32)
+                .take(499)
                 .map(|(label, action)| (label, Some(action))),
         );
         self.entries.push(("Cancel".into(), None));
-        let font = &assets.fonts[2]; // b12_full
         let width = (self
             .entries
             .iter()
-            .map(|(label, _)| crate::widget_text::width(label, font))
+            .map(|(label, _)| crate::widget_text::width_with_icons(label, font, icons))
             .max()
             .unwrap_or(0)
             .max(font.width("Choose Option"))
@@ -77,6 +77,24 @@ impl<A: Copy> ContextMenu<A> {
         self.selected = self.entry_at(x, y);
     }
     pub fn pointer(&mut self, x: f32, y: f32) {
+        if let Some(bounds) = self.bounds {
+            let margin = Rect::new(
+                bounds.x - 10.,
+                bounds.y - 10.,
+                bounds.width + 20.,
+                bounds.height + 20.,
+            );
+            if !x.is_finite()
+                || !y.is_finite()
+                || x < margin.x
+                || y < margin.y
+                || x > margin.x + margin.width
+                || y > margin.y + margin.height
+            {
+                self.close();
+                return;
+            }
+        }
         self.selected = self.entry_at(x, y);
     }
     #[expect(clippy::cast_precision_loss, reason = "bounded menu index")]
@@ -118,7 +136,12 @@ impl<A: Copy> ContextMenu<A> {
         clippy::cast_possible_truncation,
         reason = "bounded logical popup/font geometry"
     )]
-    pub fn project(&self, assets: &TitleAssets, frame: &mut UiFrame) {
+    pub fn project(
+        &self,
+        assets: &TitleAssets,
+        icons: &[rustclient_cache::Sprite],
+        frame: &mut UiFrame,
+    ) {
         let Some(bounds) = self.bounds else {
             return;
         };
@@ -157,6 +180,7 @@ impl<A: Copy> ContextMenu<A> {
             crate::widget_text::menu_line(
                 frame,
                 assets,
+                icons,
                 label,
                 [
                     bounds.x as i32 + 3,
@@ -170,5 +194,71 @@ impl<A: Copy> ContextMenu<A> {
                 bounds,
             );
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    fn font() -> rustclient_cache::BitmapFont {
+        use rustclient_cache::{GroupId, Image, IndexId, Source, Sprite};
+        let source = Source::group(IndexId(13), GroupId(1));
+        let glyph = Sprite {
+            id: rustclient_model::SpriteId::new(1),
+            frame: 0,
+            canvas: [1, 1],
+            offset: [0, 0],
+            image: Image::new(1, 1, vec![255; 4], source).unwrap(),
+        };
+        let mut metrics = vec![5; 256];
+        metrics.push(8);
+        rustclient_cache::BitmapFont::decode(&metrics, vec![glyph; 256], source).unwrap()
+    }
+    #[test]
+    fn empty_right_click_keeps_cancel_and_pointer_uses_the_stock_ten_pixel_margin() {
+        let font = font();
+        let mut menu = ContextMenu::<u8>::default();
+        menu.open(
+            100.,
+            100.,
+            Vec::new(),
+            &font,
+            &[],
+            rustclient_model::CanvasSize {
+                width: 765,
+                height: 503,
+            },
+        );
+        assert!(menu.is_open());
+        assert_eq!(menu.entries, vec![("Cancel".into(), None)]);
+        let bounds = menu.bounds.unwrap();
+        menu.pointer(bounds.x - 10., bounds.y);
+        assert!(menu.is_open());
+        menu.pointer(bounds.x - 10.01, bounds.y);
+        assert!(!menu.is_open());
+    }
+    #[test]
+    fn labels_measure_rich_text_and_actions_remain_captured_until_selection() {
+        let font = font();
+        let mut menu = ContextMenu::<u8>::default();
+        menu.open(
+            764.,
+            502.,
+            vec![("<col=ffff00>Bank</col>".into(), 7)],
+            &font,
+            &[],
+            rustclient_model::CanvasSize {
+                width: 765,
+                height: 503,
+            },
+        );
+        let bounds = menu.bounds.unwrap();
+        assert_eq!(
+            bounds.width, 73.,
+            "Choose Option controls width; tags have no visible advance"
+        );
+        assert!(bounds.x + bounds.width <= 765. && bounds.y + bounds.height <= 503.);
+        assert_eq!(menu.click(bounds.x + 3., bounds.y + 31.), Some(7));
+        assert!(!menu.is_open());
     }
 }

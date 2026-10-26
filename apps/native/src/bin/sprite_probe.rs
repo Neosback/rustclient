@@ -6,9 +6,29 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut args = std::env::args().skip(1);
     let path = args
         .next()
-        .ok_or("usage: sprite_probe CACHE_DIR SPRITE_ID|named:GROUP ...")?;
+        .ok_or("usage: sprite_probe CACHE_DIR SPRITE_ID|named:GROUP|font-icons ...")?;
     let cache = Cache::open(DirectoryBlobs::open(path)?)?;
     for arg in args {
+        if arg == "font-icons" {
+            let icons = rustclient_cache::CacheProfile::Osrs240.font_icons(&cache)?;
+            println!(
+                "font icons: {} frames selected by revision-240 graphics defaults",
+                icons.len()
+            );
+            for (index, icon) in icons.iter().enumerate() {
+                println!(
+                    "font icon {index}: group {} frame {} canvas {:?} offset {:?} image {}x{}",
+                    icon.id,
+                    icon.frame,
+                    icon.canvas,
+                    icon.offset,
+                    icon.image.width(),
+                    icon.image.height()
+                );
+            }
+            continue;
+        }
+
         if let Some(name) = arg.strip_prefix("named:") {
             for (frame, sprite) in cache.named_sprites(name)?.iter().enumerate() {
                 let (w, h) = (

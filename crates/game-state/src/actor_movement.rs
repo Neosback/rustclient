@@ -7,6 +7,7 @@ use crate::{ActorFinePosition, ActorPathQueue, ExactMovement, WorldEntitiesState
 use rustclient_model::{
     ActorSequenceSlot, ClientCycle, MoveSpeed, PathAccelerationPolicy, SequenceTiming, WorldTile,
 };
+use std::cmp::Ordering::{Equal, Greater, Less};
 
 const SNAP_FINE_UNITS: i64 = 288;
 
@@ -48,6 +49,12 @@ pub(crate) fn advance_players(entities: &mut WorldEntitiesState, current_cycle: 
         {
             continue;
         }
+        align_path_heading(
+            &player.path_queue,
+            &player.sequence,
+            player.tile,
+            &mut player.orientation,
+        );
         advance_actor_cycle(
             &mut player.path_queue,
             &mut player.sequence,
@@ -87,8 +94,46 @@ pub(crate) fn advance_players(entities: &mut WorldEntitiesState, current_cycle: 
             // Direct semantic fixtures may omit cache enrichment. Do not invent revision policy.
             continue;
         };
+        align_path_heading(
+            &npc.path_queue,
+            &npc.sequence,
+            npc.tile,
+            &mut npc.orientation,
+        );
         advance_actor_cycle(&mut npc.path_queue, &mut npc.sequence, npc.tile, policy);
     }
+}
+
+/// Stock Actor.method3208: face the oldest path target from the current fine position, rather
+/// than a newer network endpoint. A queued corner must not turn the body before it is reached.
+fn align_path_heading(
+    path: &ActorPathQueue,
+    sequence: &ActorSequenceSlot,
+    fallback: WorldTile,
+    orientation: &mut u16,
+) {
+    if crate::sequence_scheduler::movement_blocked(*sequence) {
+        return;
+    }
+    let Some(entry) = path.oldest() else {
+        return;
+    };
+    let position = path.fine_position(fallback);
+    let target = ActorFinePosition::from_tile(entry.target);
+    let x = target.x.cmp(&position.x);
+    let y = target.y.cmp(&position.y);
+    let heading = match (x, y) {
+        (Greater, Greater) => 1280,
+        (Greater, Less) => 1792,
+        (Greater, Equal) => 1536,
+        (Less, Greater) => 768,
+        (Less, Less) => 256,
+        (Less, Equal) => 512,
+        (Equal, Greater) => 1024,
+        (Equal, Less) => 0,
+        (Equal, Equal) => return,
+    };
+    *orientation = heading;
 }
 
 /// Advance the active revision-240 forced trajectory, returning `None` only when no forced phase

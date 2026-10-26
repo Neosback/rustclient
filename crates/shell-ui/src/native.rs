@@ -98,6 +98,7 @@ impl RetainedPanel {
     }
     pub fn invalidate(&mut self) {
         self.doc.vdom.mark_dirty(ScopeId::ROOT);
+        self.doc.vdom.mark_dirty(ScopeId::APP);
         self.dirty = true;
     }
     /// # Errors

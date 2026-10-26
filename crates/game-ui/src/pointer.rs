@@ -9,12 +9,17 @@ pub struct DraggedWidget {
 }
 
 /// The single topmost interactive widget that owns a primary press.
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "independent widget listener capabilities"
+)]
 #[derive(Debug, Clone, Copy)]
 pub struct PressTarget {
     pub node: PlacedWidget,
     pub click: bool,
     pub hold: bool,
     pub drag: bool,
+    pub actionable: bool,
 }
 /// Input and visual paint order agree: a knob captures its press before the
 /// track beneath it, and a dropdown row captures before its dismiss layer.
@@ -33,12 +38,14 @@ pub fn primary_press<'a>(
         .iter()
         .any(|kind| widget.listeners.contains_key(kind));
         let drag = widget.listeners.contains_key(&WidgetListener::Drag);
-        if click || hold || drag || actionable(node.address) {
+        let has_action = actionable(node.address);
+        if click || hold || drag || has_action {
             return Some(PressTarget {
                 node,
                 click,
                 hold,
                 drag,
+                actionable: has_action,
             });
         }
     }

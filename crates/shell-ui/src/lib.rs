@@ -5,6 +5,7 @@
 mod assets;
 mod components;
 mod model;
+pub use assets::OPEN_RS_PNG;
 pub use components::Shell;
 pub use model::{PluginPanel, SettingView, ShellAction, ShellChannel, ShellModel};
 

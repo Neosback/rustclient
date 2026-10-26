@@ -228,6 +228,7 @@ impl NativeApp {
         if self.widget_menu.is_open() || self.context_menu.is_open() {
             return false;
         }
+        self.ensure_widget_tree();
         let under = self.widgets_under(x, y);
         if std::env::var_os("RUSTCLIENT_POINTER_DIAGNOSTICS").is_some() {
             for (node, widget) in &under {
@@ -285,7 +286,8 @@ impl NativeApp {
                 None,
             );
         }
-        clicked.is_some() || held.hold.is_some() || held.drag.is_some()
+        (clicked.is_some() || held.hold.is_some() || held.drag.is_some())
+            && !target.is_some_and(|t| t.actionable && !t.drag)
     }
     /// A left release: finish the hold and, if the press became a drag, the drag.
     pub(super) fn widget_pointer_release(&mut self, x: f32, y: f32) {
@@ -295,6 +297,7 @@ impl NativeApp {
         if held.epoch != self.state.interfaces().epoch() {
             return;
         }
+        self.ensure_widget_tree();
         if let Some(address) = held.hold
             && let Some(node) = self.placed(address)
         {
@@ -320,7 +323,14 @@ impl NativeApp {
     }
     /// One 20 ms client cycle of pointer listeners: repeats while held, drags and hover changes.
     pub(super) fn widget_pointer_cycle(&mut self) {
-        if self.state.authenticated_player().is_none() || self.widget_tree.nodes.is_empty() {
+        if self.state.authenticated_player().is_none() || self.state.interfaces().root().is_none() {
+            return;
+        }
+        if self.widget_menu.is_open() || self.context_menu.is_open() {
+            return;
+        }
+        self.ensure_widget_tree();
+        if self.widget_tree.nodes.is_empty() {
             return;
         }
         let pointer = self

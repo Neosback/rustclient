@@ -50,6 +50,7 @@ pub struct ClientScripts<S> {
     layout_revision: Option<u64>,
     pub modifiers: [bool; 3],
     fonts: BTreeMap<FontId, rustclient_cache::BitmapFont>,
+    font_icons: Option<Vec<rustclient_cache::Sprite>>,
     effects: Vec<rustclient_protocol::ClientIntent>,
     sound_effects: Vec<SoundEffectRequest>,
     db: database::DbState,
@@ -73,6 +74,7 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
             layout_revision: None,
             modifiers: [false; 3],
             fonts: BTreeMap::new(),
+            font_icons: None,
             effects: Vec::new(),
             sound_effects: Vec::new(),
             db: database::DbState::default(),
@@ -343,7 +345,10 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
     /// Frame a public chat message with the cache's Huffman table, loading it on first use.
     /// # Errors
     /// Fails when the cache has no table or the text cannot be coded.
-    pub(crate) fn encode_public_chat(&mut self, text: &str) -> Result<Vec<u8>> {
+    pub(crate) fn encode_public_chat(
+        &mut self,
+        text: &str,
+    ) -> Result<rustclient_protocol::PublicChatMessage> {
         if self.huffman.is_none() {
             let table = self
                 .cache
@@ -356,7 +361,7 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
         self.huffman
             .as_ref()
             .ok_or("chat huffman table unavailable")?
-            .encode_message(text)
+            .encode_public_chat(text)
             .map_err(|e| e.to_string())
     }
     pub fn reset(&mut self) {

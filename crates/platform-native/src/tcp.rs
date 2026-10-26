@@ -60,6 +60,32 @@ impl NativeTcp {
             deadline: Instant::now() + Duration::from_secs(20),
         })
     }
+    /// Poll already available input without holding up an application worker's outbound queue.
+    /// Socket mode is restored before returning, so send-all/login retain their blocking contract.
+    /// # Errors
+    /// Reports cancellation/deadline, peer closure on the next read, or socket setup/read failure.
+    pub fn receive_available(&mut self, bytes: &mut [u8]) -> Result<Option<usize>, TransportError> {
+        self.check()?;
+        self.stream
+            .set_nonblocking(true)
+            .map_err(|_| TransportError::Unavailable)?;
+        let result = self.stream.read(bytes);
+        self.stream
+            .set_nonblocking(false)
+            .map_err(|_| TransportError::Unavailable)?;
+        match result {
+            Ok(n) => Ok(Some(n)),
+            Err(error)
+                if matches!(
+                    error.kind(),
+                    std::io::ErrorKind::WouldBlock | std::io::ErrorKind::Interrupted
+                ) =>
+            {
+                Ok(None)
+            }
+            Err(_) => Err(TransportError::Closed),
+        }
+    }
     pub fn deadline_after(&mut self, duration: Duration) {
         self.deadline = Instant::now() + duration;
     }
@@ -119,6 +145,33 @@ impl ByteStream for NativeTcp {
 mod tests {
     use super::*;
     use std::net::TcpListener;
+    #[test]
+    fn idle_receive_poll_does_not_hold_outbound_input_behind_the_server() {
+        let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let peer = std::thread::spawn(move || {
+            let (mut socket, _) = listener.accept().unwrap();
+            socket
+                .set_read_timeout(Some(Duration::from_secs(2)))
+                .unwrap();
+            let mut request = [0; 1];
+            socket.read_exact(&mut request).unwrap();
+            assert_eq!(request, [7]);
+            socket.write_all(&[8]).unwrap();
+        });
+        let mut stream =
+            NativeTcp::connect("127.0.0.1", port, ConnectionCancellation::default()).unwrap();
+        let mut bytes = [0; 1];
+        assert_eq!(
+            stream.receive_available(&mut bytes).unwrap(),
+            None,
+            "server deliberately waits for our action"
+        );
+        pollster::block_on(stream.send(&[7])).unwrap();
+        assert_eq!(pollster::block_on(stream.receive(&mut bytes)).unwrap(), 1);
+        assert_eq!(bytes, [8]);
+        peer.join().unwrap();
+    }
     #[test]
     fn native_stream_exchanges_ordered_bytes_and_reports_deadline_and_cancellation() {
         let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();

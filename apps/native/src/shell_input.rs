@@ -120,6 +120,26 @@ impl NativeApp {
                     self.shell.focused = false;
                     self.shell.composing = false;
                     self.shell.panel.clear_focus();
+                    if *button == MouseButton::Left
+                        && let Some((cx, cy)) = self.cursor
+                    {
+                        let (ux, uy) = self.ui_pointer(window, cx, cy);
+                        let canvas_width = if self.state.authenticated_player().is_some() {
+                            self.state.interfaces().window().canvas.width
+                        } else {
+                            765
+                        };
+                        self.ensure_widget_tree();
+                        if self
+                            .shell
+                            .overlay_button_rect(canvas_width, &self.widget_tree)
+                            .contains(ux, uy)
+                        {
+                            self.shell.toggle_sidebar(window);
+                            self.release_game_input();
+                            return true;
+                        }
+                    }
                 }
                 if point.is_some() || self.shell.held {
                     if *button == MouseButton::Left {

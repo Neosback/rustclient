@@ -3,6 +3,9 @@
 //! Components reference icons as `asset://runelite/NAME.png`. The native panel answers those requests from
 //! the binary, so no file or network access happens at runtime.
 
+/// Raw `open_rs.png` bytes (`16x22` RGBA) for the game-canvas sidebar toggle overlay.
+pub const OPEN_RS_PNG: &[u8] = include_bytes!("../assets/runelite/open_rs.png");
+
 /// URL used by components for an embedded icon.
 macro_rules! icon {
     ($name:literal) => {
@@ -43,6 +46,7 @@ mod native {
         "runelite_16",
         "runelite_128",
         "open",
+        "open_rs",
         "search",
         "error",
         "devtools_icon",
