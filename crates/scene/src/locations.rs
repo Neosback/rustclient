@@ -22,23 +22,11 @@ pub(crate) fn build(
             .map(|loc| loc.tile)
             .collect()
     });
-    let mut walls = BTreeMap::new();
-    {
-        for loc in &locations {
-            if loc.shape <= 3
-                && dynamic_tiles
-                    .as_ref()
-                    .is_none_or(|tiles| tiles.contains(&loc.tile))
-                && let Some(def) = asset.assets.objects.get(&loc.object)
-            {
-                walls.insert(loc.tile, def.decoration_displacement);
-            }
-        }
-    }
+    let plan = crate::decorations::plan(asset, inputs, &locations, dynamic_tiles.as_ref())?;
     let mut prepared = Vec::new();
     let mut prepared_vertices = 0_usize;
     {
-        for loc in &locations {
+        for (index, loc) in locations.iter().enumerate() {
             // Unknown objects fall through so the explicit missing-object error stays.
             if dynamic
                 && asset.assets.objects.contains_key(&loc.object)
@@ -75,8 +63,10 @@ pub(crate) fn build(
                 .and_then(|a| a.placement);
             let rotation = animated.map_or(loc.orientation.get(), |p| p.orientation.get());
             let shape = animated.map_or(loc.shape, |p| p.shape);
-            let thickness = i32::from(*walls.get(&loc.tile).unwrap_or(&16));
-            let requests = placement_requests(shape, rotation, thickness);
+            if plan.dropped(index) {
+                continue;
+            }
+            let requests = plan.requests(index, shape, rotation);
             let mut selected = false;
             for (shape, orientation, offset) in requests {
                 if let Some(model) = prepare(asset, loc, def, shape, orientation, offset, inputs)? {
@@ -174,7 +164,7 @@ pub(crate) struct InstanceModel {
     skins: Vec<Option<u8>>,
     weights: Vec<Vec<(u8, u8)>>,
 }
-fn construct(
+pub(crate) fn construct(
     asset: &SceneAsset,
     def: &ObjectDefinition,
     shape: u8,
@@ -246,6 +236,19 @@ fn construct(
         }
     }
     Ok((!model.vertices.is_empty()).then_some(model))
+}
+/// Whether `construct` would select at least one source model for `shape`.
+pub(crate) fn has_model(asset: &SceneAsset, def: &ObjectDefinition, shape: u8) -> bool {
+    def.models
+        .iter()
+        .filter(|m| m.shape.map_or(shape == 10, |s| s == shape))
+        .any(|m| {
+            asset
+                .assets
+                .models
+                .get(&m.id)
+                .is_some_and(|model| !model.vertices.is_empty())
+        })
 }
 pub(crate) struct PreparedModel {
     pub model: InstanceModel,
@@ -565,28 +568,44 @@ fn sample(asset: &SceneAsset, plane: Plane, x: i32, y: i32) -> Result<i32> {
     Ok((a * (128 - fy) + b * fy) >> 7)
 }
 
+/// Unit step the client nudges a straight wall decoration along its wall normal, by orientation.
+const CARDINAL: [[i32; 2]; 4] = [[1, 0], [0, -1], [-1, 0], [0, 1]];
+const DIAGONAL: [[i32; 2]; 4] = [[1, -1], [-1, -1], [-1, 1], [1, 1]];
+
+/// First-plate displacement the client assigns a wall decoration when it is placed. `existing` is the
+/// `decoration_displacement` of the boundary already on the tile: type 5 is displaced by all of it
+/// (default 16), types 6 and 8 by half of it (default 8).
+pub(crate) fn decoration_offset(shape: u8, rotation: u8, existing: Option<i32>) -> [i32; 2] {
+    let rotation = usize::from(rotation & 3);
+    match shape {
+        5 => CARDINAL[rotation].map(|v| v * existing.unwrap_or(16)),
+        6 | 8 => DIAGONAL[rotation].map(|v| v * existing.map_or(8, |d| d / 2)),
+        _ => [0, 0],
+    }
+}
+
+/// Model requests `(shape, orientation, offset)` that realise one placed location. `offset` is the
+/// first wall-decoration plate's displacement, already rescaled by any later wall (see
+/// `decorations`); other shapes ignore it. Straight decorations (types 4 and 5) are also nudged one
+/// unit along their wall normal; the second plate of type 8 is drawn at the plain tile centre.
 pub(crate) fn placement_requests(
     shape: u8,
     rotation: u8,
-    thickness: i32,
+    offset: [i32; 2],
 ) -> Vec<(u8, u8, [i32; 2])> {
     let mut requests = Vec::with_capacity(2);
+    let nudge = CARDINAL[usize::from(rotation & 3)];
     match shape {
         2 => {
             requests.push((2, rotation + 4, [0, 0]));
             requests.push((2, (rotation + 1) & 3, [0, 0]));
         }
-        4 => requests.push((4, rotation, [0, 0])),
-        5 => {
-            let offset = [[1, 0], [0, -1], [-1, 0], [0, 1]][usize::from(rotation)];
-            requests.push((4, rotation, offset.map(|v| v * thickness)));
-        }
+        4 => requests.push((4, rotation, nudge)),
+        5 => requests.push((4, rotation, [offset[0] + nudge[0], offset[1] + nudge[1]])),
         6 | 8 => {
-            let offset = [[1, -1], [-1, -1], [-1, 1], [1, 1]][usize::from(rotation)]
-                .map(|v| v * thickness / 2);
             requests.push((4, rotation + 4, offset));
             if shape == 8 {
-                requests.push((4, ((rotation + 2) & 3) + 4, offset));
+                requests.push((4, ((rotation + 2) & 3) + 4, [0, 0]));
             }
         }
         7 => requests.push((4, ((rotation + 2) & 3) + 4, [0, 0])),

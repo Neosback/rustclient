@@ -24,6 +24,7 @@ mod inputs;
 mod lighting;
 pub mod minimap;
 pub use inputs::SceneryInputs;
+mod decorations;
 mod locations;
 pub use locations::location_key;
 mod mesh;

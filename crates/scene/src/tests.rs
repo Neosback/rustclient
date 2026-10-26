@@ -214,18 +214,163 @@ fn bridges_retain_upper_surface_and_asset_identity_is_enforced() {
 }
 
 #[test]
-fn boundary_pairs_and_wall_decoration_offsets_match_editor_rules() {
+fn boundary_pairs_and_wall_decoration_offsets_match_client_rules() {
     assert_eq!(
-        locations::placement_requests(2, 3, 34),
+        locations::placement_requests(2, 3, [0, 0]),
         [(2, 7, [0, 0]), (2, 0, [0, 0])]
     );
-    assert_eq!(locations::placement_requests(5, 1, 34), [(4, 1, [0, -34])]);
-    assert_eq!(locations::placement_requests(6, 2, 35), [(4, 6, [-17, 17])]);
-    assert_eq!(locations::placement_requests(7, 1, 34), [(4, 7, [0, 0])]);
+    // Type 5 takes the wall's full displacement plus the client's one-unit nudge.
     assert_eq!(
-        locations::placement_requests(8, 0, 34),
-        [(4, 4, [17, -17]), (4, 6, [17, -17])]
+        locations::placement_requests(5, 1, locations::decoration_offset(5, 1, Some(34))),
+        [(4, 1, [0, -35])]
     );
+    assert_eq!(
+        locations::placement_requests(6, 2, locations::decoration_offset(6, 2, Some(35))),
+        [(4, 6, [-17, 17])]
+    );
+    assert_eq!(
+        locations::placement_requests(7, 1, [0, 0]),
+        [(4, 7, [0, 0])]
+    );
+    // The second plate of a type-8 decoration is drawn at the plain tile centre.
+    assert_eq!(
+        locations::placement_requests(8, 0, locations::decoration_offset(8, 0, Some(34))),
+        [(4, 4, [17, -17]), (4, 6, [0, 0])]
+    );
+}
+
+fn triangle(points: [(i32, i32, i32); 3]) -> StaticModel {
+    StaticModel {
+        vertices: points.map(|(x, y, z)| ModelPoint::new(x, y, z)).to_vec(),
+        vertex_skins: vec![None; 3],
+        skeletal_weights: vec![Vec::new(); 3],
+        texture_triangles: vec![],
+        texture_types: vec![],
+        faces: vec![ModelFace {
+            vertices: [0, 1, 2],
+            color: 1,
+            texture: None,
+            render_type: 0,
+            alpha: 0,
+            skin: None,
+            texture_mapping: None,
+            bias: 0,
+            priority: 0,
+        }],
+    }
+}
+fn located(object: u32, shape: u8) -> StaticLocation {
+    StaticLocation {
+        object: ObjectDefinitionId::new(object),
+        tile: WorldTile::new(1, 1, Plane::MIN),
+        shape,
+        orientation: LocOrientation::new(0).unwrap(),
+    }
+}
+
+#[test]
+fn wall_decoration_lands_in_the_same_place_whichever_is_authored_first() {
+    let build = |decoration_first: bool| {
+        let mut a = assets();
+        let mut wall = definition();
+        wall.models = vec![ModelReference {
+            id: ModelId::new(1),
+            shape: Some(0),
+        }];
+        wall.recolors.clear();
+        wall.decoration_displacement = 32;
+        let mut decoration = definition();
+        decoration.id = ObjectDefinitionId::new(2);
+        decoration.models = vec![ModelReference {
+            id: ModelId::new(2),
+            shape: Some(4),
+        }];
+        decoration.recolors.clear();
+        a.objects.insert(ObjectDefinitionId::new(1), wall);
+        a.objects.insert(ObjectDefinitionId::new(2), decoration);
+        a.models.insert(
+            ModelId::new(1),
+            triangle([(-64, 0, -64), (64, 0, -64), (0, -128, 64)]),
+        );
+        a.models.insert(
+            ModelId::new(2),
+            triangle([(-10, 0, -5), (10, 0, -5), (0, -20, 5)]),
+        );
+        let (wall, decoration) = (located(1, 0), located(2, 5));
+        a.squares[0].locations = if decoration_first {
+            vec![decoration, wall]
+        } else {
+            vec![wall, decoration]
+        };
+        let a = scene(a);
+        let mesh = build_mesh(&a, a.descriptor(), WorldTile::new(0, 0, Plane::MIN)).unwrap();
+        let mut vertices: Vec<_> = mesh.geometry.vertices.iter().map(|v| v.position).collect();
+        vertices.sort_unstable();
+        vertices
+    };
+    let after = build(false);
+    assert_eq!(after, build(true));
+    // Tile (1, 1) centre 192, plus the wall's 32 displacement and the one-unit nudge, plus model x.
+    assert!(after.iter().any(|p| p[0] == 192 + 33 - 10), "{after:?}");
+}
+
+#[test]
+fn a_later_wall_decoration_replaces_the_earlier_one_on_its_tile() {
+    let mut a = assets();
+    for id in [1, 2] {
+        let mut decoration = definition();
+        decoration.id = ObjectDefinitionId::new(id);
+        decoration.models = vec![ModelReference {
+            id: ModelId::new(id),
+            shape: Some(4),
+        }];
+        decoration.recolors.clear();
+        a.objects.insert(ObjectDefinitionId::new(id), decoration);
+        a.models.insert(
+            ModelId::new(id),
+            triangle([(-10, 0, -5), (10, 0, -5), (0, -20, 5)]),
+        );
+    }
+    a.squares[0].locations = vec![located(1, 4), located(2, 4)];
+    let a = scene(a);
+    let mesh = build_mesh(&a, a.descriptor(), WorldTile::new(0, 0, Plane::MIN)).unwrap();
+    assert_eq!(mesh.stats.model_triangles, 1);
+}
+
+#[test]
+fn diagonal_decoration_plates_are_snapped_flush_against_their_type_nine_slab() {
+    let mut a = assets();
+    let mut wall = definition();
+    wall.models = vec![ModelReference {
+        id: ModelId::new(1),
+        shape: Some(9),
+    }];
+    wall.recolors.clear();
+    let mut decoration = definition();
+    decoration.id = ObjectDefinitionId::new(2);
+    decoration.models = vec![ModelReference {
+        id: ModelId::new(2),
+        shape: Some(4),
+    }];
+    decoration.recolors.clear();
+    a.objects.insert(ObjectDefinitionId::new(1), wall);
+    a.objects.insert(ObjectDefinitionId::new(2), decoration);
+    // A thin diagonal slab: its flat face runs through the tile centre, its back 15.6 units behind.
+    a.models.insert(
+        ModelId::new(1),
+        triangle([(-64, 0, 64), (64, 0, -64), (-11, 0, -11)]),
+    );
+    a.models.insert(
+        ModelId::new(2),
+        triangle([(-20, 0, 0), (20, 0, 0), (0, -30, 10)]),
+    );
+    let locations = [located(1, 9), located(2, 8)];
+    a.squares[0].locations = locations.to_vec();
+    let a = scene(a);
+    let plan = decorations::plan(&a, &SceneryInputs::default(), &locations, None).unwrap();
+    // The offset plate (orientation + 4) sits on the slab's inner face; the plain plate lifts one
+    // unit off the outer face, as `RustOSRS` measured with the client's own models.
+    assert_eq!(plan.requests(1, 8, 0), [(4, 4, [-12, -12]), (4, 6, [1, 1])]);
 }
 
 #[test]
