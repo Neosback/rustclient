@@ -52,6 +52,7 @@ mod bindings_v2 {
             sprite_overrides: Vec::new(),
             camera: Vec::new(),
             scene: None,
+            roof_areas: Vec::new(),
             stretch: None,
         };
         assert_eq!((point.x, point.plane), (3222, 0));

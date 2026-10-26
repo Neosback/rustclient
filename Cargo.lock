@@ -3671,6 +3671,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustclient-first-party-plugins"
+version = "0.0.0"
+dependencies = [
+ "rustclient-plugin-api",
+ "rustclient-plugin-host",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "rustclient-game-state"
 version = "0.0.0"
 dependencies = [
@@ -3707,6 +3717,7 @@ dependencies = [
  "pollster",
  "rustclient-application",
  "rustclient-cache",
+ "rustclient-first-party-plugins",
  "rustclient-game-state",
  "rustclient-game-ui",
  "rustclient-input",
@@ -3817,6 +3828,7 @@ dependencies = [
  "bytemuck",
  "futures-channel",
  "glam",
+ "naga",
  "rustclient-cache",
  "rustclient-game-ui",
  "rustclient-model",

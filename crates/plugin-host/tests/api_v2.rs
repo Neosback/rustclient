@@ -4,8 +4,8 @@ use rustclient_plugin_api::{
     ClientSnapshot, EntityVisibility, GameEvent, GameSnapshot, InfoBox, ItemStack, LayeredOverlay,
     MenuEdit, Notification, NotificationKind, NpcSnapshot, OverlayCommand, OverlayLayer,
     PlayerSnapshot, PluginApiVersion, PluginEvent, PluginId, PluginManifest, PluginOutput, Rect,
-    RoofRemoval, SceneFlags, SkillLevel, SpriteOverride, Stretch, StretchScaling, VarbitDef, Vars,
-    WidgetSnapshot, WorldPoint,
+    RoofArea, RoofModes, SceneFlags, SkillLevel, SpriteOverride, Stretch, StretchScaling,
+    VarbitDef, Vars, WidgetSnapshot, WorldPoint,
 };
 use rustclient_plugin_host::{
     CapabilityDenied, FaultKind, MemoryLogSink, MemoryStorage, PluginCall, PluginFault,
@@ -478,11 +478,29 @@ fn full_output() -> PluginOutput {
             CameraCommand::ZoomLimits { min: 5, max: 1 },
         ],
         scene: Some(SceneFlags {
-            roofs: RoofRemoval::All,
+            roofs: RoofModes::new(RoofModes::POSITION),
             smoothing: rustclient_plugin_api::AnimationSmoothing::new(
                 rustclient_plugin_api::AnimationSmoothing::NPCS,
             ),
         }),
+        roof_areas: vec![
+            RoofArea {
+                min: (10, 10),
+                max: (12, 12),
+                planes: (0, 1),
+            },
+            // Inverted bounds and a plane beyond the top are rejected.
+            RoofArea {
+                min: (5, 5),
+                max: (1, 1),
+                planes: (0, 0),
+            },
+            RoofArea {
+                min: (1, 1),
+                max: (2, 2),
+                planes: (0, 4),
+            },
+        ],
         stretch: Some(Stretch {
             keep_aspect_ratio: true,
             scale_percent: 5000,
@@ -576,7 +594,16 @@ fn granted_outputs_are_bounded_and_clamped() {
             CameraCommand::PitchTarget(383)
         ]
     );
-    assert_eq!(merged.scene.roofs, RoofRemoval::All);
+    assert_eq!(merged.scene.roofs, RoofModes::new(RoofModes::POSITION));
+    assert_eq!(
+        merged.roof_areas,
+        [RoofArea {
+            min: (10, 10),
+            max: (12, 12),
+            planes: (0, 1)
+        }],
+        "malformed roof areas must be rejected"
+    );
     assert_eq!(
         merged.stretch.map(|stretch| stretch.scale_percent),
         Some(800)
@@ -606,9 +633,9 @@ fn merging_unions_hidden_actors_and_orders_overlay_by_layer() {
         }],
         scene: Some(SceneFlags {
             roofs: if matches!(actor, ActorRef::Npc(_)) {
-                RoofRemoval::AbovePlayer
+                RoofModes::new(RoofModes::BETWEEN)
             } else {
-                RoofRemoval::Off
+                RoofModes::default()
             },
             ..SceneFlags::default()
         }),
@@ -633,7 +660,7 @@ fn merging_unions_hidden_actors_and_orders_overlay_by_layer() {
     );
     assert_eq!(merged.overlay[0].layer, OverlayLayer::Scene);
     assert_eq!(merged.overlay[1].layer, OverlayLayer::Top);
-    assert_eq!(merged.scene.roofs, RoofRemoval::AbovePlayer);
+    assert_eq!(merged.scene.roofs, RoofModes::new(RoofModes::BETWEEN));
 }
 
 #[test]

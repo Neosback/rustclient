@@ -1,0 +1,108 @@
+First-party plugin ports
+========================
+
+The modules in this crate are Rust ports of plugins from the Open RuneLite client
+(references/open-runelite-rev-240, runelite-client). Each port keeps the BSD 2-Clause terms of
+the source it was derived from, reproduced below. The copyright holders of every source file a
+port draws on are listed per plugin.
+
+Data files copied verbatim from the RuneLite resources keep their notice here as well:
+data/roofremoval/overrides.jsonc (roofremoval/overrides.jsonc, Hydrox6).
+
+roofremoval:
+  Copyright (c) 2021 Hydrox6 <ikada@protonmail.ch>
+  Copyright (c) 2021, Hydrox6 <ikada@protonmail.ch>
+
+animsmoothing:
+  Copyright (c) 2018, Adam <Adam@sigterm.info>
+
+stretchedmode:
+  Copyright (c) 2018, Lotto <https://github.com/devLotto>
+
+fps:
+  Copyright (c) 2017, Levi <me@levischuck.com>
+
+statusbars:
+  Copyright (c) 2018, Jos <Malevolentdev@gmail.com>
+  Copyright (c) 2019, Jos <Malevolentdev@gmail.com>
+  Copyright (c) 2019, Rheon <https://github.com/Rheon-D>
+
+interfacestyles:
+  Copyright (c) 2018, Lotto <https://github.com/devLotto>
+  Copyright (c) 2018, Raqes <j.raqes@gmail.com>
+  Copyright (c) 2019 Hydrox6 <ikada@protonmail.ch>
+
+devtools:
+  Copyright (c) 2017, Adam <Adam@sigterm.info>
+  Copyright (c) 2017, Kronos <https://github.com/KronosDesign>
+  Copyright (c) 2018 Abex
+  Copyright (c) 2018, Alex Kolpa <https://github.com/AlexKolpa>
+  Copyright (c) 2018, Matthew Steglinski <https://github.com/sainttx>
+  Copyright (c) 2018, Morgan Lewis <https://github.com/MESLewis>
+  Copyright (c) 2018, Seth <https://github.com/sethtroll>
+  Copyright (c) 2018, Tomas Slusny <slusnucky@gmail.com>
+  Copyright (c) 2018, Woox <https://github.com/wooxsolo>
+  Copyright (c) 2018, WooxSolo <https://github.com/WooxSolo>
+  Copyright (c) 2020, Pratted <https://github.com/Pratted>
+  Copyright (c) 2020, TheStonedTurtle <https://github.com/TheStonedTurtle>
+  Copyright (c) 2020, Trevor <https://github.com/Trevor159>
+  Copyright (c) 2021 Abex
+
+entityhider:
+  Copyright (c) 2018, Lotto <https://github.com/devLotto>
+
+npchighlight:
+  Copyright (c) 2018, Adam <Adam@sigterm.info>
+  Copyright (c) 2018, James Swindle <wilingua@gmail.com>
+  Copyright (c) 2018, Tomas Slusny <slusnucky@gmail.com>
+  Copyright (c) 2018, Woox <https://github.com/wooxsolo>
+
+playerindicators:
+  Copyright (c) 2018, Kamiel <https://github.com/Kamielvf>
+  Copyright (c) 2018, Tomas Slusny <slusnucky@gmail.com>
+  Copyright (c) 2019, Jordan Atwood <nightfirecat@protonmail.com>
+
+idlenotifier:
+  Copyright (c) 2016-2017, Abel Briggs
+  Copyright (c) 2017, Devin French <https://github.com/devinfrench>
+  Copyright (c) 2017, Kronos <https://github.com/KronosDesign>
+
+camera:
+  Copyright (c) 2018 Abex
+  Copyright (c) 2018, Adam <Adam@sigterm.info>
+  Copyright (c) 2019, Jacob M <https://github.com/jacoblairm>
+  Copyright (c) 2019, Wynadorn <https://github.com/Wynadorn>
+
+menuentryswapper:
+  Copyright (c) 2018, Adam <Adam@sigterm.info>
+  Copyright (c) 2018, Ethan <http://github.com/shmeeps>
+  Copyright (c) 2018, Kamiel
+  Copyright (c) 2018, Snakk <http://github.com/SnakkSnokk>
+  Copyright (c) 2019, Adam <Adam@sigterm.info>
+  Copyright (c) 2019, Rami <https://github.com/Rami-J>
+  Copyright (c) 2020, Adam <Adam@sigterm.info>
+  Copyright (c) 2020, Sam <dasistkeinnamen@gmail.com>
+  Copyright (c) 2020, Zach <https://github.com/zacharydwaller>
+
+License text
+------------
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.

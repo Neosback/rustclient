@@ -1,4 +1,4 @@
-use crate::{Result, SceneAsset, SceneError, WorldMesh, mesh::render_level};
+use crate::{Result, SceneAsset, SceneError, WorldMesh, mesh::render_tag};
 use rustclient_cache::world::{ObjectDefinition, StaticLocation};
 use rustclient_model::{ModelPoint, Plane};
 use std::collections::BTreeMap;
@@ -468,8 +468,9 @@ fn pose(
 }
 
 fn emit(asset: &SceneAsset, mesh: &mut WorldMesh, prepared: PreparedModel) -> Result<()> {
-    let level = render_level(
+    let tag = render_tag(
         asset,
+        &mesh.roofs,
         prepared.loc.tile.plane,
         prepared.loc.tile.x,
         prepared.loc.tile.y,
@@ -512,7 +513,7 @@ fn emit(asset: &SceneAsset, mesh: &mut WorldMesh, prepared: PreparedModel) -> Re
             [p.x, p.y, p.z]
         });
         mesh.geometry
-            .model_triangle(points, colors, uv, face, level)?;
+            .model_triangle(points, colors, uv, face, tag)?;
         mesh.stats.model_triangles += 1;
     }
     Ok(())

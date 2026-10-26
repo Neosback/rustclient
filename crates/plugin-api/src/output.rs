@@ -188,16 +188,54 @@ pub struct EntityVisibility {
     pub hide_graphics: bool,
 }
 
-/// Which roofs the scene builder omits.
+/// Which roofs the scene builder omits, as `net.runelite.api.Scene.ROOF_FLAG_*` bits.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum RoofRemoval {
-    /// Draw roofs as the client does.
-    #[default]
-    Off,
-    /// Omit every roof.
-    All,
-    /// Omit roofs on planes above the local player's plane.
-    AbovePlayer,
+pub struct RoofModes(u8);
+
+impl RoofModes {
+    /// The roof above the local player.
+    pub const POSITION: u8 = 1;
+    /// The roof above the hovered tile.
+    pub const HOVERED: u8 = 2;
+    /// The roof above the walk destination.
+    pub const DESTINATION: u8 = 4;
+    /// The roofs between the camera and the local player.
+    pub const BETWEEN: u8 = 8;
+
+    /// Roof removal for the modes in `mask`.
+    #[must_use]
+    pub const fn new(mask: u8) -> Self {
+        Self(mask & 0b1111)
+    }
+
+    /// The mode bits.
+    #[must_use]
+    pub const fn bits(self) -> u8 {
+        self.0
+    }
+
+    /// Whether every mode in `mask` is active.
+    #[must_use]
+    pub const fn contains(self, mask: u8) -> bool {
+        self.0 & mask == mask
+    }
+
+    /// Modes active in either value.
+    #[must_use]
+    pub const fn union(self, other: Self) -> Self {
+        Self(self.0 | other.0)
+    }
+}
+
+/// Tiles forced to count as roofed regardless of the map data (`RoofRemovalPlugin` overrides).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct RoofArea {
+    /// South-west world tile, inclusive.
+    pub min: (i32, i32),
+    /// North-east world tile, inclusive.
+    pub max: (i32, i32),
+    /// Lowest and highest plane, inclusive.
+    pub planes: (u8, u8),
 }
 
 /// Which animation classes the renderer interpolates between frames.
@@ -236,8 +274,8 @@ impl AnimationSmoothing {
 /// Renderer/scene flags a plugin may set.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct SceneFlags {
-    /// Roof handling.
-    pub roofs: RoofRemoval,
+    /// Which roofs are hidden around the player, pointer and camera.
+    pub roofs: RoofModes,
     /// Interpolated animation classes.
     pub smoothing: AnimationSmoothing,
 }
@@ -282,6 +320,8 @@ pub struct PluginOutput {
     pub camera: Vec<CameraCommand>,
     /// Scene flags, if the plugin controls them.
     pub scene: Option<SceneFlags>,
+    /// Areas forced roofed while present; changing them rebuilds the scene's roofs.
+    pub roof_areas: Vec<RoofArea>,
     /// Stretched mode, if the plugin controls it.
     pub stretch: Option<Stretch>,
 }
@@ -308,6 +348,8 @@ pub mod limits {
     pub const HIDDEN_ACTORS: usize = 2048;
     /// Sprite overrides accepted per plugin.
     pub const SPRITE_OVERRIDES: usize = 64;
+    /// Roof areas accepted per plugin.
+    pub const ROOF_AREAS: usize = 4096;
     /// Camera commands accepted per plugin per update.
     pub const CAMERA_COMMANDS: usize = 8;
     /// Longest overlay/notification text in bytes.

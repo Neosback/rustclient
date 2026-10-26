@@ -9,11 +9,11 @@ use rustclient_game_ui::{Rect, UiFrame, draw_text};
 use rustclient_plugin_api::{OverlayCommand, PlayerPosition, PluginEvent};
 use rustclient_plugin_bridge::{Frame, Projector, Sources};
 use rustclient_plugin_host::{
-    DirectoryStorage, HostOutput, HostView, PluginSet, SnapshotView, StaticView, StderrLogSink,
-    required::Builtin,
+    DirectoryStorage, HostOutput, HostView, PluginConfig, PluginSet, SnapshotView, StaticView,
+    StderrLogSink, configuration::Configuration, required::Builtin,
 };
 use rustclient_plugin_runtime_native::NativeRuntime;
-use std::path::Path;
+use std::{collections::BTreeMap, path::Path};
 
 pub(super) struct Plugins {
     set: PluginSet,
@@ -24,6 +24,8 @@ pub(super) struct Plugins {
     projector: Projector,
     output: HostOutput,
     unsupported_reported: bool,
+    /// Last configuration pushed to each first-party plugin, so unchanged ones are not re-sent.
+    applied: BTreeMap<String, (PluginConfig, bool)>,
 }
 
 /// Shell-owned facts and cache definitions the projector consults.
@@ -46,6 +48,9 @@ impl Plugins {
                 eprintln!("required plugin registration: {error}");
             }
         }
+        if let Err(error) = rustclient_first_party_plugins::register_all(&mut set) {
+            eprintln!("first-party plugin registration: {error}");
+        }
         set.init(&StaticView::default(), &mut storage, &mut logs);
         if !packages.is_dir() {
             return Self {
@@ -57,6 +62,7 @@ impl Plugins {
                 projector: Projector::new(),
                 output: HostOutput::default(),
                 unsupported_reported: false,
+                applied: BTreeMap::new(),
             };
         }
         match NativeRuntime::new() {
@@ -101,6 +107,48 @@ impl Plugins {
             projector: Projector::new(),
             output: HostOutput::default(),
             unsupported_reported: false,
+            applied: BTreeMap::new(),
+        }
+    }
+
+    /// Push the accepted configuration of every optional first-party plugin to its instance.
+    ///
+    /// Only plugins whose settings or switch changed since the last call are reconfigured, and a
+    /// plugin that becomes enabled starts from a clean state.
+    pub(super) fn sync<'a>(&mut self, configurations: impl Iterator<Item = &'a Configuration>) {
+        for configuration in configurations {
+            let schema = configuration.schema();
+            if schema.required {
+                continue;
+            }
+            let (config, enabled) = (PluginConfig::of(configuration), configuration.enabled());
+            let key = schema.plugin.as_str();
+            if self
+                .applied
+                .get(key)
+                .is_some_and(|(have, on)| *have == config && *on == enabled)
+            {
+                continue;
+            }
+            // Not every catalogued plugin is ported yet; those have no instance to configure.
+            let registered = self
+                .set
+                .iter()
+                .any(|plugin| plugin.manifest.id == schema.plugin);
+            if registered
+                && let Err(fault) = self.set.configure(
+                    &schema.plugin,
+                    config.clone(),
+                    enabled,
+                    &StaticView::default(),
+                    &mut self.storage,
+                    &mut self.logs,
+                )
+            {
+                eprintln!("plugin {key} configuration: {fault}");
+                continue;
+            }
+            self.applied.insert(key.to_owned(), (config, enabled));
         }
     }
 
@@ -170,6 +218,11 @@ impl Plugins {
             &mut self.storage,
             &mut self.logs,
         );
+    }
+
+    /// The merged declarative output of the last update.
+    pub(super) fn output(&self) -> &HostOutput {
+        &self.output
     }
 
     /// Draw plugin overlay lines topmost in the `765x503` interface space.

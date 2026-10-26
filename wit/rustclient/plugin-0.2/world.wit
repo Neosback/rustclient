@@ -90,6 +90,8 @@ interface types {
         camera: camera,
         scene-base-x: s32,
         scene-base-y: s32,
+        scene-width: u32,
+        scene-height: u32,
         run-energy: u16,
         weight: s16,
     }
@@ -191,15 +193,23 @@ interface types {
         hide-graphics: bool,
     }
 
-    enum roof-removal { off, all, above-player }
-
     record scene-flags {
-        roofs: roof-removal,
+        // Bit set: 1 position, 2 hovered, 4 destination, 8 between camera and player.
+        roofs: u8,
         // Bit set: 1 players, 2 npcs, 4 objects, 8 widgets.
         smoothing: u8,
     }
 
     enum stretch-scaling { nearest, linear }
+    record roof-area {
+        min-x: s32,
+        min-y: s32,
+        max-x: s32,
+        max-y: s32,
+        min-plane: u8,
+        max-plane: u8,
+    }
+
     record stretch { keep-aspect-ratio: bool, scale-percent: u16, scaling: stretch-scaling }
 
     record plugin-output {
@@ -211,6 +221,7 @@ interface types {
         sprite-overrides: list<sprite-override>,
         camera: list<camera-command>,
         scene: option<scene-flags>,
+        roof-areas: list<roof-area>,
         stretch: option<stretch>,
     }
 

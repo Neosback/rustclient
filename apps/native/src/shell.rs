@@ -59,6 +59,12 @@ impl Shell {
         shell.project();
         Ok(shell)
     }
+    /// Every accepted plugin configuration, required services first.
+    pub fn configurations(
+        &self,
+    ) -> impl Iterator<Item = &rustclient_plugin_host::configuration::Configuration> {
+        self.configuration.iter()
+    }
     pub fn width(&self) -> u32 {
         if !self.visible {
             0
@@ -298,7 +304,14 @@ impl Shell {
     }
 }
 fn availability(plugin: &str, key: &str) -> Option<String> {
+    if key == rustclient_plugin_host::configuration::ENABLED_KEY {
+        return None;
+    }
     let implemented = match plugin {
+        "dev.rustclient.roofremoval" => matches!(
+            key,
+            "removePosition" | "removeHovered" | "removeDestination" | "removeBetween"
+        ),
         "dev.rustclient.gpu" => matches!(
             key,
             "drawDistance"
@@ -328,6 +341,9 @@ fn pending_reason(plugin: &str, key: &str) -> String {
     match (plugin, key) {
         ("dev.rustclient.gpu", "hideUnrelatedMaps" | "expandedMapLoadingChunks") => {
             "Needs neighbouring map regions to be loaded; not ported yet.".into()
+        }
+        ("dev.rustclient.roofremoval", "overridePOH") => {
+            "Needs the player-owned-house roof override data, which is not ported yet.".into()
         }
         ("dev.rustclient.gpu", "uiScalingMode") => {
             "Applies to stretched-mode scaling, which is not ported yet.".into()

@@ -414,8 +414,10 @@ pub struct ClientSnapshot {
     pub focused: bool,
     /// Camera.
     pub camera: CameraSnapshot,
-    /// Scene base tile of the loaded map.
+    /// South-west world tile of the loaded scene (`Scene.getBaseX/Y`); `(0, 0)` before one loads.
     pub scene_base: (i32, i32),
+    /// Extent of the loaded scene in tiles; `(0, 0)` before one loads.
+    pub scene_size: (u32, u32),
     /// Local run energy in tenths of a percent, 0..=1000.
     pub run_energy: u16,
     /// Local weight in kilograms.

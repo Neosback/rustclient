@@ -93,3 +93,6 @@ input.invalid { border-color:#d9604f; }
 .style-toggle { display:flex; align-items:center; justify-content:center; width:28px; height:28px; border:1px solid #4a4f57; border-radius:6px; font-weight:bold; }
 .style-toggle.italic { font-family:serif; font-style:italic; font-weight:normal; }
 .style-toggle.on { background:#dc8a00; border-color:#dc8a00; color:#15171a; }
+.text-input { width:100%; box-sizing:border-box; }
+.decimal { display:flex; align-items:center; gap:10px; }
+.plugin-description { margin:0 12px 8px; color:#b8bdc6; font-size:12px; line-height:1.4; }

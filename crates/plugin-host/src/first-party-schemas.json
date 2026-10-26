@@ -1,0 +1,2940 @@
+[
+ {
+  "plugin": "dev.rustclient.roofremoval",
+  "name": "Roof Removal",
+  "version": 1,
+  "description": "Remove only the needed roofs above your player, hovered tile, or destination",
+  "tags": [],
+  "required": false,
+  "settings": [
+   {
+    "key": "enabled",
+    "label": "Enabled",
+    "description": "Switch Roof Removal on or off.",
+    "section": "",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    },
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/roofremoval/RoofRemovalPlugin.java#PluginDescriptor.enabledByDefault"
+   },
+   {
+    "key": "removePosition",
+    "label": "Player's position",
+    "description": "Remove roofs above the player's position.",
+    "section": "Modes",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/roofremoval/RoofRemovalConfig.java#removePosition",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": true
+    }
+   },
+   {
+    "key": "removeHovered",
+    "label": "Hovered tile",
+    "description": "Remove roofs above the hovered tile.",
+    "section": "Modes",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/roofremoval/RoofRemovalConfig.java#removeHovered",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": true
+    }
+   },
+   {
+    "key": "removeDestination",
+    "label": "Destination tile",
+    "description": "Remove roofs above the destination tile.",
+    "section": "Modes",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/roofremoval/RoofRemovalConfig.java#removeDestination",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": true
+    }
+   },
+   {
+    "key": "removeBetween",
+    "label": "Between camera & player",
+    "description": "Remove roofs between the camera and the player at low camera angles.",
+    "section": "Modes",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/roofremoval/RoofRemovalConfig.java#removeBetween",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": true
+    }
+   },
+   {
+    "key": "overridePOH",
+    "label": "Player owned house",
+    "description": "Always remove roofs while in the player owned house.",
+    "section": "Area overrides",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/roofremoval/RoofRemovalConfig.java#overridePOH",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   }
+  ]
+ },
+ {
+  "plugin": "dev.rustclient.animsmoothing",
+  "name": "Animation Smoothing",
+  "version": 1,
+  "description": "Show smoother player, NPC, and object animations",
+  "tags": [
+   "npcs",
+   "objects",
+   "players"
+  ],
+  "required": false,
+  "settings": [
+   {
+    "key": "enabled",
+    "label": "Enabled",
+    "description": "Switch Animation Smoothing on or off.",
+    "section": "",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    },
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/animsmoothing/AnimationSmoothingPlugin.java#PluginDescriptor.enabledByDefault"
+   }
+  ]
+ },
+ {
+  "plugin": "dev.rustclient.stretchedmode",
+  "name": "Stretched Mode",
+  "version": 1,
+  "description": "Stretches the game in fixed and resizable modes.",
+  "tags": [
+   "resize",
+   "ui",
+   "interface",
+   "stretch",
+   "scaling",
+   "fixed"
+  ],
+  "required": false,
+  "settings": [
+   {
+    "key": "enabled",
+    "label": "Enabled",
+    "description": "Switch Stretched Mode on or off.",
+    "section": "",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    },
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/stretchedmode/StretchedModePlugin.java#PluginDescriptor.enabledByDefault"
+   },
+   {
+    "key": "keepAspectRatio",
+    "label": "Keep aspect ratio",
+    "description": "Keeps the aspect ratio when stretching.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/stretchedmode/StretchedModeConfig.java#keepAspectRatio",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "increasedPerformance",
+    "label": "Increased performance mode",
+    "description": "Uses a fast algorithm when stretching, lowering quality but increasing performance.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/stretchedmode/StretchedModeConfig.java#increasedPerformance",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "integerScaling",
+    "label": "Integer scaling",
+    "description": "Forces use of a whole number scale factor when stretching.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/stretchedmode/StretchedModeConfig.java#integerScaling",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "scalingFactor",
+    "label": "Resizable scaling",
+    "description": "In resizable mode, the game is reduced in size this much before it's stretched.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/stretchedmode/StretchedModeConfig.java#scalingFactor",
+    "control": {
+     "type": "integer",
+     "min": -2147483648,
+     "max": 2147483647
+    },
+    "default": {
+     "type": "integer",
+     "value": 50
+    }
+   }
+  ]
+ },
+ {
+  "plugin": "dev.rustclient.fps",
+  "name": "FPS Control",
+  "version": 1,
+  "description": "Show current FPS and/or set an FPS limit",
+  "tags": [
+   "frames",
+   "framerate",
+   "limit",
+   "overlay"
+  ],
+  "required": false,
+  "settings": [
+   {
+    "key": "enabled",
+    "label": "Enabled",
+    "description": "Switch FPS Control on or off.",
+    "section": "",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    },
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/fps/FpsPlugin.java#PluginDescriptor.enabledByDefault"
+   },
+   {
+    "key": "limitFps",
+    "label": "Limit global FPS",
+    "description": "Global FPS limit in effect regardless of whether window is in focus or not.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/fps/FpsConfig.java#limitFps",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "maxFps",
+    "label": "Global FPS target",
+    "description": "Desired max global frames per second.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/fps/FpsConfig.java#maxFps",
+    "control": {
+     "type": "integer",
+     "min": 1,
+     "max": 360
+    },
+    "default": {
+     "type": "integer",
+     "value": 50
+    }
+   },
+   {
+    "key": "limitFpsUnfocused",
+    "label": "Limit FPS unfocused",
+    "description": "FPS limit while window is out of focus.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/fps/FpsConfig.java#limitFpsUnfocused",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "maxFpsUnfocused",
+    "label": "Unfocused FPS target",
+    "description": "Desired max frames per second for unfocused.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/fps/FpsConfig.java#maxFpsUnfocused",
+    "control": {
+     "type": "integer",
+     "min": 1,
+     "max": 360
+    },
+    "default": {
+     "type": "integer",
+     "value": 50
+    }
+   },
+   {
+    "key": "drawFps",
+    "label": "Draw FPS indicator",
+    "description": "Show a number in the corner for the current FPS.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/fps/FpsConfig.java#drawFps",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": true
+    }
+   }
+  ]
+ },
+ {
+  "plugin": "dev.rustclient.statusbars",
+  "name": "Status Bars",
+  "version": 1,
+  "description": "Draws status bars next to players inventory showing current HP & Prayer and healing amounts",
+  "tags": [],
+  "required": false,
+  "settings": [
+   {
+    "key": "enabled",
+    "label": "Enabled",
+    "description": "Switch Status Bars on or off.",
+    "section": "",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    },
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/statusbars/StatusBarsPlugin.java#PluginDescriptor.enabledByDefault"
+   },
+   {
+    "key": "enableCounter",
+    "label": "Show counters",
+    "description": "Shows current value of the status on the bar.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/statusbars/StatusBarsConfig.java#enableCounter",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "enableSkillIcon",
+    "label": "Show icons",
+    "description": "Adds skill icons at the top of the bars.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/statusbars/StatusBarsConfig.java#enableSkillIcon",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": true
+    }
+   },
+   {
+    "key": "enableRestorationBars",
+    "label": "Show restores",
+    "description": "Visually shows how much will be restored to your status bar.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/statusbars/StatusBarsConfig.java#enableRestorationBars",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": true
+    }
+   },
+   {
+    "key": "leftBarMode",
+    "label": "Left bar",
+    "description": "Configures the left status bar.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/statusbars/StatusBarsConfig.java#leftBarMode",
+    "control": {
+     "type": "choice",
+     "options": [
+      "DISABLED",
+      "HITPOINTS",
+      "PRAYER",
+      "RUN_ENERGY",
+      "SPECIAL_ATTACK",
+      "WARMTH"
+     ]
+    },
+    "default": {
+     "type": "choice",
+     "value": "HITPOINTS"
+    }
+   },
+   {
+    "key": "rightBarMode",
+    "label": "Right bar",
+    "description": "Configures the right status bar.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/statusbars/StatusBarsConfig.java#rightBarMode",
+    "control": {
+     "type": "choice",
+     "options": [
+      "DISABLED",
+      "HITPOINTS",
+      "PRAYER",
+      "RUN_ENERGY",
+      "SPECIAL_ATTACK",
+      "WARMTH"
+     ]
+    },
+    "default": {
+     "type": "choice",
+     "value": "PRAYER"
+    }
+   },
+   {
+    "key": "hideAfterCombatDelay",
+    "label": "Hide after combat delay",
+    "description": "Amount of ticks before hiding status bars after no longer in combat. 0 = always show status bars.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/statusbars/StatusBarsConfig.java#hideAfterCombatDelay",
+    "control": {
+     "type": "integer",
+     "min": -2147483648,
+     "max": 2147483647
+    },
+    "default": {
+     "type": "integer",
+     "value": 0
+    }
+   },
+   {
+    "key": "barWidth",
+    "label": "Bar width",
+    "description": "The width of the status bars in the modern resizeable layout.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/statusbars/StatusBarsConfig.java#barWidth",
+    "control": {
+     "type": "integer",
+     "min": 3,
+     "max": 40
+    },
+    "default": {
+     "type": "integer",
+     "value": 20
+    }
+   }
+  ]
+ },
+ {
+  "plugin": "dev.rustclient.interfacestyles",
+  "name": "Interface Styles",
+  "version": 1,
+  "description": "Change the interface style to the 2005/2010 interface",
+  "tags": [
+   "2005",
+   "2010",
+   "skin",
+   "theme",
+   "ui",
+   "hp",
+   "bar"
+  ],
+  "required": false,
+  "settings": [
+   {
+    "key": "enabled",
+    "label": "Enabled",
+    "description": "Switch Interface Styles on or off.",
+    "section": "",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    },
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/interfacestyles/InterfaceStylesPlugin.java#PluginDescriptor.enabledByDefault"
+   },
+   {
+    "key": "gameframe",
+    "label": "Gameframe",
+    "description": "The gameframe to use for the interface.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/interfacestyles/InterfaceStylesConfig.java#skin",
+    "control": {
+     "type": "choice",
+     "options": [
+      "DEFAULT",
+      "AROUND_2005",
+      "AROUND_2006",
+      "AROUND_2010"
+     ]
+    },
+    "default": {
+     "type": "choice",
+     "value": "AROUND_2010"
+    }
+   },
+   {
+    "key": "hdHealthBars",
+    "label": "High detail health bars",
+    "description": "Replaces health bars with the RuneScape high detail mode design.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/interfacestyles/InterfaceStylesConfig.java#hdHealthBars",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "hdMenu",
+    "label": "High detail menu",
+    "description": "Replaces game menu with the RuneScape high detail mode design.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/interfacestyles/InterfaceStylesConfig.java#hdMenu",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "rsCrossSprites",
+    "label": "RuneScape cross sprites",
+    "description": "Replaces left-click cross sprites with the ones in RuneScape.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/interfacestyles/InterfaceStylesConfig.java#rsCrossSprites",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "alwaysStack",
+    "label": "Always stack bottom bar",
+    "description": "Always stack the bottom bar in resizable.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/interfacestyles/InterfaceStylesConfig.java#alwaysStack",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "menuAlpha",
+    "label": "Menu alpha",
+    "description": "Configures the transparency of the right-click menu.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/interfacestyles/InterfaceStylesConfig.java#menuAlpha",
+    "control": {
+     "type": "integer",
+     "min": -2147483648,
+     "max": 255
+    },
+    "default": {
+     "type": "integer",
+     "value": 255
+    }
+   },
+   {
+    "key": "condensePlayerOptions",
+    "label": "Condense player options",
+    "description": "Move player options like Follow and Trade with to submenus.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/interfacestyles/InterfaceStylesConfig.java#condensePlayerOptions",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   }
+  ]
+ },
+ {
+  "plugin": "dev.rustclient.devtools",
+  "name": "Developer Tools",
+  "version": 1,
+  "description": "",
+  "tags": [
+   "panel"
+  ],
+  "required": false,
+  "settings": [
+   {
+    "key": "enabled",
+    "label": "Enabled",
+    "description": "Switch Developer Tools on or off.",
+    "section": "",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    },
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/devtools/DevToolsPlugin.java#PluginDescriptor.enabledByDefault"
+   },
+   {
+    "key": "swingInspectorHotkey",
+    "label": "Swing inspector",
+    "description": "Hotkey to open the Swing inspector, if available.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/devtools/DevToolsConfig.java#swingInspectorHotkey",
+    "control": {
+     "type": "hotkey"
+    },
+    "default": {
+     "type": "hotkey",
+     "value": {
+      "key": "",
+      "modifiers": 0
+     }
+    }
+   },
+   {
+    "key": "notification",
+    "label": "Notification",
+    "description": "",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/devtools/DevToolsConfig.java#notification",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": true
+    }
+   }
+  ]
+ },
+ {
+  "plugin": "dev.rustclient.entityhider",
+  "name": "Entity Hider",
+  "version": 1,
+  "description": "Hide players, NPCs, and/or projectiles",
+  "tags": [
+   "npcs",
+   "players",
+   "projectiles"
+  ],
+  "required": false,
+  "settings": [
+   {
+    "key": "enabled",
+    "label": "Enabled",
+    "description": "Switch Entity Hider on or off.",
+    "section": "",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    },
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/entityhider/EntityHiderPlugin.java#PluginDescriptor.enabledByDefault"
+   },
+   {
+    "key": "hidePlayers",
+    "label": "Hide others",
+    "description": "Configures whether or not other players are hidden.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/entityhider/EntityHiderConfig.java#hideOthers",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": true
+    }
+   },
+   {
+    "key": "hidePlayers2D",
+    "label": "Hide others' 2D",
+    "description": "Configures whether or not other players' 2D elements are hidden.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/entityhider/EntityHiderConfig.java#hideOthers2D",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": true
+    }
+   },
+   {
+    "key": "hidePartyMembers",
+    "label": "Hide party members",
+    "description": "Configures whether or not party members are hidden.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/entityhider/EntityHiderConfig.java#hidePartyMembers",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "hideFriends",
+    "label": "Hide friends",
+    "description": "Configures whether or not friends are hidden.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/entityhider/EntityHiderConfig.java#hideFriends",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "hideClanMates",
+    "label": "Hide friends chat members",
+    "description": "Configures whether or not friends chat members are hidden.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/entityhider/EntityHiderConfig.java#hideFriendsChatMembers",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "hideClanChatMembers",
+    "label": "Hide clan chat members",
+    "description": "Configures whether or not clan chat members are hidden.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/entityhider/EntityHiderConfig.java#hideClanChatMembers",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "hideIgnores",
+    "label": "Hide ignores",
+    "description": "Configures whether or not ignored players are hidden.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/entityhider/EntityHiderConfig.java#hideIgnores",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "hideLocalPlayer",
+    "label": "Hide local player",
+    "description": "Configures whether or not the local player is hidden.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/entityhider/EntityHiderConfig.java#hideLocalPlayer",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "hideLocalPlayer2D",
+    "label": "Hide local player 2D",
+    "description": "Configures whether or not the local player's 2D elements are hidden.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/entityhider/EntityHiderConfig.java#hideLocalPlayer2D",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "hideNPCs",
+    "label": "Hide NPCs",
+    "description": "Configures whether or not NPCs are hidden.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/entityhider/EntityHiderConfig.java#hideNPCs",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "hideNPCs2D",
+    "label": "Hide NPCs 2D",
+    "description": "Configures whether or not NPCs 2D elements are hidden.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/entityhider/EntityHiderConfig.java#hideNPCs2D",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "hideWorldEntities",
+    "label": "Hide boats",
+    "description": "Configures whether boats are hidden.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/entityhider/EntityHiderConfig.java#hideWorldEntities",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "hidePets",
+    "label": "Hide others' pets",
+    "description": "Configures whether or not other players' pets are hidden.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/entityhider/EntityHiderConfig.java#hidePets",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "hideAttackers",
+    "label": "Hide attackers",
+    "description": "Configures whether or not NPCs/players attacking you are hidden.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/entityhider/EntityHiderConfig.java#hideAttackers",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "hideProjectiles",
+    "label": "Hide projectiles",
+    "description": "Configures whether or not projectiles are hidden.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/entityhider/EntityHiderConfig.java#hideProjectiles",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "hideDeadNpcs",
+    "label": "Hide dead NPCs",
+    "description": "Hides NPCs when their health reaches 0.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/entityhider/EntityHiderConfig.java#hideDeadNpcs",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "hideThralls",
+    "label": "Hide thralls",
+    "description": "Configures whether or not thralls are hidden.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/entityhider/EntityHiderConfig.java#hideThralls",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "hideRandomEvents",
+    "label": "Hide others' random events",
+    "description": "Configures whether or not other players' random events are hidden.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/entityhider/EntityHiderConfig.java#hideRandomEvents",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   }
+  ]
+ },
+ {
+  "plugin": "dev.rustclient.npchighlight",
+  "name": "NPC Indicators",
+  "version": 1,
+  "description": "Highlight NPCs on-screen and/or on the minimap",
+  "tags": [
+   "highlight",
+   "minimap",
+   "npcs",
+   "overlay",
+   "respawn",
+   "tags"
+  ],
+  "required": false,
+  "settings": [
+   {
+    "key": "enabled",
+    "label": "Enabled",
+    "description": "Switch NPC Indicators on or off.",
+    "section": "",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": true
+    },
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/npchighlight/NpcIndicatorsPlugin.java#PluginDescriptor.enabledByDefault"
+   },
+   {
+    "key": "npcToHighlight",
+    "label": "NPCs to highlight",
+    "description": "List of NPC names to highlight. Format: npc1, npc2, npc3",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/npchighlight/NpcIndicatorsConfig.java#getNpcToHighlight",
+    "control": {
+     "type": "text",
+     "max_len": 4096
+    },
+    "default": {
+     "type": "text",
+     "value": ""
+    }
+   },
+   {
+    "key": "drawNames",
+    "label": "Draw names above NPC",
+    "description": "Configures whether or not NPC names should be drawn above the NPC.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/npchighlight/NpcIndicatorsConfig.java#drawNames",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "drawMinimapNames",
+    "label": "Draw names on minimap",
+    "description": "Configures whether or not NPC names should be drawn on the minimap.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/npchighlight/NpcIndicatorsConfig.java#drawMinimapNames",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "highlightMenuStyle",
+    "label": "Highlight menu style",
+    "description": "Highlight style in the right-click menu.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/npchighlight/NpcIndicatorsConfig.java#highlightMenuStyle",
+    "control": {
+     "type": "choice",
+     "options": [
+      "NONE",
+      "LEVEL",
+      "NAME",
+      "BOTH"
+     ]
+    },
+    "default": {
+     "type": "choice",
+     "value": "NONE"
+    }
+   },
+   {
+    "key": "ignoreDeadNpcs",
+    "label": "Ignore dead NPCs",
+    "description": "Prevents highlighting NPCs after they are dead.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/npchighlight/NpcIndicatorsConfig.java#ignoreDeadNpcs",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": true
+    }
+   },
+   {
+    "key": "deadNpcMenuColor",
+    "label": "Dead NPC menu color",
+    "description": "Color of the NPC menus for dead NPCs.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/npchighlight/NpcIndicatorsConfig.java#deadNpcMenuColor",
+    "control": {
+     "type": "color"
+    },
+    "default": {
+     "type": "color",
+     "value": 0
+    }
+   },
+   {
+    "key": "showRespawnTimer",
+    "label": "Show respawn timer",
+    "description": "Show respawn timer of tagged NPCs.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/npchighlight/NpcIndicatorsConfig.java#showRespawnTimer",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "ignorePets",
+    "label": "Ignore pets",
+    "description": "Excludes pets from being highlighted.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/npchighlight/NpcIndicatorsConfig.java#ignorePets",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": true
+    }
+   },
+   {
+    "key": "highlightHull",
+    "label": "Highlight hull",
+    "description": "Configures whether or not NPC should be highlighted by hull.",
+    "section": "Render style",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/npchighlight/NpcIndicatorsConfig.java#highlightHull",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": true
+    }
+   },
+   {
+    "key": "highlightTile",
+    "label": "Highlight tile",
+    "description": "Configures whether or not NPC should be highlighted by tile.",
+    "section": "Render style",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/npchighlight/NpcIndicatorsConfig.java#highlightTile",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "highlightTrueTile",
+    "label": "Highlight true tile",
+    "description": "Configures whether or not NPC should be highlighted by true tile.",
+    "section": "Render style",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/npchighlight/NpcIndicatorsConfig.java#highlightTrueTile",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "highlightSouthWestTile",
+    "label": "Highlight south west tile",
+    "description": "Configures whether or not NPC should be highlighted by south western tile.",
+    "section": "Render style",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/npchighlight/NpcIndicatorsConfig.java#highlightSouthWestTile",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "highlightSouthWestTrueTile",
+    "label": "Highlight south west true tile",
+    "description": "Configures whether or not NPC should be highlighted by south western true tile.",
+    "section": "Render style",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/npchighlight/NpcIndicatorsConfig.java#highlightSouthWestTrueTile",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "highlightOutline",
+    "label": "Highlight outline",
+    "description": "Configures whether or not the model of the NPC should be highlighted by outline.",
+    "section": "Render style",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/npchighlight/NpcIndicatorsConfig.java#highlightOutline",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "npcColor",
+    "label": "Highlight color",
+    "description": "Color of the NPC highlight border, menu, and text.",
+    "section": "Render style",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/npchighlight/NpcIndicatorsConfig.java#highlightColor",
+    "control": {
+     "type": "color"
+    },
+    "default": {
+     "type": "color",
+     "value": 4278255615
+    }
+   },
+   {
+    "key": "fillColor",
+    "label": "Fill color",
+    "description": "Color of the NPC highlight fill.",
+    "section": "Render style",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/npchighlight/NpcIndicatorsConfig.java#fillColor",
+    "control": {
+     "type": "color"
+    },
+    "default": {
+     "type": "color",
+     "value": 335609855
+    }
+   },
+   {
+    "key": "borderWidth",
+    "label": "Border width",
+    "description": "Width of the highlighted NPC border.",
+    "section": "Render style",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/npchighlight/NpcIndicatorsConfig.java#borderWidth",
+    "control": {
+     "type": "decimal",
+     "min": -1000000000,
+     "max": 1000000000
+    },
+    "default": {
+     "type": "decimal",
+     "value": 2000
+    }
+   },
+   {
+    "key": "outlineFeather",
+    "label": "Outline feather",
+    "description": "Specify between 0-4 how much of the model outline should be faded.",
+    "section": "Render style",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/npchighlight/NpcIndicatorsConfig.java#outlineFeather",
+    "control": {
+     "type": "integer",
+     "min": 0,
+     "max": 4
+    },
+    "default": {
+     "type": "integer",
+     "value": 0
+    }
+   }
+  ]
+ },
+ {
+  "plugin": "dev.rustclient.playerindicators",
+  "name": "Player Indicators",
+  "version": 1,
+  "description": "Highlight players on-screen and/or on the minimap",
+  "tags": [
+   "highlight",
+   "minimap",
+   "overlay",
+   "players"
+  ],
+  "required": false,
+  "settings": [
+   {
+    "key": "enabled",
+    "label": "Enabled",
+    "description": "Switch Player Indicators on or off.",
+    "section": "",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": true
+    },
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/playerindicators/PlayerIndicatorsPlugin.java#PluginDescriptor.enabledByDefault"
+   },
+   {
+    "key": "drawPlayerTiles",
+    "label": "Draw tiles under players",
+    "description": "Configures whether or not tiles under highlighted players should be drawn.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/playerindicators/PlayerIndicatorsConfig.java#drawTiles",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "playerNamePosition",
+    "label": "Name position",
+    "description": "Configures the position of drawn player names, or if they should be disabled.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/playerindicators/PlayerIndicatorsConfig.java#playerNamePosition",
+    "control": {
+     "type": "choice",
+     "options": [
+      "DISABLED",
+      "ABOVE_HEAD",
+      "MODEL_CENTER",
+      "MODEL_RIGHT"
+     ]
+    },
+    "default": {
+     "type": "choice",
+     "value": "ABOVE_HEAD"
+    }
+   },
+   {
+    "key": "drawMinimapNames",
+    "label": "Draw names on minimap",
+    "description": "Configures whether or not minimap names for players with rendered names should be drawn.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/playerindicators/PlayerIndicatorsConfig.java#drawMinimapNames",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "colorPlayerMenu",
+    "label": "Colorize player menu",
+    "description": "Color right-click menu for players.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/playerindicators/PlayerIndicatorsConfig.java#colorPlayerMenu",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": true
+    }
+   },
+   {
+    "key": "clanMenuIcons",
+    "label": "Show friends chat ranks",
+    "description": "Add friends chat rank to right-click menu and next to player names.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/playerindicators/PlayerIndicatorsConfig.java#showFriendsChatRanks",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": true
+    }
+   },
+   {
+    "key": "clanchatMenuIcons",
+    "label": "Show clan chat ranks",
+    "description": "Add clan chat rank to right-click menu and next to player names.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/playerindicators/PlayerIndicatorsConfig.java#showClanChatRanks",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": true
+    }
+   },
+   {
+    "key": "highlightSelf",
+    "label": "Highlight own player",
+    "description": "Configures whether your own player should be highlighted.",
+    "section": "Highlight options",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/playerindicators/PlayerIndicatorsConfig.java#highlightOwnPlayer",
+    "control": {
+     "type": "choice",
+     "options": [
+      "DISABLED",
+      "ENABLED",
+      "PVP"
+     ]
+    },
+    "default": {
+     "type": "choice",
+     "value": "DISABLED"
+    }
+   },
+   {
+    "key": "ownNameColor",
+    "label": "Own player",
+    "description": "Color of your own player.",
+    "section": "Highlight options",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/playerindicators/PlayerIndicatorsConfig.java#getOwnPlayerColor",
+    "control": {
+     "type": "color"
+    },
+    "default": {
+     "type": "color",
+     "value": 4278237396
+    }
+   },
+   {
+    "key": "highlightPartyMembers",
+    "label": "Highlight party members",
+    "description": "Configures whether party members should be highlighted.",
+    "section": "Highlight options",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/playerindicators/PlayerIndicatorsConfig.java#highlightPartyMembers",
+    "control": {
+     "type": "choice",
+     "options": [
+      "DISABLED",
+      "ENABLED",
+      "PVP"
+     ]
+    },
+    "default": {
+     "type": "choice",
+     "value": "ENABLED"
+    }
+   },
+   {
+    "key": "partyMemberNameColor",
+    "label": "Party member",
+    "description": "Color of party member names.",
+    "section": "Highlight options",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/playerindicators/PlayerIndicatorsConfig.java#getPartyMemberColor",
+    "control": {
+     "type": "color"
+    },
+    "default": {
+     "type": "color",
+     "value": 4293557083
+    }
+   },
+   {
+    "key": "highlightFriends",
+    "label": "Highlight friends",
+    "description": "Configures whether friends should be highlighted.",
+    "section": "Highlight options",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/playerindicators/PlayerIndicatorsConfig.java#highlightFriends",
+    "control": {
+     "type": "choice",
+     "options": [
+      "DISABLED",
+      "ENABLED",
+      "PVP"
+     ]
+    },
+    "default": {
+     "type": "choice",
+     "value": "ENABLED"
+    }
+   },
+   {
+    "key": "friendNameColor",
+    "label": "Friend",
+    "description": "Color of friend names.",
+    "section": "Highlight options",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/playerindicators/PlayerIndicatorsConfig.java#getFriendColor",
+    "control": {
+     "type": "color"
+    },
+    "default": {
+     "type": "color",
+     "value": 4278241363
+    }
+   },
+   {
+    "key": "highlightFriendsChat",
+    "label": "Highlight friends chat members",
+    "description": "Configures whether friends chat members should be highlighted.",
+    "section": "Highlight options",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/playerindicators/PlayerIndicatorsConfig.java#highlightFriendsChat",
+    "control": {
+     "type": "choice",
+     "options": [
+      "DISABLED",
+      "ENABLED",
+      "PVP"
+     ]
+    },
+    "default": {
+     "type": "choice",
+     "value": "ENABLED"
+    }
+   },
+   {
+    "key": "clanMemberColor",
+    "label": "Friends chat",
+    "description": "Color of friends chat members.",
+    "section": "Highlight options",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/playerindicators/PlayerIndicatorsConfig.java#getFriendsChatMemberColor",
+    "control": {
+     "type": "color"
+    },
+    "default": {
+     "type": "color",
+     "value": 4289331455
+    }
+   },
+   {
+    "key": "highlightTeamMembers",
+    "label": "Highlight team members",
+    "description": "Configures whether team members should be highlighted.",
+    "section": "Highlight options",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/playerindicators/PlayerIndicatorsConfig.java#highlightTeamMembers",
+    "control": {
+     "type": "choice",
+     "options": [
+      "DISABLED",
+      "ENABLED",
+      "PVP"
+     ]
+    },
+    "default": {
+     "type": "choice",
+     "value": "ENABLED"
+    }
+   },
+   {
+    "key": "teamMemberColor",
+    "label": "Team member",
+    "description": "Color of team members.",
+    "section": "Highlight options",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/playerindicators/PlayerIndicatorsConfig.java#getTeamMemberColor",
+    "control": {
+     "type": "color"
+    },
+    "default": {
+     "type": "color",
+     "value": 4279463671
+    }
+   },
+   {
+    "key": "highlightClanMembers",
+    "label": "Highlight clan members",
+    "description": "Configures whether clan members should be highlighted.",
+    "section": "Highlight options",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/playerindicators/PlayerIndicatorsConfig.java#highlightClanMembers",
+    "control": {
+     "type": "choice",
+     "options": [
+      "DISABLED",
+      "ENABLED",
+      "PVP"
+     ]
+    },
+    "default": {
+     "type": "choice",
+     "value": "ENABLED"
+    }
+   },
+   {
+    "key": "clanChatMemberColor",
+    "label": "Clan member",
+    "description": "Color of clan members.",
+    "section": "Highlight options",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/playerindicators/PlayerIndicatorsConfig.java#getClanMemberColor",
+    "control": {
+     "type": "color"
+    },
+    "default": {
+     "type": "color",
+     "value": 4280553387
+    }
+   },
+   {
+    "key": "highlightOthers",
+    "label": "Highlight others",
+    "description": "Configures whether other players should be highlighted.",
+    "section": "Highlight options",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/playerindicators/PlayerIndicatorsConfig.java#highlightOthers",
+    "control": {
+     "type": "choice",
+     "options": [
+      "DISABLED",
+      "ENABLED",
+      "PVP"
+     ]
+    },
+    "default": {
+     "type": "choice",
+     "value": "DISABLED"
+    }
+   },
+   {
+    "key": "nonClanMemberColor",
+    "label": "Others",
+    "description": "Color of other players names.",
+    "section": "Highlight options",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/playerindicators/PlayerIndicatorsConfig.java#getOthersColor",
+    "control": {
+     "type": "color"
+    },
+    "default": {
+     "type": "color",
+     "value": 4294901760
+    }
+   }
+  ]
+ },
+ {
+  "plugin": "dev.rustclient.idlenotifier",
+  "name": "Idle Notifier",
+  "version": 1,
+  "description": "Send a notification when going idle, or when HP/Prayer reaches a threshold",
+  "tags": [
+   "health",
+   "hitpoints",
+   "notifications",
+   "prayer"
+  ],
+  "required": false,
+  "settings": [
+   {
+    "key": "enabled",
+    "label": "Enabled",
+    "description": "Switch Idle Notifier on or off.",
+    "section": "",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    },
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/idlenotifier/IdleNotifierPlugin.java#PluginDescriptor.enabledByDefault"
+   },
+   {
+    "key": "animationidle",
+    "label": "Idle animation notifications",
+    "description": "Configures if idle animation notifications are enabled.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/idlenotifier/IdleNotifierConfig.java#animationIdle",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": true
+    }
+   },
+   {
+    "key": "interactionidle",
+    "label": "Idle interaction notifications",
+    "description": "Configures if idle interaction notifications are enabled e.g. combat, fishing.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/idlenotifier/IdleNotifierConfig.java#interactionIdle",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": true
+    }
+   },
+   {
+    "key": "movementidle",
+    "label": "Idle movement notifications",
+    "description": "Configures if idle movement notifications are enabled e.g. running, walking.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/idlenotifier/IdleNotifierConfig.java#movementIdle",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "logoutidle",
+    "label": "Idle logout notifications",
+    "description": "Configures if the idle logout notifications are enabled.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/idlenotifier/IdleNotifierConfig.java#logoutIdle",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": true
+    }
+   },
+   {
+    "key": "sixHourLogout",
+    "label": "Six hour logout notification",
+    "description": "Configures the six hour logout notification.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/idlenotifier/IdleNotifierConfig.java#sixHourLogout",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": true
+    }
+   },
+   {
+    "key": "timeout",
+    "label": "Idle notification delay",
+    "description": "The notification delay after the player is idle.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/idlenotifier/IdleNotifierConfig.java#getIdleNotificationDelay",
+    "control": {
+     "type": "integer",
+     "min": -2147483648,
+     "max": 2147483647
+    },
+    "default": {
+     "type": "integer",
+     "value": 5000
+    }
+   },
+   {
+    "key": "hitpointsNotification",
+    "label": "Hitpoints notification",
+    "description": "Configures if hitpoints notifications are enabled.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/idlenotifier/IdleNotifierConfig.java#getHitpointsNotification",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "hitpoints",
+    "label": "Hitpoints threshold",
+    "description": "The amount of hitpoints to send a notification at.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/idlenotifier/IdleNotifierConfig.java#getHitpointsThreshold",
+    "control": {
+     "type": "integer",
+     "min": 1,
+     "max": 2147483647
+    },
+    "default": {
+     "type": "integer",
+     "value": 1
+    }
+   },
+   {
+    "key": "prayerNotification",
+    "label": "Prayer notification",
+    "description": "Configures if prayer notifications are enabled.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/idlenotifier/IdleNotifierConfig.java#getPrayerNotification",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "prayer",
+    "label": "Prayer threshold",
+    "description": "The amount of prayer points to send a notification at.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/idlenotifier/IdleNotifierConfig.java#getPrayerThreshold",
+    "control": {
+     "type": "integer",
+     "min": 1,
+     "max": 2147483647
+    },
+    "default": {
+     "type": "integer",
+     "value": 1
+    }
+   },
+   {
+    "key": "lowEnergyNotification",
+    "label": "Low energy notification",
+    "description": "Configures if low energy notifications are enabled.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/idlenotifier/IdleNotifierConfig.java#getLowEnergyNotification",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "lowEnergy",
+    "label": "Low energy threshold",
+    "description": "The amount of energy points remaining to send a notification at.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/idlenotifier/IdleNotifierConfig.java#getLowEnergyThreshold",
+    "control": {
+     "type": "integer",
+     "min": -2147483648,
+     "max": 99
+    },
+    "default": {
+     "type": "integer",
+     "value": 0
+    }
+   },
+   {
+    "key": "highEnergyNotification",
+    "label": "High energy notification",
+    "description": "Configures if high energy notifications are enabled.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/idlenotifier/IdleNotifierConfig.java#getHighEnergyNotification",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "highEnergy",
+    "label": "High energy threshold",
+    "description": "The amount of energy points reached to send a notification.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/idlenotifier/IdleNotifierConfig.java#getHighEnergyThreshold",
+    "control": {
+     "type": "integer",
+     "min": 1,
+     "max": 100
+    },
+    "default": {
+     "type": "integer",
+     "value": 100
+    }
+   },
+   {
+    "key": "oxygenNotification",
+    "label": "Oxygen notification",
+    "description": "Configures if oxygen notifications are enabled.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/idlenotifier/IdleNotifierConfig.java#getOxygenNotification",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "oxygen",
+    "label": "Oxygen threshold",
+    "description": "The amount of remaining oxygen to send a notification at.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/idlenotifier/IdleNotifierConfig.java#getOxygenThreshold",
+    "control": {
+     "type": "integer",
+     "min": 1,
+     "max": 2147483647
+    },
+    "default": {
+     "type": "integer",
+     "value": 1
+    }
+   },
+   {
+    "key": "specNotification",
+    "label": "Spec notification",
+    "description": "Configures if special attack notifications are enabled.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/idlenotifier/IdleNotifierConfig.java#getSpecNotification",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "spec",
+    "label": "Spec threshold",
+    "description": "The amount of special attack energy reached to send a notification at.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/idlenotifier/IdleNotifierConfig.java#getSpecEnergyThreshold",
+    "control": {
+     "type": "integer",
+     "min": 1,
+     "max": 2147483647
+    },
+    "default": {
+     "type": "integer",
+     "value": 1
+    }
+   }
+  ]
+ },
+ {
+  "plugin": "dev.rustclient.camera",
+  "name": "Camera",
+  "version": 1,
+  "description": "Expands zoom limit, provides vertical camera, and remaps mouse input keys",
+  "tags": [
+   "zoom",
+   "limit",
+   "vertical",
+   "click",
+   "mouse"
+  ],
+  "required": false,
+  "settings": [
+   {
+    "key": "enabled",
+    "label": "Enabled",
+    "description": "Switch Camera on or off.",
+    "section": "",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    },
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/camera/CameraPlugin.java#PluginDescriptor.enabledByDefault"
+   },
+   {
+    "key": "inner",
+    "label": "Expand inner zoom limit",
+    "description": "Configures whether or not the inner zoom limit is reduced.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/camera/CameraConfig.java#innerLimit",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "outerLimit",
+    "label": "Expand outer zoom limit",
+    "description": "Configures how much the outer zoom limit is adjusted.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/camera/CameraConfig.java#outerLimit",
+    "control": {
+     "type": "integer",
+     "min": -400,
+     "max": 400
+    },
+    "default": {
+     "type": "integer",
+     "value": 0
+    }
+   },
+   {
+    "key": "relaxCameraPitch",
+    "label": "Expand pitch limit",
+    "description": "Relax the camera's upper and lower pitch limits. Allows vertical and horizontal camera movement.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/camera/CameraConfig.java#relaxCameraPitch",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "controlFunction",
+    "label": "Control function",
+    "description": "Configures the zoom function when control is pressed.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/camera/CameraConfig.java#controlFunction",
+    "control": {
+     "type": "choice",
+     "options": [
+      "NONE",
+      "CONTROL_TO_ZOOM",
+      "CONTROL_TO_RESET"
+     ]
+    },
+    "default": {
+     "type": "choice",
+     "value": "NONE"
+    }
+   },
+   {
+    "key": "ctrlZoomValue",
+    "label": "Reset zoom position",
+    "description": "Position of zoom when it is reset.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/camera/CameraConfig.java#ctrlZoomValue",
+    "control": {
+     "type": "integer",
+     "min": -400,
+     "max": 1400
+    },
+    "default": {
+     "type": "integer",
+     "value": 512
+    }
+   },
+   {
+    "key": "zoomIncrement",
+    "label": "Zoom speed",
+    "description": "Speed of zoom.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/camera/CameraConfig.java#zoomIncrement",
+    "control": {
+     "type": "integer",
+     "min": -2147483648,
+     "max": 2147483647
+    },
+    "default": {
+     "type": "integer",
+     "value": 25
+    }
+   },
+   {
+    "key": "cameraSpeed",
+    "label": "Camera speed",
+    "description": "Speed which the camera moves from input.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/camera/CameraConfig.java#cameraSpeed",
+    "control": {
+     "type": "decimal",
+     "min": -1000000000,
+     "max": 1000000000
+    },
+    "default": {
+     "type": "decimal",
+     "value": 1000
+    }
+   },
+   {
+    "key": "disableCameraShake",
+    "label": "Disable camera shake",
+    "description": "Disables camera shake.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/camera/CameraConfig.java#disableCameraShake",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "rightClickMovesCamera",
+    "label": "Right-click moves camera",
+    "description": "Remaps right-click to middle mouse click.",
+    "section": "Mouse settings",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/camera/CameraConfig.java#rightClickMovesCamera",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "rightClickObjects",
+    "label": "Right-click objects",
+    "description": "Right-clicking objects opens the menu when 'Right-click moves camera' is on.",
+    "section": "Mouse settings",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/camera/CameraConfig.java#rightClickObjects",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": true
+    }
+   },
+   {
+    "key": "rightClickExamine",
+    "label": "Right-click examine",
+    "description": "Right-clicking examinable objects opens the menu when 'Right-click moves camera' is on.",
+    "section": "Mouse settings",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/camera/CameraConfig.java#rightClickExamine",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "rightClickMenuBlocksCamera",
+    "label": "Right-click menu blocks camera",
+    "description": "\"Prevents camera movement when 'Right-click moves camera' is on and the right-click menu<br>\" +\n\t\t\t\"is opened due to either 'Right-click objects' or 'Right-click examine' being on.\"",
+    "section": "Mouse settings",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/camera/CameraConfig.java#rightClickMenuBlocksCamera",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": true
+    }
+   },
+   {
+    "key": "middleClickMenu",
+    "label": "Middle-button opens menu",
+    "description": "Remaps middle mouse click to right-click.",
+    "section": "Mouse settings",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/camera/CameraConfig.java#middleClickMenu",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "invertYaw",
+    "label": "Invert yaw",
+    "description": "Makes moving the camera horizontally with the mouse backwards.",
+    "section": "Mouse settings",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/camera/CameraConfig.java#invertYaw",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "invertPitch",
+    "label": "Invert pitch",
+    "description": "Makes moving the camera vertically with the mouse backwards.",
+    "section": "Mouse settings",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/camera/CameraConfig.java#invertPitch",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   }
+  ]
+ },
+ {
+  "plugin": "dev.rustclient.menuentryswapper",
+  "name": "Menu Entry Swapper",
+  "version": 1,
+  "description": "Change the default option that is displayed when hovering over objects",
+  "tags": [
+   "npcs",
+   "inventory",
+   "items",
+   "objects"
+  ],
+  "required": false,
+  "settings": [
+   {
+    "key": "enabled",
+    "label": "Enabled",
+    "description": "Switch Menu Entry Swapper on or off.",
+    "section": "",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    },
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/menuentryswapper/MenuEntrySwapperPlugin.java#PluginDescriptor.enabledByDefault"
+   },
+   {
+    "key": "leftClickCustomization",
+    "label": "Customizable left-click",
+    "description": "Allows customization of left-clicks on items.",
+    "section": "Item swaps",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/menuentryswapper/MenuEntrySwapperConfig.java#leftClickCustomization",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": true
+    }
+   },
+   {
+    "key": "shiftClickCustomization",
+    "label": "Customizable shift-click",
+    "description": "Allows customization of shift-clicks on items.",
+    "section": "Item swaps",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/menuentryswapper/MenuEntrySwapperConfig.java#shiftClickCustomization",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": true
+    }
+   },
+   {
+    "key": "swapBones",
+    "label": "Bury",
+    "description": "Swap Bury with Use on bones.",
+    "section": "Item swaps",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/menuentryswapper/MenuEntrySwapperConfig.java#swapBones",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "swapHerbs",
+    "label": "Clean",
+    "description": "Swap Clean with Use on herbs.",
+    "section": "Item swaps",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/menuentryswapper/MenuEntrySwapperConfig.java#swapHerbs",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "swapTeleportItem",
+    "label": "Teleport item",
+    "description": "Swap Wear and Wield with Rub, Teleport, and Invoke.",
+    "section": "Item swaps",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/menuentryswapper/MenuEntrySwapperConfig.java#swapTeleportItem",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "swapTeleToPoh",
+    "label": "Tele to POH",
+    "description": "Swap Wear with Tele to POH on the construction cape.",
+    "section": "Item swaps",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/menuentryswapper/MenuEntrySwapperConfig.java#swapTeleToPoh",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "swapKaramjaGloves",
+    "label": "Karamja gloves",
+    "description": "Swap Wear with the Gem Mine or the Slayer master teleport on the Karamja gloves 3 and 4.",
+    "section": "Item swaps",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/menuentryswapper/MenuEntrySwapperConfig.java#swapKaramjaGlovesMode",
+    "control": {
+     "type": "choice",
+     "options": [
+      "WEAR",
+      "GEM_MINE",
+      "SLAYER_MASTER"
+     ]
+    },
+    "default": {
+     "type": "choice",
+     "value": "WEAR"
+    }
+   },
+   {
+    "key": "swapArdougneCloak",
+    "label": "Ardougne cloak",
+    "description": "Swap Wear with Monastery teleport or Farm teleport on the Ardougne cloak.",
+    "section": "Item swaps",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/menuentryswapper/MenuEntrySwapperConfig.java#swapArdougneCloakMode",
+    "control": {
+     "type": "choice",
+     "options": [
+      "WEAR",
+      "MONASTERY",
+      "FARM"
+     ]
+    },
+    "default": {
+     "type": "choice",
+     "value": "WEAR"
+    }
+   },
+   {
+    "key": "swapRadasBlessing",
+    "label": "Rada's blessing",
+    "description": "Swap Equip with the Woodland or Mount Karuulm teleport on Rada's blessing.",
+    "section": "Item swaps",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/menuentryswapper/MenuEntrySwapperConfig.java#swapRadasBlessingMode",
+    "control": {
+     "type": "choice",
+     "options": [
+      "EQUIP",
+      "KOUREND_WOODLAND",
+      "MOUNT_KARUULM"
+     ]
+    },
+    "default": {
+     "type": "choice",
+     "value": "EQUIP"
+    }
+   },
+   {
+    "key": "swapMorytaniaLegs",
+    "label": "Morytania legs",
+    "description": "Swap Wear with the Ectofuntus or Burgh de Rott teleport on the Morytania legs.",
+    "section": "Item swaps",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/menuentryswapper/MenuEntrySwapperConfig.java#swapMorytaniaLegsMode",
+    "control": {
+     "type": "choice",
+     "options": [
+      "WEAR",
+      "ECTOFUNTUS",
+      "BURGH_DE_ROTT"
+     ]
+    },
+    "default": {
+     "type": "choice",
+     "value": "WEAR"
+    }
+   },
+   {
+    "key": "swapDesertAmulet",
+    "label": "Desert amulet",
+    "description": "Swap Wear with the Nardah or Kalphite cave teleport on Desert amulet 4.",
+    "section": "Item swaps",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/menuentryswapper/MenuEntrySwapperConfig.java#swapDesertAmuletMode",
+    "control": {
+     "type": "choice",
+     "options": [
+      "WEAR",
+      "NARDAH",
+      "KALPHITE_CAVE"
+     ]
+    },
+    "default": {
+     "type": "choice",
+     "value": "WEAR"
+    }
+   },
+   {
+    "key": "npcLeftClickCustomization",
+    "label": "Customizable left- and shift-click",
+    "description": "Allows customization of left-clicks on NPCs.",
+    "section": "NPC swaps",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/menuentryswapper/MenuEntrySwapperConfig.java#npcCustomization",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": true
+    }
+   },
+   {
+    "key": "npcShiftClickWalkHere",
+    "label": "Shift-click Walk here",
+    "description": "Swaps Walk here on shift-click on all NPCs.",
+    "section": "NPC swaps",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/menuentryswapper/MenuEntrySwapperConfig.java#npcShiftClickWalkHere",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "swapAssignment",
+    "label": "Assignment",
+    "description": "Swap Talk-to with Assignment for slayer masters. This will take priority over swapping Trade.",
+    "section": "NPC swaps",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/menuentryswapper/MenuEntrySwapperConfig.java#swapAssignment",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": true
+    }
+   },
+   {
+    "key": "swapBanker",
+    "label": "Bank",
+    "description": "Swap Talk-to with Bank.",
+    "section": "NPC swaps",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/menuentryswapper/MenuEntrySwapperConfig.java#swapBank",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": true
+    }
+   },
+   {
+    "key": "swapChase",
+    "label": "Chase",
+    "description": "Allows to left-click your cat to Chase.",
+    "section": "NPC swaps",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/menuentryswapper/MenuEntrySwapperConfig.java#swapChase",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": true
+    }
+   },
+   {
+    "key": "swapExchange",
+    "label": "Exchange",
+    "description": "Swap Talk-to with Exchange.",
+    "section": "NPC swaps",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/menuentryswapper/MenuEntrySwapperConfig.java#swapExchange",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": true
+    }
+   },
+   {
+    "key": "swapHelp",
+    "label": "Help",
+    "description": "Swap Talk-to with Help on Arceuus library customers.",
+    "section": "NPC swaps",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/menuentryswapper/MenuEntrySwapperConfig.java#swapHelp",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": true
+    }
+   },
+   {
+    "key": "swapPay",
+    "label": "Pay",
+    "description": "Swap Talk-to with Pay.",
+    "section": "NPC swaps",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/menuentryswapper/MenuEntrySwapperConfig.java#swapPay",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": true
+    }
+   },
+   {
+    "key": "swapAbyssTeleport",
+    "label": "Teleport to abyss",
+    "description": "Swap Talk-to with Teleport for the Mage of Zamorak.",
+    "section": "NPC swaps",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/menuentryswapper/MenuEntrySwapperConfig.java#swapAbyssTeleport",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": true
+    }
+   },
+   {
+    "key": "swapTrade",
+    "label": "Trade",
+    "description": "Swap Talk-to with Trade.",
+    "section": "NPC swaps",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/menuentryswapper/MenuEntrySwapperConfig.java#swapTrade",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": true
+    }
+   },
+   {
+    "key": "swapTravel",
+    "label": "Travel",
+    "description": "Swap Talk-to with Travel, Take-boat, Pay-fare, Charter, etc.",
+    "section": "NPC swaps",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/menuentryswapper/MenuEntrySwapperConfig.java#swapTravel",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": true
+    }
+   },
+   {
+    "key": "swapEssenceMineTeleport",
+    "label": "Essence mine teleport",
+    "description": "Swaps Talk-to with Teleport for NPCs which teleport you to the essence mine.",
+    "section": "NPC swaps",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/menuentryswapper/MenuEntrySwapperConfig.java#swapEssenceMineTeleport",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "swapDepositItems",
+    "label": "Deposit items",
+    "description": "Swap Talk-to with Deposit-items.",
+    "section": "NPC swaps",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/menuentryswapper/MenuEntrySwapperConfig.java#swapDepositItems",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "swapTemporossLeave",
+    "label": "Tempoross leave",
+    "description": "Swap Talk-to with Leave after subduing Tempoross.",
+    "section": "NPC swaps",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/menuentryswapper/MenuEntrySwapperConfig.java#swapTemporossLeave",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "removeDeadNpcMenus",
+    "label": "Remove dead NPC menus",
+    "description": "Remove menu options such as Attack and Talk-to from dead NPCs.",
+    "section": "NPC swaps",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/menuentryswapper/MenuEntrySwapperConfig.java#removeDeadNpcMenus",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "objectLeftClickCustomization",
+    "label": "Customizable left- and shift-click",
+    "description": "Allows customization of left-clicks on objects.",
+    "section": "Object swaps",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/menuentryswapper/MenuEntrySwapperConfig.java#objectCustomization",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": true
+    }
+   },
+   {
+    "key": "objectShiftClickWalkHere",
+    "label": "Shift-click Walk here",
+    "description": "Swaps Walk here on shift-click on all objects.",
+    "section": "Object swaps",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/menuentryswapper/MenuEntrySwapperConfig.java#objectShiftClickWalkHere",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "swapAdmire",
+    "label": "Admire",
+    "description": "Swap Admire with Teleport, Spellbook and Perks (max cape) for mounted skill capes.",
+    "section": "Object swaps",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/menuentryswapper/MenuEntrySwapperConfig.java#swapAdmire",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": true
+    }
+   },
+   {
+    "key": "swapBirdhouseEmpty",
+    "label": "Birdhouse",
+    "description": "Swap Interact with Empty for birdhouses on Fossil Island.",
+    "section": "Object swaps",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/menuentryswapper/MenuEntrySwapperConfig.java#swapBirdhouseEmpty",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": true
+    }
+   },
+   {
+    "key": "swapFairyRing",
+    "label": "Fairy ring",
+    "description": "Swap Zanaris with Last-destination or Configure on fairy rings.",
+    "section": "Object swaps",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/menuentryswapper/MenuEntrySwapperConfig.java#swapFairyRing",
+    "control": {
+     "type": "choice",
+     "options": [
+      "ZANARIS",
+      "LAST_DESTINATION",
+      "CONFIGURE",
+      "OFF"
+     ]
+    },
+    "default": {
+     "type": "choice",
+     "value": "LAST_DESTINATION"
+    }
+   },
+   {
+    "key": "swapHarpoon",
+    "label": "Harpoon",
+    "description": "Swap Cage and N with Harpoon on fishing spots.",
+    "section": "Object swaps",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/menuentryswapper/MenuEntrySwapperConfig.java#swapHarpoon",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "swapBait",
+    "label": "Bait",
+    "description": "Swap Lure and Net with Bait on fishing spots.",
+    "section": "Object swaps",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/menuentryswapper/MenuEntrySwapperConfig.java#swapBait",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "swapHomePortal",
+    "label": "Home",
+    "description": "Swap enter with home or build or friend's house on portal.",
+    "section": "Object swaps",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/menuentryswapper/MenuEntrySwapperConfig.java#swapHomePortal",
+    "control": {
+     "type": "choice",
+     "options": [
+      "ENTER",
+      "HOME",
+      "BUILD_MODE",
+      "FRIENDS_HOUSE"
+     ]
+    },
+    "default": {
+     "type": "choice",
+     "value": "HOME"
+    }
+   },
+   {
+    "key": "swapJewelleryBox",
+    "label": "Jewellery box",
+    "description": "Swap Teleport with Previous destination on jewellery box.",
+    "section": "Object swaps",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/menuentryswapper/MenuEntrySwapperConfig.java#swapJewelleryBox",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "swapPortalNexus",
+    "label": "Portal nexus",
+    "description": "Swap Teleport options with Teleport menu on the Portal Nexus",
+    "section": "Object swaps",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/menuentryswapper/MenuEntrySwapperConfig.java#swapPortalNexus",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "swapPrivate",
+    "label": "Private",
+    "description": "Swap Shared with Private on the Chambers of Xeric storage units.",
+    "section": "Object swaps",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/menuentryswapper/MenuEntrySwapperConfig.java#swapPrivate",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "swapPick",
+    "label": "Pick",
+    "description": "Swap Pick with Pick-lots of the Gourd tree in the Chambers of Xeric.",
+    "section": "Object swaps",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/menuentryswapper/MenuEntrySwapperConfig.java#swapPick",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "swapQuick",
+    "label": "Quick pass/open/start/travel",
+    "description": "Swap Pass with Quick-pass, Open with Quick-open, Ring with Quick-start and Talk-to with Quick-travel.",
+    "section": "Object swaps",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/menuentryswapper/MenuEntrySwapperConfig.java#swapQuick",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": true
+    }
+   },
+   {
+    "key": "swapBoxTrap",
+    "label": "Reset",
+    "description": "Swap Check with Reset on box trap.",
+    "section": "Object swaps",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/menuentryswapper/MenuEntrySwapperConfig.java#swapBoxTrap",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": true
+    }
+   },
+   {
+    "key": "swapStairsLeftClick",
+    "label": "Stairs left-click",
+    "description": "Swap this option when left-clicking stairs. Also works on ladders.",
+    "section": "Object swaps",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/menuentryswapper/MenuEntrySwapperConfig.java#swapStairsLeftClick",
+    "control": {
+     "type": "choice",
+     "options": [
+      "CLIMB",
+      "CLIMB_UP",
+      "CLIMB_DOWN"
+     ]
+    },
+    "default": {
+     "type": "choice",
+     "value": "CLIMB"
+    }
+   },
+   {
+    "key": "swapStairsShiftClick",
+    "label": "Stairs shift-click",
+    "description": "Swap this option when shift-clicking stairs. Also works on ladders.",
+    "section": "Object swaps",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/menuentryswapper/MenuEntrySwapperConfig.java#swapStairsShiftClick",
+    "control": {
+     "type": "choice",
+     "options": [
+      "CLIMB",
+      "CLIMB_UP",
+      "CLIMB_DOWN"
+     ]
+    },
+    "default": {
+     "type": "choice",
+     "value": "CLIMB"
+    }
+   },
+   {
+    "key": "swapGEItemCollect",
+    "label": "GE item collect",
+    "description": "Swap Collect-notes, Collect-items, or Bank options from GE offer.",
+    "section": "UI swaps",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/menuentryswapper/MenuEntrySwapperConfig.java#swapGEItemCollect",
+    "control": {
+     "type": "choice",
+     "options": [
+      "DEFAULT",
+      "ITEMS",
+      "NOTES",
+      "BANK"
+     ]
+    },
+    "default": {
+     "type": "choice",
+     "value": "DEFAULT"
+    }
+   },
+   {
+    "key": "swapGEAbort",
+    "label": "GE abort",
+    "description": "Swap Abort offer on Grand Exchange offers when shift-clicking.",
+    "section": "UI swaps",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/menuentryswapper/MenuEntrySwapperConfig.java#swapGEAbort",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "bankWithdrawShiftClick",
+    "label": "Bank withdraw shift-click",
+    "description": "Swaps the behavior of shift-click when withdrawing from bank.",
+    "section": "UI swaps",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/menuentryswapper/MenuEntrySwapperConfig.java#bankWithdrawShiftClick",
+    "control": {
+     "type": "choice",
+     "options": [
+      "WITHDRAW_1",
+      "WITHDRAW_5",
+      "WITHDRAW_10",
+      "WITHDRAW_X",
+      "WITHDRAW_ALL",
+      "WITHDRAW_ALL_BUT_1",
+      "WITHDRAW_PLACEHOLDER",
+      "OFF"
+     ]
+    },
+    "default": {
+     "type": "choice",
+     "value": "OFF"
+    }
+   },
+   {
+    "key": "bankDepositShiftClick",
+    "label": "Bank deposit shift-click",
+    "description": "Swaps the behavior of shift-click when depositing to bank.",
+    "section": "UI swaps",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/menuentryswapper/MenuEntrySwapperConfig.java#bankDepositShiftClick",
+    "control": {
+     "type": "choice",
+     "options": [
+      "DEPOSIT_1",
+      "DEPOSIT_5",
+      "DEPOSIT_10",
+      "DEPOSIT_X",
+      "DEPOSIT_ALL",
+      "EXTRA_OP",
+      "OFF"
+     ]
+    },
+    "default": {
+     "type": "choice",
+     "value": "OFF"
+    }
+   },
+   {
+    "key": "shopBuy",
+    "label": "Shop buy shift-click",
+    "description": "Swaps the Buy options with Value on items in shops when shift is held.",
+    "section": "UI swaps",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/menuentryswapper/MenuEntrySwapperConfig.java#shopBuy",
+    "control": {
+     "type": "choice",
+     "options": [
+      "OFF",
+      "BUY_1",
+      "BUY_5",
+      "BUY_10",
+      "BUY_50"
+     ]
+    },
+    "default": {
+     "type": "choice",
+     "value": "OFF"
+    }
+   },
+   {
+    "key": "shopSell",
+    "label": "Shop sell shift-click",
+    "description": "Swaps the Sell options with Value on items in your inventory when selling to shops when shift is held.",
+    "section": "UI swaps",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/menuentryswapper/MenuEntrySwapperConfig.java#shopSell",
+    "control": {
+     "type": "choice",
+     "options": [
+      "OFF",
+      "SELL_1",
+      "SELL_5",
+      "SELL_10",
+      "SELL_50"
+     ]
+    },
+    "default": {
+     "type": "choice",
+     "value": "OFF"
+    }
+   },
+   {
+    "key": "swapTan",
+    "label": "Tan",
+    "description": "Swap Tan 1 with Tan All.",
+    "section": "UI swaps",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/menuentryswapper/MenuEntrySwapperConfig.java#swapTan",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "groundItemShiftClickWalkHere",
+    "label": "Shift-click Walk here",
+    "description": "Swaps Walk here on shift-click on all ground items.",
+    "section": "Ground item swaps",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/menuentryswapper/MenuEntrySwapperConfig.java#groundItemShiftClickWalkHere",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   }
+  ]
+ }
+]

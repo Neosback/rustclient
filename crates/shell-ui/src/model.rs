@@ -1,5 +1,5 @@
 //! Presentation snapshots and typed user actions. Accepted settings stay in plugin-host.
-use rustclient_plugin_host::configuration::{ConfigValue, Configuration, Setting};
+use rustclient_plugin_host::configuration::{ConfigValue, Configuration, ENABLED_KEY, Setting};
 use std::{
     cell::{Cell, RefCell},
     rc::Rc,
@@ -18,7 +18,13 @@ pub struct SettingView {
 pub struct PluginPanel {
     pub id: String,
     pub name: String,
+    pub description: String,
+    pub tags: Vec<String>,
+    /// Required services are always on and have no switch.
     pub required: bool,
+    /// Whether an optional plugin is switched on; always true for required services.
+    pub enabled: bool,
+    /// Every setting except the plugin's own on/off switch.
     pub settings: Vec<SettingView>,
 }
 impl PluginPanel {
@@ -30,10 +36,14 @@ impl PluginPanel {
         Self {
             id: schema.plugin.to_string(),
             name: schema.name.clone(),
-            required: true,
+            description: schema.description.clone(),
+            tags: schema.tags.clone(),
+            required: schema.required,
+            enabled: configuration.enabled(),
             settings: schema
                 .settings
                 .iter()
+                .filter(|descriptor| schema.required || descriptor.key != ENABLED_KEY)
                 .map(|descriptor| SettingView {
                     value: configuration
                         .value(&descriptor.key)

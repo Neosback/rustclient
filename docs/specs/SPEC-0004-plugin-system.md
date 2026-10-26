@@ -43,6 +43,19 @@ sprite.override,infobox,viewport}`, `scene.control`, `camera.control`, `client.n
 `network.http`, `interaction.request` are reserved: no 0.2 operation exists for them, so granting them changes nothing.
 The first denial of each capability per plugin is logged; repeats are silent.
 
+**Scene output.** `scene` carries RuneLite-style roof removal mode bits (`ROOF_FLAG_POSITION=1`, `HOVERED=2`,
+`DESTINATION=4`, `BETWEEN=8`) and animation-smoothing classes; `roof_areas` lists world-tile blocks forced roofed (the
+source plugin's area overrides). The scene crate owns roof regions (`RoofVolumes`): the host never exposes roof ids.
+`ClientSnapshot::scene_base/scene_size` are the loaded scene's south-west tile and extent (`Scene.getBaseX/Y`).
+
+**First-party plugins and configuration.** In-tree ports live in `crates/first-party-plugins` (one module each) and
+implement `NativePlugin`, which adapts to `PluginInstance`. Their settings are schema-driven like the required services:
+`first-party-schemas.json` (generated from the vendored `*Config.java`) is loaded by the application's configuration
+owner, persisted per plugin, and delivered read-only to the instance as `PluginCall::config` (defaults applied, mistyped
+reads are zero values). Every optional plugin's schema starts with an `enabled` setting (`enabledByDefault`); the
+sidebar renders it as the card switch and `PluginSet::configure` applies it, re-initializing a plugin that is switched on.
+Schema controls: boolean, integer, choice, color, hotkey, size, font, text and decimal (thousandths).
+
 **Facts the client does not retain yet** (spot animations, interact target, hitsplats, health bars, menu model) appear
 as absent fields/events, never guessed; each is a semantic-owner extension tracked in the plugin ledger.
 

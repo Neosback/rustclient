@@ -1,12 +1,10 @@
 use crate::{GameplayCameraController, RenderError, SurfaceSize};
 use glam::Vec3;
 use rustclient_model::SceneAssetId;
-use rustclient_scene::{SceneVertex, WorldMesh};
+use rustclient_scene::{RoofVisibility, SceneVertex, WorldMesh};
 
 /// World WGSL group/binding map. The shader declares exactly this layout.
 const WORLD_GROUP: u32 = 0;
-/// Top level that draws every tile render level, for captures that have no player plane.
-const ALL_LEVELS: u8 = 3;
 const DEPTH: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
@@ -22,8 +20,10 @@ struct CameraUniform {
     fog_color: [f32; 4],
     /// x: color-blind mode (0 off), y: intensity percent.
     color: [f32; 4],
+    /// Hidden roof slots, bit `slot % 32` of word `slot / 32` (`rustclient_scene::RoofMask`).
+    hidden_roofs: [u32; 128],
 }
-const CAMERA_BYTES: u64 = 128;
+const CAMERA_BYTES: u64 = 640;
 /// Local units per tile, `Perspective.LOCAL_TILE_SIZE`.
 const LOCAL_TILE_SIZE: f32 = 128.;
 pub(crate) struct WorldGpu {
@@ -51,7 +51,7 @@ pub(crate) struct WorldGpu {
         GameplayCameraController,
         crate::CameraViewport,
         u32,
-        u8,
+        RoofVisibility,
         rustclient_model::ScreenBrightness,
         crate::GpuSettings,
     )>,
@@ -270,7 +270,7 @@ impl WorldGpu {
             cycle,
             None,
             rustclient_model::ViewportSettings::default(),
-            ALL_LEVELS,
+            &RoofVisibility::everything(),
             rustclient_model::ScreenBrightness::default(),
             gpu,
         );
@@ -292,7 +292,7 @@ impl WorldGpu {
         cycle: u32,
         bounds: Option<rustclient_game_ui::Rect>,
         settings: rustclient_model::ViewportSettings,
-        top_level: u8,
+        visibility: &RoofVisibility,
         brightness: rustclient_model::ScreenBrightness,
         gpu: crate::GpuSettings,
     ) {
@@ -317,7 +317,9 @@ impl WorldGpu {
             self.physical_viewport[2].min(self.size.width as f32 - self.physical_viewport[0]);
         self.physical_viewport[3] =
             self.physical_viewport[3].min(self.size.height as f32 - self.physical_viewport[1]);
-        if self.last_camera == Some((camera, viewport, cycle, top_level, brightness, gpu)) {
+        if self.last_camera.as_ref().is_some_and(|last| {
+            *last == (camera, viewport, cycle, visibility.clone(), brightness, gpu)
+        }) {
             return;
         }
         let pose = camera.pose(viewport);
@@ -325,7 +327,7 @@ impl WorldGpu {
         let uniform = CameraUniform {
             view_projection: camera.matrix(viewport).to_cols_array_2d(),
             cycle,
-            top_level: u32::from(top_level),
+            top_level: u32::from(visibility.top_level),
             brightness: 0.5 + f32::from(100 - brightness.percent()) / 200.,
             material_flags: gpu.material.shader_flags(),
             fog: [
@@ -343,6 +345,7 @@ impl WorldGpu {
                 0.,
                 0.,
             ],
+            hidden_roofs: *visibility.hidden.words(),
         };
         queue.write_buffer(&self.camera, 0, bytemuck::bytes_of(&uniform));
         let yaw = f32::from(pose.yaw) * std::f32::consts::TAU / 2048.;
@@ -360,7 +363,7 @@ impl WorldGpu {
             |source, index| sources[source].alpha_depth(index, eye, direction),
             &mut self.transparent_runs,
         );
-        self.last_camera = Some((camera, viewport, cycle, top_level, brightness, gpu));
+        self.last_camera = Some((camera, viewport, cycle, visibility.clone(), brightness, gpu));
     }
     pub fn render_scene(&self, encoder: &mut wgpu::CommandEncoder) {
         // Without multisampling the pass renders straight into the texture that is composited.
@@ -511,4 +514,34 @@ fn pipeline(
         multiview_mask: None,
         cache: None,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{CAMERA_BYTES, CameraUniform};
+
+    /// The shader and the Rust uniform must agree on the camera block: validate the WGSL and
+    /// check the `Camera` struct occupies exactly the bytes the buffer is sized for.
+    #[test]
+    fn world_shader_validates_and_camera_block_matches_the_uniform() {
+        let source = include_str!("shaders/world.wgsl");
+        let module = naga::front::wgsl::parse_str(source).expect("world.wgsl parses");
+        let info = naga::valid::Validator::new(
+            naga::valid::ValidationFlags::all(),
+            naga::valid::Capabilities::all(),
+        )
+        .validate(&module)
+        .expect("world.wgsl validates");
+        drop(info);
+        let (_, camera) = module
+            .types
+            .iter()
+            .find(|(_, ty)| ty.name.as_deref() == Some("Camera"))
+            .expect("Camera struct");
+        let naga::TypeInner::Struct { span, .. } = camera.inner else {
+            panic!("Camera is a struct");
+        };
+        assert_eq!(u64::from(span), CAMERA_BYTES);
+        assert_eq!(size_of::<CameraUniform>() as u64, CAMERA_BYTES);
+    }
 }

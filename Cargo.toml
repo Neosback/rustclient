@@ -21,6 +21,7 @@ members = [
     "crates/plugin-api",
     "crates/plugin-host",
     "crates/plugin-bridge",
+    "crates/first-party-plugins",
     "crates/plugin-runtime-native",
     "crates/plugin-runtime-web",
     "plugin-sdk/rust",

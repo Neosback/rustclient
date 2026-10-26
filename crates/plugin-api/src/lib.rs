@@ -26,7 +26,7 @@ pub use manifest::{ManifestError, PluginManifest};
 pub use menu::{MenuEdit, MenuEntry, MenuKind};
 pub use output::{
     AnimationSmoothing, CameraCommand, EntityVisibility, InfoBox, LayeredOverlay, Notification,
-    NotificationKind, OverlayCommand, OverlayLayer, PluginOutput, RoofRemoval, SceneFlags,
+    NotificationKind, OverlayCommand, OverlayLayer, PluginOutput, RoofArea, RoofModes, SceneFlags,
     SpriteOverride, Stretch, StretchScaling, limits,
 };
 

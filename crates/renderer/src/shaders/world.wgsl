@@ -1,7 +1,7 @@
 // RuneLite GPU material transfer: runelite-gpu/vert.glsl + frag.glsl.
 // HSL gamma is applied in the vertex conversion; texture gamma in the fragment shader.
 // fog: x depth in tiles (0 = off), y draw distance in local units, z/w eye x/z. color: x color-blind mode, y intensity.
-struct Camera { view_projection: mat4x4<f32>, cycle: u32, top_level: u32, brightness:f32, material_flags:u32, fog:vec4<f32>, fog_color:vec4<f32>, color:vec4<f32> }
+struct Camera { view_projection: mat4x4<f32>, cycle: u32, top_level: u32, brightness:f32, material_flags:u32, fog:vec4<f32>, fog_color:vec4<f32>, color:vec4<f32>, hidden_roofs:array<vec4<u32>,32> }
 struct Animations { values:array<vec4<f32>,256> }
 @group(0) @binding(0) var<uniform> camera:Camera;
 @group(0) @binding(1) var textures:texture_2d_array<f32>;
@@ -69,6 +69,10 @@ fn colorblind(color:vec3<f32>)->vec3<f32> {
  let correction=(error*CORRECTIONS)*clamp(camera.color.y/100.0,0.0,1.0);
  return color+correction;
 }
+fn roof_hidden(slot:u32)->bool {
+ if slot==0u {return false;}
+ return ((camera.hidden_roofs[slot>>7u][(slot>>5u)&3u]>>(slot&31u))&1u)!=0u;
+}
 fn finish(rgb:vec3<f32>,alpha:f32,fog:f32)->vec4<f32> {
  var c=rgb;
  if camera.color.x>0.0 {c=colorblind(c);}
@@ -76,9 +80,10 @@ fn finish(rgb:vec3<f32>,alpha:f32,fog:f32)->vec4<f32> {
 }
 @vertex fn vs_main(input:Input)->Vertex {
  var out:Vertex;
- if input.texture_uv.w>camera.top_level {
-    // Tile render level above this frame's top level (roofs, upper floors): all three
-    // vertices collapse to one point, so the triangle is dropped before rasterization.
+ if (input.texture_uv.w&3u)>camera.top_level || roof_hidden(input.texture_uv.w>>2u) {
+    // Tile render level above this frame's top level (roofs, upper floors) or a roof hidden by
+    // roof removal (texture_uv.w packs level | roof slot << 2): all three vertices collapse to
+    // one point, so the triangle is dropped before rasterization.
     out.clip=vec4<f32>(2.0,2.0,2.0,1.0);
     out.alpha=0.0;out.hsl=0.0;out.texture=0u;out.uv=vec2<f32>(0.0);out.color=vec3<f32>(0.0);out.fog=0.0;
     return out;

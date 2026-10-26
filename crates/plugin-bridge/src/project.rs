@@ -99,9 +99,7 @@ pub(crate) fn lifecycle(state: &GameState, frame: &Frame) -> GameStateKind {
 
 pub(crate) fn client(state: &GameState, frame: &Frame) -> ClientSnapshot {
     let window = state.interfaces().window();
-    let origin = state
-        .initial_placement()
-        .map(|placement| placement.map_anchor);
+    let scene = state.loaded_scene();
     ClientSnapshot {
         state: lifecycle(state, frame),
         tick: state
@@ -119,7 +117,8 @@ pub(crate) fn client(state: &GameState, frame: &Frame) -> ClientSnapshot {
         resizable: window.mode == rustclient_model::WindowMode::Resizable,
         focused: frame.focused,
         camera: frame.camera,
-        scene_base: origin.map_or((0, 0), |tile| (tile.x, tile.y)),
+        scene_base: scene.map_or((0, 0), |scene| (scene.origin().x, scene.origin().y)),
+        scene_size: scene.map_or((0, 0), |scene| (scene.width(), scene.height())),
         run_energy: state.entities().run_energy(),
         weight: state.entities().run_weight(),
     }

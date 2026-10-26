@@ -1,6 +1,6 @@
 use crate::{SettingView, ShellAction, ShellChannel, assets::icon};
 use dioxus::prelude::*;
-use rustclient_plugin_host::configuration::{ConfigValue, Control, Font, Hotkey};
+use rustclient_plugin_host::configuration::{ConfigValue, Control, ENABLED_KEY, Font, Hotkey};
 
 pub(crate) const CSS: &str = include_str!("shell.css");
 
@@ -13,7 +13,14 @@ fn plugin_icon(id: &str) -> Option<&'static str> {
 }
 
 /// `windowSettings` -> `Window settings`, matching how `RuneLite` titles its config sections.
+/// Names that already read as titles (`Area overrides`) and the unsectioned group pass through.
 fn humanize(section: &str) -> String {
+    if section.is_empty() {
+        return "General".into();
+    }
+    if section.contains(' ') {
+        return section.to_owned();
+    }
     let mut out = String::new();
     for (index, c) in section.chars().enumerate() {
         if c.is_uppercase() && index > 0 {
@@ -92,7 +99,12 @@ pub fn Shell(channel: ShellChannel) -> Element {
                                 img { class: "mini", src: icon!("refresh"), alt: "" } }
                         } }
                     }
-                    div { class: "plugin-meta", span { class: "badge", "Always on" } span { class: "muted", "{plugin.settings.len()} settings" } }
+                    div { class: "plugin-meta",
+                        if plugin.required { span { class: "badge", "Always on" } }
+                        else { { let channel = channel.clone(); let id = plugin.id.clone();
+                            rsx! { PluginSwitch { enabled: plugin.enabled, name: plugin.name.clone(), channel, id } } } }
+                        span { class: "muted", "{plugin.settings.len()} settings" } }
+                    if !plugin.description.is_empty() { p { class: "plugin-description", "{plugin.description}" } }
                     div { class: "settings", id: "settings-scroll",
                         for section in sections(&plugin.settings) {
                             Section { key: "{section}", title: humanize(&section),
@@ -109,28 +121,55 @@ pub fn Shell(channel: ShellChannel) -> Element {
                             value: "{query}", oninput: move |event| query.set(event.value()) }
                     }
                     div { class: "cards",
-                        for plugin in snapshot.plugins.iter().filter(|plugin| plugin.name.to_lowercase().contains(&needle)) {
+                        for plugin in snapshot.plugins.iter().filter(|plugin| matches_query(plugin, &needle)) {
                             { let id = plugin.id.clone(); rsx! {
                                 div { key: "{plugin.id}", class: "plugin-card", "data-plugin": "{plugin.id}",
                                     button { class: "card-open", onclick: move |_| selected.set(Some(id.clone())),
                                         PluginGlyph { id: plugin.id.clone(), name: plugin.name.clone() }
                                         span { class: "card-text",
                                             strong { "{plugin.name}" }
-                                            span { class: "muted", "{plugin.settings.len()} settings" }
+                                            span { class: "muted", if plugin.description.is_empty() { "{plugin.settings.len()} settings" } else { "{plugin.description}" } }
                                         }
                                     }
-                                    span { class: "badge", "Always on" }
-                                    span { class: "switch on locked", role: "img", "aria-label": "Always on", span { class: "knob" } }
+                                    if plugin.required {
+                                        span { class: "badge", "Always on" }
+                                        span { class: "switch on locked", role: "img", "aria-label": "Always on", span { class: "knob" } }
+                                    } else { { let channel = channel.clone(); let id = plugin.id.clone();
+                                        rsx! { PluginSwitch { enabled: plugin.enabled, name: plugin.name.clone(), channel, id } } } }
                                 }
                             } }
                         }
-                        if !snapshot.plugins.iter().any(|plugin| plugin.name.to_lowercase().contains(&needle)) {
+                        if !snapshot.plugins.iter().any(|plugin| matches_query(plugin, &needle)) {
                             p { class: "empty", "No plugins match “{query}”." }
                         }
                     }
                 }
             } }
         }
+    }
+}
+
+/// Whether a card matches the search box: name, summary or source tags, case-insensitively.
+fn matches_query(plugin: &crate::PluginPanel, needle: &str) -> bool {
+    needle.is_empty()
+        || plugin.name.to_lowercase().contains(needle)
+        || plugin.description.to_lowercase().contains(needle)
+        || plugin
+            .tags
+            .iter()
+            .any(|tag| tag.to_lowercase().contains(needle))
+}
+
+/// The on/off switch of an optional plugin; it edits the plugin's `enabled` setting like any other.
+#[component]
+fn PluginSwitch(enabled: bool, name: String, channel: ShellChannel, id: String) -> Element {
+    rsx! {
+        Switch { value: enabled, disabled: false, label: format!("Enable {name}"),
+            onchange: move |value| channel.send(ShellAction::Configure {
+                plugin: id.clone(),
+                key: ENABLED_KEY.to_owned(),
+                value: ConfigValue::Boolean(value),
+            }) }
     }
 }
 
@@ -207,6 +246,12 @@ fn SettingControl(row: SettingView, plugin: String, channel: ShellChannel) -> El
                 },
                 (Control::Font, ConfigValue::Font(value)) => rsx! {
                     FontControl { value: value.clone(), disabled, onchange: move |value| emit.call(ConfigValue::Font(value)) }
+                },
+                (Control::Text { max_len }, ConfigValue::Text(value)) => rsx! {
+                    TextControl { max_len: *max_len, value: value.clone(), disabled, onchange: move |value| emit.call(ConfigValue::Text(value)) }
+                },
+                (Control::Decimal { min, max }, ConfigValue::Decimal(value)) => rsx! {
+                    DecimalControl { min: *min, max: *max, value: *value, disabled, onchange: move |value| emit.call(ConfigValue::Decimal(value)) }
                 },
                 (Control::Boolean, ConfigValue::Boolean(_)) => rsx! {},
                 _ => rsx! { span { class: "value", "{row.value:?}" } },
@@ -442,5 +487,129 @@ fn FontControl(value: Font, disabled: bool, onchange: EventHandler<Font>) -> Ele
             button { class: if value.italic { "style-toggle italic on" } else { "style-toggle italic" }, "aria-pressed": "{value.italic}", "aria-label": "Italic", disabled: disabled.then_some(true),
                 onclick: move |_| onchange.call(Font { italic: !italic_value.italic, ..italic_value.clone() }), "I" }
         }
+    }
+}
+
+/// Free text, committed on every edit; over-long or control-character input keeps its draft visible and invalid.
+#[component]
+fn TextControl(
+    max_len: usize,
+    value: String,
+    disabled: bool,
+    onchange: EventHandler<String>,
+) -> Element {
+    let mut draft = use_signal(|| None::<String>);
+    let text = draft.read().clone().unwrap_or_else(|| value.clone());
+    let invalid = draft.read().is_some();
+    rsx! {
+        div { class: "text",
+            input { class: if invalid { "text-input invalid" } else { "text-input" }, r#type: "text", value: "{text}", disabled: disabled.then_some(true),
+                "aria-label": "Value", "aria-invalid": "{invalid}",
+                oninput: move |event| {
+                    let entered = event.value();
+                    if entered.len() <= max_len && !entered.chars().any(|c| c.is_control() && c != '\n') {
+                        draft.set(None);
+                        onchange.call(entered);
+                    } else {
+                        draft.set(Some(entered));
+                    }
+                } }
+        }
+    }
+}
+
+/// `1500` thousandths shown as `1.5`; a draft that is not a number within range stays visible and invalid.
+fn format_decimal(thousandths: i32) -> String {
+    let sign = if thousandths < 0 { "-" } else { "" };
+    let magnitude = thousandths.unsigned_abs();
+    let (whole, fraction) = (magnitude / 1000, magnitude % 1000);
+    if fraction == 0 {
+        format!("{sign}{whole}")
+    } else {
+        format!("{sign}{whole}.{fraction:03}")
+            .trim_end_matches('0')
+            .to_owned()
+    }
+}
+
+fn parse_decimal(text: &str) -> Option<i32> {
+    let text = text.trim();
+    let (negative, digits) = text
+        .strip_prefix('-')
+        .map_or((false, text), |rest| (true, rest));
+    let (whole, fraction) = digits.split_once('.').unwrap_or((digits, ""));
+    if whole.is_empty() && fraction.is_empty()
+        || fraction.len() > 3
+        || !whole
+            .chars()
+            .chain(fraction.chars())
+            .all(|c| c.is_ascii_digit())
+    {
+        return None;
+    }
+    let whole: i64 = if whole.is_empty() {
+        0
+    } else {
+        whole.parse().ok()?
+    };
+    let fraction: i64 = format!("{fraction:0<3}").parse().ok()?;
+    let value = whole.checked_mul(1000)?.checked_add(fraction)?;
+    i32::try_from(if negative { -value } else { value }).ok()
+}
+
+#[component]
+fn DecimalControl(
+    min: i32,
+    max: i32,
+    value: i32,
+    disabled: bool,
+    onchange: EventHandler<i32>,
+) -> Element {
+    let mut draft = use_signal(|| None::<String>);
+    let text = draft
+        .read()
+        .clone()
+        .unwrap_or_else(|| format_decimal(value));
+    let invalid = draft.read().is_some();
+    rsx! {
+        div { class: "decimal",
+            input { class: if invalid { "number-input invalid" } else { "number-input" }, r#type: "text", value: "{text}", disabled: disabled.then_some(true),
+                "aria-label": "Value", "aria-invalid": "{invalid}",
+                oninput: move |event| {
+                    let entered = event.value();
+                    match parse_decimal(&entered) {
+                        Some(parsed) if (min..=max).contains(&parsed) => { draft.set(None); onchange.call(parsed); }
+                        _ => draft.set(Some(entered)),
+                    }
+                } }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{format_decimal, parse_decimal};
+
+    #[test]
+    fn decimals_round_trip_through_thousandths() {
+        for (text, value) in [
+            ("1", 1000),
+            ("1.5", 1500),
+            ("0.025", 25),
+            ("-2.5", -2500),
+            ("2", 2000),
+            (".5", 500),
+        ] {
+            assert_eq!(parse_decimal(text), Some(value), "{text}");
+        }
+        for value in [0, 1000, 1500, 25, -2500, 123_456] {
+            assert_eq!(parse_decimal(&format_decimal(value)), Some(value));
+        }
+        for bad in ["", ".", "-", "1.2345", "a", "1e3", "--1", "99999999999"] {
+            assert_eq!(parse_decimal(bad), None, "{bad}");
+        }
+        assert_eq!(format_decimal(1500), "1.5");
+        assert_eq!(format_decimal(-2500), "-2.5");
+        assert_eq!(format_decimal(25), "0.025");
     }
 }

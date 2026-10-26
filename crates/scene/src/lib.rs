@@ -31,7 +31,9 @@ mod mesh;
 mod picking;
 mod roofs;
 pub use picking::{SurfaceHit, pick_surface, pick_terrain};
-pub use roofs::RoofView;
+pub use roofs::{
+    ROOF_SLOTS, RoofArea, RoofMask, RoofModes, RoofTargets, RoofView, RoofVisibility, RoofVolumes,
+};
 mod shapes;
 mod terrain;
 mod uv;
@@ -58,7 +60,16 @@ pub struct SceneAsset {
     /// `ObjectComposition.floor_lift` of each tile's floor decoration, keyed by the plane the
     /// client files the decoration under (bridge decks sit one plane lower) and world tile.
     floor_lifts: std::collections::HashMap<(u8, i32, i32), u8>,
+    /// Roof regions of each plane, derived from the tile settings at load.
+    roofs: std::sync::Arc<roofs::RoofVolumes>,
+    /// The roof regions last requested with area overrides, so repeated builds share them.
+    roof_overrides: std::sync::Mutex<Option<OverriddenRoofs>>,
 }
+/// Roof areas a scene was last asked to honour, with the regions built from them.
+type OverriddenRoofs = (
+    std::sync::Arc<[RoofArea]>,
+    std::sync::Arc<roofs::RoofVolumes>,
+);
 /// Shape code of a floor decoration, the client's "ground object".
 const FLOOR_DECORATION: u8 = 22;
 impl SceneAsset {
@@ -82,6 +93,8 @@ impl SceneAsset {
             descriptor,
             assets,
             floor_lifts: std::collections::HashMap::new(),
+            roofs: std::sync::Arc::default(),
+            roof_overrides: std::sync::Mutex::new(None),
         };
         for x in 0..=width {
             for y in 0..=height {
@@ -100,7 +113,56 @@ impl SceneAsset {
             }
         }
         this.index_floor_lifts();
+        this.index_roofs();
         Ok(this)
+    }
+    /// Number the roof regions of every plane (`roofs::RoofVolumes`) from the tile flags.
+    fn index_roofs(&mut self) {
+        self.roofs = std::sync::Arc::new(self.build_roofs(&[]));
+    }
+    fn build_roofs(&self, areas: &[RoofArea]) -> roofs::RoofVolumes {
+        let origin = self.descriptor.origin();
+        let width = self.descriptor.width() as usize;
+        let height = self.descriptor.height() as usize;
+        roofs::RoofVolumes::build(width, height, |plane, x, y| {
+            let (Ok(plane), Ok(x), Ok(y)) =
+                (u8::try_from(plane), i32::try_from(x), i32::try_from(y))
+            else {
+                return false;
+            };
+            let (wx, wy) = (origin.x + x, origin.y + y);
+            Plane::new(plane)
+                .and_then(|plane| self.tile(plane, wx, wy))
+                .is_some_and(|tile| tile.settings & roofs::ROOF != 0)
+                || areas.iter().any(|area| area.contains(plane, wx, wy))
+        })
+    }
+    /// The roof regions with `areas` forced roofed on top of the tile flags.
+    ///
+    /// The result is cached for the most recent area set, so the static and animated meshes of
+    /// one projection share one flood fill.
+    pub fn roofs_with(
+        &self,
+        areas: &std::sync::Arc<[RoofArea]>,
+    ) -> std::sync::Arc<roofs::RoofVolumes> {
+        if areas.is_empty() {
+            return std::sync::Arc::clone(&self.roofs);
+        }
+        let mut cache = self
+            .roof_overrides
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        if let Some((have, volumes)) = cache.as_ref()
+            && **have == **areas
+        {
+            return std::sync::Arc::clone(volumes);
+        }
+        let volumes = std::sync::Arc::new(self.build_roofs(areas));
+        *cache = Some((
+            std::sync::Arc::clone(areas),
+            std::sync::Arc::clone(&volumes),
+        ));
+        volumes
     }
     fn index_floor_lifts(&mut self) {
         let mut lifts = std::collections::HashMap::new();

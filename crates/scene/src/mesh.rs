@@ -7,7 +7,8 @@ pub struct SceneVertex {
     /// XYZ fine units; W retains the authored face priority for CPU ordering.
     pub position: [i16; 4],
     pub abhsl: u32,
-    /// Texture+1, signed 8.8 U and V, and the tile render level (see [`SceneVertex::render_level`]).
+    /// Texture+1, signed 8.8 U and V, and the render tag: the tile render level in the low two
+    /// bits and the roof slot above them (see [`SceneVertex::render_level`]).
     pub texture_uv: [u16; 4],
 }
 impl SceneVertex {
@@ -15,7 +16,19 @@ impl SceneVertex {
     /// are culled when the frame's top level (see `roofs::top_level`) is below it.
     #[must_use]
     pub fn render_level(&self) -> u8 {
-        u8::try_from(self.texture_uv[3]).unwrap_or(u8::MAX)
+        u8::try_from(self.texture_uv[3] & 3).unwrap_or(u8::MAX)
+    }
+
+    /// The roof this vertex belongs to (`roofs::RoofVolumes`), 0 when it is not part of one.
+    #[must_use]
+    pub fn roof_slot(&self) -> u16 {
+        self.texture_uv[3] >> 2
+    }
+
+    /// Packed render tag, see [`SceneVertex::texture_uv`].
+    #[must_use]
+    pub fn render_tag(&self) -> u16 {
+        self.texture_uv[3]
     }
 }
 #[derive(Debug, Clone, Copy, Default)]
@@ -68,6 +81,9 @@ pub struct WorldMesh {
     pub focus: [f32; 3],
     pub stats: SceneStats,
     pub textures: std::collections::BTreeMap<TextureId, rustclient_cache::world::TextureAsset>,
+    /// The roof regions this mesh's vertices are tagged with; the line-of-sight cut and the
+    /// per-roof hiding must read the same regions.
+    pub roofs: std::sync::Arc<crate::RoofVolumes>,
 }
 impl SceneGeometry {
     /// Empty every list but keep allocations for per-cycle rebuilds.
@@ -85,7 +101,7 @@ impl SceneGeometry {
         colors: [i32; 3],
         uv: [[f32; 2]; 3],
         face: rustclient_cache::world::ModelFace,
-        level: u8,
+        tag: u16,
     ) -> Result<()> {
         if face.priority > 11 {
             return Err(SceneError("face priority outside 0..11".into()));
@@ -96,7 +112,7 @@ impl SceneGeometry {
         } else {
             face.alpha.cast_unsigned()
         };
-        self.triangle(points, colors, face.texture, uv, alpha, face.bias, level)?;
+        self.triangle(points, colors, face.texture, uv, alpha, face.bias, tag)?;
         for vertex in &mut self.vertices[first..] {
             vertex.position[3] = i16::from(face.priority);
         }
@@ -118,7 +134,7 @@ impl SceneGeometry {
         uv: [[f32; 2]; 3],
         alpha: u8,
         bias: i8,
-        level: u8,
+        tag: u16,
     ) -> Result<bool> {
         if self.vertices.len() + 3 > 3_000_000 {
             return Err(SceneError("scene vertex allocation limit exceeded".into()));
@@ -148,12 +164,7 @@ impl SceneGeometry {
                 | (u32::from(bias.cast_unsigned()) << 16)
                 | (colors[i].cast_unsigned() & 65535);
             let [u, v] = uv[i].map(|v| ((v * 256.) as i32).clamp(-32768, 32767) as i16);
-            vertices[i].texture_uv = [
-                texture,
-                u.cast_unsigned(),
-                v.cast_unsigned(),
-                u16::from(level),
-            ];
+            vertices[i].texture_uv = [texture, u.cast_unsigned(), v.cast_unsigned(), tag];
         }
         let dest = if alpha != 0 {
             &mut self.transparent
@@ -204,10 +215,11 @@ pub fn build_mesh_with_inputs(
         ],
         stats: SceneStats::default(),
         textures: asset.assets.textures.clone(),
+        roofs: asset.roofs_with(&inputs.roof_areas),
     };
     super::terrain::build(asset, &mut mesh, inputs)?;
     super::locations::build(asset, &mut mesh, inputs, false)?;
-    let mut dynamic = empty_mesh(asset, mesh.focus);
+    let mut dynamic = empty_mesh(asset, mesh.focus, std::sync::Arc::clone(&mesh.roofs));
     super::locations::build(asset, &mut dynamic, inputs, true)?;
     mesh.stats.model_triangles += dynamic.stats.model_triangles;
     mesh.stats.locations += dynamic.stats.locations;
@@ -239,7 +251,25 @@ pub(crate) fn render_level(asset: &SceneAsset, source: Plane, x: i32, y: i32) ->
     }
 }
 
-fn empty_mesh(asset: &SceneAsset, focus: [f32; 3]) -> WorldMesh {
+/// The packed vertex render tag of geometry standing on `source` at world tile `(x, y)`: the
+/// render level of [`render_level`] in the low two bits and the covering roof slot above them.
+pub(crate) fn render_tag(
+    asset: &SceneAsset,
+    roofs: &crate::RoofVolumes,
+    source: Plane,
+    x: i32,
+    y: i32,
+) -> u16 {
+    let origin = asset.descriptor().origin();
+    let slot = roofs.covering(source, x - origin.x, y - origin.y);
+    u16::from(render_level(asset, source, x, y)) | (slot << 2)
+}
+
+fn empty_mesh(
+    asset: &SceneAsset,
+    focus: [f32; 3],
+    roofs: std::sync::Arc<crate::RoofVolumes>,
+) -> WorldMesh {
     WorldMesh {
         asset: asset.descriptor.id(),
         geometry: SceneGeometry::default(),
@@ -247,13 +277,14 @@ fn empty_mesh(asset: &SceneAsset, focus: [f32; 3]) -> WorldMesh {
         focus,
         stats: SceneStats::default(),
         textures: std::collections::BTreeMap::default(),
+        roofs,
     }
 }
 /// Extract only posed/morphing locations for the explicit committed cycle.
 /// # Errors
 /// Returns missing pose/model dependencies and extraction errors.
 pub fn build_dynamic(asset: &SceneAsset, inputs: &crate::SceneryInputs) -> Result<SceneGeometry> {
-    let mut mesh = empty_mesh(asset, [0.; 3]);
+    let mut mesh = empty_mesh(asset, [0.; 3], asset.roofs_with(&inputs.roof_areas));
     super::locations::build(asset, &mut mesh, inputs, true)?;
     Ok(mesh.geometry)
 }

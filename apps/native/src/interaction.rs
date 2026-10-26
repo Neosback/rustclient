@@ -93,13 +93,13 @@ impl NativeApp {
                 let Some((origin, direction)) = self.world_ray(window, x, y) else {
                     return Ok(false);
                 };
-                let top_level = self.roof_top_level(window);
+                let visibility = self.roof_visibility(window);
                 let Some(tile) = rustclient_scene::pick_terrain(
                     &loaded.mesh,
                     scene,
                     origin,
                     direction,
-                    top_level,
+                    &visibility,
                 ) else {
                     return Ok(false);
                 };
@@ -190,14 +190,14 @@ impl NativeApp {
             return None;
         }
         let (origin, direction) = self.world_ray(window, x, y)?;
-        let top_level = self.roof_top_level(window);
+        let visibility = self.roof_visibility(window);
         let hit =
-            rustclient_scene::pick_surface(&loaded.mesh.geometry, origin, direction, top_level);
+            rustclient_scene::pick_surface(&loaded.mesh.geometry, origin, direction, &visibility);
         // Static scenery wins exact ties, matching the previous two-way comparison.
         let overlays = [&loaded.mesh.dynamic, &self.scene.entity_geometry]
             .into_iter()
             .filter_map(|geometry| {
-                rustclient_scene::pick_surface(geometry, origin, direction, top_level)
+                rustclient_scene::pick_surface(geometry, origin, direction, &visibility)
             });
         hit.into_iter()
             .chain(overlays)
@@ -240,16 +240,14 @@ impl NativeApp {
             CameraViewport::new(bounds.width as i32, bounds.height as i32).with_settings(settings);
         Some((camera, bounds, viewport))
     }
-    /// Highest tile render level drawn this frame: the roof line-of-sight rule, or the player's
-    /// plane when the "hide roofs" game option is on. Every level draws before a player exists.
-    pub(super) fn roof_top_level(&self, window: &Window) -> u8 {
-        const ALL_LEVELS: u8 = 3;
+    /// The roof line-of-sight inputs for this frame, once a scene and a player exist.
+    fn roof_view(&self, window: &Window) -> Option<rustclient_scene::RoofView> {
         let (Some(loaded), Some((camera, _, viewport)), Some(player)) = (
             self.scene.loaded.as_ref(),
             self.world_camera(window),
             self.state.entities().local_player(),
         ) else {
-            return ALL_LEVELS;
+            return None;
         };
         let origin = loaded.asset.descriptor().origin();
         let corner = self
@@ -258,7 +256,7 @@ impl NativeApp {
             .player(player.index)
             .unwrap_or([player.tile.x * 128, player.tile.y * 128]);
         let eye = camera.pose(viewport).position;
-        rustclient_scene::RoofView {
+        Some(rustclient_scene::RoofView {
             plane: player.tile.plane,
             subject: [
                 corner[0] - origin.x * 128 + 64,
@@ -273,8 +271,60 @@ impl NativeApp {
                 .get(&rustclient_model::ClientSetting::RoofsHidden)
                 .copied()
                 .unwrap_or(false),
+        })
+    }
+    /// What the scene draws this frame: the roof line-of-sight cut (or the player's plane when
+    /// the "hide roofs" game option is on) plus the roofs plugins asked to hide. Every level
+    /// draws before a player exists.
+    pub(super) fn roof_visibility(&self, window: &Window) -> rustclient_scene::RoofVisibility {
+        let (Some(loaded), Some(view)) = (self.scene.loaded.as_ref(), self.roof_view(window))
+        else {
+            return rustclient_scene::RoofVisibility::everything();
+        };
+        let origin = loaded.asset.descriptor().origin();
+        let local = |x: i32, y: i32| [x - origin.x, y - origin.y];
+        let modes = rustclient_scene::RoofModes(self.plugins.output().scene.roofs.bits());
+        rustclient_scene::RoofVisibility {
+            top_level: view.top_level(&loaded.mesh.roofs),
+            hidden: view.hidden(
+                &loaded.mesh.roofs,
+                modes,
+                rustclient_scene::RoofTargets {
+                    hovered: self.roof_hover,
+                    destination: self.state.destination().map(|d| local(d.x, d.y)),
+                },
+            ),
         }
-        .top_level(&loaded.asset)
+    }
+    /// Track the tile under the pointer for the hovered-roof mode.
+    ///
+    /// The pick ignores hidden roofs on purpose: pointing at a roof is what asks for it to go.
+    pub(super) fn update_roof_hover(&mut self, window: &Window) {
+        let wanted = self
+            .plugins
+            .output()
+            .scene
+            .roofs
+            .contains(rustclient_plugin_api::RoofModes::HOVERED);
+        let hovered = if wanted
+            && let Some(loaded) = &self.scene.loaded
+            && let Some((x, y)) = self.cursor
+            && let (x, y) = self.ui_pointer(window, x, y)
+            && self.pointer_over_world(x, y)
+            && let Some((origin, direction)) = self.world_ray(window, x, y)
+        {
+            let descriptor = loaded.asset.descriptor();
+            let base = descriptor.origin();
+            let mut visibility = rustclient_scene::RoofVisibility::everything();
+            visibility.top_level = self
+                .roof_view(window)
+                .map_or(3, |view| view.top_level(&loaded.mesh.roofs));
+            rustclient_scene::pick_terrain(&loaded.mesh, descriptor, origin, direction, &visibility)
+                .map(|tile| [tile.x - base.x, tile.y - base.y])
+        } else {
+            None
+        };
+        self.roof_hover = hovered;
     }
     pub(super) fn send_world_action(
         &mut self,
@@ -375,7 +425,7 @@ impl NativeApp {
                 loaded.asset.descriptor(),
                 origin,
                 direction,
-                self.roof_top_level(window),
+                &self.roof_visibility(window),
             )
         {
             entries.push((
@@ -394,6 +444,7 @@ impl NativeApp {
         if !std::mem::take(&mut self.hover_dirty) {
             return;
         }
+        self.update_roof_hover(window);
         let hover = self.hover_at(window);
         if hover != self.hover {
             self.hover = hover;

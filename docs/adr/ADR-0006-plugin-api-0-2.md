@@ -45,6 +45,14 @@ process; that model is rejected by invariants 1 and 4.
   variable/stat events, widget events, chat, menu.
 - Anything a plugin could do through RuneLite's Java API that this API cannot express must have a ledger row with the
   reason (see `docs/reference/builtin-plugins`).
+- Roof removal is a declarative scene output (`SceneFlags::roofs` mode bits plus `PluginOutput::roof_areas`). The scene
+  crate owns roof regions and their render tags; plugins never see roof ids. A changed area set makes the host rebuild
+  the scene projection, not the plugin mutate tile settings as the injected client allows.
+- `ClientSnapshot::scene_base` is the loaded scene's south-west world tile and `scene_size` its extent, so plugins can
+  resolve map regions as `Scene.getBaseX/Y` and `getMapRegions` would.
+- First-party plugins live in `crates/first-party-plugins`, are native `PluginInstance`s, take settings from
+  schema-driven configuration (`PluginCall::config`) and carry an `enabled` switch (RuneLite `enabledByDefault`).
+  Their schemas are generated from the vendored `*Config.java` by `tools/builtin-plugins/first_party_schemas.py`.
 
 ## Rejected
 

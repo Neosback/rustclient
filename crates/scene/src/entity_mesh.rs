@@ -770,7 +770,7 @@ pub(crate) fn emit_model(
             ]
         });
 
-        geometry.model_triangle(points, face_colors, uv, face, level)?;
+        geometry.model_triangle(points, face_colors, uv, face, u16::from(level))?;
     }
 
     if geometry.vertices.len() > first {

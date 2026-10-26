@@ -29,6 +29,8 @@ pub struct SceneView {
     pub entity_catalog: rustclient_scene::entity_mesh::EntityCatalog,
     pub entity_loader: Option<std::sync::mpsc::Sender<EntityRequest>>,
     pub dynamic_cycle: rustclient_model::ClientCycle,
+    /// Areas plugins force roofed; scenes are projected with these and rebuilt when they change.
+    pub roof_areas: std::sync::Arc<[rustclient_scene::RoofArea]>,
 }
 impl SceneView {
     pub fn new(options: &crate::options::Options) -> Self {
@@ -49,6 +51,7 @@ impl SceneView {
             entity_catalog: rustclient_scene::entity_mesh::EntityCatalog::default(),
             entity_loader: None,
             dynamic_cycle: rustclient_model::ClientCycle::ZERO,
+            roof_areas: std::sync::Arc::default(),
         }
     }
     pub fn scenery_inputs(
@@ -57,6 +60,7 @@ impl SceneView {
     ) -> rustclient_scene::SceneryInputs {
         let mut inputs = rustclient_scene::SceneryInputs::from(state);
         inputs.animations = self.entity_catalog.animation_assets();
+        inputs.roof_areas = std::sync::Arc::clone(&self.roof_areas);
         inputs
     }
     pub fn clear(&mut self) {

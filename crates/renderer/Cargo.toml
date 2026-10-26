@@ -16,5 +16,8 @@ rustclient-cache = { path = "../cache" }
 
 wgpu.workspace = true
 
+[dev-dependencies]
+naga = { version = "30.0.1", default-features = false, features = ["wgsl-in"] }
+
 [lints]
 workspace = true

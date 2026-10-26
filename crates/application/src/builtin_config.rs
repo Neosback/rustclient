@@ -1,9 +1,9 @@
-//! Application ownership and two-phase publication of required-service configuration.
+//! Application ownership and two-phase publication of plugin and required-service configuration.
 use rustclient_platform::{BlobStorage, StorageKey};
 use rustclient_plugin_api::PluginId;
 use rustclient_plugin_host::{
     configuration::{ConfigChanged, ConfigDocument, ConfigSchema, ConfigValue, Configuration},
-    required::schemas,
+    required::all_schemas,
 };
 use std::collections::BTreeMap;
 
@@ -20,7 +20,7 @@ impl BuiltinConfigurations {
     ) -> Result<(Self, Vec<String>), String> {
         let mut configurations = BTreeMap::new();
         let mut diagnostics = Vec::new();
-        for schema in schemas()? {
+        for schema in all_schemas()? {
             let loaded = (|| {
                 let key = Self::key(&schema.plugin)?;
                 let bytes = storage
@@ -49,7 +49,7 @@ impl BuiltinConfigurations {
     /// Reports the namespace and storage/validation cause. The caller can offer explicit recovery.
     pub fn load(storage: Option<&dyn BlobStorage>) -> Result<Self, String> {
         let mut configurations = BTreeMap::new();
-        for schema in schemas()? {
+        for schema in all_schemas()? {
             let key = Self::key(&schema.plugin)?;
             let stored = storage
                 .map(|storage| storage.get(&key))
@@ -91,7 +91,7 @@ impl BuiltinConfigurations {
         let configuration = self
             .configurations
             .get_mut(&id)
-            .ok_or_else(|| format!("unknown required service {id}"))?;
+            .ok_or_else(|| format!("unknown plugin {id}"))?;
         let schema = configuration.schema().clone();
         let storage_key = Self::key(&id)?;
         configuration.change(key, value, |_, candidate| {
@@ -119,7 +119,7 @@ impl BuiltinConfigurations {
         let configuration = self
             .configurations
             .get_mut(&id)
-            .ok_or_else(|| format!("unknown required service {id}"))?;
+            .ok_or_else(|| format!("unknown plugin {id}"))?;
         let schema = configuration.schema().clone();
         let storage_key = Self::key(&id)?;
         configuration.reset(|_, candidate| {

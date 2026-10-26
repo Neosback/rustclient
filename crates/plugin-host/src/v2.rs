@@ -8,7 +8,7 @@ use crate::{HostView, LogSink, PluginCall, PluginSet, PluginStorage};
 use rustclient_plugin_api::{
     CameraCommand, Capability, CapabilitySet, ChatLine, EntityVisibility, GameEvent, GameSnapshot,
     InfoBox, ItemStack, LayeredOverlay, LogLevel, MenuEdit, Notification, OverlayCommand,
-    PlayerPosition, PlayerSnapshot, PluginId, PluginOutput, RoofRemoval, SceneFlags, SkillLevel,
+    PlayerPosition, PlayerSnapshot, PluginId, PluginOutput, RoofArea, SceneFlags, SkillLevel,
     SpriteOverride, Stretch, WidgetSnapshot, limits,
 };
 use std::collections::BTreeSet;
@@ -184,6 +184,8 @@ pub struct HostOutput {
     pub camera: Vec<CameraCommand>,
     /// Merged scene flags.
     pub scene: SceneFlags,
+    /// Union of every plugin's forced-roof areas.
+    pub roof_areas: Vec<RoofArea>,
     /// Stretch request; the last plugin that sets one wins.
     pub stretch: Option<Stretch>,
 }
@@ -216,9 +218,10 @@ impl HostOutput {
         }
         self.camera.extend(output.camera);
         if let Some(scene) = output.scene {
-            self.scene.roofs = stronger_roof(self.scene.roofs, scene.roofs);
+            self.scene.roofs = self.scene.roofs.union(scene.roofs);
             self.scene.smoothing = self.scene.smoothing.union(scene.smoothing);
         }
+        self.roof_areas.extend(output.roof_areas);
         if output.stretch.is_some() {
             self.stretch = output.stretch;
         }
@@ -226,18 +229,9 @@ impl HostOutput {
 
     fn finish(&mut self) {
         self.overlay.sort_by_key(|item| item.layer);
+        self.roof_areas.sort_unstable();
+        self.roof_areas.dedup();
     }
-}
-
-const fn stronger_roof(a: RoofRemoval, b: RoofRemoval) -> RoofRemoval {
-    const fn rank(roof: RoofRemoval) -> u8 {
-        match roof {
-            RoofRemoval::Off => 0,
-            RoofRemoval::AbovePlayer => 1,
-            RoofRemoval::All => 2,
-        }
-    }
-    if rank(b) > rank(a) { b } else { a }
 }
 
 fn truncate(text: &mut String, max: usize) {
@@ -248,6 +242,27 @@ fn truncate(text: &mut String, max: usize) {
         }
         text.truncate(end);
     }
+}
+
+/// Clamp camera requests to what the camera can do and drop the ones that make no sense.
+fn bound_camera(commands: Vec<CameraCommand>) -> Vec<CameraCommand> {
+    commands
+        .into_iter()
+        .take(limits::CAMERA_COMMANDS)
+        .filter_map(|command| match command {
+            CameraCommand::YawTarget(yaw) => Some(CameraCommand::YawTarget(yaw.rem_euclid(2048))),
+            CameraCommand::PitchTarget(pitch) => {
+                Some(CameraCommand::PitchTarget(pitch.clamp(128, 383)))
+            }
+            CameraCommand::Speed(speed) => speed
+                .is_finite()
+                .then(|| CameraCommand::Speed(speed.clamp(0.1, 10.0))),
+            CameraCommand::ZoomLimits { min, max } => {
+                (min <= max).then_some(CameraCommand::ZoomLimits { min, max })
+            }
+            other => Some(other),
+        })
+        .collect()
 }
 
 /// Bound one plugin's output and strip everything its grants do not cover.
@@ -332,28 +347,21 @@ pub(crate) fn validate(
     if refuse(Capability::CameraControl, !output.camera.is_empty()) {
         output.camera.clear();
     }
-    output.camera.truncate(limits::CAMERA_COMMANDS);
-    output.camera = output
-        .camera
-        .into_iter()
-        .filter_map(|command| match command {
-            CameraCommand::YawTarget(yaw) => Some(CameraCommand::YawTarget(yaw.rem_euclid(2048))),
-            CameraCommand::PitchTarget(pitch) => {
-                Some(CameraCommand::PitchTarget(pitch.clamp(128, 383)))
-            }
-            CameraCommand::Speed(speed) => speed
-                .is_finite()
-                .then(|| CameraCommand::Speed(speed.clamp(0.1, 10.0))),
-            CameraCommand::ZoomLimits { min, max } => {
-                (min <= max).then_some(CameraCommand::ZoomLimits { min, max })
-            }
-            other => Some(other),
-        })
-        .collect();
+    output.camera = bound_camera(output.camera);
 
     if refuse(Capability::SceneControl, output.scene.is_some()) {
         output.scene = None;
     }
+    if refuse(Capability::SceneControl, !output.roof_areas.is_empty()) {
+        output.roof_areas.clear();
+    }
+    output.roof_areas.truncate(limits::ROOF_AREAS);
+    output.roof_areas.retain(|area| {
+        area.min.0 <= area.max.0
+            && area.min.1 <= area.max.1
+            && area.planes.0 <= area.planes.1
+            && area.planes.1 <= 3
+    });
     if refuse(Capability::UiViewport, output.stretch.is_some()) {
         output.stretch = None;
     }

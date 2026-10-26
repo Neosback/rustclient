@@ -94,6 +94,8 @@ struct NativeApp {
     context_menu: rustclient_game_ui::ContextMenu<interaction::WorldChoice>,
     click_cross: Option<(Instant, interaction::CrossKind, f32, f32)>,
     hover: Option<interaction::HoverText>,
+    /// Scene-local tile under the pointer, tracked while a plugin asks for hovered-roof removal.
+    roof_hover: Option<[i32; 2]>,
     hover_dirty: bool,
     /// Set once the game interface has been drawn this session; cleared on disconnect.
     entered_world: bool,
@@ -180,6 +182,45 @@ impl NativeApp {
         };
         self.plugins.update(&self.state, &inputs);
     }
+    /// Follow the roof areas plugins ask for, rebuilding the scene's roofs when they change.
+    fn sync_roof_areas(&mut self) {
+        let wanted: std::sync::Arc<[rustclient_scene::RoofArea]> = self
+            .plugins
+            .output()
+            .roof_areas
+            .iter()
+            .map(|area| rustclient_scene::RoofArea {
+                min: [area.min.0, area.min.1],
+                max: [area.max.0, area.max.1],
+                planes: [area.planes.0, area.planes.1],
+            })
+            .collect();
+        if wanted != self.scene.roof_areas {
+            self.scene.roof_areas = wanted;
+        }
+        if self.scene.loading {
+            return;
+        }
+        let Some(loaded) = &self.scene.loaded else {
+            return;
+        };
+        if loaded.projection_inputs.roof_areas == self.scene.roof_areas {
+            return;
+        }
+        let (Some(placement), asset) = (self.state.initial_placement(), loaded.asset.clone())
+        else {
+            return;
+        };
+        if let Err(error) = self.scene.reproject(
+            asset,
+            placement,
+            self.scene.scenery_inputs(self.state.scenery()),
+            self.scene.generation,
+            self.proxy.clone(),
+        ) {
+            eprintln!("roof projection: {error}");
+        }
+    }
     fn new(
         options: &options::Options,
         proxy: winit::event_loop::EventLoopProxy<LoadEvent>,
@@ -203,7 +244,7 @@ impl NativeApp {
             .unwrap_or_default();
         let mut ui = TitleUi::new(preferences.clone());
         ui.set_online(options.connection.is_some());
-        let plugins = plugins::Plugins::load(
+        let mut plugins = plugins::Plugins::load(
             &options.plugins_dir,
             &options.preferences_dir.join("plugin-data"),
         );
@@ -212,6 +253,7 @@ impl NativeApp {
                 .as_ref()
                 .map(|store| store as &dyn rustclient_platform::BlobStorage),
         )?;
+        plugins.sync(shell.configurations());
         Ok(Self {
             shell,
             performance: performance::Performance::new(),
@@ -230,6 +272,7 @@ impl NativeApp {
             context_menu: rustclient_game_ui::ContextMenu::default(),
             click_cross: None,
             hover: None,
+            roof_hover: None,
             hover_dirty: false,
             entered_world: false,
             widget_menu: rustclient_game_ui::ContextMenu::default(),
@@ -333,6 +376,7 @@ impl NativeApp {
         self.entered_world = false;
         self.widget_pointer = widget_pointer::WidgetPointer::default();
         self.hover = None;
+        self.roof_hover = None;
         self.hover_dirty = true;
         self.click_cross = None;
         self.reported_window = None;
@@ -537,13 +581,13 @@ impl NativeApp {
                         }
                     }
                 }
-                let top_level = self.roof_top_level(&window);
+                let visibility = self.roof_visibility(&window);
                 actor_overlays::project(
                     &self.scene,
                     &self.state,
                     assets,
                     &mut self.frame,
-                    top_level,
+                    visibility.top_level,
                 );
                 interaction::project_pointer_overlays(
                     &mut self.frame,
@@ -688,7 +732,7 @@ impl NativeApp {
                     &mut self.frame,
                 );
             }
-            let top_level = self.roof_top_level(&window);
+            let visibility = self.roof_visibility(&window);
             self.renderer.as_mut().map(|renderer| {
                 if let (Some(descriptor), Some(camera)) =
                     (self.state.loaded_scene(), self.scene.camera)
@@ -696,7 +740,7 @@ impl NativeApp {
                     return renderer.render_world(
                         descriptor.id(),
                         camera,
-                        top_level,
+                        &visibility,
                         self.state.scenery().cycle(),
                         &self.frame,
                         rustclient_renderer::DynamicImages {
@@ -1235,6 +1279,7 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                     .as_ref()
                     .map(|store| store as &dyn rustclient_platform::BlobStorage),
             );
+            self.plugins.sync(self.shell.configurations());
             window.request_redraw();
             return;
         }
@@ -1314,6 +1359,7 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                 self.cursor = None;
                 self.ui.clear_hover();
                 self.hover = None;
+                self.roof_hover = None;
                 self.hover_dirty = true;
                 window.request_redraw();
             }
@@ -1616,6 +1662,7 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                 self.flush_script_intents();
                 self.plugins.advance(&self.state, steps);
                 self.update_plugins();
+                self.sync_roof_areas();
             }
             if now >= self.next_step {
                 self.next_step = now + STEP;

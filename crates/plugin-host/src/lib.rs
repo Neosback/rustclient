@@ -13,6 +13,7 @@ pub mod configuration;
 pub mod required;
 mod v2;
 
+pub use configuration::PluginConfig;
 pub use v2::{CapabilityDenied, HostOutput, SnapshotView};
 
 use rustclient_plugin_api::{
@@ -189,6 +190,8 @@ pub struct PluginCall<'a> {
     pub storage: &'a mut dyn PluginStorage,
     /// Diagnostic sink.
     pub logs: &'a mut dyn LogSink,
+    /// Effective settings of this plugin, defaults applied.
+    pub config: &'a PluginConfig,
     /// Capabilities already reported as denied, so diagnostics are not repeated every call.
     denied: &'a mut BTreeSet<Capability>,
 }
@@ -303,6 +306,7 @@ pub struct LoadedPlugin {
     faults: u32,
     enabled: bool,
     required: bool,
+    config: PluginConfig,
     denied: BTreeSet<Capability>,
 }
 
@@ -384,8 +388,55 @@ impl PluginSet {
             faults: 0,
             enabled: true,
             required: false,
+            config: PluginConfig::default(),
             denied: BTreeSet::new(),
         });
+        Ok(())
+    }
+
+    /// Replace a plugin's effective settings and switch it on or off.
+    ///
+    /// A plugin that becomes enabled is initialized again so it starts from a clean state. A
+    /// plugin the host disabled after repeated faults is only re-enabled by this call.
+    ///
+    /// # Errors
+    /// Unknown plugins, and attempts to disable a required service.
+    pub fn configure(
+        &mut self,
+        id: &PluginId,
+        config: PluginConfig,
+        enabled: bool,
+        view: &dyn HostView,
+        storage: &mut dyn PluginStorage,
+        logs: &mut dyn LogSink,
+    ) -> Result<(), PluginFault> {
+        let index = self
+            .plugins
+            .iter()
+            .position(|plugin| plugin.manifest.id == *id)
+            .ok_or_else(|| PluginFault::new(FaultKind::Contract, format!("unknown plugin {id}")))?;
+        let fault_limit = self.fault_limit;
+        let plugin = &mut self.plugins[index];
+        if plugin.required && !enabled {
+            return Err(PluginFault::new(
+                FaultKind::Contract,
+                format!("{id} is required"),
+            ));
+        }
+        let turned_on = enabled && !plugin.enabled;
+        plugin.config = config;
+        plugin.enabled = enabled;
+        if turned_on {
+            plugin.faults = 0;
+            let _ = Self::invoke(
+                plugin,
+                view,
+                storage,
+                logs,
+                fault_limit,
+                |instance, call| instance.init(call),
+            );
+        }
         Ok(())
     }
 
@@ -493,6 +544,7 @@ impl PluginSet {
                 manifest,
                 instance,
                 denied,
+                config,
                 ..
             } = plugin;
             let mut call = PluginCall {
@@ -501,6 +553,7 @@ impl PluginSet {
                 view,
                 storage,
                 logs,
+                config,
                 denied,
             };
             action(instance.as_mut(), &mut call)

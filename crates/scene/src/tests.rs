@@ -621,28 +621,61 @@ fn roof_view(subject: (i32, i32), camera: (i32, i32), pitch: u16) -> RoofView {
 fn roofs_show_unless_a_roofed_tile_sits_on_the_camera_line_or_under_the_player() {
     let scene = roof_scene(&[(5, 5)]);
     // Looking down a clear line from a steep pitch shows everything, roofs included.
-    assert_eq!(roof_view((8, 5), (2, 5), 320).top_level(&scene), 3);
+    assert_eq!(
+        roof_view((8, 5), (2, 5), 320).top_level(&scene.roofs_with(&std::sync::Arc::default())),
+        3
+    );
     // Standing under the roof cuts the scene at the player's plane at any pitch.
-    assert_eq!(roof_view((5, 5), (5, 2), 383).top_level(&scene), 0);
+    assert_eq!(
+        roof_view((5, 5), (5, 2), 383).top_level(&scene.roofs_with(&std::sync::Arc::default())),
+        0
+    );
     // A roofed tile between the camera and the player cuts it, but only at a shallow pitch.
-    assert_eq!(roof_view((8, 5), (2, 5), 200).top_level(&scene), 0);
-    assert_eq!(roof_view((8, 5), (2, 5), 310).top_level(&scene), 3);
+    assert_eq!(
+        roof_view((8, 5), (2, 5), 200).top_level(&scene.roofs_with(&std::sync::Arc::default())),
+        0
+    );
+    assert_eq!(
+        roof_view((8, 5), (2, 5), 310).top_level(&scene.roofs_with(&std::sync::Arc::default())),
+        3
+    );
     // The camera tile itself counts, and so do tiles the diagonal walk crosses.
-    assert_eq!(roof_view((9, 9), (5, 5), 200).top_level(&scene), 0);
-    assert_eq!(roof_view((9, 9), (3, 3), 200).top_level(&scene), 0);
-    assert_eq!(roof_view((9, 2), (2, 2), 200).top_level(&scene), 3);
+    assert_eq!(
+        roof_view((9, 9), (5, 5), 200).top_level(&scene.roofs_with(&std::sync::Arc::default())),
+        0
+    );
+    assert_eq!(
+        roof_view((9, 9), (3, 3), 200).top_level(&scene.roofs_with(&std::sync::Arc::default())),
+        0
+    );
+    assert_eq!(
+        roof_view((9, 2), (2, 2), 200).top_level(&scene.roofs_with(&std::sync::Arc::default())),
+        3
+    );
     // A camera outside the scene falls back to the player's plane.
-    assert_eq!(roof_view((8, 5), (-3, 5), 200).top_level(&scene), 0);
+    assert_eq!(
+        roof_view((8, 5), (-3, 5), 200).top_level(&scene.roofs_with(&std::sync::Arc::default())),
+        0
+    );
 }
 #[test]
 fn hide_roofs_option_always_caps_the_scene_at_the_player_plane() {
     let scene = roof_scene(&[]);
     let mut view = roof_view((8, 5), (2, 5), 383);
-    assert_eq!(view.top_level(&scene), 3);
+    assert_eq!(
+        view.top_level(&scene.roofs_with(&std::sync::Arc::default())),
+        3
+    );
     view.roofs_hidden = true;
-    assert_eq!(view.top_level(&scene), 0);
+    assert_eq!(
+        view.top_level(&scene.roofs_with(&std::sync::Arc::default())),
+        0
+    );
     view.plane = Plane::new(2).unwrap();
-    assert_eq!(view.top_level(&scene), 2);
+    assert_eq!(
+        view.top_level(&scene.roofs_with(&std::sync::Arc::default())),
+        2
+    );
 }
 #[test]
 fn every_plane_is_meshed_and_tagged_with_the_level_that_reveals_it() {
@@ -703,4 +736,220 @@ fn floor_decoration_lift_raises_the_tile_and_bridge_decks_shift_it_down_a_plane(
     assert_eq!(height(&decorated_scene(12, upper, true)), flat_bridge - 12);
     // The decoration under the bridge is on the lower link, not the deck.
     assert_eq!(height(&decorated_scene(12, Plane::MIN, true)), flat_bridge);
+}
+#[test]
+fn roofs_are_eight_connected_regions_numbered_across_planes() {
+    let flagged: [(usize, usize, usize); 5] =
+        [(0, 1, 1), (0, 2, 2), (0, 5, 5), (1, 1, 1), (2, 7, 7)];
+    let volumes = roofs::RoofVolumes::build(12, 12, |plane, x, y| flagged.contains(&(plane, x, y)));
+    let slot = |plane, x, y| volumes.slot(plane, x, y);
+    // Diagonal neighbours form one roof; a distant tile is another; each plane numbers its own.
+    assert_eq!(slot(0, 1, 1), slot(0, 2, 2));
+    assert_ne!(slot(0, 1, 1), 0);
+    assert_ne!(slot(0, 5, 5), slot(0, 1, 1));
+    assert_ne!(slot(1, 1, 1), slot(0, 1, 1));
+    assert_ne!(slot(2, 7, 7), 0);
+    assert_eq!(slot(0, 3, 3), 0);
+    assert_eq!(slot(0, -1, 0), 0);
+    assert_eq!(slot(0, 12, 0), 0);
+    // Geometry on plane n + 1 takes the roof of plane n; the ground has no roof over it.
+    let at = |source: u8, x, y| volumes.covering(Plane::new(source).unwrap(), x, y);
+    assert_eq!(at(1, 1, 1), slot(0, 1, 1));
+    assert_eq!(at(2, 1, 1), slot(1, 1, 1));
+    assert_eq!(at(0, 1, 1), 0);
+}
+#[test]
+fn exhausted_roof_slots_stay_unnumbered_instead_of_aliasing() {
+    // 3 x 3 isolated tiles per 4 columns stays small; flag more regions than slots exist.
+    let (width, height) = (140, 140);
+    let volumes = roofs::RoofVolumes::build(width, height, |plane, x, y| {
+        plane == 0 && x % 2 == 0 && y % 2 == 0
+    });
+    let mut seen = std::collections::BTreeSet::new();
+    for x in (0..width).step_by(2) {
+        for y in (0..height).step_by(2) {
+            let slot = volumes.slot(0, i32::try_from(x).unwrap(), i32::try_from(y).unwrap());
+            if slot != 0 {
+                assert!(usize::from(slot) < ROOF_SLOTS);
+                assert!(seen.insert(slot), "slot {slot} reused for a second roof");
+            }
+        }
+    }
+    assert_eq!(seen.len(), ROOF_SLOTS - 1);
+}
+fn roof_tag_scene() -> SceneAsset {
+    // Two roofs on plane 0: tiles (5,5)-(6,5) and (9,9).
+    let scene = roof_scene(&[(5, 5), (6, 5), (9, 9)]);
+    let mesh = build_mesh(&scene, scene.descriptor(), WorldTile::new(1, 1, Plane::MIN)).unwrap();
+    let mut by_tile = BTreeMap::<(u8, i32, i32), u16>::new();
+    for triangle in mesh.geometry.vertices.chunks_exact(3) {
+        let centre = |axis: usize| {
+            triangle
+                .iter()
+                .map(|v| i32::from(v.position[axis]))
+                .sum::<i32>()
+                / 3
+        };
+        let key = (
+            triangle[0].render_level(),
+            centre(0).div_euclid(128),
+            centre(2).div_euclid(128),
+        );
+        let old = by_tile.insert(key, triangle[0].roof_slot());
+        assert!(
+            old.is_none_or(|old| old == triangle[0].roof_slot()),
+            "{key:?}"
+        );
+    }
+    let slot = |level, x, y| by_tile[&(level, x, y)];
+    // Plane 1 geometry (render level 1) over the roofed tiles carries the roof; ground does not.
+    assert_ne!(slot(1, 5, 5), 0);
+    assert_eq!(slot(1, 5, 5), slot(1, 6, 5));
+    assert_ne!(slot(1, 9, 9), 0);
+    assert_ne!(slot(1, 9, 9), slot(1, 5, 5));
+    assert_eq!(slot(1, 3, 3), 0);
+    assert_eq!(slot(0, 5, 5), 0);
+    assert_eq!(slot(0, 9, 9), 0);
+    // Plane 2 geometry sits over plane 1, which has no roof flags here.
+    assert_eq!(slot(2, 5, 5), 0);
+    scene
+}
+#[test]
+fn geometry_over_a_roofed_tile_carries_that_roofs_slot() {
+    roof_tag_scene();
+}
+#[test]
+fn roof_modes_hide_the_roofs_over_their_target_tiles() {
+    let scene = roof_tag_scene();
+    let volumes = scene.roofs_with(&std::sync::Arc::default());
+    let slot = |x, y| volumes.covering(Plane::new(1).unwrap(), x, y);
+    let (near, far) = (slot(5, 5), slot(9, 9));
+    let tiles = |x, y| [x, y].map(|v: i32| v * 128 + 64);
+    let view = |subject: [i32; 2], camera: [i32; 2], plane| RoofView {
+        plane: Plane::new(plane).unwrap(),
+        subject,
+        camera,
+        pitch: 383,
+        roofs_hidden: false,
+    };
+    let none = RoofModes(0);
+    let hidden = |mask: &RoofMask| (1..64).filter(|s| mask.hides(*s)).collect::<Vec<_>>();
+    let position = view(tiles(5, 5), tiles(2, 2), 0);
+    assert!(
+        position
+            .hidden(&volumes, none, RoofTargets::default())
+            .is_empty()
+    );
+    assert_eq!(
+        hidden(&position.hidden(
+            &volumes,
+            RoofModes(RoofModes::POSITION),
+            RoofTargets::default()
+        )),
+        [usize::from(near)]
+    );
+    // Only the focus tile counts: the player outside any roof hides nothing under POSITION.
+    let outside = view(tiles(3, 3), tiles(2, 2), 0);
+    assert!(
+        outside
+            .hidden(
+                &volumes,
+                RoofModes(RoofModes::POSITION),
+                RoofTargets::default()
+            )
+            .is_empty()
+    );
+    let targets = RoofTargets {
+        hovered: Some([9, 9]),
+        destination: Some([6, 5]),
+    };
+    assert_eq!(
+        hidden(&outside.hidden(&volumes, RoofModes(RoofModes::HOVERED), targets)),
+        [usize::from(far)]
+    );
+    assert_eq!(
+        hidden(&outside.hidden(&volumes, RoofModes(RoofModes::DESTINATION), targets)),
+        [usize::from(near)]
+    );
+    // The camera-to-player walk crosses (5,5) and (6,5) but never (9,9).
+    let between = view(tiles(8, 5), tiles(2, 5), 0);
+    assert_eq!(
+        hidden(&between.hidden(
+            &volumes,
+            RoofModes(RoofModes::BETWEEN),
+            RoofTargets::default()
+        )),
+        [usize::from(near)]
+    );
+    // Viewing from plane 1 leaves the plane-0 roofs alone: that geometry is the floor upstairs.
+    let upstairs = view(tiles(5, 5), tiles(2, 2), 1);
+    assert!(
+        upstairs
+            .hidden(&volumes, RoofModes(0xF), targets)
+            .is_empty()
+    );
+}
+#[test]
+fn roof_visibility_combines_the_level_cut_with_hidden_roofs() {
+    let mut visibility = RoofVisibility::everything();
+    let tag = |level: u16, slot: u16| level | (slot << 2);
+    assert!(visibility.shows(tag(3, 7)));
+    visibility.hidden.hide(7);
+    visibility.hidden.hide(0);
+    assert!(!visibility.shows(tag(3, 7)));
+    assert!(visibility.shows(tag(3, 8)));
+    assert!(visibility.shows(tag(0, 0)));
+    visibility.top_level = 1;
+    assert!(!visibility.shows(tag(2, 0)));
+    assert!(visibility.shows(tag(1, 0)));
+    assert!(visibility.hidden.words().iter().any(|w| *w != 0));
+}
+#[test]
+fn area_overrides_force_tiles_roofed_for_slots_and_the_line_of_sight_cut() {
+    let scene = roof_scene(&[]);
+    let areas: std::sync::Arc<[RoofArea]> = std::sync::Arc::from([RoofArea {
+        min: [4, 4],
+        max: [5, 5],
+        planes: [0, 0],
+    }]);
+    let base = scene.roofs_with(&std::sync::Arc::default());
+    let forced = scene.roofs_with(&areas);
+    let ground = Plane::MIN;
+    assert!(!base.roofed(ground, 4, 5));
+    assert!(forced.roofed(ground, 4, 5) && forced.roofed(ground, 5, 4));
+    assert!(!forced.roofed(ground, 6, 6));
+    // The override only covers the planes it names.
+    assert!(!forced.roofed(Plane::new(1).unwrap(), 4, 4));
+    // Repeated requests for the same areas share one flood fill.
+    assert!(std::sync::Arc::ptr_eq(&forced, &scene.roofs_with(&areas)));
+    // Standing under an override cuts the scene exactly like a flagged roof does.
+    let view = roof_view((4, 4), (4, 1), 383);
+    assert_eq!(view.top_level(&base), 3);
+    assert_eq!(view.top_level(&forced), 0);
+    // Meshes built with the areas tag their geometry with the forced roof.
+    let inputs = SceneryInputs {
+        roof_areas: areas,
+        ..SceneryInputs::default()
+    };
+    let mesh = build_mesh_with_inputs(
+        &scene,
+        scene.descriptor(),
+        WorldTile::new(1, 1, ground),
+        &inputs,
+    )
+    .unwrap();
+    assert!(std::sync::Arc::ptr_eq(&mesh.roofs, &forced));
+    let tagged = mesh
+        .geometry
+        .vertices
+        .iter()
+        .filter(|vertex| vertex.roof_slot() != 0)
+        .count();
+    assert!(tagged > 0, "no geometry carries the overridden roof");
+    let hidden = view.hidden(
+        &forced,
+        RoofModes(RoofModes::POSITION),
+        RoofTargets::default(),
+    );
+    assert!(!hidden.is_empty());
 }

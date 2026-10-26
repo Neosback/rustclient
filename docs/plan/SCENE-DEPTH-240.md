@@ -15,6 +15,7 @@ Evidence source for the placement rules: RustOSRS (`/Users/tylercovalt/Documents
 | `Scene.method5576`: a later type 0, 2, 9 or 12+ wall with displacement other than 16 rescales the decoration already placed (`d * offset / 16`, compounding) | `decorations::Sequencer::place` | unit tests, including the shape table and compounding |
 | One-unit nudge of straight decorations (types 4 and 5) along the wall normal | `locations::placement_requests` | unit test; Lumbridge capture |
 | Second plate of a type-8 decoration drawn at the plain tile centre (it previously reused the first plate's offset) | `locations::placement_requests` | unit test |
+| Roof ids: 8-neighbour flood fill of under-roof tiles per plane, a roof slot per vertex and a shader hidden-slot mask (consumed by the `roofremoval` plugin; see `docs/reference/builtin-plugins/FIRST-PARTY-LEDGER.md`) | `scene::RoofVolumes`, `world.wgsl` | unit tests, naga shader validation |
 | Diagonal (`256`) plates snapped flush against the type-9 slab on their tile, or lifted one unit when there is none | `decorations::flush` | synthetic slab test; Lumbridge capture |
 
 The flush rule is **not client behaviour**. The software client paints decorations over their wall without a
@@ -36,6 +37,5 @@ captures and the unit tests above.
 
 - Draw centre of boundaries and decorations is the definition footprint's centre rather than the 1x1 storage
   centre (`RuneLite` draws them at `tile * 128 + 64`). Identical for 1x1 definitions, which is nearly all walls.
-- Roof ids with the 8-neighbour flood fill and per-roof hiding (only the top-level roof cull exists).
 - Per-face alpha depth sort within 2048 units of the camera.
 - Game-object capacity limits per tile.

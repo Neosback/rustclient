@@ -10,6 +10,8 @@ pub struct SceneryInputs {
     pub generation: u64,
     pub variables: BTreeMap<VarpId, i32>,
     pub locations: BTreeMap<LocationKey, LocationOverride>,
+    /// Areas forced roofed by a plugin; presentation input, not game state.
+    pub roof_areas: std::sync::Arc<[crate::RoofArea]>,
 }
 impl From<&SceneryState> for SceneryInputs {
     fn from(state: &SceneryState) -> Self {
@@ -19,6 +21,7 @@ impl From<&SceneryState> for SceneryInputs {
             generation: state.generation(),
             variables: state.variables().clone(),
             locations: state.locations().clone(),
+            roof_areas: std::sync::Arc::default(),
         }
     }
 }
@@ -40,6 +43,8 @@ impl SceneryInputs {
         }
         self.variables.retain(|id, _| wanted.contains(id));
     }
+    /// Whether both inputs place the same scenery; roof areas retag geometry and are compared
+    /// separately.
     #[must_use]
     pub fn same_geometry(&self, other: &Self) -> bool {
         self.variables == other.variables && self.locations == other.locations
