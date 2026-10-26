@@ -119,6 +119,10 @@ fn references_status() -> Result<(), String> {
             "references/rsprox-master",
             "rsprox client/server packet evidence through OSRS 235",
         ),
+        (
+            "references/runelite-melxin-235",
+            "RuneLite 235 readable client tree (revision 235, not 240)",
+        ),
     ] {
         let entry = git_stdout(&["ls-tree", "HEAD", "--", path])?;
         let fields: Vec<_> = entry.split_whitespace().collect();

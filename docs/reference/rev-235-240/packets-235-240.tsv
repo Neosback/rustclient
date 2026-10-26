@@ -1,0 +1,288 @@
+direction	name	status	first_step	id235	id240	len235	len240	fields235	fields240
+client	AFFINEDCLANSETTINGS_ADDBANNED_FROMCHANNEL	identical		62	17	-1	-1	W1[v],W1[v],W2[r 8,v],W1[strn]	W1[v],W1[v],W2[r 8,v],W1[strn]
+client	AFFINEDCLANSETTINGS_SETMUTED_FROMCHANNEL	identical		19	60	-1	-1	W1[v],W1[v],W2[r 8,v],W1[strn]	W1[v],W1[v],W2[r 8,v],W1[strn]
+client	BUG_REPORT	reencoded	235->236	17	14	-2	-2	W2[r 8,v],W1[strn],W1[s 128],W1[strn]	W2[r 8,v],W1[strn],W1[strn],W1[s 128]
+client	CLANCHANNEL_FULL_REQUEST	identical		84	33	1	1	W1[v]	W1[v]
+client	CLANCHANNEL_KICKUSER	identical		64	37	-1	-1	W1[v],W1[v],W2[r 8,v],W1[strn]	W1[v],W1[v],W2[r 8,v],W1[strn]
+client	CLANSETTINGS_FULL_REQUEST	identical		14	100	1	1	W1[v]	W1[v]
+client	CLICKWORLDMAP	reencoded	235->236	8	78	4	4	W4[r 24,r 16,r 8,v]	W4[v,r 24,r 16,r 8]
+client	CLIENT_CHEAT	structural	239->240	40	79	-1	-1	W1[v],W1[strn]	W1[v],W1[strn],W1[v]
+client	CLOSE_MODAL	identical		12	98	0	0	-	-
+client	CONNECTION_TELEMETRY	identical		13	29	-1	-1	W1[v],W1[v]	W1[v],W1[v]
+client	DETECT_MODIFIED_CLIENT	reencoded	235->236	66	103	4	4	W4[r 24,r 16,r 8,v]	W4[r 24,v,r 8,r 16]
+client	EVENT_APPLET_FOCUS	identical		37	30	1	1	W1[v]	W1[v]
+client	EVENT_CAMERA_POSITION	reencoded	235->236	48	55	4	4	W2[v,r 8],W2[r 8,v]	W2[r 8,v],W2[r 8,a 128]
+client	EVENT_KEYBOARD	reordered	235->236	36	47	-2	-2	W2[r 8,v],W3[v,r 16,r 8],W1[s 128]	W2[r 8,v],W1[v],W3[r 16,v,r 8]
+client	EVENT_MOUSE_CLICK_V1	structural	235->236	11	0	6	6	W2[r 8,v],W2[r 8,v],W2[r 8,v]	-
+client	EVENT_MOUSE_CLICK_V2	reordered	235->236	92	40	7	7	W2[a 128,r 8],W2[r 8,v],W2[v,r 8],W1[s 0]	W1[v],W2[a 128,r 8],W2[r 8,v],W2[a 128,r 8]
+client	EVENT_MOUSE_MOVE	identical		4	114	-1	-1	W1[v]	W1[v]
+client	EVENT_MOUSE_SCROLL	identical		34	83	2	2	W2[r 8,v]	W2[r 8,v]
+client	EVENT_NATIVE_MOUSE_CLICK	removed	236->237	45		7		-	
+client	EVENT_NATIVE_MOUSE_MOVE	identical		38	88	-1	-1	-	-
+client	EXIT_FREECAM	identical		71	71	0	0	-	-
+client	FRIENDCHAT_JOIN_LEAVE	identical		52	97	-1	-1	W1[v],W1[strn]	W1[v],W1[strn]
+client	FRIENDCHAT_KICK	identical		68	51	-1	-1	W1[v],W1[strn]	W1[v],W1[strn]
+client	FRIENDCHAT_SETRANK	reencoded	235->236	20	66	-1	-1	W1[v],W1[strn],W1[a 128]	W1[v],W1[s 0],W1[strn]
+client	FRIENDLIST_ADD	identical		59	67	-1	-1	W1[v],W1[strn]	W1[v],W1[strn]
+client	FRIENDLIST_DEL	identical		83	115	-1	-1	W1[v],W1[strn]	W1[v],W1[strn]
+client	HISCORE_REQUEST	identical		70	110	-1	-1	-	-
+client	IDLE	identical		96	7	0	0	-	-
+client	IF_BUTTON	reencoded	235->236	75	11	4	4	W4[r 24,r 16,r 8,v]	W4[r 24,v,r 8,r 16]
+client	IF_BUTTOND	reordered	235->236	94	39	16	16	W2[a 128,r 8],W4[v,r 16,r 24,r 8],W2[a 128,r 8],W2[r 8,a 128],W2[v,r 8],W4[r 16,v,r 8,r 24]	W2[r 8,a 128],W4[r 24,v,r 8,r 16],W2[r 8,v],W4[r 24,v,r 8,r 16],W2[r 8,a 128],W2[a 128,r 8]
+client	IF_BUTTONT	reordered	235->236	24	80	16	16	W2[r 8,a 128],W4[v,r 16,r 24,r 8],W2[a 128,r 8],W2[a 128,r 8],W4[r 24,r 16,r 8,v],W2[r 8,v]	W2[v,r 8],W4[r 24,v,r 8,r 16],W2[a 128,r 8],W2[r 8,a 128],W2[a 128,r 8],W4[r 16,r 8,v,r 24]
+client	IF_BUTTONX	reencoded	235->236	9	1	9	9	W4[r 24,r 16,r 8,v],W2[r 8,v],W2[r 8,v],W1[v]	W4[r 24,v,r 8,r 16],W2[r 8,v],W2[r 8,v],W1[v]
+client	IF_CRMVIEW_OP	reordered	235->236	80	15	22	22	W4[r 16,v,r 8,r 24],W4[v,r 16,r 24,r 8],W4[r 8,r 24,r 16,v],W2[a 128,r 8],W4[r 24,r 16,r 8,v],W4[v,r 16,r 24,r 8]	W4[r 24,v,r 8,r 16],W4[v,r 24,r 16,r 8],W4[r 16,r 8,v,r 24],W4[r 24,v,r 8,r 16],W2[r 8,a 128],W4[r 24,v,r 8,r 16]
+client	IF_SCRIPT_TRIGGER	reordered	235->236	95	58	-2	-2	W2[r 8,v],W4[v,r 16,r 24,r 8],W4[r 24,r 16,r 8,v],W2[v,r 8],W2[r 8,a 128]	W2[r 8,v],W4[r 8,r 24,r 16,v],W2[r 8,v],W4[r 8,r 24,r 16,v],W2[v,r 8]
+client	IF_SUBOP	reencoded	235->236	100	95	10	10	W4[r 24,r 16,r 8,v],W2[r 8,v],W2[r 8,v],W1[v],W1[v]	W4[r 24,v,r 8,r 16],W2[r 8,v],W2[r 8,v],W1[v],W1[v]
+client	IGNORELIST_ADD	identical		77	81	-1	-1	W1[v],W1[strn]	W1[v],W1[strn]
+client	IGNORELIST_DEL	identical		67	86	-1	-1	W1[v],W1[strn]	W1[v],W1[strn]
+client	MAP_BUILD_COMPLETE	identical		47	27	0	0	-	-
+client	MEMBERSHIP_PROMOTION_ELIGIBILITY	identical		72	76	2	2	-	-
+client	MESSAGE_PRIVATE	reencoded	235->236	65	108	-2	-2	W2[r 8,v],W1[strn],W2[v,r 8]	W2[r 8,v],W1[strn],W2[r 8,v]
+client	MESSAGE_PUBLIC	identical		26	56	-1	-1	W1[v],W1[v]	W1[v],W1[v]
+client	MOVE_GAMECLICK	reordered	235->236	90	102	-1	-1	W1[v],W1[v],W2[a 128,r 8],W2[a 128,r 8]	W1[v],W2[a 128,r 8],W1[s 0],W2[a 128,r 8]
+client	MOVE_MINIMAPCLICK	structural	235->236	10	61	-1	-1	W1[v],W1[v],W2[a 128,r 8],W2[a 128,r 8],W1[v]	W1[v],W2[a 128,r 8],W1[s 0],W2[a 128,r 8],W1[v],W1[v]
+client	NO_TIMEOUT	identical		99	99	0	0	-	-
+client	OPLOC1	removed	235->236	97		7		W2[r 8,a 128],W2[r 8,v],W1[s 128],W2[v,r 8]	
+client	OPLOC1_V2	added	237->238		74		8		W1[s 128],W2[a 128,r 8],W1[v],W2[a 128,r 8],W2[r 8,a 128]
+client	OPLOC2	removed	235->236	98		7		W1[a 128],W2[r 8,v],W2[r 8,a 128],W2[r 8,v]	
+client	OPLOC2_V2	added	237->238		90		8		W2[r 8,v],W1[s 0],W1[s 128],W2[r 8,v],W2[v,r 8]
+client	OPLOC3	removed	235->236	0		7		W2[r 8,v],W2[v,r 8],W2[r 8,v],W1[a 128]	
+client	OPLOC3_V2	added	237->238		8		8		W1[s 128],W1[s 128],W2[r 8,a 128],W2[a 128,r 8],W2[r 8,v]
+client	OPLOC4	removed	235->236	58		7		W1[v],W2[r 8,v],W2[r 8,v],W2[r 8,a 128]	
+client	OPLOC4_V2	added	237->238		69		8		W1[a 128],W2[v,r 8],W2[r 8,v],W1[a 128],W2[r 8,v]
+client	OPLOC5	removed	235->236	56		7		W2[r 8,v],W2[r 8,a 128],W2[r 8,v],W1[a 128]	
+client	OPLOC5_V2	added	237->238		77		8		W2[v,r 8],W2[r 8,v],W1[a 128],W1[s 128],W2[a 128,r 8]
+client	OPLOC6	identical		89	105	2	2	W2[v,r 8]	W2[v,r 8]
+client	OPLOCT	reordered	235->236	1	68	15	15	W2[r 8,v],W1[v],W2[r 8,v],W4[r 24,r 16,r 8,v],W2[r 8,a 128],W2[r 8,a 128],W2[r 8,v]	W1[a 128],W2[r 8,v],W2[r 8,v],W4[r 24,v,r 8,r 16],W2[v,r 8],W2[v,r 8],W2[r 8,a 128]
+client	OPLOCU	structural	235->236	73	116	15	15	W1[s 0],W2[r 8,a 128],W4[r 16,v,r 8,r 24],W2[v,r 8],W2[r 8,v],W2[a 128,r 8]	W2[r 8,v],W2[v,r 8],W2[v,r 8],W2[v,r 8],W2[a 128,r 8],W1[a 128],W4[v,r 24,r 16,r 8]
+client	OPNPC1	removed	235->236	53		3		W2[r 8,a 128],W1[s 128]	
+client	OPNPC1_V2	added	237->238		59		4		W2[v,r 8],W1[v],W1[a 128]
+client	OPNPC2	removed	235->236	41		3		W2[r 8,a 128],W1[s 0]	
+client	OPNPC2_V2	added	237->238		87		4		W2[v,r 8],W1[a 128],W1[s 128]
+client	OPNPC3	removed	235->236	93		3		W2[v,r 8],W1[s 128]	
+client	OPNPC3_V2	added	237->238		43		4		W2[v,r 8],W1[s 128],W1[s 0]
+client	OPNPC4	removed	235->236	25		3		W1[s 128],W2[r 8,a 128]	
+client	OPNPC4_V2	added	237->238		35		4		W1[s 128],W1[v],W2[r 8,a 128]
+client	OPNPC5	removed	235->236	29		3		W2[r 8,v],W1[s 0]	
+client	OPNPC5_V2	added	237->238		73		4		W1[v],W1[s 0],W2[r 8,v]
+client	OPNPC6	reencoded	235->236	78	101	2	2	W2[r 8,v]	W2[r 8,a 128]
+client	OPNPCT	reordered	235->236	57	63	11	11	W2[a 128,r 8],W2[a 128,r 8],W1[a 128],W2[r 8,v],W4[r 24,r 16,r 8,v]	W1[s 128],W4[v,r 24,r 16,r 8],W2[r 8,v],W2[a 128,r 8],W2[r 8,a 128]
+client	OPNPCU	reordered	235->236	82	107	11	11	W4[r 24,r 16,r 8,v],W2[r 8,v],W1[a 128],W2[r 8,a 128],W2[v,r 8]	W2[v,r 8],W1[s 0],W2[v,r 8],W2[r 8,a 128],W4[r 24,v,r 8,r 16]
+client	OPOBJ1	removed	235->236	16		7		W1[v],W2[a 128,r 8],W2[r 8,v],W2[r 8,v]	
+client	OPOBJ1_V2	added	237->238		112		8		W1[s 0],W2[r 8,a 128],W2[a 128,r 8],W1[s 128],W2[r 8,v]
+client	OPOBJ2	removed	235->236	32		7		W1[s 0],W2[r 8,v],W2[r 8,v],W2[r 8,a 128]	
+client	OPOBJ2_V2	added	237->238		113		8		W1[s 0],W2[r 8,v],W2[r 8,a 128],W2[r 8,a 128],W1[a 128]
+client	OPOBJ3	removed	235->236	18		7		W2[v,r 8],W1[a 128],W2[a 128,r 8],W2[r 8,a 128]	
+client	OPOBJ3_V2	added	237->238		22		8		W2[r 8,a 128],W1[s 0],W1[v],W2[v,r 8],W2[r 8,v]
+client	OPOBJ4	removed	235->236	3		7		W2[a 128,r 8],W2[r 8,v],W2[r 8,v],W1[v]	
+client	OPOBJ4_V2	added	237->238		65		8		W1[s 0],W1[s 128],W2[a 128,r 8],W2[r 8,a 128],W2[v,r 8]
+client	OPOBJ5	removed	235->236	6		7		W2[a 128,r 8],W1[s 128],W2[r 8,v],W2[r 8,a 128]	
+client	OPOBJ5_V2	added	237->238		75		8		W2[a 128,r 8],W1[v],W2[v,r 8],W1[s 128],W2[r 8,a 128]
+client	OPOBJ6	reencoded	235->236	21	9	6	6	W2[r 8,v],W2[v,r 8],W2[a 128,r 8]	W2[v,r 8],W2[a 128,r 8],W2[r 8,v]
+client	OPOBJT	structural	235->236	22	38	15	15	W2[a 128,r 8],W4[r 24,r 16,r 8,v],W2[a 128,r 8],W1[s 0],W2[a 128,r 8],W2[r 8,v]	W2[r 8,v],W4[r 24,v,r 8,r 16],W1[s 128],W2[v,r 8],W2[a 128,r 8],W2[a 128,r 8],W2[r 8,v]
+client	OPOBJU	structural	235->236	39	84	15	15	W2[a 128,r 8],W4[v,r 16,r 24,r 8],W1[a 128],W2[v,r 8],W2[r 8,v],W2[v,r 8]	W2[a 128,r 8],W1[v],W2[v,r 8],W2[v,r 8],W2[r 8,v],W4[r 8,r 24,r 16,v],W2[r 8,a 128]
+client	OPPLAYER1	reordered	235->236	50	57	3	3	W2[v,r 8],W1[s 0]	W1[s 0],W2[r 8,v]
+client	OPPLAYER2	reordered	235->236	15	21	3	3	W2[r 8,v],W1[a 128]	W1[s 128],W2[v,r 8]
+client	OPPLAYER3	reordered	235->236	61	36	3	3	W1[a 128],W2[a 128,r 8]	W2[r 8,a 128],W1[a 128]
+client	OPPLAYER4	reordered	235->236	74	64	3	3	W2[r 8,v],W1[v]	W1[s 128],W2[r 8,v]
+client	OPPLAYER5	reencoded	235->236	43	52	3	3	W2[a 128,r 8],W1[s 0]	W2[r 8,a 128],W1[a 128]
+client	OPPLAYER6	reordered	235->236	91	4	3	3	W2[r 8,a 128],W1[v]	W1[a 128],W2[v,r 8]
+client	OPPLAYER7	reordered	235->236	49	50	3	3	W2[r 8,v],W1[s 128]	W1[a 128],W2[v,r 8]
+client	OPPLAYER8	reordered	235->236	42	41	3	3	W1[s 0],W2[a 128,r 8]	W2[r 8,a 128],W1[v]
+client	OPPLAYERT	reordered	235->236	30	45	11	11	W1[s 128],W2[r 8,a 128],W2[a 128,r 8],W2[a 128,r 8],W4[v,r 16,r 24,r 8]	W1[s 0],W2[v,r 8],W4[r 8,r 24,r 16,v],W2[v,r 8],W2[a 128,r 8]
+client	OPPLAYERU	reordered	235->236	23	42	11	11	W2[a 128,r 8],W4[r 16,v,r 8,r 24],W2[a 128,r 8],W1[s 128],W2[r 8,a 128]	W2[v,r 8],W4[r 16,r 8,v,r 24],W1[v],W2[a 128,r 8],W2[a 128,r 8]
+client	OPWORLDENTITY1	reordered	235->236	27	96	3	3	W1[s 128],W2[r 8,v]	W2[r 8,v],W1[s 0]
+client	OPWORLDENTITY2	reencoded	235->236	55	48	3	3	W1[s 0],W2[a 128,r 8]	W1[a 128],W2[r 8,v]
+client	OPWORLDENTITY3	reencoded	235->236	2	49	3	3	W2[a 128,r 8],W1[v]	W2[r 8,v],W1[v]
+client	OPWORLDENTITY4	reencoded	235->236	86	2	3	3	W2[r 8,a 128],W1[v]	W2[r 8,v],W1[s 0]
+client	OPWORLDENTITY5	reordered	235->236	33	93	3	3	W2[a 128,r 8],W1[s 0]	W1[a 128],W2[a 128,r 8]
+client	OPWORLDENTITY6	reencoded	235->236	88	25	2	2	W2[v,r 8]	W2[r 8,a 128]
+client	OPWORLDENTITYT	reordered	235->236	31	10	11	11	W2[v,r 8],W4[r 16,v,r 8,r 24],W2[a 128,r 8],W1[v],W2[a 128,r 8]	W2[a 128,r 8],W2[r 8,a 128],W2[r 8,v],W4[r 24,v,r 8,r 16],W1[s 128]
+client	OPWORLDENTITYU	reordered	235->236	60	85	11	11	W2[a 128,r 8],W1[a 128],W4[r 8,r 24,r 16,v],W2[a 128,r 8],W2[a 128,r 8]	W2[a 128,r 8],W4[r 24,v,r 8,r 16],W2[a 128,r 8],W2[v,r 8],W1[a 128]
+client	REFLECTION_CHECK_REPLY	identical		79	12	-1	-1	W1[v],W1[v]	W1[v],W1[v]
+client	RESUME_PAUSEBUTTON	reordered	235->236	5	82	6	6	W2[a 128,r 8],W4[v,r 16,r 24,r 8]	W4[r 24,v,r 8,r 16],W2[a 128,r 8]
+client	RESUME_P_COUNTDIALOG	reencoded	235->236	87	62	4	4	W4[r 24,r 16,r 8,v]	W4[r 24,v,r 8,r 16]
+client	RESUME_P_COUNTDIALOG_LONG	added	237->238		111		8		W8[v,v,v,v,v,v,v,v]
+client	RESUME_P_NAMEDIALOG	identical		85	70	-1	-1	W1[v],W1[strn]	W1[v],W1[strn]
+client	RESUME_P_OBJDIALOG	identical		51	3	2	2	W2[r 8,v]	W2[r 8,v]
+client	RESUME_P_STRINGDIALOG	identical		46	54	-1	-1	W1[v],W1[strn]	W1[v],W1[strn]
+client	RSEVEN_STATUS	identical		35	89	1	1	-	-
+client	SEND_PING_REPLY	reordered	235->236	76	32	10	10	W1[s 128],W4[r 16,v,r 8,r 24],W4[r 24,r 16,r 8,v],W1[s 0]	W1[a 128],W1[s 0],W4[v,r 24,r 16,r 8],W4[r 16,r 8,v,r 24]
+client	SEND_SNAPSHOT	identical		54	92	-1	-1	W1[v],W1[strn],W1[v],W1[v]	W1[v],W1[strn],W1[v],W1[v]
+client	SET_CHATFILTERSETTINGS	identical		44	16	3	3	W1[v],W1[v],W1[v]	W1[v],W1[v],W1[v]
+client	SET_HEADING	identical		69	109	1	1	W1[a 128]	W1[a 128]
+client	SOUND_JINGLEEND	reencoded	235->236	7	46	4	4	W4[r 24,r 16,r 8,v]	W4[r 24,v,r 8,r 16]
+client	TELEPORT	reordered	235->236	81	13	9	9	W2[a 128,r 8],W1[s 0],W4[r 24,r 16,r 8,v],W2[r 8,a 128]	W1[s 128],W2[a 128,r 8],W4[r 24,v,r 8,r 16],W2[r 8,v]
+client	UPDATE_PLAYER_MODEL_V2	identical		63	91	26	26	-	-
+client	WINDOW_STATUS	identical		28	44	5	5	W1[v],W2[r 8,v],W2[r 8,v]	W1[v],W2[r 8,v],W2[r 8,v]
+server	ACCOUNT_FLAGS	identical		136	82	8	8	J0	J0
+server	AMBIENTSOUND_START	added	239->240		135		3		I2,I1
+server	AMBIENTSOUND_STOP	added	239->240		138		1		I1
+server	ANIM_SPECIFIC	reordered	235->236	90	102	3	3	I2,I1	I1,I2
+server	CAM_LOOKAT	removed	236->237	7		6		I1,I1,I2,I1,I1	
+server	CAM_LOOKAT_CYCLES	added	238->239		145		10		I2,I2,I1,I2,I1,I2
+server	CAM_LOOKAT_V2	added	236->237		146		8		I1,I2,I2,I1,I2
+server	CAM_LOOKAT_V3	added	238->239		148		9		I1,I2,I2,I2,I1,I1
+server	CAM_MODE	identical		52	32	1	1	I1	I1
+server	CAM_MOVETO	removed	236->237	10		6		I1,I1,I2,I1,I1	
+server	CAM_MOVETO_ARC	removed	236->237	71		10		I1,I1,I2,I1,I1,I2,Z0,I1	
+server	CAM_MOVETO_ARC_V2	added	236->237		143		14		I2,I2,I1,I2,I2,I2,I2,I1
+server	CAM_MOVETO_ARC_V3	added	238->239		131		15		I2,I1,I2,I1,I2,I2,I1,I2,I2
+server	CAM_MOVETO_CYCLES	removed	236->237	84		8		I1,I1,I2,I2,Z0,I1	
+server	CAM_MOVETO_CYCLES_V2	added	236->237		147		10		I1,I2,I2,I2,I1,I2
+server	CAM_MOVETO_CYCLES_V3	added	238->239		130		11		I1,I1,I1,I2,I2,I2,I2
+server	CAM_MOVETO_V2	added	236->237		151		8		I2,I1,I2,I2,I1
+server	CAM_MOVETO_V3	added	238->239		134		9		I1,I2,I1,I2,I2,I1
+server	CAM_RESET	identical		48	17	0	0	-	-
+server	CAM_ROTATEBY	identical		91	95	7	7	I2,I2,I2,I1	I2,I2,I2,I1
+server	CAM_ROTATETO	identical		40	33	7	7	I2,I2,I2,I1	I2,I2,I2,I1
+server	CAM_ROTATETO_COORDINATE	removed	236->237	101		7		I1,I1,I2,I2,I1	
+server	CAM_ROTATETO_COORDINATE_V2	added	236->237		133		9		I2,I2,I2,I2,I1
+server	CAM_ROTATETO_COORDINATE_V3	added	238->239		128		11		I2,I2,I1,I2,I1,I2,I1
+server	CAM_SHAKE	identical		66	113	4	4	I1,I1,I1,I1	I1,I1,I1,I1
+server	CAM_SKYBOX	added	238->239		140		4		I4
+server	CAM_SMOOTHRESET	identical		59	34	4	4	-	-
+server	CAM_TARGET_V3	identical		103	71	5	5	I1,I2,I2	I1,I2,I2
+server	CAM_TARGET_V4	added	238->239		0		5		I1,I4
+server	CAM_UNLOCK	added	238->239		149		1		I1
+server	CHAT_FILTER_SETTINGS	identical		80	18	2	2	I1,I1	I1,I1
+server	CHAT_FILTER_SETTINGS_PRIVATECHAT	identical		74	76	1	1	I1	I1
+server	CLANCHANNEL_DELTA	identical		54	46	-2	-2	B1	B1
+server	CLANCHANNEL_FULL	identical		83	7	-2	-2	B1	B1
+server	CLANSETTINGS_DELTA	identical		29	5	-2	-2	B1	B1
+server	CLANSETTINGS_FULL	identical		31	97	-2	-2	B1	B1
+server	FRIENDLIST_LOADED	identical		110	70	0	0	-	-
+server	GROUP_FULL	added	238->239		139		-2		-
+server	GROUP_VAR	added	238->239		142		-2		-
+server	GROUP_VAR_INT	added	238->239		144		9		-
+server	GROUP_VAR_LONG	added	238->239		137		13		-
+server	HIDELOCOPS	identical		60	55	1	1	Z0	Z0
+server	HIDENPCOPS	identical		49	110	1	1	Z0	Z0
+server	HIDEOBJOPS	identical		42	112	1	1	Z0	Z0
+server	HINT_ARROW	structural	235->236	39	3	6	6	I1,I2,I2,I2,I1,I2	-
+server	HISCORE_REPLY	identical		117	69	-2	-2	-	-
+server	IF_CLEARINV	identical		68	60	4	4	I4	I4
+server	IF_CLOSESUB	identical		46	116	4	4	I4	I4
+server	IF_MOVESUB	identical		86	51	8	8	I4,I4	I4,I4
+server	IF_OPENSUB	reordered	235->236	57	45	7	7	I2,I4,I1	I1,I2,I4
+server	IF_OPENTOP	identical		69	35	2	2	I2	I2
+server	IF_RESYNC_V2	identical		134	30	-2	-2	I2,I2,I4,I2,I1,I4,I2,I2,I4,I4	I2,I2,I4,I2,I1,I4,I2,I2,I4,I4
+server	IF_SETANGLE	reordered	235->236	87	4	10	10	I2,I2,I2,I4	I4,I2,I2,I2
+server	IF_SETANIM	identical		111	59	6	6	I4,I2	I4,I2
+server	IF_SETCOLOUR	identical		118	28	6	6	I2,I4	I2,I4
+server	IF_SETEVENTS_V2	reordered	235->236	131	106	16	16	I4,I2,I2,I4,I4	I4,I4,I2,I4,I2
+server	IF_SETHIDE	identical		15	54	5	5	I1,I4	I1,I4
+server	IF_SETMODEL	removed	237->238	112		6		I2,I4	
+server	IF_SETMODEL_V2	added	237->238		132		8		I4,I4
+server	IF_SETNPCHEAD	reordered	235->236	22	61	6	6	I2,I4	I4,I2
+server	IF_SETNPCHEAD_ACTIVE	identical		28	67	6	6	I4,I2	I4,I2
+server	IF_SETOBJECT	identical		11	1	10	10	I2,I4,I4	I2,I4,I4
+server	IF_SETPLAYERHEAD	identical		100	22	4	4	I4	I4
+server	IF_SETPLAYERMODEL_BASECOLOUR	reordered	235->236	56	42	6	6	I1,I4,I1	I1,I1,I4
+server	IF_SETPLAYERMODEL_BODYTYPE	reordered	235->236	4	64	5	5	I4,I1	I1,I4
+server	IF_SETPLAYERMODEL_OBJ	identical		3	50	8	8	I4,I4	I4,I4
+server	IF_SETPLAYERMODEL_SELF	identical		106	62	5	5	I1,I4	I1,I4
+server	IF_SETPOSITION	reordered	236->237	12	108	8	8	I2,I4,I2	I2,I2,I4
+server	IF_SETROTATESPEED	identical		13	105	8	8	I2,I4,I2	I2,I4,I2
+server	IF_SETSCROLLPOS	identical		5	78	6	6	I4,I2	I4,I2
+server	IF_SETTEXT	reordered	237->238	82	11	-2	-2	X1,I4	I4,X1
+server	LOC_ADD_CHANGE_V2	identical		73	38	-2	-2	-	-
+server	LOC_ANIM	identical		47	123	4	4	-	-
+server	LOC_ANIM_SPECIFIC	reordered	237->238	123	84	6	6	I1,I2,I3	I2,I3,I1
+server	LOC_DEL	identical		41	41	2	2	-	-
+server	LOC_MERGE	identical		120	48	14	14	-	-
+server	LOGOUT	identical		75	37	0	0	-	-
+server	LOGOUT_TRANSFER	identical		104	26	-1	-1	X1,I2,I4	X1,I2,I4
+server	LOGOUT_WITHREASON	identical		102	56	1	1	I1	I1
+server	MAP_ANIM	identical		43	13	6	6	-	-
+server	MAP_ANIM_SPECIFIC	reordered	235->236	92	90	8	8	I3,I2,I2,I1	I2,I2,I1,I3
+server	MESSAGE_CLANCHANNEL	identical		99	43	-1	-1	B1,X1,I2,I3,I1	B1,X1,I2,I3,I1
+server	MESSAGE_CLANCHANNEL_SYSTEM	identical		113	79	-1	-1	B1,I2,I3	B1,I2,I3
+server	MESSAGE_FRIENDCHANNEL	identical		61	2	-1	-1	X1,J0,I2,I3,I1	X1,J0,I2,I3,I1
+server	MESSAGE_GAME	identical		17	73	-1	-1	I1,I1,X1,X1	I1,I1,X1,X1
+server	MESSAGE_PRIVATE	identical		50	36	-2	-2	X1,I2,I3,I1	X1,I2,I3,I1
+server	MESSAGE_PRIVATE_ECHO	identical		109	27	-2	-2	X1	X1
+server	MIDI_JINGLE	identical		125	40	5	5	I2,I3	I2,I3
+server	MIDI_SONG_STOP	identical		114	8	4	4	I2,I2	I2,I2
+server	MIDI_SONG_V2	identical		1	81	10	10	I2,I2,I2,I2,I2	I2,I2,I2,I2,I2
+server	MIDI_SONG_WITHSECONDARY	identical		58	47	12	12	I2,I2,I2,I2,I2,I2	I2,I2,I2,I2,I2,I2
+server	MIDI_SWAP	identical		18	31	8	8	I2,I2,I2,I2	I2,I2,I2,I2
+server	MINIMAP_TOGGLE	identical		34	122	1	1	I1	I1
+server	NPC_ANIM_SPECIFIC	reordered	238->239	30	117	5	5	I2,I1,I2	I2,I2,I1
+server	NPC_HEADICON_SPECIFIC	reordered	235->236	33	96	9	9	I2,I4,I2,I1	I4,I2,I1,I2
+server	NPC_INFO_LARGE_V5	identical		94	93	-2	-2	-	-
+server	NPC_INFO_LARGE_V6	added	239->240		141		-2		-
+server	NPC_INFO_SMALL_V5	identical		115	119	-2	-2	-	-
+server	NPC_INFO_SMALL_V6	added	239->240		150		-2		-
+server	NPC_SPOTANIM_SPECIFIC	reordered	235->236	108	101	9	9	I4,I2,I2,I1	I2,I4,I2,I1
+server	OBJ_ADD	removed	235->236	6		14		-	
+server	OBJ_ADD_SPECIFIC	reordered	235->236	26	114	17	17	I1,I2,I4,I1,I2,I4,I1,I2	I4,I1,I4,I1,I2,I2,I1,I2
+server	OBJ_COUNT	removed	235->236	65		11		-	
+server	OBJ_COUNT_SPECIFIC	identical		133	124	14	14	I2,I4,I4,I4	I2,I4,I4,I4
+server	OBJ_CUSTOMISE	removed	235->236	138		17		-	
+server	OBJ_CUSTOMISE_SPECIFIC	reordered	236->237	137	52	20	20	I2,I2,I2,I4,I4,I2,I2,I2	I4,I2,I2,I2,I2,I4,I2,I2
+server	OBJ_DEL	removed	235->236	122		7		-	
+server	OBJ_DEL_SPECIFIC	identical		35	86	10	10	I4,I4,I2	I4,I4,I2
+server	OBJ_ENABLED_OPS	removed	235->236	32		4		-	
+server	OBJ_ENABLED_OPS_SPECIFIC	reordered	235->236	55	87	7	7	I1,I2,I4	I2,I4,I1
+server	OBJ_UNCUSTOMISE	removed	235->236	130		7		-	
+server	OBJ_UNCUSTOMISE_SPECIFIC	reordered	238->239	132	89	10	10	I4,I2,I4	I2,I4,I4
+server	OCULUS_SYNC	identical		70	65	4	4	I4	I4
+server	PACKET_GROUP_START	identical		128	57	2	2	I2	I2
+server	PLAYER_INFO	identical		121	91	-2	-2	-	-
+server	PLAYER_SPOTANIM_SPECIFIC	reordered	235->236	53	83	9	9	I4,I2,I2,I1	I4,I1,I2,I2
+server	PROJANIM_SPECIFIC_V4	reordered	235->236	135	72	27	27	I4,I2,I2,I2,I4,I1,I2,I3,I3,I2,I2	I3,I2,I2,I2,I3,I2,I1,I2,I4,I4,I2
+server	REBUILD_NORMAL	removed	237->238	37		-2		-	
+server	REBUILD_NORMAL_V2	added	237->238		39		-2		-
+server	REBUILD_REGION	removed	237->238	38		-2		-	
+server	REBUILD_REGION_V2	added	237->238		12		-2		-
+server	REBUILD_WORLDENTITY_V3	removed	238->239	93		-2		-	
+server	REBUILD_WORLDENTITY_V4	added	237->238		75		-2		-
+server	REFLECTION_CHECKER	identical		96	125	-2	-2	-	-
+server	RESET_ANIMS	identical		20	58	0	0	-	-
+server	RESET_INTERACTION_MODE	identical		36	121	2	2	I2	I2
+server	RUNCLIENTSCRIPT	structural	235->236	25	10	-2	-2	X1,I0,X1,I0,I0,X1,I4,I4	X1,I0,X1,I4,I0,I0,J0,X1,I4
+server	SEND_PING	identical		63	115	8	8	I4,I4,V0,V0,V0,V0	I4,I4,V0,V0,V0,V0
+server	SERVER_TICK_END	identical		116	92	0	0	-	-
+server	SET_ACTIVE_WORLD_V2	identical		140	20	3	3	I2,I1	I2,I1
+server	SET_HEATMAP_ENABLED	identical		62	15	1	1	Z0	Z0
+server	SET_INTERACTION_MODE	identical		45	6	4	4	I2,I1,I1	I2,I1,I1
+server	SET_MAP_FLAG	removed	236->237	51		2		I1,I1	
+server	SET_MAP_FLAG_V2	added	236->237		136		4		I4
+server	SET_NPC_UPDATE_ORIGIN	identical		107	111	2	2	I1,I1	I1,I1
+server	SET_PLAYER_OP	identical		77	85	-1	-1	I1,I1,X1	I1,I1,X1
+server	SITE_SETTINGS	identical		124	53	-1	-1	X1	X1
+server	SOUND_AREA	identical		2	16	7	7	-	-
+server	SYNTH_SOUND	identical		79	98	5	5	I2,I1,I2	I2,I1,I2
+server	TRIGGER_ONDIALOGABORT	identical		105	77	0	0	-	-
+server	UNKNOWN_STRING	identical		81	44	-1	-1	X1	X1
+server	UPDATE_FRIENDCHAT_CHANNEL_FULL_V2	identical		89	88	-2	-2	-	-
+server	UPDATE_FRIENDCHAT_CHANNEL_SINGLEUSER	identical		14	109	-1	-1	-	-
+server	UPDATE_FRIENDLIST	identical		27	24	-2	-2	-	-
+server	UPDATE_IGNORELIST	identical		21	9	-2	-2	-	-
+server	UPDATE_INV_FULL	reordered	235->236	119	74	-2	-2	I4,I2,I2,I2,I1,I4	I4,I2,I2,I1,I4,I2
+server	UPDATE_INV_PARTIAL	identical		16	23	-2	-2	I4,I2,I1,I2,I1,I4	I4,I2,I1,I2,I1,I4
+server	UPDATE_INV_STOPTRANSMIT	identical		127	14	2	2	I2	I2
+server	UPDATE_REBOOT_TIMER	removed	236->237	8		2		I2	
+server	UPDATE_REBOOT_TIMER_V2	added	236->237		66		-1		X1,I2
+server	UPDATE_RUNENERGY	identical		88	120	2	2	I2	I2
+server	UPDATE_RUNWEIGHT	identical		67	19	2	2	I2	I2
+server	UPDATE_STAT_V2	reordered	235->236	98	63	7	7	I1,I1,I4,I1	I1,I4,I1,I1
+server	UPDATE_STOCKMARKET_SLOT	identical		9	103	20	20	I1,I1	I1,I1
+server	UPDATE_TRADINGPOST	identical		97	29	-2	-2	I1,J0	I1,J0
+server	UPDATE_UID192	identical		64	99	28	28	Z0	Z0
+server	UPDATE_ZONE_FULL_FOLLOWS	identical		19	126	3	3	I1,I1,I1	I1,I1,I1
+server	UPDATE_ZONE_PARTIAL_ENCLOSED	identical		95	49	-2	-2	I1,I1,I1,I1	I1,I1,I1,I1
+server	UPDATE_ZONE_PARTIAL_FOLLOWS	identical		24	118	3	3	I1,I1,I1	I1,I1,I1
+server	URL_OPEN	identical		44	107	-2	-2	V1,X1	V1,X1
+server	VARCLAN	identical		85	21	-1	-1	-	-
+server	VARCLAN_DISABLE	identical		72	25	0	0	-	-
+server	VARCLAN_ENABLE	identical		76	104	0	0	-	-
+server	VARP_LARGE	identical		23	94	6	6	I2,I4	I2,I4
+server	VARP_RESET	identical		126	68	0	0	-	-
+server	VARP_SMALL	reordered	235->236	0	127	3	3	B1,I2	I2,B1
+server	VARP_SYNC	identical		78	100	0	0	-	-
+server	WORLDENTITY_INFO_V5	removed	235->236	129		-2		-	
+server	WORLDENTITY_INFO_V6	removed	236->237	139		-2		-	
+server	WORLDENTITY_INFO_V7	added	236->237		80		-2		-

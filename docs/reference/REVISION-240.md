@@ -44,7 +44,8 @@ OpenRune FileStore's relevant areas are `definition/osrs/.../codec`,
 
 ## Deobfuscation and decompilation
 
-The supplied RuneLite tree already contains deobfuscated **235** Java source.
+The supplied RuneLite tree already contains deobfuscated **235** Java source
+(what differs between 235 and 240 is inventoried in [REVISION-235-TO-240.md](REVISION-235-TO-240.md)).
 `buildSrc/src/main/kotlin/Dependencies.kt` declares `rsversion = 235`.
 `deobfuscator/deobfuscator.gradle.kts` defines the exact tools:
 

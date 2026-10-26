@@ -31,8 +31,16 @@ commit, not submodules.
 - `rsprox-master` carries client and server packet information through OSRS 235.
   Cross-check revision changes against OpenRune's selected rsprot 240 sources.
 
-The former RuneLite 235 tree (`references/RuneLite-melxin`) was removed; it remains
-in Git history. A copy also remains inside the pinned `references/rustosrs`
+## RuneLite 235 tree
+
+`references/runelite-melxin-235` is the readable (`@Export`-named) revision-235 OpenOSRS
+injected-RuneLite tree (RuneLite 1.12.14 base, OpenOSRS 4.31.2, `rsversion = 235`), vendored
+as a tree recorded by the parent commit. It is the behaviour reference for ports; it is
+**not** revision 240. Read [`docs/reference/REVISION-235-TO-240.md`](../docs/reference/REVISION-235-TO-240.md)
+for what changed up to 240 before relying on it, and `runelite-melxin-235/SNAPSHOT-NOTES.md`
+for the local edits (32-bit object model ids, wiki-scraper dumpers) and the build output
+that was left out. It replaces the former `references/RuneLite-melxin` (removed earlier,
+still in Git history); an older copy also remains inside the pinned `references/rustosrs`
 submodule.
 
 ## Revision-240 client binary
@@ -52,7 +60,7 @@ cargo run -p xtask -- references sync
 cargo run -p xtask -- references status
 ```
 
-`sync` initializes/updates the submodule to the exact commit recorded by RustClient. `status` compares the RustOSRS checkout with its gitlink and verifies that the two vendored trees match the current RustClient commit.
+`sync` initializes/updates the submodule to the exact commit recorded by RustClient. `status` compares the RustOSRS checkout with its gitlink and verifies that the vendored trees (open-runelite 240, rl-suite 240, rsprox, RuneLite 235) match the current RustClient commit.
 
 Do not use `git submodule update --remote` during normal implementation work. Updating the reference snapshot must be an explicit reviewed change to the RustClient gitlink.
 

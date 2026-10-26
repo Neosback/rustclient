@@ -23,8 +23,11 @@ When the pin is advanced, the change should explain:
 The direct RuneLite and rsprox snapshots are pinned by their Git tree identities:
 
 ```sh
-git ls-tree HEAD references/RuneLite-melxin references/rsprox-master
+git ls-tree HEAD references/runelite-melxin-235 references/rsprox-master
 ```
+
+`references/runelite-melxin-235` is revision 235, not 240; cite it together with
+[`docs/reference/REVISION-235-TO-240.md`](../docs/reference/REVISION-235-TO-240.md).
 
 Use the RustClient commit plus a relative source path when citing these copies.
 `cargo run -p xtask -- references status` reports their tree IDs and rejects local

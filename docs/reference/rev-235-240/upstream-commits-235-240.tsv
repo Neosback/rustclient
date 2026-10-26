@@ -1,0 +1,355 @@
+sha	author_date	upstream_support_window	area	subject
+938f61e28	2026-01-14	before api-236	plugin:gpu	gpu: optimize zsort memory use
+cbec50992	2026-01-12	before api-236	plugin:itemcharges	itemcharges: Add sailing potions
+f00d69abb	2026-01-15	before api-236	build	Release 1.12.12
+e5ece44c5	2026-01-15	before api-236	build	Bump for 1.12.13-SNAPSHOT
+ce83baadf	2026-01-16	before api-236	build	client: make processResources depend on project.version
+ced8cdca0	2026-01-17	before api-236	plugin:timetracking	timetracking: support Falador elite diary patch protection
+8820dc809	2025-06-13	before api-236	plugin:timersandbuffs	timers: add blighted overload
+98651e9a5	2025-08-10	before api-236	plugin:itemcharges	item charges: add blighted overload
+c5289dea5	2025-06-13	before api-236	plugin:itemstats	item stats: add blighted overload
+a57a5b794	2026-01-20	before api-236	plugin:hiscore,rl-client	hiscores: change Grid Master back to Tournament
+dc0ee73a7	2026-01-20	before api-236	rl-client	RSProfileType: disable grid master
+2d1daa5b4	2026-01-21	before api-236	build	Release 1.12.13
+9a479fdab	2026-01-21	before api-236	build	Bump for 1.12.14-SNAPSHOT
+a4fd40956	2026-01-16	before api-236	api	api: make WorldPoint::fromLocalInstance not throw on escene coordinates
+6e2d0b20c	2026-01-16	before api-236	plugin:roofremoval	roofremoval: handle escene tiles
+02e33cb1e	2026-01-22	before api-236	plugin:gpu	gpu: add additional error info to glMapBufferRange() exception
+e98f39960	2026-01-24	after api-236	build	gradle: set testLogging exceptionFormat to FULL
+9fb63e848	2026-01-20	before api-236	rl-client	util: monitor exceptions from scheduleAtFixedRate and Delay
+29e1c0e09	2026-01-20	before api-236	plugin:worldhopper	world hopper: add bytes loss % overlay
+7d5e9525c	2026-01-28	after api-236	plugin:skillcalculator	skill calc: add sailing-related actions (#19644)
+a21156eb4	2026-01-08	before api-236	plugin:slayer	slayer: add frost dragons task
+1982b0cf4	2026-01-12	before api-236	plugin:cluescrolls	coordinate clue: show dynamic Baxtorian Falls rope hint
+20bd6cb14	2026-01-27	after api-236	plugin:idlenotifier	idle notifier: add moth mixing anim
+32a65f189	2026-01-27	after api-236	api	api: add group ironman icon ids (#19650)
+ec87095e9	2026-01-23	after api-236	api	api: update 2026-1-28
+e7d5ce76c	2026-01-23	after api-236	api,plugin:bank,plugin:banktags	banktags: update 2026-1-28
+d17504123	2026-01-28	after api-236	build	Release 1.12.14
+97fd78f69	2026-01-28	after api-236	build	Bump for 1.12.15-SNAPSHOT
+efdb1ce5c	2026-01-28	after api-236	plugin:banktags	banktags: fix tag tab tab scrollbar
+36adaaf8c	2026-01-28	after api-236	plugin:menuentryswapper	mes: migrate bankmain items swaps
+cdd00579d	2026-01-28	after api-236	plugin:banktags	banktags: fix opening potion storage when a tag tab is open
+2591ac6b9	2026-01-28	after api-236	plugin:worldhopper	world hopper: reset current world ping on hop
+7c523722f	2026-01-19	before api-236	plugin:itemstats	item stats: decrease blighted overload hp drain
+bcb17946a	2026-01-31	after api-236	plugin:minimap	minimap: save and restore zoom level on restart
+d89612483	2026-01-31	after api-236	plugin:itemstats	item stats: update blighted overload hp drain
+8e574d617	2026-01-31	after api-236	plugin:worldhopper	world hopper: use tcp rtt for current world ping if icmp is blocked
+e61962d50	2026-01-31	after api-236	plugin:worldhopper	world hopper: use tcp ping for slow world ping if icmp is blocked
+3be54288e	2026-01-23	after api-236	api,plugin:gpu,rl-client	api: update 236
+db791dbb8	2026-01-23	after api-236	plugin:gpu	gpu: remove face priority sorting from alpha models
+016c03c3d	2026-02-01	after cache-236	cache	cache: update 236
+93d0b922b	2025-09-14	before api-236	api,rl-client	client: do not reference Applet
+8fcf932c3	2026-02-02	after cache-236	build	Release 1.12.15
+a973684dc	2026-02-02	after cache-236	build	Bump for 1.12.16-SNAPSHOT
+ea4f6d517	2026-02-02	after cache-236	api	api: fix localToCanvas() on boats
+e6f12675d	2026-02-04	after cache-236	plugin:cluescrolls	clues: fix location for shellbane gryphon
+43667dfca	2026-02-04	after cache-236	build	Release 1.12.16
+c85dd7b14	2026-02-04	after cache-236	build	Bump for 1.12.17-SNAPSHOT
+83c8ca204	2026-02-04	after cache-236	plugin:worldhopper	world hopper: always fallback to tcp ping on linux
+56cf5701c	2026-02-06	after cache-236	plugin:worldhopper	client: support tcp rtt on linux & macos
+57e58afe4	2026-02-08	after cache-236	plugin:worldhopper	world hopper: use rtt on macos/linux
+6c23985bb	2026-02-07	after cache-236	plugin:hiscore	hiscore: always default to NORMAL highscores
+478ac5f5b	2026-02-10	after cache-236	other,plugin:music	music: update 2026-2-11
+738a9932f	2026-02-10	after cache-236	plugin:camera	camera: update 2026-2-11
+5e6cdb459	2026-02-11	after cache-236	build	Release 1.12.17
+a9b49fbdf	2026-02-11	after cache-236	build	Bump for 1.12.18-SNAPSHOT
+5413f5714	2026-02-11	after cache-236	plugin:worldhopper	ping: fix flipped BytesOut/BytesRetrans
+ad09a6b17	2026-02-15	after cache-236	plugin:cluescrolls	clues: add fairy ring code to conch medium step
+3f133f648	2026-02-14	after cache-236	plugin:bosstimer,rl-client	boss timers: add shellbane gryphon - Fixes #19646 - The gryphon seems to have a non-standard death as NpcUtil.isDying() is never true for it, so instead add the unique dying animation to onAnimationChanged() - The Shellbane Gryphon respawn timer was updated to 12 seconds on the Dec 17th update (https://secure.runescape.com/m=news/more-sailing-and-interface-changes?oldschool=1)
+b12115c52	2026-02-12	after cache-236	plugin:slayer	slayer: fix scabarites task name, add small scarab
+59202d52c	2026-02-16	after cache-236	plugin:idlenotifier	idle notifier: add HUMAN_FLETCHING_HUNTINGBOLTS
+63763c82a	2026-02-18	after cache-236	plugin:slayer	slayer: fix shellbane gryphon task name
+6609e32f8	2026-02-18	after cache-236	plugin:banktags	LayoutManager: Fix variation matching when the id in the layout is the same as the base id of the variant group.
+ee0bc0294	2026-02-18	after cache-236	plugin:banktags	TabInterface: Add the correct enable/disable option on tag tabs, instead of the one for the currently open tag tab. This also fixes an issue with auto layout options showing up on tabs without a layout.
+e7e037cf8	2026-02-19	after cache-236	api	api: add player composition overrides api
+b31e75330	2026-02-04	after cache-236	plugin:slayer	slayer: fix aquanite task name
+5c1217346	2026-01-30	after api-236	plugin:gpu	gpu: do not reuse zones with incompatible roofs
+e8210568f	2026-02-25	after cache-236	build	Release 1.12.18
+36a288af9	2026-02-25	after cache-236	build	Bump for 1.12.19-SNAPSHOT
+9256ba609	2026-02-20	after cache-236	plugin:config	config: improve notif panel layout
+da9ce70cc	2026-02-21	after cache-236	plugin:config	config: improve config panel layout
+5650aac87	2026-02-26	after cache-236	api,plugin:hiscore,rl-client	hiscore: add brutus
+54eed00fd	2026-02-26	after cache-236	plugin:bosstimer	bosstimer: add brutus
+b25cbbd2f	2026-02-26	after cache-236	plugin:worldmap	worldmap: add cowbell amulet
+950498045	2026-02-26	after cache-236	plugin:devtools	dev tools: fix script inspector highlight list error handling
+05dbf5a0f	2026-02-26	after cache-236	plugin:spellbook	spellbook: null-check spellbook button widgets
+7a36ce165	2026-02-26	after cache-236	plugin:config	config: fix bottom border on section contents
+aa9b1bd6d	2026-02-27	after cache-236	api	api: add Actor getFootprintSize
+cf73aed83	2026-02-27	after cache-236	plugin:interacthighlight,rl-client	outline: combine player/npc drawOutline
+f5c540887	2026-02-26	after cache-236	plugin:interacthighlight	interact highlight: add players
+99a34069d	2026-02-27	after cache-236	plugin:interacthighlight,rl-client	interact highlight: add items
+a6588103f	2026-02-28	after cache-236	plugin:config	"Revert ""config: fix bottom border on section contents"""
+abcaa2001	2026-02-28	after cache-236	plugin:config	"Revert ""config: improve config panel layout"""
+763a942d6	2026-02-28	after cache-236	plugin:config	"Revert ""config: improve notif panel layout"""
+b9ea1f8ff	2026-02-20	after cache-236	plugin:config,plugin:raids,rl-client	add custom font support
+e1d1e5800	2026-03-01	after cache-236	plugin:emojis	emoji: log io exceptions writing index to disk
+0a077da15	2026-03-02	after cache-236	plugin:slayer	slayer: add Brutus as cow task alternative
+af0541ab4	2026-03-03	after cache-236	api,plugin:screenshot	rl-client: update 2026-3-4
+9fb743757	2026-03-04	after cache-236	build	Release 1.12.19
+e25afded9	2026-03-04	after cache-236	build	Bump for 1.12.20-SNAPSHOT
+c7ebe1f36	2026-03-08	after cache-236	plugin:interfacestyles	interfacestyles: add glow icons for 2010 gameframe (#19940)
+738da3fc1	2026-03-11	after cache-236	build	Release 1.12.20
+3437a7985	2026-03-11	after cache-236	build	Bump for 1.12.21-SNAPSHOT
+7c5f13c02	2026-03-11	after cache-236	plugin:worldmap	worldmap: fix Heroes' Guild East mining locations
+017537165	2026-03-11	after cache-236	rl-client	client: fix builds on JDK17+
+69bc89cd0	2025-04-07	before api-236	plugin:gpu	gpu: regions: add additional random event areas
+e6165579e	2025-04-07	before api-236	plugin:gpu	gpu: regions: add various quest areas
+cbb6abad4	2025-04-07	before api-236	plugin:gpu	gpu: regions: add various locations
+693764655	2026-03-12	after api-237	build	libs: update rlawt to 1.8
+f90b5421b	2026-03-12	after api-237	plugin:roofremoval	roofremoval: update poh regions
+2c3ff5938	2026-03-12	after api-237	plugin:gpu	skybox: update poh regions
+b222d2765	2026-03-12	after api-237	plugin:discord	discord: update poh regions
+df8c61242	2021-02-18	before api-236	plugin:itemstats	item stats: add locator orb and dwarven rock cake
+5d71b9115	2022-02-27	before api-236	api	api: add isMembers method to Skill
+65e8d9ec7	2022-02-27	before api-236	plugin:worldhopper	world hopper: fix F2P total world level calculation
+167cc76d5	2026-03-07	after cache-236	build,plugin:worldhopper	world hopper: add brazil region
+1cdfbec43	2026-03-14	after api-237	rl-client	telemetry: include jx account flag
+7de67afd3	2026-03-14	after api-237	plugin:hiscore	hiscore: switch from tournament to seasonal
+836efeefc	2026-03-14	after api-237	rl-client	rsprofile: add demonic pacts league
+65e33082b	2026-02-16	after cache-236	plugin:gpu	gpu: add colorblindness correction intensity config
+636a5dc99	2026-03-15	after cache-237	plugin:screenshot	screenshot: add delve loot
+34c136c7b	2021-03-11	before api-236	plugin:hiscore	hiscore: fix lookups on despawned players
+dfbf826a3	2026-03-16	after cache-237	plugin:agility	agility: recalculate laps to goal on level up
+44e7243e5	2026-03-16	after cache-237	plugin:hiscore	hiscore: get Player reference from lookup menu entry
+777108dba	2026-03-16	after cache-237	rl-client	item manager: don't refresh prices when logged out
+a38b363af	2026-03-16	after cache-237	plugin:grounditems,rl-client	ground items: prioritize exact matches over wildcard matches
+b412a2a5d	2026-03-23	after cache-237	plugin:config	config: fix pinning plugins with commas in their name
+7a07298a0	2026-03-13	after api-237	cache	cache: use reflection to build Instructions from Opcodes
+d013c34a1	2026-03-13	after api-237	cache,other	cache: 237 script support
+6066467a6	2026-03-13	after api-237	cache	cache: enable tests
+63bfcba71	2026-03-13	after api-237	build,other	gradle: add property for clientscript long support
+c2e1eb3ab	2026-03-15	after cache-237	cache	cache: update 237
+d18027d51	2026-03-12	after api-237	api,plugin:bank,plugin:banktags,plugin:camera,plugin:fairyring,plugin:gpu,plugin:idlenotifier,plugin:prayer,plugin:specialcounter,plugin:spellbook,plugin:xtea	api: update 237
+59dc780ee	2026-03-19	after cache-237	other	rl-client: use 237 audio cs2s
+42cff3de2	2026-03-24	after cache-237	build	Release 1.12.21
+f831e01dd	2026-03-24	after cache-237	build	Bump for 1.12.22-SNAPSHOT
+87e310334	2026-03-24	after cache-237	plugin:skillcalculator	skill calc: fix camphor hull parts level
+b1fcae8b1	2026-03-24	after cache-237	plugin:skillcalculator	skill calc: move camphor crates to crafting actions
+70a6595c1	2026-03-24	after cache-237	plugin:menuentryswapper	menu swapper: fix configuring objects with less than 5 ops
+6b5820009	2026-03-24	after cache-237	plugin:menuentryswapper	menu swapper: fix configuring npcs with less than 5 ops
+f63232bb0	2026-03-24	after cache-237	rl-client	agility: fix Trollheim shortcut levels
+9e0dbcde5	2026-03-24	after cache-237	rl-client	agility: fix Karamja spelling in enum
+713415fba	2026-03-24	after cache-237	build,other	rl-client: update to 2026-3-25
+5729ed6b5	2026-03-24	after cache-237	other	rl-client: fix ExamineItem
+34a467167	2026-03-25	after cache-237	build	Release 1.12.22
+42f00beaf	2026-03-25	after cache-237	build	Bump for 1.12.23-SNAPSHOT
+2b2e88c38	2026-03-25	after cache-237	rl-client	rs: reword applet viewer -> client
+c88a0d1f5	2026-03-26	after cache-237	plugin:xptracker,plugin:xpupdater	xp updater: fix xp updates
+5d83a5549	2026-03-26	after cache-237	other	gradle: fix incremental build including stale scripts
+eb5a6e897	2026-03-25	after cache-237	plugin:loginscreen	loginscreen: improve config descriptions
+7c9b8925c	2026-03-25	after cache-237	plugin:loginscreen	loginscreen: remove custom image scaling
+062ee6b1a	2026-03-31	after cache-237	api	api: export EntityOps
+8047f6223	2026-03-31	after cache-237	plugin:menuentryswapper	mes: support object subops
+55be3e143	2026-04-01	after cache-237	build	Release 1.12.23
+3f34bf746	2026-04-01	after cache-237	build	Bump for 1.12.24-SNAPSHOT
+7fb697370	2026-04-02	after cache-237	plugin:cannon	cannon: fix Chasm of Fire spot (#20042)
+e6350de3f	2026-04-10	after cache-237	plugin:banktags	banktags: remove incinerator constants
+300808afc	2026-04-10	after cache-237	plugin:banktags	banktags: block drag for blank items in layouts
+b582a2f4d	2026-04-11	after cache-237	rl-client	telemetry: remove cpu telemetry
+831f22f98	2026-04-11	after cache-237	rl-client	telemetry: remove cpu from error reports
+8af464b1d	2026-04-11	after cache-237	plugin:agility	agility plugin: add an earlier null check to the Agility plugin's hint arrow handling (#19407)
+7650b124d	2026-04-14	after cache-237	api	api: update 2026-4-15
+8f80c3129	2026-04-15	after cache-237	build	Release 1.12.24
+2b0999631	2026-04-15	after cache-237	build	Bump for 1.12.25-SNAPSHOT
+befc2bb56	2026-04-13	after cache-237	build	Bump LWJGL to 3.3.6
+678918797	2026-04-12	after cache-237	rl-client	overlay: refactor snapcorners
+14729e9b3	2026-04-17	after cache-237	rl-client	overlay: simplify snapcorner positioning logic
+fb0cf662d	2026-04-19	after cache-237	rl-client	overlay: reset snapcorners when position is updated
+8db63540f	2026-04-19	after cache-237	plugin:cluescrolls	clues: fix leagues hot/cold clues
+d54603a5a	2026-04-29	after api-238	plugin:gpu	gpu: disable priority sort for streamed transparent models
+71325340e	2026-04-29	after api-238	plugin:gpu	gpu: disable priority sort for streamed transparent models
+bea7fc5fa	2026-04-30	after api-238	plugin:idlenotifier	idle notifier: add dragonstone and onyx cutting
+0da71338a	2026-04-23	after api-238	api,plugin:banktags,plugin:grandexchange,plugin:grounditems,plugin:xtea	api: update 238
+5a96bd8e6	2026-05-02	after cache-238	cache	cache: update 238
+504c047d8	2026-05-05	after cache-238	build	Release 1.12.25
+22ef66ac0	2026-05-05	after cache-238	build	Bump for 1.12.26-SNAPSHOT
+690801993	2026-05-05	after cache-238	build	"Revert ""Bump LWJGL to 3.3.6"""
+7572170ee	2026-05-05	after cache-238	build	Release 1.12.26
+2a9bbe871	2026-05-05	after cache-238	build	Bump for 1.12.27-SNAPSHOT
+4104a97ea	2026-05-05	after cache-238	rl-client	rl-client: fix chatbox snap corner location
+525d5c173	2026-05-05	after cache-238	api	api: fix computing getFootprintTileHeight
+8b312880e	2026-05-05	after cache-238	api	api: fix getFootprintTileHeight() on bridges
+45ba00dcc	2026-05-08	after cache-238	other,rl-client	rl-client/QuantityFormatter: always floor stack sizes
+2ddba92ef	2026-05-06	after cache-238	plugin:antidrag	antidrag: add Anti Drag for Rune Pouch
+6e1ccb67e	2026-05-16	after cache-238	build,cache	libs: remove unused rs version
+3f01f3b37	2026-05-17	after cache-238	plugin:cluescrolls	clues: center beginner clues
+f42b0dab6	2026-05-18	after cache-238	plugin:interfacestyles	interface styles: Fix combat and sailing stone sprite offsets (#20137)
+fda827358	2026-05-20	after cache-238	plugin:interfacestyles	interface styles: Fix actor being scrubbed from condensed player option submenu
+250f25f78	2026-05-20	after cache-238	plugin:skillcalculator	skillcalc: Remove barbarian firemaking sailing logs
+17c3058b9	2026-05-16	after cache-238	plugin:gpu	gpu: orphan interface pbo before mapping
+c504c2b53	2026-05-20	after cache-238	plugin:gpu	gpu: correct vao format comments
+2e8e072f8	2026-05-21	after cache-238	plugin:loottracker	Loot tracker: Rubium geodes + mining level
+326215e81	2026-05-21	after cache-238	plugin:mining	Mining: Track rubium deposits, add overlay to rubium rocks
+219024393	2026-05-24	after cache-238	plugin:chatcommands	chatcommands: fix parsing agility arena kc
+2bb7dcedb	2026-05-27	after cache-238	build	Release 1.12.27
+880fb7e9d	2026-05-27	after cache-238	build	Bump for 1.12.28-SNAPSHOT
+958e457f6	2026-05-27	after cache-238	plugin:cluescrolls	clues: fix South of Dragontooth Island hot-cold location
+a32414c87	2026-05-26	after cache-238	api	api: add Scene getSkybox()
+5771015d5	2026-05-30	after cache-238	plugin:devtools	devools: add zsort command
+594039a1b	2026-05-30	after cache-238	plugin:gpu	gpu: combine player vaolist with opaque vaolist
+0abd154db	2026-05-30	after cache-238	plugin:gpu	gpu: add skybox
+b62f24799	2026-06-01	after cache-238	plugin:worldhopper	world hopper: better handle worlds with no region
+72d7cbdc6	2026-06-01	after cache-238	build,plugin:worldhopper	world hopper: add jp, sg, za
+bd0082ab4	2026-06-02	after cache-238	plugin:xpupdater	xpupdater: fix fetchXp guard flag
+f6390cf08	2026-06-03	after cache-238	build	Release 1.12.28
+c411ab80a	2026-06-03	after cache-238	build	Bump for 1.12.29-SNAPSHOT
+d9023f936	2026-06-04	after cache-238	plugin:worldhopper	worldhopper: fix region filter for new regions
+c66b38a4d	2026-06-06	after cache-238	cache	cache: 238 world map support
+7b0f1415f	2026-06-10	after cache-238	plugin:entityhider	entity hider: add Leagues 6 thrall overrides (#20197)
+f7b8283be	2026-06-13	after api-239	plugin:discord	discord: add sailing event
+58177df57	2026-06-10	after cache-238	plugin:poh	poh: add new portal nexus icons
+4714912c0	2026-06-09	after cache-238	other,rl-client	overlay: add configurable overlay origins
+4d9bb14ab	2026-06-17	after api-239	build	Release 1.12.29
+92e684d16	2026-06-17	after api-239	build	Bump for 1.12.30-SNAPSHOT
+d12b8e72f	2026-06-17	after api-239	other,rl-client	"Revert ""overlay: add configurable overlay origins"""
+79b64b1c5	2026-06-09	after cache-238	other,rl-client	overlay: add configurable overlay origins
+a1c3eeae6	2026-06-17	after api-239	rl-client	overlay: use PostMenuSort for adding overlay menus
+38780b67c	2026-06-17	after api-239	plugin:itemstats	item stats: add cooked t-bone steak
+50590a9ff	2026-06-17	after api-239	rl-client	itemmapping: add demonic pacts ornament kits
+5c42e2e10	2026-06-18	after api-239	cache	cache: use id for compositemap and details when necessary
+c1345e6b0	2026-06-18	after api-239	plugin:config	config: update phub warning
+9adb54fe7	2026-06-20	after api-239	plugin:roofremoval	roofremoval: fix last light lighthouse roof
+ce5918d33	2026-06-12	after api-239	api,plugin:gpu,plugin:menuentryswapper	api: update 239
+49d104a0f	2026-06-21	after api-239	plugin:gpu	gpu: fix skyboxes with transparency
+7fbad809d	2026-06-21	after api-239	rl-client	npcoverlay: disable overlay in cutscenes
+47e38bc9a	2026-06-22	after api-239	build	Release 1.12.30
+91d6deaeb	2026-06-22	after api-239	build	Bump for 1.12.31-SNAPSHOT
+88c57bb1d	2026-06-22	after api-239	plugin:config	config: shortern default unavailable reason
+972dbc72e	2026-06-22	after api-239	plugin:mousehighlight	mouse highlight: hide Overlay Origin tooltip
+960a88f3b	2026-06-22	after api-239	plugin:mousehighlight,rl-client	overlay: use RUNELITE_OVERLAY for overlay origin menu
+72e04f940	2026-06-24	after cache-239	cache	cache: rev 239
+f435b9e8e	2026-06-24	after cache-239	rl-client	overlay: place overlay menus under top most option
+5e6164b3e	2026-06-25	after cache-239	build	Release 1.12.31
+d72c017e4	2026-06-25	after cache-239	build	Bump for 1.12.32-SNAPSHOT
+392e65294	2026-06-25	after cache-239	rl-client	overlay: move origin menus to MenuOpened
+74e105acb	2026-06-26	after cache-239	plugin:cluescrolls	clues: replace fish chunks with fish offcuts in mottled eel skill challenge
+2269c758b	2026-06-30	after cache-239	api,plugin:hiscore,rl-client	hiscore: add maggot king
+fa21e1890	2026-06-30	after cache-239	plugin:tileindicators	tile indicators: disable overlay in cutscenes
+63a8eaafc	2026-07-02	after cache-239	plugin:hunter	hunter: add letvek traps
+d502eb017	2026-07-01	after cache-239	plugin:itemstats	itemstats: Add vampyrium consumables
+f7530663d	2026-07-02	after cache-239	plugin:itemstats	item stats: remove inline comments
+1b747c7c1	2026-07-02	after cache-239	plugin:itemstats	item stats: add Stymphike tatare
+a88ac64d5	2026-07-02	after cache-239	api,plugin:gpu	gpu: add model transparency support
+6f338c069	2026-06-30	after cache-239	api	api: RLO rendermodes
+d4d714579	2026-07-04	after cache-239	api	api: add animation left/right hand item
+aba169bf3	2026-07-07	after cache-239	rl-client	agility: Add Vampyrium shortcuts
+c2604d8ed	2026-07-07	after cache-239	rl-client	agility: add Stalker Den stepping stone
+05e098ed6	2026-07-07	after cache-239	plugin:worldmap	worldmap: add Great Conch dungeons
+08244aee3	2026-07-08	after cache-239	plugin:worldmap	worldmap: Vampyrium
+1f484914a	2026-06-29	after cache-239	plugin:timetracking	time tracking: fix special patch showing ready due to empty compost bins
+a45f01188	2026-07-08	after cache-239	plugin:loottracker	loot tracker: tarnished items and maggot king eggs
+4152ea05b	2026-07-08	after cache-239	plugin:menuentryswapper	mes: remove knock-out/lure block
+4f6cf9134	2026-07-08	after cache-239	build	Release 1.12.32
+cde648a2f	2026-07-08	after cache-239	build	Bump for 1.12.33-SNAPSHOT
+ea1154b53	2026-07-08	after cache-239	rl-client	agility: Fix Vampyrium shortcut IDs
+bc2f39836	2026-07-08	after cache-239	plugin:itemcharges	itemcharges: Add vampyrium consumables
+c59561dda	2026-07-07	after cache-239	plugin:slayer	slayer: maggot king task
+ee8a62b38	2026-07-09	after cache-239	plugin:motherlode	motherlode: fix broken struts overlay early return
+9a084853d	2026-07-09	after cache-239	plugin:cluescrolls	clues: fix Arandar pass hot-cold location
+0c6debb09	2026-07-09	after cache-239	plugin:banktags	bank tags: add option to place items at end of tag
+9bc02bf26	2026-06-15	after api-239	rl-client	overlay: make snapcorners movable overlays
+a85d5de00	2026-07-12	after cache-239	plugin:config	config: increase max profiles to 64
+9726bbe88	2026-07-13	after cache-239	plugin:cluescrolls	clues: fix Burgh de rott coordinate clue
+a5d672dd9	2026-07-15	after cache-239	plugin:idlenotifier	idle notifier: add engorged bloodwood sap collection
+3b511b36a	2026-07-15	after cache-239	rl-client	overlay: fix cycleCheck npe
+c35b639e2	2026-07-15	after cache-239	plugin:gpu	gpu: read screenshot pixels directly into image buffer
+439fc3351	2026-07-16	after cache-239	plugin:gpu	gpu: use render threads
+12e5beed9	2026-07-16	after cache-239	build	Release 1.12.33
+9308cb483	2026-07-16	after cache-239	build	Bump for 1.12.34-SNAPSHOT
+805a61194	2026-07-18	after cache-239	rl-client	hooks: add outdated plugin check
+2d8fa5a5d	2026-07-20	after cache-239	build,rl-client	remove iterator allocs from RenderCallbackManager
+72b22ae06	2026-07-20	after cache-239	api	api: add accessor for mouseoverTextEnabled
+90eb13760	2026-07-21	after cache-239	plugin:worldmap	worldmap: add charred island and charred dungeon
+2b7ee4fed	2026-07-15	after cache-239	rl-client	item mapping: add araxyte and elder venator fang
+02b41869a	2026-07-27	after cache-239	plugin:cluescrolls	clues: add Hallowed Flail as valid Falo the Bard item
+16f5af4fb	2026-07-28	after cache-239	plugin:hiscore	hiscore: automatically build bosses list
+591201ca8	2026-07-29	after cache-239	api,rl-client	hiscore: add mad angel
+a14f6d9c1	2026-07-30	after cache-239	plugin:interacthighlight	interact highlight: fix findTileObject for multilocs
+5567351a2	2026-07-31	after cache-239	plugin:banktags	bank tags: add edit-tags option to shared bank
+c9f995bda	2026-07-30	after cache-239	plugin:gpu	gpu: describe static xyz as a four-component short attribute
+164e3305d	2026-08-02	after cache-239	rl-client	overlay: only show snapcorner fill when in drag mode or mouseover
+348035815	2026-08-02	after cache-239	plugin:worldmap	world map: add sailors amulet, wyrmscraig, river dougne, and adjust xeric icon
+6286a0762	2026-08-03	after cache-239	build	Release 1.12.34
+954f990b9	2026-08-03	after cache-239	build	Bump for 1.12.35-SNAPSHOT
+972064bee	2026-08-05	after cache-239	build	Release 1.12.35
+01e092233	2026-08-05	after cache-239	build	Bump for 1.12.36-SNAPSHOT
+061fad9e2	2026-08-05	after cache-239	plugin:slayer	slayer: add venators
+e2bed4cd2	2026-08-05	after cache-239	plugin:worldmap	worldmap: add slepe and castle drakan teleports
+dae7fc9de	2026-08-04	after cache-239	plugin:worldmap	worldmap: add new mooring points
+0e25fd80d	2026-08-05	after cache-239	plugin:worldmap	worldmap: add wyrmscraig and red rock
+150fb33d1	2026-08-06	after cache-239	plugin:cluescrolls	HotColdLocation: center south of the mausoleum spot
+518aed54c	2026-08-06	after cache-239	plugin:bank	bank: track bank open state via interface lifecycle
+6075cc418	2026-08-06	after cache-239	api	api: add widget subops
+371568352	2026-08-06	after cache-239	plugin:banktags	bank tags: add pot storage doses selection to layouts
+9c2571c51	2026-08-06	after cache-239	plugin:prayer	prayer: support eginol potion
+f01f0d474	2026-08-06	after cache-239	plugin:bosstimer	boss timers: add Mad Angel
+22741a1af	2026-08-06	after cache-239	other,plugin:emojis,rl-client	rl-client: support <at> and <nbh>
+f310cd78a	2026-08-06	after cache-239	plugin:chatnotifications	chatnotifications: unescape message text
+cde10d288	2026-08-06	after cache-239	plugin:chatfilter	chatfilter: re-escape censored messages
+66bfc977a	2026-08-09	after cache-239	rl-client	LinkBrowser: check browse urls are http/https
+f0a5f7c5f	2026-08-09	after cache-239	plugin:info	info: use LinkBrowser
+6c6a98850	2026-08-09	after cache-239	plugin:config	config: null check plugin description text
+566f91db1	2026-08-04	after cache-239	plugin:slayer	slayer: support mortimer task length modifier
+3bcd3ce4d	2026-07-29	after cache-239	plugin:idlenotifier	idlenotifier: add golem crafting
+c08ae83b5	2026-08-13	after cache-239	plugin:agility,plugin:chatfilter,plugin:combatlevel,plugin:devtools,plugin:fishing,plugin:hunter,plugin:implings,plugin:instancemap,plugin:interacthighlight,plugin:kourendlibrary,plugin:npchighlight,plugin:poh,plugin:runenergy,plugin:tileindicators,plugin:timersandbuffs,plugin:timetracking,rl-client	client: fix various npes from localPlayer being null
+bcdbe627f	2026-08-13	after cache-239	plugin:gpu	gpu: always unmap alpha vao
+d472cde14	2026-08-17	after cache-239	plugin:loottracker	loottracker: add golem crafting
+f151d4631	2026-08-11	after cache-239	plugin:worldmap	worldmap: fix tempoross fishing locations
+bc55a1ce9	2026-08-11	after cache-239	plugin:worldmap	worldmap: add sailing island fishing locations
+13aa5f833	2026-08-10	after cache-239	rl-client	fishing: add sea fishing spots
+537f44f9b	2026-08-19	after cache-239	rl-client	agility: add Wyrmscraig shortcuts
+57b8d7157	2026-08-19	after cache-239	build	Release 1.12.36
+973ee4b62	2026-08-19	after cache-239	build	Bump for 1.12.37-SNAPSHOT
+e5e299d98	2026-08-19	after cache-239	plugin:fishing	fishing: update fast aerial fishing spot range
+c3ff99bec	2026-08-19	after cache-239	plugin:itemstats,plugin:skillcalculator,plugin:worldmap	client: apply summer sweep up changes
+1832f97d5	2026-08-22	after cache-239	rl-client	require user agents to start with RuneLite
+05e0d9e2d	2026-08-22	after cache-239	plugin:prayer	prayer: update prayer bar overlay for actor footprint
+33f233995	2026-08-22	after cache-239	plugin:prayer	client: fix checkstyle
+b47208f96	2026-08-20	after cache-239	plugin:gpu	gpu: fix ui scaling targetDimensions in stretched mode
+8a5152b9c	2026-08-22	after cache-239	plugin:slayer	slayer: support mortimer task streak
+af0c61427	2026-08-22	after cache-239	rl-client-resources	laf: Set colour for @selectionInactiveBackground (#20139)
+f427be4c9	2026-08-22	after cache-239	rl-client	agility: add Summer Sweep Up shortcuts
+2624bcc41	2026-08-25	after cache-239	plugin:prayer	prayer: update Chivalry's drain rate
+475e894ca	2026-08-25	after cache-239	plugin:timetracking	timetracking: use varbits for farming contract state
+f0bbb27b2	2026-08-26	after cache-239	build	Release 1.12.37
+59eccec0a	2026-08-26	after cache-239	build	Bump for 1.12.38-SNAPSHOT
+d19e76bc7	2026-08-27	after cache-239	plugin:gpu	gpu: regions: add toa lobby
+b04960c0a	2026-08-27	after cache-239	plugin:loottracker	loottracker: update birdhouse trapping xp
+81488b89d	2026-08-05	after cache-239	plugin:chatcommands	chatcommands: read the adventure log owner from either menu interface
+0a020db05	2026-08-28	after cache-239	rl-client	clientui: set username in title from Jagex launcher
+d7c2f6c36	2026-08-28	after cache-239	plugin:worldmap	worldmap: add shipwreck salvaging spots
+28f76c54c	2026-06-20	after api-239	plugin:config	config: show world type in the rsprofile default tooltip
+43ceefbe2	2026-08-28	after cache-239	plugin:hunter	hunter: add crab traps
+ded1b0ead	2026-08-30	after cache-239	plugin:timersandbuffs	timers: update Arceuus spell messages
+1c056963a	2026-08-30	after cache-239	api	api: add macroExpand
+333147cda	2026-08-30	after cache-239	build,plugin:loottracker	client: update mockito to 5.23.0
+e1afd4502	2026-08-30	after cache-239	plugin:chatcommands,plugin:loottracker,plugin:screenshot,plugin:slayer,plugin:timersandbuffs,plugin:woodcutting	client: update chat message parsing for macros
+8beba5364	2026-09-01	after cache-239	api	api: fix javadoc
+1e54fbec9	2026-09-01	after cache-239	build	gradle: mitigate delombok cache bug
+7f764ac30	2026-09-02	after cache-239	plugin:loottracker	loot tracker: code style cleanup
+b505980ed	2026-09-02	after cache-239	build	Release 1.12.38
+167029837	2026-09-02	after cache-239	build	Bump for 1.12.39-SNAPSHOT
+1ab01522f	2026-08-28	after cache-239	plugin:interacthighlight	interact highlight: remove fallback actor highlighting
+06244d888	2026-08-24	after cache-239	plugin:skillcalculator	skill calc: add sailing
+2b8688a49	2026-08-24	after cache-239	api,plugin:banktags	bank tags: add quiver's ammo to layouts
+1f8ecdbb6	2026-08-31	after cache-239	plugin:ammo	ammo: check for quiver using item composition params
+84402b97c	2026-08-24	after cache-239	plugin:cannon	cannon: remove overlays when cannon decays
+7578cedee	2025-05-22	before api-236	plugin:skillcalculator	skill calculator: add diabolic worms xp modifier
+703ba12f9	2026-09-03	after cache-239	plugin:timersandbuffs	timers and buffs: fix freeze timer chat parsing
+572a220da	2026-09-03	after cache-239	plugin:slayer	slayer: correct mortimer initial count on login
+ac79ed8bd	2026-09-04	after cache-239	plugin:skillcalculator	skill calc: add shark lure
+f6068e085	2026-09-14	after cache-239	plugin:agility	agility: update colossal wyrm advanced course lap xp
+044da3b73	2026-09-14	after cache-239	plugin:agility	agility: update colossal wyrm basic course xp
+6927f9891	2026-09-14	after cache-239	plugin:cluescrolls	clues: fix enemy for sunset coast hot cold step
+fcbf11c19	2026-09-14	after cache-239	plugin:itemidentification	item identification: add latest teleport scrolls
+e43dd292b	2026-09-14	after cache-239	plugin:itemidentification	item identification: add aldarin and boat teleport tablets
+09e47767e	2026-09-14	after cache-239	api,other,plugin:attackstyles	attackstyles: remove combat_interface_sp cs2 override
+c3a1a8d5d	2026-09-14	after cache-239	api,build,other	api: replace interfaces.toml with gameval references
+e89fd7c36	2026-09-14	after cache-239	plugin:itemidentification	item identification: add sap-treated logs
+a932e7b67	2026-09-15	after cache-239	plugin:objectindicators	object indicators: limit tile highlight border width
+6e09d5270	2026-08-31	after cache-239	other,rl-client	rl-client: add Filepath utility
+67d51a4a4	2026-09-16	after cache-239	build	Release 1.12.39
+ced4c4aba	2026-09-16	after cache-239	build	Bump for 1.12.40-SNAPSHOT
+a5c2494fc	2026-09-22	after cache-239	plugin:skillcalculator	skill calc: update Sepulchre floor 4 and 5 level requirements
+7f7d40e90	2026-09-23	after cache-239	api,plugin:loottracker	loot tracker: add courier task rewards

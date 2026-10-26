@@ -18,6 +18,7 @@ revision is evidence, not a compatibility declaration.
 | OpenRune development server | `/Users/tylercovalt/Desktop/OpenRune Project/OpenRune-Server` | Actual server behavior and cache for the target. Pins `net.rsprot:osrs-240-*` `1.0.0-ALPHA-20260825`; those source JARs provide exact 240 wire evidence. See existing protocol fixture provenance. |
 | OpenRune FileStore | `/Users/tylercovalt/Documents/OpenRune-FileStore-main` | Cache definition/opcode, container and model decoder research. Verify individual 240 layouts against actual cache and deob; presence of a codec does not prove every 240 format is supported. External local source, not yet vendored. |
 | TSPS client | `/Users/tylercovalt/Documents/tsps-main/client` | Additional widget press/drag/release, chat focus and player/NPC lifecycle evidence. Selected files are hashed in the source manifest. Verify packet layouts against the selected rsprot 240 adapter; do not copy a parallel client state architecture. |
+| 235 → 240 change inventory | [`REVISION-235-TO-240.md`](REVISION-235-TO-240.md) | What carries over from the readable 235 tree and what changed (packets, cache decoders, XTEA, world map, CS2 long type, camera, GPU plugin, sailing), with per-packet and per-commit data. Start here before porting from 235. |
 | RustOSRS | `references/rustosrs/` | Pinned Rust cache/scene/rendering research, coordinate conventions, model offsets, transforms, neighboring normal merges and Reference GPU oracle. Port semantic rules into RustClient; do not adopt editor enhancements as OSRS behavior. |
 
 The separate RuneLite 240, rl-suite and rsprox copies are vendored Git trees, not
@@ -38,9 +39,23 @@ The original supplied copies remain available at:
 - rsprox: `/Users/tylercovalt/Documents/rsprox-master`
 - RustOSRS: `/Users/tylercovalt/Documents/RustOSRS`
 
-The RuneLite 235 tree (`references/RuneLite-melxin`) was removed from the repository and remains in Git history. Older checkpoints cite RuneLite 235 and OpenRune bundled inside `references/rustosrs/`.
+Older checkpoints cite RuneLite 235 and OpenRune bundled inside `references/rustosrs/`.
 Those citations remain valid for their recorded snapshot. New research should use
 the source map above and record the specific files/revision used.
+
+## The 235 tree
+
+The readable (`@Export`-named) client source is revision **235**, not 240. Use it as the behaviour reference
+and read the 240 evidence only where [the 235→240 inventory](REVISION-235-TO-240.md) lists a change.
+
+| What | Where |
+| --- | --- |
+| In this repository | `references/runelite-melxin-235/` (vendored tree; RuneLite 1.12.14 base, OpenOSRS 4.31.2, `rsversion = 235`; local edits and omissions in its `SNAPSHOT-NOTES.md`) |
+| Original working copy | `/Users/tylercovalt/Documents/ChatGPT/RSPSi-resources/RuneLite-melxin` (the source of the vendored tree; also holds untracked build output) |
+| Older copy | `references/rustosrs/RuneLite-melxin` (inside the RustOSRS submodule; lacks the local edits, has extra resources) |
+| What changed up to 240 | [REVISION-235-TO-240.md](REVISION-235-TO-240.md), data in [`rev-235-240/`](rev-235-240/), generators in `tools/rev-diff/` |
+
+The earlier `references/RuneLite-melxin` was removed and remains in Git history; cite the tree above instead.
 
 The [gameframe audit](../plan/GAMEFRAME-240.md) maps 240 canvas sizing, reflow and
 operation-callback ordering to the shared widget/runtime owners.
