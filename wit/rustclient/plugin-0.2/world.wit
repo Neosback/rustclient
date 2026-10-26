@@ -164,15 +164,19 @@ interface types {
     enum overlay-layer { scene, above-scene, top }
 
     enum align { left, center, right }
+    enum actor-anchor { top, middle }
     variant overlay-command {
         // Text, x, baseline y, colour, alignment of x.
         text(tuple<string, s32, s32, u32, align>),
         sprite(tuple<u32, s32, s32, align>),
         rect(tuple<rect, u32, bool>),
         line(tuple<tuple<s32, s32>, tuple<s32, s32>, u32>),
-        tile(tuple<world-point, u32, u32>),
-        actor-hull(tuple<actor-ref, u32, u32>),
-        actor-text(tuple<actor-ref, string, s32, u32>),
+        // Tile: south-west tile, size in tiles, outline, fill, outline width.
+        tile(tuple<world-point, u8, u32, u32, u8>),
+        // Actor hull: actor, outline, fill, outline width.
+        actor-hull(tuple<actor-ref, u32, u32, u8>),
+        // Actor text: actor, text, height above the anchor, colour, anchor, alignment, x offset.
+        actor-text(tuple<actor-ref, string, s32, u32, actor-anchor, align, s32>),
         minimap-dot(tuple<world-point, u32>),
     }
 

@@ -344,6 +344,15 @@ pub(crate) fn validate(
             true
         }
         OverlayCommand::Rect { width, height, .. } => *width >= 0 && *height >= 0,
+        OverlayCommand::Tile { size, width, .. } => {
+            *size = (*size).min(limits::MAX_TILE_AREA);
+            *width = (*width).clamp(1, limits::MAX_OUTLINE_WIDTH);
+            *size > 0
+        }
+        OverlayCommand::ActorHull { width, .. } => {
+            *width = (*width).clamp(1, limits::MAX_OUTLINE_WIDTH);
+            true
+        }
         _ => true,
     });
 

@@ -734,3 +734,52 @@ fn faults_in_a_probe_disable_it_but_not_other_plugins() {
     assert_eq!(seen.borrow().events.len(), 2, "disabled after two faults");
     assert_eq!(good.borrow().events.len(), 3);
 }
+
+#[test]
+fn tile_and_hull_outlines_are_bounded() {
+    use rustclient_plugin_api::{ActorRef, OverlayCommand, WorldPoint};
+    let tile = |size, width| LayeredOverlay {
+        layer: OverlayLayer::AboveScene,
+        command: OverlayCommand::Tile {
+            tile: WorldPoint {
+                x: 1,
+                y: 2,
+                plane: 0,
+            },
+            size,
+            argb: 0xFFFF_FFFF,
+            fill_argb: 0,
+            width,
+        },
+    };
+    let output = PluginOutput {
+        overlay: vec![
+            tile(0, 2),
+            tile(200, 0),
+            LayeredOverlay {
+                layer: OverlayLayer::AboveScene,
+                command: OverlayCommand::ActorHull {
+                    actor: ActorRef::Npc(1),
+                    argb: 0,
+                    fill_argb: 0,
+                    width: 99,
+                },
+            },
+        ],
+        ..PluginOutput::default()
+    };
+    let mut harness = Harness::new();
+    harness.add("dev.rustclient.a", &[Capability::UiOverlay], output, false);
+    let merged = harness.output(&snapshot());
+    let shapes: Vec<(u8, u8)> = merged
+        .overlay
+        .iter()
+        .map(|item| match item.command {
+            OverlayCommand::Tile { size, width, .. } => (size, width),
+            OverlayCommand::ActorHull { width, .. } => (0, width),
+            _ => (u8::MAX, u8::MAX),
+        })
+        .collect();
+    // An empty area is dropped; oversized areas and widths clamp to the limits.
+    assert_eq!(shapes, [(8, 1), (0, 8)]);
+}

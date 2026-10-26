@@ -25,9 +25,9 @@ pub use game::{
 pub use manifest::{ManifestError, PluginManifest};
 pub use menu::{MenuEdit, MenuEntry, MenuKind};
 pub use output::{
-    AnimationSmoothing, CameraCommand, EntityVisibility, HorizontalAlign, InfoBox, LayeredOverlay,
-    Notification, NotificationKind, OverlayCommand, OverlayLayer, PluginOutput, RoofArea,
-    RoofModes, SceneFlags, SpriteOverride, Stretch, StretchScaling, limits,
+    ActorAnchor, AnimationSmoothing, CameraCommand, EntityVisibility, HorizontalAlign, InfoBox,
+    LayeredOverlay, Notification, NotificationKind, OverlayCommand, OverlayLayer, PluginOutput,
+    RoofArea, RoofModes, SceneFlags, SpriteOverride, Stretch, StretchScaling, limits,
 };
 
 /// Major version of the plugin API implemented by this client.

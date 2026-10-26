@@ -15,6 +15,7 @@ mod shell;
 mod shell_input;
 mod widget_pointer;
 mod widgets;
+mod world_overlays;
 
 use rustclient_application::{
     DeterministicRandomSource, RandomSeed, SplitMix64Random, load_title, load_title_preferences,
@@ -715,6 +716,13 @@ impl NativeApp {
                     .project(assets, &self.widget_assets.font_icons, &mut self.frame);
                 self.widget_menu
                     .project(assets, &self.widget_assets.font_icons, &mut self.frame);
+                world_overlays::project(
+                    &self.scene,
+                    assets,
+                    &self.plugins.output().overlay,
+                    &mut self.frame,
+                    visibility.top_level,
+                );
                 self.plugins
                     .overlay(&self.state, assets, &self.widget_assets, &mut self.frame);
                 if self.state.loaded_scene().is_none() || self.scene.loading {

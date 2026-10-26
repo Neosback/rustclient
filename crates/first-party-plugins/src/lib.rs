@@ -12,9 +12,12 @@ mod entityhider;
 mod fps;
 mod idlenotifier;
 mod idlenotifier_animations;
+mod npchighlight;
+mod playerindicators;
 mod roofremoval;
 mod statusbars;
 mod stretchedmode;
+mod text;
 
 use rustclient_plugin_api::{
     Capability, CapabilitySet, GameEvent, OverlayLine, PluginApiVersion, PluginEvent, PluginId,
@@ -157,6 +160,24 @@ const ENTRIES: &[Entry] = &[
             Capability::GameReadVars,
         ],
         build: || boxed(idlenotifier::IdleNotifier::new()),
+    },
+    Entry {
+        name: "npchighlight",
+        capabilities: &[
+            Capability::UiOverlay,
+            Capability::GameReadNpcs,
+            Capability::GameReadVars,
+        ],
+        build: || boxed(npchighlight::NpcHighlight),
+    },
+    Entry {
+        name: "playerindicators",
+        capabilities: &[
+            Capability::UiOverlay,
+            Capability::GameReadPlayers,
+            Capability::GameReadVars,
+        ],
+        build: || boxed(playerindicators::PlayerIndicators),
     },
     Entry {
         name: "camera",

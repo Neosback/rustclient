@@ -774,6 +774,7 @@ fn label_anchor(
         .map(|v| i32::from(v.position[1]))
         .min()
         .unwrap_or(0);
+    let vertices = first..geometry.vertices.len();
     geometry.actor_labels.push(crate::ActorLabelAnchor {
         actor,
         position: [
@@ -782,6 +783,7 @@ fn label_anchor(
             position[1] - asset.descriptor().origin().y * 128 + i32::from(size) * 64,
         ],
         level: vertex.render_level(),
+        vertices,
     });
 }
 

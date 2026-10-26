@@ -1247,3 +1247,245 @@ mod camera {
         );
     }
 }
+
+mod npchighlight {
+    use super::*;
+    use rustclient_plugin_api::{ActorRef, NpcSnapshot, OverlayCommand};
+
+    fn npc(index: u16, name: &str, size: u8) -> NpcSnapshot {
+        NpcSnapshot {
+            actor: actor(index, None),
+            id: 1,
+            name: Some(name.into()),
+            combat_level: 2,
+            size: (size, size),
+            actions: Vec::new(),
+        }
+    }
+
+    fn snapshot() -> GameSnapshot {
+        GameSnapshot {
+            npcs: vec![
+                npc(1, "Goblin", 1),
+                npc(2, "Goblin guard", 1),
+                npc(3, "Cow", 2),
+            ],
+            ..GameSnapshot::default()
+        }
+    }
+
+    fn commands(output: &HostOutput) -> Vec<&OverlayCommand> {
+        output.overlay.iter().map(|item| &item.command).collect()
+    }
+
+    #[test]
+    fn nothing_is_drawn_without_a_name_list() {
+        let mut harness = Harness::new();
+        harness.enable("npchighlight", &[]);
+        assert!(harness.output(&snapshot()).overlay.is_empty());
+    }
+
+    #[test]
+    fn listed_names_get_the_default_hull_with_the_source_colours() {
+        let mut harness = Harness::new();
+        harness.enable(
+            "npchighlight",
+            &[("npcToHighlight", ConfigValue::Text("goblin, cow".into()))],
+        );
+        let output = harness.output(&snapshot());
+        assert_eq!(
+            commands(&output),
+            [
+                &OverlayCommand::ActorHull {
+                    actor: ActorRef::Npc(1),
+                    argb: 0xFF00_FFFF,
+                    fill_argb: 0x1400_FFFF,
+                    width: 2,
+                },
+                &OverlayCommand::ActorHull {
+                    actor: ActorRef::Npc(3),
+                    argb: 0xFF00_FFFF,
+                    fill_argb: 0x1400_FFFF,
+                    width: 2,
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn wildcards_tiles_and_names_follow_the_style_switches() {
+        let mut harness = Harness::new();
+        harness.enable(
+            "npchighlight",
+            &[
+                ("npcToHighlight", ConfigValue::Text("gob*, cow".into())),
+                ("highlightHull", ConfigValue::Boolean(false)),
+                ("highlightTile", ConfigValue::Boolean(true)),
+                ("highlightSouthWestTile", ConfigValue::Boolean(true)),
+                ("drawNames", ConfigValue::Boolean(true)),
+            ],
+        );
+        let output = harness.output(&snapshot());
+        let tiles: Vec<u8> = commands(&output)
+            .into_iter()
+            .filter_map(|command| match command {
+                OverlayCommand::Tile { size, .. } => Some(*size),
+                _ => None,
+            })
+            .collect();
+        // Goblin, Goblin guard (1x1) and the 2x2 cow: area tile, then the south-west single tile.
+        assert_eq!(tiles, [1, 1, 1, 1, 2, 1]);
+        let names: Vec<&str> = commands(&output)
+            .into_iter()
+            .filter_map(|command| match command {
+                OverlayCommand::ActorText { text, .. } => Some(text.as_str()),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(names, ["Goblin", "Goblin guard", "Cow"]);
+    }
+
+    #[test]
+    fn cutscenes_hide_the_highlights() {
+        let mut harness = Harness::new();
+        harness.enable(
+            "npchighlight",
+            &[("npcToHighlight", ConfigValue::Text("goblin".into()))],
+        );
+        let mut scene = snapshot();
+        let vars = rustclient_plugin_api::Vars {
+            varps: std::collections::BTreeMap::from([(1, 1)]),
+            varbits: std::sync::Arc::new(std::collections::BTreeMap::from([(
+                542,
+                rustclient_plugin_api::VarbitDef {
+                    varp: 1,
+                    lsb: 0,
+                    msb: 0,
+                },
+            )])),
+        };
+        scene.vars = vars;
+        assert!(harness.output(&scene).overlay.is_empty());
+    }
+}
+
+mod playerindicators {
+    use super::*;
+    use rustclient_plugin_api::{ActorAnchor, HorizontalAlign, OverlayCommand, PlayerSnapshot};
+
+    fn player(index: u16, name: &str, is_local: bool) -> PlayerSnapshot {
+        PlayerSnapshot {
+            actor: actor(index, None),
+            name: name.into(),
+            combat_level: 3,
+            skill_level: 0,
+            is_local,
+            hidden: false,
+        }
+    }
+
+    fn snapshot() -> GameSnapshot {
+        GameSnapshot {
+            players: vec![
+                player(1, "Me", true),
+                player(2, "Them", false),
+                player(3, "", false),
+            ],
+            ..GameSnapshot::default()
+        }
+    }
+
+    fn texts(output: &HostOutput) -> Vec<(&str, ActorAnchor, HorizontalAlign, i32, u32)> {
+        output
+            .overlay
+            .iter()
+            .filter_map(|item| match &item.command {
+                OverlayCommand::ActorText {
+                    text,
+                    anchor,
+                    align,
+                    x_offset,
+                    argb,
+                    ..
+                } => Some((text.as_str(), *anchor, *align, *x_offset, *argb)),
+                _ => None,
+            })
+            .collect()
+    }
+
+    #[test]
+    fn the_defaults_highlight_nobody() {
+        // Self and others are both off by default.
+        let mut harness = Harness::new();
+        harness.enable("playerindicators", &[]);
+        assert!(harness.output(&snapshot()).overlay.is_empty());
+    }
+
+    #[test]
+    fn others_are_named_above_the_head_in_the_source_colour() {
+        let mut harness = Harness::new();
+        harness.enable(
+            "playerindicators",
+            &[("highlightOthers", ConfigValue::Choice("ENABLED".into()))],
+        );
+        let output = harness.output(&snapshot());
+        // The unnamed third player is skipped and the local player is not "others".
+        assert_eq!(
+            texts(&output),
+            [(
+                "Them",
+                ActorAnchor::Top,
+                HorizontalAlign::Center,
+                0,
+                0xFFFF_0000
+            )]
+        );
+    }
+
+    #[test]
+    fn name_positions_and_tiles_follow_their_settings() {
+        let mut harness = Harness::new();
+        harness.enable(
+            "playerindicators",
+            &[
+                ("highlightSelf", ConfigValue::Choice("ENABLED".into())),
+                (
+                    "playerNamePosition",
+                    ConfigValue::Choice("MODEL_RIGHT".into()),
+                ),
+                ("drawPlayerTiles", ConfigValue::Boolean(true)),
+            ],
+        );
+        let output = harness.output(&snapshot());
+        assert_eq!(
+            texts(&output),
+            [(
+                "Me",
+                ActorAnchor::Middle,
+                HorizontalAlign::Left,
+                10,
+                0xFF00_B8D4
+            )]
+        );
+        assert!(output.overlay.iter().any(|item| matches!(
+            item.command,
+            OverlayCommand::Tile {
+                size: 1,
+                fill_argb: 0x3200_0000,
+                ..
+            }
+        )));
+        let disabled = {
+            let mut harness = Harness::new();
+            harness.enable(
+                "playerindicators",
+                &[
+                    ("highlightSelf", ConfigValue::Choice("ENABLED".into())),
+                    ("playerNamePosition", ConfigValue::Choice("DISABLED".into())),
+                ],
+            );
+            harness.output(&snapshot())
+        };
+        assert!(texts(&disabled).is_empty());
+    }
+}

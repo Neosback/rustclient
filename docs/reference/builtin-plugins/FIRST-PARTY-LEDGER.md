@@ -198,3 +198,42 @@ injected mixins, so the arithmetic follows `runelite-mixins/.../CameraMixin.java
 Known differences:
 
 - `CameraCommand::{YawTarget, PitchTarget, ZoomTarget, ZoomLimits}` remain in the API without a consumer.
+
+## npchighlight
+
+Sources: `plugins/npchighlight/{NpcIndicatorsPlugin,NpcIndicatorsConfig}.java`, `game/npcoverlay/{NpcOverlay,NpcOverlayService}.java`,
+`util/{Text,WildcardMatcher}.java`. Overlay projection: `apps/native/src/world_overlays.rs`.
+
+| Source | Rust owner | Implemented | Verified |
+| --- | --- | --- | --- |
+| `npcToHighlight` list: `Text.fromCSV`, `WildcardMatcher.matches` (whole name, case-insensitive, `*`) | `first-party-plugins::{npchighlight, text}` | yes | unit: csv, wildcard cases, plugin match set |
+| `NpcOverlay`: hull, tile, true tile, south-west tile, south-west true tile with border and fill colour | `NpcHighlight` -> `OverlayCommand::{ActorHull, Tile}` -> `world_overlays` | yes; tile area for sizes up to 8 follows terrain at each tile corner | unit: commands per style; projection geometry (hull, fill spans) unit-tested, not seen on screen |
+| `drawNames` at logical height + 40, `Text.removeTags`, black shadow, opaque text | `OverlayCommand::ActorText` | yes; anchored at the posed model top rather than the composition logical height | unit; not seen on screen |
+| `borderWidth` | `OverlayCommand::{Tile, ActorHull}::width` (whole pixels, 1..=8) | yes, rounded | unit |
+| Cutscene hides highlights (varbit 542) | `NpcHighlight` | yes | unit |
+| Menu tag / tag-all / untag, per-NPC colour and style, menu highlight style | none | no: needs the menu model | - |
+| `highlightOutline`, `outlineFeather` | none | no: needs a model outline renderer | - |
+| `ignoreDeadNpcs`, `ignorePets`, `showRespawnTimer`, `drawMinimapNames` | none | no: death, follower and minimap state | - |
+| `isInteractible` filter | none | no | - |
+
+Known differences:
+
+- The local-position tile styles draw at the server tile because the snapshot carries no sub-tile position, so they equal the true-tile
+  styles while an NPC stands still and lag by up to a tile while it walks.
+
+## playerindicators
+
+Sources: `plugins/playerindicators/{PlayerIndicatorsPlugin,PlayerIndicatorsService,PlayerIndicatorsOverlay,PlayerIndicatorsTileOverlay,PlayerNameLocation,PlayerIndicatorsConfig}.java`,
+`ui/overlay/OverlayUtil.java`.
+
+| Source | Rust owner | Implemented | Verified |
+| --- | --- | --- | --- |
+| `getDecorations`: self and others colours, `ENABLED`/`PVP` (varbits 5963, 8121) | `first-party-plugins::playerindicators` | yes for self and others | unit |
+| Name overlay: above head (+40), centre of model, right of model (+10), `Text.sanitize`, shadow | `OverlayCommand::ActorText { anchor, align, x_offset }` | yes | unit: each position; not seen on screen |
+| Tile overlay with `OverlayUtil.renderPolygon` defaults (2 px stroke, `0x32000000` fill) | `OverlayCommand::Tile` | yes | unit |
+| Party, friends, friends chat, team and clan highlight and colours | none | no: those lists are not retained | - |
+| Rank icons, coloured menu, minimap names | none | no | - |
+
+Known differences:
+
+- Every non-local player counts as "others" (the source's others rule is "in no friends chat and no clan").

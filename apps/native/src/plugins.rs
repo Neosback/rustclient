@@ -369,7 +369,7 @@ fn px(value: i32) -> f32 {
     f32::from(i16::try_from(value.clamp(-32768, 32767)).unwrap_or(0))
 }
 
-fn color(argb: u32) -> [u8; 4] {
+pub(super) fn color(argb: u32) -> [u8; 4] {
     let [alpha, red, green, blue] = argb.to_be_bytes();
     [red, green, blue, alpha]
 }
@@ -397,7 +397,13 @@ fn draw_rect(
 }
 
 /// One-pixel Bresenham line, bounded so a hostile plugin cannot stall the frame.
-fn draw_line(frame: &mut UiFrame, clip: Rect, from: (i32, i32), to: (i32, i32), argb: u32) {
+pub(super) fn draw_line(
+    frame: &mut UiFrame,
+    clip: Rect,
+    from: (i32, i32),
+    to: (i32, i32),
+    argb: u32,
+) {
     let (mut x, mut y) = from;
     let (dx, dy) = ((to.0 - x).abs(), -(to.1 - y).abs());
     let (sx, sy) = (if x < to.0 { 1 } else { -1 }, if y < to.1 { 1 } else { -1 });

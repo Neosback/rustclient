@@ -330,23 +330,41 @@ impl GameplayCameraController {
     /// Project a scene-local point through the world render matrix into logical viewport pixels.
     /// Returns absence for points behind the near plane or outside the shaped viewport.
     #[must_use]
+    pub fn project_point(self, viewport: CameraViewport, point: [i32; 3]) -> Option<[f32; 2]> {
+        let (screen, ndc) = self.project_ndc(viewport, point)?;
+        (ndc[0].abs() <= 1. && ndc[1].abs() <= 1.).then_some(screen)
+    }
+    /// Like [`Self::project_point`] but keeps points that fall outside the viewport, so shapes that
+    /// straddle its edge (actor hulls, tile outlines) are clipped by the caller rather than dropped.
+    #[must_use]
+    pub fn project_point_unclipped(
+        self,
+        viewport: CameraViewport,
+        point: [i32; 3],
+    ) -> Option<[f32; 2]> {
+        self.project_ndc(viewport, point).map(|(screen, _)| screen)
+    }
     #[expect(
         clippy::cast_precision_loss,
         reason = "bounded scene and logical viewport coordinates"
     )]
-    pub fn project_point(self, viewport: CameraViewport, point: [i32; 3]) -> Option<[f32; 2]> {
+    fn project_ndc(
+        self,
+        viewport: CameraViewport,
+        point: [i32; 3],
+    ) -> Option<([f32; 2], [f32; 2])> {
         let clip = self.matrix(viewport) * Vec3::from_array(point.map(|v| v as f32)).extend(1.);
         if !clip.is_finite() || clip.w < 100. {
             return None;
         }
         let ndc = clip.truncate() / clip.w;
-        if ndc.x.abs() > 1. || ndc.y.abs() > 1. {
-            return None;
-        }
-        Some([
-            viewport.inset[0] as f32 + (ndc.x + 1.) * viewport.width as f32 / 2.,
-            viewport.inset[1] as f32 + (1. - ndc.y) * viewport.height as f32 / 2.,
-        ])
+        Some((
+            [
+                viewport.inset[0] as f32 + (ndc.x + 1.) * viewport.width as f32 / 2.,
+                viewport.inset[1] as f32 + (1. - ndc.y) * viewport.height as f32 / 2.,
+            ],
+            [ndc.x, ndc.y],
+        ))
     }
     /// Scene-local fine-unit ray through a logical pointer, using the exact
     /// world rendering matrix. No GPU readback or semantic mutation is involved.

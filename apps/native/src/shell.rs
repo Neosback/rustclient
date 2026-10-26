@@ -571,6 +571,28 @@ fn availability(plugin: &str, key: &str) -> Option<String> {
         }
         "dev.rustclient.idlenotifier" => key != "interactionidle",
         "dev.rustclient.fps" => true,
+        "dev.rustclient.npchighlight" => matches!(
+            key,
+            "npcToHighlight"
+                | "drawNames"
+                | "highlightHull"
+                | "highlightTile"
+                | "highlightTrueTile"
+                | "highlightSouthWestTile"
+                | "highlightSouthWestTrueTile"
+                | "npcColor"
+                | "fillColor"
+                | "borderWidth"
+        ),
+        "dev.rustclient.playerindicators" => matches!(
+            key,
+            "highlightSelf"
+                | "ownNameColor"
+                | "highlightOthers"
+                | "nonClanMemberColor"
+                | "drawPlayerTiles"
+                | "playerNamePosition"
+        ),
         "dev.rustclient.camera" => matches!(
             key,
             "cameraSpeed" | "invertYaw" | "invertPitch" | "relaxCameraPitch"
@@ -621,6 +643,35 @@ fn pending_reason(plugin: &str, key: &str) -> String {
             "rightClickMovesCamera" | "rightClickObjects" | "rightClickExamine"
             | "rightClickMenuBlocksCamera" | "middleClickMenu",
         ) => "Remaps mouse buttons depending on the open menu, which the client does not model yet.".into(),
+        ("dev.rustclient.npchighlight", "highlightOutline" | "outlineFeather") => {
+            "The model outline needs an outline renderer, which this client does not have yet."
+                .into()
+        }
+        ("dev.rustclient.npchighlight", "ignoreDeadNpcs" | "ignorePets") => {
+            "Needs death and follower state for NPCs, which the client does not keep yet.".into()
+        }
+        (
+            "dev.rustclient.npchighlight",
+            "highlightMenuStyle" | "deadNpcMenuColor",
+        ) => "Colours entries in the right-click menu, which the client does not model yet.".into(),
+        ("dev.rustclient.npchighlight", "showRespawnTimer") => {
+            "Needs NPC death and respawn tracking, which the client does not keep yet.".into()
+        }
+        (
+            "dev.rustclient.npchighlight" | "dev.rustclient.playerindicators",
+            "drawMinimapNames",
+        ) => "Plugin text on the minimap is not drawn by this client yet.".into(),
+        (
+            "dev.rustclient.playerindicators",
+            "highlightPartyMembers" | "highlightFriends" | "highlightFriendsChat"
+            | "highlightTeamMembers" | "highlightClanMembers" | "partyMemberNameColor"
+            | "friendNameColor" | "clanMemberColor" | "teamMemberColor" | "clanChatMemberColor"
+            | "clanMenuIcons" | "clanchatMenuIcons",
+        ) => "Needs the party, friends, friends chat, clan and team lists, which the client does not keep yet.".into(),
+        ("dev.rustclient.playerindicators", "colorPlayerMenu") => {
+            "Colours player entries in the right-click menu, which the client does not model yet."
+                .into()
+        }
         ("dev.rustclient.statusbars", "enableRestorationBars") => {
             "The restore previews need item and food healing data, which the client does not keep yet.".into()
         }

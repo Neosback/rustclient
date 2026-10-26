@@ -63,11 +63,13 @@ pub enum ActorLabelId {
     ),
     Npc(rustclient_model::NpcIndex, rustclient_model::NpcInstanceId),
 }
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct ActorLabelAnchor {
     pub actor: ActorLabelId,
     pub position: [i32; 3],
     pub level: u8,
+    /// The actor's posed model vertices in [`SceneGeometry::vertices`].
+    pub vertices: std::ops::Range<usize>,
 }
 #[derive(Debug, Clone)]
 pub struct PickRange {

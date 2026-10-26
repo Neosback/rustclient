@@ -57,6 +57,12 @@ npchighlight:
   Copyright (c) 2018, Tomas Slusny <slusnucky@gmail.com>
   Copyright (c) 2018, Woox <https://github.com/wooxsolo>
 
+text helpers (`text.rs`: Text, WildcardMatcher) and overlay styling (OverlayUtil):
+  Copyright (c) 2016-2017, Adam <Adam@sigterm.info>
+  Copyright (c) 2018, Adam <Adam@sigterm.info>
+  Copyright (c) 2018, Joshua Filby <joshua@filby.me>
+  Copyright (c) 2018, Jordan Atwood <jordan.atwood423@gmail.com>
+
 playerindicators:
   Copyright (c) 2018, Kamiel <https://github.com/Kamielvf>
   Copyright (c) 2018, Tomas Slusny <slusnucky@gmail.com>

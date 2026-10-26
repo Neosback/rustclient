@@ -21,6 +21,16 @@ pub enum OverlayLayer {
     Top,
 }
 
+/// Where on an actor's model a text anchors vertically.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum ActorAnchor {
+    /// The top of the model.
+    #[default]
+    Top,
+    /// Half way between the top and the feet of the model.
+    Middle,
+}
+
 /// Which horizontal edge of a text or sprite its `x` names.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum HorizontalAlign {
@@ -86,12 +96,16 @@ pub enum OverlayCommand {
     },
     /// A tile outline projected from the world.
     Tile {
-        /// Tile to outline.
+        /// South-west tile of the outlined area.
         tile: WorldPoint,
+        /// Edge of the outlined area in tiles; `1` outlines the single tile. At most 8.
+        size: u8,
         /// Packed `AARRGGBB`.
         argb: u32,
         /// Fill colour (`AARRGGBB`, alpha 0 for none).
         fill_argb: u32,
+        /// Outline width in pixels, `1..=8`.
+        width: u8,
     },
     /// The projected convex hull of an actor.
     ActorHull {
@@ -101,6 +115,8 @@ pub enum OverlayCommand {
         argb: u32,
         /// Fill colour (`AARRGGBB`, alpha 0 for none).
         fill_argb: u32,
+        /// Outline width in pixels, `1..=8`.
+        width: u8,
     },
     /// Text attached above an actor.
     ActorText {
@@ -108,10 +124,16 @@ pub enum OverlayCommand {
         actor: ActorRef,
         /// Text, at most 256 bytes.
         text: String,
-        /// Extra height above the actor's model top, in local units.
+        /// Extra height above `anchor`, in local units.
         z_offset: i32,
         /// Packed `AARRGGBB`.
         argb: u32,
+        /// The model point the height is measured from.
+        anchor: ActorAnchor,
+        /// Which edge of the text sits at the actor's horizontal centre plus `x_offset`.
+        align: HorizontalAlign,
+        /// Pixels right of the actor's horizontal centre.
+        x_offset: i32,
     },
     /// A dot on the minimap at a world tile.
     MinimapDot {
@@ -398,6 +420,10 @@ pub mod limits {
     pub const SMOOTHING_DENIED: usize = 4096;
     /// Camera commands accepted per plugin per update.
     pub const CAMERA_COMMANDS: usize = 8;
+    /// Largest tile area edge a `Tile` command may outline.
+    pub const MAX_TILE_AREA: u8 = 8;
+    /// Widest outline a `Tile` or `ActorHull` command may draw, in pixels.
+    pub const MAX_OUTLINE_WIDTH: u8 = 8;
     /// Lowest accepted frame limit.
     pub const MIN_FRAME_LIMIT: u32 = 1;
     /// Highest accepted frame limit.
