@@ -17,8 +17,12 @@ pub use surface::{
 
 mod camera;
 mod face_priority;
+mod material_options;
 mod transparency;
 mod world;
+pub use material_options::MaterialOptions;
+mod shell;
+pub use shell::{ShellLayer, ShellStats};
 mod world_geometry;
 mod world_target;
 mod world_textures;

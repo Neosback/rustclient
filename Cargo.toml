@@ -25,7 +25,11 @@ members = [
     "plugin-sdk/rust",
     "xtask",
 ]
-exclude = ["references/rustosrs"]
+exclude = ["references/rustosrs", "vendor/blitz-dom-0.2.4"]
+
+[patch.crates-io]
+# Upstream pins image 0.25.6; retain RustClient's current decoder. See vendor/README.md.
+blitz-dom = { path = "vendor/blitz-dom-0.2.4" }
 
 [workspace.package]
 edition = "2024"

@@ -13,7 +13,7 @@ impl NativeApp {
         let Some(window) = &self.window else {
             return;
         };
-        let size = window.inner_size();
+        let size = self.shell.game_size(window);
         if size.width == 0 || size.height == 0 {
             return;
         }

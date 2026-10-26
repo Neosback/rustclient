@@ -228,7 +228,7 @@ impl NativeApp {
         let settings = self.state.interfaces().viewport();
         camera.set_zoom(i32::from(settings.zoom[0]), i32::from(settings.zoom[1]));
         let bounds = self.frame.world_viewport.unwrap_or_else(|| {
-            let size = window.inner_size();
+            let size = self.shell.game_size(window);
             rustclient_game_ui::Rect::new(
                 0.,
                 0.,

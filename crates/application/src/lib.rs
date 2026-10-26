@@ -4,6 +4,8 @@
 //! without becoming alternate authoritative game state.
 
 #![forbid(unsafe_code)]
+
+pub mod builtin_config;
 mod interaction;
 pub use interaction::{validate_walk, validate_world_action, world_actions};
 

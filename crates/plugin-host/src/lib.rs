@@ -9,6 +9,9 @@
 
 #![forbid(unsafe_code)]
 
+pub mod configuration;
+pub mod required;
+
 use rustclient_plugin_api::{
     Capability, CapabilitySet, LogLevel, OverlayLine, PlayerPosition, PluginApiVersion,
     PluginEvent, PluginId, PluginManifest,
@@ -264,9 +267,15 @@ pub struct LoadedPlugin {
     instance: Box<dyn PluginInstance>,
     faults: u32,
     enabled: bool,
+    required: bool,
 }
 
 impl LoadedPlugin {
+    /// Required application services cannot be disabled or unregistered.
+    #[must_use]
+    pub fn required(&self) -> bool {
+        self.required
+    }
     /// Whether the plugin is still scheduled.
     #[must_use]
     pub fn enabled(&self) -> bool {
@@ -320,6 +329,16 @@ impl PluginSet {
         manifest: PluginManifest,
         instance: Box<dyn PluginInstance>,
     ) -> Result<(), PluginFault> {
+        if self
+            .plugins
+            .iter()
+            .any(|plugin| plugin.manifest.id == manifest.id)
+        {
+            return Err(PluginFault::new(
+                FaultKind::Contract,
+                format!("duplicate plugin {}", manifest.id),
+            ));
+        }
         manifest
             .check_api(PluginApiVersion::current())
             .map_err(|error| PluginFault::new(FaultKind::Contract, error.to_string()))?;
@@ -328,6 +347,7 @@ impl PluginSet {
             instance,
             faults: 0,
             enabled: true,
+            required: false,
         });
         Ok(())
     }
@@ -445,9 +465,12 @@ impl PluginSet {
             action(instance.as_mut(), &mut call)
         };
         match result {
-            Ok(value) => Some(value),
+            Ok(value) => {
+                plugin.faults = 0;
+                Some(value)
+            }
             Err(fault) => {
-                plugin.faults += 1;
+                plugin.faults = plugin.faults.saturating_add(1);
                 let id = &plugin.manifest.id;
                 let level = if fault.kind == FaultKind::Budget {
                     LogLevel::Warn
@@ -455,7 +478,7 @@ impl PluginSet {
                     LogLevel::Error
                 };
                 logs.log(id, level, &fault.to_string());
-                if plugin.faults >= fault_limit && plugin.enabled {
+                if plugin.faults >= fault_limit && plugin.enabled && !plugin.required {
                     plugin.enabled = false;
                     logs.log(id, LogLevel::Warn, "plugin disabled after repeated faults");
                 }

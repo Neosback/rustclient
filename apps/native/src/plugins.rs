@@ -7,7 +7,9 @@ use rustclient_cache::TitleAssets;
 use rustclient_game_state::GameState;
 use rustclient_game_ui::{Rect, UiFrame, draw_text};
 use rustclient_plugin_api::{PlayerPosition, PluginEvent};
-use rustclient_plugin_host::{DirectoryStorage, HostView, PluginSet, StderrLogSink};
+use rustclient_plugin_host::{
+    DirectoryStorage, HostView, PluginSet, StaticView, StderrLogSink, required::Builtin,
+};
 use rustclient_plugin_runtime_native::NativeRuntime;
 use std::path::Path;
 
@@ -25,9 +27,15 @@ impl Plugins {
     /// Plugin-local persisted data is rooted at `storage_root`; the package tree itself is
     /// treated as read-only input.
     pub(super) fn load(packages: &Path, storage_root: &Path) -> Self {
-        let storage = DirectoryStorage::new(storage_root.to_path_buf());
-        let logs = StderrLogSink;
+        let mut storage = DirectoryStorage::new(storage_root.to_path_buf());
+        let mut logs = StderrLogSink;
         let mut set = PluginSet::new();
+        for service in Builtin::ALL {
+            if let Err(error) = set.register_required(service) {
+                eprintln!("required plugin registration: {error}");
+            }
+        }
+        set.init(&StaticView::default(), &mut storage, &mut logs);
         if !packages.is_dir() {
             return Self {
                 set,
@@ -68,6 +76,8 @@ impl Plugins {
             }
             Err(fault) => eprintln!("plugin runtime unavailable: {fault}"),
         }
+        // Optional components are discovered after required services and initialize before login.
+        set.init(&StaticView::default(), &mut storage, &mut logs);
         Self {
             set,
             storage,

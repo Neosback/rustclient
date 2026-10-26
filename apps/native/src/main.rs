@@ -8,6 +8,8 @@ mod options;
 mod performance;
 mod plugins;
 mod scene;
+mod shell;
+mod shell_input;
 mod widget_pointer;
 mod widgets;
 
@@ -121,6 +123,7 @@ struct NativeApp {
     random: SplitMix64Random,
     frame: UiFrame,
     plugins: plugins::Plugins,
+    shell: shell::Shell,
     storage: Option<DirectoryStorage>,
     saved_preferences: TitlePreferences,
     modifiers: ModifiersState,
@@ -141,7 +144,7 @@ impl NativeApp {
     fn new(
         options: &options::Options,
         proxy: winit::event_loop::EventLoopProxy<LoadEvent>,
-    ) -> Self {
+    ) -> Result<Self, String> {
         let storage = match DirectoryStorage::new(&options.preferences_dir) {
             Ok(store) => Some(store),
             Err(error) => {
@@ -165,7 +168,13 @@ impl NativeApp {
             &options.plugins_dir,
             &options.preferences_dir.join("plugin-data"),
         );
-        Self {
+        let shell = shell::Shell::new(
+            storage
+                .as_ref()
+                .map(|store| store as &dyn rustclient_platform::BlobStorage),
+        )?;
+        Ok(Self {
+            shell,
             performance: performance::Performance::new(),
             scene: scene::SceneView::new(options),
             connection_options: options.connection.clone(),
@@ -216,7 +225,7 @@ impl NativeApp {
             cycle: 0,
             failed: false,
             load_status: "Opening cache…".into(),
-        }
+        })
     }
     fn create_renderer(&mut self, event_loop: &ActiveEventLoop) {
         let fingerprint = self.state.semantic_fingerprint();
@@ -229,6 +238,7 @@ impl NativeApp {
             SurfaceSize::new(size.width, size.height),
         )) {
             Ok(mut renderer) => {
+                self.shell.apply_current(&window, Some(&mut renderer));
                 if let Some(assets) = &self.assets
                     && let Err(error) = renderer.set_title_assets(assets)
                 {
@@ -451,6 +461,11 @@ impl NativeApp {
         };
         if self.occluded {
             return;
+        }
+        if let Some(renderer) = &mut self.renderer
+            && let Err(error) = self.shell.stage(&window, renderer)
+        {
+            eprintln!("retained shell: {error}");
         }
         let frame_start = Instant::now();
         let result = if let (Some(assets), Some(flames)) = (&self.assets, &self.flames) {
@@ -892,8 +907,8 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
         }
         let attributes = Window::default_attributes()
             .with_title(format!("RustClient — {}", self.load_status))
-            .with_inner_size(LogicalSize::new(765., 503.))
-            .with_min_inner_size(LogicalSize::new(765., 503.));
+            .with_inner_size(LogicalSize::new(765. + f64::from(self.shell.width()), 503.))
+            .with_min_inner_size(LogicalSize::new(765. + f64::from(self.shell.width()), 503.));
         match event_loop.create_window(attributes) {
             Ok(window) => {
                 window.set_ime_allowed(true);
@@ -1170,6 +1185,18 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                 | WindowEvent::ThemeChanged(_)
         ) {
             self.performance.event(|| format!("{event:?}"));
+        }
+        if self.route_shell(&window, &event) {
+            self.shell.panel.render();
+            self.shell.actions(
+                &window,
+                self.renderer.as_mut(),
+                self.storage
+                    .as_ref()
+                    .map(|store| store as &dyn rustclient_platform::BlobStorage),
+            );
+            window.request_redraw();
+            return;
         }
         match event {
             WindowEvent::CloseRequested => {
@@ -1640,7 +1667,7 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
 }
 impl NativeApp {
     fn ui_pointer(&self, window: &Window, x: f64, y: f64) -> (f32, f32) {
-        let size = window.inner_size();
+        let size = self.shell.game_size(window);
         TitleViewport {
             canvas_width: if self.state.authenticated_player().is_some() {
                 self.state.interfaces().window().canvas.width
@@ -1666,7 +1693,7 @@ fn run() -> Result<(), String> {
         .build()
         .map_err(|e| format!("event loop: {e}"))?;
     let proxy = event_loop.create_proxy();
-    let mut app = NativeApp::new(&options, proxy.clone());
+    let mut app = NativeApp::new(&options, proxy.clone())?;
     std::thread::Builder::new()
         .name("title-cache-loader".into())
         .spawn(move || {

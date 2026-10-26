@@ -8,6 +8,7 @@ repository.workspace = true
 [dependencies]
 rustclient-plugin-api = { path = "../plugin-api" }
 serde_json = { workspace = true }
+serde = { workspace = true }
 
 [lints]
 workspace = true

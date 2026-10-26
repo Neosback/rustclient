@@ -2,6 +2,25 @@
 
 **Status:** Draft
 
+## Required built-ins (approved 2026-10-25)
+
+The host registers `dev.rustclient.gpu` and `dev.rustclient.runelite` as required
+application-lifetime services, active before login. Disable/uninstall requests are
+rejected at the host boundary. The GPU service configures the engine renderer;
+GPU resources remain renderer-owned. Repeated service faults retain the required
+registration and last working renderer configuration, with actionable diagnostics.
+Optional external plugins retain their existing fault-isolation policy and 0.1 ABI.
+
+Configuration descriptors carry source keys, sections, defaults, ranges, choices,
+colors and hotkeys. A validated candidate is applied through its owning service,
+then atomically persisted and published as a configuration change. Any failure
+retains the previous accepted configuration. Application presentation preferences
+have one configuration owner; gameplay-affecting changes use GameState operations.
+
+Acceptance includes required-service enforcement, source-setting inventory,
+persistence/recovery, renderer reconstruction, and native/browser control behavior.
+Source inventory or stored settings alone do not establish implemented effects.
+
 ## Goal
 
 Provide a powerful RuneLite-like developer experience while keeping plugins cross-platform, versionable, observable, sandboxable, and decoupled from Rust compiler ABI details.

@@ -2,6 +2,9 @@
 
 #![forbid(unsafe_code)]
 
+mod clipboard;
+pub use clipboard::NativeClipboard;
+
 mod clock;
 mod read_only;
 mod storage;

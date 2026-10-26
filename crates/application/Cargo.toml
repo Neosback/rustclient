@@ -14,6 +14,8 @@ rustclient-model = { path = "../model" }
 rustclient-cache = { path = "../cache" }
 rustclient-game-ui = { path = "../game-ui" }
 rustclient-platform = { path = "../platform" }
+rustclient-plugin-host = { path = "../plugin-host" }
+rustclient-plugin-api = { path = "../plugin-api" }
 serde.workspace = true
 serde_json.workspace = true
 

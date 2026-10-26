@@ -1,5 +1,6 @@
 use std::fs;
 use std::io::ErrorKind;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use rustclient_platform::{BlobStorage, StorageError, StorageErrorKind, StorageKey};
@@ -53,7 +54,31 @@ impl BlobStorage for DirectoryStorage {
     fn put(&self, key: &StorageKey, value: &[u8]) -> Result<(), StorageError> {
         let path = self.path_for(key);
         Self::ensure_parent(&path)?;
-        fs::write(path, value).map_err(|error| map_io_error(&error))
+        // Stage alongside the target so rename stays on the same filesystem. A
+        // failed write/flush/rename never truncates the last accepted document.
+        let mut nonce = [0_u8; 16];
+        getrandom::fill(&mut nonce).map_err(|error| {
+            StorageError::new(
+                StorageErrorKind::Backend,
+                format!("stage storage value: {error}"),
+            )
+        })?;
+        let suffix = u128::from_be_bytes(nonce);
+        let staged = path.with_extension(format!("{suffix:032x}.pending"));
+        let result = (|| {
+            let mut file = fs::OpenOptions::new()
+                .create_new(true)
+                .write(true)
+                .open(&staged)?;
+            file.write_all(value)?;
+            file.sync_all()?;
+            fs::rename(&staged, &path)
+        })();
+        if let Err(error) = result {
+            let _ = fs::remove_file(&staged);
+            return Err(map_io_error(&error));
+        }
+        Ok(())
     }
 
     fn delete(&self, key: &StorageKey) -> Result<(), StorageError> {

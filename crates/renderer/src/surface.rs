@@ -142,6 +142,10 @@ pub struct SurfaceRenderer {
     configured: bool,
     ui: Option<UiGpu>,
     world: Option<WorldGpu>,
+    material_options: crate::MaterialOptions,
+    shell_staging: crate::shell::ShellStaging,
+    shell_gpu: Option<crate::shell::ShellGpu>,
+    game_width: Option<u32>,
     /// Latest posed geometry awaiting a presentable frame. wgpu retains every staged
     /// write until the next submission, so uploads are issued only when a frame will
     /// be submitted; a hidden window then costs one bounded CPU copy and no GPU memory.
@@ -185,6 +189,31 @@ struct StagedGeometry {
 }
 
 impl SurfaceRenderer {
+    /// Apply a validated projection; next present updates the shared shader uniform.
+    pub fn set_material_options(&mut self, options: crate::MaterialOptions) {
+        self.material_options = options;
+    }
+
+    /// Stage a retained panel only when its generation changes. Upload follows surface acquisition.
+    /// # Errors
+    /// Rejects invalid pixel dimensions without replacing the last accepted layer.
+    pub fn set_shell_layer(
+        &mut self,
+        layer: Option<crate::ShellLayer<'_>>,
+    ) -> Result<(), RenderError> {
+        self.shell_staging.set(layer)
+    }
+
+    /// Width of the physical game canvas after reserving shell chrome on the right.
+    pub fn set_game_width(&mut self, width: Option<u32>) {
+        self.game_width = width;
+    }
+
+    #[must_use]
+    pub fn shell_stats(&self) -> crate::ShellStats {
+        self.shell_staging.stats
+    }
+
     /// Initialize one renderer from any target accepted by `wgpu`.
     ///
     /// # Errors
@@ -249,6 +278,10 @@ impl SurfaceRenderer {
             configured: false,
             ui: None,
             world: None,
+            material_options: crate::MaterialOptions::default(),
+            shell_staging: crate::shell::ShellStaging::default(),
+            shell_gpu: None,
+            game_width: None,
             staged: StagedGeometry::default(),
             device_lost,
         };
@@ -394,7 +427,10 @@ impl SurfaceRenderer {
         }
         let viewport = TitleViewport {
             canvas_width: frame.canvas.map_or(765, |s| s.width),
-            physical_width: self.config.width,
+            physical_width: self
+                .game_width
+                .unwrap_or(self.config.width)
+                .min(self.config.width),
             physical_height: self.config.height,
             scale,
         };
@@ -411,6 +447,7 @@ impl SurfaceRenderer {
             frame.viewport_settings,
             top_level,
             frame.scene_brightness,
+            self.material_options,
         );
         self.ui
             .as_mut()
@@ -423,7 +460,10 @@ impl SurfaceRenderer {
                 images,
                 TitleViewport {
                     canvas_width: frame.canvas.map_or(765, |s| s.width),
-                    physical_width: self.config.width,
+                    physical_width: self
+                        .game_width
+                        .unwrap_or(self.config.width)
+                        .min(self.config.width),
                     physical_height: self.config.height,
                     scale,
                 },
@@ -471,7 +511,10 @@ impl SurfaceRenderer {
         };
         let viewport = TitleViewport {
             canvas_width: frame.canvas.map_or(765, |s| s.width),
-            physical_width: self.config.width,
+            physical_width: self
+                .game_width
+                .unwrap_or(self.config.width)
+                .min(self.config.width),
             physical_height: self.config.height,
             scale,
         };
@@ -590,6 +633,12 @@ impl SurfaceRenderer {
         draw_world: bool,
         before_present: F,
     ) -> FrameOutcome {
+        self.shell_staging.prepare(
+            &mut self.shell_gpu,
+            &self.device,
+            &self.queue,
+            self.view_format,
+        );
         let texture_view = surface_texture
             .texture
             .create_view(&wgpu::TextureViewDescriptor {
@@ -630,6 +679,13 @@ impl SurfaceRenderer {
             {
                 ui.draw(&mut render_pass);
             }
+            if !draw_ui || !draw_world {
+                self.shell_staging.draw(
+                    self.shell_gpu.as_ref(),
+                    &mut render_pass,
+                    [self.config.width, self.config.height],
+                );
+            }
         }
 
         if draw_ui
@@ -653,6 +709,11 @@ impl SurfaceRenderer {
                 multiview_mask: None,
             });
             ui.draw(&mut pass);
+            self.shell_staging.draw(
+                self.shell_gpu.as_ref(),
+                &mut pass,
+                [self.config.width, self.config.height],
+            );
         }
         self.queue.submit([encoder.finish()]);
         before_present();

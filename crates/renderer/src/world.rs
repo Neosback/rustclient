@@ -16,7 +16,7 @@ struct CameraUniform {
     /// Highest tile render level drawn this frame (see `rustclient_scene::RoofView`).
     top_level: u32,
     brightness: f32,
-    padding: u32,
+    material_flags: u32,
 }
 pub(crate) struct WorldGpu {
     pub asset: SceneAssetId,
@@ -39,6 +39,7 @@ pub(crate) struct WorldGpu {
         u32,
         u8,
         rustclient_model::ScreenBrightness,
+        crate::MaterialOptions,
     )>,
 }
 impl WorldGpu {
@@ -66,7 +67,7 @@ impl WorldGpu {
             entries: &[
                 wgpu::BindGroupLayoutEntry {
                     binding: 0,
-                    visibility: wgpu::ShaderStages::VERTEX,
+                    visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
                         has_dynamic_offset: false,
@@ -221,6 +222,7 @@ impl WorldGpu {
             rustclient_model::ViewportSettings::default(),
             ALL_LEVELS,
             rustclient_model::ScreenBrightness::default(),
+            crate::MaterialOptions::default(),
         );
     }
     #[expect(
@@ -242,6 +244,7 @@ impl WorldGpu {
         settings: rustclient_model::ViewportSettings,
         top_level: u8,
         brightness: rustclient_model::ScreenBrightness,
+        material: crate::MaterialOptions,
     ) {
         camera.set_zoom(i32::from(settings.zoom[0]), i32::from(settings.zoom[1]));
         let logical = bounds.unwrap_or(rustclient_game_ui::Rect::new(
@@ -264,7 +267,7 @@ impl WorldGpu {
             self.physical_viewport[2].min(self.size.width as f32 - self.physical_viewport[0]);
         self.physical_viewport[3] =
             self.physical_viewport[3].min(self.size.height as f32 - self.physical_viewport[1]);
-        if self.last_camera == Some((camera, viewport, cycle, top_level, brightness)) {
+        if self.last_camera == Some((camera, viewport, cycle, top_level, brightness, material)) {
             return;
         }
         let pose = camera.pose(viewport);
@@ -273,7 +276,7 @@ impl WorldGpu {
             cycle,
             top_level: u32::from(top_level),
             brightness: 0.5 + f32::from(100 - brightness.percent()) / 200.,
-            padding: 0,
+            material_flags: material.shader_flags(),
         };
         queue.write_buffer(&self.camera, 0, bytemuck::bytes_of(&uniform));
         let eye = Vec3::from_array(pose.position.map(|v| v as f32));
@@ -292,7 +295,7 @@ impl WorldGpu {
             |source, index| sources[source].alpha_depth(index, eye, direction),
             &mut self.transparent_runs,
         );
-        self.last_camera = Some((camera, viewport, cycle, top_level, brightness));
+        self.last_camera = Some((camera, viewport, cycle, top_level, brightness, material));
     }
     pub fn render_scene(&self, encoder: &mut wgpu::CommandEncoder) {
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {

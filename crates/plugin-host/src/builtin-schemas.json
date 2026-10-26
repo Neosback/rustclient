@@ -1,0 +1,831 @@
+[
+  {
+    "plugin": "dev.rustclient.gpu",
+    "name": "GPU",
+    "version": 1,
+    "settings": [
+      {
+        "key": "drawDistance",
+        "label": "Draw distance",
+        "description": "Draw distance.",
+        "section": "Rendering",
+        "control": {
+          "type": "integer",
+          "min": 0,
+          "max": 184
+        },
+        "default": {
+          "type": "integer",
+          "value": 50
+        },
+        "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPluginConfig.java#drawDistance"
+      },
+      {
+        "key": "hideUnrelatedMaps",
+        "label": "Hide unrelated maps",
+        "description": "Hide unrelated map areas you shouldn't see.",
+        "section": "Rendering",
+        "control": {
+          "type": "boolean"
+        },
+        "default": {
+          "type": "boolean",
+          "value": true
+        },
+        "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPluginConfig.java#hideUnrelatedMaps"
+      },
+      {
+        "key": "expandedMapLoadingChunks",
+        "label": "Extended map loading",
+        "description": "Extra map area to load, in 8 tile chunks.",
+        "section": "Rendering",
+        "control": {
+          "type": "integer",
+          "min": 0,
+          "max": 5
+        },
+        "default": {
+          "type": "integer",
+          "value": 3
+        },
+        "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPluginConfig.java#expandedMapLoadingZones"
+      },
+      {
+        "key": "smoothBanding",
+        "label": "Remove color banding",
+        "description": "Smooths out the color banding that is present in the CPU renderer.",
+        "section": "Rendering",
+        "control": {
+          "type": "boolean"
+        },
+        "default": {
+          "type": "boolean",
+          "value": true
+        },
+        "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPluginConfig.java#smoothBanding"
+      },
+      {
+        "key": "antiAliasingMode",
+        "label": "Anti aliasing",
+        "description": "Configures the anti-aliasing mode.",
+        "section": "Rendering",
+        "control": {
+          "type": "choice",
+          "options": [
+            "DISABLED",
+            "MSAA_2",
+            "MSAA_4",
+            "MSAA_8",
+            "MSAA_16"
+          ]
+        },
+        "default": {
+          "type": "choice",
+          "value": "MSAA_2"
+        },
+        "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPluginConfig.java#antiAliasingMode"
+      },
+      {
+        "key": "uiScalingMode",
+        "label": "UI scaling mode",
+        "description": "Sampling function to use for the UI in stretched mode.",
+        "section": "Rendering",
+        "control": {
+          "type": "choice",
+          "options": [
+            "NEAREST",
+            "LINEAR",
+            "MITCHELL",
+            "CATMULL_ROM",
+            "XBR",
+            "HYBRID"
+          ]
+        },
+        "default": {
+          "type": "choice",
+          "value": "HYBRID"
+        },
+        "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPluginConfig.java#uiScalingMode"
+      },
+      {
+        "key": "fogDepth",
+        "label": "Fog depth",
+        "description": "Distance from the scene edge the fog starts.",
+        "section": "Rendering",
+        "control": {
+          "type": "integer",
+          "min": 0,
+          "max": 100
+        },
+        "default": {
+          "type": "integer",
+          "value": 0
+        },
+        "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPluginConfig.java#fogDepth"
+      },
+      {
+        "key": "anisotropicFilteringLevel",
+        "label": "Anisotropic filtering",
+        "description": "Configures the anisotropic filtering level.",
+        "section": "Rendering",
+        "control": {
+          "type": "integer",
+          "min": 0,
+          "max": 16
+        },
+        "default": {
+          "type": "integer",
+          "value": 1
+        },
+        "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPluginConfig.java#anisotropicFilteringLevel"
+      },
+      {
+        "key": "colorBlindMode",
+        "label": "Colorblindness correction",
+        "description": "Adjusts colors to account for colorblindness.",
+        "section": "Rendering",
+        "control": {
+          "type": "choice",
+          "options": [
+            "NONE",
+            "PROTANOPIA",
+            "DEUTERANOPIA",
+            "TRITANOPIA"
+          ]
+        },
+        "default": {
+          "type": "choice",
+          "value": "NONE"
+        },
+        "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPluginConfig.java#colorBlindMode"
+      },
+      {
+        "key": "colorBlindIntensity",
+        "label": "Colorblindness intensity",
+        "description": "Strength of the colorblindness correction effect.",
+        "section": "Rendering",
+        "control": {
+          "type": "integer",
+          "min": 0,
+          "max": 100
+        },
+        "default": {
+          "type": "integer",
+          "value": 100
+        },
+        "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPluginConfig.java#colorBlindIntensity"
+      },
+      {
+        "key": "brightTextures",
+        "label": "Bright textures",
+        "description": "Use old texture lighting method which results in brighter game textures.",
+        "section": "Rendering",
+        "control": {
+          "type": "boolean"
+        },
+        "default": {
+          "type": "boolean",
+          "value": false
+        },
+        "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPluginConfig.java#brightTextures"
+      },
+      {
+        "key": "unlockFps",
+        "label": "Unlock FPS",
+        "description": "Removes the 50 FPS cap for camera movement.",
+        "section": "Rendering",
+        "control": {
+          "type": "boolean"
+        },
+        "default": {
+          "type": "boolean",
+          "value": true
+        },
+        "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPluginConfig.java#unlockFps"
+      },
+      {
+        "key": "vsyncMode",
+        "label": "Vsync mode",
+        "description": "Method to synchronize frame rate with refresh rate.",
+        "section": "Rendering",
+        "control": {
+          "type": "choice",
+          "options": [
+            "OFF",
+            "ON",
+            "ADAPTIVE"
+          ]
+        },
+        "default": {
+          "type": "choice",
+          "value": "OFF"
+        },
+        "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPluginConfig.java#syncMode"
+      },
+      {
+        "key": "fpsTarget",
+        "label": "FPS target",
+        "description": "Target FPS when 'Unlock FPS' is enabled and 'Vsync mode' is off.",
+        "section": "Rendering",
+        "control": {
+          "type": "integer",
+          "min": 1,
+          "max": 999
+        },
+        "default": {
+          "type": "integer",
+          "value": 60
+        },
+        "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPluginConfig.java#fpsTarget"
+      },
+      {
+        "key": "removeVertexSnapping",
+        "label": "Remove vertex snapping",
+        "description": "Removes vertex snapping from most animations.",
+        "section": "Rendering",
+        "control": {
+          "type": "boolean"
+        },
+        "default": {
+          "type": "boolean",
+          "value": true
+        },
+        "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPluginConfig.java#removeVertexSnapping"
+      },
+      {
+        "key": "numThreads",
+        "label": "Threads",
+        "description": "Number of render threads to use.",
+        "section": "Rendering",
+        "control": {
+          "type": "integer",
+          "min": 0,
+          "max": 15
+        },
+        "default": {
+          "type": "integer",
+          "value": 3
+        },
+        "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPluginConfig.java#numThreads"
+      }
+    ]
+  },
+  {
+    "plugin": "dev.rustclient.runelite",
+    "name": "RuneLite",
+    "version": 1,
+    "settings": [
+      {
+        "key": "gameSize",
+        "label": "Game size",
+        "description": "The game will resize to this resolution upon starting the client.",
+        "section": "windowSettings",
+        "control": {
+          "type": "size"
+        },
+        "default": {
+          "type": "size",
+          "value": [
+            765,
+            503
+          ]
+        },
+        "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java#gameSize"
+      },
+      {
+        "key": "automaticResizeType",
+        "label": "Resize type",
+        "description": "Choose how the window should resize when opening and closing panels.",
+        "section": "windowSettings",
+        "control": {
+          "type": "choice",
+          "options": [
+            "KEEP_GAME_SIZE",
+            "KEEP_WINDOW_SIZE"
+          ]
+        },
+        "default": {
+          "type": "choice",
+          "value": "KEEP_GAME_SIZE"
+        },
+        "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java#automaticResizeType"
+      },
+      {
+        "key": "lockWindowSize",
+        "label": "Lock window size",
+        "description": "Determines if the window resizing is allowed or not.",
+        "section": "windowSettings",
+        "control": {
+          "type": "boolean"
+        },
+        "default": {
+          "type": "boolean",
+          "value": false
+        },
+        "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java#lockWindowSize"
+      },
+      {
+        "key": "containInScreen2",
+        "label": "Contain in screen",
+        "description": "Makes the client move itself to stay within the screen when resizing.<br>Note: 'Always' only works on Windows and if custom chrome is enabled.",
+        "section": "windowSettings",
+        "control": {
+          "type": "choice",
+          "options": [
+            "NEVER",
+            "RESIZING",
+            "ALWAYS"
+          ]
+        },
+        "default": {
+          "type": "choice",
+          "value": "RESIZING"
+        },
+        "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java#containInScreen"
+      },
+      {
+        "key": "rememberScreenBounds",
+        "label": "Remember client position",
+        "description": "Save the position and size of the client after exiting.",
+        "section": "windowSettings",
+        "control": {
+          "type": "boolean"
+        },
+        "default": {
+          "type": "boolean",
+          "value": true
+        },
+        "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java#rememberScreenBounds"
+      },
+      {
+        "key": "uiEnableCustomChrome",
+        "label": "Enable custom window chrome",
+        "description": "Use RuneLite's custom window title and borders.",
+        "section": "windowSettings",
+        "control": {
+          "type": "boolean"
+        },
+        "default": {
+          "type": "boolean",
+          "value": false
+        },
+        "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java#enableCustomChrome"
+      },
+      {
+        "key": "uiWindowOpacity",
+        "label": "Window opacity",
+        "description": "Set the windows opacity.",
+        "section": "windowSettings",
+        "control": {
+          "type": "integer",
+          "min": 10,
+          "max": 100
+        },
+        "default": {
+          "type": "integer",
+          "value": 100
+        },
+        "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java#windowOpacity"
+      },
+      {
+        "key": "gameAlwaysOnTop",
+        "label": "Always on top",
+        "description": "The game will always be on the top of the screen.",
+        "section": "windowSettings",
+        "control": {
+          "type": "boolean"
+        },
+        "default": {
+          "type": "boolean",
+          "value": false
+        },
+        "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java#gameAlwaysOnTop"
+      },
+      {
+        "key": "warningOnExit",
+        "label": "Exit warning",
+        "description": "Shows a warning popup when trying to exit the client.",
+        "section": "windowSettings",
+        "control": {
+          "type": "choice",
+          "options": [
+            "NEVER",
+            "LOGGED_IN",
+            "ALWAYS"
+          ]
+        },
+        "default": {
+          "type": "choice",
+          "value": "LOGGED_IN"
+        },
+        "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java#warningOnExit"
+      },
+      {
+        "key": "usernameInTitle",
+        "label": "Show display name in title",
+        "description": "Toggles displaying of local player's display name in client title.",
+        "section": "windowSettings",
+        "control": {
+          "type": "boolean"
+        },
+        "default": {
+          "type": "boolean",
+          "value": true
+        },
+        "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java#usernameInTitle"
+      },
+      {
+        "key": "trayIcon",
+        "label": "Enable tray icon",
+        "description": "Enables icon in system tray.",
+        "section": "notificationSettings",
+        "control": {
+          "type": "boolean"
+        },
+        "default": {
+          "type": "boolean",
+          "value": true
+        },
+        "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java#enableTrayIcon"
+      },
+      {
+        "key": "notificationTray",
+        "label": "Enable tray notifications",
+        "description": "Enables tray notifications.",
+        "section": "notificationSettings",
+        "control": {
+          "type": "boolean"
+        },
+        "default": {
+          "type": "boolean",
+          "value": true
+        },
+        "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java#enableTrayNotifications"
+      },
+      {
+        "key": "notificationRequestFocus",
+        "label": "Request focus",
+        "description": "Configures the window focus request type on notification.",
+        "section": "notificationSettings",
+        "control": {
+          "type": "choice",
+          "options": [
+            "OFF",
+            "REQUEST",
+            "FORCE"
+          ]
+        },
+        "default": {
+          "type": "choice",
+          "value": "OFF"
+        },
+        "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java#notificationRequestFocus"
+      },
+      {
+        "key": "notificationSound",
+        "label": "Notification sound",
+        "description": "Enables the playing of a beep sound when notifications are displayed.",
+        "section": "notificationSettings",
+        "control": {
+          "type": "choice",
+          "options": [
+            "OFF",
+            "NATIVE",
+            "CUSTOM"
+          ]
+        },
+        "default": {
+          "type": "choice",
+          "value": "NATIVE"
+        },
+        "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java#notificationSound"
+      },
+      {
+        "key": "notificationVolume",
+        "label": "Notification volume",
+        "description": "Configures the volume of custom notifications (does not control native volume).",
+        "section": "notificationSettings",
+        "control": {
+          "type": "integer",
+          "min": 0,
+          "max": 100
+        },
+        "default": {
+          "type": "integer",
+          "value": 100
+        },
+        "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java#notificationVolume"
+      },
+      {
+        "key": "notificationTimeout",
+        "label": "Notification timeout",
+        "description": "How long notification will be shown in milliseconds. A value of 0 will make it use the system configuration. (Linux only)",
+        "section": "notificationSettings",
+        "control": {
+          "type": "integer",
+          "min": 0,
+          "max": 2147483647
+        },
+        "default": {
+          "type": "integer",
+          "value": 10000
+        },
+        "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java#notificationTimeout"
+      },
+      {
+        "key": "notificationGameMessage",
+        "label": "Game message notifications",
+        "description": "Adds a notification message to the chatbox.",
+        "section": "notificationSettings",
+        "control": {
+          "type": "boolean"
+        },
+        "default": {
+          "type": "boolean",
+          "value": false
+        },
+        "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java#enableGameMessageNotification"
+      },
+      {
+        "key": "flashNotification",
+        "label": "Flash",
+        "description": "Flashes the game frame as a notification.",
+        "section": "notificationSettings",
+        "control": {
+          "type": "choice",
+          "options": [
+            "DISABLED",
+            "FLASH_TWO_SECONDS",
+            "FLASH_UNTIL_CANCELLED",
+            "SOLID_TWO_SECONDS",
+            "SOLID_UNTIL_CANCELLED"
+          ]
+        },
+        "default": {
+          "type": "choice",
+          "value": "DISABLED"
+        },
+        "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java#flashNotification"
+      },
+      {
+        "key": "notificationFocused",
+        "label": "Send notifications when focused",
+        "description": "Send notifications even when the client is focused.",
+        "section": "notificationSettings",
+        "control": {
+          "type": "boolean"
+        },
+        "default": {
+          "type": "boolean",
+          "value": false
+        },
+        "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java#sendNotificationsWhenFocused"
+      },
+      {
+        "key": "notificationFlashColor",
+        "label": "Notification flash",
+        "description": "The color of the notification flashes.",
+        "section": "notificationSettings",
+        "control": {
+          "type": "color"
+        },
+        "default": {
+          "type": "color",
+          "value": 1191116800
+        },
+        "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java#notificationFlashColor"
+      },
+      {
+        "key": "fontType",
+        "label": "Dynamic overlay font",
+        "description": "Configures what font is used for in-game overlays such as player name, ground items, etc.",
+        "section": "overlaySettings",
+        "control": {
+          "type": "font"
+        },
+        "default": {
+          "type": "font",
+          "value": {
+            "family": "RuneScape Small",
+            "size": 16,
+            "bold": false,
+            "italic": false
+          }
+        },
+        "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java#dynamicOverlayFont"
+      },
+      {
+        "key": "tooltipFontType",
+        "label": "Tooltip font",
+        "description": "Configures what font is used for in-game tooltips such as food stats, NPC names, etc.",
+        "section": "overlaySettings",
+        "control": {
+          "type": "font"
+        },
+        "default": {
+          "type": "font",
+          "value": {
+            "family": "RuneScape Small",
+            "size": 16,
+            "bold": false,
+            "italic": false
+          }
+        },
+        "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java#tooltipFont"
+      },
+      {
+        "key": "interfaceFontType",
+        "label": "Interface font",
+        "description": "Configures what font is used for in-game interface overlays such as panels, opponent info, clue scrolls etc.",
+        "section": "overlaySettings",
+        "control": {
+          "type": "font"
+        },
+        "default": {
+          "type": "font",
+          "value": {
+            "family": "RuneScape",
+            "size": 16,
+            "bold": false,
+            "italic": false
+          }
+        },
+        "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java#interfaceFont"
+      },
+      {
+        "key": "infoboxFontType",
+        "label": "Infobox font",
+        "description": "Configures what font is used for infoboxes.",
+        "section": "overlaySettings",
+        "control": {
+          "type": "font"
+        },
+        "default": {
+          "type": "font",
+          "value": {
+            "family": "RuneScape",
+            "size": 16,
+            "bold": false,
+            "italic": false
+          }
+        },
+        "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java#infoboxFont"
+      },
+      {
+        "key": "tooltipPosition",
+        "label": "Tooltip position",
+        "description": "Configures whether to show the tooltip above or under the cursor.",
+        "section": "overlaySettings",
+        "control": {
+          "type": "choice",
+          "options": [
+            "ABOVE_CURSOR",
+            "UNDER_CURSOR"
+          ]
+        },
+        "default": {
+          "type": "choice",
+          "value": "UNDER_CURSOR"
+        },
+        "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java#tooltipPosition"
+      },
+      {
+        "key": "infoBoxVertical",
+        "label": "Display infoboxes vertically",
+        "description": "Toggles the infoboxes to display vertically.",
+        "section": "overlaySettings",
+        "control": {
+          "type": "boolean"
+        },
+        "default": {
+          "type": "boolean",
+          "value": false
+        },
+        "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java#infoBoxVertical"
+      },
+      {
+        "key": "infoBoxSize",
+        "label": "Infobox size",
+        "description": "Configures the size of each infobox in pixels.",
+        "section": "overlaySettings",
+        "control": {
+          "type": "integer",
+          "min": 0,
+          "max": 2147483647
+        },
+        "default": {
+          "type": "integer",
+          "value": 35
+        },
+        "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java#infoBoxSize"
+      },
+      {
+        "key": "infoBoxTextOutline",
+        "label": "Outline infobox text",
+        "description": "Draw a full outline instead of a simple shadow for infobox text.",
+        "section": "overlaySettings",
+        "control": {
+          "type": "boolean"
+        },
+        "default": {
+          "type": "boolean",
+          "value": false
+        },
+        "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java#infoBoxTextOutline"
+      },
+      {
+        "key": "overlayBackgroundColor",
+        "label": "Overlay color",
+        "description": "Configures the background color of infoboxes and overlays.",
+        "section": "overlaySettings",
+        "control": {
+          "type": "color"
+        },
+        "default": {
+          "type": "color",
+          "value": 2621848882
+        },
+        "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java#overlayBackgroundColor"
+      },
+      {
+        "key": "sidebarToggleKey",
+        "label": "Sidebar toggle key",
+        "description": "The key that will toggle the sidebar (accepts modifiers).",
+        "section": "windowSettings",
+        "control": {
+          "type": "hotkey"
+        },
+        "default": {
+          "type": "hotkey",
+          "value": {
+            "key": "F11",
+            "modifiers": 2
+          }
+        },
+        "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java#sidebarToggleKey"
+      },
+      {
+        "key": "panelToggleKey",
+        "label": "Plugin panel toggle key",
+        "description": "The key that will toggle the current or last opened plugin panel (accepts modifiers).",
+        "section": "windowSettings",
+        "control": {
+          "type": "hotkey"
+        },
+        "default": {
+          "type": "hotkey",
+          "value": {
+            "key": "F12",
+            "modifiers": 2
+          }
+        },
+        "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java#panelToggleKey"
+      },
+      {
+        "key": "blockExtraMouseButtons",
+        "label": "Block extra mouse buttons",
+        "description": "Blocks extra mouse buttons (4 and above).",
+        "section": "Client",
+        "control": {
+          "type": "boolean"
+        },
+        "default": {
+          "type": "boolean",
+          "value": true
+        },
+        "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java#blockExtraMouseButtons"
+      },
+      {
+        "key": "useWikiItemPrices",
+        "label": "Use actively traded price",
+        "description": "Use actively traded prices, sourced from the RuneScape wiki, for item prices.",
+        "section": "Client",
+        "control": {
+          "type": "boolean"
+        },
+        "default": {
+          "type": "boolean",
+          "value": true
+        },
+        "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java#useWikiItemPrices"
+      },
+      {
+        "key": "dragHotkey",
+        "label": "Drag hotkey",
+        "description": "Configures the hotkey used to drag UI elements around.",
+        "section": "Client",
+        "control": {
+          "type": "hotkey"
+        },
+        "default": {
+          "type": "hotkey",
+          "value": {
+            "key": "",
+            "modifiers": 4
+          }
+        },
+        "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java#dragHotkey"
+      }
+    ]
+  }
+]

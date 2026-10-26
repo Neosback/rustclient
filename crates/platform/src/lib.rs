@@ -6,6 +6,9 @@
 
 #![forbid(unsafe_code)]
 
+mod clipboard;
+pub use clipboard::{Clipboard, ClipboardError, ClipboardErrorKind};
+
 mod clock;
 mod read_only;
 mod storage;

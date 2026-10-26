@@ -1,6 +1,6 @@
 // RuneLite GPU material transfer: runelite-gpu/vert.glsl + frag.glsl.
 // HSL gamma is applied in the vertex conversion; texture gamma in the fragment shader.
-struct Camera { view_projection: mat4x4<f32>, cycle: u32, top_level: u32, brightness:f32, _pad2:u32 }
+struct Camera { view_projection: mat4x4<f32>, cycle: u32, top_level: u32, brightness:f32, material_flags:u32 }
 struct Animations { values:array<vec4<f32>,256> }
 @group(0) @binding(0) var<uniform> camera:Camera;
 @group(0) @binding(1) var textures:texture_2d_array<f32>;
@@ -51,8 +51,8 @@ fn hsl_rgb(packed:u32)->vec3<f32> {
  out.uv=vec2<f32>(f32(u),f32(v))/256.0;
  if out.texture>0u {
     out.uv+=f32(camera.cycle&127u)*animations.values[out.texture-1u].xy/128.0;
-    out.color=vec3<f32>(0.0);
- } else {out.color=hsl_rgb(input.abhsl);}
+ }
+ out.color=hsl_rgb(input.abhsl);
  return out;
 }
 @fragment fn fs_main(input:Vertex)->@location(0) vec4<f32> {
@@ -62,7 +62,11 @@ fn hsl_rgb(packed:u32)->vec3<f32> {
     let layer=i32(input.texture-1u);
     if textureSampleLevel(textures,tex_sampler,input.uv,layer,0.0).a<1.0 {discard;}
     let rgb=pow(textureSampleGrad(textures,tex_sampler,input.uv,layer,dx,dy).rgb,vec3<f32>(camera.brightness));
-    return vec4<f32>(rgb*(input.hsl/127.0),input.alpha);
+    // RuneLite textureLightMode selects HSL RGB for the old bright-texture path.
+    let light=select(vec3<f32>(input.hsl/127.0),input.color,(camera.material_flags&2u)!=0u);
+    return vec4<f32>(rgb*light,input.alpha);
  }
- return vec4<f32>(input.color,input.alpha);
+ // RuneLite smoothBanding false interpolates packed HSL and quantizes at the fragment.
+ let color=select(input.color,hsl_rgb(u32(input.hsl)),(camera.material_flags&1u)!=0u);
+ return vec4<f32>(color,input.alpha);
 }

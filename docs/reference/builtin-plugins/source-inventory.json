@@ -1,0 +1,1981 @@
+{
+  "schema": 1,
+  "baseline": "RustClient-vendored-source; file hashes define the snapshot",
+  "scope": "GPU and RuneLite configuration/core support; no HD or other gameplay plugins",
+  "sources": [
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "sha256": "e0e292a55d52713955b69b96478d0fd5db66726dbe399512335f5a4e13258076",
+      "status": "source-inventoried",
+      "methods": 0
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ConfigManager.java",
+      "sha256": "0341faa449595633fd1e0b662508d93f43b27bf59c1c553d0d31f5761a86a36e",
+      "status": "source-inventoried",
+      "methods": 52
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java",
+      "sha256": "3d06fa876fc52819831d4553c83196e85da93bb7548b22690825b8666ad97fe5",
+      "status": "source-inventoried",
+      "methods": 0
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/config/ConfigPanel.java",
+      "sha256": "cec7f1a87e1773b5eb8bd46ab9fa753c65cceec38463188b927e345c97c525f9",
+      "status": "source-inventoried",
+      "methods": 37
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/config/ConfigPlugin.java",
+      "sha256": "12ffcb8194f5bbc845266f65b78c4bb1e417180a3f4d8cf319cca6575eaeaefd",
+      "status": "source-inventoried",
+      "methods": 3
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/config/FixedWidthPanel.java",
+      "sha256": "859d94d7e5475cb1b76dead640f3d95ca1ad427200204ce6a2db4b9d3f68cd5b",
+      "status": "source-inventoried",
+      "methods": 1
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/config/FontPanel.java",
+      "sha256": "5f5eaf74a05dbd127057f4617425fd632532dbe3876f93cca3a386233c3f01fe",
+      "status": "source-inventoried",
+      "methods": 10
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/config/HotkeyButton.java",
+      "sha256": "3ed1a21c41d68c56ef3beff7fa883e2426c027adb7b05520712b8cabaeb4a28c",
+      "status": "source-inventoried",
+      "methods": 4
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/config/NotificationPanel.java",
+      "sha256": "7af71ae7bcb86b2c0351ffed2c2eaa50b0fdf54aab6009ebda13874fbd321400",
+      "status": "source-inventoried",
+      "methods": 12
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/config/PluginConfigurationDescriptor.java",
+      "sha256": "6bdd740a9b8d61dba75bfa23e560ccd0faa03964857d514706590207fc664051",
+      "status": "source-inventoried",
+      "methods": 1
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/config/PluginHubPanel.java",
+      "sha256": "86eaebeeb1f21bd220b247a96d5fd84d3c187b40184a47c3befc51142b62c748",
+      "status": "source-inventoried",
+      "methods": 15
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/config/PluginListItem.java",
+      "sha256": "7b328cdee3868f92cc7a590eba91bbacd5812872d988def6a5548c852f7e2fdd",
+      "status": "source-inventoried",
+      "methods": 10
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/config/PluginListPanel.java",
+      "sha256": "0faea3de9b06e5626a0abf5b55633d9f8a6e31bd48588573da05d79efa386958",
+      "status": "source-inventoried",
+      "methods": 15
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/config/PluginSearch.java",
+      "sha256": "4f5d3d7f47183f85777ca524dc41afefdf13ab3f88a5f82968cdfda177e81488",
+      "status": "source-inventoried",
+      "methods": 3
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/config/PluginToggleButton.java",
+      "sha256": "fd90da23a4051220a91cc0eb3d619eea764b9be5aec2c1754b91dd0b27c16ef3",
+      "status": "source-inventoried",
+      "methods": 3
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/config/ProfilePanel.java",
+      "sha256": "c4438719dcabb20e56a31580761b9fc563371586447175f6851d6e1e26e4472d",
+      "status": "source-inventoried",
+      "methods": 31
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/config/SearchablePlugin.java",
+      "sha256": "98b1596b2b1b581abccdb1671932fa950cc7a7e24e1f6de155e7fddbc2ad1b7a",
+      "status": "source-inventoried",
+      "methods": 0
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/config/TopLevelConfigPanel.java",
+      "sha256": "d6a50c36813d815e9bdd1cff098cd95b3137a4a26397eb0a161a534e9bd6cbc9",
+      "status": "source-inventoried",
+      "methods": 8
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GLBuffer.java",
+      "sha256": "70f3543edd7a0ce0cb3de8f73aa74efdc98275fd56367edb57b2386e3abeb850",
+      "status": "source-inventoried",
+      "methods": 0
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuFloatBuffer.java",
+      "sha256": "5ca2bcf0817c7adb6554347d314e254bf56f0cae16a1d3392459d1a2e55393b5",
+      "status": "source-inventoried",
+      "methods": 0
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuIntBuffer.java",
+      "sha256": "31a1f4b3dfadcd5c00307ceee6fed9547109e1a8c45967966044bbbce261bf71",
+      "status": "source-inventoried",
+      "methods": 0
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPlugin.java",
+      "sha256": "9508b008327ed496d320e5f315706d8a1462e9181a6e8a91e9d6940a214849d9",
+      "status": "source-inventoried",
+      "methods": 50
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPluginConfig.java",
+      "sha256": "1d9fc492672061830d8a5817348a22e1b7a01a5af0a962459c0fa833feed39b9",
+      "status": "source-inventoried",
+      "methods": 0
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/Mat4.java",
+      "sha256": "cea9758e1afb837827fe78b33ac4f0ac4ef7bc9c6ae75751770a4389452df02e",
+      "status": "source-inventoried",
+      "methods": 8
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/ModelUploader.java",
+      "sha256": "79a3b1f9f6bd6aafcff7f2b5d21677c695828bdcb730d45f49b7dac35bd71047",
+      "status": "source-inventoried",
+      "methods": 2
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/RegionManager.java",
+      "sha256": "257cbeb7b2e99c224697c703a0bf68cf5d2e94cfa7c4ca173fb97466a2de5803",
+      "status": "source-inventoried",
+      "methods": 1
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/SceneUploader.java",
+      "sha256": "a8ee331ba88e72448285c63e73f2fe9f052e969e8ce9099414b603518e5b191a",
+      "status": "source-inventoried",
+      "methods": 9
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/Shader.java",
+      "sha256": "b1c49906990d0508f165fdcb7a173a2de70f74737a93979d406337f73fe28a8c",
+      "status": "source-inventoried",
+      "methods": 2
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/ShaderException.java",
+      "sha256": "3c8eeb7a5e1ce6a9e13b8c1c6360f47d1e8014a199995e8e956d7b89a5feccfb",
+      "status": "source-inventoried",
+      "methods": 0
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/TextureManager.java",
+      "sha256": "107fe7a3c72a9c4534db889cd45b11799a7d954cce59a8c60998ecdb02c8863e",
+      "status": "source-inventoried",
+      "methods": 3
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/VAO.java",
+      "sha256": "e2b7f36e29431b9c1396783800594b587c14ffcb71c315627a62f1becbacc445",
+      "status": "source-inventoried",
+      "methods": 0
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/VBO.java",
+      "sha256": "f3850b4a4ebce0f1aedb967682a25cd206f1d79e76296e92559edefd945a9c2a",
+      "status": "source-inventoried",
+      "methods": 0
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/Zone.java",
+      "sha256": "f54b9739b1622c2a0031ff3e37657a559f5e5ae7cf9753d317bd8098299b4f9d",
+      "status": "source-inventoried",
+      "methods": 6
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/config/AntiAliasingMode.java",
+      "sha256": "6b742223426b3e425583b4d9172595b9b88405b7213e0c2bc86dc341e7f189cf",
+      "status": "source-inventoried",
+      "methods": 1
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/config/ColorBlindMode.java",
+      "sha256": "6d7fdba3683a69e77e4a6735d8880c28815b4324163e8ec83090a76e566557b6",
+      "status": "source-inventoried",
+      "methods": 0
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/config/UIScalingMode.java",
+      "sha256": "02bfeafe2506e57013efc55817e76f691b2267e245c0371956421419a5b7cd24",
+      "status": "source-inventoried",
+      "methods": 1
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/regions/Region.java",
+      "sha256": "92898dbdd584694158c5b72f48dfc07404b0fa5c635a1612b8469086452b68ea",
+      "status": "source-inventoried",
+      "methods": 0
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/regions/Regions.java",
+      "sha256": "0befa4012fec63c9da1fa8ef9dcf35f5cd35c50f83cd467a8fcbc31927abefe6",
+      "status": "source-inventoried",
+      "methods": 6
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/template/Template.java",
+      "sha256": "a53415e193005ac44afbe27839715d11dcfda6b00fd530a45ab4e9c5fc93dc58",
+      "status": "source-inventoried",
+      "methods": 5
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/ui/ClientToolbar.java",
+      "sha256": "e8792ae7ef668ff72f486cdb7eba3c2925a320eb75eb4a48ccbf7341e91ec551",
+      "status": "source-inventoried",
+      "methods": 4
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/ui/ClientUI.java",
+      "sha256": "427fdd13f2ddebb5e3334b65015338ae577e3814648fc2e6b61a4d5cdc38f82e",
+      "status": "source-inventoried",
+      "methods": 62
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/ui/overlay/Overlay.java",
+      "sha256": "b7ba50511c025572bc957c6d458c2883d681ff26972bf385c3c9cccab48ce603",
+      "status": "source-inventoried",
+      "methods": 17
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/ui/overlay/OverlayLayer.java",
+      "sha256": "a2f4f32e0276f28bd016ce96d4f05219eaf63366120d2204f267886413060474",
+      "status": "source-inventoried",
+      "methods": 0
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/ui/overlay/OverlayManager.java",
+      "sha256": "f1ffa63648d8c7fcaf7f23b4b46e96ede93de83cb90d6413e8bee122e2a7c62e",
+      "status": "source-inventoried",
+      "methods": 28
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/ui/overlay/OverlayMenuEntry.java",
+      "sha256": "9a1120893901e0a215856c1ae140e3259d41255946f2d8c3b6e6da31dfff12ba",
+      "status": "source-inventoried",
+      "methods": 0
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/ui/overlay/OverlayOrigin.java",
+      "sha256": "999eb262d0822b7af3f2710c8c50b96d9724509c5bf6f1ca691717539268afe6",
+      "status": "source-inventoried",
+      "methods": 1
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/ui/overlay/OverlayOriginX.java",
+      "sha256": "0d71a27965e7116cba9f28d42ab2611c788cd39c47b6a27f11a86bfa9eafee87",
+      "status": "source-inventoried",
+      "methods": 0
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/ui/overlay/OverlayOriginY.java",
+      "sha256": "9260c71cd09286a42ea6cf1b9c2119e6340755ee5b93679b2e7b2d10e794c6d7",
+      "status": "source-inventoried",
+      "methods": 0
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/ui/overlay/OverlayPanel.java",
+      "sha256": "dfc7e86335d3ec18e10812676d1cc3fbdb253b97957b60a58077d76c6c28ce91",
+      "status": "source-inventoried",
+      "methods": 3
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/ui/overlay/OverlayPosition.java",
+      "sha256": "f215c1202275c585b068901345358320e5ffdad6be59e689e2d989286cec09a5",
+      "status": "source-inventoried",
+      "methods": 0
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/ui/overlay/OverlayPriority.java",
+      "sha256": "a09bc6cc4190d2d29df487104339c1cd98f2f79285fae73f5642ba79012af158",
+      "status": "source-inventoried",
+      "methods": 0
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/ui/overlay/OverlayRenderer.java",
+      "sha256": "8178ec55c192f3d6337d2d03288dff07b6a6af1bec93035e418ea56cb9d47b33",
+      "status": "source-inventoried",
+      "methods": 22
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/ui/overlay/OverlayUtil.java",
+      "sha256": "a900881e91b931cce58733d60967b7651c0758d27c985dd3ea14cc8111ceb31d",
+      "status": "source-inventoried",
+      "methods": 14
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/ui/overlay/RenderableEntity.java",
+      "sha256": "91361a7842ec03f9ecd9ec505395099da86c6449b42755d73401f9b1a4b9a65a",
+      "status": "source-inventoried",
+      "methods": 0
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/ui/overlay/SnapCorner.java",
+      "sha256": "aecfd817d627ca62cc85cd7f1c3eecb1053e2062a228209f9c33f04f0534298f",
+      "status": "source-inventoried",
+      "methods": 6
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/ui/overlay/SnapCorners.java",
+      "sha256": "acd8b7425738479e17d6124609ef1a7f87f934ff240feefdb97a6dd58cfba901",
+      "status": "source-inventoried",
+      "methods": 1
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/ui/overlay/WidgetItemOverlay.java",
+      "sha256": "3c46a3bf9bbd62f3c8a427fc57acbd5c93eacc366b5f8b4a7f3db8dcf10cfb1f",
+      "status": "source-inventoried",
+      "methods": 8
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/ui/overlay/WidgetOverlay.java",
+      "sha256": "5cd439a9d18d9f8ce161c338f11fb9fa5e3ad8d61a3f62de907bd724aa57a93b",
+      "status": "source-inventoried",
+      "methods": 12
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/ui/overlay/components/BackgroundComponent.java",
+      "sha256": "340fc753fea318086916fc3d9e00b9f3b5f33010c0221041157a83b6a232628d",
+      "status": "source-inventoried",
+      "methods": 1
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/ui/overlay/components/ComponentConstants.java",
+      "sha256": "e1ed48a146f81c1c0f4d277dd816e20918d33595aec1ac0e91fe9d45f1735c65",
+      "status": "source-inventoried",
+      "methods": 0
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/ui/overlay/components/ComponentOrientation.java",
+      "sha256": "cebdf6f98fd9d52d0243661f01470cd2aa03903837a0ce04ecc671c72a08d997",
+      "status": "source-inventoried",
+      "methods": 0
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/ui/overlay/components/ImageComponent.java",
+      "sha256": "5c84a99738c88aea2b2526da296018a9e3a50a65611bcbbf94d140b5b60946ec",
+      "status": "source-inventoried",
+      "methods": 2
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/ui/overlay/components/InfoBoxComponent.java",
+      "sha256": "bf1394413e9c0be2cf90da7d596068b0b3d885653ac016458cc4f7bf38a44268",
+      "status": "source-inventoried",
+      "methods": 2
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/ui/overlay/components/LayoutableRenderableEntity.java",
+      "sha256": "7f1375d9f6df6d5508ee19e622967b65d50741505d1dd45729b3a6d4451122e9",
+      "status": "source-inventoried",
+      "methods": 0
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/ui/overlay/components/LineComponent.java",
+      "sha256": "5a7b20b34284934bf103ad2f75467ac320823ba18eeb402f2155858767c4d6f8",
+      "status": "source-inventoried",
+      "methods": 3
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/ui/overlay/components/PanelComponent.java",
+      "sha256": "e28bdbca4dfa78d541ff3908f00e4cd611bd4c61a076b935d50fb89c6260443f",
+      "status": "source-inventoried",
+      "methods": 1
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/ui/overlay/components/ProgressBarComponent.java",
+      "sha256": "6d0f1cd5111d99c23a97d1458fb1c03325882b162cb40a0ccf41ee48d6e86e15",
+      "status": "source-inventoried",
+      "methods": 3
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/ui/overlay/components/ProgressPieComponent.java",
+      "sha256": "c29ed875413c2e9a517d1adbbb8d49a8f7117b5fac7f8f874dfbb270e9e8c274",
+      "status": "source-inventoried",
+      "methods": 2
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/ui/overlay/components/SplitComponent.java",
+      "sha256": "a7351fab6654f07e2cb28e0f4f00386f95b9ea746c7cdb301658daae14ca8e40",
+      "status": "source-inventoried",
+      "methods": 1
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/ui/overlay/components/TextComponent.java",
+      "sha256": "fdfa447e571094b87ee4b31e901ae031d3fd4cd9db20a08b1aa16304ead0501a",
+      "status": "source-inventoried",
+      "methods": 4
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/ui/overlay/components/TitleComponent.java",
+      "sha256": "be4bb722f92adaf528562c53a9bd7cacaf22ec3736366b66f9e24f546f8327f1",
+      "status": "source-inventoried",
+      "methods": 1
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/ui/overlay/components/TooltipComponent.java",
+      "sha256": "b1d8380229efdb07719103819adfe652262e9798caaa244742c2a6da0d068b50",
+      "status": "source-inventoried",
+      "methods": 5
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/ui/overlay/infobox/Counter.java",
+      "sha256": "95b6b7e55c71868d67e8eb449de58eaa003c824a42415da1364a97b73fa4ccc4",
+      "status": "source-inventoried",
+      "methods": 3
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/ui/overlay/infobox/InfoBox.java",
+      "sha256": "40d263bb7092037d52fb23b51bd1a4a932d83e93794bef869e0ee05f939a5762",
+      "status": "source-inventoried",
+      "methods": 4
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/ui/overlay/infobox/InfoBoxManager.java",
+      "sha256": "24ec0a3c28b10701703a59b1fce11303871f41a07c6529581c3218845c866c2c",
+      "status": "source-inventoried",
+      "methods": 17
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/ui/overlay/infobox/InfoBoxOverlay.java",
+      "sha256": "07ac6859cb1e4c78f4f3bb325959b186fdb80b651e8601b081a5ccad717e5828",
+      "status": "source-inventoried",
+      "methods": 5
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/ui/overlay/infobox/InfoBoxPriority.java",
+      "sha256": "004c58207b80587aae8df55e5e35b2494df4b87dd3f75c41e0d00684a4afe931",
+      "status": "source-inventoried",
+      "methods": 0
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/ui/overlay/infobox/LoopTimer.java",
+      "sha256": "ca485096114ecfbb54f8939892875731192451b693c51a66c6c0363f0357cb18",
+      "status": "source-inventoried",
+      "methods": 5
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/ui/overlay/infobox/Timer.java",
+      "sha256": "0881918f472d49677a5601593ef470a1e7ac29b1e8533b294286fb6e3b91e28a",
+      "status": "source-inventoried",
+      "methods": 7
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/ui/overlay/outline/IntBlockBuffer.java",
+      "sha256": "45ee040ed959409b7a30256fc09cfe4a11402b64484ba7b66ab9f010ad8e4217",
+      "status": "source-inventoried",
+      "methods": 4
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/ui/overlay/outline/ModelOutlineRenderer.java",
+      "sha256": "01c208983c0aa16cdc1d9d5a3979925a3da65c4b9f77cc6252bc36022f9c8f57",
+      "status": "source-inventoried",
+      "methods": 27
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/ui/overlay/tooltip/Tooltip.java",
+      "sha256": "144dbf76c81d7ec81930ca39e5622074d7328ff0306d3de74bd8c01f5aadb5fc",
+      "status": "source-inventoried",
+      "methods": 2
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/ui/overlay/tooltip/TooltipManager.java",
+      "sha256": "00a53554ff86679c152a07e3120080a345307f6350c9f1d51a42659588461d40",
+      "status": "source-inventoried",
+      "methods": 3
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/ui/overlay/tooltip/TooltipOverlay.java",
+      "sha256": "4491b6d463c19a22c83ee5bacefa8cfac25782aeb19b6e59d0c6cf96c412f5f3",
+      "status": "source-inventoried",
+      "methods": 3
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/ui/overlay/worldmap/WorldMapOverlay.java",
+      "sha256": "48208fb890e841feea7b2a60187eccc5fa942889e8f74e3bbe4503bd9c89ec5d",
+      "status": "source-inventoried",
+      "methods": 6
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/ui/overlay/worldmap/WorldMapPoint.java",
+      "sha256": "94b320749ea57b8563a449452ad74b06c7fbb663d4c1c6e1d1001b66f6c29417",
+      "status": "source-inventoried",
+      "methods": 3
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/ui/overlay/worldmap/WorldMapPointManager.java",
+      "sha256": "8f7ca6f3e2bb0c6b8833ddb618aa370413641b98cc91e963455a653532f1538f",
+      "status": "source-inventoried",
+      "methods": 3
+    }
+  ],
+  "settings": [
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "opaquePublicChat",
+      "key": "opaquePublicChat",
+      "javaType": "Color",
+      "defaultExpression": "abstract",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "opaquePublicChatHighlight",
+      "key": "opaquePublicChatHighlight",
+      "javaType": "Color",
+      "defaultExpression": "Color.decode(\"#000000\")",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "opaquePrivateMessageSent",
+      "key": "opaquePrivateMessageSent",
+      "javaType": "Color",
+      "defaultExpression": "abstract",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "opaquePrivateMessageSentHighlight",
+      "key": "opaquePrivateMessageSentHighlight",
+      "javaType": "Color",
+      "defaultExpression": "Color.decode(\"#002783\")",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "opaquePrivateMessageReceived",
+      "key": "opaquePrivateMessageReceived",
+      "javaType": "Color",
+      "defaultExpression": "abstract",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "opaquePrivateMessageReceivedHighlight",
+      "key": "opaquePrivateMessageReceivedHighlight",
+      "javaType": "Color",
+      "defaultExpression": "Color.decode(\"#002783\")",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "opaqueFriendsChatInfo",
+      "key": "opaqueFriendsChatInfo",
+      "javaType": "Color",
+      "defaultExpression": "abstract",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "opaqueFriendsChatInfoHighlight",
+      "key": "opaqueClanChatInfoHighlight",
+      "javaType": "Color",
+      "defaultExpression": "Color.RED",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "opaqueFriendsChatMessage",
+      "key": "opaqueClanChatMessage",
+      "javaType": "Color",
+      "defaultExpression": "abstract",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "opaqueFriendsChatMessageHighlight",
+      "key": "opaqueClanChatMessageHighlight",
+      "javaType": "Color",
+      "defaultExpression": "Color.decode(\"#000000\")",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "opaqueClanChatInfo",
+      "key": "opaqueClanInfo",
+      "javaType": "Color",
+      "defaultExpression": "abstract",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "opaqueClanChatInfoHighlight",
+      "key": "opaqueClanInfoHighlight",
+      "javaType": "Color",
+      "defaultExpression": "Color.RED",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "opaqueClanChatMessage",
+      "key": "opaqueClanMessage",
+      "javaType": "Color",
+      "defaultExpression": "abstract",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "opaqueClanChatMessageHighlight",
+      "key": "opaqueClanMessageHighlight",
+      "javaType": "Color",
+      "defaultExpression": "Color.decode(\"#000000\")",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "opaqueClanChatGuestInfo",
+      "key": "opaqueClanGuestInfo",
+      "javaType": "Color",
+      "defaultExpression": "abstract",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "opaqueClanChatGuestInfoHighlight",
+      "key": "opaqueClanGuestInfoHighlight",
+      "javaType": "Color",
+      "defaultExpression": "Color.RED",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "opaqueClanChatGuestMessage",
+      "key": "opaqueClanGuestMessage",
+      "javaType": "Color",
+      "defaultExpression": "abstract",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "opaqueClanChatGuestMessageHighlight",
+      "key": "opaqueClanChatGuestMessageHighlight",
+      "javaType": "Color",
+      "defaultExpression": "Color.decode(\"#000000\")",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "opaqueAutochatMessage",
+      "key": "opaqueAutochatMessage",
+      "javaType": "Color",
+      "defaultExpression": "abstract",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "opaqueAutochatMessageHighlight",
+      "key": "opaqueAutochatMessageHighlight",
+      "javaType": "Color",
+      "defaultExpression": "abstract",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "opaqueTradeChatMessage",
+      "key": "opaqueTradeChatMessage",
+      "javaType": "Color",
+      "defaultExpression": "abstract",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "opaqueTradeChatMessageHighlight",
+      "key": "opaqueTradeChatMessageHighlight",
+      "javaType": "Color",
+      "defaultExpression": "abstract",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "opaqueServerMessage",
+      "key": "opaqueServerMessage",
+      "javaType": "Color",
+      "defaultExpression": "abstract",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "opaqueServerMessageHighlight",
+      "key": "opaqueServerMessageHighlight",
+      "javaType": "Color",
+      "defaultExpression": "abstract",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "opaqueGameMessage",
+      "key": "opaqueGameMessage",
+      "javaType": "Color",
+      "defaultExpression": "abstract",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "opaqueGameMessageHighlight",
+      "key": "opaqueGameMessageHighlight",
+      "javaType": "Color",
+      "defaultExpression": "Color.decode(\"#EF1020\")",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "opaqueExamine",
+      "key": "opaqueExamine",
+      "javaType": "Color",
+      "defaultExpression": "abstract",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "opaqueExamineHighlight",
+      "key": "opaqueExamineHighlight",
+      "javaType": "Color",
+      "defaultExpression": "Color.decode(\"#0000FF\")",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "opaqueFiltered",
+      "key": "opaqueFiltered",
+      "javaType": "Color",
+      "defaultExpression": "abstract",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "opaqueFilteredHighlight",
+      "key": "opaqueFilteredHighlight",
+      "javaType": "Color",
+      "defaultExpression": "abstract",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "opaqueUsername",
+      "key": "opaqueUsername",
+      "javaType": "Color",
+      "defaultExpression": "abstract",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "opaquePrivateUsernames",
+      "key": "opaquePrivateUsernames",
+      "javaType": "Color",
+      "defaultExpression": "abstract",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "opaqueFriendsChatChannelName",
+      "key": "opaqueClanChannelName",
+      "javaType": "Color",
+      "defaultExpression": "abstract",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "opaqueClanChannelName",
+      "key": "opaqueClanChatChannelName",
+      "javaType": "Color",
+      "defaultExpression": "abstract",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "opaqueClanGuestChatChannelName",
+      "key": "opaqueClanChatGuestChannelName",
+      "javaType": "Color",
+      "defaultExpression": "abstract",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "opaqueFriendsChatUsernames",
+      "key": "opaqueClanUsernames",
+      "javaType": "Color",
+      "defaultExpression": "abstract",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "opaqueClanChatUsernames",
+      "key": "opaqueClanChatUsernames",
+      "javaType": "Color",
+      "defaultExpression": "abstract",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "opaqueClanChatGuestUsernames",
+      "key": "opaqueClanChatGuestUsernames",
+      "javaType": "Color",
+      "defaultExpression": "abstract",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "opaquePublicFriendUsernames",
+      "key": "opaquePublicFriendUsernames",
+      "javaType": "Color",
+      "defaultExpression": "abstract",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "opaquePlayerUsername",
+      "key": "opaquePlayerUsername",
+      "javaType": "Color",
+      "defaultExpression": "abstract",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "transparentPublicChat",
+      "key": "transparentPublicChat",
+      "javaType": "Color",
+      "defaultExpression": "abstract",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "transparentPublicChatHighlight",
+      "key": "transparentPublicChatHighlight",
+      "javaType": "Color",
+      "defaultExpression": "Color.decode(\"#FFFFFF\")",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "transparentPrivateMessageSent",
+      "key": "transparentPrivateMessageSent",
+      "javaType": "Color",
+      "defaultExpression": "abstract",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "transparentPrivateMessageSentHighlight",
+      "key": "transparentPrivateMessageSentHighlight",
+      "javaType": "Color",
+      "defaultExpression": "Color.decode(\"#FFFFFF\")",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "transparentPrivateMessageReceived",
+      "key": "transparentPrivateMessageReceived",
+      "javaType": "Color",
+      "defaultExpression": "abstract",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "transparentPrivateMessageReceivedHighlight",
+      "key": "transparentPrivateMessageReceivedHighlight",
+      "javaType": "Color",
+      "defaultExpression": "Color.decode(\"#FFFFFF\")",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "transparentFriendsChatInfo",
+      "key": "transparentFriendsChatInfo",
+      "javaType": "Color",
+      "defaultExpression": "abstract",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "transparentFriendsChatInfoHighlight",
+      "key": "transparentClanChatInfoHighlight",
+      "javaType": "Color",
+      "defaultExpression": "Color.RED",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "transparentFriendsChatMessage",
+      "key": "transparentClanChatMessage",
+      "javaType": "Color",
+      "defaultExpression": "abstract",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "transparentFriendsChatMessageHighlight",
+      "key": "transparentClanChatMessageHighlight",
+      "javaType": "Color",
+      "defaultExpression": "Color.decode(\"#FFFFFF\")",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "transparentClanChatInfo",
+      "key": "transparentClanInfo",
+      "javaType": "Color",
+      "defaultExpression": "abstract",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "transparentClanChatInfoHighlight",
+      "key": "transparentClanInfoHighlight",
+      "javaType": "Color",
+      "defaultExpression": "Color.RED",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "transparentClanChatMessage",
+      "key": "transparentClanMessage",
+      "javaType": "Color",
+      "defaultExpression": "abstract",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "transparentClanChatMessageHighlight",
+      "key": "transparentClanMessageHighlight",
+      "javaType": "Color",
+      "defaultExpression": "Color.decode(\"#FFFFFF\")",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "transparentClanChatGuestInfo",
+      "key": "transparentClanGuestInfo",
+      "javaType": "Color",
+      "defaultExpression": "abstract",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "transparentClanChatGuestInfoHighlight",
+      "key": "transparentClanGuestInfoHighlight",
+      "javaType": "Color",
+      "defaultExpression": "Color.RED",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "transparentClanChatGuestMessage",
+      "key": "transparentClanGuestMessage",
+      "javaType": "Color",
+      "defaultExpression": "abstract",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "transparentClanChatGuestMessageHighlight",
+      "key": "transparentClanChatGuestMessageHighlight",
+      "javaType": "Color",
+      "defaultExpression": "Color.decode(\"#FFFFFF\")",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "transparentAutochatMessage",
+      "key": "transparentAutochatMessage",
+      "javaType": "Color",
+      "defaultExpression": "abstract",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "transparentAutochatMessageHighlight",
+      "key": "transparentAutochatMessageHighlight",
+      "javaType": "Color",
+      "defaultExpression": "abstract",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "transparentTradeChatMessage",
+      "key": "transparentTradeChatMessage",
+      "javaType": "Color",
+      "defaultExpression": "abstract",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "transparentTradeChatMessageHighlight",
+      "key": "transparentTradeChatMessageHighlight",
+      "javaType": "Color",
+      "defaultExpression": "abstract",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "transparentServerMessage",
+      "key": "transparentServerMessage",
+      "javaType": "Color",
+      "defaultExpression": "abstract",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "transparentServerMessageHighlight",
+      "key": "transparentServerMessageHighlight",
+      "javaType": "Color",
+      "defaultExpression": "abstract",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "transparentGameMessage",
+      "key": "transparentGameMessage",
+      "javaType": "Color",
+      "defaultExpression": "abstract",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "transparentGameMessageHighlight",
+      "key": "transparentGameMessageHighlight",
+      "javaType": "Color",
+      "defaultExpression": "Color.decode(\"#EF1020\")",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "transparentExamine",
+      "key": "transparentExamine",
+      "javaType": "Color",
+      "defaultExpression": "abstract",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "transparentExamineHighlight",
+      "key": "transparentExamineHighlight",
+      "javaType": "Color",
+      "defaultExpression": "Color.GREEN",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "transparentFiltered",
+      "key": "transparentFiltered",
+      "javaType": "Color",
+      "defaultExpression": "abstract",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "transparentFilteredHighlight",
+      "key": "transparentFilteredHighlight",
+      "javaType": "Color",
+      "defaultExpression": "abstract",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "transparentUsername",
+      "key": "transparentUsername",
+      "javaType": "Color",
+      "defaultExpression": "abstract",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "transparentPrivateUsernames",
+      "key": "transparentPrivateUsernames",
+      "javaType": "Color",
+      "defaultExpression": "abstract",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "transparentFriendsChatChannelName",
+      "key": "transparentClanChannelName",
+      "javaType": "Color",
+      "defaultExpression": "abstract",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "transparentClanChannelName",
+      "key": "transparentClanChatChannelName",
+      "javaType": "Color",
+      "defaultExpression": "abstract",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "transparentClanChannelGuestName",
+      "key": "transparentClanChatGuestChannelName",
+      "javaType": "Color",
+      "defaultExpression": "abstract",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "transparentFriendsChatUsernames",
+      "key": "transparentClanUsernames",
+      "javaType": "Color",
+      "defaultExpression": "abstract",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "transparentClanChatUsernames",
+      "key": "transparentClanClanUsernames",
+      "javaType": "Color",
+      "defaultExpression": "abstract",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "transparentClanChatGuestUsernames",
+      "key": "transparentClanClanGuestUsernames",
+      "javaType": "Color",
+      "defaultExpression": "abstract",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "transparentPublicFriendUsernames",
+      "key": "transparentPublicFriendUsernames",
+      "javaType": "Color",
+      "defaultExpression": "abstract",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/ChatColorConfig.java",
+      "symbol": "transparentPlayerUsername",
+      "key": "transparentPlayerUsername",
+      "javaType": "Color",
+      "defaultExpression": "abstract",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java",
+      "symbol": "gameSize",
+      "key": "gameSize",
+      "javaType": "Dimension",
+      "defaultExpression": "Constants.GAME_FIXED_SIZE",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java",
+      "symbol": "automaticResizeType",
+      "key": "automaticResizeType",
+      "javaType": "ExpandResizeType",
+      "defaultExpression": "ExpandResizeType.KEEP_GAME_SIZE",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java",
+      "symbol": "lockWindowSize",
+      "key": "lockWindowSize",
+      "javaType": "boolean",
+      "defaultExpression": "false",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java",
+      "symbol": "rememberScreenBounds",
+      "key": "containInScreen2",
+      "javaType": "boolean",
+      "defaultExpression": "true",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java",
+      "symbol": "enableCustomChrome",
+      "key": "uiEnableCustomChrome",
+      "javaType": "boolean",
+      "defaultExpression": "OSType.getOSType() == OSType.Windows",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java",
+      "symbol": "windowOpacity",
+      "key": "uiWindowOpacity",
+      "javaType": "int",
+      "defaultExpression": "100",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java",
+      "symbol": "gameAlwaysOnTop",
+      "key": "gameAlwaysOnTop",
+      "javaType": "boolean",
+      "defaultExpression": "false",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java",
+      "symbol": "warningOnExit",
+      "key": "warningOnExit",
+      "javaType": "WarningOnExit",
+      "defaultExpression": "WarningOnExit.LOGGED_IN",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java",
+      "symbol": "usernameInTitle",
+      "key": "usernameInTitle",
+      "javaType": "boolean",
+      "defaultExpression": "true",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java",
+      "symbol": "enableTrayIcon",
+      "key": "trayIcon",
+      "javaType": "boolean",
+      "defaultExpression": "true",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java",
+      "symbol": "enableTrayNotifications",
+      "key": "notificationTray",
+      "javaType": "boolean",
+      "defaultExpression": "true",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java",
+      "symbol": "notificationRequestFocus",
+      "key": "notificationRequestFocus",
+      "javaType": "RequestFocusType",
+      "defaultExpression": "RequestFocusType.OFF",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java",
+      "symbol": "notificationSound",
+      "key": "notificationSound",
+      "javaType": "NotificationSound",
+      "defaultExpression": "NotificationSound.NATIVE",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java",
+      "symbol": "notificationVolume",
+      "key": "notificationVolume",
+      "javaType": "int",
+      "defaultExpression": "100",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java",
+      "symbol": "notificationTimeout",
+      "key": "notificationTimeout",
+      "javaType": "int",
+      "defaultExpression": "10000",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java",
+      "symbol": "enableGameMessageNotification",
+      "key": "notificationGameMessage",
+      "javaType": "boolean",
+      "defaultExpression": "false",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java",
+      "symbol": "flashNotification",
+      "key": "flashNotification",
+      "javaType": "FlashNotification",
+      "defaultExpression": "FlashNotification.DISABLED",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java",
+      "symbol": "sendNotificationsWhenFocused",
+      "key": "notificationFocused",
+      "javaType": "boolean",
+      "defaultExpression": "false",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java",
+      "symbol": "notificationFlashColor",
+      "key": "notificationFlashColor",
+      "javaType": "Color",
+      "defaultExpression": "new Color(255, 0, 0, 70)",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java",
+      "symbol": "dynamicOverlayFont",
+      "key": "fontType",
+      "javaType": "FontType",
+      "defaultExpression": "FontType.SMALL",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java",
+      "symbol": "tooltipFont",
+      "key": "tooltipFontType",
+      "javaType": "FontType",
+      "defaultExpression": "FontType.SMALL",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java",
+      "symbol": "interfaceFont",
+      "key": "interfaceFontType",
+      "javaType": "FontType",
+      "defaultExpression": "FontType.REGULAR",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java",
+      "symbol": "infoboxFont",
+      "key": "infoboxFontType",
+      "javaType": "FontType",
+      "defaultExpression": "FontType.REGULAR",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java",
+      "symbol": "tooltipPosition",
+      "key": "tooltipPosition",
+      "javaType": "TooltipPositionType",
+      "defaultExpression": "TooltipPositionType.UNDER_CURSOR",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java",
+      "symbol": "infoBoxVertical",
+      "key": "infoBoxVertical",
+      "javaType": "boolean",
+      "defaultExpression": "false",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java",
+      "symbol": "infoBoxSize",
+      "key": "infoBoxSize",
+      "javaType": "int",
+      "defaultExpression": "35",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java",
+      "symbol": "infoBoxTextOutline",
+      "key": "infoBoxTextOutline",
+      "javaType": "boolean",
+      "defaultExpression": "false",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java",
+      "symbol": "overlayBackgroundColor",
+      "key": "overlayBackgroundColor",
+      "javaType": "Color",
+      "defaultExpression": "ComponentConstants.STANDARD_BACKGROUND_COLOR",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java",
+      "symbol": "sidebarToggleKey",
+      "key": "sidebarToggleKey",
+      "javaType": "Keybind",
+      "defaultExpression": "new Keybind(KeyEvent.VK_F11, InputEvent.CTRL_DOWN_MASK)",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java",
+      "symbol": "panelToggleKey",
+      "key": "panelToggleKey",
+      "javaType": "Keybind",
+      "defaultExpression": "new Keybind(KeyEvent.VK_F12, InputEvent.CTRL_DOWN_MASK)",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java",
+      "symbol": "blockExtraMouseButtons",
+      "key": "blockExtraMouseButtons",
+      "javaType": "boolean",
+      "defaultExpression": "true",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java",
+      "symbol": "useWikiItemPrices",
+      "key": "useWikiItemPrices",
+      "javaType": "boolean",
+      "defaultExpression": "true",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/config/RuneLiteConfig.java",
+      "symbol": "dragHotkey",
+      "key": "dragHotkey",
+      "javaType": "Keybind",
+      "defaultExpression": "Keybind.ALT",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPluginConfig.java",
+      "symbol": "drawDistance",
+      "key": "drawDistance",
+      "javaType": "int",
+      "defaultExpression": "50",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPluginConfig.java",
+      "symbol": "hideUnrelatedMaps",
+      "key": "hideUnrelatedMaps",
+      "javaType": "boolean",
+      "defaultExpression": "true",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPluginConfig.java",
+      "symbol": "expandedMapLoadingZones",
+      "key": "expandedMapLoadingChunks",
+      "javaType": "int",
+      "defaultExpression": "3",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPluginConfig.java",
+      "symbol": "smoothBanding",
+      "key": "smoothBanding",
+      "javaType": "boolean",
+      "defaultExpression": "true",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPluginConfig.java",
+      "symbol": "antiAliasingMode",
+      "key": "antiAliasingMode",
+      "javaType": "AntiAliasingMode",
+      "defaultExpression": "AntiAliasingMode.MSAA_2",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPluginConfig.java",
+      "symbol": "uiScalingMode",
+      "key": "uiScalingMode",
+      "javaType": "UIScalingMode",
+      "defaultExpression": "UIScalingMode.HYBRID",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPluginConfig.java",
+      "symbol": "fogDepth",
+      "key": "fogDepth",
+      "javaType": "int",
+      "defaultExpression": "0",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPluginConfig.java",
+      "symbol": "anisotropicFilteringLevel",
+      "key": "anisotropicFilteringLevel",
+      "javaType": "int",
+      "defaultExpression": "1",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPluginConfig.java",
+      "symbol": "colorBlindMode",
+      "key": "colorBlindMode",
+      "javaType": "ColorBlindMode",
+      "defaultExpression": "ColorBlindMode.NONE",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPluginConfig.java",
+      "symbol": "colorBlindIntensity",
+      "key": "colorBlindIntensity",
+      "javaType": "int",
+      "defaultExpression": "100",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPluginConfig.java",
+      "symbol": "brightTextures",
+      "key": "brightTextures",
+      "javaType": "boolean",
+      "defaultExpression": "false",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPluginConfig.java",
+      "symbol": "unlockFps",
+      "key": "unlockFps",
+      "javaType": "boolean",
+      "defaultExpression": "true",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPluginConfig.java",
+      "symbol": "syncMode",
+      "key": "vsyncMode",
+      "javaType": "SyncMode",
+      "defaultExpression": "SyncMode.OFF",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPluginConfig.java",
+      "symbol": "fpsTarget",
+      "key": "fpsTarget",
+      "javaType": "int",
+      "defaultExpression": "60",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPluginConfig.java",
+      "symbol": "removeVertexSnapping",
+      "key": "removeVertexSnapping",
+      "javaType": "boolean",
+      "defaultExpression": "true",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPluginConfig.java",
+      "symbol": "numThreads",
+      "key": "numThreads",
+      "javaType": "int",
+      "defaultExpression": "3",
+      "status": "unimplemented",
+      "rustOwner": null,
+      "verification": "not-run"
+    }
+  ],
+  "resources": [
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/resources/net/runelite/client/plugins/gpu/.clang-format",
+      "sha256": "118f3c9acb0785cee436d35e8ef7a951118a0f44a527b614295d0170704297ca"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/resources/net/runelite/client/plugins/gpu/colorblind.glsl",
+      "sha256": "b2e723a74c211cf149f9dc831c083f133c2ba84f5039bdb2ec857c7b69b0bf36"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/resources/net/runelite/client/plugins/gpu/frag.glsl",
+      "sha256": "ea6b6f1160d2b0fb82cc72040a55467e5640255d865ae35bc702ce3fd57e1066"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/resources/net/runelite/client/plugins/gpu/fragui.glsl",
+      "sha256": "e6e2964d6befa57c45f712fbaeba98a431fa40e960c5289ef12b12230f6682ae"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/resources/net/runelite/client/plugins/gpu/hsl_to_rgb.glsl",
+      "sha256": "a052ec368216729acbbd8fdf2b0d81f47f911a00f85e3f0512085dfa7b433030"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/resources/net/runelite/client/plugins/gpu/regions/regions.txt",
+      "sha256": "a79d0f4ad54e80e4aa9fb179d1b919c46c60490b72d18b26c442090ea838e0e1"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/resources/net/runelite/client/plugins/gpu/scale/bicubic.glsl",
+      "sha256": "fec31c95d83a31f009b923d3afc1c39c31162dfbab7337a4e9836393f8e3ec79"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/resources/net/runelite/client/plugins/gpu/scale/hybrid.glsl",
+      "sha256": "e2958c8e450721e1207af96cfbf63de7e77b990e5cf3d0e64bc2744b3925b093"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/resources/net/runelite/client/plugins/gpu/scale/xbr_lv2_common.glsl",
+      "sha256": "d6278874b91947b69681c8617ea168c932ac104f41ba7c028686822f1f1b8355"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/resources/net/runelite/client/plugins/gpu/scale/xbr_lv2_frag.glsl",
+      "sha256": "4c6bb208c08865314b079b2eb0943eda100e379dd28b5c6691d54ce866dfc777"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/resources/net/runelite/client/plugins/gpu/scale/xbr_lv2_vert.glsl",
+      "sha256": "c7a9c8c44cffe71dc370500bea93f99ff0ba5e93e5cb8289ce0e3e2858ffb89f"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/resources/net/runelite/client/plugins/gpu/vert.glsl",
+      "sha256": "847dd6c2ad7330eda248d94b48bbe834574a1182ebc7773d4a2737f0f704fce3"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/resources/net/runelite/client/plugins/gpu/vertui.glsl",
+      "sha256": "e43b9a33438906fba2c67452f5c32a28a258343794c4d1c621d8473bce4c3825"
+    }
+  ],
+  "tests": [
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/test/java/net/runelite/client/config/ChatColorConfigTest.java",
+      "sha256": "d0b91603bcd01b06e4524f91fe035706b9de076874e0903b1dea75cbddfaf923",
+      "cases": [
+        "testUniqueKeys"
+      ],
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/test/java/net/runelite/client/config/ConfigManagerTest.java",
+      "sha256": "c7bf1b6578e7578c95fdef9d92c0e91d6868c1c1b9be693aaae4f6f9c3c20cc2",
+      "cases": [
+        "testGetConfig",
+        "testGetConfigDefault",
+        "testSetConfig",
+        "testGetConfigDescriptor",
+        "testResetNullDefaultConfig",
+        "testKeySplitter"
+      ],
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/test/java/net/runelite/client/config/KeybindTest.java",
+      "sha256": "62fc6e4bb34a1409e1214f002ace8004c238d29b19626edb62c93eb1a38733c0",
+      "cases": [
+        "testModifierOnlyKeybindReleaseWithOtherModifierKeyHeldDown",
+        "testUnknownKey"
+      ],
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/test/java/net/runelite/client/plugins/config/PluginSearchTest.java",
+      "sha256": "57017bfa9b145f04fc11c0396c2623004a8e5cdd0b621a7a4a25ee7f82dcc819",
+      "cases": [
+        "emptyQueryReturnsPluginsInAlphabeticalOrderWithPinnedItemsFirst",
+        "searchReturnsMatchingPlugins",
+        "searchOrdersItemsWithMatchesInTitleFirst",
+        "searchOrdersPinnedItemsFirstIfThereAreNoExactMatches"
+      ],
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/test/java/net/runelite/client/plugins/gpu/ShaderTest.java",
+      "sha256": "4ac7b4c1c4f942e543ddc591c5e7fa1479c0c3d82e67efabc8b8bdd0d2489ae9",
+      "cases": [
+        "testShaders"
+      ],
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/test/java/net/runelite/client/plugins/gpu/regions/RegionsTest.java",
+      "sha256": "4aed86f14b434a3539089b9df52b741329fe64149b34a99f4eabdcdb9d3ac811",
+      "cases": [
+        "test"
+      ],
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/test/java/net/runelite/client/plugins/gpu/template/TemplateTest.java",
+      "sha256": "4b5ccc3798fd77e1db07d3e3df729aed5cdf277fc2878c0e0b77eaa51b097389",
+      "cases": [
+        "testProcess"
+      ],
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/test/java/net/runelite/client/ui/overlay/OverlayManagerTest.java",
+      "sha256": "2e82d594dca6a9bd0c08638604b996b040ffaddce4fc5c31923f5df4150afcd7",
+      "cases": [
+        "testEquality",
+        "testSort",
+        "testSortDynamic",
+        "testTooltips"
+      ],
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/test/java/net/runelite/client/ui/overlay/components/TextComponentTest.java",
+      "sha256": "8d2512b03e618547b6a6699494383b96ebe1a196aac5f8ca44fabcd882f69d38",
+      "cases": [
+        "testRender",
+        "testRender2",
+        "testRender3",
+        "testRender4"
+      ],
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/test/java/net/runelite/client/ui/overlay/components/TooltipComponentTest.java",
+      "sha256": "78a8c72b54c26d50ab9bdf0556ca3b42f4ba79c2c484a32413c95766ef8d156a",
+      "cases": [
+        "testCalculateTextWidth"
+      ],
+      "verification": "not-run"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/test/java/net/runelite/client/ui/overlay/infobox/InfoBoxManagerTest.java",
+      "sha256": "b3bbbc48371ed05d4cfe314c5b39e672e898d7bed6634c6f6b3248e8832cff62",
+      "cases": [
+        "testSorting",
+        "testSamePluginAndPriority"
+      ],
+      "verification": "not-run"
+    }
+  ]
+}

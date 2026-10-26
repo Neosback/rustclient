@@ -5,5 +5,25 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[dependencies]
+rustclient-plugin-host = { path = "../plugin-host" }
+rustclient-platform = { path = "../platform" }
+dioxus = { version = "=0.7.10", default-features = false, features = ["macro", "html", "signals", "hooks"] }
+keyboard-types = "=0.7.0"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+dioxus-native-dom = "=0.7.10"
+blitz-dom = { version = "=0.2.4", default-features = false }
+blitz-traits = "=0.2.0"
+blitz-paint = { version = "=0.2.1", default-features = false }
+anyrender = "=0.6.2"
+anyrender_vello_cpu = "=0.8.0"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+dioxus-web = "=0.7.10"
+
+[dev-dependencies]
+image.workspace = true
+
 [lints]
 workspace = true

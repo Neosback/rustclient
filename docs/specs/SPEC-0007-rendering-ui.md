@@ -2,6 +2,24 @@
 
 **Status:** Draft
 
+## Retained shell (approved 2026-10-25)
+
+Shell panels use Dioxus HTML/CSS components. Native embeds the compatible Blitz
+DOM/CPU painting stack inside the existing event loop; the renderer composites a
+cached panel texture. Browser panels use Dioxus Web. OSRS game widgets remain in
+game-ui. External plugins receive neither toolkit objects nor renderer handles.
+
+Panel generation changes, input, resize, scale and theme changes invalidate retained
+output. Continuous world redraws do not themselves invalidate it. Hidden panels
+perform no recurring component/layout/paint work. Counters separately report
+component updates, layout, rasterization and uploaded bytes. Recovery recreates
+the GPU texture from retained CPU pixels without changing semantic state.
+
+Focus and hit-testing share panel bounds with composition. Text/IME/clipboard,
+wheel, pointer capture, sliders and keyboard navigation must pass native and web
+acceptance before claiming the shell usable. Unsupported controls cannot silently
+store ineffective settings or fall back to an immediate-mode UI.
+
 ## Renderer role
 
 The renderer is a projection of committed semantic state and decoded assets. Losing/rebuilding GPU state must not corrupt gameplay state.
