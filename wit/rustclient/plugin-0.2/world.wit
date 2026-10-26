@@ -77,6 +77,9 @@ interface types {
 
     record camera { x: s32, y: s32, z: s32, pitch: s32, yaw: s32, zoom: s32 }
 
+    /// Client ticks (20 ms) since each kind of input.
+    record input-idle { keyboard: u32, mouse: u32, mouse-press: u32 }
+
     record client-snapshot {
         state: game-state,
         tick: u64,
@@ -94,6 +97,7 @@ interface types {
         scene-height: u32,
         run-energy: u16,
         weight: s16,
+        input-idle: option<input-idle>,
     }
 
     variant menu-kind {

@@ -8,6 +8,8 @@
 
 mod animsmoothing;
 mod entityhider;
+mod idlenotifier;
+mod idlenotifier_animations;
 mod roofremoval;
 mod stretchedmode;
 
@@ -117,6 +119,18 @@ const ENTRIES: &[Entry] = &[
             Capability::GameReadNpcs,
         ],
         build: || boxed(entityhider::EntityHider),
+    },
+    Entry {
+        name: "idlenotifier",
+        capabilities: &[
+            Capability::ClientNotify,
+            Capability::GameReadClient,
+            Capability::GameReadPlayers,
+            Capability::GameReadNpcs,
+            Capability::GameReadSkills,
+            Capability::GameReadVars,
+        ],
+        build: || boxed(idlenotifier::IdleNotifier::new()),
     },
 ];
 

@@ -15,8 +15,8 @@ use rustclient_model::{
 };
 use rustclient_plugin_api::{
     ActorState, CameraSnapshot, Capability, CapabilitySet, ChatKind, ChatLine, ClientSnapshot,
-    GameStateKind, ItemStack, NpcSnapshot, PlayerSnapshot, Rect, Skill, SkillLevel, VarbitDef,
-    Vars, WidgetSnapshot, WorldPoint,
+    GameStateKind, InputIdle, ItemStack, NpcSnapshot, PlayerSnapshot, Rect, Skill, SkillLevel,
+    VarbitDef, Vars, WidgetSnapshot, WorldPoint,
 };
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -32,6 +32,8 @@ pub struct Frame {
     pub loading: bool,
     /// Camera state.
     pub camera: CameraSnapshot,
+    /// Input idle time, when the shell tracks it.
+    pub input_idle: Option<InputIdle>,
 }
 
 /// Immutable cache definitions the projection consults.
@@ -121,6 +123,7 @@ pub(crate) fn client(state: &GameState, frame: &Frame) -> ClientSnapshot {
         scene_size: scene.map_or((0, 0), |scene| (scene.width(), scene.height())),
         run_energy: state.entities().run_energy(),
         weight: state.entities().run_weight(),
+        input_idle: frame.input_idle,
     }
 }
 

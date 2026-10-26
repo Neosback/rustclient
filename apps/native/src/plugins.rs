@@ -6,7 +6,7 @@
 use rustclient_cache::TitleAssets;
 use rustclient_game_state::GameState;
 use rustclient_game_ui::{Rect, UiFrame, draw_text};
-use rustclient_plugin_api::{OverlayCommand, PlayerPosition, PluginEvent};
+use rustclient_plugin_api::{Notification, OverlayCommand, PlayerPosition, PluginEvent};
 use rustclient_plugin_bridge::{Frame, Projector, Sources};
 use rustclient_plugin_host::{
     DirectoryStorage, HostOutput, HostView, PluginConfig, PluginSet, SnapshotView, StaticView,
@@ -218,6 +218,14 @@ impl Plugins {
             &mut self.storage,
             &mut self.logs,
         );
+    }
+
+    /// Notifications raised by the last update, each reported once.
+    pub(super) fn take_notifications(&mut self) -> Vec<Notification> {
+        std::mem::take(&mut self.output.notifications)
+            .into_iter()
+            .map(|(_, notification)| notification)
+            .collect()
     }
 
     /// The merged declarative output of the last update.

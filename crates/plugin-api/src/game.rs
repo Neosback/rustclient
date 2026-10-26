@@ -66,6 +66,25 @@ pub struct Hitsplat {
     pub cycle: u32,
 }
 
+impl Hitsplat {
+    /// Hitsplat types drawn for damage or blocks the local player caused (`Hitsplat.isMine`).
+    const MINE: [u16; 13] = [12, 16, 18, 20, 22, 24, 53, 43, 44, 45, 46, 47, 55];
+    /// Hitsplat types drawn for damage or blocks other players caused (`Hitsplat.isOthers`).
+    const OTHERS: [u16; 7] = [13, 17, 19, 21, 23, 25, 54];
+
+    /// Whether the local player caused this hitsplat.
+    #[must_use]
+    pub fn is_mine(&self) -> bool {
+        Self::MINE.contains(&self.kind)
+    }
+
+    /// Whether another player caused this hitsplat.
+    #[must_use]
+    pub fn is_others(&self) -> bool {
+        Self::OTHERS.contains(&self.kind)
+    }
+}
+
 /// One health bar update applied to an actor.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Healthbar {
@@ -393,6 +412,18 @@ pub struct CameraSnapshot {
     pub zoom: i32,
 }
 
+/// Time since the last input of each kind, in client ticks (20 ms), as `Client.getKeyboardIdleTicks`,
+/// `getMouseIdleTicks` and the age of `getMouseLastPressedMillis`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct InputIdle {
+    /// Since the last key press or release.
+    pub keyboard: u32,
+    /// Since the last pointer move or button event.
+    pub mouse: u32,
+    /// Since the last pointer button press.
+    pub mouse_press: u32,
+}
+
 /// Client-level facts that are not part of authoritative game semantics.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct ClientSnapshot {
@@ -418,10 +449,12 @@ pub struct ClientSnapshot {
     pub scene_base: (i32, i32),
     /// Extent of the loaded scene in tiles; `(0, 0)` before one loads.
     pub scene_size: (u32, u32),
-    /// Local run energy in tenths of a percent, 0..=1000.
+    /// Local run energy in hundredths of a percent, 0..=10000, as `Client.getEnergy`.
     pub run_energy: u16,
     /// Local weight in kilograms.
     pub weight: i16,
+    /// Input idle time, if the host tracks it.
+    pub input_idle: Option<InputIdle>,
 }
 
 /// One consistent view of the committed game, built once per update and shared by all plugins.
@@ -544,6 +577,20 @@ mod tests {
             actions: Vec::new(),
         };
         assert_eq!((widget.group(), widget.child()), (161, 93));
+    }
+
+    #[test]
+    fn hitsplat_ownership_follows_the_source_type_sets() {
+        let splat = |kind| Hitsplat {
+            kind,
+            amount: 1,
+            cycle: 0,
+        };
+        assert!(splat(16).is_mine() && !splat(16).is_others());
+        assert!(splat(55).is_mine());
+        assert!(splat(17).is_others() && !splat(17).is_mine());
+        // Poison, disease and heal splats belong to neither.
+        assert!(!splat(65).is_mine() && !splat(65).is_others());
     }
 
     #[test]

@@ -2,8 +2,10 @@
 mod actor_overlays;
 mod camera_input;
 mod capture;
+mod input_activity;
 mod interaction;
 mod network;
+mod notifications;
 mod options;
 mod performance;
 mod plugins;
@@ -105,6 +107,7 @@ struct NativeApp {
     /// Hidden or fully covered windows are not drawn: the OS blocks `get_current_texture` there.
     occluded: bool,
     window_focused: bool,
+    input_activity: input_activity::InputActivity,
     scripts: Option<rustclient_application::scripts::ClientScripts<DirectoryBlobs>>,
     widget_assets: rustclient_game_ui::widget_visuals::WidgetVisualAssets,
     widget_requested: rustclient_application::scripts::WidgetAssetRequest,
@@ -173,6 +176,7 @@ impl NativeApp {
                 focused: self.window_focused,
                 loading: self.scene.loading,
                 camera: camera.unwrap_or_default(),
+                input_idle: Some(self.input_activity.idle(Instant::now())),
             },
             sources: rustclient_plugin_bridge::Sources {
                 npcs: Some(&resolve),
@@ -181,6 +185,10 @@ impl NativeApp {
             },
         };
         self.plugins.update(&self.state, &inputs);
+        let raised = self.plugins.take_notifications();
+        if let (false, Some(window)) = (raised.is_empty(), &self.window) {
+            notifications::deliver(window, self.window_focused, &raised);
+        }
     }
     /// The stretched-mode layout for this window, while a plugin asks for stretching.
     #[expect(
@@ -345,6 +353,7 @@ impl NativeApp {
             entity_report: (Instant::now(), String::new()),
             occluded: false,
             window_focused: true,
+            input_activity: input_activity::InputActivity::new(),
             scripts: None,
             widget_assets: rustclient_game_ui::widget_visuals::WidgetVisualAssets::default(),
             widget_requested: rustclient_application::scripts::WidgetAssetRequest::default(),
@@ -1333,6 +1342,7 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
         if window.id() != window_id {
             return;
         }
+        self.input_activity.note(&event);
         if matches!(
             event,
             WindowEvent::Focused(_)
