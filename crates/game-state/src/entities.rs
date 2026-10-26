@@ -51,9 +51,9 @@ pub struct PlayerEntity {
     pub tile: WorldTile,
     /// Desired orientation selected by path/facing/forced-movement intent.
     pub orientation: u16,
-    /// Current body rotation. Ordinary smooth-turn advancement is intentionally deferred until
-    /// the exact revision-240 turn mutator is pinned.
+    /// Current body rotation committed after movement on each client cycle.
     pub current_orientation: u16,
+    pub turning: crate::ActorTurning,
     pub appearance: Option<PlayerAppearance>,
     pub sequence: rustclient_model::ActorSequenceSlot,
     /// Whether definition timing for the currently active action was supplied when it became
@@ -78,9 +78,9 @@ pub struct NpcEntity {
     pub exact_move: Option<crate::ExactMovement>,
     /// Desired orientation selected by path/facing/forced-movement intent.
     pub orientation: u16,
-    /// Current body rotation. Ordinary smooth-turn advancement is intentionally deferred until
-    /// the exact revision-240 turn mutator is pinned.
+    /// Current body rotation committed after movement on each client cycle.
     pub current_orientation: u16,
+    pub turning: crate::ActorTurning,
     pub sequence: rustclient_model::ActorSequenceSlot,
     pub sequence_timing_resolved: bool,
     pub name: Option<String>,
@@ -257,6 +257,9 @@ impl WorldEntitiesState {
 
             let timings = &self.sequence_timings;
             for player in self.players.values_mut() {
+                player
+                    .turning
+                    .advance(player.orientation, &mut player.current_orientation);
                 crate::ActorOverhead::advance(&mut player.overhead, 1);
                 player.animation_cycle = player.animation_cycle.wrapping_add(1);
                 let timing = player
@@ -270,6 +273,8 @@ impl WorldEntitiesState {
                 }
             }
             for npc in self.npcs.values_mut() {
+                npc.turning
+                    .advance(npc.orientation, &mut npc.current_orientation);
                 crate::ActorOverhead::advance(&mut npc.overhead, 1);
                 npc.animation_cycle = npc.animation_cycle.wrapping_add(1);
                 let timing = npc
@@ -338,6 +343,7 @@ impl WorldEntitiesState {
                 tile: WorldTile::new(0, 0, Plane::MIN),
                 orientation: 0,
                 current_orientation: 0,
+                turning: crate::ActorTurning::new(None, 0),
                 appearance: None,
                 sequence: rustclient_model::ActorSequenceSlot::default(),
                 sequence_timing_resolved: false,
@@ -390,12 +396,18 @@ impl WorldEntitiesState {
             player.orientation = facing;
         }
         let local_changed = *player != previous;
-        let changed = self.apply_remote_players(
+        let mut changed = self.apply_remote_players(
             &update.remote,
             cycle,
             &update.sequence_policies,
             &update.sequence_timings,
         ) || local_changed;
+        if let Some(rate) = update.turn_rate {
+            for player in self.players.values_mut() {
+                changed |= player.turning.rate() != Some(rate);
+                player.turning.set_rate(Some(rate));
+            }
+        }
         if changed {
             self.generation = self.generation.wrapping_add(1);
         }

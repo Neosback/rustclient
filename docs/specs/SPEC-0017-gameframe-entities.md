@@ -119,3 +119,46 @@ The frame projects that value into the world camera uniform for both textures an
 HSL. Changing brightness must invalidate a cached uniform even with a stationary camera.
 Session reset follows existing interface-preference lifecycle; disk persistence is separate.
 Brightness participates in fingerprint schema 26 and existing interface events/replay.
+
+## Actor turning continuation, 2026-10-26
+
+GameState advances current body rotation after movement and before action playback on each
+committed client cycle. Actors retain their turn rate, signed consecutive turn count and the
+last cycle's pre-turn orientation/idle turn request, so projections can reconstruct body rotation
+without a second turn scheduler. NPC definition changes replace resolved movement policy;
+a zero rate resets rotation only on spawn, not on later definition replacement. Missing NPC
+policy remains explicit. Player turn rates also arrive through profile enrichment rather than
+GameState revision defaults. Session/reset/removal/index reuse discard the actor's turning state.
+These fields participate in semantic fingerprint schema 27 and existing entity deltas/replay.
+
+The ordinary step follows exact 240 `classKN.method6539`: a 1024-unit tie turns positively,
+snap comparisons are strict, rate zero still counts nonaligned cycles, and the signed turn
+counter wraps as Java int arithmetic does. Idle turn animation requests require positive rate
+and either a partial step or more than 25 turning cycles. Sequence fallback stays in the
+cache-backed pose projection. Rich target-facing, animation freeze flags, movement slowdown
+for target interaction and complete movement-sequence lifetime remain separate incomplete work.
+Acceptance requires boundary/rate, forced-phase, policy replacement, reset/replay and projection
+reconstruction tests; automated checks do not establish logged-in visual parity.
+
+## Action playback continuation, 2026-10-26
+
+Resolved actor actions advance after movement/turning through GameState. Legacy sequences
+carry their within-frame remainder across strict `>` boundaries and rewind by the authored
+frame step. Cached-model actions advance their frame/time cursor once per cycle without
+changing the legacy within-frame counter. Both count end crossings and clear the action on
+terminal loop limits or invalid rewind. The source's positive-rewind legacy total-duration
+modulo applies even for a one-cycle advance. Invalid/degenerate resolved timing must terminate
+without an unbounded zero-duration loop. Unresolved timing keeps its explicit compatibility
+fallback; it is not evidence of completed playback.
+
+The action/path hold runs after movement: an active action at delay <= 1 with the authored
+hold policy and remaining pre-assignment path work stays at delay one after forced movement
+has ended. A positive delay consumed to zero does not advance playback in that same cycle.
+Resolved action projection uses committed frame/time and within-frame counters; it must not
+reconstruct lifetime or loop count from an elapsed timer. Movement-pose lifetime, readiness
+fallback, freeze windows, spot effects and animation callbacks remain separate incomplete work.
+
+Cached-model timing now retains its loop rewind; fingerprint schema 28 includes that field.
+Existing action reset/removal/index reuse, entity cycle deltas and semantic replay cover these
+transitions. Acceptance includes legacy carry/zero boundaries, cached ranges/rewinds/loop
+limits, delayed starts/path holds, local/remote/NPC operation replay and committed pose sampling.

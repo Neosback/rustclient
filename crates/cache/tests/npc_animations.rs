@@ -41,3 +41,28 @@ fn npc_speed_animation_sets_retain_directional_sequences_and_absence() {
         );
     }
 }
+
+#[test]
+fn npc_turn_rates_preserve_default_zero_and_full_unsigned_range() {
+    let id = NpcDefinitionId::new(1);
+    let source = Source::group(IndexId(2), GroupId(9));
+    assert_eq!(
+        definitions::npc(&[0], id, source).unwrap().turn_rate.get(),
+        32
+    );
+    for rate in [0_u16, 1, 32, 2048, 65535] {
+        let [hi, lo] = rate.to_be_bytes();
+        let bytes = [103, hi, lo, 109, 0];
+        let definition = definitions::npc(&bytes, id, source).unwrap();
+        let policy = definitions::npc_movement_policy(&bytes, id, source).unwrap();
+        assert_eq!(definition.turn_rate.get(), rate);
+        assert_eq!(policy.turn_rate, definition.turn_rate);
+        assert_eq!(
+            policy.path_acceleration,
+            rustclient_model::PathAccelerationPolicy::EARLY
+        );
+        for length in 0..bytes.len() {
+            assert!(definitions::npc_movement_policy(&bytes[..length], id, source).is_err());
+        }
+    }
+}

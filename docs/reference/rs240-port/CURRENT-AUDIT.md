@@ -1,6 +1,6 @@
 # Current correctness and port audit
 
-Checkpoint: 2026-10-26; inspected main through `7db36d6f`, plus the sidebar change in this checkpoint.
+Checkpoint: 2026-10-26; inspected main through `7db36d6f`, plus the sidebar and actor-turn continuations in this checkpoint.
 This is a domain-level source/code audit. It does not certify every method or repeat every historical test.
 
 The [rebuilt matrix](PORT-MATRIX.md) separates implementation, verification boundaries, owners and actual
@@ -24,8 +24,9 @@ No percentage is inferred from declarations, files, plugin names or green worksp
 3. **Actor turns/poses:** ordinary movement heading now derives from the oldest queued target
    (`Actor.method3208`), not the newest network endpoint. Connected movement poses sample committed
    translation rather than running a second positional simulation. However full facing targets,
-   apply policy, ordinary current-orientation mutation, NPC cache turn rates, freeze handling and
-   turning slowdown are still incomplete. Keep position authority in GameState; do not add a visual
+   apply policy, freeze handling and turning slowdown are still incomplete. Ordinary current rotation and NPC
+   definition turn rates now commit after movement in GameState, with source-boundary, forced-order,
+   replay/index-reuse and projection reconstruction tests. Keep position authority in GameState; do not add a visual
    collision clamp or speculative path reroute.
 4. **Action lifetime:** legacy scheduling includes restart/priority/gates and frame-boundary behavior.
    `game-state::sequence_playback` still uses aggregate-cycle advancement for cached-model actions;
@@ -107,8 +108,8 @@ remain acceptance obligations until demonstrated in the new executable.
 
 ## Tracking gaps in the existing method ledger
 
-The current `tools/port_audit.py --check` report contains 130 symbol rows: 67 have verification
-unrecorded, 36 source-reviewed, 25 contract-tested and 2 live-tested; none is visual-accepted.
+The current `tools/port_audit.py --check` report contains 133 symbol rows: 67 have verification
+unrecorded, 33 source-reviewed, 31 contract-tested and 2 live-tested; none is visual-accepted.
 These are mixed symbol records, not equally sized features or a completion percentage. Historical
 “verified” statuses with unrecorded verification must not be promoted into release acceptance.
 The tool also reports ledger sources absent from its partial source-manifest pin list. That does

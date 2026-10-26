@@ -11,7 +11,7 @@ use crate::{GameState, OperationCommit, SemanticEvent, SessionLifecycle};
 ///
 /// Any change to field ordering, tags, integer encoding, or fingerprint
 /// algorithm that changes canonical output must increment this version.
-pub const SEMANTIC_FINGERPRINT_VERSION: u16 = 26;
+pub const SEMANTIC_FINGERPRINT_VERSION: u16 = 28;
 
 const FNV_OFFSET_BASIS: u64 = 0xCBF2_9CE4_8422_2325;
 const FNV_PRIME: u64 = 0x0000_0100_0000_01B3;
@@ -272,6 +272,7 @@ impl GameState {
             fingerprint.write_u8(player.tile.plane.get());
             fingerprint.write_u16(player.orientation);
             fingerprint.write_u16(player.current_orientation);
+            write_turning(&mut fingerprint, player.turning);
             write_overhead(&mut fingerprint, player.overhead.as_ref());
             write_speed(&mut fingerprint, player.path_speed);
             write_speed(&mut fingerprint, player.movement_speed);
@@ -337,6 +338,7 @@ impl GameState {
             fingerprint.write_u8(npc.tile.plane.get());
             fingerprint.write_u16(npc.orientation);
             fingerprint.write_u16(npc.current_orientation);
+            write_turning(&mut fingerprint, npc.turning);
             write_overhead(&mut fingerprint, npc.overhead.as_ref());
             match npc.path {
                 None => fingerprint.write_u8(0),
@@ -514,7 +516,7 @@ fn write_active_sequence_timing(
                 }
             }
         }
-        rustclient_model::SequenceTiming::CachedModel { range } => {
+        rustclient_model::SequenceTiming::CachedModel { range, frame_step } => {
             fingerprint.write_u8(2);
             match range {
                 None => fingerprint.write_u8(0),
@@ -523,6 +525,10 @@ fn write_active_sequence_timing(
                     fingerprint.write_u16(*start);
                     fingerprint.write_u16(*end);
                 }
+            }
+            match frame_step {
+                None => fingerprint.write_u8(0),
+                Some(step) => { fingerprint.write_u8(1); fingerprint.write_u16(*step); }
             }
         }
     }
@@ -938,4 +944,21 @@ fn write_overhead(f: &mut StableFingerprint64, value: Option<&crate::ActorOverhe
     } else {
         f.write_u8(0);
     }
+}
+
+fn write_turning(fingerprint: &mut StableFingerprint64, turning: crate::ActorTurning) {
+    match turning.rate() {
+        None => fingerprint.write_u8(0),
+        Some(rate) => {
+            fingerprint.write_u8(1);
+            fingerprint.write_u16(rate.get());
+        }
+    }
+    fingerprint.write_bytes(&turning.cycles().to_le_bytes());
+    fingerprint.write_u16(turning.movement_orientation());
+    fingerprint.write_u8(match turning.idle_direction() {
+        None => 0,
+        Some(crate::TurnDirection::Left) => 1,
+        Some(crate::TurnDirection::Right) => 2,
+    });
 }

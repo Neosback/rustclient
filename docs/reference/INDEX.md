@@ -2,6 +2,12 @@
 
 This index tells humans and coding agents where to look before reinventing OSRS-style behavior. Reference sources are evidence only; RustClient specs and code remain authoritative.
 
+## Current implementation status
+
+[The 42-domain port matrix](rs240-port/PORT-MATRIX.md) and [current correctness audit](rs240-port/CURRENT-AUDIT.md)
+separate implemented subsets, missing/incorrect behavior, source evidence and verification limits.
+The matrix is generated from checked TSV; it is not a completion percentage.
+
 ## Revision-240 source map
 
 Read [the revision-240 integration guide](REVISION-240.md) before protocol, cache,
@@ -12,9 +18,9 @@ revision is evidence, not a compatibility declaration.
 | --- | --- | --- |
 | RuneLite / deob 240 (rl-suite) | `references/rl-suite-240/` | Primary executable client behavior at revision 240: deobfuscated client sources with stable `classXX` names plus 93 API-derived names (model transforms, scene order, camera, widgets, scripts, menus, actor movement). Original obfuscated names are in `@ObfuscatedName`. Same input jar as `gamepacks/osrs-240`. |
 | Readable 240 client names | `docs/reference/client-240/` | Evidence-backed readable-name overlay (tiny-v2 shards keyed by the stable rl-suite symbols), per-cluster behavior write-ups and a name ledger with tier and confidence, regenerated and verified by `tools/client-240`. Names are only as good as their recorded evidence; see [ADR-0005](../adr/ADR-0005-readable-client-names.md). |
-| open-runelite 240 | `references/open-runelite-rev-240/` | RuneLite API and client at 240: GPU plugin and shaders (depth, culling, reverse-Z), `runelite-api` types, plugin ergonomics. No upstream commit recorded; needs an external `injected-client` jar. Not a declaration of OpenRune 240.2 compatibility. |
+| open-runelite 240 | `references/open-runelite-rev-240/` | RuneLite API and client at 240: GPU plugin and shaders (depth, culling, reverse-Z), `runelite-api` types, plugin ergonomics. The pinned original injected jar is under `references/gamepacks/osrs-240`; `tools/parity/runelite240.py` supplies the local reference launcher/bridge. Not a declaration of OpenRune 240.2 compatibility. |
 | RuneLite-injected 240 binary | `references/gamepacks/osrs-240/injected-client-1.12.39.jar` | Official RuneLite download; publisher SHA-256 and major revision verified. Additional 240 client-behavior evidence with injected transformations. Not an untouched vanilla input. See [provenance](gamepack-240.json). |
-| rsprox | `references/rsprox-master/` | **Both client and server packet tables/codecs**, byte transforms, framing and proxy diagnostics. Supplied OSRS modules reach 235, not 240. `incoming` means client-to-server; `outgoing` means server-to-client. |
+| rsprox | `references/rsprox-master/` | **Both client and server packet tables/codecs**, byte transforms, framing and proxy diagnostics. The current vendored tree includes OSRS-240 codecs; selected OpenRune RSProt remains exact target authority. `incoming` means client-to-server; `outgoing` means server-to-client. |
 | OpenRune development server | `/Users/tylercovalt/Desktop/OpenRune Project/OpenRune-Server` | Actual server behavior and cache for the target. Pins `net.rsprot:osrs-240-*` `1.0.0-ALPHA-20260825`; those source JARs provide exact 240 wire evidence. See existing protocol fixture provenance. |
 | OpenRune FileStore | `/Users/tylercovalt/Documents/OpenRune-FileStore-main` | Cache definition/opcode, container and model decoder research. Verify individual 240 layouts against actual cache and deob; presence of a codec does not prove every 240 format is supported. External local source, not yet vendored. |
 | TSPS client | `/Users/tylercovalt/Documents/tsps-main/client` | Additional widget press/drag/release, chat focus and player/NPC lifecycle evidence. Selected files are hashed in the source manifest. Verify packet layouts against the selected rsprot 240 adapter; do not copy a parallel client state architecture. |

@@ -187,9 +187,12 @@ fn spawn_and_queued_corner_before_any_cycle_preserve_each_server_step() {
     state
         .apply_operation(SemanticOperation::UpdateNpcs(NpcInfoUpdate {
             new_npcs: vec![spawn(index)],
-            path_acceleration_policies: vec![(
+            movement_policies: vec![(
                 NpcDefinitionId::new(12),
-                PathAccelerationPolicy::STANDARD,
+                rustclient_model::NpcMovementPolicy {
+                    path_acceleration: PathAccelerationPolicy::STANDARD,
+                    turn_rate: rustclient_model::JauTurnRate::new(32),
+                },
             )],
             ..Default::default()
         }))

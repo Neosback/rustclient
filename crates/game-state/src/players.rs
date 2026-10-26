@@ -194,6 +194,7 @@ impl WorldEntitiesState {
                                 ),
                                 orientation: player.orientation,
                                 current_orientation: player.orientation,
+                                turning: crate::ActorTurning::new(None, player.orientation),
                                 appearance: player.appearance,
                                 sequence: ActorSequenceSlot::default(),
                                 sequence_timing_resolved: false,

@@ -142,3 +142,16 @@ Additional selected source-entry SHA-256:
 - `net/rsprot/protocol/game/outgoing/codec/zone/payload/LocAddChangeV2Encoder.kt`: `cbe53b8fe318ce0a9227753222fd30dc56134412f02aab0cddd2615aa7842121`
 - `net/rsprot/protocol/game/outgoing/codec/zone/payload/LocAnimEncoder.kt`: `5909de1008fa23e4196db0e23b14617cba9cd553d163b0cecb5cf5e483aef027`
 - `net/rsprot/protocol/game/outgoing/zone/payload/util/CoordInBuildArea.kt`: `f790e5685a8e463dced49af3ebc31324488e73eda656d9eb6da02570e27d375b`
+
+
+## Outgoing public chat styles (2026-10-26 audit)
+
+The same selected `osrs-240-desktop` 1.0.0-ALPHA-20260825 source archive above contains
+`net/rsprot/protocol/game/incoming/codec/messaging/MessagePublicDecoder.kt`, entry SHA-256
+`363003a2188f8f0a5c8e0c1bddc508cbedc08dea2eb1fcc7d832688068aefabe`.
+It independently confirms type/colour/effect order, colour 13..20 pattern byte counts,
+Huffman slice and type-3 trailing clan-channel byte. Stock prefix recognition and stripping
+are exact 240 `classCX.method2697` / `classZM.method14115`, corroborated by readable 235
+`class184.method4319`. Inline synthetic vectors in `outgoing_chat.rs` exercise all standard
+prefixes, mixed case/order, patterns, malformed patterns, CP1252 and payload bounds.
+These vectors do not establish full clan-chat support or a desktop visual comparison.

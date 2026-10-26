@@ -6,7 +6,7 @@ use rustclient_cache::{
 };
 use rustclient_game_state::SemanticOperation;
 use rustclient_model::{
-    NpcDefinitionId, NpcInfoUpdate, NpcProperty, PathAccelerationPolicy, PlayerInfoUpdate,
+    NpcDefinitionId, NpcInfoUpdate, NpcMovementPolicy, NpcProperty, PlayerInfoUpdate,
     RemotePlayerUpdate, SequenceChange, SequenceId, SequencePolicy, SequenceTiming,
 };
 use rustclient_platform::ReadOnlyBlobs;
@@ -21,7 +21,7 @@ pub struct SequencePolicyResolver<S> {
     profile: CacheProfile,
     policies: BTreeMap<SequenceId, SequencePolicy>,
     timings: BTreeMap<SequenceId, SequenceTiming>,
-    npc_path_policies: BTreeMap<NpcDefinitionId, PathAccelerationPolicy>,
+    npc_movement_policies: BTreeMap<NpcDefinitionId, NpcMovementPolicy>,
 }
 
 impl<S: ReadOnlyBlobs> SequencePolicyResolver<S> {
@@ -32,7 +32,7 @@ impl<S: ReadOnlyBlobs> SequencePolicyResolver<S> {
             profile,
             policies: BTreeMap::new(),
             timings: BTreeMap::new(),
-            npc_path_policies: BTreeMap::new(),
+            npc_movement_policies: BTreeMap::new(),
         }
     }
 
@@ -50,6 +50,7 @@ impl<S: ReadOnlyBlobs> SequencePolicyResolver<S> {
     ) -> Result<SemanticOperation, CacheError> {
         match &mut operation {
             SemanticOperation::UpdatePlayers(update) => {
+                update.turn_rate = Some(self.profile.player_turn_rate());
                 let ids = player_sequence_ids(update);
                 update.sequence_policies = self.resolve_ids(ids.clone())?;
                 update.sequence_timings = self.resolve_timing_ids(ids)?;
@@ -59,7 +60,7 @@ impl<S: ReadOnlyBlobs> SequencePolicyResolver<S> {
                 let definition_ids = npc_definition_ids(update);
                 update.sequence_policies = self.resolve_ids(sequence_ids.clone())?;
                 update.sequence_timings = self.resolve_timing_ids(sequence_ids)?;
-                update.path_acceleration_policies = self.resolve_npc_path_ids(definition_ids)?;
+                update.movement_policies = self.resolve_npc_movement_ids(definition_ids)?;
             }
             _ => {}
         }
@@ -102,17 +103,17 @@ impl<S: ReadOnlyBlobs> SequencePolicyResolver<S> {
         Ok(resolved)
     }
 
-    fn resolve_npc_path_ids(
+    fn resolve_npc_movement_ids(
         &mut self,
         ids: BTreeSet<NpcDefinitionId>,
-    ) -> Result<Vec<(NpcDefinitionId, PathAccelerationPolicy)>, CacheError> {
+    ) -> Result<Vec<(NpcDefinitionId, NpcMovementPolicy)>, CacheError> {
         let mut resolved = Vec::with_capacity(ids.len());
         for id in ids {
-            let policy = if let Some(policy) = self.npc_path_policies.get(&id).copied() {
+            let policy = if let Some(policy) = self.npc_movement_policies.get(&id).copied() {
                 policy
             } else {
-                let policy = npc_path_policy::resolve(&self.cache, self.profile, id)?;
-                self.npc_path_policies.insert(id, policy);
+                let policy = npc_path_policy::resolve_movement(&self.cache, self.profile, id)?;
+                self.npc_movement_policies.insert(id, policy);
                 policy
             };
             resolved.push((id, policy));
@@ -178,6 +179,35 @@ mod tests {
         NewNpc, NpcAttributeUpdate, NpcDefinitionId, NpcIndex, NpcInfoUpdate, NpcProperty,
         PlayerIndex, PlayerInfoUpdate, RemotePlayerUpdate, SequenceChange, SequenceId,
     };
+
+    #[test]
+    fn player_turn_rate_is_profile_enriched_without_loading_unrelated_assets() {
+        use rustclient_cache::{Cache, CacheProfile};
+        use rustclient_game_state::SemanticOperation;
+        use rustclient_platform::{MemoryBlobs, StorageKey};
+        for profile in [CacheProfile::Osrs240, CacheProfile::OpenRune240] {
+            // One empty protocol-5 reference table in JS5 sector 1; no asset groups exist.
+            let mut data = vec![0; 520];
+            data.extend_from_slice(&[0, 0, 0, 0, 0, 0, 0, 255, 0, 0, 0, 0, 4, 5, 0, 0, 0]);
+            data.resize(1040, 0);
+            let source = MemoryBlobs::new([
+                (StorageKey::parse("main_file_cache.dat2").unwrap(), data),
+                (
+                    StorageKey::parse("main_file_cache.idx255").unwrap(),
+                    vec![0, 0, 9, 0, 0, 1],
+                ),
+            ]);
+            let mut resolver =
+                super::SequencePolicyResolver::new(Cache::open(source).unwrap(), profile);
+            let operation = resolver
+                .resolve_operation(SemanticOperation::UpdatePlayers(PlayerInfoUpdate::default()))
+                .unwrap();
+            let SemanticOperation::UpdatePlayers(update) = operation else {
+                panic!("wrong operation family")
+            };
+            assert_eq!(update.turn_rate.unwrap().get(), 32);
+        }
+    }
 
     #[test]
     fn player_policy_ids_are_unique_and_ignore_clears() {

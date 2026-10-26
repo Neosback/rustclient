@@ -108,6 +108,7 @@ pub struct NpcMorphs {
 /// Render-relevant NPC definition.
 #[derive(Debug, Clone)]
 pub struct NpcDefinition {
+    pub turn_rate: rustclient_model::JauTurnRate,
     pub id: NpcDefinitionId,
     pub name: Option<String>,
     pub models: Vec<ModelId>,

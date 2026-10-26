@@ -225,6 +225,7 @@ impl GameState {
                     tile: placement.position,
                     orientation: 0,
                     current_orientation: 0,
+                    turning: crate::ActorTurning::new(None, 0),
                     appearance: None,
                     sequence: rustclient_model::ActorSequenceSlot::default(),
                     sequence_timing_resolved: false,

@@ -1,6 +1,6 @@
 # Revision 240 actor facing and turning
 
-Status: desired/current orientation, desired-facing resolution and the ordinary smooth-turn mutator are now traced from exact revision-240 client evidence. Rich packet facing intent is still not fully retained in RustClient, so this is a source/ownership record rather than a parity claim. The remaining `Actor.field1473` arming provenance is explicitly deferred after a focused source audit; its consumer behavior remains documented under the stable symbol.
+Status: ordinary smooth turns and NPC definition turn-rate projection are implemented in GameState with focused contracts (2026-10-26); desired-facing resolution is traced from exact revision-240 evidence. Rich packet facing intent is still not fully retained in RustClient, so this is a source/ownership record rather than a parity claim. The remaining `Actor.field1473` arming provenance is explicitly deferred after a focused source audit; its consumer behavior remains documented under the stable symbol.
 
 This document narrows the facing/turning work that remains after authoritative ordinary and forced actor translation. It supersedes the older ambiguity in `MOVEMENT-FACING.md` about whether the client keeps one orientation value or two, and supersedes the earlier statement that the ordinary smooth-turn mutator had not yet been located.
 
@@ -381,12 +381,51 @@ The ordinary turn mutator, facing apply policy, and normal NPC turn-rate source 
 1. retain full typed player/NPC/area/entity facing intent instead of collapsing it to an optional angle;
 2. preserve the established `FacingApplyPolicy` separately from `FacingMode`;
 3. route directional idle-turn/walk/run/crawl sequence availability through cache-derived policy;
-4. migrate any remaining visual-only turn projector to authoritative current orientation only after semantic state reaches the scene boundary;
+4. complete movement-sequence lifecycle/pacing and live acceptance now that committed body orientation reaches the scene boundary;
 5. keep `Actor.field1473` as an unresolved stable-symbol compatibility note rather than blocking broader actor-runtime research; re-open only if observable parity requires it;
 6. perform a wider turn-rate write-site census only if another reachable subsystem proves it can mutate actor turn rate outside constructor/default and NPC definition projection.
 
 Do not re-open the desired/current split or invent a second turning algorithm. The exact ordinary step owner is `classKN.method6539`. The next shared actor-runtime research priority is action-sequence advancement/completion, followed by actor spot-animation lifecycle.
 
-## Verification
+## Historical source-research verification
 
-This document records source evidence only. No `verify.sh`, tests, Clippy, CI, compilation or workspace gate was run as part of this naming/research wave.
+The original research wave recorded source evidence only. No `verify.sh`, tests, Clippy, CI, compilation or workspace gate was run as part of this naming/research wave.
+
+## Rust implementation checkpoint, 2026-10-26
+
+`game-state::ActorTurning` now owns the ordinary body turn, signed wrapping cycle counter,
+pre-turn movement orientation and idle turn request. `WorldEntitiesState::advance_cycles` runs
+this after movement and before action playback. Existing entity deltas and semantic replay carry
+these results; fingerprint schema 27 includes every new field. Application enriches player updates with the profile adapter's 32-unit actor initialization.
+NPCs and players retain explicit unresolved rates until enrichment arrives; GameState does not
+guess a revision default.
+
+The cache adapter retains opcode 103 (default 32, full unsigned-short range). Application
+`SequencePolicyResolver` attaches `NpcMovementPolicy` to the existing NPC update, replacing the
+old acceleration-only table. `classAS.method661` spawn handling clears current rotation when rate
+is zero; its definition-change branch only calls `classGA.method5325` and does not apply that reset.
+Rust preserves that difference and clears stale policy on an unresolved definition replacement.
+
+`scene::authoritative_motion` supplies committed rotation for players and resolved NPCs, including
+on projection reconstruction. Its snapshot position history now checks actor instance identity.
+The scene's old movement/turn scheduler remains an explicit unresolved-fixture fallback; connected
+actors do not run it. Disposable movement-animation pacing/sequence state is still partial.
+
+Contract evidence: `game-state/src/actor_turning.rs`, `game-state/tests/actor_turning.rs`,
+`cache/tests/npc_animations.rs`, `scene/src/authoritative_motion.rs`. Boundary coverage includes
+1024 tie direction, strict snap equality, wraparound, zero/large rates, signed counter wrap,
+forced approach/interpolation ordering, rate replacement, atomic rejection, replay, cycle partition
+and actor index reuse. Rich facing targets, freeze flags, target-interaction slowdown, safety resets
+and complete movement sequence lifetime remain incomplete. No new logged-in visual acceptance is
+claimed by these tests. The source-only Verification section above describes the historical research
+wave, not this implementation checkpoint.
+
+Implementation verification (Rust 1.99.0): formatting check, workspace/all-target check,
+strict workspace/all-target Clippy, workspace tests (526 passed, zero failed, one ignored),
+web Wasm check and native binary build all passed. The ignored packet-capture test requires
+`RUSTCLIENT_PACKET_REPLAY` and `RUSTCLIENT_PACKET_LOCAL`; no new live capture was substituted.
+Local logs are `target/actor-turn-{fmt,workspace-check,clippy,workspace-tests,wasm,native}.log`.
+Port-matrix validation passed for 42 domains and all 13 pinned TypeScript files; the symbol-ledger
+check passed for 136 rows. Selected classKN/classGA source hashes were added to the source
+manifest; reference trees were unchanged. Fixed/classic/modern logged-in visual acceptance,
+end-to-end input latency and comparison against a live reference actor remain pending.

@@ -1,7 +1,7 @@
 //! NPC batch validation and authoritative ordered movement/trajectory updates.
 use crate::{EntityUpdateError, Locomotion, NpcEntity, WorldEntitiesState};
 use rustclient_model::{
-    ClientCycle, MoveSpeed, NpcDefinitionId, NpcInfoUpdate, NpcMovement, PathAccelerationPolicy,
+    ClientCycle, MoveSpeed, NpcDefinitionId, NpcInfoUpdate, NpcMovement, NpcMovementPolicy,
     TileOffset, WorldTile,
 };
 
@@ -22,12 +22,12 @@ impl NpcPath {
     }
 }
 
-fn acceleration_policy(
+fn movement_policy(
     update: &NpcInfoUpdate,
     definition_id: NpcDefinitionId,
-) -> Option<PathAccelerationPolicy> {
+) -> Option<NpcMovementPolicy> {
     update
-        .path_acceleration_policies
+        .movement_policies
         .iter()
         .find_map(|(id, policy)| (*id == definition_id).then_some(*policy))
 }
@@ -104,12 +104,8 @@ impl WorldEntitiesState {
         {
             return Err(EntityUpdateError::InvalidNpcBatch);
         }
-        let policy_ids: BTreeSet<_> = update
-            .path_acceleration_policies
-            .iter()
-            .map(|(id, _)| *id)
-            .collect();
-        if policy_ids.len() != update.path_acceleration_policies.len() {
+        let policy_ids: BTreeSet<_> = update.movement_policies.iter().map(|(id, _)| *id).collect();
+        if policy_ids.len() != update.movement_policies.len() {
             return Err(EntityUpdateError::InvalidNpcBatch);
         }
         let timing_ids: BTreeSet<_> = update.sequence_timings.iter().map(|(id, _)| *id).collect();
@@ -228,7 +224,14 @@ impl WorldEntitiesState {
         for npc in &update.new_npcs {
             self.npc_serial += 1;
             let mut path_queue = crate::ActorPathQueue::default();
-            path_queue.set_acceleration_policy(acceleration_policy(update, npc.definition_id));
+            let policy = movement_policy(update, npc.definition_id);
+            path_queue.set_acceleration_policy(policy.map(|policy| policy.path_acceleration));
+            let turn_rate = policy.map(|policy| policy.turn_rate);
+            let rotation = if turn_rate.is_some_and(|rate| rate.get() == 0) {
+                0
+            } else {
+                npc.orientation
+            };
             path_queue.ensure_position(WorldTile::new(
                 origin.x + npc.delta_x,
                 origin.y + npc.delta_y,
@@ -250,7 +253,8 @@ impl WorldEntitiesState {
                     path_queue,
                     exact_move: None,
                     orientation: npc.orientation,
-                    current_orientation: npc.orientation,
+                    current_orientation: rotation,
+                    turning: crate::ActorTurning::new(turn_rate, rotation),
                     sequence: rustclient_model::ActorSequenceSlot::default(),
                     sequence_timing_resolved: false,
                     animation_cycle: 0,
@@ -311,11 +315,15 @@ impl WorldEntitiesState {
                         npc.exact_move = Some(exact);
                     }
                     NpcProperty::Definition(id) => {
-                        let policy = acceleration_policy(update, *id);
+                        let policy = movement_policy(update, *id);
+                        let path_policy = policy.map(|policy| policy.path_acceleration);
+                        let turn_rate = policy.map(|policy| policy.turn_rate);
                         changed |= npc.definition_id != *id
-                            || npc.path_queue.acceleration_policy() != policy;
+                            || npc.path_queue.acceleration_policy() != path_policy
+                            || npc.turning.rate() != turn_rate;
                         npc.definition_id = *id;
-                        npc.path_queue.set_acceleration_policy(policy);
+                        npc.path_queue.set_acceleration_policy(path_policy);
+                        npc.turning.set_rate(turn_rate);
                     }
                     NpcProperty::Sequence { sequence, delay } => {
                         changed |= crate::sequence_scheduler::apply_sequence(

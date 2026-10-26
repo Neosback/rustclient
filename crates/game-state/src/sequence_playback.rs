@@ -156,6 +156,7 @@ mod tests {
         slot.assign_sequence(Some((SequenceId::new(1), POLICY)), 0, 0);
         let timing = SequenceTiming::CachedModel {
             range: Some((0, 10)),
+            frame_step: None,
         };
         assert!(forced_interpolation_allowed(slot, Some(&timing), false));
     }

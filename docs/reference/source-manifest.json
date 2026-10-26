@@ -180,6 +180,14 @@
         {
           "path": "sources-semantic/classKK.java",
           "sha256": "5263854ca8b76fd8540a4f700f7c382a60e115e423d9413b6eaabb1e3388cf4c"
+        },
+        {
+          "path": "sources-semantic/classKN.java",
+          "sha256": "6fa5c6b80e286eef23eecd6546e84c43d3bf0b37c16e55d846341e90aa36eedb"
+        },
+        {
+          "path": "sources-semantic/classGA.java",
+          "sha256": "d3da0d9cebc1e55f80b2bb41b75e077dcf2653b770b6161c063c454ea89fc693"
         }
       ]
     },

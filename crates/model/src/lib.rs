@@ -26,7 +26,7 @@ pub use interface::{
 mod inventory;
 pub use inventory::{InventorySlotUpdate, InventoryUpdate, ItemStack};
 mod movement;
-pub use movement::PathAccelerationPolicy;
+pub use movement::{JauTurnRate, NpcMovementPolicy, PathAccelerationPolicy};
 pub mod orientation;
 pub mod revision;
 mod speech;

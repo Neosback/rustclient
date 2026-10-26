@@ -19,11 +19,11 @@ fn run_operations(operations: &[SemanticOperation]) -> (GameState, CommitStreamF
 }
 
 #[test]
-fn state_fingerprint_v26_has_exact_regression_vectors() {
+fn state_fingerprint_v27_has_exact_regression_vectors() {
     let mut state = GameState::new();
     assert_eq!(
         state.semantic_fingerprint().get(),
-        10_355_022_679_906_237_947
+        6_737_528_060_347_041_486
     );
 
     state
@@ -33,10 +33,7 @@ fn state_fingerprint_v26_has_exact_regression_vectors() {
         .apply_operation(SemanticOperation::AdvanceTick(TickSpan::new(5)))
         .expect("small tick advance cannot overflow");
 
-    assert_eq!(
-        state.semantic_fingerprint().get(),
-        11_698_211_195_891_883_417
-    );
+    assert_eq!(state.semantic_fingerprint().get(), 40_832_697_715_145_450);
 }
 
 #[test]
@@ -90,7 +87,7 @@ fn state_fingerprint_distinguishes_revision_identity() {
     );
     assert_eq!(
         subrevision.semantic_fingerprint().get(),
-        9_270_693_025_124_479_212
+        3_256_232_498_427_926_759
     );
 }
 
@@ -122,6 +119,7 @@ fn npc_path_policy_catch_up_and_current_orientation_participate_in_canonical_sta
                 exact_move: None,
                 orientation: 0,
                 current_orientation: 0,
+                turning: crate::ActorTurning::new(Some(rustclient_model::JauTurnRate::new(32)), 0),
                 sequence: ActorSequenceSlot::default(),
                 sequence_timing_resolved: false,
                 name: None,
@@ -204,6 +202,7 @@ fn active_sequence_timing_resolution_participates_in_canonical_state() {
                 exact_move: None,
                 orientation: 0,
                 current_orientation: 0,
+                turning: crate::ActorTurning::new(Some(rustclient_model::JauTurnRate::new(32)), 0),
                 sequence,
                 sequence_timing_resolved: timing.is_some(),
                 name: None,
@@ -253,7 +252,7 @@ fn equivalent_observable_state_has_equivalent_fingerprint() {
 }
 
 #[test]
-fn commit_stream_fingerprint_v26_has_exact_regression_vector() {
+fn commit_stream_fingerprint_v27_has_exact_regression_vector() {
     let operations = [
         BEGIN_240,
         SemanticOperation::AdvanceTick(TickSpan::new(2)),
@@ -262,10 +261,10 @@ fn commit_stream_fingerprint_v26_has_exact_regression_vector() {
     ];
     let (_, fingerprint) = run_operations(&operations);
 
-    assert_eq!(fingerprint.get(), 5_027_092_887_829_407_069);
+    assert_eq!(fingerprint.get(), 1_995_568_586_010_286_370);
     assert_eq!(
         CommitStreamFingerprintBuilder::new().finish().get(),
-        14_311_095_089_333_036_024
+        14_935_260_352_713_089_699
     );
 }
 

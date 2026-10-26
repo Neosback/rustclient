@@ -8,6 +8,8 @@
 mod speech;
 pub use speech::ActorOverhead;
 mod actor_movement;
+mod actor_turning;
+pub use actor_turning::{ActorTurning, TurnDirection};
 mod actor_path;
 pub use actor_path::{ACTOR_PATH_CAPACITY, ActorFinePosition, ActorPathEntry, ActorPathQueue};
 mod interfaces;

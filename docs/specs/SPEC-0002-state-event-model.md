@@ -423,3 +423,20 @@ Schema 16 exact anchors: inactive `13106773751953311645`; revision 240 tick 5
 commit stream `10395866910311550467`; empty stream `10566103509052713974`;
 authentication/placement state `12191201622066736735`; its commit stream
 `10866463569101878984`. Prior sections retain historical schema anchors.
+
+
+## Actor turning continuation: fingerprint schema 27
+
+After each visible actor's desired/current orientation, encode turn rate as an optional u16,
+consecutive turning cycles as signed little-endian i32, pre-turn movement orientation as u16,
+and idle turn request as a byte (absent 0, left 1, right 2). Actor construction/removal, definition
+policy replacement and explicit client-cycle operations own mutation. Profile enrichment resolves
+player rates; missing NPC/player policy stays absent. Existing entity deltas, cycle events and
+semantic replay expose the same transitions. No scene/renderer projection mutates these values.
+
+Schema-27 regression anchors: inactive `6737528060347041486`, revision-240 tick-5
+`40832697715145450`, revision-240.2 tick-5 `3256232498427926759`, reference commit stream
+`1995568586010286370`, empty stream `14935260352713089699`, authenticated placement
+`5497594681641651761`, authenticated-placement commit stream `12329873617629666673`.
+Earlier schema sections retain historical anchors. Turning behavior and focused acceptance are
+specified in SPEC-0017 and traced in `docs/reference/rs240-port/FACING-TURNING.md`.

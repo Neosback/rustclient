@@ -268,6 +268,22 @@ pub fn npc_path_acceleration(
     npc_with_path_acceleration(bytes, id, source).map(|(_, policy)| policy)
 }
 
+/// Decode immutable movement scheduling inputs without constructing live actors.
+/// # Errors
+/// Returns the same source-aware decode failures as [`npc`].
+pub fn npc_movement_policy(
+    bytes: &[u8],
+    id: NpcDefinitionId,
+    source: Source,
+) -> Result<rustclient_model::NpcMovementPolicy> {
+    npc_with_path_acceleration(bytes, id, source).map(|(definition, path_acceleration)| {
+        rustclient_model::NpcMovementPolicy {
+            path_acceleration,
+            turn_rate: definition.turn_rate,
+        }
+    })
+}
+
 #[expect(
     clippy::too_many_lines,
     reason = "exhaustive opcode decoder preserves field semantics"
@@ -280,6 +296,7 @@ fn npc_with_path_acceleration(
     let mut r = Reader::new(bytes, source);
     let mut path_acceleration = PathAccelerationPolicy::STANDARD;
     let mut out = NpcDefinition {
+        turn_rate: rustclient_model::JauTurnRate::new(32),
         id,
         name: None,
         models: Vec::new(),
@@ -360,7 +377,8 @@ fn npc_with_path_acceleration(
                 out.walk_left_sequence = (wl != 65535).then_some(SequenceId::new(u32::from(wl)));
                 out.walk_right_sequence = (wr != 65535).then_some(SequenceId::new(u32::from(wr)));
             }
-            18 | 42 | 74..=79 | 103 | 124 | 146 => {
+            103 => out.turn_rate = rustclient_model::JauTurnRate::new(r.u16()?),
+            18 | 42 | 74..=79 | 124 | 146 => {
                 r.u16()?;
             }
             126 => out.footprint = Some(r.u16()?),

@@ -401,3 +401,20 @@ owned by ChatState. See SPEC-0017; fingerprint schema 25 includes speech and its
 InterfaceState owns the preference independently of revision device-option ids. Rendering
 projects it into gamma; model/game-state contain no shader or GPU types. SPEC-0017 defines
 source evidence, reset and fingerprint schema 26 implications.
+
+## Actor turn policy continuation (2026-10-26)
+
+`JauTurnRate` is a nonnegative angular step per client cycle; unlike `JauAngle`, it does not
+wrap at a full turn. `NpcMovementPolicy` groups immutable definition-derived path acceleration
+and turn rate for packet-time enrichment. Cache adapters own source defaults and decoding;
+GameState owns actor rotation/counters and applies supplied policy without decoding cache facts.
+
+## Action playback timing continuation (2026-10-26)
+
+`SequenceTiming::CachedModel` retains `frame_step` alongside the optional range. Range end minus
+start is the cached duration; a cached frame/time cursor begins at zero rather than the range
+start. Missing, zero or out-of-range rewinds become terminal at end crossing. Resolved action
+`frame` stores a legacy frame index or cached time position; `cycle` is the legacy within-frame
+counter and is untouched by cached advancement. Definition timing remains immutable adapter
+evidence, separate from actor-owned playback and assignment policy. Schema 28 includes the
+cached rewind wherever resolved timing contributes to the semantic fingerprint.

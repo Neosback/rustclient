@@ -1,18 +1,8 @@
-//! Sub-tile actor motion.
+//! Disposable actor pose projection and unresolved-fixture movement fallback.
 //!
-//! `GameState` keeps each actor on its server tile, which only changes once per game tick. The
-//! reference client walks the drawn position toward each new tile a few units per 20 ms cycle,
-//! so motion reads as continuous. This module is that walk as a disposable projection: it is
-//! derived from entity tiles, never feeds back into `GameState`, and can be rebuilt at any time.
-//!
-//! Ported from the reference actor movement step (`Actor.method3284`) and turn step
-//! (`classKN.method6539`): the drawn rotation turns toward the network heading a fixed amount per
-//! cycle, walking slows while it does, and the movement pose (stand, turn in place, walk, strafe,
-//! back-pedal, run, crawl) follows from the angle between heading and rotation and the step speed.
-//! Omitted: the catch-up speed-up after an animation blocks movement, because movement-blocking
-//! animations are not modelled yet.
-//! Forced trajectories currently advance every cycle; legacy action-frame gating remains open.
-use rustclient_game_state::{ExactMovement, WorldEntitiesState};
+//! Connected actors use committed `GameState` translation and rotation through `authoritative_motion`.
+//! The local path/turn scheduler below remains only for deliberately unresolved direct fixtures.
+use rustclient_game_state::{ActorTurning, ExactMovement, TurnDirection, WorldEntitiesState};
 use rustclient_model::{ClientCycle, MoveSpeed, NpcIndex, NpcInstanceId, PlayerIndex, WorldTile};
 use std::collections::{BTreeMap, VecDeque};
 
@@ -75,6 +65,12 @@ struct Step {
     speed: MoveSpeed,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct CommittedTurning {
+    pub rotation: u16,
+    pub state: ActorTurning,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Actor {
     tile: WorldTile,
@@ -93,7 +89,7 @@ struct Actor {
     pose: Pose,
     pose_cycle: u32,
     committed_delta: Option<[i32; 2]>,
-    committed_rotation: Option<u16>,
+    committed_rotation: Option<CommittedTurning>,
 }
 
 impl Actor {
@@ -236,20 +232,24 @@ impl Actor {
     fn advance(&mut self) {
         self.cycle = self.cycle.saturating_add(1);
         self.pose_cycle = self.pose_cycle.saturating_add(1);
-        if let Some(delta) = self.committed_delta.take() {
+        if let Some(turning) = self.committed_rotation {
+            let delta = self.committed_delta.take().unwrap_or([0; 2]);
             let speed = delta[0].abs().max(delta[1].abs());
             let moving = if speed == 0 {
                 Pose::Idle
             } else {
-                self.movement_pose(speed)
+                self.movement_pose_at(speed, i32::from(turning.state.movement_orientation()))
             };
-            let pose = if let Some(rotation) = self.committed_rotation.take() {
-                self.rotation = i32::from(rotation);
-                self.turning = 0;
-                moving
+            let pose = if moving == Pose::Idle {
+                match turning.state.idle_direction() {
+                    Some(TurnDirection::Left) => Pose::TurnLeft,
+                    Some(TurnDirection::Right) => Pose::TurnRight,
+                    None => Pose::Idle,
+                }
             } else {
-                self.turn(moving)
+                moving
             };
+            self.rotation = i32::from(turning.rotation);
             self.set_pose(pose);
             return;
         }
@@ -319,7 +319,10 @@ impl Actor {
     }
 
     fn movement_pose(&self, speed: i32) -> Pose {
-        let relative = (self.heading - self.rotation) & (FULL_TURN - 1);
+        self.movement_pose_at(speed, self.rotation)
+    }
+    fn movement_pose_at(&self, speed: i32, rotation: i32) -> Pose {
+        let relative = (self.heading - rotation) & (FULL_TURN - 1);
         let relative = if relative > FULL_TURN / 2 {
             relative - FULL_TURN
         } else {
@@ -344,7 +347,7 @@ impl Actor {
         &mut self,
         position: [i32; 2],
         previous: Option<[i32; 2]>,
-        rotation: Option<u16>,
+        rotation: Option<CommittedTurning>,
     ) {
         let delta = std::array::from_fn(|axis| {
             position[axis].saturating_sub(previous.unwrap_or(position)[axis])
@@ -354,6 +357,9 @@ impl Actor {
         self.exact = None;
         self.committed_delta = Some(delta);
         self.committed_rotation = rotation;
+        if let Some(turning) = rotation {
+            self.rotation = i32::from(turning.rotation);
+        }
     }
 
     /// `classKN.method6539`: turn toward the heading, replacing a standing pose with the turn
@@ -455,7 +461,7 @@ impl ActorMotion {
         index: PlayerIndex,
         position: [i32; 2],
         previous: Option<[i32; 2]>,
-        rotation: Option<u16>,
+        rotation: Option<CommittedTurning>,
     ) {
         if let Some((_, actor)) = self.players.get_mut(&index) {
             actor.committed_position(position, previous, rotation);
@@ -466,7 +472,7 @@ impl ActorMotion {
         index: NpcIndex,
         position: [i32; 2],
         previous: Option<[i32; 2]>,
-        rotation: Option<u16>,
+        rotation: Option<CommittedTurning>,
     ) {
         if let Some((_, _, actor)) = self.npcs.get_mut(&index) {
             actor.committed_position(position, previous, rotation);

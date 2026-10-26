@@ -268,6 +268,8 @@ pub enum SequenceChange {
 /// Consolidated player info update for one tick.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct PlayerInfoUpdate {
+    /// Profile-derived actor turn rate attached by orchestration, not by the wire decoder.
+    pub turn_rate: Option<crate::JauTurnRate>,
     /// Speech blocks in source order; actors/appearances are installed before applying them.
     pub speech: Vec<crate::PlayerSpeech>,
     pub local_movement: Option<PlayerMovement>,
@@ -408,9 +410,9 @@ pub struct NpcInfoUpdate {
     pub sequence_policies: Vec<(SequenceId, SequencePolicy)>,
     /// Resolved playback timing attached with the same sequence definitions.
     pub sequence_timings: Vec<(SequenceId, crate::SequenceTiming)>,
-    /// Resolved definition-derived path acceleration attached after protocol decode.
+    /// Resolved definition-derived path acceleration and turning attached after protocol decode.
     /// An empty table leaves direct semantic fixtures unresolved instead of guessing cache policy.
-    pub path_acceleration_policies: Vec<(crate::NpcDefinitionId, crate::PathAccelerationPolicy)>,
+    pub movement_policies: Vec<(crate::NpcDefinitionId, crate::NpcMovementPolicy)>,
 }
 
 /// Server-authored changes to a visible NPC, applied in packet block order.

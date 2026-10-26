@@ -57,6 +57,7 @@ pub fn resolve_timing<S: ReadOnlyBlobs>(
     Ok(if sequence.skeletal.is_some() {
         SequenceTiming::CachedModel {
             range: sequence.range,
+            frame_step: sequence.frame_step,
         }
     } else {
         SequenceTiming::Legacy {

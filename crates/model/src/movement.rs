@@ -1,4 +1,4 @@
-//! Revision-neutral path acceleration inputs shared by cache adapters and live actor scheduling.
+//! Revision-neutral movement inputs shared by cache adapters and live actor scheduling.
 
 /// Backlog thresholds that raise ordinary queued movement from the base step of four fine units.
 ///
@@ -23,4 +23,27 @@ impl PathAccelerationPolicy {
         step_six_after: 1,
         step_eight_after: 2,
     };
+}
+
+/// Angular distance advanced per client cycle. This is a rate, not a wrapped angle.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct JauTurnRate(u16);
+
+impl JauTurnRate {
+    #[must_use]
+    pub const fn new(units: u16) -> Self {
+        Self(units)
+    }
+
+    #[must_use]
+    pub const fn get(self) -> u16 {
+        self.0
+    }
+}
+
+/// Immutable definition-derived scheduling inputs for one NPC.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct NpcMovementPolicy {
+    pub path_acceleration: PathAccelerationPolicy,
+    pub turn_rate: JauTurnRate,
 }

@@ -1,4 +1,5 @@
 //! Explicit OSRS/OpenRune 240 binary and archive adapter.
+
 mod animation;
 pub mod db_tables;
 pub mod definitions;
@@ -28,6 +29,14 @@ use rustclient_platform::ReadOnlyBlobs;
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
 impl CacheProfile {
+    /// Profile actor initialization; NPC definitions independently supply their own turn rate.
+    #[must_use]
+    pub const fn player_turn_rate(self) -> rustclient_model::JauTurnRate {
+        match self {
+            Self::Osrs240 | Self::OpenRune240 => rustclient_model::JauTurnRate::new(32),
+        }
+    }
+
     /// Revision-owned normal scene window around a server map anchor.
     /// # Errors
     /// Rejects negative or overflowing world coordinates.

@@ -75,5 +75,5 @@ and [current audit](../reference/rs240-port/CURRENT-AUDIT.md) are the current ga
 plugins added in intervening commits have their own [scope ledger](../reference/builtin-plugins/FIRST-PARTY-LEDGER.md);
 these additions do not complete GPU/core behavior or browser gameplay.
 
-Validation of this reconciliation is recorded in `SIDEBAR-PORT-AUDIT-2026-10-26.md`; automated checks
+Validation of this reconciliation is recorded in [the checkpoint](SIDEBAR-PORT-AUDIT-2026-10-26.md); automated checks
 and desktop observations are separate.
