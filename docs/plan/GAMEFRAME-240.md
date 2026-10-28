@@ -1,5 +1,10 @@
 # Gameframe/window audit — 2026-10-23
 
+<!-- authority-notice -->
+> Historical checkpoint and evidence record. Implementation status, “next” tasks, counts
+> and validation below apply to the recorded snapshot. Current work follows
+> [PORTING-ROADMAP.md](PORTING-ROADMAP.md) and the [domain matrix](../reference/rs240-port/PORT-MATRIX.md).
+
 Status: callback/reflow repairs implemented; headless three-layout review passes
 with the separately identified server script-2358 argument mismatch. Desktop
 pixel parity and manual fullscreen/DPI acceptance remain open.

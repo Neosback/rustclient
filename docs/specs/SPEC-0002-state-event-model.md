@@ -38,7 +38,9 @@ The active semantic session owns an explicit `rustclient_model::Revision`.
 - No process-wide or implicit fallback revision exists inside `game-state`.
 - `Revision` is a compatibility identity for protocol/cache semantics; it is not server identity and is not a `ServerProfile`.
 - Supported-profile validation remains an application/protocol responsibility. `game-state` records the already-selected semantic revision without owning a revision registry.
-- When a canonical server-profile identity type is implemented by its owning subsystem, replay/session metadata may incorporate it explicitly rather than inventing a duplicate profile identifier here.
+- The canonical ServerProfileId is allocated by protocol profile selection;
+  authentication/session/replay record it alongside Revision. GameState does not
+  invent profile identity or own support-registry policy.
 
 ### Semantic game time
 
@@ -57,7 +59,8 @@ The current semantic game tick is session-owned authoritative state.
 
 `SemanticOperation` is the source-neutral request type accepted by the authoritative state mutation gateway.
 
-Current operations are deliberately minimal:
+The original CP3 operation subset was deliberately minimal (the implemented
+surface has since expanded in `crates/game-state/src/operation.rs`):
 
 - begin session for an explicit `Revision`,
 - end session,

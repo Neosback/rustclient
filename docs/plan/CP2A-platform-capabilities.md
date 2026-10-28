@@ -1,5 +1,10 @@
 # CP2A: Platform Capabilities
 
+<!-- authority-notice -->
+> Historical checkpoint and evidence record. Implementation status, “next” tasks, counts
+> and validation below apply to the recorded snapshot. Current work follows
+> [PORTING-ROADMAP.md](PORTING-ROADMAP.md) and the [domain matrix](../reference/rs240-port/PORT-MATRIX.md).
+
 ## Goal
 
 Establish the first platform-neutral capabilities used by both native and browser targets without introducing renderer, windowing, networking, or gameplay dependencies.

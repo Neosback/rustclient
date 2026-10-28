@@ -1,0 +1,270 @@
+direction	opcode	name	length	declaration	status	owner	remaining
+client-to-server	0	EVENT_MOUSE_CLICK_V1	6	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	1	IF_BUTTONX	9	selected-rsprot	encoded-subset	crates/protocol/src/openrune_240/game.rs	Validate full source UI/intent/response path; encoder reachability is not acceptance.
+client-to-server	2	OPWORLDENTITY4	3	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	3	RESUME_P_OBJDIALOG	2	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	4	OPPLAYER6	3	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	5	-	3	deob-only	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	6	-	7	deob-only	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	7	IDLE	0	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	8	OPLOC3_V2	8	selected-rsprot	encoded-subset	crates/protocol/src/openrune_240/game.rs	Validate full source UI/intent/response path; encoder reachability is not acceptance.
+client-to-server	9	OPOBJ6	6	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	10	OPWORLDENTITYT	11	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	11	IF_BUTTON	4	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	12	REFLECTION_CHECK_REPLY	-1	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	13	TELEPORT	9	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	14	BUG_REPORT	-2	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	15	IF_CRMVIEW_OP	22	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	16	SET_CHATFILTERSETTINGS	3	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	17	AFFINEDCLANSETTINGS_ADDBANNED_FROMCHANNEL	-1	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	18	-	7	deob-only	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	19	-	7	deob-only	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	20	-	7	deob-only	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	21	OPPLAYER2	3	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	22	OPOBJ3_V2	8	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	23	-	3	deob-only	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	24	-	3	deob-only	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	25	OPWORLDENTITY6	2	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	26	-	3	deob-only	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	27	MAP_BUILD_COMPLETE	0	selected-rsprot	encoded-subset	crates/protocol/src/openrune_240/game.rs	Validate full source UI/intent/response path; encoder reachability is not acceptance.
+client-to-server	28	-	7	deob-only	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	29	CONNECTION_TELEMETRY	-1	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	30	EVENT_APPLET_FOCUS	1	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	31	-	7	deob-only	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	32	SEND_PING_REPLY	10	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	33	CLANCHANNEL_FULL_REQUEST	1	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	34	-	7	deob-only	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	35	OPNPC4_V2	4	selected-rsprot	encoded-subset	crates/protocol/src/openrune_240/game.rs	Validate full source UI/intent/response path; encoder reachability is not acceptance.
+client-to-server	36	OPPLAYER3	3	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	37	CLANCHANNEL_KICKUSER	-1	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	38	OPOBJT	15	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	39	IF_BUTTOND	16	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	40	EVENT_MOUSE_CLICK_V2	7	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	41	OPPLAYER8	3	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	42	OPPLAYERU	11	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Selected RSProt deprecates this U path in favor of T; trace current stock sender before requiring emission.
+client-to-server	43	OPNPC3_V2	4	selected-rsprot	encoded-subset	crates/protocol/src/openrune_240/game.rs	Validate full source UI/intent/response path; encoder reachability is not acceptance.
+client-to-server	44	WINDOW_STATUS	5	selected-rsprot	encoded-subset	crates/protocol/src/openrune_240/game.rs	Validate full source UI/intent/response path; encoder reachability is not acceptance.
+client-to-server	45	OPPLAYERT	11	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	46	SOUND_JINGLEEND	4	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	47	EVENT_KEYBOARD	-2	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	48	OPWORLDENTITY2	3	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	49	OPWORLDENTITY3	3	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	50	OPPLAYER7	3	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	51	FRIENDCHAT_KICK	-1	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	52	OPPLAYER5	3	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	53	-	7	deob-only	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	54	RESUME_P_STRINGDIALOG	-1	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	55	EVENT_CAMERA_POSITION	4	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	56	MESSAGE_PUBLIC	-1	selected-rsprot	encoded-subset	crates/protocol/src/openrune_240/game.rs	Validate full source UI/intent/response path; encoder reachability is not acceptance.
+client-to-server	57	OPPLAYER1	3	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	58	IF_SCRIPT_TRIGGER	-2	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	59	OPNPC1_V2	4	selected-rsprot	encoded-subset	crates/protocol/src/openrune_240/game.rs	Validate full source UI/intent/response path; encoder reachability is not acceptance.
+client-to-server	60	AFFINEDCLANSETTINGS_SETMUTED_FROMCHANNEL	-1	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	61	MOVE_MINIMAPCLICK	-1	selected-rsprot	encoded-subset	crates/protocol/src/openrune_240/game.rs	Validate full source UI/intent/response path; encoder reachability is not acceptance.
+client-to-server	62	RESUME_P_COUNTDIALOG	4	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	63	OPNPCT	11	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	64	OPPLAYER4	3	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	65	OPOBJ4_V2	8	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	66	FRIENDCHAT_SETRANK	-1	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	67	FRIENDLIST_ADD	-1	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	68	OPLOCT	15	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	69	OPLOC4_V2	8	selected-rsprot	encoded-subset	crates/protocol/src/openrune_240/game.rs	Validate full source UI/intent/response path; encoder reachability is not acceptance.
+client-to-server	70	RESUME_P_NAMEDIALOG	-1	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	71	EXIT_FREECAM	0	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	72	-	7	deob-only	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	73	OPNPC5_V2	4	selected-rsprot	encoded-subset	crates/protocol/src/openrune_240/game.rs	Validate full source UI/intent/response path; encoder reachability is not acceptance.
+client-to-server	74	OPLOC1_V2	8	selected-rsprot	encoded-subset	crates/protocol/src/openrune_240/game.rs	Validate full source UI/intent/response path; encoder reachability is not acceptance.
+client-to-server	75	OPOBJ5_V2	8	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	76	MEMBERSHIP_PROMOTION_ELIGIBILITY	2	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	77	OPLOC5_V2	8	selected-rsprot	encoded-subset	crates/protocol/src/openrune_240/game.rs	Validate full source UI/intent/response path; encoder reachability is not acceptance.
+client-to-server	78	CLICKWORLDMAP	4	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	79	CLIENT_CHEAT	-1	selected-rsprot	encoded-subset	crates/protocol/src/openrune_240/game.rs	Validate full source UI/intent/response path; encoder reachability is not acceptance.
+client-to-server	80	IF_BUTTONT	16	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	81	IGNORELIST_ADD	-1	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	82	RESUME_PAUSEBUTTON	6	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	83	EVENT_MOUSE_SCROLL	2	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	84	OPOBJU	15	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Selected RSProt deprecates this U path in favor of T; trace current stock sender before requiring emission.
+client-to-server	85	OPWORLDENTITYU	11	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Selected RSProt deprecates this U path in favor of T; trace current stock sender before requiring emission.
+client-to-server	86	IGNORELIST_DEL	-1	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	87	OPNPC2_V2	4	selected-rsprot	encoded-subset	crates/protocol/src/openrune_240/game.rs	Validate full source UI/intent/response path; encoder reachability is not acceptance.
+client-to-server	88	EVENT_NATIVE_MOUSE_MOVE	-1	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	89	RSEVEN_STATUS	1	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	90	OPLOC2_V2	8	selected-rsprot	encoded-subset	crates/protocol/src/openrune_240/game.rs	Validate full source UI/intent/response path; encoder reachability is not acceptance.
+client-to-server	91	UPDATE_PLAYER_MODEL_V2	26	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	92	SEND_SNAPSHOT	-1	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	93	OPWORLDENTITY5	3	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	94	-	7	deob-only	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	95	IF_SUBOP	10	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	96	OPWORLDENTITY1	3	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	97	FRIENDCHAT_JOIN_LEAVE	-1	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	98	CLOSE_MODAL	0	selected-rsprot	encoded-subset	crates/protocol/src/openrune_240/game.rs	Validate full source UI/intent/response path; encoder reachability is not acceptance.
+client-to-server	99	NO_TIMEOUT	0	selected-rsprot	encoded-subset	crates/protocol/src/openrune_240/game.rs	Validate full source UI/intent/response path; encoder reachability is not acceptance.
+client-to-server	100	CLANSETTINGS_FULL_REQUEST	1	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	101	OPNPC6	2	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	102	MOVE_GAMECLICK	-1	selected-rsprot	encoded-subset	crates/protocol/src/openrune_240/game.rs	Validate full source UI/intent/response path; encoder reachability is not acceptance.
+client-to-server	103	DETECT_MODIFIED_CLIENT	4	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	104	-	7	deob-only	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	105	OPLOC6	2	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	106	-	3	deob-only	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	107	OPNPCU	11	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Selected RSProt deprecates this U path in favor of T; trace current stock sender before requiring emission.
+client-to-server	108	MESSAGE_PRIVATE	-2	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	109	SET_HEADING	1	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	110	HISCORE_REQUEST	-1	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	111	RESUME_P_COUNTDIALOG_LONG	8	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	112	OPOBJ1_V2	8	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	113	OPOBJ2_V2	8	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	114	EVENT_MOUSE_MOVE	-1	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	115	FRIENDLIST_DEL	-1	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	116	OPLOCU	15	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Selected RSProt deprecates this U path in favor of T; trace current stock sender before requiring emission.
+server-to-client	0	CAM_TARGET_V4	5	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	1	IF_SETOBJECT	10	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	2	MESSAGE_FRIENDCHANNEL	-1	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	3	HINT_ARROW	6	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	4	IF_SETANGLE	10	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	5	CLANSETTINGS_DELTA	-2	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	6	SET_INTERACTION_MODE	4	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	7	CLANCHANNEL_FULL	-2	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	8	MIDI_SONG_STOP	4	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	9	UPDATE_IGNORELIST	-2	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	10	RUNCLIENTSCRIPT	-2	selected-rsprot	semantic-subset	crates/protocol/src/openrune_240/game.rs	Inspect all payload branches and downstream state/reset/projection.
+server-to-client	11	IF_SETTEXT	-2	selected-rsprot	semantic-subset	crates/protocol/src/openrune_240/game.rs	Inspect all payload branches and downstream state/reset/projection.
+server-to-client	12	REBUILD_REGION_V2	-2	selected-rsprot	rejected	crates/protocol/src/openrune_240/game.rs	Explicit unsupported instance-rebuild error terminates native session.
+server-to-client	13	MAP_ANIM	6	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	14	UPDATE_INV_STOPTRANSMIT	2	selected-rsprot	semantic-subset	crates/protocol/src/openrune_240/game.rs	Inspect all payload branches and downstream state/reset/projection.
+server-to-client	15	SET_HEATMAP_ENABLED	1	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	16	SOUND_AREA	7	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	17	CAM_RESET	0	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	18	CHAT_FILTER_SETTINGS	2	selected-rsprot	semantic-subset	crates/protocol/src/openrune_240/game.rs	Inspect all payload branches and downstream state/reset/projection.
+server-to-client	19	UPDATE_RUNWEIGHT	2	selected-rsprot	semantic-subset	crates/protocol/src/openrune_240/game.rs	Inspect all payload branches and downstream state/reset/projection.
+server-to-client	20	SET_ACTIVE_WORLD_V2	3	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	21	VARCLAN	-1	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	22	IF_SETPLAYERHEAD	4	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	23	UPDATE_INV_PARTIAL	-2	selected-rsprot	semantic-subset	crates/protocol/src/openrune_240/game.rs	Inspect all payload branches and downstream state/reset/projection.
+server-to-client	24	UPDATE_FRIENDLIST	-2	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	25	VARCLAN_DISABLE	0	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	26	LOGOUT_TRANSFER	-1	selected-rsprot	partial	crates/protocol/src/openrune_240/game.rs	Inspect all payload branches and downstream state/reset/projection.
+server-to-client	27	MESSAGE_PRIVATE_ECHO	-2	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	28	IF_SETCOLOUR	6	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	29	UPDATE_TRADINGPOST	-2	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	30	IF_RESYNC_V2	-2	selected-rsprot	semantic-subset	crates/protocol/src/openrune_240/game.rs	Inspect all payload branches and downstream state/reset/projection.
+server-to-client	31	MIDI_SWAP	8	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	32	CAM_MODE	1	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	33	CAM_ROTATETO	7	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	34	CAM_SMOOTHRESET	4	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	35	IF_OPENTOP	2	selected-rsprot	semantic-subset	crates/protocol/src/openrune_240/game.rs	Inspect all payload branches and downstream state/reset/projection.
+server-to-client	36	MESSAGE_PRIVATE	-2	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	37	LOGOUT	0	selected-rsprot	semantic-subset	crates/protocol/src/openrune_240/game.rs	Inspect all payload branches and downstream state/reset/projection.
+server-to-client	38	LOC_ADD_CHANGE_V2	-2	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	39	REBUILD_NORMAL_V2	-2	selected-rsprot	semantic-subset	crates/protocol/src/openrune_240/game.rs	Inspect all payload branches and downstream state/reset/projection.
+server-to-client	40	MIDI_JINGLE	5	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	41	LOC_DEL	2	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	42	IF_SETPLAYERMODEL_BASECOLOUR	6	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	43	MESSAGE_CLANCHANNEL	-1	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	44	UNKNOWN_STRING	-1	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	45	IF_OPENSUB	7	selected-rsprot	semantic-subset	crates/protocol/src/openrune_240/game.rs	Inspect all payload branches and downstream state/reset/projection.
+server-to-client	46	CLANCHANNEL_DELTA	-2	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	47	MIDI_SONG_WITHSECONDARY	12	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	48	LOC_MERGE	14	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	49	UPDATE_ZONE_PARTIAL_ENCLOSED	-2	selected-rsprot	partial	crates/protocol/src/openrune_240/game.rs	Only LOC_ANIM emitted; other enclosed payloads consumed/discarded.
+server-to-client	50	IF_SETPLAYERMODEL_OBJ	8	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	51	IF_MOVESUB	8	selected-rsprot	semantic-subset	crates/protocol/src/openrune_240/game.rs	Inspect all payload branches and downstream state/reset/projection.
+server-to-client	52	OBJ_CUSTOMISE_SPECIFIC	20	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	53	SITE_SETTINGS	-1	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	54	IF_SETHIDE	5	selected-rsprot	semantic-subset	crates/protocol/src/openrune_240/game.rs	Inspect all payload branches and downstream state/reset/projection.
+server-to-client	55	HIDELOCOPS	1	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	56	LOGOUT_WITHREASON	1	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	57	PACKET_GROUP_START	2	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	58	RESET_ANIMS	0	selected-rsprot	semantic-subset	crates/protocol/src/openrune_240/game.rs	Inspect all payload branches and downstream state/reset/projection.
+server-to-client	59	IF_SETANIM	6	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	60	IF_CLEARINV	4	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	61	IF_SETNPCHEAD	6	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	62	IF_SETPLAYERMODEL_SELF	5	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	63	UPDATE_STAT_V2	7	selected-rsprot	semantic-subset	crates/protocol/src/openrune_240/game.rs	Inspect all payload branches and downstream state/reset/projection.
+server-to-client	64	IF_SETPLAYERMODEL_BODYTYPE	5	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	65	OCULUS_SYNC	4	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	66	UPDATE_REBOOT_TIMER_V2	-1	selected-rsprot	semantic-subset	crates/protocol/src/openrune_240/game.rs	Inspect all payload branches and downstream state/reset/projection.
+server-to-client	67	IF_SETNPCHEAD_ACTIVE	6	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	68	VARP_RESET	0	selected-rsprot	semantic-subset	crates/protocol/src/openrune_240/game.rs	Inspect all payload branches and downstream state/reset/projection.
+server-to-client	69	HISCORE_REPLY	-2	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	70	FRIENDLIST_LOADED	0	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	71	CAM_TARGET_V3	5	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	72	PROJANIM_SPECIFIC_V4	27	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	73	MESSAGE_GAME	-1	selected-rsprot	semantic-subset	crates/protocol/src/openrune_240/game.rs	Inspect all payload branches and downstream state/reset/projection.
+server-to-client	74	UPDATE_INV_FULL	-2	selected-rsprot	semantic-subset	crates/protocol/src/openrune_240/game.rs	Inspect all payload branches and downstream state/reset/projection.
+server-to-client	75	REBUILD_WORLDENTITY_V4	-2	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	76	CHAT_FILTER_SETTINGS_PRIVATECHAT	1	selected-rsprot	semantic-subset	crates/protocol/src/openrune_240/game.rs	Inspect all payload branches and downstream state/reset/projection.
+server-to-client	77	TRIGGER_ONDIALOGABORT	0	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	78	IF_SETSCROLLPOS	6	selected-rsprot	semantic-subset	crates/protocol/src/openrune_240/game.rs	Inspect all payload branches and downstream state/reset/projection.
+server-to-client	79	MESSAGE_CLANCHANNEL_SYSTEM	-1	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	80	WORLDENTITY_INFO_V7	-2	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	81	MIDI_SONG_V2	10	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	82	ACCOUNT_FLAGS	8	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	83	PLAYER_SPOTANIM_SPECIFIC	9	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	84	LOC_ANIM_SPECIFIC	6	selected-rsprot	semantic-subset	crates/protocol/src/openrune_240/game.rs	Inspect all payload branches and downstream state/reset/projection.
+server-to-client	85	SET_PLAYER_OP	-1	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	86	OBJ_DEL_SPECIFIC	10	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	87	OBJ_ENABLED_OPS_SPECIFIC	7	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	88	UPDATE_FRIENDCHAT_CHANNEL_FULL_V2	-2	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	89	OBJ_UNCUSTOMISE_SPECIFIC	10	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	90	MAP_ANIM_SPECIFIC	8	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	91	PLAYER_INFO	-2	selected-rsprot	partial	crates/protocol/src/openrune_240/game.rs	Retained movement/selected attributes; rejected/consumed actor masks remain open.
+server-to-client	92	SERVER_TICK_END	0	selected-rsprot	semantic-subset	crates/protocol/src/openrune_240/game.rs	Inspect all payload branches and downstream state/reset/projection.
+server-to-client	93	NPC_INFO_LARGE_V5	-2	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	94	VARP_LARGE	6	selected-rsprot	semantic-subset	crates/protocol/src/openrune_240/game.rs	Inspect all payload branches and downstream state/reset/projection.
+server-to-client	95	CAM_ROTATEBY	7	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	96	NPC_HEADICON_SPECIFIC	9	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	97	CLANSETTINGS_FULL	-2	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	98	SYNTH_SOUND	5	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	99	UPDATE_UID192	28	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	100	VARP_SYNC	0	selected-rsprot	semantic-subset	crates/protocol/src/openrune_240/game.rs	Inspect all payload branches and downstream state/reset/projection.
+server-to-client	101	NPC_SPOTANIM_SPECIFIC	9	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	102	ANIM_SPECIFIC	3	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	103	UPDATE_STOCKMARKET_SLOT	20	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	104	VARCLAN_ENABLE	0	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	105	IF_SETROTATESPEED	8	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	106	IF_SETEVENTS_V2	16	selected-rsprot	semantic-subset	crates/protocol/src/openrune_240/game.rs	Inspect all payload branches and downstream state/reset/projection.
+server-to-client	107	URL_OPEN	-2	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	108	IF_SETPOSITION	8	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	109	UPDATE_FRIENDCHAT_CHANNEL_SINGLEUSER	-1	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	110	HIDENPCOPS	1	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	111	SET_NPC_UPDATE_ORIGIN	2	selected-rsprot	codec-context	crates/protocol/src/openrune_240/game.rs	Codec context retained; inspect lifecycle with following info/zone packets.
+server-to-client	112	HIDEOBJOPS	1	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	113	CAM_SHAKE	4	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	114	OBJ_ADD_SPECIFIC	17	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	115	SEND_PING	8	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	116	IF_CLOSESUB	4	selected-rsprot	semantic-subset	crates/protocol/src/openrune_240/game.rs	Inspect all payload branches and downstream state/reset/projection.
+server-to-client	117	NPC_ANIM_SPECIFIC	5	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	118	UPDATE_ZONE_PARTIAL_FOLLOWS	3	selected-rsprot	codec-context	crates/protocol/src/openrune_240/game.rs	Codec context retained; inspect lifecycle with following info/zone packets.
+server-to-client	119	NPC_INFO_SMALL_V5	-2	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	120	UPDATE_RUNENERGY	2	selected-rsprot	semantic-subset	crates/protocol/src/openrune_240/game.rs	Inspect all payload branches and downstream state/reset/projection.
+server-to-client	121	RESET_INTERACTION_MODE	2	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	122	MINIMAP_TOGGLE	1	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	123	LOC_ANIM	4	selected-rsprot	semantic-subset	crates/protocol/src/openrune_240/game.rs	Inspect all payload branches and downstream state/reset/projection.
+server-to-client	124	OBJ_COUNT_SPECIFIC	14	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	125	REFLECTION_CHECKER	-2	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	126	UPDATE_ZONE_FULL_FOLLOWS	3	selected-rsprot	partial	crates/protocol/src/openrune_240/game.rs	Resets location animations only; full zone ground-item/scenery reset remains incomplete.
+server-to-client	127	VARP_SMALL	3	selected-rsprot	semantic-subset	crates/protocol/src/openrune_240/game.rs	Inspect all payload branches and downstream state/reset/projection.
+server-to-client	128	CAM_ROTATETO_COORDINATE_V3	11	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	129	-	-2	deob-only	unassigned	crates/protocol/src/openrune_240/game.rs	RSProt UNHANDLED/deob unnamed sentinel; keep visible, do not fabricate support.
+server-to-client	130	CAM_MOVETO_CYCLES_V3	11	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	131	CAM_MOVETO_ARC_V3	15	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	132	IF_SETMODEL_V2	8	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	133	CAM_ROTATETO_COORDINATE_V2	9	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	134	CAM_MOVETO_V3	9	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	135	AMBIENTSOUND_START	3	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	136	SET_MAP_FLAG_V2	4	selected-rsprot	semantic-subset	crates/protocol/src/openrune_240/game.rs	Inspect all payload branches and downstream state/reset/projection.
+server-to-client	137	GROUP_VAR_LONG	13	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	138	AMBIENTSOUND_STOP	1	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	139	GROUP_FULL	-2	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	140	CAM_SKYBOX	4	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	141	NPC_INFO_LARGE_V6	-2	selected-rsprot	partial	crates/protocol/src/openrune_240/game.rs	Retained movement/selected attributes; rejected/consumed actor masks remain open.
+server-to-client	142	GROUP_VAR	-2	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	143	CAM_MOVETO_ARC_V2	14	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	144	GROUP_VAR_INT	9	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	145	CAM_LOOKAT_CYCLES	10	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	146	CAM_LOOKAT_V2	8	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	147	CAM_MOVETO_CYCLES_V2	10	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	148	CAM_LOOKAT_V3	9	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	149	CAM_UNLOCK	1	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
+server-to-client	150	NPC_INFO_SMALL_V6	-2	selected-rsprot	partial	crates/protocol/src/openrune_240/game.rs	Retained movement/selected attributes; rejected/consumed actor masks remain open.
+server-to-client	151	CAM_MOVETO_V2	8	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.

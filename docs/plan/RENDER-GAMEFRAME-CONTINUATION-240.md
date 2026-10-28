@@ -1,5 +1,10 @@
 # Renderer/gameframe continuation — 2026-10-25
 
+<!-- authority-notice -->
+> Historical checkpoint and evidence record. Implementation status, “next” tasks, counts
+> and validation below apply to the recorded snapshot. Current work follows
+> [PORTING-ROADMAP.md](PORTING-ROADMAP.md) and the [domain matrix](../reference/rs240-port/PORT-MATRIX.md).
+
 Active user request after the chat checkpoint: use `/Users/tylercovalt/Documents/RustOSRS`
 for roofs, wall decoration, depth/GPU and world-map evidence; port applicable behavior from
 `runelite-gpu/` (classic RuneLite GPU and `runelite2008HDGPU/`). Use the readable

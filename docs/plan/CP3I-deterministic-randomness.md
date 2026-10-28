@@ -1,5 +1,10 @@
 # CP3I — Deterministic Randomness/Input Contract
 
+<!-- authority-notice -->
+> Historical checkpoint and evidence record. Implementation status, “next” tasks, counts
+> and validation below apply to the recorded snapshot. Current work follows
+> [PORTING-ROADMAP.md](PORTING-ROADMAP.md) and the [domain matrix](../reference/rs240-port/PORT-MATRIX.md).
+
 ## Goal
 
 Close the deterministic-randomness gap identified by CP3H without introducing hidden entropy into semantic transitions or inventing a fake random game operation before a real consumer exists.

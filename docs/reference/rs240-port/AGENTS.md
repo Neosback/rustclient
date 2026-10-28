@@ -4,6 +4,11 @@ Scope: `docs/reference/rs240-port/` only.
 
 Read `README.md`, `PORT-MATRIX.md`, the applicable existing `docs/plan/*240*.md`
 audit, and the root/docs `AGENTS.md` files before extending this corpus.
+Also read `docs/specs/SPEC-0019-port-parity.md` and
+`docs/plan/PORTING-ROADMAP.md`. The current matrix/audit supersede implementation
+gap lists in historical checkpoints; those checkpoints retain exact source and
+validation evidence for their own snapshots. Keep `PACKET-COVERAGE.tsv` in sync
+when dispatch/encoding changes and update the reviewed baseline after inspection.
 
 ## Evidence discipline
 

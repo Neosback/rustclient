@@ -1,0 +1,258 @@
+{
+  "review_date": "2026-10-28",
+  "initial_rust_commit": "0a91c0237c5d2bb4825a549ffc89497dfe671208",
+  "reviewed_rust_commit": "bd3aae10d4a37c46401aaf71be2fa415cbe623e8",
+  "worktree_note": "Review began with dirty native/world-map/renderer/shell changes, committed externally as bd3aae10 during inspection. No acceptance is inferred from that commit. Only documentation/tooling changed by this review.",
+  "method": "Targeted static source/caller inspection; no CodeGraph index present. Not exhaustive behavioral verification.",
+  "pasted_input_sha256": "0d896a6f52f66fc5a3c7e0d46369dadcd47639c878026abc947a8336d1a3ee63",
+  "rsprot_artifacts": [
+    {
+      "artifact": "osrs-240-api",
+      "version": "1.0.0-ALPHA-20260825",
+      "sha256": "685fdf6b43987beef76245356f9c1a3f1899d7079e6b941ed63fcb4af661d10e"
+    },
+    {
+      "artifact": "osrs-240-model",
+      "version": "1.0.0-ALPHA-20260825",
+      "sha256": "350a02ab0a61cd41ee80177f32a86ff05508fff421c17561a10afbf6c54bdce3"
+    },
+    {
+      "artifact": "osrs-240-internal",
+      "version": "1.0.0-ALPHA-20260825",
+      "sha256": "30cda3a5d468d9edf60e53648f032bcedcf3e2199ffb82d819e9a1c069dbdf6b"
+    },
+    {
+      "artifact": "osrs-240-shared",
+      "version": "1.0.0-ALPHA-20260825",
+      "sha256": "f2a33f33a29b76ba1bb26e2c2f263c5ed28634aaf41c5c20953b64d9e5c29ffc"
+    },
+    {
+      "artifact": "osrs-240-desktop",
+      "version": "1.0.0-ALPHA-20260825",
+      "sha256": "e68db452c6de344e0520d349ae69a2b238ffef620adb462f56b400e81b241740"
+    },
+    {
+      "artifact": "osrs-240-common",
+      "version": "1.0.0-ALPHA-20260825",
+      "sha256": "9a35ce8e926cd40b00b0aa52effeb90560dbefbb301a5f69c5b9879247904633"
+    }
+  ],
+  "rsprot_entries": [
+    {
+      "artifact": "osrs-240-desktop",
+      "entry": "net/rsprot/protocol/game/incoming/prot/GameClientProt.kt",
+      "sha256": "aeb5a6252bc3ddd95bb183e3fc041e35e6d9dfe2a6246afa8a80ed2885917bac"
+    },
+    {
+      "artifact": "osrs-240-desktop",
+      "entry": "net/rsprot/protocol/game/incoming/prot/GameClientProtId.kt",
+      "sha256": "f75fdca3c0547904241f2a09c6394b4251f1e573a780283d3a9fb23c3c2d218b"
+    },
+    {
+      "artifact": "osrs-240-desktop",
+      "entry": "net/rsprot/protocol/game/outgoing/codec/npcinfo/extendedinfo/NpcFreezeEncoder.kt",
+      "sha256": "c9d9c66ad1312cb5399e010487dda13c89bfb3106cee96de690c5aca41569318"
+    },
+    {
+      "artifact": "osrs-240-desktop",
+      "entry": "net/rsprot/protocol/game/outgoing/codec/npcinfo/extendedinfo/writer/NpcAvatarExtendedInfoDesktopWriter.kt",
+      "sha256": "93251866ab2a057ebb36d66d61468a4496a62e9ebd7010e3b75fa88cca54213c"
+    },
+    {
+      "artifact": "osrs-240-desktop",
+      "entry": "net/rsprot/protocol/game/outgoing/codec/playerinfo/extendedinfo/PlayerFreezeEncoder.kt",
+      "sha256": "e532ef2d313d27d4d9830fc13d6035285da6160e1334ff34d411a1921e08bef5"
+    },
+    {
+      "artifact": "osrs-240-desktop",
+      "entry": "net/rsprot/protocol/game/outgoing/codec/playerinfo/extendedinfo/PlayerResetEncoder.kt",
+      "sha256": "fe68e85f6b73a871e79258d243135958e567c2d9641c2eb645f45f31db2912f8"
+    },
+    {
+      "artifact": "osrs-240-desktop",
+      "entry": "net/rsprot/protocol/game/outgoing/codec/playerinfo/extendedinfo/writer/PlayerAvatarExtendedInfoDesktopWriter.kt",
+      "sha256": "a7bf0bc728e8faa3a46eb7673ca5ba21298609d317ff0d944195f93b0c074cc8"
+    },
+    {
+      "artifact": "osrs-240-desktop",
+      "entry": "net/rsprot/protocol/game/outgoing/prot/GameServerProt.kt",
+      "sha256": "cebd96bdd3c1b11de02efed40591e6491eded77706bf15360817951a4b465e28"
+    },
+    {
+      "artifact": "osrs-240-desktop",
+      "entry": "net/rsprot/protocol/game/outgoing/prot/GameServerProtId.kt",
+      "sha256": "b2f57b28fcd3c05bd76e6b6361c3ba7b20b8a5260d71a7137ead9127946b5d49"
+    },
+    {
+      "artifact": "osrs-240-internal",
+      "entry": "net/rsprot/protocol/internal/game/outgoing/info/playerinfo/extendedinfo/PlayerReset.kt",
+      "sha256": "1bcb4de66495cc92eb1b6f863aa3a4ee934a2f31d2d2ea49bf5a5b4179227b73"
+    },
+    {
+      "artifact": "osrs-240-internal",
+      "entry": "net/rsprot/protocol/internal/game/outgoing/info/shared/extendedinfo/Freeze.kt",
+      "sha256": "b9da376ee87f0d0ada0bc39c523a532176a9ceb4ace82decfef8a378039dd6ed"
+    }
+  ],
+  "reviewed_files": [
+    {
+      "path": "crates/protocol/src/openrune_240/game.rs",
+      "sha256": "c60af40cb30c24a8d7616d969d2157822732b355bd42e6d98f4b336fa0fdfedc"
+    },
+    {
+      "path": "crates/protocol/src/openrune_240/actions.rs",
+      "sha256": "eacbeb9cf5cc4acc814debfc8cfadab576f4790a079cf3af21bafddc61e84b5a"
+    },
+    {
+      "path": "crates/protocol/src/openrune_240/minimap.rs",
+      "sha256": "7ae92f1f4f04aa2f2c4d24b7b7a0e173b70bd195559caf6252a297ebc0c117b6"
+    },
+    {
+      "path": "crates/protocol/src/openrune_240/npc_extended.rs",
+      "sha256": "ca5fb7c03a80400aab6ae0dae57a2bcba99b186953040172ae8a8a490f71aef7"
+    },
+    {
+      "path": "crates/protocol/src/openrune_240/player_extended.rs",
+      "sha256": "8aaefb9f578295f54861b1473af0ee75da06e4d0c8b5647f48ff76991c4021c1"
+    },
+    {
+      "path": "crates/protocol/src/openrune_240/zone.rs",
+      "sha256": "2a35474769dbd1e4ffcc15eca91383e277c76670a6ae78032a0db48f9c65452a"
+    },
+    {
+      "path": "crates/protocol/src/openrune_240/lengths.rs",
+      "sha256": "8d975badfdb592a8f60aa63268310346555bfe858171d812926faa4c239fa1c4"
+    },
+    {
+      "path": "crates/protocol/src/openrune_240/player_appearance.rs",
+      "sha256": "ac03a3ff61051e8b0b8f661e4261d34bd683cb4bd309ae35d00b17cf203ff380"
+    },
+    {
+      "path": "crates/application/src/connection.rs",
+      "sha256": "66f189aa34000d47160d2d067b86ac5d54addfceb679d2cc912f5af04b0d8eb4"
+    },
+    {
+      "path": "crates/application/src/scripts/mod.rs",
+      "sha256": "bd913655687ae9499a82e321bbb1b6a62efc8df6425a655873c5ef544a2542bf"
+    },
+    {
+      "path": "crates/application/src/scripts/queries.rs",
+      "sha256": "af52229249d6247291b37f650b7f8a25f22e4a9f4eb93c21d531ae780c4711c2"
+    },
+    {
+      "path": "crates/application/src/scripts/database.rs",
+      "sha256": "95a99de62eb4708849d36d85fb0474970b944d4a128ab8cb1144059533cf19d5"
+    },
+    {
+      "path": "crates/application/src/scripts/worldmap.rs",
+      "sha256": "52b63c80aeb37d594c31c0c659c44e42497d86e23a83ecd9b9ca0bd19ab3a6cc"
+    },
+    {
+      "path": "crates/game-state/src/entities.rs",
+      "sha256": "ecaf4c1f48176d96589ce45232475bacbf3eaacf0a36def9c709bc0192354ed8"
+    },
+    {
+      "path": "crates/game-state/src/actor_turning.rs",
+      "sha256": "07457573b5eb271d35fd9f8cc97af944a8aa4f44e7a1431f9a3591d95d01eab0"
+    },
+    {
+      "path": "crates/game-state/src/scenery.rs",
+      "sha256": "79f4a05cae73bea7ea8fd6c0f40eb586f052b89e18d21ebb17eeb1f716dd5a5b"
+    },
+    {
+      "path": "crates/model/src/entity.rs",
+      "sha256": "f3f4410318985a9993238b9b4851a8de2563754271cfdfed6af3bf61525310b9"
+    },
+    {
+      "path": "crates/model/src/widget.rs",
+      "sha256": "f72f7e09eb1b88be0696c8d7d7864652e31847c81d3a69f3fcc29d7b780aea0e"
+    },
+    {
+      "path": "crates/game-ui/src/widget_visuals.rs",
+      "sha256": "9addf451518c02e6e8580244ceeff0f112f1bcce5949409e90d12d84bc1d40f7"
+    },
+    {
+      "path": "crates/scene/src/minimap.rs",
+      "sha256": "90e469248dbe540f0fc0ee7c0227f86d323fea3b2f1b20b56b276417df8683cc"
+    },
+    {
+      "path": "crates/scene/src/world_map.rs",
+      "sha256": "a6d1f78eab4068a6633600cb3350fd573ff8c55a13361fe21c9eaa8e2c1286c4"
+    },
+    {
+      "path": "crates/cache/src/world.rs",
+      "sha256": "e134e8ac72bc359ab59f89f2e6965e4c6e20353a4fa70576d3fa83a939f02245"
+    },
+    {
+      "path": "crates/cache/src/osrs240/world_map.rs",
+      "sha256": "c52a2ed8d64668ad653b2a47bd27b54eabec1b5c687790286686df1a02a814b4"
+    },
+    {
+      "path": "apps/native/src/main.rs",
+      "sha256": "6ef8e5248c0054741c32e7e1b2e59eb3727ebb7ac6cbc305602439c6a4be1297"
+    },
+    {
+      "path": "apps/native/src/widgets.rs",
+      "sha256": "b968d591d04a7346fe4f73ca20701af9309d892404fddf85c487789b1e35403b"
+    },
+    {
+      "path": "apps/native/src/interaction.rs",
+      "sha256": "7588c536697fa8060f25374a178f2ab03905a2938941b676dfc7308a762ddbed"
+    },
+    {
+      "path": "apps/native/src/network.rs",
+      "sha256": "bad0e9d9447b943b0e6c4bdc6b1e117163dabac77c2fd67aa53d1254ccf78a36"
+    },
+    {
+      "path": "apps/web/src/lib.rs",
+      "sha256": "cfea015d76164266511e0a8ab02ae5aa4275fc4b9c03dbab0d532271d98259c4"
+    },
+    {
+      "path": "crates/audio/src/lib.rs",
+      "sha256": "2ea875900ecc428b1f7d42c3043b96f6f70c3a4cab1380076d19071ee337e231"
+    },
+    {
+      "path": "docs/adr/ADR-0007-on-demand-gpu-shell.md",
+      "sha256": "c36158fab6d5e42ce6d5c15a8fd67c1876c36666cd889b7dc6fb2df75eb6a9c0"
+    },
+    {
+      "path": "docs/reference/client-240/inputs/client-packets.tsv",
+      "sha256": "2ba5e2855fca01ffa3ce62a63ee41ee38b407c6572a65ec1532a749412a2ca57"
+    },
+    {
+      "path": "docs/reference/client-240/inputs/server-packets.tsv",
+      "sha256": "02964eb784f4a18ba070d41f5ef158aad260e3db0b0c2ba02038817b1ca2db3b"
+    },
+    {
+      "path": "references/rl-suite-240/sources-semantic/classDF.java",
+      "sha256": "b7af3a17c6a25711d1cc600bc7cae03ab0e34982180c3c055fec246bc45a368c"
+    },
+    {
+      "path": "references/rl-suite-240/sources-semantic/classAS.java",
+      "sha256": "818472abec022e35e8b1dd463f1240a845e4005ca6eb28447b3a60e25340cde8"
+    },
+    {
+      "path": "references/rl-suite-240/sources-semantic/classKN.java",
+      "sha256": "6fa5c6b80e286eef23eecd6546e84c43d3bf0b37c16e55d846341e90aa36eedb"
+    },
+    {
+      "path": "references/rl-suite-240/sources-semantic/Friend.java",
+      "sha256": "83d5f7bfc273583b890c071829a663ef6f57c3ed4c5697dc159a4312c59fd52a"
+    },
+    {
+      "path": "references/rl-suite-240/sources-semantic/classBB.java",
+      "sha256": "9b299f51dce52286186c8d8ce9d5fc5bd5c48d73abf448cd1a24490dee75409a"
+    }
+  ],
+  "packet_coverage_counts": {
+    "missing-encoder": 98,
+    "encoded-subset": 19,
+    "framed-unhandled": 111,
+    "semantic-subset": 31,
+    "rejected": 1,
+    "partial": 6,
+    "codec-context": 2,
+    "unassigned": 1
+  },
+  "validation": "See REVISION-240-delivery.md for documentation checks. Cargo/live/Java/GPU/visual checks not run by this review."
+}

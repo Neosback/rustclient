@@ -1,5 +1,10 @@
 # Movement, path scheduling and facing in revision 240
 
+<!-- authority-notice -->
+> Domain source/ownership research; implementation statements are bounded to the dates
+> recorded below. The [current matrix](PORT-MATRIX.md) and [audit](CURRENT-AUDIT.md)
+> supersede older gap/status lists; preserve exact source details and historical evidence.
+
 Status: exact core source flow identified; smooth-turn advancement and some auxiliary
 facing subfields still need a final method trace before implementation.
 

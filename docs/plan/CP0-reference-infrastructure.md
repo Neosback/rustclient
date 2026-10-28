@@ -1,5 +1,10 @@
 # CP0 Reference Infrastructure
 
+<!-- authority-notice -->
+> Historical checkpoint and evidence record. Implementation status, “next” tasks, counts
+> and validation below apply to the recorded snapshot. Current work follows
+> [PORTING-ROADMAP.md](PORTING-ROADMAP.md) and the [domain matrix](../reference/rs240-port/PORT-MATRIX.md).
+
 ## Purpose
 
 Establish reproducible, read-only reference evidence before CP1 semantic-model implementation begins.

@@ -1,6 +1,10 @@
 # Revision 240 port research corpus
 
-Status: active reverse-engineering index for the OpenRune 240.2 port.
+Status: active source-to-owner index for the OpenRune 240.2 port.
+
+Contract: [SPEC-0019](../../specs/SPEC-0019-port-parity.md). Execution order:
+[PORTING-ROADMAP.md](../../plan/PORTING-ROADMAP.md). This corpus retains domain
+research and dated evidence; current status belongs to the matrix/audit.
 
 This directory is the navigation layer between the pinned revision-240 evidence and
 RustClient implementation. It does not replace the decompiled sources, existing
@@ -81,6 +85,18 @@ or validated plugin commands rather than injected mutable fields.
 [The rebuilt domain matrix](PORT-MATRIX.md) and [current audit](CURRENT-AUDIT.md) distinguish
 implementation from test presence and live/visual acceptance, with a hash-bound TypeScript
 reference guide. The editable matrix is TSV, validated by `tools/port_matrix.py --check`.
+[PACKET-COVERAGE.tsv](PACKET-COVERAGE.tsv) covers all 117 client and 152 server
+ID slots from the pinned deob tables (including unknown/sentinel slots). Names
+and lengths declared by selected RSProt were cross-checked. Status is a manual
+dispatch/encode audit at the [review baseline](REVIEW-BASELINE.json), not complete
+wire/state/consumer behavior. Update it when dispatch changes; the checker
+validates identities/paths/obligations, not semantic correctness.
+
+The matrix uses `not-implemented`/`incorrect` for domain implementation state.
+The method-ledger research vocabulary below is separate and must not be treated
+as the same scale. Packet status vocabulary is literal: `encoded-subset`,
+`missing-encoder`, `semantic-subset`, `partial`, `codec-context`,
+`framed-unhandled`, `rejected`, `unassigned`. None implies live acceptance.
 
 ## Corpus files
 
@@ -95,7 +111,8 @@ reference guide. The editable matrix is TSV, validated by `tools/port_matrix.py 
 - [`../client-240/`](../client-240/README.md): evidence-backed readable names for the stable symbols
   used here, with per-cluster write-ups. The ledger below stays keyed by the stable symbol.
 
-Existing deep audits remain canonical for their exact checkpoints. In particular:
+Existing deep audits remain evidence for their exact checkpoints, not competing
+current gap lists. In particular:
 
 - `docs/plan/PLAYER-UPDATING-240.md`
 - `docs/plan/NPC-ANIMATION-240.md`

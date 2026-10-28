@@ -1,5 +1,10 @@
 # CP3C: Typed Semantic Operation Boundary
 
+<!-- authority-notice -->
+> Historical checkpoint and evidence record. Implementation status, “next” tasks, counts
+> and validation below apply to the recorded snapshot. Current work follows
+> [PORTING-ROADMAP.md](PORTING-ROADMAP.md) and the [domain matrix](../reference/rs240-port/PORT-MATRIX.md).
+
 ## Goal
 
 Introduce the smallest source-neutral semantic operation application boundary for the authoritative `GameState` without starting event, delta, batching, replay, protocol, or domain-state work.

@@ -1,5 +1,10 @@
 # Cache-backed spawn scene checkpoint
 
+<!-- authority-notice -->
+> Historical checkpoint and evidence record. Implementation status, “next” tasks, counts
+> and validation below apply to the recorded snapshot. Current work follows
+> [PORTING-ROADMAP.md](PORTING-ROADMAP.md) and the [domain matrix](../reference/rs240-port/PORT-MATRIX.md).
+
 > **Historical.** This records the SPEC-0015 slice as delivered. The later working tree has since added reference lighting with normal merging, UV/texture arrays, scrolling textures, a gameplay camera, entities and a minimap (SPEC-0016/0017); the flat-shading and average-colour limits below no longer describe the code. Test counts below are as of this slice.
 
 Delivered: authenticated OpenRune 240.2 login opens a static cached Lumbridge scene on desktop. This is the SPEC-0015 slice; general entities, movement, material parity and subsequent/instanced rebuilds remain separate work.

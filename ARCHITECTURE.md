@@ -9,13 +9,18 @@ RustClient is an OSRS-style client platform for private servers. It is not desig
 ## Initial delivery target
 
 OpenRune 240.2 is the first concrete server target. The product aims for
-RuneLite-class client features with simpler plugin authoring and the same core
+nearly 1:1 OSRS 240 behavior and applicable pinned RuneLite feature effects,
+with simpler plugin authoring and the same core
 on desktop and browser Wasm. RuneLite/deob 240 and both directions of rsprox
 packet codecs are behavioral evidence; OpenRune's selected rsprot 240 sources
 and cache resolve revision differences. OpenRune FileStore supplies cache decoder
 research; RustOSRS supplies additional scene/GPU evidence. See
 [the source map](docs/reference/INDEX.md) and
-[delivery status](docs/plan/REVISION-240-delivery.md).
+[delivery status](docs/plan/REVISION-240-delivery.md). The
+[parity contract](docs/specs/SPEC-0019-port-parity.md) requires observable behavior
+to match; Rust ownership/API/performance improvements preserve those contracts
+unless an explicit evidenced deviation is accepted.
+[The roadmap](docs/plan/PORTING-ROADMAP.md) is the current execution order.
 
 ## Core rule
 

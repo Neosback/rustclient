@@ -1,5 +1,10 @@
 # Sidebar visibility and port audit checkpoint
 
+<!-- authority-notice -->
+> Historical checkpoint and evidence record. Implementation status, “next” tasks, counts
+> and validation below apply to the recorded snapshot. Current work follows
+> [PORTING-ROADMAP.md](PORTING-ROADMAP.md) and the [domain matrix](../reference/rs240-port/PORT-MATRIX.md).
+
 Scope: latest requested closed-sidebar behavior and a current source/implementation audit. The full
 GPU/core delivery remains in progress; this checkpoint does not complete all behavior in those plugins.
 
@@ -11,7 +16,7 @@ GPU/core delivery remains in progress; this checkpoint does not complete all beh
 - The retained component removes both rail and panel when closed. The 1x/2x native DOM contract covers
   full-height 242+36 layout, close/reopen and hidden/unchanged zero-work behavior. The instrumentation
   now counts both layout passes when embedded resources require a second resolve.
-- The new 42-domain port matrix has canonical TSV input, generated Markdown, checked owner/evidence
+- The new domain port matrix has canonical TSV input, generated Markdown, checked owner/evidence
   paths, explicit remaining obligations, and no inferred completion percentage. The current audit
   records actor/animation/menu/chat/world-map/world-view/browser gaps and corrects stale completion wording.
 - Reviewed 13 supplied TypeScript files are hash-bound. The reference-root check is optional and read-only;

@@ -1,6 +1,6 @@
 # First-party plugin ports: source ledger
 
-One section per ported `RuneLite` plugin. Each row maps a source file or behavior to its Rust owner and states
+One section per inspected `RuneLite` plugin subset. Each row maps a source file or behavior to its Rust owner and states
 **implemented** and **verified** separately: *implemented* means code exists and is reachable in the native
 client; *verified* names the test or measured comparison that backs it. "Unit" means an automated Rust test;
 "live" means a comparison with the running reference client, which has not been run for any row below unless
@@ -11,21 +11,27 @@ Platform context: plugins run on plugin API 0.2 (ADR-0006) in `crates/first-part
 The settings sidebar lists each plugin with its own switch; the switch is the schema's `enabled` setting
 (`PluginDescriptor.enabledByDefault`).
 
+Current contract: [SPEC-0019](../../specs/SPEC-0019-port-parity.md).
+The table below summarizes subsets with open obligations; “implemented” in an
+individual behavior row never completes the entire plugin. The active roadmap
+and domain matrix supersede stale backend/frame-limit statements in older rows;
+exact evidence below remains bounded to its recorded implementation.
+
 ## Port status
 
 | Plugin | Status | What is missing |
 | --- | --- | --- |
-| roofremoval, animsmoothing, stretchedmode | ported | see each section |
-| entityhider | ported | friend/clan/party/ignore lists, pets, dead NPCs, boats, projectiles |
-| fps | ported | frame limits above 50 have no effect |
-| statusbars | ported | restoration bars; hide-after-combat is dormant without the interact target |
-| idlenotifier | ported | interaction idle and the combat branch are dormant without interact target, spot animations and hitsplats |
-| camera | partly | zoom limits and scroll zoom, shake, mouse remaps |
-| npchighlight | partly | menu tagging, outline, dead/pet filters, respawn timer, minimap names |
-| playerindicators | partly | relationship lists (party, friends, chat, clan, team), rank icons, coloured menu, minimap names |
-| interfacestyles | partly | widget overrides (2005 side stones), HD health bars, menu options, cross sprites, always-stack |
-| menuentryswapper | not ported | the right-click menu is not exposed to plugins (entries, `PostMenuSort`, edits) |
-| devtools | not ported | widget, variable and script views are not exposed to plugins |
+| roofremoval, animsmoothing, stretchedmode | partial | see each section |
+| entityhider | partial | friend/clan/party/ignore lists, pets, dead NPCs, boats, projectiles |
+| fps | partial | frame limits above 50 have no effect |
+| statusbars | partial | restoration bars; hide-after-combat is dormant without the interact target |
+| idlenotifier | partial | interaction idle and the combat branch are dormant without interact target, spot animations and hitsplats |
+| camera | partial | zoom limits and scroll zoom, shake, mouse remaps |
+| npchighlight | partial | menu tagging, outline, dead/pet filters, respawn timer, minimap names |
+| playerindicators | partial | relationship lists (party, friends, chat, clan, team), rank icons, coloured menu, minimap names |
+| interfacestyles | partial | widget overrides (2005 side stones), HD health bars, menu options, cross sprites, always-stack |
+| menuentryswapper | not-implemented | the right-click menu is not exposed to plugins (entries, `PostMenuSort`, edits) |
+| devtools | not-implemented | widget, variable and script views are not exposed to plugins |
 
 No row below was compared against the live reference client; "verified" names automated tests only.
 

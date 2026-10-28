@@ -228,6 +228,178 @@
         {
           "path": "sources-semantic/classIT.java",
           "sha256": "b372097235a26dfd6723b8f79e741476829bb34e8cdadbd2f13c3f542f686785"
+        },
+        {
+          "path": "sources-semantic/ActorSpotAnim.java",
+          "sha256": "36421e7ab40c921ea4c5923aea5b53e58d7ab75bb341a1bf25c9a6597acdc51f"
+        },
+        {
+          "path": "sources-semantic/AmbientSoundEffect.java",
+          "sha256": "a95213bee4f8d22e145fb37152229a30e5509d4fcbfcafdb455ce298e38694b5"
+        },
+        {
+          "path": "sources-semantic/ChatLineBuffer.java",
+          "sha256": "c9d35b3a0e4990191f6c8f8e8c31494f46d7df1b5fe617cbafaccb7194a6cb15"
+        },
+        {
+          "path": "sources-semantic/ClanChannel.java",
+          "sha256": "d6507672c64612b8f9d5e742b604484612162651f3c8b99af6dfc1759c2d625d"
+        },
+        {
+          "path": "sources-semantic/ClanSettings.java",
+          "sha256": "b022fd42dc3885f92f34c661bf8a3a991521dd624022b72d00603e08515e06db"
+        },
+        {
+          "path": "sources-semantic/ClientPreferences.java",
+          "sha256": "9740f003d33e2c053a1d3d8cf421b30e9b3aeaf4bfaf76bc3d1e3e9123f8a66f"
+        },
+        {
+          "path": "sources-semantic/EnumComposition.java",
+          "sha256": "fc1dd4edd900110b8d91f288abab58dfdcbb1e75a93ba93db0d0d1efc6060480"
+        },
+        {
+          "path": "sources-semantic/FloatProjection.java",
+          "sha256": "7c5f73c5d88a13d43d916b369dcb0b09ae27eb6791bf8066fad082511be3da6e"
+        },
+        {
+          "path": "sources-semantic/Friend.java",
+          "sha256": "83d5f7bfc273583b890c071829a663ef6f57c3ed4c5697dc159a4312c59fd52a"
+        },
+        {
+          "path": "sources-semantic/FriendContainer.java",
+          "sha256": "606aef04f5088e25ff6b152f49f61d51e36b7425a549b0e843fd088cf96c5422"
+        },
+        {
+          "path": "sources-semantic/FriendsChatManager.java",
+          "sha256": "4e16f06616d72c28243ac15bd5b95b4637f5fe843836ad48ec6e98a2ddc5f963"
+        },
+        {
+          "path": "sources-semantic/GraphicsObject.java",
+          "sha256": "efccd181d2eadcffe23f6b05fe151dbc6811d206a8a4385a9198f42d62fc4b40"
+        },
+        {
+          "path": "sources-semantic/ItemContainer.java",
+          "sha256": "fd6d60fe5273d3473edcf5ce87970c0acca8e8f2ffbe31aadb126afd5dc09a6c"
+        },
+        {
+          "path": "sources-semantic/MessageNode.java",
+          "sha256": "3ccede2ec30eb8716df8b882c44b094d33c30487b3964e61665563cad86deb1a"
+        },
+        {
+          "path": "sources-semantic/PacketBuffer.java",
+          "sha256": "ceb79ea0f190d565840d0ef67e87e9bc2d4727994816f750837830436cc69ab6"
+        },
+        {
+          "path": "sources-semantic/PlayerComposition.java",
+          "sha256": "95b298e9b28072a1ac9aff3b8b6d8d2b9996d00f02d78e6ddedb526bc7820729"
+        },
+        {
+          "path": "sources-semantic/Projectile.java",
+          "sha256": "d268c395c4d61f5b27598ff66b68c6b7ffd4b9e488187f03e4ab2cbfdfb9849c"
+        },
+        {
+          "path": "sources-semantic/Projection.java",
+          "sha256": "99eeedfcf7ed72f2c42d94a76a0dc20062629b12be059cdb26a5877900b8eb2d"
+        },
+        {
+          "path": "sources-semantic/RenderOverview.java",
+          "sha256": "c6ce2e2b86db630d2cbb103ebc832646e3b61af0a9ca6b1fd7e744f8bb93e288"
+        },
+        {
+          "path": "sources-semantic/ScriptEventBuilder.java",
+          "sha256": "717a75611adbdc99035a237a0d6420176062ed1c5babbdf8755da14b91062803"
+        },
+        {
+          "path": "sources-semantic/StructComposition.java",
+          "sha256": "3ff3db5e0f8e792d7b31828313d191c6193c9e9b0553eca52a67ceba1d0b9f77"
+        },
+        {
+          "path": "sources-semantic/Tile.java",
+          "sha256": "7e3fd9547c31ff51ed595d8fed57db37f3107d3b1d64721478a058eb79b73546"
+        },
+        {
+          "path": "sources-semantic/VarbitComposition.java",
+          "sha256": "3bcd689431f6f675e9b08948feb8a7f9f75b6bec588c3d4fdcb636ce8c3ecd2d"
+        },
+        {
+          "path": "sources-semantic/WorldMapRegion.java",
+          "sha256": "fae2005fdecc5e084d66a1958ffd0db6d94e200c38585bb9275376f2ddfa5740"
+        },
+        {
+          "path": "sources-semantic/WorldView.java",
+          "sha256": "7d115caadab6892799d2d6403684708212b29940299ac29e096ff3bce1485726"
+        },
+        {
+          "path": "sources-semantic/classAAM.java",
+          "sha256": "2c46ce0bc3660c2c2d973180b0b3d20caf3dcaa9a0f5499dab8bc620c1735c12"
+        },
+        {
+          "path": "sources-semantic/classAAV.java",
+          "sha256": "898b36c7b1314fe949b034ca68969a1e4d805ad19769deb05d1e98c8ff9cfd6a"
+        },
+        {
+          "path": "sources-semantic/classBT.java",
+          "sha256": "93ef592083f62a2b4ddc1f143ea8ddcbe6c69a2d60a0882e2249089dc7a74537"
+        },
+        {
+          "path": "sources-semantic/classBY.java",
+          "sha256": "0a893ce85c9b091a775b3009226327a3bdc420dba16fefa6e3a1794692870b05"
+        },
+        {
+          "path": "sources-semantic/classBZ.java",
+          "sha256": "d763165216dc50f000b86ef0a6be13467e5f88516f0c6374f5ecc362bc28e558"
+        },
+        {
+          "path": "sources-semantic/classCO.java",
+          "sha256": "eea22d96e104ee9104e3b298f4afea56296df2a29474532c3551f04dfb756f45"
+        },
+        {
+          "path": "sources-semantic/classCX.java",
+          "sha256": "70d153d2ffea770c28607200c0c2d183214891eefbb8af26705e6b5ec84a1a45"
+        },
+        {
+          "path": "sources-semantic/classEB.java",
+          "sha256": "904701df5ba4b95adba3b229b8ad682930d4e32c72756a3851ede03a0713860e"
+        },
+        {
+          "path": "sources-semantic/classFL.java",
+          "sha256": "d15ef1ed440897a77a5cce843cc95b340b2e74e0c7dded1516244b529162a730"
+        },
+        {
+          "path": "sources-semantic/classIW.java",
+          "sha256": "e87991f5957d42f44e8d3b81312f4bf72f462941537f89a73a107ba8c864dd8b"
+        },
+        {
+          "path": "sources-semantic/classJS.java",
+          "sha256": "1af40ee5c7bf06f2b93114fda6f1ad59ef9bb97d1a8988b430b8d1d482666010"
+        },
+        {
+          "path": "sources-semantic/classLJ.java",
+          "sha256": "f9caae0217133caaf004e6c56b8cd04ca992328cd9e52888f7f3cc2720bb058b"
+        },
+        {
+          "path": "sources-semantic/classLU.java",
+          "sha256": "18abe428f98df90ad4fb13163b3e615b527343f3e6503d9c8c1a7f3e7fbbac31"
+        },
+        {
+          "path": "sources-semantic/classOF.java",
+          "sha256": "e107926d0be7ae19b095674ed23578f6779727aa45b5148ec30b5f7142a0449a"
+        },
+        {
+          "path": "sources-semantic/classOR.java",
+          "sha256": "b6cdaeffe2aaa8d7e77871c83d9547941c8b33d7763f58ddf85281e31f0c08fd"
+        },
+        {
+          "path": "sources-semantic/classPW.java",
+          "sha256": "bbc8713450592026fea2c9de9ba8926c1413a1839546e9d1ee561f6ae93f2ea1"
+        },
+        {
+          "path": "sources-semantic/classQP.java",
+          "sha256": "a1dd92f91c1236847ca051f64d140a90fec2973e7b9326b3f937fd7158a1816a"
+        },
+        {
+          "path": "sources-semantic/classVX.java",
+          "sha256": "2e7bf52d505f0c474fd1eb7aebf08ea7a7f3257ef701f016431ebf2df8c7808d"
         }
       ]
     },
@@ -446,6 +618,16 @@
       "artifact": "osrs-240-shared",
       "version": "1.0.0-ALPHA-20260825",
       "sha256": "f2a33f33a29b76ba1bb26e2c2f263c5ed28634aaf41c5c20953b64d9e5c29ffc"
+    },
+    {
+      "artifact": "osrs-240-desktop",
+      "version": "1.0.0-ALPHA-20260825",
+      "sha256": "e68db452c6de344e0520d349ae69a2b238ffef620adb462f56b400e81b241740"
+    },
+    {
+      "artifact": "osrs-240-common",
+      "version": "1.0.0-ALPHA-20260825",
+      "sha256": "9a35ce8e926cd40b00b0aa52effeb90560dbefbb301a5f69c5b9879247904633"
     }
   ]
 }

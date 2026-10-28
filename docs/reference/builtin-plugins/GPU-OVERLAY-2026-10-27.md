@@ -1,5 +1,10 @@
 # Full-viewport widget alpha overlay — 2026-10-27
 
+<!-- authority-notice -->
+> Historical continuation with bounded source/runtime evidence. Use the
+> [current audit](../rs240-port/CURRENT-AUDIT.md), [GPU ledger](GPU-AUDIT.md) and
+> [roadmap](../../plan/PORTING-ROADMAP.md) for present status and ordering.
+
 The classic GPU's `alphaOverlay` now has a game-UI producer and shared native/browser consumer.
 This implements the scoped overlay obligation; source/runtime visual acceptance remains open.
 See [the GPU ledger](gpu-audit.json) for the ten remaining obligations and

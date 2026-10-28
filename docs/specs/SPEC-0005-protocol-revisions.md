@@ -116,7 +116,9 @@ Private servers may expose negotiated extensions. Extension IDs/namespaces must 
 
 Use [the canonical reference map](../reference/INDEX.md) for exact source locations.
 The direct rsprox snapshot includes both client-to-server and server-to-client
-packet tables/codecs through OSRS 235. RuneLite's supplied deob is also 235.
+OSRS-240 tables/codecs. Exact 240 semantic deob sources are available at
+`references/rl-suite-240/sources-semantic/`; the readable 235 tree is supporting
+evidence. Separate RuneLite injection from stock client behavior.
 Cross-check every affected 240 ID/length/transform/mask against the actual OpenRune
 server and its selected rsprot 240 source artifacts; a nearby revision must never
 be registered as supported on resemblance alone. All sources remain read-only

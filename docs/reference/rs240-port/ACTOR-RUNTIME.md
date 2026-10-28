@@ -1,5 +1,10 @@
 # Actor runtime: revision 240 source map
 
+<!-- authority-notice -->
+> Domain source/ownership research; implementation statements are bounded to the dates
+> recorded below. The [current matrix](PORT-MATRIX.md) and [audit](CURRENT-AUDIT.md)
+> supersede older gap/status lists; preserve exact source details and historical evidence.
+
 Status: active navigation document.
 
 This document connects the already-audited revision-240 player/NPC wire behavior to the remaining shared actor runtime work. It does not duplicate the exact transform tables in `docs/plan/PLAYER-UPDATING-240.md` or `docs/plan/NPC-ANIMATION-240.md`.

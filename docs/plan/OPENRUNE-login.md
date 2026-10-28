@@ -1,5 +1,10 @@
 # OpenRune 240.2 authenticated bootstrap checkpoint
 
+<!-- authority-notice -->
+> Historical checkpoint and evidence record. Implementation status, “next” tasks, counts
+> and validation below apply to the recorded snapshot. Current work follows
+> [PORTING-ROADMAP.md](PORTING-ROADMAP.md) and the [domain matrix](../reference/rs240-port/PORT-MATRIX.md).
+
 Validated 2026-10-21 on macOS against the user-started development server at
 127.0.0.1:43594. Working branch `Neosback/openrune-240-login`, base commit
 `2a164db5a09aa3d406916f0e67bedfc012209041`. Implementation remains in the working tree alongside the prior title

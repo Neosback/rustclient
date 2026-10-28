@@ -39,7 +39,9 @@ Every substantive spec should contain: purpose, scope, terminology, invariants, 
 - `SPEC-0013`: offline cache-backed desktop title milestone
 - `SPEC-0014`: OpenRune 240.2 authenticated desktop bootstrap
 
-For execution-sized tasks and dependency ordering, see `docs/plan/MASTER_PLAN.md`.
+For current execution order, see [PORTING-ROADMAP.md](../plan/PORTING-ROADMAP.md).
+[MASTER_PLAN.md](../plan/MASTER_PLAN.md) retains the foundation checkpoint decomposition.
+[The documentation index](../README.md) separates normative/current/history owners.
 
 - [SPEC-0015: Cache-backed spawn scene preview](SPEC-0015-spawn-scene.md) — static terrain/location geometry after authenticated placement.
 
@@ -49,3 +51,5 @@ For execution-sized tasks and dependency ordering, see `docs/plan/MASTER_PLAN.md
 
 Current reference/revision decisions: [revision-240 integration guide](../reference/REVISION-240.md).
 Current delivery gaps: [revision-240 delivery plan](../plan/REVISION-240-delivery.md).
+
+- [SPEC-0019: OSRS 240 / RuneLite behavioral parity](SPEC-0019-port-parity.md) — nearly 1:1 observable behavior, Rust improvements, differences and evidence gates.

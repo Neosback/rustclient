@@ -1,5 +1,10 @@
 # Scene depth, priority and wall decorations (revision 240)
 
+<!-- authority-notice -->
+> Historical checkpoint and evidence record. Implementation status, “next” tasks, counts
+> and validation below apply to the recorded snapshot. Current work follows
+> [PORTING-ROADMAP.md](PORTING-ROADMAP.md) and the [domain matrix](../reference/rs240-port/PORT-MATRIX.md).
+
 Owner: `crates/scene` (placement, `decorations.rs`) and `crates/renderer` (depth state, shaders).
 Evidence source for the placement rules: RustOSRS (`/Users/tylercovalt/Documents/RustOSRS`,
 `docs/verification/RENDER-REVIEW-2026-10-10.md`), which diffed its port against the pinned deob client

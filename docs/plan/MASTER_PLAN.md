@@ -1,13 +1,17 @@
 # RustClient Master Implementation Plan
 
-This plan expands `SPEC-0010` into execution-sized work packages. Specs remain the normative behavioral source. This file defines sequencing, expected artifacts, and checkpoint evidence.
+The original CP0–CP16 decomposition below is retained as a foundation/checkpoint
+index. Specs remain normative. Current execution order is
+[PORTING-ROADMAP.md](PORTING-ROADMAP.md), under the
+[SPEC-0019 parity contract](../specs/SPEC-0019-port-parity.md). Historical “next”
+instructions and completed foundation slices do not close full-client parity.
 
 ## Current revision-240 execution status
 
-[Revision-240 delivery](REVISION-240-delivery.md) records the consolidated source
-map, actual implementation gaps, branch decisions and next vertical slices.
-Follow it alongside the normative specs; the historic checkpoint list below is
-not a claim that browser gameplay, plugins or rendering parity are delivered.
+[Revision-240 delivery](REVISION-240-delivery.md) is the compact status/navigation
+page; [the matrix](../reference/rs240-port/PORT-MATRIX.md) owns domain gaps and
+[the current audit](../reference/rs240-port/CURRENT-AUDIT.md) owns review findings.
+This foundation index is not a second current backlog.
 
 ## Offline title milestone
 

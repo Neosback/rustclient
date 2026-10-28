@@ -1,5 +1,10 @@
 # CP2B: Shared Renderer Core
 
+<!-- authority-notice -->
+> Historical checkpoint and evidence record. Implementation status, “next” tasks, counts
+> and validation below apply to the recorded snapshot. Current work follows
+> [PORTING-ROADMAP.md](PORTING-ROADMAP.md) and the [domain matrix](../reference/rs240-port/PORT-MATRIX.md).
+
 ## Goal
 
 Add the platform-neutral `wgpu` renderer core without wiring any native window or browser canvas yet.

@@ -1,20 +1,23 @@
 # Revision-240 integration guide
 
-Target: an OSRS/RuneLite-style Rust client for OpenRune 240.2, with one shared
+Target: nearly 1:1 OSRS 240 / applicable pinned RuneLite behavior under
+[SPEC-0019](../specs/SPEC-0019-port-parity.md), initially OpenRune 240.2, with one shared
 semantic implementation for downloadable desktop and browser Wasm. A simpler,
 more capable plugin authoring experience is a product goal; plugin runtimes and
 browser gameplay are not implemented merely because their crates exist.
 
 ## Evidence and revision changes
 
-Use RuneLite's deobfuscated `runescape-client/src/main/java` as the client-behavior
-reference. Use RustOSRS to understand its Rust realization and GPU conventions.
+Use `references/rl-suite-240/sources-semantic/` as primary 240 client control-flow
+evidence. Separate stock behavior from injection; use the original jar/bytecode
+when decompilation is ambiguous. Readable 235 Java is supporting navigation, not
+a replacement for exact 240 checks. Use RustOSRS for Rust realization/GPU research.
 For a disagreement, identify the client rule and the actual 240 input before
 changing RustClient. RustOSRS HD/editor behavior is not the classic parity target.
 
 Use **both** rsprox directions:
 
-- `protocol/osrs-235/src/main/kotlin/net/rsprox/protocol/v235/game/incoming/decoder/`
+- `protocol/osrs-240/src/main/kotlin/net/rsprox/protocol/v240/game/incoming/decoder/`
   contains the client packet IDs, lengths and decoder field reads (client sends).
 - The adjacent `game/outgoing/decoder/` contains server packet IDs, lengths and
   payload interpretation (client receives).
@@ -33,8 +36,9 @@ OpenRune's `gradle/libs.versions.toml` selects rsprot
 `1.0.0-ALPHA-20260825`. Another local version (`20260912`) is also cached; its
 presence must not silently change our profile. Source JARs are under
 `~/.gradle/caches/modules-2/files-2.1/net.rsprot/osrs-240-*/<version>/`.
-The source manifest records hashes for the selected api/model/internal/shared
-artifacts. Inspect archives read-only or extract to `target/reference-research/`.
+The source manifest records hashes for the selected api/model/internal/shared,
+desktop and common artifacts. The latest [review baseline](rs240-port/REVIEW-BASELINE.json)
+also pins the inspected packet tables and mask-writer ZIP entries. Inspect archives read-only or extract to `target/reference-research/`.
 These are development evidence, never RustClient runtime dependencies.
 
 OpenRune FileStore's relevant areas are `definition/osrs/.../codec`,
@@ -44,7 +48,12 @@ OpenRune FileStore's relevant areas are `definition/osrs/.../codec`,
 
 ## Deobfuscation and decompilation
 
-The supplied RuneLite tree already contains deobfuscated **235** Java source
+The existing exact-240 semantic deob/decompile corpus is already available; read
+[its evidence guide](rs240-port/README.md) and [naming baseline](client-240/MAPPING-BASELINE.md).
+Do not rerun deobfuscation unless the input changes or a transformation defect is
+shown. The following old vanilla-toolchain description is provenance/background.
+
+The older readable RuneLite tree contains deobfuscated **235** Java source
 (what differs between 235 and 240 is inventoried in [REVISION-235-TO-240.md](REVISION-235-TO-240.md)).
 `buildSrc/src/main/kotlin/Dependencies.kt` declares `rsversion = 235`.
 `deobfuscator/deobfuscator.gradle.kts` defines the exact tools:
@@ -68,7 +77,8 @@ This is a transformed/injected client, not the untouched vanilla input expected
 by the old Gradle deob/mapping tasks. Use it as a separate 240 inspection and
 decompilation source; do not run the old vanilla pipeline blindly or overwrite
 the pinned 235 Java. Major-revision verification does not establish OpenRune
-240.2 compatibility. No 240 deob/decompile run is claimed by the download.
+240.2 compatibility. The download alone did not decompile it; subsequent
+rl-suite semantic sources and readable overlays now exist with separate provenance.
 
 The local `~/gamepack/gamepack_235.jar` matches the public archive's 235 artifact.
 The unversioned `~/gamepack/gamepack.jar` contains only nine entries, including

@@ -1,5 +1,10 @@
 # Revision 240 actor movement catch-up (`field1452`)
 
+<!-- authority-notice -->
+> Domain source/ownership research; implementation statements are bounded to the dates
+> recorded below. The [current matrix](PORT-MATRIX.md) and [audit](CURRENT-AUDIT.md)
+> supersede older gap/status lists; preserve exact source details and historical evidence.
+
 Status: catch-up is authoritative for ordinary and forced/exact player/NPC movement. Turning-dependent speed remains separate pending work.
 
 This document records the exact revision-240 meaning of `Actor.field1452` and the RustClient ownership boundary used by the actor movement scheduler.

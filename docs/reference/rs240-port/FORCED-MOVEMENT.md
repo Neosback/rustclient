@@ -1,5 +1,10 @@
 # Revision 240 forced/exact actor movement
 
+<!-- authority-notice -->
+> Domain source/ownership research; implementation statements are bounded to the dates
+> recorded below. The [current matrix](PORT-MATRIX.md) and [audit](CURRENT-AUDIT.md)
+> supersede older gap/status lists; preserve exact source details and historical evidence.
+
 Status: forced/exact player and NPC translation is authoritative in `GameState`, including the legacy action-frame boundary gate, active-cycle `field1452` reset, desired/current forced-orientation behavior, and scene projection migration.
 
 ## Exact revision-240 control flow

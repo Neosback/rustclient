@@ -1,10 +1,14 @@
 # Reference Index
 
-This index tells humans and coding agents where to look before reinventing OSRS-style behavior. Reference sources are evidence only; RustClient specs and code remain authoritative.
+This index maps pinned behavioral evidence to RustClient owners.
+[SPEC-0019](../specs/SPEC-0019-port-parity.md) defines the nearly 1:1 contract;
+[the roadmap](../plan/PORTING-ROADMAP.md) orders implementation. Reference source
+is read-only evidence. A conflict between code and a ratified target remains an
+open gap until deliberately reconciled; current code does not redefine parity.
 
 ## Current implementation status
 
-[The 42-domain port matrix](rs240-port/PORT-MATRIX.md) and [current correctness audit](rs240-port/CURRENT-AUDIT.md)
+[The domain port matrix](rs240-port/PORT-MATRIX.md) and [current correctness audit](rs240-port/CURRENT-AUDIT.md)
 separate implemented subsets, missing/incorrect behavior, source evidence and verification limits.
 The matrix is generated from checked TSV; it is not a completion percentage.
 
@@ -51,8 +55,10 @@ the source map above and record the specific files/revision used.
 
 ## The 235 tree
 
-The readable (`@Export`-named) client source is revision **235**, not 240. Use it as the behaviour reference
-and read the 240 evidence only where [the 235→240 inventory](REVISION-235-TO-240.md) lists a change.
+The readable (`@Export`-named) client source is revision **235**, not 240. Use it
+to navigate concepts, then confirm affected behavior in exact 240 evidence. The
+[235→240 inventory](REVISION-235-TO-240.md) is a partial change guide; an unlisted
+change never proves equality. New 240 compatibility claims need 240 anchors.
 
 | What | Where |
 | --- | --- |

@@ -1,8 +1,12 @@
 # Revision 240 player extended actor state
 
+<!-- authority-notice -->
+> Domain source/ownership research; implementation statements are bounded to the dates
+> recorded below. The [current matrix](PORT-MATRIX.md) and [audit](CURRENT-AUDIT.md)
+> supersede older gap/status lists; preserve exact source details and historical evidence.
+
 Status: exact stock-client behavior identified for the high-value actor-state blocks
-currently consumed but not retained by RustClient. A small number of profile fields
-remain intentionally unnamed until their complete consumer chain is proven.
+currently consumed but not retained by RustClient. Selected writer identities and remaining consumer gaps are distinguished below.
 
 This document complements `PLAYER-UPDATING-240.md`. That checkpoint is canonical
 for bit passes, skip runs, mask extension, transforms and movement framing. This
@@ -30,6 +34,14 @@ Current Rust comparison:
 - `crates/game-state/src/entities.rs`
 - `crates/game-state/src/player_movement.rs`
 
+## 2026-10-28 corrections
+
+Speech/public chat now cross decode into history/overhead state. Selected RSProt
+identifies `0x40000` as FREEZE and `0x8` as PLAYER_RESET; consumer/reset semantics
+still need completion. It does not emit legacy `0x2`/`0x200`/`0x80000`. Preserve the
+source analysis below without presenting old unresolved names or discarded-chat
+claims as current facts. See [CURRENT-AUDIT.md](CURRENT-AUDIT.md).
+
 ## Important distinction
 
 A decoder is not complete merely because it consumes the correct number of bytes.
@@ -49,24 +61,25 @@ RustClient. Extension-marker bits are omitted from the semantic rows.
 
 | Mask | 240 client flow | Semantic state | RustClient now | Required owner |
 | ---: | --- | --- | --- | --- |
-| `0x4` | appearance payload -> `Player.method2615` | equipment, body colors, identity/NPC transform, locomotion sequence IDs, name/combat/team and appearance overrides | retained | protocol -> `game-state::players`; cache/scene consume definitions |
+| `0x4` | appearance payload -> `Player.method2615` | equipment, body colors, identity/NPC transform, locomotion sequence IDs, name/combat/team and appearance overrides | core retained; transform ID/icons/customization incomplete | protocol -> `game-state::players`; cache/scene consume definitions |
 | `0x10` | sequence ID + delay -> action assignment | action sequence request | retained, but assignment policy incomplete | protocol -> shared actor scheduler; see `SEQUENCE-SCHEDULER.md` |
 | `0x40` | `classDC.method2933` -> `classBZ.method1384` | angle, area/coordinate target, entity target, secondary facing behavior/control | only direct angle retained | protocol -> typed facing update -> shared actor scheduler; see `MOVEMENT-FACING.md` |
 | `0x4000` | traversal enum update | persistent/default traversal mode | retained | protocol -> player movement state |
 | `0x800` | temporary traversal byte/sentinel | movement traversal override/reset | retained | protocol -> player movement state |
 | `0x8000` | `classDC.method2961` | exact/forced movement trajectory | retained | protocol -> shared actor scheduler |
 | `0x20` | records -> `classDC.method2979` -> `Actor.method3148` | actor spot-animation slots | **consumed, discarded** | protocol -> actor effect state; cache spot definition; scene pose/model composition |
-| `0x1000` | chat metadata/text -> `classDC.method2955` | public-chat text plus authored message/color/effect/filter metadata | **consumed, discarded** | protocol chat/Huffman -> game-state chat + actor overhead state |
+| `0x1000` | chat metadata/text -> `classDC.method2955` | public-chat text plus authored message/color/effect/filter metadata | retained in speech/history/overhead path; complete filtering/channels remain partial | protocol chat/Huffman -> game-state chat + actor overhead state |
 | `0x20000` | `classDC.method2947` / `method2950` -> `Actor.method3144` / `method3145` | health-bar add/update/remove state | **consumed, discarded** | protocol -> actor health-bar state; cache definition; UI/projection |
 | `0x100000` | records -> `classDC.method2942` -> `Actor.method3138` | hitsplats | **consumed, discarded** | protocol -> actor hitsplat slots; cache definition; UI/projection |
 | `0x400` | `classDC.method2971` -> `Actor.method3196` -> `Player` model assembly | timed model override: hue, saturation, luminance, amount | **consumed, discarded** | protocol -> timed actor visual state; scene/model projection |
 | `0x10000` | `classDC.method2973` -> `classAAV.method271` -> `Player` model assembly -> `Model.method5230` | timed interpolated model-wide byte override affecting face alpha/transparency handling | **consumed, discarded** | protocol -> timed actor visual state; scene/model projection |
-| `0x1` | text -> `classDC.method2940` | overhead actor text and its reset/default metadata | **consumed, discarded** | protocol -> actor overhead state + chat/UI event projection |
-| `0x40000` | two nullable IDs + bool -> `classDC.method2981` / `method2983` -> target `Player.method3099` or reset `method3105` | **behavior proven, semantic name still unresolved**; mutates a resolved player target using two IDs and a boolean, or clears/reset behavior when either ID is absent | **consumed, discarded** | preserve as typed provisional update until `Player.method3099/method3105` consumer chain is named |
-| `0x8` | `classDC.method2899` plus one trailing byte | resets a broad bundle of per-player auxiliary state before consuming an additional byte | **consumed, discarded** | keep profile-specific until selected RSProt field identity and final byte consumer are reconciled |
+| `0x1` | text -> `classDC.method2940` | overhead actor text and its reset/default metadata | retained as SpeechUpdate::Say and actor overhead state; complete acceptance remains open | protocol -> actor overhead state + chat/UI event projection |
+| `0x40000` | delay + duration + cancelSequence -> `classDC.method2981` -> `Actor.method3099` / `method3105` | animation-freeze window; sentinel resets it, boolean controls action cancellation | **consumed, discarded** | shared GameState actor freeze scheduler; see SEQUENCE-SCHEDULER.md and cluster 11 |
+| `0x8` | `classDC.method2899` plus one trailing byte | PLAYER_RESET clears auxiliary state; selected model documents trailing value as discarded | byte consumed; semantic reset incomplete | typed reset in GameState; preserve source clear order |
 
-Do not guess names for the final two rows merely to make the table look complete.
-The exact bytes and call flow are more useful than a misleading semantic label.
+The final two writer identities are established by selected RSProt and the actor
+consumer trace. They are not provisional linked-player IDs. Their semantic
+retention, ordering and downstream reset/freeze behavior remain implementation gaps.
 
 ## Spot animations: `0x20`
 
@@ -234,29 +247,32 @@ This should eventually reuse one decoded chat message object to update both:
 Huffman/text decompression remains protocol/profile work. Ignore/filter rules and
 committed message state should not live in the renderer.
 
-## The unresolved `0x40000` block
+## Animation freeze: `0x40000`
 
-The bytes are already known exactly enough to preserve:
+The selected `PlayerFreezeEncoder` writes delay with p2Alt2, duration with p2Alt1,
+and cancelSequence with p1Alt2. These are cycle offsets/control, not definition
+IDs. The internal Freeze model defines delay and duration in client cycles; either
+65535 sentinel clears the existing freeze. cancelSequence affects the action
+sequence rather than base animation.
 
-- first nullable ID (`65535 -> -1`);
-- second nullable ID (`65535 -> -1`);
-- boolean.
+`classDC.method2981` applies the update to each represented player across world
+views. `Actor.method3099` creates/updates a freeze window:
 
-`classDC.method2981` resolves another concrete `Player` for each represented actor.
-When both IDs are present it calls `Player.method3099(first, second, boolean)`.
-Otherwise it calls `Player.method3105()` and, when the boolean is true, an actor
-reset helper as well.
+```text
+startCycle = clientCycle + delay
+endCycle = startCycle + duration
+```
 
-Until the target `Player` methods and every consumer are traced, the correct port
-research action is:
+The reset branch calls `Actor.method3105` and optionally clears the action via
+`Actor.method3111`. NPC mask `0x1` feeds the same semantics through different wire
+transforms. The existing [freeze research](../client-240/clusters/11-overhead-overrides.md)
+and [scheduler](SEQUENCE-SCHEDULER.md) own exact half-open windows, pose/action
+snapshot rules and the fact that spot controllers keep running while ordinary
+pose/action/turning are frozen. Reuse this one GameState scheduler contract.
 
-1. retain the exact typed payload;
-2. call it a provisional linked-player/two-ID actor update in research only;
-3. do not expose that provisional name in a public plugin API;
-4. finish the consumer trace before implementation.
-
-This is intentionally more conservative than naming an unknown field from packet
-shape alone.
+The Rust decoder currently skips five bytes. Retain typed delay/duration/control,
+then implement windows, cancellation, reset/reuse and replay/fingerprints before
+claiming freeze parity. Archive entries are pinned in REVIEW-BASELINE.json.
 
 ## The `0x8` reset block
 
@@ -271,11 +287,10 @@ wrapper and every represented `Player`, including:
 - three player action strings;
 - current action sequence via `classCU.method2672(..., -1, 0)`.
 
-The packet branch also consumes one byte later in `method3050`. The selected
-RSProt-240 field identity for that byte should be reconciled before this block is
-collapsed into a single semantic `Reset` operation. Some of the reset may be a
-wrapper/world-view synchronization consequence rather than the entire meaning of
-the wire field.
+The packet branch also consumes one byte later in `method3050`. The selected PlayerReset model identifies this as PLAYER_RESET and documents
+the transmitted trailing value as discarded by the client. Port the proven clear
+order and world-view propagation through the existing actor owner; the byte does
+not justify inventing another authoritative property.
 
 ## Current Rust gap summary
 
@@ -284,13 +299,13 @@ large **semantic-retention gap**. In particular, successful decode currently doe
 not mean player parity for:
 
 - spot animations;
-- public chat/overhead speech;
+- complete public-chat filtering/channels and overhead acceptance (the decode/state path now exists);
 - health bars;
 - hitsplats;
 - timed hue/saturation/luminance/amount override;
 - timed alpha-like model override;
 - non-angle facing modes;
-- the unresolved two-ID linked-player update;
+- animation-freeze delay/duration/cancellation windows;
 - auxiliary reset behavior.
 
 These gaps explain why it would be a mistake to debug every visible difference in
@@ -321,9 +336,10 @@ proves they are shared actor behavior.
    changing existing transform/order logic.
 2. Add shared actor containers for spots, hitsplats, bars and overhead state.
 3. Add timed color/alpha model override state and scene projection.
-4. Split public-chat decode into one semantic message feeding chat history and
-   actor overhead state.
-5. Finish `0x40000` and `0x8` consumer/profile reconciliation before public naming.
+4. Extend the existing public-chat/say path feeding chat history and actor
+   overhead state; do not reintroduce the historical claim that all chat is discarded.
+5. Implement the specified `0x40000` freeze and `0x8` reset lifecycles; do not
+   restore the superseded linked-player/two-ID interpretation.
 6. Extend deterministic replay/fingerprints to all newly authoritative state.
 7. Only then tune visual parity for these effects.
 

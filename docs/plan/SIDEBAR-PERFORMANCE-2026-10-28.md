@@ -1,5 +1,10 @@
 # Sidebar and walking performance checkpoint — 2026-10-28
 
+<!-- authority-notice -->
+> Historical checkpoint and evidence record. Implementation status, “next” tasks, counts
+> and validation below apply to the recorded snapshot. Current work follows
+> [PORTING-ROADMAP.md](PORTING-ROADMAP.md) and the [domain matrix](../reference/rs240-port/PORT-MATRIX.md).
+
 Implementation spans application composition, shell UI, platform file reads, scene picking
 and disposable GPU resources. `GameState`, movement/collision semantics, plugin ABI and
 capabilities are unchanged by this work. Other concurrent working-tree changes are not

@@ -1,5 +1,10 @@
 # CP3B: Deterministic Tick Transition
 
+<!-- authority-notice -->
+> Historical checkpoint and evidence record. Implementation status, “next” tasks, counts
+> and validation below apply to the recorded snapshot. Current work follows
+> [PORTING-ROADMAP.md](PORTING-ROADMAP.md) and the [domain matrix](../reference/rs240-port/PORT-MATRIX.md).
+
 ## Goal
 
 Add the first session-owned deterministic time field and one minimal validated mutation path to the authoritative `GameState`.

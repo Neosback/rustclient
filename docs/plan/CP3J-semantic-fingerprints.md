@@ -1,5 +1,10 @@
 # CP3J — Canonical Semantic Fingerprints and CP3 Exit
 
+<!-- authority-notice -->
+> Historical checkpoint and evidence record. Implementation status, “next” tasks, counts
+> and validation below apply to the recorded snapshot. Current work follows
+> [PORTING-ROADMAP.md](PORTING-ROADMAP.md) and the [domain matrix](../reference/rs240-port/PORT-MATRIX.md).
+
 ## Goal
 
 Close the final CP3 gap identified by CP3H/CP3I by defining a canonical deterministic fingerprint surface for authoritative semantic state and committed semantic outputs, then prove the CP3 repeatability exit criterion.

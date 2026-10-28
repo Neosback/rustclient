@@ -1,5 +1,10 @@
 # Player updating audit — 2026-10-23
 
+<!-- authority-notice -->
+> Historical checkpoint and evidence record. Implementation status, “next” tasks, counts
+> and validation below apply to the recorded snapshot. Current work follows
+> [PORTING-ROADMAP.md](PORTING-ROADMAP.md) and the [domain matrix](../reference/rs240-port/PORT-MATRIX.md).
+
 Historical checkpoint: later actor ownership, path consumption, forced movement and
 sequence assignment were superseded by the merged
 [actor runtime corpus](../reference/rs240-port/ACTOR-RUNTIME.md),

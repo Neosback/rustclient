@@ -1,5 +1,10 @@
 # CP3E — Committed Events and StateDelta
 
+<!-- authority-notice -->
+> Historical checkpoint and evidence record. Implementation status, “next” tasks, counts
+> and validation below apply to the recorded snapshot. Current work follows
+> [PORTING-ROADMAP.md](PORTING-ROADMAP.md) and the [domain matrix](../reference/rs240-port/PORT-MATRIX.md).
+
 ## Goal
 
 Expose the smallest deterministic commit metadata needed by future projections, plugins, and replay without introducing a persistent event bus or per-batch allocation.

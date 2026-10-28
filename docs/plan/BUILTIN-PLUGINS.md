@@ -1,5 +1,10 @@
 # Required GPU and RuneLite core services
 
+<!-- authority-notice -->
+> Historical checkpoint and evidence record. Implementation status, “next” tasks, counts
+> and validation below apply to the recorded snapshot. Current work follows
+> [PORTING-ROADMAP.md](PORTING-ROADMAP.md) and the [domain matrix](../reference/rs240-port/PORT-MATRIX.md).
+
 Status: implementation in progress; not a parity/completion claim. User-approved
 scope is the full applicable GPU and RuneLite configuration/core behavior, native
 retained HTML/CSS UI plus browser panels. HD and other gameplay plugins are excluded.
@@ -70,7 +75,7 @@ single shell visibility value. The native retained-DOM contract covers close/reo
 Game UI raster viewport was corrected to match its normalized game extent. The native loop separately
 tracks shell-requested window widths to avoid feedback from intermediate platform sizes.
 
-Broader completion and verification remain open: [the rebuilt 42-domain matrix](../reference/rs240-port/PORT-MATRIX.md)
+Broader completion and verification remain open: [the domain matrix](../reference/rs240-port/PORT-MATRIX.md)
 and [current audit](../reference/rs240-port/CURRENT-AUDIT.md) are the current gap index. First-party
 plugins added in intervening commits have their own [scope ledger](../reference/builtin-plugins/FIRST-PARTY-LEDGER.md);
 these additions do not complete GPU/core behavior or browser gameplay.

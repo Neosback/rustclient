@@ -1,5 +1,10 @@
 # Revision 240 actor facing and turning
 
+<!-- authority-notice -->
+> Domain source/ownership research; implementation statements are bounded to the dates
+> recorded below. The [current matrix](PORT-MATRIX.md) and [audit](CURRENT-AUDIT.md)
+> supersede older gap/status lists; preserve exact source details and historical evidence.
+
 Status: ordinary smooth turns and NPC definition turn-rate projection are implemented in GameState with focused contracts (2026-10-26); desired-facing resolution is traced from exact revision-240 evidence. Rich packet facing intent is still not fully retained in RustClient, so this is a source/ownership record rather than a parity claim. The remaining `Actor.field1473` arming provenance is explicitly deferred after a focused source audit; its consumer behavior remains documented under the stable symbol.
 
 This document narrows the facing/turning work that remains after authoritative ordinary and forced actor translation. It supersedes the older ambiguity in `MOVEMENT-FACING.md` about whether the client keeps one orientation value or two, and supersedes the earlier statement that the ordinary smooth-turn mutator had not yet been located.

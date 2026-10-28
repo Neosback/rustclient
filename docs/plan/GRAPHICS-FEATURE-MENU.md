@@ -1,5 +1,9 @@
 # Graphics feature menu: beyond OSRS and 117HD
 
+<!-- authority-notice -->
+> Optional graphics research, bounded to its recorded snapshot. Classic parity follows
+> [PORTING-ROADMAP.md](PORTING-ROADMAP.md); estimates and feature suggestions here are not the active delivery order.
+
 **Status:** Proposal  
 **Owner:** renderer  
 **Target:** RustClient shared `wgpu` renderer  

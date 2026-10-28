@@ -52,3 +52,11 @@ Confirm:
 ## Next checkpoint
 
 List concrete dependencies now unblocked.
+
+## Current-status handoff
+
+Record source/Rust/profile/cache baselines, actual commands/results and NOT-RUN
+acceptance. Update the [canonical roadmap](PORTING-ROADMAP.md), domain matrix and
+method/packet ledgers in the same change; this checkpoint retains dated evidence
+and does not become another current backlog. Record any deliberate behavioral
+difference in PARITY-DEVIATIONS.tsv under SPEC-0019.

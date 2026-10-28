@@ -1,5 +1,10 @@
 # Revision 240 sequence assignment and playback scheduler
 
+<!-- authority-notice -->
+> Domain source/ownership research; implementation statements are bounded to the dates
+> recorded below. The [current matrix](PORT-MATRIX.md) and [audit](CURRENT-AUDIT.md)
+> supersede older gap/status lists; preserve exact source details and historical evidence.
+
 Status: exact revision-240 behavior identified for action assignment, restart/priority policy, legacy frame advancement, cached-model advancement, finite-loop completion, action delay, and actor freeze interaction. Spot-animation lifetime/repeat semantics remain a separate open effect trace.
 
 This document is the canonical port record for authoritative actor sequence scheduling. Rendering/model posing consumes committed playback state; it is not allowed to decide sequence lifetime, loop count, movement blocking, or restart policy.

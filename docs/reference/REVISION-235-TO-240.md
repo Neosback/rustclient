@@ -4,9 +4,11 @@ Status: research inventory, 2026-10-25. Evidence only; RustClient specs and code
 
 The readable, hand-named client source we have is **revision 235** (the OpenOSRS/RuneLite "melxin" tree,
 see [the tree](#1-the-235-tree)). The client we target is **240** (RuneLite injected client 1.12.39,
-OpenRune 240.2), which only exists as stable `classXX` names in `references/rl-suite-240/`. This page
-lists every 235→240 change we could establish from independent evidence, so a port can start from the
-235 source and look at 240 only where this list says Jagex or RuneLite changed something.
+OpenRune 240.2), available in `references/rl-suite-240/` with stable symbols,
+API-derived semantic names and the separate readable-name overlay. This page
+lists the 235→240 changes established from the inspected evidence. It is a
+partial research inventory. Use readable 235 code to navigate, then check every
+affected compatibility-sensitive rule in exact 240 evidence.
 
 ## How the list was built, and what it does not cover
 
@@ -61,9 +63,9 @@ The older copy has resources this one lacks (`item_stats.json`, `npc_stats.json`
 
 | Area | Take from | Why |
 | --- | --- | --- |
-| Rendering rules: models, lighting, animation posing, scene assembly, placement, priorities, depth | **235 tree** | No Jagex renderer change was established in this window (see the limit above); the listed changes are RuneLite GPU plugin or API (3.8) |
-| Interface/widget engine, CS2 interpreter, menu logic, actor movement/update rules | **235 tree**, then verify the 240 deltas below | Opcode numbers and names are unchanged; only long-typed operations were added |
-| Plugin behaviour (the 13 ports) | **235 tree** + the per-plugin deltas in 3.12 | The 235→240 diff for those plugins is a handful of commits |
+| Rendering rules: models, lighting, animation posing, scene assembly, placement, priorities, depth | **Exact 240 consumer**, readable 235 for navigation | No complete client-renderer diff was established. Verify each affected rule; absence from this inventory proves no equivalence. |
+| Interface/widget engine, CS2 interpreter, menu logic, actor movement/update rules | **Exact 240 consumer**, using readable 235 as navigation | Confirm individual handlers and stock control flow; this inventory is not an exhaustive equality proof |
+| Plugin behavior | **Pinned RuneLite 240 plugin sources**, older tree for history | Verify feature effects and API consumers against the selected target; see the per-feature ledgers. |
 | Packets: ids, lengths, field encodings, message set | **240 tables only** | Layouts were re-scrambled at 236 and message versions added; 235 ids/encodings are wrong for 240 |
 | Cache definition decoders | **240 cache + 3.2/3.3 below** | Many opcodes were added in 237–239 |
 | Map region loading | **240 cache** | Map/loc files are no longer XTEA-encrypted or name-keyed (3.3) |

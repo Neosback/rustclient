@@ -1,147 +1,145 @@
 # Current correctness and port audit
 
-Checkpoint: 2026-10-26; inspected main through `7db36d6f`, plus the sidebar and actor-turn continuations in this checkpoint.
-This is a domain-level source/code audit. It does not certify every method or repeat every historical test.
+Reviewed: 2026-10-28. Start: `0a91c0237c5d2bb4825a549ffc89497dfe671208`
+with pre-existing dirty work; source inspection refreshed at
+`bd3aae10d4a37c46401aaf71be2fa415cbe623e8` after that work was committed during
+review. [REVIEW-BASELINE.json](REVIEW-BASELINE.json) records file hashes, selected
+RSProt entries and the pasted input hash. No Rust implementation changed in this
+review. No live session, render acceptance or Cargo suite was run for it.
 
-The [rebuilt matrix](PORT-MATRIX.md) separates implementation, verification boundaries, owners and actual
-remaining obligations. Its [TSV](PORT-MATRIX.tsv) is canonical; `tools/port_matrix.py --check` checks paths,
-status vocabulary and the generated Markdown. It cannot prove behavior. The existing
-[method ledger](SYMBOL-LEDGER.tsv) and `tools/port_audit.py --check` retain exact 240 symbol evidence.
-No percentage is inferred from declarations, files, plugin names or green workspace builds.
+This is a domain/source audit and re-review of the supplied assessment, not an
+exhaustive method-by-method proof. [SPEC-0019](../../specs/SPEC-0019-port-parity.md)
+defines the parity contract; [the roadmap](../../plan/PORTING-ROADMAP.md) defines
+execution order. The [matrix TSV](PORT-MATRIX.tsv) is the editable domain backlog;
+its Markdown is generated. [Packet coverage](PACKET-COVERAGE.tsv) records dispatch
+and encode reachability separately from semantic completion. The method ledger
+retains exact source mappings. None produces a client completion percentage.
 
-## Findings that need action first
+## Confirmed blockers and their failure paths
 
-1. **Game canvas and shell:** UI vertices previously used the reduced game width with a full-window
-   raster viewport, hiding HUD content and shifting clicks. That draw-extent correction is now in
-   `renderer::ui`. Asynchronous shell-driven window resizes have their own pending-size handling.
-   Fixed, resizable classic/modern, HiDPI and stretched-mode live acceptance must still be repeated.
-   The user's latest layout requirement overrides stock collapsed-rail behavior: the entire rail and
-   panel disappear together, reserve zero width and do no retained DOM/painting work while hidden.
-2. **Movement responsiveness:** the old worker waited up to 200 ms for inbound data before sending
-   queued actions. It now polls available socket input and waits on the action channel, which clicks
-   wake immediately. The native contract is covered; event-to-send-to-render latency has not been
-   measured against the running server. Server tick delay is not client input-queue delay.
-3. **Actor turns/poses:** ordinary movement heading now derives from the oldest queued target
-   (`Actor.method3208`), not the newest network endpoint. Connected movement poses sample committed
-   translation rather than running a second positional simulation. However full facing targets,
-   apply policy, freeze handling and turning slowdown are still incomplete. Ordinary current rotation and NPC
-   definition turn rates now commit after movement in GameState, with source-boundary, forced-order,
-   replay/index-reuse and projection reconstruction tests. Keep position authority in GameState; do not add a visual
-   collision clamp or speculative path reroute.
-4. **Action lifetime:** resolved cached actions now use a frame/time cursor, authored rewind and
-   terminal loop limit in GameState. Legacy actions retain their within-frame remainder; both
-   families implement the delay-one path hold and feed committed cursors into action posing.
-   Freeze windows, asset-readiness fallback, movement/idle slot lifetime and frame/audio callbacks
-   remain incomplete. Decode/pose success alone does not close those remaining obligations.
-5. **Recognized actor data is still discarded:** spot slots, hits/headbars, tint/transparency,
-   customization and rich facing need typed retention and actual consumers. See
-   [PLAYER-EXTENDED-STATE.md](PLAYER-EXTENDED-STATE.md) and [WORLD-EFFECTS.md](WORLD-EFFECTS.md).
-6. **Menus are a subset:** nearest-hit NPC/location actions and widget operations are useful, but
-   stacked actors, ground items, players, item/spell targeting, conditional operations/sub-operations,
-   attack priority, tall menus and submenus are not complete. Menu paint fixes do not complete entry
-   construction or outbound action coverage.
-7. **Chat:** history/overheads and outgoing standard color/effect/pattern prefixes are implemented.
-   Inline crowns now use the graphics-default sprite group, including full canvas advance and trim
-   offset. The live cache selects group 423 with 60 frames. Full social filtering, private/clan channels,
-   account-crown visuals and every text macro remain open.
-8. **World map and nested worlds:** the blank world-map window is still an implementation gap.
-   Sailing/world-entity machinery is already present in 235, but RustClient has no complete semantic
-   world-view registry, active-view routing or V7-info/V4-rebuild path. Working normal map loading
-   proves neither feature.
+1. **Selected NPC masks can end a session.**
+   [npc_extended.rs](../../../crates/protocol/src/openrune_240/npc_extended.rs)
+   rejects bits outside SUPPORTED before consuming their bodies. The selected
+   `NpcAvatarExtendedInfoDesktopWriter` emits BAS `0x200000`, head customization
+   `0x80000` and body customization `0x2000000`, all rejected here. Stock
+   `classAS.method661` has further legacy branches too. The error propagates through
+   SessionCodec -> ConnectionDecoder -> the native network worker's Protocol failure.
+   This is a session failure, not evidence of a Rust panic or process crash. Port
+   payload order, typed retention, cache/model policy and consumers together;
+   expanding SUPPORTED alone would corrupt packet alignment.
+2. **World mutations are consumed or deferred.**
+   [zone.rs](../../../crates/protocol/src/openrune_240/zone.rs) walks all indexed
+   enclosed payloads but only emits LOC_ANIM (index 3). Other payload bodies are
+   skipped, including ground-item and location changes. Direct location add/delete/
+   merge and specific ground-item packets fall through the game dispatch. GameState
+   has no ground-item collection. Static location placement, var-driven morphs, location animation and a
+   GameState ChangeLocation/override owner already exist; reuse that owner when
+   wiring server replacement/removal.
+3. **Interaction/dialogue is a narrow subset.**
+   ClientIntent has ten variants, but variants are not packet counts: NpcAction and
+   LocationAction each encode five operations, and Chat encodes two packets. Walk,
+   minimap walk, widgets, close, window, heartbeat and map completion also exist.
+   Pause/count/name/string/item resume, player/ground-item actions, targeted
+   operations and IF_BUTTOND are missing. Add validation, selection lifetime,
+   dispatch and consumers, not only encoders. Selected RSProt deprecates U packets
+   for item targeting in favor of T paths; packet-name existence is not proof that
+   every listed legacy packet must be emitted by current gameplay.
+4. **Instances fail explicitly; many other packets have no semantic consumer.**
+   SessionCodec returns `instanced rebuild is not supported` for opcode 12. Scene
+   chunk helpers are not an integrated instance lifecycle. Var groups/clan vars,
+   scripted camera, audio, player options/hints, specific effects, social and many
+   widget mutations are Deferred. ConnectionDecoder ignores Deferred. Some Deferred
+   branches deliberately update codec context (NPC origin, zone headers), so the
+   enum value alone cannot prove a packet was wholly ignored. See the per-packet
+   inventory and inspect each downstream path before claiming support.
+5. **Decoded actor effects do not survive as active semantic state.**
+   Spots, hits/headbars, timed overrides, freeze and rich target-facing remain
+   partial/consumed/rejected across the adapters. Entity structs retain overheads,
+   appearance, path/exact movement, action cursors and ordinary rotation. They lack
+   complete active effect/target containers and consumers. Reset, replacement,
+   removal/index reuse, events/replay/fingerprints and projection are part of each
+   port obligation.
 
-## Reference policy
+## Re-review of every major pasted claim
 
-- Exact 240 client control flow, selected OpenRune RSProt 240 and live cache resolve compatibility.
-- The readable vendored `references/runelite-melxin-235` is a research base, with matching source
-  symbols checked against 240 before claiming behavior parity. The [235→240 change inventory](../REVISION-235-TO-240.md)
-  is useful but explicitly not a complete client diff. **An unlisted change is not proof of equality.**
-- `/Users/tylercovalt/Documents/tsps-main/client` is a supporting TypeScript implementation supplied as
-  revision 237. We have not independently established that every module is an unchanged stock 237 port.
-  Its tests/custom behavior are examples to inspect, not 240 authority.
-- Reference sources are read-only. No Java/TypeScript architecture is copied mechanically into the
-  GameState/adapter/projection ownership model.
+Paths below are relative to the repository; exact reviewed hashes and RSProt ZIP
+entry names are in REVIEW-BASELINE.json. The selected release remains
+`1.0.0-ALPHA-20260825`; the locally cached September release was not substituted.
 
-## What the TypeScript reference contributes, and what must not carry across
-
-Reviewed files are hash-bound in [TSPS-237-EVIDENCE.json](TSPS-237-EVIDENCE.json). Recheck a supplied
-working tree using `python3 tools/port_matrix.py --check --tsps-root /path/to/tsps-main/client`.
-
-| Area / supporting files | Useful structure | Compatibility restriction |
+| Pasted claim | Assessment | Evidence and corrected scope |
 | --- | --- | --- |
-| `runelite/client/ui/ClientToolbar.ts`, `game/sidebar/Sidebar*.tsx`, `SidebarStore.ts` | Navigation registration/removal, selection, adjacent rail/panel composition, config panel separation | Only plugins with actual tool panels belong on the tool rail. All configuration entries are not navigation buttons. User requires no rail in the closed state. |
-| `game/movement/NpcClientTick.ts` | Small movement/turn helpers and explicit tests | `computeMovementStep` normalizes the delta by Euclidean distance. The stock actor scheduler independently steps each axis. Its 180-degree turn helper uses `>= 1024`, whereas inspected 240 smooth-turn direction uses `> 1024`. Do not copy these helpers as stock parity. Trace callers before judging the entire TS client. |
-| `game/worldview/WorldViewManager.ts`, `WorldView.ts`, `WorldEntity.ts` | Registries, view/entity lifecycle, coordinate snapshots and routing | TS root uses `-1`; exact 240 root is `0`. Info/rebuild packet versions and transforms must come from selected 240 writers/consumers. |
-| `game/actor/ActorAnimation.ts` | Explicit frame, frame-tick and loop counters | Comments say OSRS-like. Slot-specific clearing vs restarting, readiness, delay, forced-movement gates and cached-model completion must follow exact 240 controllers. |
-| `game/chat/ChatTextMetrics.ts` | Shared markup measurement and icon advances | It looks up a named `mod_icons` group and has fallback widths. Our selected cache graphics defaults choose the sprite group; do not substitute guessed widths or suppress missing-source errors. |
-| `game/worldMap/WorldMapController.ts`, `rs/map/WorldMapArchiveRenderer.ts` | Controller/input/repaint separation and archive renderer organization | 238 changed unnamed world-map indices and square/zone group/file metadata. Use 240 cache evidence before implementing our loader. |
+| Turning uses the correct strict `> 1024` threshold | Confirmed for that branch | `game-state/src/actor_turning.rs::advance` and `classKN.method6539` agree. This does not prove the whole facing/turning scheduler complete. |
+| NPC has 18 supported bits versus 26 stock checks | Substantially correct, count needs interpretation | Stock dispatch has 23 payload checks plus 3 extension markers. Rust's 18 allowed bits include markers and skipped bodies. Eight stock payload bits are rejected; only the three listed above are emitted by the selected writer. Other missing stock branches remain parity backlog, not proven random traffic from this server. |
+| Player `0x2`, `0x200`, `0x80000` are missing and ordinary selected traffic crashes | Stock gap confirmed; selected-server frequency claim unsupported | `classDF.method3050` includes old chat, three menu strings and old spot-animation branches. The selected writer labels CHAT_OLD, NAME_EXTRAS and SPOTANIM_OLD unused/legacy and does not emit them. Rust rejects them if received. Track full stock parity separately; these are not the same immediate priority as selected NPC writer failures. |
+| Enclosed zone data other than LOC_ANIM is discarded | Confirmed | `zone.rs::enclosed` reads payload widths, emits only animation index 3. Ground items and dynamic scenery need full state/consumer chains. |
+| Widget model bodies never rasterize | Confirmed | `game-ui/src/widget_visuals.rs` explicitly leaves containers/models/missing assets without primitives. The model type/cache decoding does not provide chathead/equipment-preview rendering. |
+| Audio has no production consumer and grows without bound | First half confirmed; growth claim false | `take_sound_effects` is used by tests only; `audio/src/lib.rs` is an empty subsystem shell. The script queue has SOUND_EFFECT_LIMIT=50 and clears on reset, so requests saturate and further requests are dropped; no unbounded-growth claim. Platform playback/music/ambient handling remains missing. |
+| DB Long causes script failure, e.g. GE timestamps/account attributes | Explicit errors confirmed; examples unproven | `application/src/scripts/database.rs` rejects long values/defaults. Exact 240 `Friend` / `classBB` opcode-7502 code explicitly has a long `-1L` path for row=-1, while other branches still use int casts/default handling. Trace the invoked handler/bytecode and actual cache cases before claiming a universal long-column contract. VM long-stack support already exists. A script error is not a process crash. |
+| F1-F12 cannot reach widget listeners; F3/F5/F11 are dev shortcuts | Confirmed input gap | `model/src/widget.rs::WidgetKey`, native `widget_key`, native key handlers. Add shared key semantics and shortcut arbitration while retaining script ownership of tabs. |
+| 90% of outbound interactions are missing | Percentage rejected | Ten enum variants expand into multiple packets, packets have different roles, and some U packets are deprecated. Many necessary action families are absent, but no weighted interaction denominator supports 90%. |
+| Var groups, camera/audio, player options/hints and specific effects are Deferred | Confirmed at dispatch boundary | `protocol/src/openrune_240/game.rs::receive`, `application/src/connection.rs::receive_inputs`, selected packet IDs/lengths. No live consequence/frequency for particular bosses/quests was reproduced here. |
+| Instance rebuild disconnects | Confirmed native error path when opcode 12 arrives | Explicit protocol error propagates out of the worker. No instance-entry live run was performed. |
+| Ground-item state is absent | Confirmed | No authoritative ground-item owner/operation in game-state/model; scene/menu/minimap/outbound effects are consequently incomplete. |
+| Entity combat level is absent | Incorrect | `PlayerEntity.appearance: Option<PlayerAppearance>` retains `combat_level` in `model/src/entity.rs`. Reuse it for menu policy; do not duplicate the semantic field. Missing actor effects and rich facing are separate real gaps. |
+| Menus only target nearest NPC/location, lack players/items/stacking/target modes | Confirmed scope gap | `apps/native/src/interaction.rs`, `application/src/interaction.rs`: nearest target and NPC/location menus remain subsets. New clickbox work in bd3aae10 does not create complete stacked menus or player/item actions. |
+| Minimap mapfunction/item/friend/team dots absent | Confirmed for the minimap pipeline | Cache map_icon is decoded; scene minimap uses map_scene scenery and native minimap_dots emits NPC frame 1/player frame 2 only. World-map element rendering is a separate path. |
+| Compass click does not reset north | Incorrect | `apps/native/src/widgets.rs` handles WidgetContent::Compass with camera.set_yaw(0), already present at 0a91c023. Live click/layout acceptance remains separate. |
+| World map should be partial; pan/zoom/overview still absent | Partial status correct; remaining list stale | Loaders, CS2 host, viewport AND overview composition, native wheel zoom and drag/pan were present at 0a91c023. bd3aae10 adds load/error/reset handling and decoder repairs. Hover/element menus, target/smoothing/flash semantics, correct scale/labels and native/browser acceptance remain open. |
+| Fix mask crashes by adding bits to whitelist | Unsafe as an implementation plan | Decode every corresponding payload in exact order and retain/apply its semantics first. Otherwise the next field is read at the wrong offset. |
 
-Other essential deltas: 237+ long stacks/parameters/model IDs, 240 entity ops and sub-ops,
-239+ float/14-bit camera API values (distinct from 2048-unit actor orientation), 240 unencrypted map
-storage, modern render modes/second wall-decoration offsets and GPU alpha-priority policy.
-Do not import 235/237 packet IDs, masks, transforms or cache opcode tables.
+## Other codebase and documentation findings
 
-## Plugin and browser honesty
+**Appearance drops valid inputs.** `player_appearance.rs` reads but discards
+the transformed-NPC ID, skull/overhead bytes and customization slots. The semantic
+PlayerAppearance retains combat level, but lacks the complete transform/override
+representation. Extend this owner and appearance invalidation/scene consumers;
+do not mistake general NPC morph/model support for transformed-player parity.
+[PLAYER-APPEARANCE.md](PLAYER-APPEARANCE.md) records the exact source contract.
 
-[The first-party ledger](../builtin-plugins/FIRST-PARTY-LEDGER.md) records the actual scope of recently
-added modules. Its broad word “ported” must be read with each row's omissions; no row has live visual
-acceptance unless explicitly recorded. Menu entry swapper and developer tools are still pending.
-The GPU/core ledger is also unfinished. Core window bounds, notifications, fonts, tooltips and
-infobox behavior are not completed merely by storing their settings. Sidebar navigation services
-are distinct from plugin configuration descriptors.
+**World-map state ownership/lifecycle needs an audit.** `ClientScripts::world_map`
+contains immutable assets alongside mutable selection, target coordinates, filters,
+flashing and script-visible values. Native drawing advances flash_cycle, and input
+mutates the same state; target_tile is assigned without a complete tick-driven
+consumer. Classify presentation-only state versus replayable semantic state under
+SPEC-0002/0019, extend the existing owner and specify any boundary correction before
+adding another controller. Existing drawing/overview/pan code deserves partial
+credit without establishing a complete source-equivalent lifecycle.
 
-Browser composition is still a renderer bootstrap. Dioxus Web dependency presence and a Wasm check
-do not establish browser panels, login, a playable world, or external-plugin parity.
+**Browser remains bootstrap-only.** Its app creates the renderer/canvas; shared
+Wasm compilation and the JS-host plugin proof do not compose cache/session/world,
+input/audio, shell panels and plugin execution into a playable browser client.
 
-## Acceptance and ordering
+**GPU shell has changed mechanisms.** bd3aae10 integrates on-demand egui/wgpu work
+under ADR-0007. Earlier Dioxus/Blitz CPU-retention measurements remain dated evidence
+for that backend. They cannot accept the new backend's IME/focus/clipboard/control
+behavior or prove its performance. See per-setting GPU/core ledgers for actual
+remaining runtime and visual obligations.
 
-First close canvas/input/shell acceptance and normal walk/run/corner trajectories. Then port rich
-facing/rotation and complete action/actor-effect lifecycles; expand menus and channel/social state.
-World views need one specified semantic registry plus exact 240 protocol/cache adapters before boats
-can render or route input correctly. The world-map asset/controller/runtime is a separate delivery.
+**Documentation had conflicting authorities.** The old delivery summary still
+called the native WIT/host/sample nonexistent and recommended a new 240 deob run;
+those slices already exist. It also quoted obsolete ledger counts. The reference
+index instructed readers to trust 235 for changes not listed in a partial diff.
+These statements were removed from active guidance. Old milestone files now carry
+historical-scope notices; their local validation/results remain evidence for their
+recorded snapshots. The speculative HD feature menu is optional research.
 
-Every new semantic field needs reset, removal/index reuse, events/deltas, replay and fingerprint
-implications. Reuse existing owners. Continue the required GPU/core work against the per-setting
-ledger rather than adding inert controls or declaring all default gameplay plugins complete.
+**Inventory remains incomplete.** The initial checker report had 153 ledger rows:
+67 verification-unrecorded, 33 source-reviewed, 51 contract-tested, 2 live-tested.
+The declaration scan found 18,433 declarations, 18,342 without method-level ledger
+triage. Aliases/injection and heterogeneous scopes prevent a port percentage.
+This review updates source rows and pins previously unlisted ledger source files;
+that repairs provenance coverage, not behavior. Full source tests/cases/assets,
+script host-opcode and RuneLite feature/API dispositions still need inventories.
 
-Automated build/test results and desktop observations belong in the implementation checkpoint;
-this source audit alone does not create visual acceptance. The user-reported minimap/click defects
-remain acceptance obligations until demonstrated in the new executable.
+## Validation boundary and next work
 
+Documentation checks validate paths, schemas, generated data and source pins. They
+are not semantic tests. This review ran the port tools and documentation/link/
+provenance checks; exact final results are recorded in the delivery status. It did
+not repeat historical Cargo, GPU, Java, live-login, performance or visual results.
 
-## Tracking gaps in the existing method ledger
-
-The current `tools/port_audit.py --check` report contains 150 symbol rows: 67 have verification
-unrecorded, 33 source-reviewed, 48 contract-tested and 2 live-tested; none is visual-accepted.
-These are mixed symbol records, not equally sized features or a completion percentage. Historical
-“verified” statuses with unrecorded verification must not be promoted into release acceptance.
-The tool also reports ledger sources absent from its partial source-manifest pin list. That does
-not show modification, but it is an evidence-custody gap to close before stronger parity claims.
-The original injected-jar pin and generated per-source hashes remain distinct provenance records.
-
-
-GPU continuation: [the GPU-specific audit](../builtin-plugins/GPU-AUDIT.md) now records every scoped
-setting and active/historical resource with source hashes and separate verification. Six UI scaling
-modes, shared world/UI correction, resource-budget checks and native presentation deadlines have
-implementations. Normal-map region and 240 zone admission now have implementations with shared picking/overlays.
-Extended loading, float vertices, workers, tint and instance/minimap/frustum/runtime acceptance
-remain open; see [the zone continuation](../builtin-plugins/GPU-ZONES-2026-10-27.md). Actual Metal/core WebGPU probes and offline title-window pacing pass; none close
-exact-240 live visual, browser gameplay or HD readiness gates.
-
-
-The symbol checker now uses every source-manifest root when validating used source pins; previously
-it checked only rl-suite-240 and incorrectly called the pinned RuneLite plugin helpers unpinned.
-This fixes provenance reporting, not behavioral completion. Unpinned historical entries still remain.
-
-Sparse maps: [the correction](../builtin-plugins/GPU-SPARSE-MAPS-2026-10-27.md) separates valid undeclared
-map squares from corrupt declared archives. Source height/shadow initialization and blocked traversal
-are retained. The supplied LIVE cache now executes the mixed-group Metal boundary probe; numeric
-admission/reconstruction pass, with camera-framing and Java/gameplay acceptance limits documented.
-
-Full-viewport widget alpha overlay now has its source-derived producer and shared compositor path;
-[the checkpoint](../builtin-plugins/GPU-OVERLAY-2026-10-27.md) records exact byte selection/reset,
-letterboxing and actual native/browser GPU evidence. Ten broader GPU obligations remain open.
-
-Actor depth: [the source-derived continuation](../builtin-plugins/GPU-ACTOR-DEPTH-2026-10-27.md) adds
-sorted opaque color followed by depth-only replay for players and opcode-147 base NPC definitions.
-Morph appearance retains the base policy. Native diagnostics and 35 browser checks pass; live NPC
-customization, tint/world views, other modes and Java/gameplay visual acceptance remain open.
+Follow batches 0-3 of the canonical roadmap first: freeze packet/mask/source-case
+coverage, close selected valid-traffic failures and map lifecycle, preserve world
+mutations, then connect full interactions/dialogue. Continue actor/UI/audio/social,
+render/plugin and browser acceptance in the same shared owners. No missing feature
+is excused as a Rust improvement; use the explicit deviations register.

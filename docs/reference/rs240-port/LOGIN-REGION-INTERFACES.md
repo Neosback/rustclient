@@ -1,5 +1,10 @@
 # Login, initial region and interface lifecycle
 
+<!-- authority-notice -->
+> Domain source/ownership research; implementation statements are bounded to the dates
+> recorded below. The [current matrix](PORT-MATRIX.md) and [audit](CURRENT-AUDIT.md)
+> supersede older gap/status lists; preserve exact source details and historical evidence.
+
 Status: source-reviewed login diagnosis (2026-10-24), with contract-tested interface reopen callbacks
 added 2026-10-25. Complete interface/model lifecycle parity remains open.
 The current GUI failure is a server-selected fullscreen world-map root without

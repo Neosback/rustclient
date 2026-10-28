@@ -1,5 +1,10 @@
 # Revision 240 NPC path acceleration
 
+<!-- authority-notice -->
+> Domain source/ownership research; implementation statements are bounded to the dates
+> recorded below. The [current matrix](PORT-MATRIX.md) and [audit](CURRENT-AUDIT.md)
+> supersede older gap/status lists; preserve exact source details and historical evidence.
+
 Status: exact source semantics specified and authoritative ordinary NPC stepping implemented for cache-resolved definitions.
 
 ## Scope

@@ -1,5 +1,10 @@
 # Revision 240 actor path queue implementation checkpoint
 
+<!-- authority-notice -->
+> Domain source/ownership research; implementation statements are bounded to the dates
+> recorded below. The [current matrix](PORT-MATRIX.md) and [audit](CURRENT-AUDIT.md)
+> supersede older gap/status lists; preserve exact source details and historical evidence.
+
 Status: bounded path retention, ordinary player/NPC fine scheduling, action gates, blocked-cycle catch-up, exact/forced movement, and actor position projection are authoritative. The main remaining path-scheduler gap is facing/turning-dependent movement and directional locomotion.
 
 This checkpoint supersedes older mismatch notes in `MOVEMENT-FACING.md` that describe missing bounded queues, disconnected NPC fine scheduling, missing `field1452`, or projection-owned forced movement. Exact source findings in that document remain evidence.

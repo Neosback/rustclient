@@ -1,5 +1,10 @@
 # CP3H — CP3 Exit-Criteria and Architecture Audit
 
+<!-- authority-notice -->
+> Historical checkpoint and evidence record. Implementation status, “next” tasks, counts
+> and validation below apply to the recorded snapshot. Current work follows
+> [PORTING-ROADMAP.md](PORTING-ROADMAP.md) and the [domain matrix](../reference/rs240-port/PORT-MATRIX.md).
+
 ## Goal
 
 Audit the implemented CP3A–CP3G state-runtime work against the original CP3 roadmap and current architecture specs without weakening exit criteria or adding placeholder runtime code solely to declare CP3 complete.

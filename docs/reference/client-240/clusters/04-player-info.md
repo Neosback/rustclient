@@ -83,4 +83,7 @@ The decoder throws if a compressed skip run is not exhausted at the end of each 
 
 ## Deliberately generic
 
-The extended-player mask branches `0x40000` and `0x8` remain semantically unresolved as recorded in `PLAYER-EXTENDED-STATE.md`. Several scratch arrays/counters in `classDF` also remain generic until their complete producer/consumer roles are proven. No names were inferred solely from array shape.
+The former unresolved branches are identified: `0x40000` is animation freeze
+(delay/duration/cancelSequence) and `0x8` is player reset. See the corrected
+[extended-state handoff](../../rs240-port/PLAYER-EXTENDED-STATE.md) and cluster 11;
+selected RSProt writer/model identities corroborate the actor consumer trace. Several scratch arrays/counters in `classDF` also remain generic until their complete producer/consumer roles are proven. No names were inferred solely from array shape.

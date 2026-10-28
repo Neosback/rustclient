@@ -1,32 +1,32 @@
 # RustClient
 
-RustClient is a greenfield OSRS-style client platform for private servers. The goal is one maintainable source tree for native desktop and browser targets, with revision-aware protocol/cache support and a sandboxed, versioned plugin ecosystem.
+RustClient is a Rust client platform for private servers, targeting nearly 1:1
+OSRS 240 behavior and applicable pinned RuneLite features. Desktop and browser
+share one semantic core, explicit revision/cache profiles and a sandboxed,
+versioned plugin ecosystem. Rust-specific improvements must preserve behavior
+or have a documented, evidenced departure under [SPEC-0019](docs/specs/SPEC-0019-port-parity.md).
 
 ## Status
 
-The desktop client loads a local JS5 cache, presents the login screen and connects
-using the opt-in OpenRune 240.2 profile. It decodes cached terrain/location models,
-a gameframe/minimap and initial live player/NPC update families. NPC and worn-item
-assets load on demand, including cached-model skeletal animation support. Classic
-render parity, complete movement/actions, widgets/CS2 and plugin execution remain
-unfinished. The browser app currently presents a bootstrap canvas; shared crates
-compile for Wasm, but browser gameplay/cache import/transport are not delivered.
-No production protocol, renderer or plugin ABI is considered stable yet.
+The native client has cache-backed login/world/gameframe, player/NPC movement and
+selected action/chat/widget/CS2 paths. World-map assets/controller, viewport and
+overview rendering, native pan/zoom and compass reset exist. Full gameplay parity
+remains incomplete: selected NPC masks can terminate sessions, instances are
+rejected, ground-item and server scenery updates/actions/dialogue are incomplete,
+actor effects/model widgets/audio and many packet/script consumers remain open.
 
-Movement input, ordinary map-rebuild handling and local-player decoder groundwork
-are wired. Live login against the OpenRune 240.2 profile is verified end-to-end
-(authentication, initial placement, 395 framed gameplay packets, clean disconnect);
-the desktop GUI acceptance pass remains manual. A first native plugin slice now runs
-the `hello-overlay` WebAssembly component through the WIT ABI, queries committed
-player position, persists plugin-local config and draws an overlay. The same component
-transpiles with `jco` and runs against a JS host (`scripts/check-plugin-web.sh`) with
-identical overlay and persistence behavior; browser worker integration remains open. It is
-recorded in the [plugin checkpoint](docs/plan/CP11-plugin-slice.md) together with the
-remaining browser runtime and SDK work. The [walk-and-bank
-checkpoint](docs/plan/PLAYABLE-desktop.md) records movement, stock NPC updates,
-world menus, inventory synchronization and unfinished widget/CS2/banking work.
+The native WIT component/host/overlay sample and a JS-host transpilation proof
+exist; full plugin feature coverage and browser runtime integration remain open.
+The browser app is still a renderer/canvas bootstrap. Native GPU-shell integration
+at bd3aae10 replaces the earlier CPU-DOM mechanism; this documentation review does
+not certify its controls, performance or live behavior.
 
-The first implementation compatibility target is revision `240`, while the architecture is designed to support additional validated revisions/profiles later.
+Follow [the porting roadmap](docs/plan/PORTING-ROADMAP.md),
+[the current audit](docs/reference/rs240-port/CURRENT-AUDIT.md) and
+[the domain matrix](docs/reference/rs240-port/PORT-MATRIX.md). Historical checkpoint
+validation is bounded to its recorded source snapshot. No full-client, visual or
+browser gameplay parity is claimed. [The documentation index](docs/README.md)
+identifies canonical owners and historical evidence.
 
 ## Architectural goals
 

@@ -1,5 +1,10 @@
 # Sorted-model admission and bucket arithmetic — 2026-10-28
 
+<!-- authority-notice -->
+> Historical continuation with bounded source/runtime evidence. Use the
+> [current audit](../rs240-port/CURRENT-AUDIT.md), [GPU ledger](GPU-AUDIT.md) and
+> [roadmap](../../plan/PORTING-ROADMAP.md) for present status and ordering.
+
 This checkpoint extends the prior [actor depth port](GPU-ACTOR-DEPTH-2026-10-27.md).
 It implements source face selection and depth arithmetic for actors that enter the sorted uploader.
 It does not establish complete GPU parity or readiness for 117HD.

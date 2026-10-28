@@ -1,5 +1,10 @@
 # Sorted actor color and deferred depth — 2026-10-27
 
+<!-- authority-notice -->
+> Historical continuation with bounded source/runtime evidence. Use the
+> [current audit](../rs240-port/CURRENT-AUDIT.md), [GPU ledger](GPU-AUDIT.md) and
+> [roadmap](../../plan/PORTING-ROADMAP.md) for present status and ordering.
+
 Implemented the revision-240 opaque actor path that had been absent from the GPU ledger.
 This is a bounded port of render mode 2, not complete GPU, actor customization or visual parity.
 The ten broader GPU obligations remain open.

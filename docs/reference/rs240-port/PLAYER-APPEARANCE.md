@@ -1,6 +1,15 @@
 # Revision 240 player appearance and model-cache contract
 
-Status: source-specified handoff for later Rust implementation.
+<!-- authority-notice -->
+> Domain source/ownership research; implementation statements are bounded to the dates
+> recorded below. The [current matrix](PORT-MATRIX.md) and [audit](CURRENT-AUDIT.md)
+> supersede older gap/status lists; preserve exact source details and historical evidence.
+
+Status: source-specified contract; core appearance implemented, transform/customization
+retention and full model-cache/lifecycle behavior remain partial (2026-10-28).
+The current decoder reads/discards transformed NPC ID and skull/overhead fields;
+PlayerAppearance already retains combat level. Extend that owner rather than
+adding duplicate identity/combat state.
 
 Canonical source evidence:
 

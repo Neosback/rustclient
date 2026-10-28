@@ -1,5 +1,10 @@
 # Sparse map loading and GPU boundary evidence — 2026-10-27
 
+<!-- authority-notice -->
+> Historical continuation with bounded source/runtime evidence. Use the
+> [current audit](../rs240-port/CURRENT-AUDIT.md), [GPU ledger](GPU-AUDIT.md) and
+> [roadmap](../../plan/PORTING-ROADMAP.md) for present status and ordering.
+
 The supplied `/Users/tylercovalt/Desktop/LIVE` cache is usable for the region-boundary diagnostic.
 The previous checkpoint's missing-archive failure exposed a RustClient loader defect: an undeclared
 map group is valid empty space in revision 240. It must be distinguished from a declared archive

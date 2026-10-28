@@ -1,5 +1,10 @@
 # CP2D: Web Composition Root
 
+<!-- authority-notice -->
+> Historical checkpoint and evidence record. Implementation status, “next” tasks, counts
+> and validation below apply to the recorded snapshot. Current work follows
+> [PORTING-ROADMAP.md](PORTING-ROADMAP.md) and the [domain matrix](../reference/rs240-port/PORT-MATRIX.md).
+
 ## Goal
 
 Wire the browser/WASM composition root to the same shared renderer used by native without changing native behavior or adding gameplay/runtime systems.

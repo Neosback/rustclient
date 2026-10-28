@@ -1,5 +1,10 @@
 # Revision 240 transient world effects: graphics objects and projectiles
 
+<!-- authority-notice -->
+> Domain source/ownership research; implementation statements are bounded to the dates
+> recorded below. The [current matrix](PORT-MATRIX.md) and [audit](CURRENT-AUDIT.md)
+> supersede older gap/status lists; preserve exact source details and historical evidence.
+
 Status: source-specified handoff for standalone graphics-object spawn/lifetime, projectile spawn/trajectory/retargeting/lifetime, animation progression, WorldView routing and region-base rebasing. No Rust implementation or visual parity is claimed by this document.
 
 ## Canonical evidence

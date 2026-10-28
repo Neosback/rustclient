@@ -1,5 +1,10 @@
 # Offline cache-backed title checkpoint
 
+<!-- authority-notice -->
+> Historical checkpoint and evidence record. Implementation status, “next” tasks, counts
+> and validation below apply to the recorded snapshot. Current work follows
+> [PORTING-ROADMAP.md](PORTING-ROADMAP.md) and the [domain matrix](../reference/rs240-port/PORT-MATRIX.md).
+
 **Status:** Complete for SPEC-0013's desktop/offline scope, 2026-10-21.
 
 Implementation is an uncommitted working-tree change based on RustClient commit
