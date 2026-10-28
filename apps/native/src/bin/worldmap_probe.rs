@@ -1,4 +1,4 @@
-//! Read-only cache diagnostic for world map bootstrap, JPEG loading and script prerequisites.
+//! Read-only cache diagnostic for world map bootstrap, standard image loading and script prerequisites.
 use rustclient_cache::{Cache, CacheProfile};
 use rustclient_model::ScriptId;
 use rustclient_platform_native::DirectoryBlobs;
@@ -21,7 +21,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let composite = profile.load_world_map_composite(&cache, main)?;
     let overview = composite.overview.as_ref().ok_or("no main overview")?;
     println!(
-        "JPEG overview: {}x{}; {} RGBA bytes; {} icons",
+        "standard overview: {}x{}; {} RGBA bytes; {} icons",
         overview.image.width(),
         overview.image.height(),
         overview.image.pixels().len(),

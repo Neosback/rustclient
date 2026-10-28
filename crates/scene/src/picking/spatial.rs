@@ -70,6 +70,7 @@ pub struct ScenePickIndex {
     vertices: usize,
     blocks: usize,
     nodes: Vec<Node>,
+    clickboxes:super::clickbox::Clickboxes,
 }
 impl ScenePickIndex {
     /// Build a balanced index with one leaf per 32 original triangles.
@@ -103,6 +104,7 @@ impl ScenePickIndex {
             source: geometry.vertices.as_ptr() as usize,
             vertices: geometry.vertices.len(),
             blocks: blocks.len(),
+            clickboxes:super::clickbox::Clickboxes::new(geometry),
             nodes: Vec::with_capacity(blocks.len().saturating_mul(2).saturating_sub(1)),
         };
         if !blocks.is_empty() {
@@ -146,7 +148,7 @@ impl ScenePickIndex {
     pub fn stats(&self) -> PickIndexStats {
         PickIndexStats {
             blocks: self.blocks,
-            resident_bytes: self.nodes.capacity() * std::mem::size_of::<Node>(),
+            resident_bytes: self.nodes.capacity() * std::mem::size_of::<Node>() + self.clickboxes.bytes(),
         }
     }
     fn matches(&self, geometry: &SceneGeometry, origin: [f32; 3]) -> bool {
@@ -207,6 +209,10 @@ impl ScenePickIndex {
             }
         }
         hit
+    }
+    #[must_use]
+    pub fn pick_targets(&self,geometry:&SceneGeometry,projection:super::PickProjection,visibility:&SceneVisibility)->Vec<super::ClickHit>{
+        if self.matches(geometry,[0.;3]){self.clickboxes.query(geometry,projection,visibility)}else{super::pick_targets(geometry,projection,visibility)}
     }
     #[must_use]
     pub fn pick_surface(

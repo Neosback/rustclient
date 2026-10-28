@@ -1,3 +1,4 @@
+#![cfg(feature="legacy-native")]
 #![cfg(not(target_arch = "wasm32"))]
 #![allow(clippy::float_cmp)]
 use keyboard_types::{Code, Key, Modifiers};

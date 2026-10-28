@@ -157,6 +157,7 @@ pub struct SurfaceRenderer {
     effective: crate::EffectiveGpu,
     capabilities: crate::GpuCapabilities,
     shell_staging: crate::shell::ShellStaging,
+    egui_staging: crate::shell::EguiStaging,
     shell_gpu: crate::shell::ShellGpu,
     game_width: Option<u32>,
     stretch: Option<rustclient_game_ui::StretchedCanvas>,
@@ -241,7 +242,22 @@ impl SurfaceRenderer {
         &mut self,
         layer: Option<crate::ShellLayer<'_>>,
     ) -> Result<(), RenderError> {
+        self.egui_staging.enabled = false;
         self.shell_staging.set(layer)
+    }
+
+    /// Stage bounded trusted UI primitives; renderer resources remain engine-owned.
+    /// # Errors
+    /// Rejects invalid snapshots before changing the accepted cached panel.
+    pub fn set_egui_shell_layer(
+        &mut self,
+        layer: crate::EguiShellLayer<'_>,
+    ) -> Result<(), RenderError> {
+        self.egui_staging.set(layer, &mut self.shell_staging)
+    }
+    #[must_use]
+    pub fn egui_shell_stats(&self) -> crate::EguiShellStats {
+        self.egui_staging.stats
     }
 
     /// Width of the physical game canvas after reserving shell chrome on the right.
@@ -357,6 +373,7 @@ impl SurfaceRenderer {
             effective,
             capabilities: gpu_capabilities,
             shell_staging: crate::shell::ShellStaging::default(),
+            egui_staging: crate::shell::EguiStaging::default(),
             shell_gpu,
             game_width: None,
             stretch: None,
@@ -759,6 +776,8 @@ impl SurfaceRenderer {
         if draw_ui && let (Some(canvas), Some(ui)) = (&self.ui_canvas, &self.ui) {
             canvas.render(&mut encoder, ui);
         }
+        self.egui_staging
+            .prepare(&self.device, &self.queue, &mut encoder, &mut self.shell_gpu);
         {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("game display and shell"),

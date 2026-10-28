@@ -5,19 +5,24 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[features]
+default = []
+legacy-native = ["dep:dioxus-native-dom", "dep:blitz-dom", "dep:blitz-traits", "dep:blitz-paint", "dep:anyrender", "dep:anyrender_vello_cpu"]
+
 [dependencies]
 rustclient-plugin-host = { path = "../plugin-host" }
 rustclient-platform = { path = "../platform" }
 dioxus = { version = "=0.7.10", default-features = false, features = ["macro", "html", "signals", "hooks"] }
 keyboard-types = "=0.7.0"
+egui = "=0.37.0"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-dioxus-native-dom = "=0.7.10"
-blitz-dom = { version = "=0.2.4", default-features = false }
-blitz-traits = "=0.2.0"
-blitz-paint = { version = "=0.2.1", default-features = false }
-anyrender = "=0.6.2"
-anyrender_vello_cpu = "=0.8.0"
+dioxus-native-dom = { version = "=0.7.10", optional = true }
+blitz-dom = { version = "=0.2.4", default-features = false, optional = true }
+blitz-traits = { version = "=0.2.0", optional = true }
+blitz-paint = { version = "=0.2.1", default-features = false, optional = true }
+anyrender = { version = "=0.6.2", optional = true }
+anyrender_vello_cpu = { version = "=0.8.0", optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 dioxus-web = "=0.7.10"

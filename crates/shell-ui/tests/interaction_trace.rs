@@ -1,3 +1,4 @@
+#![cfg(feature="legacy-native")]
 #![cfg(not(target_arch = "wasm32"))]
 //! Run explicitly in release mode. Timings are diagnostic; normal tests enforce work contracts.
 use keyboard_types::{Code, Key, Modifiers};

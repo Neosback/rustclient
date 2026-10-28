@@ -14,10 +14,10 @@ macro_rules! icon {
 }
 pub(crate) use icon;
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), feature="legacy-native"))]
 pub(crate) use native::{Collector, EmbeddedAssets};
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), feature="legacy-native"))]
 mod native {
     use blitz_dom::net::Resource;
     use blitz_traits::net::{

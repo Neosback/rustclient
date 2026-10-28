@@ -32,7 +32,7 @@ pub use settings::{
     VsyncMode,
 };
 mod shell;
-pub use shell::{ShellLayer, ShellStats};
+pub use shell::{EguiShellLayer, EguiShellStats, ShellLayer, ShellStats, capture_gpu_shell};
 mod world_geometry;
 mod world_pipeline;
 mod world_target;

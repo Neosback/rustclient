@@ -39,6 +39,7 @@ pub struct WorldMapState {
     pub list_iterator_index: usize,
     pub last_interacted_coord: Option<MapCoord>,
     pub is_loaded: bool,
+    pub load_error: Option<String>,
 }
 
 impl WorldMapState {
@@ -66,18 +67,53 @@ impl WorldMapState {
             list_iterator_index: 0,
             last_interacted_coord: None,
             is_loaded: false,
+            load_error: None,
         }
     }
 
     pub fn reset(&mut self) {
-        self.active_composite = None;
-        self.current_map_area_id = -1;
-        self.center_tile = [0, 0];
+        // Cache assets survive logout; account-dependent interaction/position does not.
+        self.center_tile = self
+            .active_area()
+            .and_then(|area| area.position(area.origin.plane, area.origin.x, area.origin.y))
+            .unwrap_or([0, 0]);
         self.target_tile = None;
         self.flashing_elements.clear();
         self.flashing_categories.clear();
         self.list_iterator_index = 0;
+        self.last_interacted_coord = None;
+        self.flash_cycle = 0;
+    }
+
+    fn select_map<S: ReadOnlyBlobs>(
+        &mut self,
+        cache: &rustclient_cache::Cache<S>,
+        profile: rustclient_cache::CacheProfile,
+        map_id: i32,
+    ) {
+        self.current_map_area_id = map_id;
+        self.active_composite = None;
         self.is_loaded = false;
+        self.load_error = None;
+        let Some(area) = u32::try_from(map_id)
+            .ok()
+            .and_then(|id| self.areas.get(&id))
+        else {
+            return;
+        };
+        self.center_tile = area
+            .position(area.origin.plane, area.origin.x, area.origin.y)
+            .unwrap_or([area.region_low[0] * 64, area.region_low[1] * 64]);
+        self.target_tile = None;
+        self.zoom = f32::from(area.default_zoom.max(1));
+        self.target_zoom = self.zoom;
+        match profile.load_world_map_composite(cache, area) {
+            Ok(composite) => {
+                self.active_composite = Some(composite);
+                self.is_loaded = true;
+            }
+            Err(error) => self.load_error = Some(error.to_string()),
+        }
     }
 
     #[must_use]
@@ -85,6 +121,34 @@ impl WorldMapState {
         u32::try_from(self.current_map_area_id)
             .ok()
             .and_then(|id| self.areas.get(&id))
+    }
+}
+
+impl<S: ReadOnlyBlobs> ClientScripts<S> {
+    /// Prepare the default map on the same cache worker as the other startup assets.
+    /// # Errors
+    /// Missing/malformed assets remain diagnostics; the game interfaces can still be used.
+    pub fn initialize_world_map(&mut self) -> Result<()> {
+        self.world_map.areas = self
+            .profile
+            .load_world_map_areas(&self.cache)
+            .map_err(|error| error.to_string())?
+            .into_iter()
+            .map(|area| (area.id, area))
+            .collect();
+        let main = self
+            .world_map
+            .areas
+            .values()
+            .find(|area| area.is_main)
+            .map(|area| area.id)
+            .ok_or("world map has no main area")?;
+        let main = i32::try_from(main).map_err(|error| error.to_string())?;
+        self.world_map.select_map(&self.cache, self.profile, main);
+        if let Some(error) = &self.world_map.load_error {
+            return Err(error.clone());
+        }
+        Ok(())
     }
 }
 
@@ -134,36 +198,7 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
         }
         Opcode::WorldmapSetmap => {
             let map_id = s.int()?;
-            world_map.current_map_area_id = map_id;
-            if let Ok(id) = u32::try_from(map_id) {
-                if let Some(area) = world_map.areas.get(&id) {
-                    if let Ok(comp) = profile.load_world_map_composite(cache, area) {
-                        world_map.active_composite = Some(comp);
-                    }
-                    if let Some([dx, dy]) =
-                        area.position(area.origin.plane, area.origin.x, area.origin.y)
-                    {
-                        world_map.center_tile = [dx, dy];
-                    } else {
-                        world_map.center_tile = [area.region_low[0] * 64, area.region_low[1] * 64];
-                    }
-                    world_map.target_tile = None;
-                    let zoom = if area.default_zoom > 0 {
-                        f32::from(area.default_zoom)
-                    } else {
-                        100.0
-                    };
-                    world_map.zoom = zoom;
-                    world_map.target_zoom = zoom;
-                    world_map.is_loaded = true;
-                } else {
-                    world_map.active_composite = None;
-                    world_map.is_loaded = false;
-                }
-            } else {
-                world_map.active_composite = None;
-                world_map.is_loaded = false;
-            }
+            world_map.select_map(cache, *profile, map_id);
         }
         Opcode::WorldmapGetzoom => {
             #[expect(
@@ -554,7 +589,8 @@ mod tests {
         stacks.integers.push(1);
         instruction(&mut host, Opcode::WorldmapSetmap, &mut stacks).unwrap();
         assert_eq!(host.resources.world_map.current_map_area_id, 1);
-        assert!(host.resources.world_map.is_loaded);
+        assert!(!host.resources.world_map.is_loaded);
+        assert!(host.resources.world_map.load_error.is_some()); // Empty fixture cache must not report a successful load.
 
         // 3. Zoom
         instruction(&mut host, Opcode::WorldmapGetzoom, &mut stacks).unwrap();

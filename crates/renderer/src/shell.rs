@@ -1,5 +1,10 @@
 //! Cached retained-shell composition, independent of the OSRS widget atlas.
 use crate::{RenderError, SurfaceSize};
+mod egui;
+mod egui_capture;
+pub(crate) use egui::EguiStaging;
+pub use egui::{EguiShellLayer, EguiShellStats};
+pub use egui_capture::capture_gpu_shell;
 
 #[derive(Debug, Clone, Copy)]
 pub struct ShellLayer<'a> {
@@ -103,7 +108,10 @@ impl ShellGpu {
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
             format: wgpu::TextureFormat::Rgba8UnormSrgb,
-            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING
+                | wgpu::TextureUsages::COPY_DST
+                | wgpu::TextureUsages::RENDER_ATTACHMENT
+                | wgpu::TextureUsages::COPY_SRC,
             view_formats: &[],
         })
     }
@@ -201,6 +209,13 @@ impl ShellGpu {
             size: [1, 1],
         }
     }
+    fn ensure_size(&mut self, device: &wgpu::Device, size: [u32; 2]) {
+        if self.size != size {
+            self.texture = Self::image(device, size);
+            self.bind = Self::bind(device, &self.layout, &self.sampler, &self.texture);
+            self.size = size;
+        }
+    }
     fn upload(
         &mut self,
         device: &wgpu::Device,
@@ -208,11 +223,7 @@ impl ShellGpu {
         size: [u32; 2],
         pixels: &[u8],
     ) {
-        if self.size != size {
-            self.texture = Self::image(device, size);
-            self.bind = Self::bind(device, &self.layout, &self.sampler, &self.texture);
-            self.size = size;
-        }
+        self.ensure_size(device, size);
         queue.write_texture(
             wgpu::TexelCopyTextureInfo {
                 texture: &self.texture,

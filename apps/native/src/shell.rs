@@ -7,8 +7,8 @@ mod settings;
 use layout::CanvasLayout;
 use rustclient_platform::BlobStorage;
 use rustclient_plugin_host::configuration::ConfigValue;
-use rustclient_renderer::{ShellLayer, SurfaceRenderer, SurfaceSize};
-use rustclient_shell_ui::{PluginPanel, RetainedPanel, ShellAction, ShellChannel, SidebarState};
+use rustclient_renderer::{EguiShellLayer, SurfaceRenderer, SurfaceSize};
+use rustclient_shell_ui::{EguiPanel, PluginPanel, ShellAction, ShellChannel, SidebarState};
 use settings::{apply_effect, availability, gpu_settings, notes, static_note};
 use std::collections::BTreeMap;
 use std::time::Instant;
@@ -39,7 +39,8 @@ impl SidebarArrow {
 
 #[allow(clippy::struct_excessive_bools)]
 pub(super) struct Shell {
-    pub panel: RetainedPanel,
+    pub panel: EguiPanel,
+    ui_clock: Instant,
     channel: ShellChannel,
     configuration: BuiltinConfigurations,
     pub focused: bool,
@@ -72,7 +73,7 @@ impl Shell {
             preferences.pinned.iter().map(ToString::to_string).collect();
         channel.model.borrow_mut().error =
             (!diagnostics.is_empty()).then(|| diagnostics.join("\n"));
-        let mut panel = RetainedPanel::new(channel.clone(), [36, 503], 1.)?;
+        let mut panel = EguiPanel::new(channel.clone(), [36, 503], 1.)?;
         match rustclient_platform_native::NativeClipboard::new() {
             Ok(clipboard) => panel.set_clipboard(Box::new(clipboard)),
             Err(error) => eprintln!("shell clipboard unavailable: {error}"),
@@ -81,6 +82,7 @@ impl Shell {
         let arrow = SidebarArrow::decode()?;
         let shell = Self {
             panel,
+            ui_clock: Instant::now(),
             channel,
             configuration,
             focused: false,
@@ -264,6 +266,21 @@ impl Shell {
             (y / window.scale_factor()) as f32,
         ])
     }
+    /// Process input before accepted actions are drained; world frames do not invalidate the UI.
+    #[expect(clippy::cast_possible_truncation,clippy::cast_sign_loss,reason="validated bounded panel dimensions and native DPI")]
+    pub fn update_panel(&mut self,window:&Window)->Result<(),String>{
+        self.panel.set_visible(self.sidebar()!=SidebarState::Hidden);
+        if self.sidebar()==SidebarState::Hidden{return Ok(());}
+        let scale=window.scale_factor();
+        let size=[(f64::from(self.width())*scale).round() as u32,window.inner_size().height];
+        if size.contains(&0){return Ok(());}
+        self.panel.resize(size,scale as f32)?;
+        self.panel.render(self.ui_clock.elapsed().as_secs_f64())?;
+        if let Some([x,y,width,height])=self.panel.ime_cursor(){
+            window.set_ime_cursor_area(winit::dpi::LogicalPosition::new(f64::from(x)+f64::from(self.game_size(window).width)/scale,f64::from(y)),winit::dpi::LogicalSize::new(f64::from(width.max(1.)),f64::from(height.max(1.))));
+        }
+        Ok(())
+    }
     #[expect(
         clippy::cast_possible_truncation,
         clippy::cast_sign_loss,
@@ -293,14 +310,17 @@ impl Shell {
                 .set_shell_layer(None)
                 .map_err(|error| error.to_string());
         }
-        self.panel.render();
+        self.panel.render(self.ui_clock.elapsed().as_secs_f64())?;
+        let frame = self.panel.frame();
         renderer
-            .set_shell_layer(Some(ShellLayer {
-                pixels: self.panel.pixels(),
+            .set_egui_shell_layer(EguiShellLayer {
+                jobs: &frame.jobs,
+                textures: &frame.textures,
+                scale: scale as f32,
                 size: SurfaceSize::new(size[0], size[1]),
-                generation: self.panel.stats().rasterizations,
+                generation: frame.generation,
                 origin: [game.width, 0],
-            }))
+            })
             .map_err(|error| error.to_string())
     }
     pub fn apply_current(&mut self, window: &Window, renderer: Option<&mut SurfaceRenderer>) {

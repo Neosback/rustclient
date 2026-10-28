@@ -84,6 +84,8 @@ pub struct ActorLabelAnchor {
 pub struct PickRange {
     pub vertices: std::ops::Range<usize>,
     pub target: rustclient_model::WorldTarget,
+    pub bounds: Option<crate::PickBounds>,
+    pub precision:crate::PickPrecision,
 }
 pub struct WorldMesh {
     pub asset: SceneAssetId,

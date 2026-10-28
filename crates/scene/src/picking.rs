@@ -2,6 +2,8 @@
 #[cfg(test)]
 mod model_tests;
 mod spatial;
+mod clickbox;
+pub use clickbox::{PickBounds,PickPrecision,PickProjection,ClickHit,pick_targets};
 #[cfg(test)]
 mod spatial_tests;
 pub use spatial::{PickIndexStats, ScenePickIndex};
@@ -119,46 +121,11 @@ pub fn pick_surface(
         return None;
     }
     let mut hit = None;
-    let mut model_index = 0;
-    let mut admission = (usize::MAX, true);
     for (i, triangle) in geometry.vertices.chunks_exact(3).enumerate() {
         if triangle.iter().all(|v| v.abhsl >> 24 == 255) || !visibility.shows_vertex(&triangle[0]) {
             continue;
         }
         let vertex = i * 3;
-        while geometry
-            .models
-            .get(model_index)
-            .is_some_and(|model| model.vertices.end <= vertex)
-        {
-            model_index += 1;
-        }
-        let model = geometry
-            .models
-            .get(model_index)
-            .filter(|model| model.vertices.contains(&vertex));
-        if let Some(model) = model {
-            if admission.0 != model_index {
-                admission = (model_index, visibility.shows_model(model));
-            }
-            if !admission.1 {
-                continue;
-            }
-        }
-        let points = [triangle[0], triangle[1], triangle[2]].map(|v| {
-            rustclient_model::ModelPoint::new(
-                i32::from(v.position[0]),
-                i32::from(v.position[1]),
-                i32::from(v.position[2]),
-            )
-        });
-        if model.is_some_and(|model| model.sort_source.is_some())
-            && visibility
-                .model_view
-                .is_some_and(|view| !view.front_face(points))
-        {
-            continue;
-        }
         let points = std::array::from_fn(|i| {
             std::array::from_fn(|axis| f32::from(triangle[i].position[axis]))
         });

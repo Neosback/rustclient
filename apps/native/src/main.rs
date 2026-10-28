@@ -712,7 +712,7 @@ impl NativeApp {
             return;
         }
         let frame_start = Instant::now();
-        self.shell.panel.update();
+        if let Err(error)=self.shell.update_panel(&window){eprintln!("shell input: {error}");}
         if self.shell.actions(
             &window,
             self.renderer.as_mut(),
@@ -2228,7 +2228,12 @@ fn run() -> Result<(), String> {
                 .map_err(|e| e.to_string())
                 .and_then(|source| rustclient_cache::Cache::open(source).map_err(|e| e.to_string()))
                 .map(|cache| {
-                    rustclient_application::scripts::ClientScripts::new(cache, options.profile)
+                    let mut scripts =
+                        rustclient_application::scripts::ClientScripts::new(cache, options.profile);
+                    if let Err(error) = scripts.initialize_world_map() {
+                        eprintln!("world map startup: {error}");
+                    }
+                    scripts
                 });
             let _ = proxy.send_event(LoadEvent::ScriptsReady(Box::new(scripts)));
             let _ = proxy.send_event(LoadEvent::Loaded(Box::new(result)));

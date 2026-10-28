@@ -56,6 +56,29 @@ impl Image {
             .to_rgba8();
         Self::new(bitmap.width(), bitmap.height(), bitmap.into_raw(), source)
     }
+
+    /// Standard image files used by the world map's ImageIO path, independently of sprites.
+    pub(crate) fn standard(bytes: &[u8], source: Source) -> Result<Self> {
+        let mut reader = image::ImageReader::new(std::io::Cursor::new(bytes))
+            .with_guessed_format()
+            .map_err(|e| source.error("world map image", e.to_string()))?;
+        if !matches!(
+            reader.format(),
+            Some(image::ImageFormat::Jpeg | image::ImageFormat::Png)
+        ) {
+            return Err(source.error("world map image", "expected PNG or JPEG"));
+        }
+        let mut limits = image::Limits::default();
+        limits.max_image_width = Some(4096);
+        limits.max_image_height = Some(4096);
+        limits.max_alloc = Some(64 * 1024 * 1024);
+        reader.limits(limits);
+        let bitmap = reader
+            .decode()
+            .map_err(|e| source.error("world map image", e.to_string()))?
+            .to_rgba8();
+        Self::new(bitmap.width(), bitmap.height(), bitmap.into_raw(), source)
+    }
 }
 
 /// Cache bitmap font combining index-8 masks with index-13 metrics.

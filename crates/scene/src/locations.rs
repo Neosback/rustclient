@@ -87,6 +87,7 @@ pub(crate) fn build(
     for model in prepared {
         let first = mesh.geometry.vertices.len();
         let target = model.target;
+        let bounds=crate::PickBounds::new(model.origin,&model.points)?;
         emit(asset, mesh, model)?;
         if mesh.geometry.vertices.len() > first {
             mesh.geometry.models.push(crate::mesh::SceneModel {
@@ -95,6 +96,7 @@ pub(crate) fn build(
                 sort_source: None,
             });
             mesh.geometry.picks.push(crate::PickRange {
+                bounds:Some(bounds),precision:crate::PickPrecision::ProjectedFaces,
                 vertices: first..mesh.geometry.vertices.len(),
                 target,
             });
@@ -257,6 +259,7 @@ pub(crate) struct PreparedModel {
     pub normals: crate::lighting::Normals,
     pub merged: Vec<Option<crate::lighting::Normal>>,
     pub points: Vec<ModelPoint>,
+    origin:ModelPoint,
     pub loc: StaticLocation,
     pub size: [u8; 2],
     pub mergeable: bool,
@@ -383,6 +386,7 @@ fn prepare(
         normals,
         merged,
         points,
+        origin:ModelPoint::new(center[0]+offset[0]-asset.descriptor.origin().x*128,-base,center[1]+offset[1]-asset.descriptor.origin().y*128),
         loc: *loc,
         size,
         mergeable: def.non_flat_shading

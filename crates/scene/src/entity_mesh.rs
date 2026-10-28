@@ -601,7 +601,7 @@ fn build_npc(
     }
 
     let first_vertex = geometry.vertices.len();
-    emit_model(
+    let pick_bounds=emit_model(
         asset,
         &model,
         Placement {
@@ -643,7 +643,10 @@ fn build_npc(
         def.size.max(1),
     );
     if geometry.vertices.len() > first_vertex {
+        let bounding=catalog.npcs.get(&npc.definition_id).is_some_and(|base|base.size==1);
         geometry.picks.push(crate::PickRange {
+            bounds:Some(pick_bounds),
+            precision:if bounding{crate::PickPrecision::BoundsOnly}else{crate::PickPrecision::ProjectedFaces},
             vertices: first_vertex..geometry.vertices.len(),
             target: rustclient_model::WorldTarget::Npc {
                 index: npc.index,

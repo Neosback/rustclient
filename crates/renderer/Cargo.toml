@@ -15,6 +15,8 @@ rustclient-game-ui = { path = "../game-ui" }
 rustclient-cache = { path = "../cache" }
 
 wgpu.workspace = true
+egui = "=0.37.0"
+egui-wgpu = { version = "=0.37.0", default-features = false }
 
 [dev-dependencies]
 pollster.workspace = true

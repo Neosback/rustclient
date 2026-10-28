@@ -256,7 +256,7 @@ impl NativeApp {
     }
     /// The roof line-of-sight inputs for this frame, once a scene and a player exist.
     fn roof_view(&self, window: &Window) -> Option<rustclient_scene::RoofView> {
-        let (Some(loaded), Some((camera, _, viewport)), Some(player)) = (
+        let (Some(loaded), Some((_camera, _, _viewport)), Some(player)) = (
             self.scene.loaded.as_ref(),
             self.world_camera(window),
             self.state.entities().local_player(),
@@ -291,7 +291,7 @@ impl NativeApp {
     /// the "hide roofs" game option is on) plus the roofs plugins asked to hide. Every level
     /// draws before a player exists.
     pub(super) fn scene_visibility(&self, window: &Window) -> rustclient_scene::SceneVisibility {
-        let (Some(loaded), Some(view), Some((camera, _, viewport))) = (
+        let (Some(loaded), Some(view), Some((_camera, _, _viewport))) = (
             self.scene.loaded.as_ref(),
             self.roof_view(window),
             self.world_camera(window),
@@ -322,7 +322,7 @@ impl NativeApp {
                 .as_ref()
                 .is_none_or(|renderer| renderer.gpu_settings().hide_unrelated_maps),
         )
-        .with_model_view(camera.pose(viewport).model_view())
+
     }
     /// Track the tile under the pointer for the hovered-roof mode.
     ///
