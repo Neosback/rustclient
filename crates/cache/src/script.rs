@@ -529,6 +529,7 @@ pub enum Opcode {
     WorldmapGetconfigsize,
     WorldmapGetconfigbounds,
     WorldmapGetconfigzoom,
+    WorldmapGetdisplaycentercoord,
     WorldmapGetcurrentmap,
     WorldmapGetdisplaycoord,
     WorldmapCoordinmap,

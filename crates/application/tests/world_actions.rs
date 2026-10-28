@@ -1,5 +1,5 @@
 //! Semantic interaction identity/permission contracts, independent of GPU and live networking.
-use rustclient_application::{validate_world_action, world_actions};
+use rustclient_application::{validate_walk, validate_world_action, world_actions};
 use rustclient_cache::{
     GroupId, IndexId, Source,
     osrs240::{definitions, entity_assets::EntityAssets},
@@ -231,4 +231,88 @@ fn npc_morph_chains_resolve_nested_defaults_and_stop_cycles() {
             .resolve_npc(&asset, NpcDefinitionId::new(4), &variables)
             .is_none()
     );
+}
+
+#[test]
+fn plane_transitions_reuse_scene_asset_and_validate_walk_and_actions_on_upper_planes() {
+    use rustclient_model::{PlayerInfoUpdate, PlayerMovement};
+    let asset = asset();
+    let mut catalog = EntityCatalog::default();
+    let def = definitions::npc(
+        b"\x02Guard\0\x1eAttack\0\0",
+        NpcDefinitionId::new(12),
+        Source::group(IndexId(2), GroupId(9)),
+    )
+    .unwrap();
+    let mut batch = EntityAssets::default();
+    batch.npcs.insert(def.id, def);
+    assert!(catalog.merge(&asset, batch).is_empty());
+
+    let mut state = GameState::new();
+    let mut recorded = Vec::new();
+    for operation in [
+        SemanticOperation::AuthenticateSession {
+            revision: ServerProfile::OPENRUNE_240_2.revision(),
+            player: AuthenticatedPlayer {
+                profile: ServerProfile::OPENRUNE_240_2.id(),
+                player: PlayerIndex::new(1),
+                member: false,
+                staff_level: 0,
+            },
+        },
+        SemanticOperation::EstablishInitialPlacement(InitialPlacement {
+            position: WorldTile::new(3, 3, Plane::MIN),
+            map_anchor: WorldTile::new(3, 3, Plane::MIN),
+            area: None,
+        }),
+        SemanticOperation::InstallScene(asset.descriptor()),
+        SemanticOperation::UpdatePlayers(PlayerInfoUpdate {
+            local_movement: Some(PlayerMovement::Teleport {
+                delta_x: 0,
+                delta_y: 0,
+                plane_delta: 1,
+            }),
+            ..Default::default()
+        }),
+        SemanticOperation::UpdateNpcs(NpcInfoUpdate {
+            new_npcs: vec![new_npc()],
+            ..Default::default()
+        }),
+    ] {
+        apply(&mut state, &mut recorded, operation);
+    }
+
+    let plane_one = Plane::new(1).unwrap();
+    let active_scene = state
+        .loaded_scene()
+        .expect("scene stays installed across plane change");
+    assert_eq!(active_scene, asset.descriptor());
+    let walk = validate_walk(
+        &state,
+        &asset,
+        active_scene,
+        WorldTile::new(4, 4, plane_one),
+        false,
+    )
+    .expect("walk on upper plane validates against shared SceneAsset");
+    assert!(matches!(
+        walk,
+        ClientIntent::Walk {
+            destination,
+            invert_run: false,
+        } if destination == WorldTile::new(4, 4, plane_one)
+    ));
+
+    let npc = &state.entities().npcs()[&NpcIndex::new(42)];
+    assert_eq!(npc.tile.plane, plane_one);
+    let target = WorldTarget::Npc {
+        index: npc.index,
+        instance: npc.instance,
+        definition: npc.definition_id,
+        resolved: npc.definition_id,
+    };
+    let actions = world_actions(&state, &asset, &catalog, active_scene, target)
+        .expect("NPC action on upper plane validates against shared SceneAsset");
+    assert_eq!(actions.len(), 1);
+    assert_eq!(actions[0].0, "Attack Guard");
 }

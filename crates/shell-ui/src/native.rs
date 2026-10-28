@@ -2,7 +2,6 @@
 use crate::{
     Shell, ShellChannel,
     assets::{Collector, EmbeddedAssets},
-    components::CSS,
 };
 use anyrender::ImageRenderer;
 use anyrender_vello_cpu::VelloCpuImageRenderer;
@@ -14,10 +13,10 @@ use blitz_traits::{
     },
     shell::{ColorScheme, Viewport},
 };
-use dioxus::prelude::{ScopeId, VirtualDom};
+use dioxus::prelude::{ReadableExt, ScopeId, VirtualDom, WritableExt};
 use dioxus_native_dom::DioxusDocument;
 use keyboard_types::{Code, Key, Location, Modifiers};
-use std::sync::Arc;
+use std::{rc::Rc, sync::Arc, time::Instant};
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct PanelStats {
@@ -25,6 +24,9 @@ pub struct PanelStats {
     pub layouts: u64,
     pub rasterizations: u64,
     pub rasterized_bytes: u64,
+    pub update_micros: u64,
+    pub layout_micros: u64,
+    pub paint_micros: u64,
 }
 
 pub struct RetainedPanel {
@@ -34,11 +36,13 @@ pub struct RetainedPanel {
     size: [u32; 2],
     scale: f32,
     dirty: bool,
+    layout_dirty: bool,
     visible: bool,
     stats: PanelStats,
     capture: Option<[f32; 4]>,
     channel: ShellChannel,
     assets: Arc<Collector>,
+    scroll_positions: std::collections::BTreeMap<String, [f64; 2]>,
 }
 impl RetainedPanel {
     /// Build a panel in physical pixels; generation work is deferred until visible.
@@ -61,7 +65,6 @@ impl RetainedPanel {
                 ..DocumentConfig::default()
             },
         );
-        doc.add_user_agent_stylesheet(CSS);
         doc.initial_build();
         Ok(Self {
             doc,
@@ -70,14 +73,19 @@ impl RetainedPanel {
             size,
             scale,
             dirty: true,
+            layout_dirty: true,
             visible: false,
             stats: PanelStats::default(),
             capture: None,
             channel,
             assets,
+            scroll_positions: std::collections::BTreeMap::new(),
         })
     }
     pub fn set_visible(&mut self, visible: bool) {
+        if self.visible && !visible {
+            self.clear_focus();
+        }
         self.visible = visible;
     }
     #[must_use]
@@ -100,6 +108,7 @@ impl RetainedPanel {
         self.doc.vdom.mark_dirty(ScopeId::ROOT);
         self.doc.vdom.mark_dirty(ScopeId::APP);
         self.dirty = true;
+        self.layout_dirty = true;
     }
     /// # Errors
     /// Invalid dimensions leave the existing document and pixel cache unchanged.
@@ -112,28 +121,47 @@ impl RetainedPanel {
                 .set_viewport(Viewport::new(size[0], size[1], scale, ColorScheme::Dark));
             self.painter.resize(size[0], size[1]);
             self.dirty = true;
+            self.layout_dirty = true;
         }
         Ok(())
+    }
+    /// Flush component updates without painting. Composition drains resulting typed actions
+    /// before the one presentation-time rasterization.
+    pub fn update(&mut self) {
+        if !self.visible || !self.dirty {
+            return;
+        }
+        self.save_scroll();
+        let start = Instant::now();
+        if self.doc.poll(None) {
+            self.stats.component_updates += 1;
+            self.layout_dirty = true;
+        }
+        self.stats.update_micros += elapsed_micros(start);
     }
     /// `None` means reuse the previous texture: no DOM, layout, raster or upload work.
     pub fn render(&mut self) -> Option<&[u8]> {
         if !self.visible || !self.dirty {
             return None;
         }
-        if self.doc.poll(None) {
-            self.stats.component_updates += 1;
-        }
-        self.doc.resolve(0.);
-        self.stats.layouts += 1;
-        // Icons requested during this layout decode synchronously; adopt them and lay out once more.
-        let loaded = self.assets.take();
-        if !loaded.is_empty() {
-            for resource in loaded {
-                self.doc.inner.load_resource(resource);
-            }
+        self.update();
+        if self.layout_dirty {
+            let start = Instant::now();
             self.doc.resolve(0.);
             self.stats.layouts += 1;
+            let loaded = self.assets.take();
+            if !loaded.is_empty() {
+                for resource in loaded {
+                    self.doc.inner.load_resource(resource);
+                }
+                self.doc.resolve(0.);
+                self.stats.layouts += 1;
+            }
+            self.restore_scroll();
+            self.stats.layout_micros += elapsed_micros(start);
+            self.layout_dirty = false;
         }
+        let start = Instant::now();
         self.painter.reset();
         let dom = &self.doc.inner;
         self.painter.render_to_vec(
@@ -148,6 +176,7 @@ impl RetainedPanel {
             },
             &mut self.pixels,
         );
+        self.stats.paint_micros += elapsed_micros(start);
         self.stats.rasterizations += 1;
         self.stats.rasterized_bytes += self.pixels.len() as u64;
         self.dirty = false;
@@ -159,7 +188,18 @@ impl RetainedPanel {
         if !self.visible {
             return;
         }
+        let previous_focus = self.doc.get_focussed_node_id();
+        let hit = self.doc.hit(x, y).map(|hit| hit.node_id);
+        if pressed.is_none() && !held && hit == self.doc.get_hover_node_id() {
+            self.dirty |= self.update_tooltip();
+            return;
+        }
         if pressed == Some(true) {
+            // Deliver blur explicitly: Blitz changes its focus styles but does not emit DOM
+            // focus events. Numeric editors must commit before another control takes focus.
+            if previous_focus != hit {
+                self.blur(previous_focus);
+            }
             self.capture = self.doc.hit(x, y).and_then(|hit| {
                 let node = self.doc.get_node(hit.node_id)?;
                 (node
@@ -173,6 +213,12 @@ impl RetainedPanel {
                     node.final_layout.size.height,
                 ])
             });
+        }
+        if pressed == Some(true)
+            && self.capture.is_some()
+            && let Some(hit) = hit
+        {
+            self.doc.set_focus_to(hit);
         }
         if let Some([left, top, width, height]) = self.capture {
             x = x.clamp(left + 0.5, left + width - 0.5);
@@ -200,10 +246,30 @@ impl RetainedPanel {
                 UiEvent::MouseUp(event)
             });
         }
+        if self.capture.is_some()
+            && let Some(hit) = self.doc.hit(x, y)
+        {
+            self.doc.set_focus_to(hit.node_id);
+        }
         if pressed == Some(false) {
+            self.channel.finish_drag();
             self.capture = None;
         }
+        if !held && pressed.is_none() {
+            self.update_tooltip();
+        }
+        if pressed == Some(true)
+            && let Some(mut tooltip) = self.channel.tooltip.get()
+        {
+            tooltip.set(None);
+        }
         self.dirty = true;
+        self.layout_dirty = true;
+    }
+    pub fn pointer_leave(&mut self) {
+        if self.visible && self.capture.is_none() {
+            self.pointer(-1., -1., None, false);
+        }
     }
     pub fn scroll(&mut self, x: f32, y: f32, delta: [f64; 2]) {
         if !self.visible {
@@ -227,11 +293,16 @@ impl RetainedPanel {
         if !self.visible {
             return;
         }
+        if pressed && key == Key::Escape {
+            self.channel.cancel_drag();
+            self.capture = None;
+        }
         if key == Key::Tab {
             if pressed {
                 self.focus_step(modifiers.contains(Modifiers::SHIFT));
             }
             self.dirty = true;
+            self.layout_dirty = true;
             return;
         }
         let activate = (key == Key::Enter && pressed)
@@ -275,12 +346,14 @@ impl RetainedPanel {
             UiEvent::KeyUp(event)
         });
         self.dirty = true;
+        self.layout_dirty = true;
     }
     pub fn ime_commit(&mut self, text: String) {
         if self.visible {
             self.doc
                 .handle_ui_event(UiEvent::Ime(BlitzImeEvent::Commit(text)));
             self.dirty = true;
+            self.layout_dirty = true;
         }
     }
     pub fn ime_preedit(&mut self, text: String, selection: Option<(usize, usize)>) {
@@ -288,14 +361,21 @@ impl RetainedPanel {
             self.doc
                 .handle_ui_event(UiEvent::Ime(BlitzImeEvent::Preedit(text, selection)));
             self.dirty = true;
+            self.layout_dirty = true;
         }
     }
     pub fn clear_focus(&mut self) {
+        self.channel.cancel_drag();
+        self.blur(self.doc.get_focussed_node_id());
         self.doc
             .handle_ui_event(UiEvent::Ime(BlitzImeEvent::Disabled));
         self.doc.clear_focus();
         self.capture = None;
+        if let Some(mut tooltip) = self.channel.tooltip.get() {
+            tooltip.set(None);
+        }
         self.dirty = true;
+        self.layout_dirty = true;
     }
     /// Supply only clipboard permission to the toolkit, without exposing window/filesystem services.
     pub fn set_clipboard(&mut self, clipboard: Box<dyn rustclient_platform::Clipboard>) {
@@ -329,6 +409,91 @@ impl RetainedPanel {
         )
     }
 
+    fn scroll_nodes(&self) -> Vec<(usize, String)> {
+        ["#plugin-list", "#settings-scroll"]
+            .iter()
+            .filter_map(|selector| {
+                let id = self.doc.query_selector(selector).ok()??;
+                self.node_bounds(id)?;
+                let node = self.doc.get_node(id)?;
+                let view = node
+                    .element_data()?
+                    .attr(blitz_dom::LocalName::from("data-view"))
+                    .unwrap_or("list");
+                Some((id, view.to_owned()))
+            })
+            .collect()
+    }
+    fn save_scroll(&mut self) {
+        for (id, key) in self.scroll_nodes() {
+            if let Some(node) = self.doc.get_node(id) {
+                self.scroll_positions
+                    .insert(key, [node.scroll_offset.x, node.scroll_offset.y]);
+            }
+        }
+    }
+    fn restore_scroll(&mut self) {
+        for (id, key) in self.scroll_nodes() {
+            if let Some([x, y]) = self.scroll_positions.get(&key).copied()
+                && let Some(node) = self.doc.get_node(id)
+            {
+                let [dx, dy] = [node.scroll_offset.x - x, node.scroll_offset.y - y];
+                if dx != 0. || dy != 0. {
+                    self.doc.scroll_node_by_has_changed(id, dx, dy);
+                }
+            }
+        }
+    }
+    fn blur(&self, node: Option<usize>) {
+        let Some(id) = node
+            .and_then(|id| self.doc.get_node(id))
+            .and_then(|node| node.element_data())
+            .and_then(|element| element.attr(blitz_dom::LocalName::from("data-dioxus-id")))
+            .and_then(|id| id.parse::<usize>().ok())
+        else {
+            return;
+        };
+        let data: Rc<dyn std::any::Any> =
+            Rc::new(dioxus::html::PlatformEventData::new(Box::new(())));
+        self.doc.vdom.runtime().handle_event(
+            "blur",
+            dioxus::prelude::Event::new(data, false),
+            dioxus::dioxus_core::ElementId(id),
+        );
+    }
+    #[expect(clippy::cast_precision_loss, reason = "bounded DOM coordinates")]
+    fn update_tooltip(&mut self) -> bool {
+        let mut node = self.doc.get_hover_node_id();
+        let mut value = None;
+        while let Some(id) = node {
+            let Some(current) = self.doc.get_node(id) else {
+                break;
+            };
+            if let Some(title) = current
+                .element_data()
+                .and_then(|element| element.attr(blitz_dom::LocalName::from("title")))
+                .filter(|title| !title.is_empty())
+            {
+                if let Some([x, y, _, height]) = self.node_bounds(id) {
+                    value = Some(crate::model::Tooltip {
+                        text: title.replace("<br>", " "),
+                        left: x.clamp(4., (self.size[0] as f32 / self.scale - 230.).max(4.)),
+                        top: (y + height + 5.)
+                            .min((self.size[1] as f32 / self.scale - 80.).max(4.)),
+                    });
+                }
+                break;
+            }
+            node = current.parent.or_else(|| current.layout_parent.get());
+        }
+        if let Some(mut tooltip) = self.channel.tooltip.get()
+            && *tooltip.peek() != value
+        {
+            tooltip.set(value);
+            return true;
+        }
+        false
+    }
     #[expect(
         clippy::cast_precision_loss,
         reason = "physical panel dimensions are bounded to 4096"
@@ -339,6 +504,7 @@ impl RetainedPanel {
             if node.is_focussable()
                 && node.final_layout.size.width > 0.
                 && node.final_layout.size.height > 0.
+                && self.node_bounds(id).is_some()
             {
                 order.push(id);
             }
@@ -356,10 +522,14 @@ impl RetainedPanel {
             (None, true) => order.len() - 1,
             (None, false) => 0,
         };
+        self.blur(self.doc.get_focussed_node_id());
         self.doc.set_focus_to(order[index]);
         if let Some([_, top, _, height]) = self.node_bounds(order[index]) {
-            let [_, clip_top, _, clip_height] =
-                self.element_bounds("#settings-scroll").unwrap_or([
+            let [_, clip_top, _, clip_height] = self
+                .element_bounds("#settings-scroll")
+                .filter(|bounds| bounds[3] > 0.)
+                .or_else(|| self.element_bounds("#plugin-list"))
+                .unwrap_or([
                     0.,
                     0.,
                     self.size[0] as f32 / self.scale,
@@ -389,11 +559,17 @@ impl RetainedPanel {
     )]
     fn node_bounds(&self, id: usize) -> Option<[f32; 4]> {
         let node = self.doc.get_node(id)?;
+        if is_concealed(node) {
+            return None;
+        }
         let mut x = node.final_layout.location.x;
         let mut y = node.final_layout.location.y;
         let mut parent = node.layout_parent.get();
         while let Some(id) = parent {
             let node = self.doc.get_node(id)?;
+            if is_concealed(node) {
+                return None;
+            }
             x += node.final_layout.location.x - node.scroll_offset.x as f32;
             y += node.final_layout.location.y - node.scroll_offset.y as f32;
             parent = node.layout_parent.get();
@@ -405,6 +581,16 @@ impl RetainedPanel {
             node.final_layout.size.height,
         ])
     }
+}
+
+fn is_concealed(node: &blitz_dom::Node) -> bool {
+    node.element_data()
+        .and_then(|element| element.attr(blitz_dom::LocalName::from("class")))
+        .is_some_and(|class| class.split_whitespace().any(|name| name == "concealed"))
+}
+
+fn elapsed_micros(start: Instant) -> u64 {
+    u64::try_from(start.elapsed().as_micros()).unwrap_or(u64::MAX)
 }
 
 fn validate_size([width, height]: [u32; 2], scale: f32) -> Result<(), String> {

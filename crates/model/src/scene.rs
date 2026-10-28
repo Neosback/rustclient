@@ -66,12 +66,25 @@ impl SceneDescriptor {
         self.height
     }
     #[must_use]
-    pub fn contains(self, tile: WorldTile) -> bool {
-        tile.plane == self.origin.plane
-            && i64::from(tile.x) >= i64::from(self.origin.x)
+    pub const fn with_plane(mut self, plane: Plane) -> Self {
+        self.origin.plane = plane;
+        self
+    }
+    #[must_use]
+    pub fn contains_footprint(self, tile: WorldTile) -> bool {
+        i64::from(tile.x) >= i64::from(self.origin.x)
             && i64::from(tile.y) >= i64::from(self.origin.y)
             && i64::from(tile.x) < i64::from(self.origin.x) + i64::from(self.width)
             && i64::from(tile.y) < i64::from(self.origin.y) + i64::from(self.height)
+    }
+    /// Whether the tile's 2D footprint lies in this scene window.
+    ///
+    /// A scene window owns the same `(x, y)` footprint on every ordinary
+    /// plane (`0..=3`); the plane in [`Self::origin`] records how the
+    /// descriptor was constructed, not which planes the window can display.
+    #[must_use]
+    pub fn contains(self, tile: WorldTile) -> bool {
+        self.contains_footprint(tile)
     }
 }
 
@@ -80,14 +93,19 @@ mod tests {
     use super::*;
     use crate::Plane;
     #[test]
-    fn descriptor_has_checked_exclusive_bounds_and_plane() {
+    fn descriptor_has_checked_exclusive_bounds_and_all_planes() {
         let id = SceneAssetId::new([0; 32]);
         let origin = WorldTile::new(10, 20, Plane::MIN);
         let d = SceneDescriptor::new(id, origin, 2, 3).unwrap();
         assert!(d.contains(WorldTile::new(11, 22, Plane::MIN)));
         assert!(!d.contains(WorldTile::new(12, 22, Plane::MIN)));
         assert!(!d.contains(WorldTile::new(11, 23, Plane::MIN)));
-        assert!(!d.contains(WorldTile::new(11, 22, Plane::MAX)));
+        for plane in [0, 1, 2, 3] {
+            let plane = Plane::new(plane).unwrap();
+            assert!(d.contains(WorldTile::new(11, 22, plane)));
+            assert!(!d.contains(WorldTile::new(12, 22, plane)));
+        }
+        assert_eq!(d.with_plane(Plane::MAX).origin().plane, Plane::MAX);
         assert!(SceneDescriptor::new(id, origin, 0, 3).is_none());
         assert!(SceneDescriptor::new(id, WorldTile::new(i32::MAX, 0, Plane::MIN), 1, 1).is_none());
     }

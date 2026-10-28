@@ -296,6 +296,7 @@ fn npc_with_path_acceleration(
     let mut r = Reader::new(bytes, source);
     let mut path_acceleration = PathAccelerationPolicy::STANDARD;
     let mut out = NpcDefinition {
+        depth_policy: rustclient_model::ModelDepthPolicy::DepthWrite,
         turn_rate: rustclient_model::JauTurnRate::new(32),
         id,
         name: None,
@@ -421,7 +422,8 @@ fn npc_with_path_acceleration(
             97 => out.scale_width = r.u16()?,
             98 => out.scale_height = r.u16()?,
             // Flag opcodes without payload: render priority, follower and z-buffer flags.
-            99 | 111 | 122 | 123 | 130 | 145 | 147 => {}
+            99 | 111 | 122 | 123 | 130 | 145 => {}
+            147 => out.depth_policy = rustclient_model::ModelDepthPolicy::SortedDeferredWrite,
             // Exact revision-240 Actor.method3284 branch selector: opcode 109 changes the
             // definition from the normal >2/>3 backlog thresholds to >1/>2.
             109 => path_acceleration = PathAccelerationPolicy::EARLY,

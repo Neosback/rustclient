@@ -34,6 +34,7 @@ pub use settings::{
 mod shell;
 pub use shell::{ShellLayer, ShellStats};
 mod world_geometry;
+mod world_pipeline;
 mod world_target;
 mod world_textures;
 pub use camera::{
@@ -42,4 +43,8 @@ pub use camera::{
 };
 
 mod world_capture;
-pub use world_capture::{capture_world, capture_world_at, capture_world_with};
+pub use world_capture::{
+    capture_world, capture_world_at, capture_world_resources, capture_world_with,
+};
+
+pub use world::WorldGeometryStats;

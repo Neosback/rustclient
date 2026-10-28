@@ -13,8 +13,8 @@ const ATLAS_WIDTH: u32 = 2048;
 const ATLAS_HEIGHT: u32 = 2048;
 const MAX_QUADS: usize = 32768;
 
-/// Largest widget-sized dynamic image (minimap or compass) accepted from the application.
-const MAX_DYNAMIC_SIDE: u32 = 1024;
+/// Largest widget-sized dynamic image (minimap or compass or world map) accepted from the application.
+const MAX_DYNAMIC_SIDE: u32 = 2048;
 
 /// CPU pixels for a script-sized dynamic widget image; empty pixels keep the previous upload.
 #[derive(Clone, Copy, Debug, Default)]
@@ -23,11 +23,13 @@ pub struct DynamicImage<'a> {
     pub width: u32,
     pub height: u32,
 }
-/// Both script-sized widget images supplied for one frame.
+/// Script-sized widget images supplied for one frame.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct DynamicImages<'a> {
     pub minimap: DynamicImage<'a>,
     pub compass: DynamicImage<'a>,
+    pub world_map: DynamicImage<'a>,
+    pub world_map_overview: DynamicImage<'a>,
 }
 impl DynamicImage<'_> {
     fn valid(self) -> bool {
@@ -117,6 +119,8 @@ enum DrawSource {
     Flames,
     Minimap,
     Compass,
+    WorldMap,
+    WorldMapOverview,
 }
 
 struct Draw {
@@ -145,6 +149,8 @@ pub(crate) struct UiGpu {
     sampler: wgpu::Sampler,
     minimap: DynamicTexture,
     compass: DynamicTexture,
+    world_map: DynamicTexture,
+    world_map_overview: DynamicTexture,
     regions: BTreeMap<UiImageId, Region>,
     vertex_buffer: wgpu::Buffer,
     vertices: Vec<Vertex>,
@@ -161,6 +167,7 @@ impl UiGpu {
     ) -> Result<Self, RenderError> {
         Self::with_images(device, queue, format, assets, &BTreeMap::new())
     }
+    #[allow(clippy::too_many_lines)]
     pub(crate) fn with_images(
         device: &wgpu::Device,
         queue: &wgpu::Queue,
@@ -246,6 +253,13 @@ impl UiGpu {
         let flames = bind(device, &layout, &sampler, &flame_texture);
         let minimap = DynamicTexture::new(device, &layout, &sampler, "widget dynamic minimap");
         let compass = DynamicTexture::new(device, &layout, &sampler, "widget dynamic compass");
+        let world_map = DynamicTexture::new(device, &layout, &sampler, "widget dynamic world map");
+        let world_map_overview = DynamicTexture::new(
+            device,
+            &layout,
+            &sampler,
+            "widget dynamic world map overview",
+        );
         let vertex_buffer = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("title reusable quad vertices"),
             size: (MAX_QUADS * 6 * std::mem::size_of::<Vertex>()) as u64,
@@ -261,6 +275,8 @@ impl UiGpu {
             sampler,
             minimap,
             compass,
+            world_map,
+            world_map_overview,
             regions,
             vertex_buffer,
             vertices: Vec::with_capacity(MAX_QUADS * 6),
@@ -303,6 +319,8 @@ impl UiGpu {
                 != usize::try_from(Flames::WIDTH * Flames::HEIGHT * 4).unwrap_or(0))
             || !images.minimap.valid()
             || !images.compass.valid()
+            || !images.world_map.valid()
+            || !images.world_map_overview.valid()
             || frame.quads.len() > MAX_QUADS
             || !viewport.scale.is_finite()
             || viewport.scale <= 0.
@@ -331,6 +349,16 @@ impl UiGpu {
         self.stats.dynamic_upload_bytes +=
             self.compass
                 .upload(device, queue, &self.layout, &self.sampler, images.compass);
+        self.stats.dynamic_upload_bytes +=
+            self.world_map
+                .upload(device, queue, &self.layout, &self.sampler, images.world_map);
+        self.stats.dynamic_upload_bytes += self.world_map_overview.upload(
+            device,
+            queue,
+            &self.layout,
+            &self.sampler,
+            images.world_map_overview,
+        );
         for quad in &frame.quads {
             let (source, region, width, height) = match quad.image {
                 UiImageId::Flames => (
@@ -365,6 +393,28 @@ impl UiGpu {
                     },
                     self.compass.size[0],
                     self.compass.size[1],
+                ),
+                UiImageId::WorldMap => (
+                    DrawSource::WorldMap,
+                    Region {
+                        x: 0,
+                        y: 0,
+                        width: self.world_map.size[0],
+                        height: self.world_map.size[1],
+                    },
+                    self.world_map.size[0],
+                    self.world_map.size[1],
+                ),
+                UiImageId::WorldMapOverview => (
+                    DrawSource::WorldMapOverview,
+                    Region {
+                        x: 0,
+                        y: 0,
+                        width: self.world_map_overview.size[0],
+                        height: self.world_map_overview.size[1],
+                    },
+                    self.world_map_overview.size[0],
+                    self.world_map_overview.size[1],
                 ),
                 _ => {
                     let region = self
@@ -430,6 +480,8 @@ impl UiGpu {
                     DrawSource::Flames => &self.flames,
                     DrawSource::Minimap => &self.minimap.bind,
                     DrawSource::Compass => &self.compass.bind,
+                    DrawSource::WorldMap => &self.world_map.bind,
+                    DrawSource::WorldMapOverview => &self.world_map_overview.bind,
                 },
                 &[],
             );

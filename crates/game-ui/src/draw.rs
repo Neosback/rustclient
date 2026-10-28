@@ -33,6 +33,10 @@ pub enum UiImageId {
     Minimap,
     /// Dynamic rotating compass texture.
     Compass,
+    /// Dynamic world map viewport texture.
+    WorldMap,
+    /// Dynamic world map overview texture.
+    WorldMapOverview,
 }
 
 /// Logical rectangle with exclusive right/bottom bounds.

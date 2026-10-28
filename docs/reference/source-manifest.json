@@ -208,6 +208,26 @@
         {
           "path": "sources-semantic/CollisionData.java",
           "sha256": "0fd0b5ea7b1f2f099fa81fae394483a2b0d53a0d6197e207f2de20ad8da909f8"
+        },
+        {
+          "path": "sources-semantic/Renderable.java",
+          "sha256": "a786e5e4c532c5f3853f3bd977fb7b7dbd6b3e8a33ca4fe81d9624d79b4061a3"
+        },
+        {
+          "path": "sources-semantic/classFZ.java",
+          "sha256": "a19f1e1b6e84a484f3cb4bfbf0687a09baf35a319e0e018429998c0391578b6f"
+        },
+        {
+          "path": "sources-semantic/IntProjection.java",
+          "sha256": "f420ee9abce400ea5db6301abdda7e1d6d85022076abd682522534e1fbe85ae0"
+        },
+        {
+          "path": "sources-semantic/WorldMapRenderer.java",
+          "sha256": "743e5da1e7bfce9fdf3d21f959579de6520d4c782447e50291ec84c3d1d0ceda"
+        },
+        {
+          "path": "sources-semantic/classIT.java",
+          "sha256": "b372097235a26dfd6723b8f79e741476829bb34e8cdadbd2f13c3f542f686785"
         }
       ]
     },
@@ -266,6 +286,14 @@
         {
           "path": "runelite-client/src/test/java/net/runelite/client/plugins/gpu/regions/RegionsTest.java",
           "sha256": "4aed86f14b434a3539089b9df52b741329fe64149b34a99f4eabdcdb9d3ac811"
+        },
+        {
+          "path": "runelite-client/src/main/java/net/runelite/client/plugins/gpu/VAO.java",
+          "sha256": "e2b7f36e29431b9c1396783800594b587c14ffcb71c315627a62f1becbacc445"
+        },
+        {
+          "path": "runelite-client/src/main/java/net/runelite/client/plugins/gpu/ModelUploader.java",
+          "sha256": "79a3b1f9f6bd6aafcff7f2b5d21677c695828bdcb730d45f49b7dac35bd71047"
         }
       ]
     },

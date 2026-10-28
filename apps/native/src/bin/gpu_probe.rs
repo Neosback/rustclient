@@ -2,6 +2,8 @@
 use rustclient_cache::{GroupId, Image, IndexId, Source};
 use rustclient_renderer::{ColorBlind, GpuSettings, SurfaceSize, UiScaling};
 use std::path::PathBuf;
+#[path = "gpu_probe/depth.rs"]
+mod depth;
 #[path = "gpu_probe/overlay.rs"]
 mod overlay;
 #[path = "gpu_probe/title.rs"]
@@ -37,6 +39,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     visibility::shader_contract(&destination)?;
     overlay::capture()?;
+    depth::capture(&destination)?;
     record_capabilities(&destination)?;
     let source = Source::group(IndexId(0), GroupId(0));
     let solid = Image::new(3, 3, [73, 129, 201, 255].repeat(9), source)?;

@@ -11,8 +11,8 @@ use std::collections::{BTreeMap, BTreeSet};
 /// Read-only validated JS5 cache. No GPU or filesystem ownership.
 pub struct Cache<S> {
     source: S,
-    config_warnings: std::cell::RefCell<Vec<String>>,
-    config_files: std::cell::RefCell<BTreeMap<u32, BTreeMap<FileId, Vec<u8>>>>,
+    config_warnings: std::sync::RwLock<BTreeMap<u32, Vec<String>>>,
+    config_files: std::sync::RwLock<BTreeMap<u32, BTreeMap<FileId, Vec<u8>>>>,
     data: StorageKey,
     data_len: u64,
     tables: BTreeMap<IndexId, ReferenceTable>,
@@ -45,8 +45,8 @@ impl<S: ReadOnlyBlobs> Cache<S> {
         }
         let mut cache = Self {
             source,
-            config_warnings: std::cell::RefCell::default(),
-            config_files: std::cell::RefCell::default(),
+            config_warnings: std::sync::RwLock::default(),
+            config_files: std::sync::RwLock::default(),
             data,
             data_len,
             tables: BTreeMap::new(),
@@ -96,25 +96,54 @@ impl<S: ReadOnlyBlobs> Cache<S> {
         &self.tables
     }
 
-    pub(crate) fn config_file(&self, group: u32, id: u32, advisory: bool) -> Result<Vec<u8>> {
-        if !self.config_files.borrow().contains_key(&group) {
+    pub(crate) fn config_group_with<R>(
+        &self,
+        group: u32,
+        advisory: bool,
+        warnings: &mut Vec<String>,
+        f: impl FnOnce(&BTreeMap<FileId, Vec<u8>>) -> Result<R>,
+    ) -> Result<R> {
+        let loaded = self
+            .config_files
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .contains_key(&group);
+        if !loaded {
+            let mut group_warnings = Vec::new();
             let files = self
-                .group_files_policy(
-                    IndexId(2),
-                    GroupId(group),
-                    advisory,
-                    &mut self.config_warnings.borrow_mut(),
-                )?
+                .group_files_policy(IndexId(2), GroupId(group), advisory, &mut group_warnings)?
                 .into_iter()
                 .collect();
-            self.config_files.borrow_mut().insert(group, files);
+            self.config_warnings
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .insert(group, group_warnings);
+            self.config_files
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .insert(group, files);
         }
-        self.config_files
-            .borrow()
+        if let Some(group_warnings) = self
+            .config_warnings
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .get(&group)
-            .and_then(|files| files.get(&FileId(id)))
-            .cloned()
-            .ok_or_else(|| {
+        {
+            warnings.extend(group_warnings.iter().cloned());
+        }
+        let borrowed = self
+            .config_files
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let files = borrowed
+            .get(&group)
+            .expect("config group inserted immediately above");
+        f(files)
+    }
+
+    pub(crate) fn config_file(&self, group: u32, id: u32, advisory: bool) -> Result<Vec<u8>> {
+        self.config_group_with(group, advisory, &mut Vec::new(), |files| {
+            files.get(&FileId(id)).cloned().ok_or_else(|| {
                 Source {
                     index: IndexId(2),
                     group: Some(GroupId(group)),
@@ -122,6 +151,7 @@ impl<S: ReadOnlyBlobs> Cache<S> {
                 }
                 .error("definition", "missing file")
             })
+        })
     }
     fn raw_group(&self, index: IndexId, group: GroupId) -> Result<Option<Vec<u8>>> {
         let context = Source::group(index, group);

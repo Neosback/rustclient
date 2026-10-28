@@ -45,10 +45,12 @@
         "crates/renderer/src/world.rs",
         "crates/renderer/src/shaders/world.wgsl",
         "crates/renderer/src/ui_canvas.rs",
-        "crates/renderer/src/shaders/ui_scale.wgsl"
+        "crates/renderer/src/shaders/ui_scale.wgsl",
+        "crates/model/src/model_depth.rs",
+        "crates/renderer/src/world_pipeline.rs"
       ],
       "verification": "Source reviewed; automated/backend evidence listed in GPU-AUDIT.md; full Java runtime differential NOT-RUN",
-      "notes": "Lifecycle/settings/upload/display implemented in engine owners; region loading, tint, floating vertices, workers and live acceptance remain open."
+      "notes": "Lifecycle/settings/upload/display implemented in engine owners; region loading, tint, floating vertices, workers and live acceptance remain open. Sorted deferred opaque actor depth now uses typed model spans, priority-ordered color-only and depth-only pipelines; NPC customization/tint/world-view and full source acceptance remain open."
     },
     {
       "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPluginConfig.java",
@@ -78,10 +80,16 @@
       "status": "partial",
       "owners": [
         "crates/scene/src/entity_mesh.rs",
-        "crates/renderer/src/world_geometry.rs"
+        "crates/renderer/src/world_geometry.rs",
+        "crates/model/src/model_depth.rs",
+        "crates/renderer/src/world_pipeline.rs",
+        "crates/scene/src/model_sort.rs",
+        "crates/scene/src/entity_mesh/emission.rs",
+        "crates/renderer/src/world_geometry/sort.rs",
+        "tools/gpu/model_sort_oracle.py"
       ],
       "verification": "Source reviewed; automated/backend evidence listed in GPU-AUDIT.md; full Java runtime differential NOT-RUN",
-      "notes": "Integer model meshes and face-priority owner retained; floating animation upload and source per-entity tint absent. Source SORTED_NO_DEPTH temporary-renderable policy also has no Rust render-mode projection/pipeline yet."
+      "notes": "Integer model meshes and face-priority owner retained; floating animation upload and source per-entity tint absent. Source SORTED_NO_DEPTH temporary-renderable policy also has no Rust render-mode projection/pipeline yet. Sorted deferred opaque actor depth now uses typed model spans, priority-ordered color-only and depth-only pipelines; NPC customization/tint/world-view and full source acceptance remain open. Actor face admission/depth continuation: GPU-MODEL-SORT-2026-10-28.md; float poses, zero-only alpha-array presence and source runtime remain incomplete."
     },
     {
       "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/RegionManager.java",
@@ -145,10 +153,12 @@
       "status": "engine-adaptation",
       "owners": [
         "crates/renderer/src/world_geometry.rs",
-        "crates/renderer/src/surface.rs"
+        "crates/renderer/src/surface.rs",
+        "crates/model/src/model_depth.rs",
+        "crates/renderer/src/world_pipeline.rs"
       ],
       "verification": "Source reviewed; automated/backend evidence listed in GPU-AUDIT.md; full Java runtime differential NOT-RUN",
-      "notes": "Java GL/buffer/matrix/template helper replaced by wgpu resources, glam and bundled WGSL composition; no Java binary/API compatibility claimed."
+      "notes": "Java GL/buffer/matrix/template helper replaced by wgpu resources, glam and bundled WGSL composition; no Java binary/API compatibility claimed. Sorted deferred opaque actor depth now uses typed model spans, priority-ordered color-only and depth-only pipelines; NPC customization/tint/world-view and full source acceptance remain open."
     },
     {
       "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/VBO.java",
@@ -978,7 +988,7 @@
     },
     {
       "id": "entity-tint",
-      "requirement": "Retain committed tint metadata and apply source tint semantics; world-view/boat transforms require exact 240 acceptance. Source temporary-renderable SORTED_NO_DEPTH policy also needs retained render-mode metadata and a typed depth-policy path."
+      "requirement": "Source SORTED_NO_DEPTH color-then-depth behavior, actor whole-model near/diameter rejection, original-face cap, front-face priority admission and per-vertex depth arithmetic are implemented with bounded Java arithmetic/Rust contracts and native diagnostics. Float poses, authored zero-only alpha-array presence, live NPC customization, committed tint and world-view/boat transforms still require retention/consumers and exact-240 gameplay acceptance."
     },
     {
       "id": "source-differential",

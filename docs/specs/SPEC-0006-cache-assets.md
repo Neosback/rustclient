@@ -84,3 +84,23 @@ Availability and source-defined base shadows are catalog data; their changes aff
 not live entity authority. Validate bounds, missing-versus-listed error separation, edge/corner copy
 order, high-Y behavior and collision treatment with focused fixtures. Re-run selected-cache region
 captures separately; passing codec tests does not establish Java/runtime visual acceptance.
+
+Evidence, implementation owners and executed-cache results:
+[sparse-map checkpoint](../reference/builtin-plugins/GPU-SPARSE-MAPS-2026-10-27.md).
+
+## Native random-read resource budget (2026-10-28)
+
+The native read-only blob adapter retains at most 32 recent file descriptors, not file contents.
+Opening a cold blob validates root confinement outside the descriptor-cache lock. Per-file locking
+preserves exact positioned reads across concurrent workers on all native backends. Short/missing
+ranges remain contextual errors; cached descriptors close on eviction/drop after active readers finish.
+Immutable blob semantics and revision/cache decoding stay unchanged. Descriptor opens, cache hits and
+resident entries are observable separately from decoded assets and renderer memory.
+
+### World map composite textures — 2026-10-28
+
+The 240 adapter decodes index-18 `compositetexture` images with a bounded standard
+image decoder (`WorldMapRenderer` -> `classIT.method6356` / ImageIO); this is distinct
+from the cache's indexed sprite encoding. Preserve image dimensions and decode context.
+A malformed present image remains an explicit error. Missing optional overview data
+is different from malformed data and must not silently certify a loaded map.

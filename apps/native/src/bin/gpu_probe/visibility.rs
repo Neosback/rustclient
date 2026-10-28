@@ -179,7 +179,11 @@ pub fn shader_contract(path: &Path) -> Result<()> {
         })
         .to_vec(),
         opaque: (0..6).collect(),
-        models: std::iter::once(0..6).collect(),
+        models: vec![rustclient_scene::SceneModel {
+            vertices: 0..6,
+            depth_policy: rustclient_model::ModelDepthPolicy::DepthWrite,
+            sort_source: None,
+        }],
         ..SceneGeometry::default()
     };
     let mesh = WorldMesh {

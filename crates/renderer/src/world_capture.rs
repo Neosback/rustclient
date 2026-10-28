@@ -118,3 +118,22 @@ pub async fn capture_world_with(
     buffer.unmap();
     Ok(pixels)
 }
+
+/// Create the real portable world resources and report their resident geometry costs.
+/// This diagnostic does not read pixels or retain the temporary device/resources.
+/// # Errors
+/// Returns adapter, texture, or geometry validation failures.
+pub async fn capture_world_resources(
+    mesh: &rustclient_scene::WorldMesh,
+) -> Result<crate::WorldGeometryStats, RenderError> {
+    let (device, queue, _) = crate::capture::capture_device().await?;
+    let world = WorldGpu::new(
+        &device,
+        &queue,
+        wgpu::TextureFormat::Rgba8UnormSrgb,
+        SurfaceSize::new(1, 1),
+        mesh,
+        1,
+    )?;
+    Ok(world.geometry_stats())
+}

@@ -406,6 +406,7 @@ impl DocumentMutator<'_> {
     }
 
     pub fn insert_nodes_before(&mut self, anchor_node_id: usize, new_node_ids: &[usize]) {
+        if new_node_ids == [anchor_node_id] { return; }
         let parent_id = self.doc.nodes[anchor_node_id].parent.unwrap();
         self.add_children_to_parent(parent_id, new_node_ids, &|parent, child_ids| {
             let node_child_idx = parent.index_of_child(anchor_node_id).unwrap();
@@ -421,41 +422,35 @@ impl DocumentMutator<'_> {
         child_ids: &[usize],
         insert_children_fn: &dyn Fn(&mut Node, &[usize]),
     ) {
+        // Detach first. Inserting before detaching removes both occurrences when an existing
+        // child moves within the same parent (Dioxus keyed-list reordering).
+        for &child_id in child_ids {
+            if let Some(old_parent_id) = self.doc.nodes[child_id].parent.take() {
+                let old_parent = &mut self.doc.nodes[old_parent_id];
+                old_parent.insert_damage(ALL_DAMAGE);
+                if old_parent.flags.is_in_document() {
+                    if let Some(data) = &mut *old_parent.stylo_element_data.borrow_mut() {
+                        data.hint |= RestyleHint::restyle_subtree();
+                    }
+                }
+                old_parent.children.retain(|id| *id != child_id);
+                self.maybe_record_node(old_parent_id);
+            }
+        }
         let new_parent = &mut self.doc.nodes[parent_id];
         new_parent.insert_damage(ALL_DAMAGE);
         let new_parent_is_in_doc = new_parent.flags.is_in_document();
-
-        // TODO: make this fine grained / conditional based on ElementSelectorFlags
         if new_parent_is_in_doc {
             if let Some(data) = &mut *new_parent.stylo_element_data.borrow_mut() {
                 data.hint |= RestyleHint::restyle_subtree();
             }
         }
-
         insert_children_fn(new_parent, child_ids);
-
-        for child_id in child_ids.iter().copied() {
+        for &child_id in child_ids {
             let child = &mut self.doc.nodes[child_id];
-            let old_parent_id = child.parent.replace(parent_id);
-
-            let child_was_in_doc = child.flags.is_in_document();
-            if new_parent_is_in_doc != child_was_in_doc {
+            child.parent = Some(parent_id);
+            if new_parent_is_in_doc != child.flags.is_in_document() {
                 self.process_added_subtree(child_id);
-            }
-
-            if let Some(old_parent_id) = old_parent_id {
-                let old_parent = &mut self.doc.nodes[old_parent_id];
-                old_parent.insert_damage(ALL_DAMAGE);
-
-                // TODO: make this fine grained / conditional based on ElementSelectorFlags
-                if child_was_in_doc {
-                    if let Some(data) = &mut *old_parent.stylo_element_data.borrow_mut() {
-                        data.hint |= RestyleHint::restyle_subtree();
-                    }
-                }
-
-                old_parent.children.retain(|id| *id != child_id);
-                self.maybe_record_node(old_parent_id);
             }
         }
 
@@ -588,7 +583,13 @@ impl<'doc> DocumentMutator<'doc> {
     }
 
     fn process_removed_subtree(&mut self, node_id: usize) {
+        if self.doc.maybe_node_layout_ancestors(self.doc.hover_node_id).contains(&node_id) {
+            self.doc.set_hover_to(-1_000_000., -1_000_000.);
+        }
         self.doc.iter_subtree_mut(node_id, |node_id, doc| {
+            if doc.focus_node_id == Some(node_id) { doc.focus_node_id = None; }
+            if doc.active_node_id == Some(node_id) { doc.active_node_id = None; }
+            if doc.mousedown_node_id == Some(node_id) { doc.mousedown_node_id = None; }
             let node = &mut doc.nodes[node_id];
             node.flags.set(NodeFlags::IS_IN_DOCUMENT, false);
 

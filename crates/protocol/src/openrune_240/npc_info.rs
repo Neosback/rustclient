@@ -165,15 +165,16 @@ fn signed(value: i32, width: usize) -> i32 {
     }
 }
 fn direction(direction: u8) -> (i32, i32) {
+    // NPC.method3466: NPC compass codes differ from player movement codes.
     [
-        (-1, -1),
-        (0, -1),
-        (1, -1),
-        (-1, 0),
-        (1, 0),
         (-1, 1),
         (0, 1),
         (1, 1),
+        (-1, 0),
+        (1, 0),
+        (-1, -1),
+        (0, -1),
+        (1, -1),
     ][usize::from(direction)]
 }
 
@@ -181,6 +182,41 @@ fn direction(direction: u8) -> (i32, i32) {
 mod tests {
     use super::*;
     use rustclient_model::{NpcProperty, SequenceId};
+    #[test]
+    fn all_npc_compass_codes_match_240_for_walk_crawl_and_ordered_runs() {
+        // Literal NPC.method3466 branches: NW, N, NE, W, E, SW, S, SE.
+        let expected = [
+            (-1, 1),
+            (0, 1),
+            (1, 1),
+            (-1, 0),
+            (1, 0),
+            (-1, -1),
+            (0, -1),
+            (1, -1),
+        ]
+        .map(|(x, y)| TileOffset { x, y });
+        let mut decoder = NpcInfoDecoder::default();
+        decoder
+            .decode(
+                include_bytes!("../../tests/fixtures/npc-stock-small.bin"),
+                false,
+            )
+            .unwrap();
+        for first in 0_u8..8 {
+            let walk = decoder.decode(&[1, 0xa0 | first << 2], false).unwrap();
+            assert_eq!(walk.movements[0].first, expected[usize::from(first)]);
+            let crawl = decoder.decode(&[1, 0xc0 | first << 1], false).unwrap();
+            assert_eq!(crawl.movements[0].first, expected[usize::from(first)]);
+            for second in 0_u8..8 {
+                let bits = 0xd000_u16 | u16::from(first) << 9 | u16::from(second) << 6;
+                let [high, low] = bits.to_be_bytes();
+                let run = decoder.decode(&[1, high, low], false).unwrap();
+                assert_eq!(run.movements[0].first, expected[usize::from(first)]);
+                assert_eq!(run.movements[0].second, Some(expected[usize::from(second)]));
+            }
+        }
+    }
     #[test]
     fn crawl_and_two_step_runs_preserve_both_directions_including_closed_paths() {
         let mut d = NpcInfoDecoder::default();
@@ -196,7 +232,7 @@ mod tests {
         let run = d.decode(&[1, 0xd9, 0x80], false).unwrap();
         assert_eq!(run.movements[0].speed, MoveSpeed::Run);
         assert_eq!(run.movements[0].first, TileOffset { x: 1, y: 0 });
-        assert_eq!(run.movements[0].second, Some(TileOffset { x: 0, y: 1 }));
+        assert_eq!(run.movements[0].second, Some(TileOffset { x: 0, y: -1 }));
         let closed = d.decode(&[1, 0xd8, 0xc0], false).unwrap();
         assert_eq!(closed.movements[0].second, Some(TileOffset { x: -1, y: 0 }));
         assert!(d.decode(&[1, 0xd9], false).is_err());

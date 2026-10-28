@@ -50,35 +50,20 @@ impl ShellStaging {
         self.visible = true;
         Ok(())
     }
-    pub fn prepare(
-        &mut self,
-        gpu: &mut Option<ShellGpu>,
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
-        format: wgpu::TextureFormat,
-    ) {
+    pub fn prepare(&mut self, gpu: &mut ShellGpu, device: &wgpu::Device, queue: &wgpu::Queue) {
         if !self.visible || !self.pending {
             return;
         }
-        let projection = gpu.get_or_insert_with(|| ShellGpu::new(device, format));
-        projection.upload(device, queue, self.size, &self.pixels);
+        gpu.upload(device, queue, self.size, &self.pixels);
         self.pending = false;
         self.stats.uploads += 1;
         self.stats.uploaded_bytes += self.pixels.len() as u64;
         self.pixels.clear();
     }
-    pub fn draw<'a>(
-        &self,
-        gpu: Option<&'a ShellGpu>,
-        pass: &mut wgpu::RenderPass<'a>,
-        surface: [u32; 2],
-    ) {
+    pub fn draw<'a>(&self, gpu: &'a ShellGpu, pass: &mut wgpu::RenderPass<'a>, surface: [u32; 2]) {
         if !self.visible {
             return;
         }
-        let Some(gpu) = gpu else {
-            return;
-        };
         let [x, y] = self.origin;
         let width = self.size[0].min(surface[0].saturating_sub(x));
         let height = self.size[1].min(surface[1].saturating_sub(y));
@@ -145,7 +130,7 @@ impl ShellGpu {
             ],
         })
     }
-    fn new(device: &wgpu::Device, format: wgpu::TextureFormat) -> Self {
+    pub(crate) fn new(device: &wgpu::Device, format: wgpu::TextureFormat) -> Self {
         let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("retained shell layout"),
             entries: &[
@@ -249,3 +234,6 @@ impl ShellGpu {
         );
     }
 }
+
+#[cfg(test)]
+mod trace;

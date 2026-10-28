@@ -17,7 +17,7 @@ pub fn validate_walk(
 ) -> Result<ClientIntent, String> {
     if state.authenticated_player().is_none()
         || state.loaded_scene() != Some(expected)
-        || asset.descriptor() != expected
+        || asset.descriptor().with_plane(expected.origin().plane) != expected
     {
         return Err("movement requires the current loaded map".into());
     }
@@ -49,10 +49,15 @@ pub fn world_actions(
     use rustclient_model::{ActionMask, ActionSlot, WorldAction, WorldTarget};
     if state.authenticated_player().is_none()
         || state.loaded_scene() != Some(scene)
-        || asset.descriptor() != scene
+        || asset.descriptor().with_plane(scene.origin().plane) != scene
     {
         return Err("world action refers to an obsolete map".into());
     }
+    let player_plane = state
+        .entities()
+        .local_player()
+        .map(|player| player.tile.plane)
+        .ok_or("world action requires a confirmed player")?;
     let (name, actions, enabled) = match target {
         WorldTarget::Npc {
             index,
@@ -67,7 +72,8 @@ pub fn world_actions(
                 .filter(|npc| {
                     npc.instance == instance
                         && npc.definition_id == definition
-                        && scene.contains(npc.tile)
+                        && npc.tile.plane == player_plane
+                        && scene.contains_footprint(npc.tile)
                 })
                 .ok_or("NPC target is stale")?;
             let def = catalog
@@ -85,8 +91,8 @@ pub fn world_actions(
             definition,
             resolved,
         } => {
-            if !scene.contains(key.tile) {
-                return Err("location is outside the current map".into());
+            if key.tile.plane != player_plane || !scene.contains_footprint(key.tile) {
+                return Err("location is outside the current map or plane".into());
             }
             let def = asset
                 .location_definition(key, definition, &state.scenery().into())

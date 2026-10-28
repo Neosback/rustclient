@@ -1,7 +1,9 @@
 //! Scene geometry generation for live player and NPC entities.
 
 mod actor_animation;
+mod emission;
 use actor_animation::{DirectionalSequences, Playback, pose_model, select_movement};
+pub(crate) use emission::{Placement, emit_model};
 
 use crate::{
     ActorMotion, AnimationAssets, Result, SceneAsset, SceneGeometry, lighting::Light,
@@ -486,6 +488,7 @@ fn build_player(
         Placement {
             position,
             plane: player.tile.plane,
+            depth_policy: rustclient_model::ModelDepthPolicy::SortedDeferredWrite,
             size: 1,
             footprint: default_footprint(1),
             orientation,
@@ -604,6 +607,12 @@ fn build_npc(
         Placement {
             position,
             plane: npc.tile.plane,
+            depth_policy: catalog
+                .npcs
+                .get(&npc.definition_id)
+                .map_or(rustclient_model::ModelDepthPolicy::DepthWrite, |base| {
+                    base.depth_policy
+                }),
             size: def.size.max(1),
             footprint: def
                 .footprint
@@ -696,100 +705,4 @@ fn sequence_height_offset(
     sequence
         .and_then(|id| catalog.animations.sequence(asset, id))
         .map_or(0, |sequence| i32::from(sequence.height_offset))
-}
-
-#[derive(Clone, Copy)]
-pub(crate) struct Placement {
-    /// South-west corner of the footprint in world units (tile centres are `tile * 128`).
-    pub(crate) position: [i32; 2],
-    pub(crate) plane: rustclient_model::Plane,
-    /// Footprint edge in tiles; the model is centred on the whole footprint.
-    pub(crate) size: u8,
-    /// Fine-unit square the actor stands on; see [`SceneAsset::footprint_height`].
-    pub(crate) footprint: i32,
-    pub(crate) orientation: u16,
-    /// Animation height offset in fine units; the model is drawn this much higher.
-    pub(crate) height_offset: i32,
-}
-
-pub(crate) fn emit_model(
-    asset: &SceneAsset,
-    model: &StaticModel,
-    placement: Placement,
-    light: Light,
-    geometry: &mut SceneGeometry,
-) -> Result<()> {
-    let Placement {
-        position,
-        plane,
-        size,
-        footprint,
-        orientation,
-        height_offset,
-    } = placement;
-    let origin = asset.descriptor().origin();
-    let half_footprint = i32::from(size) * 64;
-    let center_fine_x = position[0] - origin.x * 128 + half_footprint;
-    let center_fine_z = position[1] - origin.y * 128 + half_footprint;
-    let ground_height = asset
-        .footprint_height(plane, [center_fine_x, center_fine_z], footprint)
-        .unwrap_or(0)
-        - height_offset;
-    let level = crate::mesh::render_level(
-        asset,
-        plane,
-        origin.x + center_fine_x.div_euclid(128),
-        origin.y + center_fine_z.div_euclid(128),
-    );
-
-    let normals = crate::lighting::calculate(&model.vertices, &model.faces);
-    let merged = vec![None; model.vertices.len()];
-    let colors: Vec<Option<[i32; 3]>> = model
-        .faces
-        .iter()
-        .enumerate()
-        .map(|(i, &f)| crate::lighting::bake_lit(f, i, &normals, &merged, light))
-        .collect();
-
-    let first = geometry.vertices.len();
-    for (index, &face) in model.faces.iter().enumerate() {
-        let Some(face_colors) = colors[index] else {
-            continue;
-        };
-
-        let uv = if face.texture.is_some() {
-            face.texture_mapping
-                .and_then(|s| model.texture_triangles.get(usize::from(s)))
-                .map_or([[0., 0.], [1., 0.], [0., 1.]], |t| {
-                    crate::uv::authored(
-                        face.vertices.map(|v| model.vertices[v as usize]),
-                        t.map(|v| model.vertices[v as usize]),
-                    )
-                })
-        } else {
-            [[0.; 2]; 3]
-        };
-
-        let points = face.vertices.map(|v| {
-            let orig = model.vertices[v as usize];
-            let rot = rotate_y(orig, orientation);
-            [
-                center_fine_x + rot.x,
-                ground_height + rot.y,
-                center_fine_z + rot.z,
-            ]
-        });
-
-        geometry.model_triangle(points, face_colors, uv, face, u16::from(level))?;
-    }
-
-    let draw_tile = crate::DrawTile::actor([center_fine_x >> 7, center_fine_z >> 7]);
-    for vertex in &mut geometry.vertices[first..] {
-        vertex.draw_tile = draw_tile;
-    }
-    if geometry.vertices.len() > first {
-        geometry.models.push(first..geometry.vertices.len());
-    }
-
-    Ok(())
 }

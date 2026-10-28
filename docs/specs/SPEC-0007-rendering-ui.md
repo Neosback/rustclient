@@ -94,23 +94,41 @@ This signal contains no semantic state and does not mutate `GameState`.
 
 ## Sidebar visibility and viewport correction (approved 2026-10-26)
 
-The sidebar is application chrome adjacent to the game canvas. By the user's selected behavior,
-closing its panel also removes the tool rail: closed chrome reserves zero horizontal width, takes
-no game input and does no recurring component/layout/painting/upload work. One visibility owner
-projects both rail and panel state. The reopen affordance may use the existing RuneLite-style
-fallback arrow when native titlebar integration is unavailable; it is not a replacement game HUD.
+The sidebar is application chrome adjacent to the game canvas. **Superseded 2026-10-27:**
+the earlier requirement that closing a panel also removes the rail is replaced by three states:
+hidden (zero width), rail only (36 logical pixels), and panel open (242 + 36 logical pixels).
+One shell presentation owner controls these states. The arrow/sidebar hotkey hides or restores
+all chrome; the active tool/panel hotkey closes or restores the panel while retaining the rail.
+The initial state is hidden. Closing chrome never stops its required services.
 
-Tool navigation belongs to real tool/panel services. A plugin's configuration entry does not by
-itself create a toolbar navigation button. Required services remain active while their UI is hidden.
+Shell-ui owns retained session navigation (selected plugin, query, sections, scroll and draft controls).
+Application-owned favorites persist through platform blob storage independently of plugin configuration.
+Only real implemented tools receive navigation buttons. The existing RuneLite fallback arrow remains
+available without native titlebar integration. External plugins receive no additional capabilities.
 
-The game UI's raster viewport/scissor must equal the physical extent used to normalize its vertices.
-A wider native surface containing shell chrome must not stretch game quads into that chrome.
-Picking, widget input, minimap input, overlay placement and stretched-mode rendering share the same
-canvas transform. Shell-driven asynchronous resizes must not be fed back as user changes to game size.
+An asynchronous shell-requested resize preserves the established game extent through intermediate
+platform events, immediate results, rapid toggles and scale changes. Resize completion is bounded;
+OS-clamped requests settle once to available space. Maximized/fullscreen windows and the explicit
+keep-window-size preference reserve chrome inside the existing window. Game raster/scissor, logical
+widget extent, stretching, picking and shell composition derive from the same canvas split. Game quads
+must never stretch temporarily across space acquired for shell chrome.
 
-Acceptance: closed/open DOM and idle-work contracts at 1x/2x, preserved game width, repeated open/close,
-DPI/resize/stretched tests and desktop fixed/classic/modern minimap/pointer checks. Compilation or a
-standalone panel PNG does not establish the desktop checks.
+Input delivery remains ordered, with component processing separate from presentation-time painting.
+Unchanged hover targets trigger no layout/raster/upload or configuration publication. Dirty components,
+layout and paint are tracked separately; scrolling without component/style changes reuses layout.
+Hidden chrome performs no recurring component/layout/paint/upload work. At most one panel rasterization
+and upload occurs per presented frame; game redraws reuse cached pixels.
+
+Sliders keep a presentation-only draft while dragging, commit once on release, and cancel on Escape
+or capture loss. Numeric fields commit valid drafts on Enter/blur. Persistence remains prepare →
+atomic write → publication; errors retain accepted configuration and restore the accepted slider value.
+Native focus/blur and tooltips must work, rather than relying on unsupported DOM event behavior.
+
+Acceptance: three-state transitions and restoration, favorites persistence/failure, draft/cancel contracts,
+unchanged-hover and hidden zero-work counters, resize sequences at integer/fractional scale, and optimized
+before/after interaction traces. Target p95 visual response within 50ms at 60 FPS. Live desktop acceptance
+covers fixed/classic/modern/stretched modes and minimap/pointer alignment. Compilation, standalone panel
+images and CPU traces are separate evidence and do not establish logged-in desktop acceptance.
 
 ## GPU baseline audit and HD preparation (2026-10-26)
 
@@ -173,3 +191,49 @@ and clipping boundary, leaves shell chrome independent, and requires no new scen
 Only retained solid rectangle semantics are eligible; future gradient modes must stay outside this
 optimization. Verify byte accumulation and selection/reset with semantic contracts, then run bounded
 native/browser shader diagnostics separately from Java visual acceptance.
+
+## Portable geometry resource budgets (2026-10-28)
+
+Renderer-owned static GPU vertices may be compacted by exact equality of every packed vertex byte,
+including face priority, draw-tile admission, roof tags, material, color and UVs. The CPU mesh, model
+spans, emitted face order and picking geometry remain unchanged. Both opaque and transparent GPU
+index streams use the same explicit source-to-packed remap, including later priority sorting.
+Compaction is retained only when saved GPU bytes exceed the resident CPU remap allocation.
+Dynamic actor/scenery buffers keep their streaming path; no per-cycle hash compaction is introduced.
+
+Each geometry projection may reuse face ordering only while its geometry and camera eye/direction
+are unchanged. Geometry updates invalidate that cache independently per static/dynamic/entity stream.
+Texture-animation cycles and unchanged visibility do not require re-sorting static faces. This path
+requires no optional GPU features and shares behavior across native and WebGPU. Memory and ordering
+counters distinguish expanded source vertex bytes, resident GPU bytes and retained CPU remap bytes.
+These counters are resource accounting, not a claim about whole-process RSS or visual parity.
+
+Native timing diagnostics include bounded p95/max frame, cycle and presentation-gap samples,
+hover/actor-build/upload stages and discarded wall-clock catch-up debt. Semantic movement, collision
+and server-confirmed positions are not changed to mask slow frames.
+
+### Static picking broad phase (2026-10-28)
+
+The immutable loaded scene owns a disposable `ScenePickIndex` alongside its CPU mesh.
+It indexes bounds for blocks of 32 source triangles, without copying triangle data, and
+is rebuilt when the static projection is replaced. Balanced median subdivision bounds
+query stack depth and retained memory. Dynamic geometry continues to use its current
+exact picker. Both targets can use the same index; no optional GPU features are needed.
+
+Bounds provide conservative rejection only. Accepted candidates use the existing
+triangle intersection, primitive visibility, terrain-prefix and semantic target rules.
+Equal hit distances resolve by original source triangle order, including untagged
+occluders. A mismatched source allocation falls back to the original query; callers
+must not mutate indexed geometry in place. This index is never authoritative game
+state and must not alter collision, movement, path queues or packet handling.
+
+### Shell composition initialization
+
+The retained shell's portable composition pipeline is compiled during renderer/device
+initialization, including device reconstruction. First opening must reuse that pipeline;
+interactive shell staging must not synchronously create render pipelines. Hidden chrome
+retains only its placeholder/last image and performs no recurring raster/upload work.
+
+World-map primary presses follow resolved widget paint order and clipping. Buttons
+above the map receive their press before map dragging begins. The map image rectangle
+alone is not an input target and must not intercept a close button over that rectangle.

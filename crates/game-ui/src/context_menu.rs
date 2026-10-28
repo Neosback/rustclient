@@ -198,6 +198,7 @@ impl<A: Copy> ContextMenu<A> {
 }
 
 #[cfg(test)]
+#[allow(clippy::float_cmp)]
 mod tests {
     use super::*;
     fn font() -> rustclient_cache::BitmapFont {

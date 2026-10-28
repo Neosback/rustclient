@@ -17,7 +17,8 @@ use style::properties::generated::longhands::position::computed_value::T as Posi
 use style::selector_parser::{PseudoElement, RestyleDamage};
 use style::stylesheets::UrlExtraData;
 use style::values::computed::Display as StyloDisplay;
-use style::values::specified::box_::{DisplayInside, DisplayOutside};
+use style::values::specified::box_::{DisplayInside, DisplayOutside, Overflow};
+use style::values::specified::ui::PointerEvents;
 use style::{data::ElementData as StyloElementData, shared_lock::SharedRwLock};
 use style_dom::ElementState;
 use style_traits::values::ToCss;
@@ -714,6 +715,19 @@ impl Node {
     /// TODO: z-index
     /// (If multiple children are positioned at the position then a random one will be recursed into)
     pub fn hit(&self, x: f32, y: f32) -> Option<HitResult> {
+        // Overflow clips are in the visible border box, before applying the scroll offset.
+        // Testing against the scrolled content lets offscreen controls intercept header clicks.
+        let local_x = x - self.final_layout.location.x;
+        let local_y = y - self.final_layout.location.y;
+        let accepts_pointer = if let Some(styles) = self.primary_styles() {
+            if (styles.clone_overflow_x() != Overflow::Visible
+                && (local_x < 0. || local_x > self.final_layout.size.width))
+                || (styles.clone_overflow_y() != Overflow::Visible
+                    && (local_y < 0. || local_y > self.final_layout.size.height)) {
+                return None;
+            }
+            styles.clone_pointer_events() != PointerEvents::None
+        } else { true };
         let mut x = x - self.final_layout.location.x + self.scroll_offset.x as f32;
         let mut y = y - self.final_layout.location.y + self.scroll_offset.y as f32;
 
@@ -750,7 +764,7 @@ impl Node {
             .rev()
             .find_map(|&i| self.with(i).hit(x, y))
             .or_else(|| {
-                if self.flags.is_inline_root() {
+                if accepts_pointer && self.flags.is_inline_root() {
                     let element_data = &self.element_data().unwrap();
                     let layout = &element_data.inline_layout_data.as_ref().unwrap().layout;
                     let scale = layout.scale();
@@ -769,7 +783,7 @@ impl Node {
                 x,
                 y,
             })
-            .filter(|_| matches_self))
+            .filter(|_| matches_self && accepts_pointer))
     }
 
     /// Computes the Document-relative coordinates of the Node

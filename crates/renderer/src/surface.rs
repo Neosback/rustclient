@@ -157,7 +157,7 @@ pub struct SurfaceRenderer {
     effective: crate::EffectiveGpu,
     capabilities: crate::GpuCapabilities,
     shell_staging: crate::shell::ShellStaging,
-    shell_gpu: Option<crate::shell::ShellGpu>,
+    shell_gpu: crate::shell::ShellGpu,
     game_width: Option<u32>,
     stretch: Option<rustclient_game_ui::StretchedCanvas>,
     /// Latest posed geometry awaiting a presentable frame. wgpu retains every staged
@@ -269,6 +269,14 @@ impl SurfaceRenderer {
     }
 
     #[must_use]
+    pub fn world_geometry_stats(&self) -> crate::WorldGeometryStats {
+        self.world.as_ref().map_or_else(
+            crate::WorldGeometryStats::default,
+            crate::world::WorldGpu::geometry_stats,
+        )
+    }
+
+    #[must_use]
     pub fn shell_stats(&self) -> crate::ShellStats {
         self.shell_staging.stats
     }
@@ -331,6 +339,9 @@ impl SurfaceRenderer {
             present_mode: effective.present_mode,
         };
 
+        // Pipeline compilation belongs to device initialization, never the first sidebar click.
+        // Hidden chrome retains only the tiny placeholder image and does no recurring uploads.
+        let shell_gpu = crate::shell::ShellGpu::new(&device, view_format);
         let mut renderer = Self {
             _instance: instance,
             surface,
@@ -346,7 +357,7 @@ impl SurfaceRenderer {
             effective,
             capabilities: gpu_capabilities,
             shell_staging: crate::shell::ShellStaging::default(),
-            shell_gpu: None,
+            shell_gpu,
             game_width: None,
             stretch: None,
             staged: StagedGeometry::default(),
@@ -411,20 +422,23 @@ impl SurfaceRenderer {
     /// # Errors
     /// Returns bounded mesh/device allocation failures.
     pub fn set_world(&mut self, mesh: &rustclient_scene::WorldMesh) -> Result<(), RenderError> {
-        self.world = Some(WorldGpu::new(
-            &self.device,
-            &self.queue,
-            self.view_format,
-            SurfaceSize::new(self.config.width, self.config.height),
-            mesh,
-            self.effective.samples,
-        )?);
         if let Some(world) = &mut self.world {
+            world.replace_mesh(&self.device, &self.queue, mesh)?;
+        } else {
+            let mut world = WorldGpu::new(
+                &self.device,
+                &self.queue,
+                self.view_format,
+                SurfaceSize::new(self.config.width, self.config.height),
+                mesh,
+                self.effective.samples,
+            )?;
             world.set_filtering(
                 &self.device,
                 self.effective.anisotropy,
                 self.effective.mipmaps,
             );
+            self.world = Some(world);
         }
         if let Some(canvas) = &mut self.ui_canvas {
             canvas.invalidate_world();
@@ -726,12 +740,8 @@ impl SurfaceRenderer {
         draw_world: bool,
         before_present: F,
     ) -> FrameOutcome {
-        self.shell_staging.prepare(
-            &mut self.shell_gpu,
-            &self.device,
-            &self.queue,
-            self.view_format,
-        );
+        self.shell_staging
+            .prepare(&mut self.shell_gpu, &self.device, &self.queue);
         let texture_view = surface_texture
             .texture
             .create_view(&wgpu::TextureViewDescriptor {
@@ -774,7 +784,7 @@ impl SurfaceRenderer {
                 world.target.composite(&mut pass);
             }
             self.shell_staging.draw(
-                self.shell_gpu.as_ref(),
+                &self.shell_gpu,
                 &mut pass,
                 [self.config.width, self.config.height],
             );

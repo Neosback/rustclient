@@ -165,6 +165,40 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
             s.integers.push(i32::from(found));
             return Ok(true);
         }
+        Opcode::CcTriggerop => {
+            let (address, op_number) = if explicit {
+                let op_num = s.int()?;
+                let child = s.int()?;
+                let widget = h.resources.profile.script_widget(s.int()?)?;
+                (
+                    WidgetAddress {
+                        widget,
+                        child: u32::try_from(child).ok(),
+                    },
+                    op_num,
+                )
+            } else {
+                let op_num = s.int()?;
+                let addr = c.active[active].ok_or("no active widget")?;
+                (addr, op_num)
+            };
+            if let Some(operation) = u8::try_from(op_number.saturating_sub(1))
+                .ok()
+                .and_then(rustclient_model::WidgetOperation::new)
+                && let Ok((intents, _)) = h.resources.perform_action(
+                    h.state,
+                    rustclient_model::WidgetAction {
+                        address,
+                        operation,
+                        item: None,
+                        interface_epoch: h.state.interfaces().epoch(),
+                    },
+                )
+            {
+                h.resources.effects.extend(intents);
+            }
+            return Ok(true);
+        }
         _ => {}
     }
     if !is_widget(op) {
@@ -720,5 +754,30 @@ mod tests {
             Ok(WidgetOpKeys::TARGET_SLOT)
         );
         assert_eq!(untouched.integers, [3], "target variants pop no slot");
+    }
+
+    #[test]
+    fn triggerop_executes_action_on_active_or_specified_widget() {
+        let mut resources = crate::scripts::test_support::scripts();
+        let mut state = rustclient_game_state::GameState::new();
+        let mut host = super::ScriptHost {
+            resources: &mut resources,
+            state: &mut state,
+        };
+        let mut s = Stacks::default();
+        let mut c = rustclient_client_script::Context::default();
+        let packed_widget = (160 << 16) | 0x37;
+        s.integers.push(packed_widget);
+        s.integers.push(-1);
+        s.integers.push(1);
+        let handled = instruction(
+            &mut host,
+            rustclient_cache::script::Opcode::IfTriggerop,
+            0,
+            &mut s,
+            &mut c,
+        )
+        .unwrap();
+        assert!(handled);
     }
 }

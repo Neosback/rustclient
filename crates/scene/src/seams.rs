@@ -35,13 +35,17 @@ pub(crate) fn merge(models: &mut [PreparedModel]) -> crate::Result<()> {
             }
         }
     }
+    let mut positions = BTreeMap::<(i32, i32, i32), Vec<usize>>::new();
+    let mut matched_a = Vec::new();
+    let mut matched_b = Vec::new();
+    let mut candidates = BTreeSet::new();
     for a in 0..models.len() {
         if !models[a].mergeable {
             continue;
         }
         let size = footprint(&models[a]);
         let tile = models[a].loc.tile;
-        let mut candidates = BTreeSet::new();
+        candidates.clear();
         for plane in i16::from(tile.plane.get()) - 1..=i16::from(tile.plane.get()) + 1 {
             for dx in -1..=i32::from(size[0]) {
                 for dz in -1..=i32::from(size[1]) {
@@ -51,7 +55,7 @@ pub(crate) fn merge(models: &mut [PreparedModel]) -> crate::Result<()> {
                 }
             }
         }
-        for b in candidates {
+        for &b in &candidates {
             let same_boundary = models[a].loc.tile == models[b].loc.tile
                 && models[a].loc.shape <= 3
                 && models[b].loc.shape <= 3;
@@ -63,7 +67,14 @@ pub(crate) fn merge(models: &mut [PreparedModel]) -> crate::Result<()> {
                 continue;
             };
             let (left, right) = models.split_at_mut(b);
-            pair(&mut left[a], &mut right[0], hide);
+            pair(
+                &mut left[a],
+                &mut right[0],
+                hide,
+                &mut positions,
+                &mut matched_a,
+                &mut matched_b,
+            );
         }
     }
     Ok(())
@@ -102,15 +113,24 @@ fn neighbors(a: &PreparedModel, b: &PreparedModel) -> Option<bool> {
     None
 }
 
-fn pair(a: &mut PreparedModel, b: &mut PreparedModel, hide: bool) {
-    let mut positions = BTreeMap::<_, Vec<usize>>::new();
+fn pair(
+    a: &mut PreparedModel,
+    b: &mut PreparedModel,
+    hide: bool,
+    positions: &mut BTreeMap<(i32, i32, i32), Vec<usize>>,
+    matched_a: &mut Vec<bool>,
+    matched_b: &mut Vec<bool>,
+) {
+    positions.clear();
     for (index, p) in b.points.iter().enumerate() {
         if b.normals.vertices[index].count != 0 {
             positions.entry((p.x, p.y, p.z)).or_default().push(index);
         }
     }
-    let mut matched_a = vec![false; a.points.len()];
-    let mut matched_b = vec![false; b.points.len()];
+    matched_a.clear();
+    matched_a.resize(a.points.len(), false);
+    matched_b.clear();
+    matched_b.resize(b.points.len(), false);
     let mut matches = 0;
     for (i, p) in a.points.iter().enumerate() {
         if a.normals.vertices[i].count == 0 {
@@ -131,7 +151,7 @@ fn pair(a: &mut PreparedModel, b: &mut PreparedModel, hide: bool) {
         }
     }
     if hide && matches >= 3 {
-        for (model, matched) in [(a, matched_a), (b, matched_b)] {
+        for (model, matched) in [(a, &*matched_a), (b, &*matched_b)] {
             for face in &mut model.model.faces {
                 if face.vertices.iter().all(|v| matched[*v as usize]) {
                     face.render_type = 2;

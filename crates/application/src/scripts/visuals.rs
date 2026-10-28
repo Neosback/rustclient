@@ -11,6 +11,7 @@ pub struct WidgetAssetRequest {
     pub sprites: BTreeSet<SpriteId>,
     pub fonts: BTreeSet<FontId>,
     pub items: BTreeSet<ItemDefinitionId>,
+    pub skip_base_assets: bool,
 }
 impl WidgetAssetRequest {
     /// Nothing is requested.
@@ -25,6 +26,7 @@ impl WidgetAssetRequest {
             sprites: self.sprites.difference(&loaded.sprites).copied().collect(),
             fonts: self.fonts.difference(&loaded.fonts).copied().collect(),
             items: self.items.difference(&loaded.items).copied().collect(),
+            skip_base_assets: loaded.skip_base_assets || !loaded.is_empty(),
         }
     }
     /// Record `other` as covered.
@@ -32,6 +34,7 @@ impl WidgetAssetRequest {
         self.sprites.extend(other.sprites.iter().copied());
         self.fonts.extend(other.fonts.iter().copied());
         self.items.extend(other.items.iter().copied());
+        self.skip_base_assets = true;
     }
 }
 impl<S: ReadOnlyBlobs> ClientScripts<S> {
@@ -90,18 +93,41 @@ pub fn load_widget_visuals<S: ReadOnlyBlobs>(
     request: &WidgetAssetRequest,
 ) -> WidgetVisualAssets {
     let mut assets = WidgetVisualAssets::default();
-    match profile.font_icons(cache) {
-        Ok(icons) => {
-            for (index, icon) in icons.iter().enumerate() {
-                if let Ok(index) = u16::try_from(index) {
-                    assets
-                        .images
-                        .insert(UiImageId::FontIcon(index), icon.image.clone());
+    if !request.skip_base_assets {
+        match profile.font_icons(cache) {
+            Ok(icons) => {
+                for (index, icon) in icons.iter().enumerate() {
+                    if let Ok(index) = u16::try_from(index) {
+                        assets
+                            .images
+                            .insert(UiImageId::FontIcon(index), icon.image.clone());
+                    }
+                }
+                assets.font_icons = icons;
+            }
+            Err(error) => assets.failures.push(error.to_string()),
+        }
+        match cache.named_sprites("cross") {
+            Ok(frames) => {
+                for (index, sprite) in frames.into_iter().take(8).enumerate() {
+                    if let Ok(index) = u8::try_from(index) {
+                        assets.cross_frames.insert(
+                            index,
+                            rustclient_game_ui::widget_visuals::SpriteFrame {
+                                canvas: sprite.canvas.map(u32::from),
+                                offset: sprite.offset.map(u32::from),
+                            },
+                        );
+                        assets.images.insert(UiImageId::Cross(index), sprite.image);
+                    }
                 }
             }
-            assets.font_icons = icons;
+            Err(e) => assets.failures.push(e.to_string()),
         }
-        Err(error) => assets.failures.push(error.to_string()),
+        match cache.named_sprites("mapmarker") {
+            Ok(frames) => assets.destination_flag = frames.into_iter().next(),
+            Err(error) => assets.failures.push(error.to_string()),
+        }
     }
 
     if !request.items.is_empty() {
@@ -124,27 +150,6 @@ pub fn load_widget_visuals<S: ReadOnlyBlobs>(
             Ok(None) => assets.failures.push(format!("missing widget sprite {id}")),
             Err(e) => assets.failures.push(e.to_string()),
         }
-    }
-    match cache.named_sprites("cross") {
-        Ok(frames) => {
-            for (index, sprite) in frames.into_iter().take(8).enumerate() {
-                if let Ok(index) = u8::try_from(index) {
-                    assets.cross_frames.insert(
-                        index,
-                        rustclient_game_ui::widget_visuals::SpriteFrame {
-                            canvas: sprite.canvas.map(u32::from),
-                            offset: sprite.offset.map(u32::from),
-                        },
-                    );
-                    assets.images.insert(UiImageId::Cross(index), sprite.image);
-                }
-            }
-        }
-        Err(e) => assets.failures.push(e.to_string()),
-    }
-    match cache.named_sprites("mapmarker") {
-        Ok(frames) => assets.destination_flag = frames.into_iter().next(),
-        Err(error) => assets.failures.push(error.to_string()),
     }
     for id in &request.fonts {
         match profile.load_widget_font(cache, *id) {

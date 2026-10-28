@@ -30,6 +30,8 @@ pub enum WidgetContent {
     WorldViewport,
     Minimap,
     Compass,
+    WorldMap,
+    WorldMapOverview,
     Other(u16),
 }
 #[derive(Debug, Clone, PartialEq, Eq)]

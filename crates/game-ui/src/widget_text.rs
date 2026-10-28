@@ -430,6 +430,7 @@ pub fn quantity_label(count: u32) -> (String, u32) {
 }
 
 #[cfg(test)]
+#[allow(clippy::float_cmp)]
 mod tests {
     use super::*;
     use rustclient_cache::{GroupId, Image, IndexId, Source, Sprite};

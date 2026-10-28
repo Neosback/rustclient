@@ -27,11 +27,12 @@ members = [
     "plugin-sdk/rust",
     "xtask",
 ]
-exclude = ["references/rustosrs", "vendor/blitz-dom-0.2.4"]
+exclude = ["references/rustosrs", "vendor/blitz-dom-0.2.4", "vendor/dioxus-native-dom-0.7.10"]
 
 [patch.crates-io]
 # Upstream pins image 0.25.6; retain RustClient's current decoder. See vendor/README.md.
 blitz-dom = { path = "vendor/blitz-dom-0.2.4" }
+dioxus-native-dom = { path = "vendor/dioxus-native-dom-0.7.10" }
 
 [workspace.package]
 edition = "2024"
@@ -98,4 +99,7 @@ opt-level = 2
 [profile.dev.package.rustclient-protocol]
 opt-level = 2
 [profile.dev.package.rustclient-platform-native]
+opt-level = 2
+
+[profile.dev.package.rustclient-shell-ui]
 opt-level = 2

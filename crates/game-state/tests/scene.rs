@@ -265,12 +265,33 @@ fn movement_map_rebuild_cycles_and_appearance_replay_through_the_same_gateway() 
     });
     let plane_commit = state.apply_operation(plane_update.clone()).unwrap();
     assert!(plane_commit.delta().scene_changed());
-    assert_eq!(state.loaded_scene(), None);
+    assert_eq!(state.loaded_scene(), Some(next));
     assert_eq!(
         state.initial_placement().unwrap().map_anchor.plane,
         Plane::new(1).unwrap()
     );
     recorded.push(ReplayEnvelope::new(plane_update, plane_commit));
+    let same_anchor_rebuild = SemanticOperation::RebuildMap(MapAnchor { x: 3224, y: 3216 });
+    let same_anchor_commit = state.apply_operation(same_anchor_rebuild.clone()).unwrap();
+    assert!(same_anchor_commit.event().is_none());
+    assert!(same_anchor_commit.delta().is_empty());
+    assert_eq!(state.loaded_scene(), Some(next));
+    recorded.push(ReplayEnvelope::new(same_anchor_rebuild, same_anchor_commit));
+    let out_of_bounds_plane = SemanticOperation::UpdatePlayers(PlayerInfoUpdate {
+        local_movement: Some(PlayerMovement::Teleport {
+            delta_x: 200,
+            delta_y: 0,
+            plane_delta: 1,
+        }),
+        ..Default::default()
+    });
+    let out_of_bounds_commit = state.apply_operation(out_of_bounds_plane.clone()).unwrap();
+    assert!(out_of_bounds_commit.delta().scene_changed());
+    assert_eq!(state.loaded_scene(), None);
+    recorded.push(ReplayEnvelope::new(
+        out_of_bounds_plane,
+        out_of_bounds_commit,
+    ));
     let mut replay = GameState::new();
     replay.replay_envelopes(&recorded).unwrap();
     assert_eq!(replay.semantic_fingerprint(), state.semantic_fingerprint());

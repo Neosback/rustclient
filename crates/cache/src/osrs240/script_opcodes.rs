@@ -562,6 +562,7 @@ const OPCODES: &[(u16, Opcode)] = &[
     (6612, Opcode::WorldmapGetconfigsize),
     (6613, Opcode::WorldmapGetconfigbounds),
     (6614, Opcode::WorldmapGetconfigzoom),
+    (6615, Opcode::WorldmapGetdisplaycentercoord),
     (6616, Opcode::WorldmapGetcurrentmap),
     (6617, Opcode::WorldmapGetdisplaycoord),
     (6621, Opcode::WorldmapCoordinmap),

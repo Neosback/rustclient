@@ -61,6 +61,43 @@ source-manifest.json. Structural ordering contracts do not satisfy ADR-0004's
 visual acceptance. Exact zone/level ordering and coplanar material acceptance
 remain part of that gate.
 
+### Sorted actors with deferred opaque depth (2026-10-27)
+
+Revision-240 `Player.vmethod260` selects render mode 2. `NPC.vmethod260` selects it for the base
+definition's opcode-147 flag; its separate live customization override remains a semantic update
+obligation. Preserve this immutable depth policy through the existing model span, independently of
+face alpha, authored priority and depth bias. Morph appearance must not silently replace the base
+NPC's depth policy. Ordinary scenery and NPCs retain the normal depth-writing policy.
+
+For this policy, `GpuPlugin.drawTemp`/`ModelUploader.uploadSortedModel` sort opaque as well as alpha
+faces. `VAO.draw` renders each consecutive opaque policy range with color writes and depth tests but
+without depth writes, then redraws the range with color writes off and depth writes on. Thus opaque
+self-visibility follows painter/priority order while later geometry still sees the nearest opaque
+depth. Existing alpha faces remain in the shared blended stream with writes disabled. Never disable
+the depth test, synthesize a priority depth offset or change authoritative actor coordinates.
+
+Pipeline resources and reusable ordering scratch belong to renderer; model policy is immutable
+cache/projection metadata. Recovery and MSAA changes rebuild all needed pipelines. Native and web
+consume the same policy. Validate cache default/flag, span/index boundaries and source selection;
+run bounded actual-GPU color/depth diagnostics separately from full Java/live visual acceptance.
+
+### Sorted-model admission and priority inputs (2026-10-28)
+
+For actor models using the sorted uploader, preserve the posed model origin, bounds and all posed
+vertices, including vertices omitted from visible faces. The source rejects a whole model if any
+projected vertex has depth below 50 fine units or its cylindrical diameter is at least 6000.
+Only front-facing triangles enter depth buckets and priority thresholds. Compute each vertex's
+truncated depth relative to the truncated model-origin depth, then the signed integer face average
+plus radius; do not truncate the triangle centroid instead. Default sorted NPCs use depth ordering;
+the deferred-depth actor policy additionally enables twelve-priority ordering.
+
+Use one disposable view description for rendering and actor picking. Camera matrix near clipping
+and source admission use 50 fine units. Keep source admission separate from logical roof/zone
+visibility and cache/GPU lifetime. Reuse projection/order scratch; omitted deferred triangles may
+use degenerate indices within their allocated opaque spans, while alpha draws use their actual
+visible index count. Packed animation precision and complete scene-zone alpha ordering remain
+separate acceptance obligations.
+
 Validate binary section lengths/counts, selectors/indexes, recursive dependency
 closure, morph cycles, pose layouts and projection budgets. Decode errors identify
 source and stage; unsupported required formats fail the relevant gate explicitly.

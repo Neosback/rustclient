@@ -88,16 +88,13 @@ impl NativeApp {
         self.widget_loading = true;
         let path = self.widget_cache_dir.clone();
         let profile = self.widget_cache_profile;
+        let shared_cache = std::sync::Arc::clone(&self.scene.shared_cache);
         let proxy = self.proxy.clone();
         let generation = self.connection_generation;
         let result = std::thread::Builder::new()
             .name("widget-assets".into())
             .spawn(move || {
-                let assets = rustclient_platform_native::DirectoryBlobs::open(path)
-                    .map_err(|e| e.to_string())
-                    .and_then(|source| {
-                        rustclient_cache::Cache::open(source).map_err(|e| e.to_string())
-                    })
+                let assets = crate::scene::SceneView::open_shared_cache(&path, &shared_cache)
                     .map_or_else(
                         |e| {
                             let mut assets =
@@ -192,6 +189,10 @@ impl NativeApp {
                 if let Some(camera) = &mut self.scene.camera {
                     camera.set_yaw(0);
                 }
+                return Ok(true);
+            }
+            if widget.content == WidgetContent::WorldMap && !right {
+                self.world_map_drag = Some(([x, y], scripts.world_map.center_tile));
                 return Ok(true);
             }
             if matches!(

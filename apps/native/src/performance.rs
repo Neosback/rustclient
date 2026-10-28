@@ -3,6 +3,41 @@ use std::time::{Duration, Instant};
 use sysinfo::{Pid, ProcessRefreshKind, ProcessesToUpdate, System};
 use winit::window::Window;
 
+/// Bounded diagnostic samples, never an unbounded telemetry history.
+#[derive(Default)]
+struct Samples {
+    values: Vec<Duration>,
+    next: usize,
+}
+impl Samples {
+    fn push(&mut self, value: Duration) {
+        if self.values.len() < 256 {
+            self.values.push(value);
+        } else {
+            self.values[self.next] = value;
+            self.next = (self.next + 1) % 256;
+        }
+    }
+    fn finish(&mut self) -> (f64, f64) {
+        self.values.sort_unstable();
+        let p95 = self
+            .values
+            .get(self.values.len().saturating_sub(1) * 95 / 100)
+            .copied()
+            .unwrap_or_default();
+        let max = self.values.last().copied().unwrap_or_default();
+        self.values.clear();
+        self.next = 0;
+        (p95.as_secs_f64() * 1000., max.as_secs_f64() * 1000.)
+    }
+}
+#[derive(Clone, Copy)]
+pub(super) enum Stage {
+    Hover,
+    EntityBuild,
+    EntityUpload,
+}
+
 pub(super) struct Performance {
     system: System,
     pid: Pid,
@@ -15,6 +50,12 @@ pub(super) struct Performance {
     ticks: u32,
     log: bool,
     last_note: Instant,
+    frame_samples: Samples,
+    tick_samples: Samples,
+    gaps: Samples,
+    stages: [Samples; 3],
+    previous_present: Option<Instant>,
+    cycle_debt: Duration,
 }
 
 impl Performance {
@@ -31,6 +72,12 @@ impl Performance {
             ticks: 0,
             log: std::env::var_os("RUSTCLIENT_FRAME_TIMINGS").is_some(),
             last_note: Instant::now(),
+            frame_samples: Samples::default(),
+            tick_samples: Samples::default(),
+            gaps: Samples::default(),
+            stages: std::array::from_fn(|_| Samples::default()),
+            previous_present: None,
+            cycle_debt: Duration::ZERO,
         }
     }
 
@@ -57,13 +104,39 @@ impl Performance {
 
     pub(super) fn tick(&mut self, start: Instant) {
         self.ticks += 1;
-        self.tick_time += start.elapsed();
+        let elapsed = start.elapsed();
+        self.tick_time += elapsed;
+        if self.log {
+            self.tick_samples.push(elapsed);
+        }
     }
 
+    pub(super) fn stage(&mut self, stage: Stage, started: Instant) {
+        if self.log {
+            self.stages[stage as usize].push(started.elapsed());
+        }
+    }
+    pub(super) fn cycle_debt(&mut self, debt: Duration) {
+        if self.log {
+            self.cycle_debt += debt;
+        }
+    }
     pub(super) fn frame(&mut self, window: &Window, start: Instant, presented: bool) {
         self.presented += u32::from(presented);
         self.redraws += 1;
-        self.frame_time += start.elapsed();
+        let duration = start.elapsed();
+        self.frame_time += duration;
+        if self.log {
+            self.frame_samples.push(duration);
+            if presented {
+                let now = Instant::now();
+                if let Some(previous) = self.previous_present.replace(now) {
+                    self.gaps.push(now.duration_since(previous));
+                }
+            } else {
+                self.previous_present = None;
+            }
+        }
         let elapsed = self.sample_start.elapsed();
         if elapsed < Duration::from_secs(1) {
             return;
@@ -88,6 +161,18 @@ impl Performance {
             f64::from(self.presented) / elapsed.as_secs_f64(),
         ));
         if self.log {
+            let (frame_p95, frame_max) = self.frame_samples.finish();
+            let (tick_p95, tick_max) = self.tick_samples.finish();
+            let (gap_p95, gap_max) = self.gaps.finish();
+            let stages = self.stages.each_mut().map(Samples::finish);
+            eprintln!(
+                "latency ms: frame p95={frame_p95:.2} max={frame_max:.2}; tick p95={tick_p95:.2} max={tick_max:.2}; present gap p95={gap_p95:.2} max={gap_max:.2}; hover p95={:.2}; entity build p95={:.2}; entity upload p95={:.2}; discarded wall-clock debt={:.2}",
+                stages[0].0,
+                stages[1].0,
+                stages[2].0,
+                self.cycle_debt.as_secs_f64() * 1000.
+            );
+            self.cycle_debt = Duration::ZERO;
             eprintln!(
                 "frame timings: {:.1} FPS, redraw {:.2} ms, tick {:.2} ms, {memory}",
                 f64::from(self.presented) / elapsed.as_secs_f64(),

@@ -2,6 +2,7 @@
 <style>body{background:#191c21;color:#e0e6ed;font:16px system-ui;padding:24px;max-width:1100px;margin:auto}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#101216;padding:16px;border-radius:8px}canvas{width:136px;height:104px;image-rendering:pixelated;margin:8px}h1{font-size:24px}.pass{color:#8bd9a0}.fail{color:#ff9292}</style>
 <h1>RustClient WebGPU baseline probe</h1><p id="status">Running bounded shader/readback fixtures…</p><div id="images"></div><pre id="report"></pre>
 <script type="module">
+import {checkDeferredDepth} from '/probe/depth';
 const result={secureContext:isSecureContext,webgpu:!!navigator.gpu,checks:[],limits:{},supportedFeatures:[],enabledFeatures:[]};
 const status=document.querySelector('#status'),report=document.querySelector('#report');
 const check=(name,passed,details={})=>{result.checks.push({name,passed,...details});if(!passed)throw Error(name+': '+JSON.stringify(details));};
@@ -85,6 +86,7 @@ async function run(){
  }
  const overlayNeutral=await capture(new Uint8Array(4),1,1,7,5,5,0,100,overlay),overlayCorrected=await capture(new Uint8Array(4),1,1,7,5,5,2,100,overlay);
  check('viewport overlay color correction',overlayNeutral.some((v,i)=>v!==overlayCorrected[i]));
+ await checkDeferredDepth(device,world,check);
  await device.queue.onSubmittedWorkDone();check('no uncaptured GPU errors',errors.length===0,{errors});device.destroy();
 }
 try{await run();result.passed=true;status.textContent='PASS — '+result.checks.length+' shared shader and pixel checks';status.className='pass';}catch(e){result.passed=false;result.error=e.stack||String(e);status.textContent='FAIL — '+e.message;status.className='fail';}

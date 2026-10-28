@@ -14,6 +14,7 @@ mod test_support;
 mod visuals;
 mod wheel;
 mod widgets;
+pub mod worldmap;
 use rustclient_cache::{Cache, CacheProfile, script::Script, widget::InterfaceDefinition};
 use rustclient_client_script::{Context, Host, Limits, Stacks, execute};
 use rustclient_game_state::{GameState, SemanticOperation};
@@ -58,6 +59,7 @@ pub struct ClientScripts<S> {
     /// Renderer-owned camera pitch and yaw in script units, supplied each frame by the host.
     camera_angles: [i32; 2],
     queue: VecDeque<(ScriptRequest, Option<WidgetAddress>)>,
+    pub world_map: worldmap::WorldMapState,
 }
 impl<S: ReadOnlyBlobs> ClientScripts<S> {
     #[must_use]
@@ -81,6 +83,7 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
             huffman: None,
             camera_angles: [0; 2],
             queue: VecDeque::new(),
+            world_map: worldmap::WorldMapState::new(),
         }
     }
     /// Commit network semantic input before scheduling its listeners.
@@ -372,6 +375,7 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
         self.effects.clear();
         self.sound_effects.clear();
         self.db.reset();
+        self.world_map.reset();
     }
     /// Sound effects requested since the last call, in script order.
     pub fn take_sound_effects(&mut self) -> Vec<SoundEffectRequest> {
@@ -654,6 +658,7 @@ impl<S: ReadOnlyBlobs> Host for ScriptHost<'_, S> {
             || arrays::instruction(self, op, s)?
             || database::instruction(self, op, s)?
             || queries::instruction(self, op, n, s)?
+            || worldmap::instruction(self, op, s)?
         {
             return Ok(());
         }

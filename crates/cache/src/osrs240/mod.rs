@@ -16,6 +16,7 @@ pub mod scripts;
 pub mod sequence_policy;
 mod terrain;
 pub mod widgets;
+pub mod world_map;
 mod world_maps;
 use crate::{
     Cache, CacheProfile, FileId, GroupId, IndexId, Source,
@@ -92,7 +93,6 @@ impl CacheProfile {
         digest.update(cache.metadata_fingerprint().as_bytes());
         digest.update(origin.x.to_le_bytes());
         digest.update(origin.y.to_le_bytes());
-        digest.update([origin.plane.get()]);
         digest.update(width.to_le_bytes());
         digest.update(height.to_le_bytes());
         let (squares, needed, auxiliary_map_files) =
@@ -222,46 +222,40 @@ fn load_objects<S: ReadOnlyBlobs>(
     let context = Source::group(IndexId(2), GroupId(6));
     let mut objects = BTreeMap::new();
     let mut model_ids = BTreeSet::new();
-    let files: BTreeMap<_, _> = cache
-        .group_files_policy(
-            IndexId(2),
-            GroupId(6),
-            profile == CacheProfile::OpenRune240,
-            warnings,
-        )?
-        .into_iter()
-        .collect();
-    let mut pending = needed.clone();
-    while let Some(typed) = pending.pop_first() {
-        if objects.contains_key(&typed) {
-            continue;
+    cache.config_group_with(6, profile == CacheProfile::OpenRune240, warnings, |files| {
+        let mut pending = needed.clone();
+        while let Some(typed) = pending.pop_first() {
+            if objects.contains_key(&typed) {
+                continue;
+            }
+            if objects.len() >= 16_384 {
+                return Err(context.error("object dependencies", "closure allocation limit"));
+            }
+            let source = Source {
+                file: Some(FileId(typed.get())),
+                ..context
+            };
+            let bytes = files.get(&FileId(typed.get())).ok_or_else(|| {
+                source.error("object lookup", "missing required object definition")
+            })?;
+            hash_file(digest, source, bytes);
+            let object = definitions::object(bytes, typed, source)?;
+            if let Some(morphs) = &object.morphs {
+                pending.extend(
+                    morphs
+                        .targets
+                        .iter()
+                        .chain([&morphs.fallback])
+                        .flatten()
+                        .filter(|id| !objects.contains_key(*id))
+                        .copied(),
+                );
+            }
+            model_ids.extend(object.models.iter().map(|m| m.id));
+            objects.insert(typed, object);
         }
-        if objects.len() >= 16_384 {
-            return Err(context.error("object dependencies", "closure allocation limit"));
-        }
-        let source = Source {
-            file: Some(FileId(typed.get())),
-            ..context
-        };
-        let bytes = files
-            .get(&FileId(typed.get()))
-            .ok_or_else(|| source.error("object lookup", "missing required object definition"))?;
-        hash_file(digest, source, bytes);
-        let object = definitions::object(bytes, typed, source)?;
-        if let Some(morphs) = &object.morphs {
-            pending.extend(
-                morphs
-                    .targets
-                    .iter()
-                    .chain([&morphs.fallback])
-                    .flatten()
-                    .filter(|id| !objects.contains_key(*id))
-                    .copied(),
-            );
-        }
-        model_ids.extend(object.models.iter().map(|m| m.id));
-        objects.insert(typed, object);
-    }
+        Ok(())
+    })?;
     Ok((objects, model_ids))
 }
 fn load_models<S: ReadOnlyBlobs>(

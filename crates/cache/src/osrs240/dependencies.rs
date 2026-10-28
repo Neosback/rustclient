@@ -109,24 +109,31 @@ pub(super) fn animations<S: ReadOnlyBlobs>(
 ) -> Result<Animations> {
     let mut sequences = BTreeMap::new();
     let mut wanted = BTreeSet::new();
-    for (id, bytes) in cache.group_files(IndexId(2), GroupId(12))? {
-        let typed = SequenceId::new(id.0);
-        if !needed.contains(&typed) {
-            continue;
-        }
-        let source = Source {
-            index: IndexId(2),
-            group: Some(GroupId(12)),
-            file: Some(id),
-        };
-        hash_file(digest, source, &bytes);
-        let sequence = animation::sequence(&bytes, typed, source)?;
-        wanted.extend(sequence.frames.iter().copied());
-        sequences.insert(typed, sequence);
-    }
-    if needed.len() != sequences.len() {
-        return Err(Source::group(IndexId(2), GroupId(12))
-            .error("sequence lookup", "missing required sequence"));
+    if !needed.is_empty() {
+        cache.config_group_with(
+            12,
+            profile == crate::CacheProfile::OpenRune240,
+            warnings,
+            |files| {
+                for &typed in needed {
+                    let id = FileId(typed.get());
+                    let bytes = files.get(&id).ok_or_else(|| {
+                        Source::group(IndexId(2), GroupId(12))
+                            .error("sequence lookup", "missing required sequence")
+                    })?;
+                    let source = Source {
+                        index: IndexId(2),
+                        group: Some(GroupId(12)),
+                        file: Some(id),
+                    };
+                    hash_file(digest, source, bytes);
+                    let sequence = animation::sequence(bytes, typed, source)?;
+                    wanted.extend(sequence.frames.iter().copied());
+                    sequences.insert(typed, sequence);
+                }
+                Ok(())
+            },
+        )?;
     }
     let mut frames = BTreeMap::new();
     let mut skeletons = BTreeMap::new();
@@ -191,26 +198,27 @@ pub(super) fn varbits<S: ReadOnlyBlobs>(
     if needed.is_empty() {
         return Ok(out);
     }
-    for (id, bytes) in cache.group_files_policy(
-        IndexId(2),
-        GroupId(14),
+    cache.config_group_with(
+        14,
         profile == crate::CacheProfile::OpenRune240,
         warnings,
-    )? {
-        let typed = VarbitId::new(id.0);
-        if needed.contains(&typed) {
-            let source = Source {
-                index: IndexId(2),
-                group: Some(GroupId(14)),
-                file: Some(id),
-            };
-            hash_file(digest, source, &bytes);
-            out.insert(typed, animation::varbit(&bytes, source)?);
-        }
-    }
-    if out.len() != needed.len() {
-        return Err(Source::group(IndexId(2), GroupId(14))
-            .error("varbit lookup", "missing required definition"));
-    }
+        |files| {
+            for &typed in needed {
+                let id = FileId(typed.get());
+                let bytes = files.get(&id).ok_or_else(|| {
+                    Source::group(IndexId(2), GroupId(14))
+                        .error("varbit lookup", "missing required definition")
+                })?;
+                let source = Source {
+                    index: IndexId(2),
+                    group: Some(GroupId(14)),
+                    file: Some(id),
+                };
+                hash_file(digest, source, bytes);
+                out.insert(typed, animation::varbit(bytes, source)?);
+            }
+            Ok(())
+        },
+    )?;
     Ok(out)
 }

@@ -110,6 +110,13 @@ impl NativeApp {
                     );
                     return true;
                 }
+                self.shell.panel.pointer_leave();
+                false
+            }
+            WindowEvent::CursorLeft { .. } => {
+                if !self.shell.held {
+                    self.shell.panel.pointer_leave();
+                }
                 false
             }
             WindowEvent::MouseInput { state, button, .. } => {

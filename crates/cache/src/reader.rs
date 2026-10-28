@@ -62,6 +62,16 @@ impl<'a> Reader<'a> {
             Ok(u32::from(self.u16()?))
         }
     }
+    /// Reference `readNullableLargeSmart`: a 31-bit value when the high bit is set, otherwise a
+    /// `u16` where `32767` means absent.
+    pub(crate) fn nullable_big_smart(&mut self) -> Result<Option<u32>> {
+        if self.bytes.get(self.position).is_some_and(|b| b & 128 != 0) {
+            Ok(Some(self.u32()? & 0x7fff_ffff))
+        } else {
+            let value = self.u16()?;
+            Ok((value != 32767).then_some(u32::from(value)))
+        }
+    }
     pub(crate) fn remaining(&self) -> usize {
         self.bytes.len() - self.position
     }

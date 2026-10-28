@@ -74,7 +74,7 @@ pub(crate) fn upload(
     });
     Ok((view, animations))
 }
-fn validate(mesh: &WorldMesh, limits: &wgpu::Limits) -> Result<(), crate::RenderError> {
+pub(crate) fn validate(mesh: &WorldMesh, limits: &wgpu::Limits) -> Result<(), crate::RenderError> {
     if limits.max_texture_array_layers < 256 || limits.max_texture_dimension_2d < 128 {
         return Err(crate::RenderError::World(
             "classic texture array exceeds device limits",
@@ -95,6 +95,32 @@ fn validate(mesh: &WorldMesh, limits: &wgpu::Limits) -> Result<(), crate::Render
         }
     }
     Ok(())
+}
+
+pub(crate) fn fingerprint(
+    textures: &std::collections::BTreeMap<
+        rustclient_model::TextureId,
+        rustclient_cache::world::TextureAsset,
+    >,
+) -> u64 {
+    let mut hash = 0xCBF2_9CE4_8422_2325_u64;
+    for (id, asset) in textures {
+        for byte in id
+            .get()
+            .to_le_bytes()
+            .into_iter()
+            .chain([
+                asset.animation_direction,
+                asset.animation_speed,
+                u8::from(asset.opaque),
+            ])
+            .chain(asset.image.pixels().iter().copied())
+        {
+            hash ^= u64::from(byte);
+            hash = hash.wrapping_mul(0x0000_0100_0000_01B3);
+        }
+    }
+    hash
 }
 
 /// wgpu requires all-linear filters for anisotropy. The world shader explicitly samples nearest

@@ -13,6 +13,8 @@ cargo run -p rustclient-native --bin gpu_probe -- target/gpu-probe /path/to/cach
 # Optional real underground boundary case: accepts undeclared void squares; declared corruption fails.
 cargo run -p rustclient-native --bin gpu_probe -- target/gpu-probe /path/to/cache --regions
 cargo run -p rustclient-native --bin scene_probe -- /path/to/cache target/gpu-world-probe
+# Optional exact-picker comparison and actual GPU geometry byte counters; no account/server.
+cargo run -p rustclient-native --bin scene_probe -- /path/to/cache --performance
 # Optional native desktop smoke: opens/closes isolated offline title windows at 30/50/60 FPS.
 cargo build -p rustclient-native --bin rustclient-native
 python3 tools/gpu/window_probe.py /path/to/cache
@@ -29,8 +31,13 @@ retain a device or run an animation loop after the probe completes.
 
 The native and browser probes also check full-viewport widget alpha overlay beneath opaque,
 translucent and transparent UI, all six scaling modes and color correction. The current browser
-run has 31 checks. [The overlay checkpoint](../../docs/reference/builtin-plugins/GPU-OVERLAY-2026-10-27.md)
+run has 35 checks. [The overlay checkpoint](../../docs/reference/builtin-plugins/GPU-OVERLAY-2026-10-27.md)
 records its source selection/arithmetic and runtime-acceptance limits.
+
+Four further browser checks exercise sorted opaque color without depth writes, depth-only replay,
+later-surface occlusion and existing-wall depth testing through the shared world shader. The native
+probe additionally executes the Rust face sorter and checks fresh GPU reconstruction. These use
+explicitly synthetic geometry; see [the actor-depth checkpoint](../../docs/reference/builtin-plugins/GPU-ACTOR-DEPTH-2026-10-27.md).
 
 Native images must be in target/gpu-probe for the browser comparison. Reports/PNGs are generated
 artifacts, not tracked fixtures. Changing shader behavior requires regenerating native images before

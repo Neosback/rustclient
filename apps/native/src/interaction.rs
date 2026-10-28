@@ -48,7 +48,10 @@ impl NativeApp {
         if self.scene.loading || self.scene.diagnostics || self.connection.is_none() {
             return Ok(false);
         }
-        let scene = loaded.asset.descriptor();
+        let scene = self
+            .state
+            .loaded_scene()
+            .unwrap_or_else(|| loaded.asset.descriptor());
         let (destination, click) = match gameplay_pointer(
             &self.frame,
             self.minimap_mask.as_ref().map(|(_, mask)| mask),
@@ -94,9 +97,10 @@ impl NativeApp {
                     return Ok(false);
                 };
                 let visibility = self.scene_visibility(window);
-                let Some(tile) = rustclient_scene::pick_terrain(
+                let Some(tile) = loaded.picking.pick_terrain(
                     &loaded.mesh,
                     scene,
+                    player.tile.plane,
                     origin,
                     direction,
                     &visibility,
@@ -192,7 +196,9 @@ impl NativeApp {
         let (origin, direction) = self.world_ray(window, x, y)?;
         let visibility = self.scene_visibility(window);
         let hit =
-            rustclient_scene::pick_surface(&loaded.mesh.geometry, origin, direction, &visibility);
+            loaded
+                .picking
+                .pick_surface(&loaded.mesh.geometry, origin, direction, &visibility);
         // Static scenery wins exact ties, matching the previous two-way comparison.
         let overlays = [&loaded.mesh.dynamic, &self.scene.entity_geometry]
             .into_iter()
@@ -285,8 +291,11 @@ impl NativeApp {
     /// the "hide roofs" game option is on) plus the roofs plugins asked to hide. Every level
     /// draws before a player exists.
     pub(super) fn scene_visibility(&self, window: &Window) -> rustclient_scene::SceneVisibility {
-        let (Some(loaded), Some(view)) = (self.scene.loaded.as_ref(), self.roof_view(window))
-        else {
+        let (Some(loaded), Some(view), Some((camera, _, viewport))) = (
+            self.scene.loaded.as_ref(),
+            self.roof_view(window),
+            self.world_camera(window),
+        ) else {
             return rustclient_scene::SceneVisibility::everything();
         };
         let origin = loaded.asset.descriptor().origin();
@@ -313,6 +322,7 @@ impl NativeApp {
                 .as_ref()
                 .is_none_or(|renderer| renderer.gpu_settings().hide_unrelated_maps),
         )
+        .with_model_view(camera.pose(viewport).model_view())
     }
     /// Track the tile under the pointer for the hovered-roof mode.
     ///
@@ -331,11 +341,28 @@ impl NativeApp {
             && self.pointer_over_world(x, y)
             && let Some((origin, direction)) = self.world_ray(window, x, y)
         {
-            let descriptor = loaded.asset.descriptor();
+            let descriptor = self
+                .state
+                .loaded_scene()
+                .unwrap_or_else(|| loaded.asset.descriptor());
             let base = descriptor.origin();
+            let plane = self
+                .state
+                .entities()
+                .local_player()
+                .map_or(base.plane, |player| player.tile.plane);
             let mut visibility = self.scene_visibility(window);
             visibility.hidden = rustclient_scene::RoofMask::default();
-            rustclient_scene::pick_terrain(&loaded.mesh, descriptor, origin, direction, &visibility)
+            loaded
+                .picking
+                .pick_terrain(
+                    &loaded.mesh,
+                    descriptor,
+                    plane,
+                    origin,
+                    direction,
+                    &visibility,
+                )
                 .map(|tile| [tile.x - base.x, tile.y - base.y])
         } else {
             None
@@ -418,15 +445,22 @@ impl NativeApp {
         y: f32,
     ) -> Result<Vec<(String, WorldChoice, Option<WorldTarget>)>, String> {
         let mut entries = Vec::new();
+        let active_scene = self.state.loaded_scene().or_else(|| {
+            self.scene
+                .loaded
+                .as_ref()
+                .map(|loaded| loaded.asset.descriptor())
+        });
         if let Some(target) = self.target_at(window, x, y)
             && let Some(loaded) = &self.scene.loaded
+            && let Some(scene) = active_scene
         {
             entries.extend(
                 rustclient_application::world_actions(
                     &self.state,
                     &loaded.asset,
                     &self.scene.entity_catalog,
-                    loaded.asset.descriptor(),
+                    scene,
                     target,
                 )?
                 .into_iter()
@@ -435,10 +469,15 @@ impl NativeApp {
         }
         if self.pointer_over_world(x, y)
             && let Some(loaded) = &self.scene.loaded
+            && let Some(scene) = active_scene
             && let Some((origin, direction)) = self.world_ray(window, x, y)
-            && let Some(destination) = rustclient_scene::pick_terrain(
+            && let Some(destination) = loaded.picking.pick_terrain(
                 &loaded.mesh,
-                loaded.asset.descriptor(),
+                scene,
+                self.state
+                    .entities()
+                    .local_player()
+                    .map_or_else(|| scene.origin().plane, |player| player.tile.plane),
                 origin,
                 direction,
                 &self.scene_visibility(window),
@@ -446,10 +485,7 @@ impl NativeApp {
         {
             entries.push((
                 "Walk here".to_owned(),
-                WorldChoice::Walk {
-                    scene: loaded.asset.descriptor(),
-                    destination,
-                },
+                WorldChoice::Walk { scene, destination },
                 None,
             ));
         }

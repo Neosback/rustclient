@@ -143,60 +143,59 @@ impl EntityLoader {
             return;
         }
         let group = GroupId(9);
-        let files: BTreeMap<FileId, Vec<u8>> = match self.group(cache, IndexId(2), group) {
-            Ok(files) => files.into_iter().collect(),
-            Err(error) => {
-                out.failures.push(format!("npc group: {error}"));
-                return;
-            }
-        };
-        // Transformation targets join the queue; each id decodes at most once per loader.
-        while let Some(id) = pending.pop_first() {
-            if !self.npcs.insert(id) {
-                continue;
-            }
-            let file = FileId(id.get());
-            let Some(bytes) = files.get(&file) else {
-                continue;
-            };
-            let source = Source {
-                index: IndexId(2),
-                group: Some(group),
-                file: Some(file),
-            };
-            match super::definitions::npc(bytes, id, source) {
-                Ok(def) => {
-                    models.extend(def.models.iter().copied());
-                    sequences.extend(
-                        [
-                            def.idle_sequence,
-                            def.walk_sequence,
-                            def.turn_left_sequence,
-                            def.turn_right_sequence,
-                            def.walk_back_sequence,
-                            def.walk_left_sequence,
-                            def.walk_right_sequence,
-                        ]
-                        .into_iter()
-                        .flatten(),
-                    );
-                    sequences.extend(def.run_sequences.into_iter().flatten());
-                    sequences.extend(def.crawl_sequences.into_iter().flatten());
-                    if let Some(morphs) = &def.morphs {
-                        varbits.extend(morphs.varbit);
-                        pending.extend(
-                            morphs
-                                .transforms
-                                .iter()
-                                .flatten()
-                                .filter(|target| !self.npcs.contains(target))
-                                .copied(),
-                        );
-                    }
-                    out.npcs.insert(id, def);
+        let accept_stale = self.profile == Some(CacheProfile::OpenRune240);
+        if let Err(error) = cache.config_group_with(9, accept_stale, &mut Vec::new(), |files| {
+            // Transformation targets join the queue; each id decodes at most once per loader.
+            while let Some(id) = pending.pop_first() {
+                if !self.npcs.insert(id) {
+                    continue;
                 }
-                Err(error) => out.failures.push(error.to_string()),
+                let file = FileId(id.get());
+                let Some(bytes) = files.get(&file) else {
+                    continue;
+                };
+                let source = Source {
+                    index: IndexId(2),
+                    group: Some(group),
+                    file: Some(file),
+                };
+                match super::definitions::npc(bytes, id, source) {
+                    Ok(def) => {
+                        models.extend(def.models.iter().copied());
+                        sequences.extend(
+                            [
+                                def.idle_sequence,
+                                def.walk_sequence,
+                                def.turn_left_sequence,
+                                def.turn_right_sequence,
+                                def.walk_back_sequence,
+                                def.walk_left_sequence,
+                                def.walk_right_sequence,
+                            ]
+                            .into_iter()
+                            .flatten(),
+                        );
+                        sequences.extend(def.run_sequences.into_iter().flatten());
+                        sequences.extend(def.crawl_sequences.into_iter().flatten());
+                        if let Some(morphs) = &def.morphs {
+                            varbits.extend(morphs.varbit);
+                            pending.extend(
+                                morphs
+                                    .transforms
+                                    .iter()
+                                    .flatten()
+                                    .filter(|target| !self.npcs.contains(target))
+                                    .copied(),
+                            );
+                        }
+                        out.npcs.insert(id, def);
+                    }
+                    Err(error) => out.failures.push(error.to_string()),
+                }
             }
+            Ok(())
+        }) {
+            out.failures.push(format!("npc group: {error}"));
         }
     }
 
@@ -215,29 +214,29 @@ impl EntityLoader {
             return;
         }
         let group = GroupId(14);
-        let files = match self.group(cache, IndexId(2), group) {
-            Ok(files) => files,
-            Err(error) => {
-                out.failures.push(format!("varbit group: {error}"));
-                return;
-            }
-        };
-        for (file, bytes) in files {
-            let id = VarbitId::new(file.0);
-            if !pending.contains(&id) {
-                continue;
-            }
-            let source = Source {
-                index: IndexId(2),
-                group: Some(group),
-                file: Some(file),
-            };
-            match animation::varbit(&bytes, source) {
-                Ok(def) => {
-                    out.varbits.insert(id, def);
+        let accept_stale = self.profile == Some(CacheProfile::OpenRune240);
+        if let Err(error) = cache.config_group_with(14, accept_stale, &mut Vec::new(), |files| {
+            for &id in &pending {
+                let file = FileId(id.get());
+                let Some(bytes) = files.get(&file) else {
+                    continue;
+                };
+                let source = Source {
+                    index: IndexId(2),
+                    group: Some(group),
+                    file: Some(file),
+                };
+                match animation::varbit(bytes, source) {
+                    Ok(def) => {
+                        out.varbits.insert(id, def);
+                    }
+                    Err(error) => out.failures.push(error.to_string()),
                 }
-                Err(error) => out.failures.push(error.to_string()),
             }
+            Ok(())
+        }) {
+            out.failures.push(format!("varbit group: {error}"));
+            return;
         }
         self.varbits.extend(pending);
     }
@@ -260,33 +259,33 @@ impl EntityLoader {
             return;
         }
         let group = GroupId(10);
-        let files = match self.group(cache, IndexId(2), group) {
-            Ok(files) => files,
-            Err(error) => {
-                out.failures.push(format!("item group: {error}"));
-                return;
-            }
-        };
-        for (file, bytes) in files {
-            let id = ItemDefinitionId::new(file.0);
-            if !wanted.contains(&id) {
-                continue;
-            }
-            let source = Source {
-                index: IndexId(2),
-                group: Some(group),
-                file: Some(file),
-            };
-            match super::definitions::item(&bytes, id, source) {
-                Ok(def) => {
-                    for wear in [&def.male, &def.female] {
-                        models.extend(wear.models.iter().flatten().copied());
+        let accept_stale = self.profile == Some(CacheProfile::OpenRune240);
+        if let Err(error) = cache.config_group_with(10, accept_stale, &mut Vec::new(), |files| {
+            for &id in &wanted {
+                let file = FileId(id.get());
+                let Some(bytes) = files.get(&file) else {
+                    continue;
+                };
+                let source = Source {
+                    index: IndexId(2),
+                    group: Some(group),
+                    file: Some(file),
+                };
+                match super::definitions::item(bytes, id, source) {
+                    Ok(def) => {
+                        for wear in [&def.male, &def.female] {
+                            models.extend(wear.models.iter().flatten().copied());
+                        }
+                        self.items.insert(id);
+                        out.items.insert(id, def);
                     }
-                    self.items.insert(id);
-                    out.items.insert(id, def);
+                    Err(error) => out.failures.push(error.to_string()),
                 }
-                Err(error) => out.failures.push(error.to_string()),
             }
+            Ok(())
+        }) {
+            out.failures.push(format!("item group: {error}"));
+            return;
         }
         for id in wanted {
             if !out.items.contains_key(&id) {
@@ -311,33 +310,33 @@ impl EntityLoader {
             return;
         }
         let group = GroupId(12);
-        let files = match self.group(cache, IndexId(2), group) {
-            Ok(files) => files,
-            Err(error) => {
-                out.failures.push(format!("sequence group: {error}"));
-                return;
-            }
-        };
+        let accept_stale = self.profile == Some(CacheProfile::OpenRune240);
         let mut frame_ids = BTreeSet::new();
         let mut cached_ids = BTreeSet::new();
-        for (file, bytes) in files {
-            let id = SequenceId::new(file.0);
-            if !wanted.contains(&id) {
-                continue;
-            }
-            let source = Source {
-                index: IndexId(2),
-                group: Some(group),
-                file: Some(file),
-            };
-            match animation::sequence(&bytes, id, source) {
-                Ok(sequence) => {
-                    cached_ids.extend(sequence.skeletal);
-                    frame_ids.extend(sequence.frames.iter().copied());
-                    out.sequences.insert(id, sequence);
+        if let Err(error) = cache.config_group_with(12, accept_stale, &mut Vec::new(), |files| {
+            for &id in &wanted {
+                let file = FileId(id.get());
+                let Some(bytes) = files.get(&file) else {
+                    continue;
+                };
+                let source = Source {
+                    index: IndexId(2),
+                    group: Some(group),
+                    file: Some(file),
+                };
+                match animation::sequence(bytes, id, source) {
+                    Ok(sequence) => {
+                        cached_ids.extend(sequence.skeletal);
+                        frame_ids.extend(sequence.frames.iter().copied());
+                        out.sequences.insert(id, sequence);
+                    }
+                    Err(error) => out.failures.push(error.to_string()),
                 }
-                Err(error) => out.failures.push(error.to_string()),
             }
+            Ok(())
+        }) {
+            out.failures.push(format!("sequence group: {error}"));
+            return;
         }
         self.sequences.extend(wanted);
         self.load_frames(cache, &frame_ids, out);

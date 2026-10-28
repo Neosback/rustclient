@@ -2,13 +2,14 @@
 use rustclient_cache::{Cache, CacheProfile};
 use rustclient_game_state::InitialPlacement;
 use rustclient_platform::ReadOnlyBlobs;
-use rustclient_scene::{SceneAsset, WorldMesh, build_mesh};
+use rustclient_scene::{SceneAsset, WorldMesh};
 /// CPU resources retained across GPU recreation. `GameState` selects their descriptor.
 pub struct LoadedScene {
     pub asset: std::sync::Arc<SceneAsset>,
     pub projection_generation: u64,
     pub projection_inputs: rustclient_scene::SceneryInputs,
     pub mesh: WorldMesh,
+    pub picking: rustclient_scene::ScenePickIndex,
 }
 /// Load the normal spawn window using the explicit revision adapter.
 /// # Errors
@@ -17,6 +18,39 @@ pub fn load_scene(
     source: impl ReadOnlyBlobs,
     profile: CacheProfile,
     placement: InitialPlacement,
+    progress: impl FnMut(&str),
+) -> Result<LoadedScene, String> {
+    load_scene_with_inputs(
+        source,
+        profile,
+        placement,
+        &rustclient_scene::SceneryInputs::default(),
+        progress,
+    )
+}
+
+/// Load the normal spawn window and project it immediately with the current scenery inputs.
+/// # Errors
+/// Returns contextual cache/geometry failures; instanced areas are not implemented.
+pub fn load_scene_with_inputs(
+    source: impl ReadOnlyBlobs,
+    profile: CacheProfile,
+    placement: InitialPlacement,
+    inputs: &rustclient_scene::SceneryInputs,
+    progress: impl FnMut(&str),
+) -> Result<LoadedScene, String> {
+    let cache = Cache::open(source).map_err(|e| e.to_string())?;
+    load_scene_from_cache(&cache, profile, placement, inputs, progress)
+}
+
+/// Load the normal spawn window from an already-opened [`Cache`] and project it immediately.
+/// # Errors
+/// Returns contextual cache/geometry failures; instanced areas are not implemented.
+pub fn load_scene_from_cache(
+    cache: &Cache<impl ReadOnlyBlobs>,
+    profile: CacheProfile,
+    placement: InitialPlacement,
+    inputs: &rustclient_scene::SceneryInputs,
     mut progress: impl FnMut(&str),
 ) -> Result<LoadedScene, String> {
     if placement.area.is_some() {
@@ -25,27 +59,33 @@ pub fn load_scene(
     let (origin, width, height) = profile
         .scene_window(placement.map_anchor)
         .map_err(|e| e.to_string())?;
-    let cache = Cache::open(source).map_err(|e| e.to_string())?;
     let assets = profile
-        .load_world(&cache, origin, width, height, &mut progress)
+        .load_world(cache, origin, width, height, &mut progress)
         .map_err(|e| e.to_string())?;
     let asset = SceneAsset::new(assets, origin, width, height).map_err(|e| e.to_string())?;
     progress("building terrain and location mesh");
-    let mesh = build_mesh(
+    let descriptor = asset.descriptor().with_plane(placement.map_anchor.plane);
+    let mesh = rustclient_scene::build_mesh_with_inputs(
         &asset,
-        asset.descriptor(),
-        if asset.descriptor().contains(placement.position) {
+        descriptor,
+        if descriptor.contains(placement.position) {
             placement.position
         } else {
             placement.map_anchor
         },
+        inputs,
     )
     .map_err(|e| e.to_string())?;
+    let picking =
+        rustclient_scene::ScenePickIndex::new(&mesh.geometry).map_err(|e| e.to_string())?;
+    let mut projection_inputs = inputs.clone();
+    projection_inputs.retain_scene_dependencies(&asset);
     Ok(LoadedScene {
         asset: std::sync::Arc::new(asset),
         mesh,
-        projection_generation: 0,
-        projection_inputs: rustclient_scene::SceneryInputs::default(),
+        picking,
+        projection_generation: inputs.generation,
+        projection_inputs,
     })
 }
 
@@ -57,10 +97,11 @@ pub fn reproject_scene(
     placement: InitialPlacement,
     inputs: &rustclient_scene::SceneryInputs,
 ) -> Result<LoadedScene, String> {
+    let descriptor = asset.descriptor().with_plane(placement.map_anchor.plane);
     let mesh = rustclient_scene::build_mesh_with_inputs(
         &asset,
-        asset.descriptor(),
-        if asset.descriptor().contains(placement.position) {
+        descriptor,
+        if descriptor.contains(placement.position) {
             placement.position
         } else {
             placement.map_anchor
@@ -68,11 +109,14 @@ pub fn reproject_scene(
         inputs,
     )
     .map_err(|e| e.to_string())?;
+    let picking =
+        rustclient_scene::ScenePickIndex::new(&mesh.geometry).map_err(|e| e.to_string())?;
     let mut projection_inputs = inputs.clone();
     projection_inputs.retain_scene_dependencies(&asset);
     Ok(LoadedScene {
         asset,
         mesh,
+        picking,
         projection_generation: inputs.generation,
         projection_inputs,
     })

@@ -121,3 +121,52 @@ binaries and Wasm pass; full workspace tests **547 passed, 0 failed, 1 ignored**
 quad admission/title/world reconstruction and 23 browser checks pass. Source, matrix and symbol
 checkers pass; the symbol checker now validates all manifest roots. Sparse-cache region-boundary
 visuals, live/reference acceptance and complete GPU/HD readiness remain open.
+
+## Sparse maps and viewport overlay — 2026-10-27
+
+[The sparse-map repair](../reference/builtin-plugins/GPU-SPARSE-MAPS-2026-10-27.md) corrects the earlier
+cache-blocker interpretation. Undeclared index-5 map groups are valid void squares in the injected
+240 loader; source height/shadow initialization and blocked traversal are now retained. Listed missing/
+corrupt archives still fail. The supplied Desktop/LIVE cache executes the real mixed-group Metal
+probe: two absent squares, 53,583 changed channel bytes, byte-identical reconstruction. The diagnostic
+camera's limited framing is recorded separately from Java/gameplay visual acceptance. The dense spawn
+scene retains its existing asset identity and fingerprint.
+
+[The viewport-overlay port](../reference/builtin-plugins/GPU-OVERLAY-2026-10-27.md) implements the
+240 full-viewport solid-widget producer and shared canvas `alphaOverlay` consumer, preserving source
+byte arithmetic, shaped viewport selection, reset, premultiplication and correction order. GameState,
+input targets and shell chrome remain independent. A literal extracted Java arithmetic harness
+confirms its four named vectors. This closes the overlay implementation obligation; ten broader GPU
+implementation/acceptance/HD obligations remain open in the frozen ledger.
+
+Final validation after both changes: formatting, workspace/all-target check, strict workspace/all-target
+Clippy, full native binary build and Wasm check pass. Full workspace tests: **551 passed, 0 failed,
+1 ignored** (live packet fixture environment required). GPU inventory, 146-row symbol ledger and
+42-domain matrix checks pass. The completion gate intentionally returns 2 with ten open obligations.
+Actual native canvas/title/region diagnostics pass; browser core WebGPU passes **31 checks**, with
+maximum native/browser channel difference one. The reference-MCP endpoint is still unavailable
+(connection refused); its offline protocol checks pass. No new live account travel, three-layout
+visual acceptance, complete Java runtime parity, playable browser or 117HD readiness is claimed.
+
+Tools, source pins, WGSL, notices, specs and ledger updates are repository-owned. Generated reports,
+harnesses and captures stay under ignored target/. Reference trees, supplied shaders and cache were
+not modified. Existing actor/GPU work in this shared checkout was preserved and included in validation.
+
+## Sorted actor depth continuation — 2026-10-27
+
+[The actor-depth checkpoint](../reference/builtin-plugins/GPU-ACTOR-DEPTH-2026-10-27.md) ports the
+source opaque color-then-depth machinery for players and opcode-147 base NPC definitions. Typed
+policy travels with the existing model span, independently of appearance morph, alpha, priority and
+bias. Persistent color-only/depth-only pipelines retain depth tests and rebuild with MSAA/device
+resources. The source uploader's front-face selection, model near-plane rejection and exact bucket
+arithmetic still need independent acceptance; the existing sorter remains the baseline.
+
+Focused cache/scene/renderer contracts and strict Clippy pass. Actual Metal synthetic priority/depth
+and reconstruction checks pass; browser core WebGPU passes 35 checks. These are not Java actor pixels
+or live acceptance. The server-testing launch uses the server's own cache and public key, keeping
+the separate Desktop/LIVE cache for offline probes. No server or reference files were changed.
+
+The initial workspace validation attempt encountered in-progress sidebar edits in this shared
+checkout: formatting/Clippy errors and a transient missing ShellAction::TogglePanel variant. Those
+changes are preserved. Do not promote the previous 551-test clean baseline into validation of this
+continuation. Current full-gate status is recorded below after the build attempts finish.

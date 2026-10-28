@@ -62,3 +62,4 @@ of complete widget paint-order parity follows from this bounded port.
 Reproduce with `tools/gpu/README.md`. Full workspace gate results are in the owning plan.
 Full Java shader/source-case execution/pixel MATCH, live account fades, three gameframe modes and playable
 browser lifecycle remain NOT-RUN. These checks do not establish complete classic GPU or 117HD readiness.
+The reference-MCP status request returned connection refused; the offline bridge protocol check passes.

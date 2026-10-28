@@ -4,7 +4,7 @@ use rustclient_model::{NpcDefinitionId, SequenceId};
 fn npc_speed_animation_sets_retain_directional_sequences_and_absence() {
     let bytes = [
         114, 0, 10, 116, 0, 20, 115, 0, 11, 0, 12, 255, 255, 0, 14, 117, 0, 21, 0, 22, 0, 23, 255,
-        255, 0,
+        255, 147, 0,
     ];
     let def = definitions::npc(
         &bytes,
@@ -12,6 +12,20 @@ fn npc_speed_animation_sets_retain_directional_sequences_and_absence() {
         Source::group(IndexId(2), GroupId(9)),
     )
     .unwrap();
+    assert_eq!(
+        def.depth_policy,
+        rustclient_model::ModelDepthPolicy::SortedDeferredWrite
+    );
+    assert_eq!(
+        definitions::npc(
+            &[0],
+            NpcDefinitionId::new(1),
+            Source::group(IndexId(2), GroupId(9))
+        )
+        .unwrap()
+        .depth_policy,
+        rustclient_model::ModelDepthPolicy::DepthWrite,
+    );
     assert_eq!(
         def.run_sequences,
         [

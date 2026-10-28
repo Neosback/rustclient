@@ -110,8 +110,8 @@ remain acceptance obligations until demonstrated in the new executable.
 
 ## Tracking gaps in the existing method ledger
 
-The current `tools/port_audit.py --check` report contains 146 symbol rows: 67 have verification
-unrecorded, 32 source-reviewed, 45 contract-tested and 2 live-tested; none is visual-accepted.
+The current `tools/port_audit.py --check` report contains 150 symbol rows: 67 have verification
+unrecorded, 33 source-reviewed, 48 contract-tested and 2 live-tested; none is visual-accepted.
 These are mixed symbol records, not equally sized features or a completion percentage. Historical
 “verified” statuses with unrecorded verification must not be promoted into release acceptance.
 The tool also reports ledger sources absent from its partial source-manifest pin list. That does
@@ -140,3 +140,8 @@ admission/reconstruction pass, with camera-framing and Java/gameplay acceptance 
 Full-viewport widget alpha overlay now has its source-derived producer and shared compositor path;
 [the checkpoint](../builtin-plugins/GPU-OVERLAY-2026-10-27.md) records exact byte selection/reset,
 letterboxing and actual native/browser GPU evidence. Ten broader GPU obligations remain open.
+
+Actor depth: [the source-derived continuation](../builtin-plugins/GPU-ACTOR-DEPTH-2026-10-27.md) adds
+sorted opaque color followed by depth-only replay for players and opcode-147 base NPC definitions.
+Morph appearance retains the base policy. Native diagnostics and 35 browser checks pass; live NPC
+customization, tint/world views, other modes and Java/gameplay visual acceptance remain open.

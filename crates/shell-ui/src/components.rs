@@ -1,4 +1,4 @@
-use crate::{SettingView, ShellAction, ShellChannel, assets::icon};
+use crate::{SettingView, ShellAction, ShellChannel, SidebarState, assets::icon};
 use dioxus::prelude::*;
 use rustclient_plugin_host::configuration::{ConfigValue, Control, ENABLED_KEY, Font, Hotkey};
 
@@ -31,30 +31,43 @@ fn humanize(section: &str) -> String {
 pub fn Shell(channel: ShellChannel) -> Element {
     let mut query = use_signal(String::new);
     let mut selected = use_signal(|| None::<String>);
-    let snapshot = channel.model.borrow().clone();
+    let snapshot = channel.model.borrow();
     let current = selected
         .read()
         .as_ref()
         .and_then(|id| snapshot.plugins.iter().find(|plugin| plugin.id == *id));
-    let expanded = snapshot.panel_visible;
+    let expanded = snapshot.sidebar == SidebarState::Panel;
+    let visible = snapshot.sidebar != SidebarState::Hidden;
     let open_list = channel.clone();
     let needle = query.read().to_lowercase();
+    let mut plugins: Vec<_> = snapshot
+        .plugins
+        .iter()
+        .filter(|plugin| matches_query(plugin, &needle))
+        .collect();
+    plugins.sort_by_cached_key(|plugin| {
+        (
+            !snapshot.pinned.contains(&plugin.id),
+            plugin.name.to_lowercase(),
+        )
+    });
+    let drag_channel = channel.clone();
     rsx! {
-        div { id: "shell", class: "shell",
-            if snapshot.panel_visible { nav { class: "rail", "aria-label": "Application tools",
+        style { "{CSS}" }
+        div { id: "shell", class: if visible { "shell" } else { "shell concealed" },
+            onmouseup: move |_| drag_channel.finish_drag(),
+            nav { class: "rail", "aria-label": "Application tools",
                 button { id: "plugins-nav", class: if expanded { "rail-button active" } else { "rail-button" },
                     title: "Configuration", "aria-label": "Plugin configuration", "aria-expanded": expanded,
                     onclick: move |_| {
-                        let close = expanded && selected.read().is_none();
-                        selected.set(None);
-                        open_list.send(if close { ShellAction::Close } else { ShellAction::Open });
+                        open_list.send(if expanded { ShellAction::Close } else { ShellAction::Open });
                     },
                     img { class: "rail-icon", src: icon!("config_icon"), alt: "" }
                     span { class: "tip", "Configuration" }
                 }
                 span { class: "rail-spacer" }
             }
-            main { id: "shell-panel", class: "panel",
+            main { id: "shell-panel", class: if expanded { "panel" } else { "panel concealed" },
                 if let Some(error) = &snapshot.error {
                     div { class: "error", role: "alert", img { class: "mini", src: icon!("error"), alt: "" } span { "{error}" } }
                 }
@@ -62,7 +75,7 @@ pub fn Shell(channel: ShellChannel) -> Element {
                     header { class: "bar",
                         button { class: "icon-button", title: "Back", "aria-label": "Back to plugins", onclick: move |_| selected.set(None),
                             img { class: "mini", src: icon!("config_back_icon"), alt: "" } }
-                        h1 { title: "{plugin.description}", "{plugin.name}" }
+                        h1 { title: if plugin.description.is_empty() { plugin.name.clone() } else { plugin.description.clone() }, "{plugin.name}" }
                         if plugin.required {
                             span { class: "switch on locked", role: "img", title: "Required plugin: always on", "aria-label": "Always on", span { class: "knob" } }
                         } else {
@@ -70,7 +83,7 @@ pub fn Shell(channel: ShellChannel) -> Element {
                               rsx! { PluginSwitch { enabled: plugin.enabled, name: plugin.name.clone(), channel, id } } }
                         }
                     }
-                    div { class: "settings", id: "settings-scroll",
+                    div { class: "settings", id: "settings-scroll", "data-view": "{plugin.id}",
                         for section in sections(&plugin.settings) {
                             Section { key: "{section}", title: humanize(&section),
                                 rows: plugin.settings.iter().filter(|setting| setting.descriptor.section == section).cloned().collect(),
@@ -89,19 +102,30 @@ pub fn Shell(channel: ShellChannel) -> Element {
                             }
                         }
                     }
-                } else {
+                }
+                // Keep the filtered list mounted so Back restores its native/browser scroll position.
+                div { class: if current.is_some() { "list-view concealed" } else { "list-view" },
                     div { class: "search",
                         img { class: "mini", src: icon!("search"), alt: "" }
                         if query.read().is_empty() { span { class: "placeholder", "Search" } }
                         input { id: "plugin-search", r#type: "text", placeholder: "Search", "aria-label": "Search plugins",
                             value: "{query}", oninput: move |event| query.set(event.value()) }
+                        if !query.read().is_empty() {
+                            button { id: "clear-search", class: "clear-search", title: "Clear search", "aria-label": "Clear search", onclick: move |_| query.set(String::new()), "×" }
+                        }
                     }
-                    div { class: "cards",
-                        for plugin in snapshot.plugins.iter().filter(|plugin| matches_query(plugin, &needle)) {
+                    div { class: "cards", id: "plugin-list",
+                        for plugin in plugins {
                             { let id = plugin.id.clone(); let configurable = !plugin.settings.is_empty(); rsx! {
                                 div { key: "{plugin.id}", class: "plugin-card", "data-plugin": "{plugin.id}",
-                                    img { class: "pin-star", src: icon!("star_on"), alt: "" }
-                                    button { class: "card-open", title: "{plugin.description}", onclick: move |_| if configurable { selected.set(Some(id.clone())); },
+                                    { let pin_channel = channel.clone(); let pin_id = plugin.id.clone(); let pinned = snapshot.pinned.contains(&plugin.id); rsx! {
+                                        button { class: if pinned { "pin-button pinned" } else { "pin-button" }, title: if pinned { "Unpin plugin" } else { "Pin plugin" },
+                                            "aria-label": "Pin {plugin.name}", "aria-pressed": pinned,
+                                            onclick: move |_| pin_channel.send(ShellAction::ToggleFavorite { plugin: pin_id.clone() }),
+                                            img { class: "pin-star", src: icon!("star_on"), alt: "" }
+                                        }
+                                    } }
+                                    button { class: "card-open", title: if plugin.description.is_empty() { plugin.name.clone() } else { plugin.description.clone() }, onclick: move |_| if configurable { selected.set(Some(id.clone())); },
                                         span { class: "card-text", "{plugin.name}" }
                                     }
                                     if configurable {
@@ -123,7 +147,20 @@ pub fn Shell(channel: ShellChannel) -> Element {
                         }
                     }
                 }
-            } }
+            }
+            NativeTooltip { channel: channel.clone() }
+        }
+    }
+}
+
+#[component]
+fn NativeTooltip(channel: ShellChannel) -> Element {
+    let tooltip = use_signal(|| None::<crate::model::Tooltip>);
+    channel.tooltip.set(Some(tooltip));
+    let value = tooltip.read();
+    rsx! {
+        if let Some(value) = value.as_ref() {
+            div { class: "native-tooltip", role: "tooltip", style: "left:{value.left}px;top:{value.top}px", "{value.text}" }
         }
     }
 }
@@ -170,11 +207,19 @@ fn Section(
     plugin: String,
     channel: ShellChannel,
 ) -> Element {
-    let mut expanded = use_signal(|| true);
+    let section_id = format!("{plugin}/{title}");
+    let saved = channel
+        .sections
+        .borrow()
+        .get(&section_id)
+        .copied()
+        .unwrap_or(true);
+    let mut expanded = use_signal(|| saved);
+    let sections = channel.sections.clone();
     let open = *expanded.read();
     rsx! {
         section { class: "group",
-            button { class: "section", "aria-expanded": "{open}", onclick: move |_| expanded.set(!open),
+            button { class: "section", "aria-expanded": "{open}", onclick: move |_| { expanded.set(!open); sections.borrow_mut().insert(section_id.clone(), !open); },
                 img { class: "chevron", src: if open { icon!("expanded") } else { icon!("collapsed") }, alt: "" }
                 span { "{title}" }
             }
@@ -223,7 +268,7 @@ fn SettingControl(row: SettingView, plugin: String, channel: ShellChannel) -> El
             }
             match (&row.descriptor.control, &row.value) {
                 (Control::Integer { min, max }, ConfigValue::Integer(value)) => rsx! {
-                    IntegerControl { min: *min, max: *max, value: *value, disabled, channel: pointer_channel, onchange: move |value| emit.call(ConfigValue::Integer(value)) }
+                    IntegerControl { min: *min, max: *max, value: *value, label: row.descriptor.label.clone(), disabled, channel: pointer_channel, onchange: move |value| emit.call(ConfigValue::Integer(value)) }
                 },
                 (Control::Hotkey, ConfigValue::Hotkey(value)) => rsx! {
                     HotkeyControl { value: value.clone(), disabled, onchange: move |value| emit.call(ConfigValue::Hotkey(value)) }
@@ -261,46 +306,91 @@ fn IntegerControl(
     min: i32,
     max: i32,
     value: i32,
+    label: String,
     disabled: bool,
     channel: ShellChannel,
     onchange: EventHandler<i32>,
 ) -> Element {
+    let mut draft = use_signal(|| None::<i32>);
+    let shown = draft().unwrap_or(value);
+    #[cfg(not(target_arch = "wasm32"))]
+    let update_channel = channel.clone();
     let update = EventHandler::new(move |event: MouseEvent| {
         if disabled {
             return;
         }
         #[cfg(not(target_arch = "wasm32"))]
-        let element_x = event.client_coordinates().x - channel.pointer_origin_x.get().unwrap_or(0.);
+        let element_x =
+            event.client_coordinates().x - update_channel.pointer_origin_x.get().unwrap_or(0.);
         #[cfg(target_arch = "wasm32")]
         let element_x = event.element_coordinates().x;
-        // The track's one-pixel borders must not make either endpoint unreachable.
         let fraction = ((element_x - 1.) / SLIDER_WIDTH).clamp(0., 1.);
-        let value = f64::from(min) + fraction * (f64::from(max) - f64::from(min));
-        #[expect(
-            clippy::cast_possible_truncation,
-            reason = "clamped to the i32 descriptor range"
-        )]
-        onchange.call(value.round() as i32);
+        let requested = f64::from(min) + fraction * (f64::from(max) - f64::from(min));
+        #[expect(clippy::cast_possible_truncation, reason = "clamped descriptor range")]
+        draft.set(Some(requested.round() as i32));
     });
+    let commit = EventHandler::new(move |()| {
+        let requested = draft.take();
+        if let Some(requested) = requested
+            && requested != value
+        {
+            onchange.call(requested);
+        }
+    });
+    let cancel = EventHandler::new(move |()| {
+        draft.set(None);
+    });
+    let key_channel = channel.clone();
+    let blur_channel = channel.clone();
+    let release_channel = channel.clone();
+    let cancel_channel = channel.clone();
+    let lost_channel = channel.clone();
     let percent =
-        100. * (f64::from(value) - f64::from(min)) / (f64::from(max) - f64::from(min)).max(1.);
+        100. * (f64::from(shown) - f64::from(min)) / (f64::from(max) - f64::from(min)).max(1.);
     rsx! {
         div { class: "number",
             div { class: "slider", role: "slider", tabindex: if disabled { "-1" } else { "0" },
-                "aria-valuemin": "{min}", "aria-valuemax": "{max}", "aria-valuenow": "{value}",
-                onmousedown: update,
+                "aria-valuemin": "{min}", "aria-valuemax": "{max}", "aria-valuenow": "{shown}",
+                "aria-label": label.clone(), "aria-disabled": disabled,
+                onpointerdown: move |event| capture_pointer(&event),
+                onpointerup: move |_| release_channel.finish_drag(),
+                onpointercancel: move |_| cancel_channel.cancel_drag(),
+                onlostpointercapture: move |_| lost_channel.cancel_drag(),
+                onmousedown: move |event| { if !disabled { channel.start_drag(cancel, commit); update.call(event); } },
                 onmousemove: move |event| { if !event.held_buttons().is_empty() { update.call(event); } },
+                onblur: move |_| blur_channel.cancel_drag(),
                 onkeydown: move |event| { if !disabled { match event.key() {
+                    Key::Escape => key_channel.cancel_drag(),
                     Key::ArrowLeft | Key::ArrowDown => onchange.call(value.saturating_sub(1).max(min)),
                     Key::ArrowRight | Key::ArrowUp => onchange.call(value.saturating_add(1).min(max)),
                     Key::Home => onchange.call(min), Key::End => onchange.call(max), _ => {}
                 } } },
                 div { class: "slider-fill", style: "width:{percent}%" }
             }
-            input { class: "number-input", r#type: "text", value: "{value}", disabled: disabled.then_some(true), "aria-label": "Value",
-                oninput: move |event| { if let Ok(value) = event.value().parse::<i32>() { onchange.call(value.clamp(min,max)); } } }
+            NumericInput { class: "number-input", value: shown.to_string(), disabled, label: format!("{label} value"),
+                format: NumericFormat::Integer { min: i64::from(min), max: i64::from(max) },
+                oncommit: move |requested| { if let Ok(requested) = i32::try_from(requested) && requested != value { onchange.call(requested); } }
+            }
         }
     }
+}
+
+/// Browser pointer capture is a platform input adapter; native capture lives in `RetainedPanel`.
+fn capture_pointer(event: &PointerEvent) {
+    #[cfg(target_arch = "wasm32")]
+    {
+        use dioxus_web::WebEventExt;
+        use wasm_bindgen::JsCast;
+        let event = event.as_web_event();
+        if let Some(element) = event
+            .target()
+            .and_then(|target| target.dyn_into::<web_sys::Element>().ok())
+        {
+            let _ = element.set_pointer_capture(event.pointer_id());
+        }
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    let _ = event;
 }
 
 /// Inner track width (150px less its two 1px borders) used to map pointer x to a value; must match `.slider`.
@@ -429,21 +519,17 @@ fn HotkeyControl(value: Hotkey, disabled: bool, onchange: EventHandler<Hotkey>) 
 #[component]
 fn SizeControl(value: [u32; 2], disabled: bool, onchange: EventHandler<[u32; 2]>) -> Element {
     let [width, height] = value;
-    let mut w_draft = use_signal(|| None::<String>);
-    let mut h_draft = use_signal(|| None::<String>);
-    let w_text = w_draft.read().clone().unwrap_or_else(|| width.to_string());
-    let h_text = h_draft.read().clone().unwrap_or_else(|| height.to_string());
-    let w_bad = w_draft.read().is_some();
-    let h_bad = h_draft.read().is_some();
     rsx! {
         div { class: "size",
-            input { class: if w_bad { "dim invalid" } else { "dim" }, r#type: "text", value: "{w_text}", disabled: disabled.then_some(true), "aria-label": "Width",
-                oninput: move |event| { let entered = event.value();
-                    match entered.parse::<u32>() { Ok(w) if (320..=16384).contains(&w) => { w_draft.set(None); onchange.call([w, height]); } _ => w_draft.set(Some(entered)) } } }
+            NumericInput { class: "dim", value: width.to_string(), disabled, label: "Width",
+                format: NumericFormat::Integer { min: 320, max: 16384 },
+                oncommit: move |requested| { if let Ok(width) = u32::try_from(requested) { onchange.call([width, height]); } }
+            }
             span { class: "times", "×" }
-            input { class: if h_bad { "dim invalid" } else { "dim" }, r#type: "text", value: "{h_text}", disabled: disabled.then_some(true), "aria-label": "Height",
-                oninput: move |event| { let entered = event.value();
-                    match entered.parse::<u32>() { Ok(h) if (200..=16384).contains(&h) => { h_draft.set(None); onchange.call([width, h]); } _ => h_draft.set(Some(entered)) } } }
+            NumericInput { class: "dim", value: height.to_string(), disabled, label: "Height",
+                format: NumericFormat::Integer { min: 200, max: 16384 },
+                oncommit: move |requested| { if let Ok(height) = u32::try_from(requested) { onchange.call([width, height]); } }
+            }
             span { class: "muted", "px" }
         }
     }
@@ -455,18 +541,14 @@ fn FontControl(value: Font, disabled: bool, onchange: EventHandler<Font>) -> Ele
     let size_value = value.clone();
     let bold_value = value.clone();
     let italic_value = value.clone();
-    let mut size_draft = use_signal(|| None::<String>);
-    let size_text = size_draft
-        .read()
-        .clone()
-        .unwrap_or_else(|| value.size.to_string());
     rsx! {
         div { class: "font",
             input { class: "family", r#type: "text", value: "{value.family}", disabled: disabled.then_some(true), "aria-label": "Font family",
                 oninput: move |event| { let family = event.value(); if !family.is_empty() && family.len() <= 128 { onchange.call(Font { family, ..family_value.clone() }); } } }
-            input { class: if size_draft.read().is_some() { "dim invalid" } else { "dim" }, r#type: "text", value: "{size_text}", disabled: disabled.then_some(true), "aria-label": "Font size",
-                oninput: move |event| { let entered = event.value();
-                    match entered.parse::<u16>() { Ok(size) if (6..=96).contains(&size) => { size_draft.set(None); onchange.call(Font { size, ..size_value.clone() }); } _ => size_draft.set(Some(entered)) } } }
+            NumericInput { class: "dim", value: value.size.to_string(), disabled, label: "Font size",
+                format: NumericFormat::Integer { min: 6, max: 96 },
+                oncommit: move |requested| { if let Ok(size) = u16::try_from(requested) { onchange.call(Font { size, ..size_value.clone() }); } }
+            }
             button { class: if value.bold { "style-toggle on" } else { "style-toggle" }, "aria-pressed": "{value.bold}", "aria-label": "Bold", disabled: disabled.then_some(true),
                 onclick: move |_| onchange.call(Font { bold: !bold_value.bold, ..bold_value.clone() }), "B" }
             button { class: if value.italic { "style-toggle italic on" } else { "style-toggle italic" }, "aria-pressed": "{value.italic}", "aria-label": "Italic", disabled: disabled.then_some(true),
@@ -542,6 +624,56 @@ fn parse_decimal(text: &str) -> Option<i32> {
     i32::try_from(if negative { -value } else { value }).ok()
 }
 
+#[derive(Clone, PartialEq)]
+enum NumericFormat {
+    Integer { min: i64, max: i64 },
+    Decimal { min: i32, max: i32 },
+}
+impl NumericFormat {
+    fn parse(&self, text: &str) -> Option<i64> {
+        match *self {
+            Self::Integer { min, max } => text
+                .parse::<i64>()
+                .ok()
+                .filter(|value| (min..=max).contains(value)),
+            Self::Decimal { min, max } => parse_decimal(text)
+                .filter(|value| (min..=max).contains(value))
+                .map(i64::from),
+        }
+    }
+}
+
+#[component]
+fn NumericInput(
+    class: String,
+    value: String,
+    label: String,
+    disabled: bool,
+    format: NumericFormat,
+    oncommit: EventHandler<i64>,
+) -> Element {
+    let mut draft = use_signal(|| None::<String>);
+    let text = draft.read().clone().unwrap_or(value);
+    let invalid = format.parse(&text).is_none();
+    let commit = EventHandler::new(move |()| {
+        let entered = draft.read().clone();
+        if let Some(parsed) = entered.as_deref().and_then(|text| format.parse(text)) {
+            draft.set(None);
+            oncommit.call(parsed);
+        }
+    });
+    rsx! {
+        input { class: if invalid { format!("{class} invalid") } else { class }, r#type: "text", value: "{text}",
+            disabled: disabled.then_some(true), "aria-label": label, "aria-invalid": invalid,
+            oninput: move |event| draft.set(Some(event.value())),
+            onblur: move |_| commit.call(()),
+            onkeydown: move |event| match event.key() {
+                Key::Enter => commit.call(()), Key::Escape => draft.set(None), _ => {}
+            }
+        }
+    }
+}
+
 #[component]
 fn DecimalControl(
     min: i32,
@@ -550,23 +682,12 @@ fn DecimalControl(
     disabled: bool,
     onchange: EventHandler<i32>,
 ) -> Element {
-    let mut draft = use_signal(|| None::<String>);
-    let text = draft
-        .read()
-        .clone()
-        .unwrap_or_else(|| format_decimal(value));
-    let invalid = draft.read().is_some();
     rsx! {
         div { class: "decimal",
-            input { class: if invalid { "number-input invalid" } else { "number-input" }, r#type: "text", value: "{text}", disabled: disabled.then_some(true),
-                "aria-label": "Value", "aria-invalid": "{invalid}",
-                oninput: move |event| {
-                    let entered = event.value();
-                    match parse_decimal(&entered) {
-                        Some(parsed) if (min..=max).contains(&parsed) => { draft.set(None); onchange.call(parsed); }
-                        _ => draft.set(Some(entered)),
-                    }
-                } }
+            NumericInput { class: "number-input", value: format_decimal(value), disabled, label: "Value",
+                format: NumericFormat::Decimal { min, max },
+                oncommit: move |requested| { if let Ok(requested) = i32::try_from(requested) { onchange.call(requested); } }
+            }
         }
     }
 }

@@ -1,11 +1,10 @@
 use crate::{GameplayCameraController, RenderError, SurfaceSize};
 use glam::Vec3;
 use rustclient_model::SceneAssetId;
-use rustclient_scene::{SceneVertex, SceneVisibility, WorldMesh};
+use rustclient_scene::{SceneVisibility, WorldMesh};
 
 /// World WGSL group/binding map. The shader declares exactly this layout.
 const WORLD_GROUP: u32 = 0;
-const DEPTH: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 struct CameraUniform {
@@ -28,10 +27,19 @@ struct CameraUniform {
 const CAMERA_BYTES: u64 = 672;
 /// Local units per tile, `Perspective.LOCAL_TILE_SIZE`.
 const LOCAL_TILE_SIZE: f32 = 128.;
+/// Resident geometry resources and CPU ordering work; excludes textures and render targets.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct WorldGeometryStats {
+    pub gpu_buffer_bytes: u64,
+    pub expanded_vertex_bytes: u64,
+    pub resident_vertex_bytes: u64,
+    pub cpu_remap_bytes: u64,
+    pub ordering_runs: u64,
+    pub ordering_reuses: u64,
+}
 pub(crate) struct WorldGpu {
     pub asset: SceneAssetId,
-    opaque_pipeline: wgpu::RenderPipeline,
-    transparent_pipeline: wgpu::RenderPipeline,
+    pipelines: super::world_pipeline::WorldPipelines,
     geometry: super::world_geometry::GeometryGpu,
     dynamic: super::world_geometry::GeometryGpu,
     /// Live players/NPCs; rewritten per client cycle without touching scenery buffers.
@@ -44,6 +52,7 @@ pub(crate) struct WorldGpu {
     shader: wgpu::ShaderModule,
     textures: wgpu::TextureView,
     animations: wgpu::Buffer,
+    textures_fingerprint: u64,
     anisotropy: u16,
     mipmaps: bool,
     pub target: super::world_target::WorldTarget,
@@ -61,10 +70,19 @@ pub(crate) struct WorldGpu {
     )>,
 }
 impl WorldGpu {
-    #[expect(
-        clippy::too_many_lines,
-        reason = "GPU pipeline and immutable uploads are built together once per resource lifetime"
-    )]
+    pub fn geometry_stats(&self) -> WorldGeometryStats {
+        let mut sum = WorldGeometryStats::default();
+        for source in [&self.geometry, &self.dynamic, &self.entities] {
+            let stats = source.stats();
+            sum.gpu_buffer_bytes += stats.gpu_buffer_bytes;
+            sum.expanded_vertex_bytes += stats.expanded_vertex_bytes;
+            sum.resident_vertex_bytes += stats.resident_vertex_bytes;
+            sum.cpu_remap_bytes += stats.cpu_remap_bytes;
+            sum.ordering_runs += stats.ordering_runs;
+            sum.ordering_reuses += stats.ordering_reuses;
+        }
+        sum
+    }
     #[expect(
         clippy::cast_precision_loss,
         reason = "physical viewport dimensions bounded by texture limits"
@@ -129,6 +147,7 @@ impl WorldGpu {
             mapped_at_creation: false,
         });
         let (textures, animations) = crate::world_textures::upload(device, queue, mesh)?;
+        let textures_fingerprint = crate::world_textures::fingerprint(&mesh.textures);
         let bind = bind_group(device, &layout, &camera, &textures, 1, true, &animations);
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("world pipeline layout"),
@@ -139,23 +158,9 @@ impl WorldGpu {
             label: Some("world shader"),
             source: wgpu::ShaderSource::Wgsl(crate::shader_sources::world().into()),
         });
-        let opaque_pipeline = pipeline(
-            device,
-            super::world_target::FORMAT,
-            &pipeline_layout,
-            &shader,
-            false,
-            samples,
-        );
-        let transparent_pipeline = pipeline(
-            device,
-            super::world_target::FORMAT,
-            &pipeline_layout,
-            &shader,
-            true,
-            samples,
-        );
-        let geometry = super::world_geometry::GeometryGpu::new(device, &mesh.geometry)?;
+        let pipelines =
+            super::world_pipeline::WorldPipelines::new(device, &pipeline_layout, &shader, samples);
+        let geometry = super::world_geometry::GeometryGpu::new_static(device, &mesh.geometry)?;
         let dynamic = super::world_geometry::GeometryGpu::new(device, &mesh.dynamic)?;
         let entities = super::world_geometry::GeometryGpu::new(
             device,
@@ -164,8 +169,7 @@ impl WorldGpu {
         let target = super::world_target::WorldTarget::new(device, size, format, samples);
         Ok(Self {
             asset: mesh.asset,
-            opaque_pipeline,
-            transparent_pipeline,
+            pipelines,
             geometry,
             dynamic,
             entities,
@@ -176,6 +180,7 @@ impl WorldGpu {
             shader,
             textures,
             animations,
+            textures_fingerprint,
             anisotropy: 1,
             mipmaps: true,
             target,
@@ -187,26 +192,62 @@ impl WorldGpu {
             transparent_runs: Vec::new(),
         })
     }
-    /// Rebuild only the sample-count dependent resources: both pipelines and the render target.
+    /// Replace the scene geometry in place while retaining compiled shaders, pipelines,
+    /// render targets, and unchanged texture arrays.
+    pub fn replace_mesh(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        mesh: &WorldMesh,
+    ) -> Result<(), RenderError> {
+        let data: &[u8] = bytemuck::cast_slice(&mesh.geometry.vertices);
+        if data.len() as u64 > device.limits().max_buffer_size {
+            return Err(RenderError::World("mesh exceeds device buffer limit"));
+        }
+        crate::world_textures::validate(mesh, &device.limits())?;
+        let next_textures_fingerprint = crate::world_textures::fingerprint(&mesh.textures);
+        let uploaded_textures = if next_textures_fingerprint == self.textures_fingerprint {
+            None
+        } else {
+            Some(crate::world_textures::upload(device, queue, mesh)?)
+        };
+        let geometry = super::world_geometry::GeometryGpu::new_static(device, &mesh.geometry)?;
+        let dynamic = super::world_geometry::GeometryGpu::new(device, &mesh.dynamic)?;
+        let entities = super::world_geometry::GeometryGpu::new(
+            device,
+            &rustclient_scene::SceneGeometry::default(),
+        )?;
+        if let Some((textures, animations)) = uploaded_textures {
+            self.bind = bind_group(
+                device,
+                &self.bind_layout,
+                &self.camera,
+                &textures,
+                self.anisotropy,
+                self.mipmaps,
+                &animations,
+            );
+            self.textures = textures;
+            self.animations = animations;
+            self.textures_fingerprint = next_textures_fingerprint;
+        }
+        self.geometry = geometry;
+        self.dynamic = dynamic;
+        self.entities = entities;
+        self.asset = mesh.asset;
+        self.last_camera = None;
+        self.transparent_runs.clear();
+        Ok(())
+    }
+    /// Rebuild only the sample-count dependent resources: all pipelines and the render target.
     pub fn set_samples(&mut self, device: &wgpu::Device, samples: u32) {
         if self.target.samples == samples {
             return;
         }
-        let format = super::world_target::FORMAT;
-        self.opaque_pipeline = pipeline(
+        self.pipelines = super::world_pipeline::WorldPipelines::new(
             device,
-            format,
             &self.pipeline_layout,
             &self.shader,
-            false,
-            samples,
-        );
-        self.transparent_pipeline = pipeline(
-            device,
-            format,
-            &self.pipeline_layout,
-            &self.shader,
-            true,
             samples,
         );
         self.target =
@@ -389,21 +430,17 @@ impl WorldGpu {
             admission,
         };
         queue.write_buffer(&self.camera, 0, bytemuck::bytes_of(&uniform));
-        let yaw = f32::from(pose.yaw) * std::f32::consts::TAU / 2048.;
-        let pitch = f32::from(pose.pitch) * std::f32::consts::TAU / 2048.;
-        let direction = Vec3::new(
-            -yaw.sin() * pitch.cos(),
-            pitch.sin(),
-            yaw.cos() * pitch.cos(),
-        );
-        self.geometry.sort(queue, eye, direction);
-        self.dynamic.sort(queue, eye, direction);
-        self.entities.sort(queue, eye, direction);
-        let sources = [&self.geometry, &self.dynamic, &self.entities];
-        super::transparency::merge(
-            |source, index| sources[source].alpha_depth(index, eye, direction),
-            &mut self.transparent_runs,
-        );
+        let view = pose.model_view();
+        let static_changed = self.geometry.sort(queue, view);
+        let dynamic_changed = self.dynamic.sort(queue, view);
+        let entities_changed = self.entities.sort(queue, view);
+        if static_changed || dynamic_changed || entities_changed {
+            let sources = [&self.geometry, &self.dynamic, &self.entities];
+            super::transparency::merge(
+                |source, index| sources[source].alpha_depth(index, eye),
+                &mut self.transparent_runs,
+            );
+        }
         self.last_camera = Some((camera, viewport, cycle, visibility.clone(), brightness, gpu));
     }
     pub fn render_scene(&self, encoder: &mut wgpu::CommandEncoder) {
@@ -448,11 +485,10 @@ impl WorldGpu {
         }
         pass.set_viewport(x, y, width, height, 0., 1.);
         pass.set_bind_group(WORLD_GROUP, &self.bind, &[]);
-        pass.set_pipeline(&self.opaque_pipeline);
-        self.geometry.draw(pass, false);
-        self.dynamic.draw(pass, false);
-        self.entities.draw(pass, false);
-        pass.set_pipeline(&self.transparent_pipeline);
+        self.geometry.draw_opaque(pass, &self.pipelines);
+        self.dynamic.draw_opaque(pass, &self.pipelines);
+        self.entities.draw_opaque(pass, &self.pipelines);
+        pass.set_pipeline(&self.pipelines.transparent);
         let sources = [&self.geometry, &self.dynamic, &self.entities];
         for run in &self.transparent_runs {
             sources[run.source].draw_alpha(pass, run.indices.clone());
@@ -490,71 +526,6 @@ fn bind_group(
                 resource: animations.as_entire_binding(),
             },
         ],
-    })
-}
-fn pipeline(
-    device: &wgpu::Device,
-    format: wgpu::TextureFormat,
-    layout: &wgpu::PipelineLayout,
-    shader: &wgpu::ShaderModule,
-    transparent: bool,
-    samples: u32,
-) -> wgpu::RenderPipeline {
-    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        label: Some(if transparent {
-            "transparent world pipeline"
-        } else {
-            "opaque world pipeline"
-        }),
-        layout: Some(layout),
-        vertex: wgpu::VertexState {
-            module: shader,
-            entry_point: Some("vs_main"),
-            compilation_options: wgpu::PipelineCompilationOptions::default(),
-            buffers: &[Some(wgpu::VertexBufferLayout {
-                array_stride: std::mem::size_of::<SceneVertex>() as u64,
-                step_mode: wgpu::VertexStepMode::Vertex,
-                attributes: &wgpu::vertex_attr_array![0=>Sint16x4,1=>Uint32,2=>Uint16x4,3=>Uint32],
-            })],
-        },
-        primitive: wgpu::PrimitiveState {
-            cull_mode: Some(wgpu::Face::Back),
-            ..Default::default()
-        },
-        depth_stencil: Some(wgpu::DepthStencilState {
-            format: DEPTH,
-            depth_write_enabled: Some(!transparent),
-            depth_compare: Some(wgpu::CompareFunction::Greater),
-            stencil: wgpu::StencilState::default(),
-            bias: wgpu::DepthBiasState::default(),
-        }),
-        multisample: wgpu::MultisampleState {
-            count: samples,
-            ..Default::default()
-        },
-        fragment: Some(wgpu::FragmentState {
-            module: shader,
-            entry_point: Some("fs_main"),
-            compilation_options: wgpu::PipelineCompilationOptions::default(),
-            targets: &[Some(wgpu::ColorTargetState {
-                format,
-                blend: transparent.then_some(wgpu::BlendState {
-                    color: wgpu::BlendComponent {
-                        src_factor: wgpu::BlendFactor::SrcAlpha,
-                        dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
-                        operation: wgpu::BlendOperation::Add,
-                    },
-                    alpha: wgpu::BlendComponent {
-                        src_factor: wgpu::BlendFactor::One,
-                        dst_factor: wgpu::BlendFactor::One,
-                        operation: wgpu::BlendOperation::Add,
-                    },
-                }),
-                write_mask: wgpu::ColorWrites::ALL,
-            })],
-        }),
-        multiview_mask: None,
-        cache: None,
     })
 }
 

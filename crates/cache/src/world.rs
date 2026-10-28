@@ -118,6 +118,8 @@ pub struct NpcMorphs {
 /// Render-relevant NPC definition.
 #[derive(Debug, Clone)]
 pub struct NpcDefinition {
+    /// Base-definition opaque depth policy; opcode 147 defers writing until after sorted color.
+    pub depth_policy: rustclient_model::ModelDepthPolicy,
     pub turn_rate: rustclient_model::JauTurnRate,
     pub id: NpcDefinitionId,
     pub name: Option<String>,

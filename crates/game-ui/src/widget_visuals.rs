@@ -186,6 +186,14 @@ pub fn project_widgets_with_drag(
             frame.image(UiImageId::Compass, rect, clip);
             continue;
         }
+        if widget.content == WidgetContent::WorldMap {
+            frame.image(UiImageId::WorldMap, rect, clip);
+            continue;
+        }
+        if widget.content == WidgetContent::WorldMapOverview {
+            frame.image(UiImageId::WorldMapOverview, rect, clip);
+            continue;
+        }
         if let Some((item, count)) = state
             .interfaces()
             .runtime()

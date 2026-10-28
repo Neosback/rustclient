@@ -1,3 +1,5 @@
+#[path = "scene_probe/performance.rs"]
+mod performance;
 use rustclient_cache::{Cache, CacheProfile};
 use rustclient_game_state::{AuthenticatedPlayer, GameState, InitialPlacement, SemanticOperation};
 use rustclient_model::{Plane, WorldTile};
@@ -77,6 +79,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         mesh.vertex_count(),
         mesh.vertex_count() * std::mem::size_of::<rustclient_scene::SceneVertex>()
     );
+    if std::env::args().nth(2).as_deref() == Some("--performance") {
+        performance::run(&mesh)?;
+        return Ok(());
+    }
     if let Some(path) = std::env::args().nth(2) {
         let path = std::path::PathBuf::from(path);
         std::fs::create_dir_all(&path)?;

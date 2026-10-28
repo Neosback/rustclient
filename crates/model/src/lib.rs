@@ -25,7 +25,9 @@ pub use interface::{
 };
 mod inventory;
 pub use inventory::{InventorySlotUpdate, InventoryUpdate, ItemStack};
+mod model_depth;
 mod movement;
+pub use model_depth::ModelDepthPolicy;
 pub use movement::{JauTurnRate, NpcMovementPolicy, PathAccelerationPolicy};
 pub mod orientation;
 pub mod revision;

@@ -29,12 +29,20 @@ fn type_into(panel: &mut RetainedPanel, selector: &str, text: &str) {
         None,
     );
     panel.ime_commit(text.into());
+    panel.key(
+        keyboard_types::Key::Enter,
+        keyboard_types::Code::Enter,
+        keyboard_types::Modifiers::empty(),
+        true,
+        None,
+    );
     panel.render();
 }
 
 #[test]
 fn optional_plugins_switch_on_and_edit_text_and_decimal_settings() {
     let channel = ShellChannel::default();
+    channel.model.borrow_mut().sidebar = rustclient_shell_ui::SidebarState::Panel;
     for schema in all_schemas().unwrap() {
         let config = Configuration::new(schema, None).unwrap();
         channel
@@ -114,7 +122,7 @@ fn optional_plugins_switch_on_and_edit_text_and_decimal_settings() {
     );
 
     // A text setting emits the entered text.
-    click(&mut panel, "#plugins-nav");
+    click(&mut panel, "[aria-label='Back to plugins']");
     click(
         &mut panel,
         "[data-plugin='dev.rustclient.npchighlight'] .card-open",

@@ -163,12 +163,16 @@ impl GameState {
             placement.position = position;
             placement.map_anchor.plane = position.plane;
         }
-        self.scene = None;
+        // A plane change never reloads the scene window: the loaded asset owns
+        // the same 2D footprint on every ordinary plane.
+        self.scene = self
+            .scene
+            .and_then(|scene| scene.contains_footprint(position).then_some(scene));
     }
     pub(crate) fn rebuild_map(
         &mut self,
         anchor: rustclient_model::MapAnchor,
-    ) -> Result<InitialPlacement, ConnectionStateError> {
+    ) -> Result<(InitialPlacement, bool), ConnectionStateError> {
         let previous = self
             .placement
             .ok_or(ConnectionStateError::SceneRequiresPlacement)?;
@@ -181,10 +185,26 @@ impl GameState {
             map_anchor: anchor.on_plane(position.plane),
             area: None,
         };
+        let same_window = previous.area.is_none()
+            && previous.map_anchor.x == anchor.x
+            && previous.map_anchor.y == anchor.y;
+        if same_window {
+            // Redundant rebuilds and plane changes keep the current window and
+            // scenery; only the committed placement can change.
+            let scene = self.scene.and_then(|scene| {
+                scene
+                    .contains_footprint(placement.map_anchor)
+                    .then_some(scene)
+            });
+            let changed = placement != previous || scene != self.scene;
+            self.placement = Some(placement);
+            self.scene = scene;
+            return Ok((placement, changed));
+        }
         self.placement = Some(placement);
         self.scene = None;
         self.scenery.clear_map_locations();
-        Ok(placement)
+        Ok((placement, true))
     }
     pub(crate) fn authenticate_session(
         &mut self,

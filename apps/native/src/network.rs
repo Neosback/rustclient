@@ -250,6 +250,7 @@ fn run(
     let mut bytes = [0; 16384];
     let mut last_received = Instant::now();
     let mut map_epoch = 0_u64;
+    let mut last_map_anchor = None;
     let mut interface_epoch = 0_u64;
     let mut pending_action = None;
     loop {
@@ -295,13 +296,19 @@ fn run(
                         ) {
                             interface_epoch = interface_epoch.wrapping_add(1);
                         }
-                        if matches!(
-                            op,
-                            SemanticOperation::EstablishInitialPlacement(_)
-                                | SemanticOperation::RebuildMap(_)
-                        ) || matches!(&op, SemanticOperation::UpdatePlayers(update)
-                            if matches!(update.local_movement, Some(rustclient_model::PlayerMovement::Teleport { plane_delta: 1..=3, .. }))) {
-                            map_epoch = map_epoch.wrapping_add(1);
+                        match &op {
+                            SemanticOperation::EstablishInitialPlacement(placement) => {
+                                last_map_anchor =
+                                    Some((placement.map_anchor.x, placement.map_anchor.y));
+                                map_epoch = map_epoch.wrapping_add(1);
+                            }
+                            SemanticOperation::RebuildMap(anchor)
+                                if last_map_anchor != Some((anchor.x, anchor.y)) =>
+                            {
+                                last_map_anchor = Some((anchor.x, anchor.y));
+                                map_epoch = map_epoch.wrapping_add(1);
+                            }
+                            _ => {}
                         }
                         emit(NetworkEvent::Operation(map_epoch, interface_epoch, op));
                     })

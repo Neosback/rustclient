@@ -1,4 +1,5 @@
 #![cfg(not(target_arch = "wasm32"))]
+#![allow(clippy::float_cmp)]
 use rustclient_plugin_host::{
     configuration::{ConfigValue, Configuration, Hotkey},
     required::schemas,
@@ -41,6 +42,7 @@ fn native_dom_emits_typed_changes_and_idle_world_frames_reuse_pixels() {
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
     let channel = ShellChannel::default();
+    channel.model.borrow_mut().sidebar = rustclient_shell_ui::SidebarState::Panel;
     for schema in schemas().unwrap() {
         let config = Configuration::new(schema, None).unwrap();
         channel
@@ -128,7 +130,7 @@ fn native_dom_emits_typed_changes_and_idle_world_frames_reuse_pixels() {
     );
     assert_eq!(clipboard.0.borrow().as_str(), "GPU");
     panel.clear_focus();
-    for _ in 0..3 {
+    for _ in 0..5 {
         panel.key(
             keyboard_types::Key::Tab,
             keyboard_types::Code::Tab,
@@ -172,16 +174,10 @@ fn native_dom_emits_typed_changes_and_idle_world_frames_reuse_pixels() {
             _ => None,
         })
         .collect();
-    assert!(
-        values
-            .first()
-            .is_some_and(|value| (80..=100).contains(value)),
-        "slider emitted {values:?}"
-    );
     assert_eq!(
-        values.last(),
-        Some(&184),
-        "slider capture did not reach its endpoint: {values:?}"
+        values,
+        vec![184],
+        "slider must commit its final captured value once"
     );
     panel.render();
     panel.set_visible(false);
@@ -202,6 +198,7 @@ fn every_control_type_emits_typed_values_and_views_render() {
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
     let channel = ShellChannel::default();
+    channel.model.borrow_mut().sidebar = rustclient_shell_ui::SidebarState::Panel;
     for schema in schemas().unwrap() {
         let config = Configuration::new(schema, None).unwrap();
         channel
@@ -284,6 +281,13 @@ fn every_control_type_emits_typed_values_and_views_render() {
             None,
         );
         panel.ime_commit(text.into());
+        panel.key(
+            keyboard_types::Key::Enter,
+            keyboard_types::Code::Enter,
+            keyboard_types::Modifiers::empty(),
+            true,
+            None,
+        );
         panel.render();
     };
     let _ = channel.drain();
@@ -344,12 +348,13 @@ fn every_control_type_emits_typed_values_and_views_render() {
 }
 
 #[test]
-fn configuration_is_a_compact_panel_left_of_the_tools_and_collapses_without_a_hud() {
+fn configuration_is_a_compact_panel_left_of_the_tools_and_closes_to_the_rail() {
     let _turn = ONE_PANEL
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
     for scale in [1_u32, 2] {
         let channel = ShellChannel::default();
+        channel.model.borrow_mut().sidebar = rustclient_shell_ui::SidebarState::Panel;
         for schema in schemas().unwrap() {
             let configuration = Configuration::new(schema, None).unwrap();
             channel
@@ -392,7 +397,7 @@ fn configuration_is_a_compact_panel_left_of_the_tools_and_collapses_without_a_hu
         }
         click(&mut panel, "#plugins-nav");
         assert!(channel.drain().contains(&ShellAction::Close));
-        channel.model.borrow_mut().panel_visible = false;
+        channel.model.borrow_mut().sidebar = rustclient_shell_ui::SidebarState::Rail;
         panel
             .resize(
                 [36 * scale, 600 * scale],
@@ -403,10 +408,10 @@ fn configuration_is_a_compact_panel_left_of_the_tools_and_collapses_without_a_hu
         panel.render().unwrap();
         assert!(panel.element_bounds(".panel").is_none());
         assert!(
-            panel.element_bounds(".rail").is_none(),
-            "closing the panel must remove the entire rail"
+            panel.element_bounds(".rail").is_some(),
+            "closing the active panel must leave the rail available"
         );
-        channel.model.borrow_mut().panel_visible = true;
+        channel.model.borrow_mut().sidebar = rustclient_shell_ui::SidebarState::Panel;
         panel
             .resize(
                 [278 * scale, 600 * scale],

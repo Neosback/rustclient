@@ -1,0 +1,4 @@
+[alias]
+client = "run -p rustclient-native --"
+play = "run -p rustclient-native --"
+xtask = "run -p xtask --"

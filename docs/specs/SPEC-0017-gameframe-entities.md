@@ -162,3 +162,11 @@ Cached-model timing now retains its loop rewind; fingerprint schema 28 includes 
 Existing action reset/removal/index reuse, entity cycle deltas and semantic replay cover these
 transitions. Acceptance includes legacy carry/zero boundaries, cached ranges/rewinds/loop
 limits, delayed starts/path holds, local/remote/NPC operation replay and committed pose sampling.
+
+### NPC compass decoding correction — 2026-10-28
+
+Revision-240 NPC compass codes are NW, N, NE, W, E, SW, S, SE, with north increasing
+world Y (`NPC.method3466`). They differ from player movement's code table. Preserve
+both run steps in that order, and apply the same NPC table to walk, crawl and run.
+Tests cover each wire code and all ordered run pairs. Never compensate for a decode
+error with client collision clamps, mirrored models or a second positional scheduler.

@@ -1,5 +1,6 @@
 //! Immutable scene asset assembly and disposable CPU mesh projection.
 #![forbid(unsafe_code)]
+#![allow(unknown_lints)]
 #![allow(
     clippy::manual_midpoint,
     reason = "deob-derived curve solving preserves the reference floating-point operation order"
@@ -24,17 +25,20 @@ pub use authoritative_motion::ActorMotion;
 mod inputs;
 mod lighting;
 pub mod minimap;
+pub mod world_map;
 pub use inputs::SceneryInputs;
 mod decorations;
 mod locations;
 pub use locations::location_key;
 mod mesh;
+mod model_sort;
+pub use model_sort::{ModelSortSource, ModelView, SORT_NEAR};
 mod picking;
 mod regions;
 mod roofs;
 pub use regions::RelatedMaps;
 mod visibility;
-pub use picking::{SurfaceHit, pick_surface, pick_terrain};
+pub use picking::{PickIndexStats, ScenePickIndex, SurfaceHit, pick_surface, pick_terrain};
 pub use roofs::{ROOF_SLOTS, RoofArea, RoofMask, RoofModes, RoofTargets, RoofView, RoofVolumes};
 pub use visibility::{DrawTile, SceneVisibility, ZoneWindow};
 mod shapes;
@@ -42,8 +46,8 @@ mod terrain;
 mod uv;
 use core::fmt;
 pub use mesh::{
-    ActorLabelAnchor, ActorLabelId, PickRange, SceneGeometry, SceneStats, SceneVertex, WorldMesh,
-    build_dynamic, build_mesh, build_mesh_with_inputs,
+    ActorLabelAnchor, ActorLabelId, PickRange, SceneGeometry, SceneModel, SceneStats, SceneVertex,
+    WorldMesh, build_dynamic, build_mesh, build_mesh_with_inputs,
 };
 use rustclient_cache::world::{TerrainTile, WorldAssets};
 use rustclient_model::{Plane, SceneAssetId, SceneDescriptor, WorldTile};

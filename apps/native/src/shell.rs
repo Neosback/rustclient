@@ -1,54 +1,21 @@
 //! Composition of application preferences, retained DOM pixels and engine-owned effects.
-use rustclient_application::builtin_config::{BuiltinConfigurations, value};
-use rustclient_platform::BlobStorage;
-use rustclient_plugin_host::configuration::{ConfigDocument, ConfigSchema, ConfigValue};
-use rustclient_renderer::{
-    AntiAliasing, ColorBlind, EffectiveGpu, GpuSettings, MaterialOptions, ShellLayer,
-    SurfaceRenderer, SurfaceSize, VsyncMode,
+use rustclient_application::{
+    builtin_config::BuiltinConfigurations, shell_preferences::ShellPreferences,
 };
-use rustclient_shell_ui::{PluginPanel, RetainedPanel, ShellAction, ShellChannel};
+mod layout;
+mod settings;
+use layout::CanvasLayout;
+use rustclient_platform::BlobStorage;
+use rustclient_plugin_host::configuration::ConfigValue;
+use rustclient_renderer::{ShellLayer, SurfaceRenderer, SurfaceSize};
+use rustclient_shell_ui::{PluginPanel, RetainedPanel, ShellAction, ShellChannel, SidebarState};
+use settings::{apply_effect, availability, gpu_settings, notes, static_note};
 use std::collections::BTreeMap;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 use winit::{
     dpi::{LogicalSize, PhysicalSize},
-    window::{Window, WindowLevel},
+    window::Window,
 };
-
-/// How long a window size we asked for may take to arrive before the window is trusted again.
-const RESIZE_SETTLE: Duration = Duration::from_millis(750);
-
-/// A window width requested by the shell itself (the panel opening or closing).
-///
-/// The platform applies it asynchronously and may report intermediate sizes first; those are
-/// not user resizes and must not change how wide the game is.
-#[derive(Clone, Copy, Debug)]
-struct PendingResize {
-    width: u32,
-    deadline: Instant,
-}
-impl PendingResize {
-    fn new(width: u32, now: Instant) -> Self {
-        Self {
-            width,
-            deadline: now + RESIZE_SETTLE,
-        }
-    }
-    /// Whether a reported window width should be treated as the user's (or the OS's) own resize.
-    fn accepts(pending: &mut Option<Self>, actual: u32, now: Instant) -> bool {
-        let Some(request) = *pending else {
-            return true;
-        };
-        if actual.abs_diff(request.width) <= 2 {
-            *pending = None;
-            return false;
-        }
-        if now < request.deadline {
-            return false;
-        }
-        *pending = None;
-        true
-    }
-}
 
 struct SidebarArrow {
     width: u32,
@@ -70,10 +37,7 @@ impl SidebarArrow {
     }
 }
 
-#[expect(
-    clippy::struct_excessive_bools,
-    reason = "independent input-routing and visibility flags"
-)]
+#[allow(clippy::struct_excessive_bools)]
 pub(super) struct Shell {
     pub panel: RetainedPanel,
     channel: ShellChannel,
@@ -81,21 +45,31 @@ pub(super) struct Shell {
     pub focused: bool,
     pub held: bool,
     pub composing: bool,
-    visible: bool,
-    game_logical_width: f64,
-    pending_window_width: Option<PendingResize>,
+    restored: SidebarState,
+    layout: CanvasLayout,
+    preferences: ShellPreferences,
     arrow: SidebarArrow,
     /// Why an applied GPU option differs from the request on this adapter.
     gpu_notes: BTreeMap<String, String>,
 }
 impl Shell {
     pub fn new(storage: Option<&dyn BlobStorage>) -> Result<Self, String> {
-        let (configuration, diagnostics) = BuiltinConfigurations::load_recovering(storage)?;
+        let (configuration, mut diagnostics) = BuiltinConfigurations::load_recovering(storage)?;
         for diagnostic in &diagnostics {
             eprintln!("required plugin configuration: {diagnostic}");
         }
+        let preferences = storage
+            .map(ShellPreferences::load)
+            .transpose()
+            .unwrap_or_else(|error| {
+                diagnostics.push(error);
+                None
+            })
+            .unwrap_or_default();
         let channel = ShellChannel::default();
-        channel.model.borrow_mut().panel_visible = false;
+        channel.model.borrow_mut().sidebar = SidebarState::Hidden;
+        channel.model.borrow_mut().pinned =
+            preferences.pinned.iter().map(ToString::to_string).collect();
         channel.model.borrow_mut().error =
             (!diagnostics.is_empty()).then(|| diagnostics.join("\n"));
         let mut panel = RetainedPanel::new(channel.clone(), [36, 503], 1.)?;
@@ -112,9 +86,9 @@ impl Shell {
             focused: false,
             held: false,
             composing: false,
-            visible: false,
-            game_logical_width: 765.,
-            pending_window_width: None,
+            restored: SidebarState::Panel,
+            layout: CanvasLayout::default(),
+            preferences,
             arrow,
             gpu_notes: BTreeMap::new(),
         };
@@ -137,46 +111,52 @@ impl Shell {
     ) -> impl Iterator<Item = &rustclient_plugin_host::configuration::Configuration> {
         self.configuration.iter()
     }
+    fn sidebar(&self) -> SidebarState {
+        self.channel.model.borrow().sidebar
+    }
     pub fn width(&self) -> u32 {
-        if self.visible { 278 } else { 0 }
+        self.sidebar().width()
     }
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "scale and window extents are validated platform values"
-    )]
+    fn preserve_game(&self, window: &Window) -> bool {
+        self.keep_game_size() && window.fullscreen().is_none() && !window.is_maximized()
+    }
     pub fn on_window_resized(&mut self, window: &Window) {
-        let actual = window.inner_size().width;
-        if !PendingResize::accepts(&mut self.pending_window_width, actual, Instant::now()) {
-            return;
-        }
-        let scale = window.scale_factor();
-        let sidebar = (f64::from(self.width()) * scale).round() as u32;
-        let game_physical = actual.saturating_sub(sidebar).max(1);
-        self.game_logical_width = (f64::from(game_physical) / scale).max(765.);
+        self.layout.observe(
+            window.inner_size().width,
+            window.scale_factor(),
+            self.width(),
+            Instant::now(),
+        );
+        self.trace_layout(window, "observed");
     }
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "scale and window extents are validated platform values"
-    )]
+    pub fn settle(&mut self, window: &Window) {
+        if self.layout.pending() {
+            self.on_window_resized(window);
+        }
+    }
     pub fn game_size(&self, window: &Window) -> PhysicalSize<u32> {
         let size = window.inner_size();
-        let scale = window.scale_factor();
-        if self.keep_game_size() && window.fullscreen().is_none() && !window.is_maximized() {
-            let game = (self.game_logical_width * scale).round() as u32;
-            // While our own resize is in flight the window is still the old width; the game
-            // keeps its size and the panel is clipped. Once settled, never exceed the window.
-            let game = if self.pending_window_width.is_some() {
-                game
-            } else {
-                let sidebar = (f64::from(self.width()) * scale).round() as u32;
-                game.min(size.width.saturating_sub(sidebar).max(1))
-            };
-            return PhysicalSize::new(game.max(1), size.height);
+        PhysicalSize::new(
+            self.layout.game_width(
+                size.width,
+                window.scale_factor(),
+                self.width(),
+                self.preserve_game(window),
+            ),
+            size.height,
+        )
+    }
+    fn trace_layout(&self, window: &Window, event: &str) {
+        if std::env::var_os("RUSTCLIENT_FRAME_TIMINGS").is_some() {
+            eprintln!(
+                "sidebar {event}: state={:?} surface={:?} game={:?} scale={} pending={}",
+                self.sidebar(),
+                window.inner_size(),
+                self.game_size(window),
+                window.scale_factor(),
+                self.layout.pending()
+            );
         }
-        let sidebar = (f64::from(self.width()) * scale).round() as u32;
-        PhysicalSize::new(size.width.saturating_sub(sidebar).max(1), size.height)
     }
     /// Logical bounds of the `open_rs.png` sidebar toggle button on the game canvas (`ClientUI.paintOverlays`).
     #[expect(
@@ -217,7 +197,7 @@ impl Shell {
     ) {
         let canvas_width = frame.canvas.map_or(765, |canvas| canvas.width);
         let rect = self.overlay_button_rect(canvas_width, widget_tree);
-        let in_range = !self.visible
+        let in_range = self.sidebar() == SidebarState::Hidden
             || pointer.is_some_and(|(px, py)| {
                 px >= rect.x - 15. && px <= canvas_width as f32 + 36. && py >= 0.
             });
@@ -225,7 +205,7 @@ impl Shell {
             return;
         }
         let clip = rustclient_game_ui::Rect::new(0., 0., 16_384., 16_384.);
-        let flip_h = self.visible;
+        let flip_h = self.sidebar() != SidebarState::Hidden;
         for py in 0..self.arrow.height {
             let mut px = 0;
             while px < self.arrow.width {
@@ -271,7 +251,7 @@ impl Shell {
         reason = "physical coordinates converted to bounded logical DOM coordinates"
     )]
     pub fn point(&self, window: &Window, x: f64, y: f64) -> Option<[f32; 2]> {
-        if !self.visible {
+        if self.sidebar() == SidebarState::Hidden {
             return None;
         }
         let origin = f64::from(self.game_size(window).width);
@@ -291,13 +271,11 @@ impl Shell {
     )]
     pub fn stage(&mut self, window: &Window, renderer: &mut SurfaceRenderer) -> Result<(), String> {
         // A requested size the platform never delivered (clamped to the screen) expires here.
-        if self.pending_window_width.is_some() {
-            self.on_window_resized(window);
-        }
         let game = self.game_size(window);
         renderer.set_game_width(Some(game.width));
-        self.panel.set_visible(self.visible);
-        if !self.visible {
+        self.panel
+            .set_visible(self.sidebar() != SidebarState::Hidden);
+        if self.sidebar() == SidebarState::Hidden {
             return renderer
                 .set_shell_layer(None)
                 .map_err(|error| error.to_string());
@@ -309,6 +287,12 @@ impl Shell {
             return Ok(());
         }
         self.panel.resize(size, scale as f32)?;
+        // While opening, do not scale a partially available panel texture into the surface.
+        if game.width.saturating_add(sidebar) > window.inner_size().width {
+            return renderer
+                .set_shell_layer(None)
+                .map_err(|error| error.to_string());
+        }
         self.panel.render();
         renderer
             .set_shell_layer(Some(ShellLayer {
@@ -333,24 +317,71 @@ impl Shell {
             self.project();
         }
     }
+    #[allow(clippy::too_many_lines)]
     pub fn actions(
         &mut self,
         window: &Window,
         renderer: Option<&mut SurfaceRenderer>,
         storage: Option<&dyn BlobStorage>,
-    ) {
+    ) -> bool {
+        let mut changed = false;
         let mut renderer = renderer;
         for action in self.channel.drain() {
             let mut new_notes = None;
             let result =
                 match action {
+                    ShellAction::ToggleSidebar => {
+                        self.resize(
+                            window,
+                            if self.sidebar() == SidebarState::Hidden {
+                                self.restored
+                            } else {
+                                SidebarState::Hidden
+                            },
+                        );
+                        Ok(())
+                    }
+                    ShellAction::TogglePanel => {
+                        self.resize(
+                            window,
+                            if self.sidebar() == SidebarState::Panel {
+                                SidebarState::Rail
+                            } else {
+                                SidebarState::Panel
+                            },
+                        );
+                        Ok(())
+                    }
                     ShellAction::Open => {
-                        self.resize(window, true);
+                        self.resize(window, SidebarState::Panel);
                         Ok(())
                     }
                     ShellAction::Close => {
-                        self.resize(window, false);
+                        self.resize(window, SidebarState::Rail);
                         Ok(())
+                    }
+                    ShellAction::ToggleFavorite { plugin } => {
+                        if !self
+                            .channel
+                            .model
+                            .borrow()
+                            .plugins
+                            .iter()
+                            .any(|entry| entry.id == plugin)
+                        {
+                            Err(format!("Unknown plugin {plugin}"))
+                        } else if let Some(storage) = storage {
+                            self.preferences.toggle(&plugin, storage).map(|()| {
+                                self.channel.model.borrow_mut().pinned = self
+                                    .preferences
+                                    .pinned
+                                    .iter()
+                                    .map(ToString::to_string)
+                                    .collect();
+                            })
+                        } else {
+                            Err("Settings storage is unavailable".into())
+                        }
                     }
                     ShellAction::Configure {
                         plugin,
@@ -378,7 +409,9 @@ impl Shell {
                                         }
                                     },
                                 )
-                                .map(|_| ())
+                                .map(|publication| {
+                                    changed |= publication.is_some();
+                                })
                         } else {
                             Err(
                             "Settings storage is unavailable; last working configuration retained"
@@ -404,7 +437,9 @@ impl Shell {
                                         }
                                     },
                                 )
-                                .map(|_| ())
+                                .map(|publication| {
+                                    changed |= publication.is_some();
+                                })
                         } else {
                             Err("Settings storage is unavailable".into())
                         }
@@ -414,10 +449,13 @@ impl Shell {
                 self.gpu_notes = new_notes;
             }
             self.channel.model.borrow_mut().error = result.err();
-            self.project();
+            if changed {
+                self.project();
+            }
             self.panel.invalidate();
             window.request_redraw();
         }
+        changed
     }
     fn project(&self) {
         self.channel.model.borrow_mut().plugins = self
@@ -439,10 +477,12 @@ impl Shell {
             .collect();
     }
     pub fn toggle_sidebar(&mut self, window: &Window) {
-        self.resize(window, !self.visible);
+        self.channel.send(ShellAction::ToggleSidebar);
+        window.request_redraw();
     }
     pub fn toggle_panel(&mut self, window: &Window) {
-        self.toggle_sidebar(window);
+        self.channel.send(ShellAction::TogglePanel);
+        window.request_redraw();
     }
     pub fn hotkey(&self, key: &str, modifiers: u8) -> Option<bool> {
         let config = self.configuration.get("dev.rustclient.runelite")?;
@@ -462,381 +502,56 @@ impl Shell {
             .and_then(|config| config.value("blockExtraMouseButtons"))
             == Some(&ConfigValue::Boolean(true))
     }
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "scale and window extents are validated platform values"
-    )]
-    fn resize(&mut self, window: &Window, visible: bool) {
-        let scale = window.scale_factor();
-        let keep_game = self.keep_game_size();
-        if !keep_game || window.fullscreen().is_some() || window.is_maximized() {
-            let before_sidebar = (f64::from(self.width()) * scale).round() as u32;
-            let game_physical = window
-                .inner_size()
-                .width
-                .saturating_sub(before_sidebar)
-                .max(1);
-            self.game_logical_width = (f64::from(game_physical) / scale).max(765.);
+    fn resize(&mut self, window: &Window, sidebar: SidebarState) {
+        let previous = self.sidebar();
+        if previous == sidebar {
+            return;
         }
-        self.visible = visible;
-        self.focused = false;
+        let scale = window.scale_factor();
+        // Capture a genuine user size before changing how much chrome is reserved. In-flight
+        // shell requests retain their original canvas target through subsequent toggles.
+        self.layout.observe(
+            window.inner_size().width,
+            scale,
+            previous.width(),
+            Instant::now(),
+        );
+        if previous != SidebarState::Hidden {
+            self.restored = previous;
+        }
+        self.channel.model.borrow_mut().sidebar = sidebar;
+        self.focused = sidebar == SidebarState::Panel;
         self.held = false;
+        self.composing = false;
         self.panel.clear_focus();
-        self.channel.model.borrow_mut().panel_visible = visible;
+        if self.focused {
+            window.set_ime_allowed(true);
+        }
+        self.panel.set_visible(sidebar != SidebarState::Hidden);
         self.panel.invalidate();
-        let after = self.width();
-        if keep_game && window.fullscreen().is_none() && !window.is_maximized() {
-            let target_logical_width =
-                (self.game_logical_width + f64::from(after)).max(765. + f64::from(after));
-            let target_physical_width = (target_logical_width * scale).round() as u32;
-            // Armed before the minimum size changes: enforcing it can report a size too.
-            self.pending_window_width =
-                Some(PendingResize::new(target_physical_width, Instant::now()));
-            window.set_min_inner_size(Some(LogicalSize::new(765. + f64::from(after), 503.)));
-            let size = window.inner_size().to_logical::<f64>(scale);
-            let _ = window.request_inner_size(LogicalSize::new(target_logical_width, size.height));
+        let chrome = self.width();
+        if self.preserve_game(window) {
+            let target =
+                self.layout
+                    .target(window.inner_size().width, scale, chrome, Instant::now());
+            // Lower the minimum before requesting a close; raise it only after requesting an
+            // open. Raising the minimum first starts a separate OS-driven resize animation.
+            if chrome < previous.width() {
+                window.set_min_inner_size(Some(LogicalSize::new(765. + f64::from(chrome), 503.)));
+            }
+            self.trace_layout(window, &format!("request width={target}"));
+            let immediate =
+                window.request_inner_size(PhysicalSize::new(target, window.inner_size().height));
+            if let Some(size) = immediate {
+                self.layout
+                    .observe(size.width, scale, chrome, Instant::now());
+            }
+            window.set_min_inner_size(Some(LogicalSize::new(765. + f64::from(chrome), 503.)));
         } else {
-            self.pending_window_width = None;
-            window.set_min_inner_size(Some(LogicalSize::new(765. + f64::from(after), 503.)));
+            self.layout.cancel();
+            window.set_min_inner_size(Some(LogicalSize::new(765., 503.)));
             self.on_window_resized(window);
         }
         window.request_redraw();
-    }
-}
-fn availability(plugin: &str, key: &str) -> Option<String> {
-    if key == rustclient_plugin_host::configuration::ENABLED_KEY {
-        return None;
-    }
-    let implemented = match plugin {
-        "dev.rustclient.roofremoval" => matches!(
-            key,
-            "removePosition" | "removeHovered" | "removeDestination" | "removeBetween"
-        ),
-        "dev.rustclient.gpu" => matches!(
-            key,
-            "drawDistance"
-                | "hideUnrelatedMaps"
-                | "uiScalingMode"
-                | "smoothBanding"
-                | "brightTextures"
-                | "antiAliasingMode"
-                | "fogDepth"
-                | "anisotropicFilteringLevel"
-                | "colorBlindMode"
-                | "colorBlindIntensity"
-                | "vsyncMode"
-                | "unlockFps"
-                | "fpsTarget"
-        ),
-        "dev.rustclient.runelite" => matches!(
-            key,
-            "automaticResizeType"
-                | "lockWindowSize"
-                | "gameAlwaysOnTop"
-                | "sidebarToggleKey"
-                | "panelToggleKey"
-                | "blockExtraMouseButtons"
-        ),
-        "dev.rustclient.entityhider" => matches!(
-            key,
-            "hidePlayers"
-                | "hidePlayers2D"
-                | "hideLocalPlayer"
-                | "hideLocalPlayer2D"
-                | "hideNPCs"
-                | "hideNPCs2D"
-                | "hideAttackers"
-                | "hideThralls"
-                | "hideRandomEvents"
-        ),
-        "dev.rustclient.stretchedmode" => {
-            matches!(key, "keepAspectRatio" | "integerScaling" | "scalingFactor")
-        }
-        "dev.rustclient.idlenotifier" => key != "interactionidle",
-        "dev.rustclient.fps" => true,
-        "dev.rustclient.interfacestyles" => key == "gameframe",
-        "dev.rustclient.npchighlight" => matches!(
-            key,
-            "npcToHighlight"
-                | "drawNames"
-                | "highlightHull"
-                | "highlightTile"
-                | "highlightTrueTile"
-                | "highlightSouthWestTile"
-                | "highlightSouthWestTrueTile"
-                | "npcColor"
-                | "fillColor"
-                | "borderWidth"
-        ),
-        "dev.rustclient.playerindicators" => matches!(
-            key,
-            "highlightSelf"
-                | "ownNameColor"
-                | "highlightOthers"
-                | "nonClanMemberColor"
-                | "drawPlayerTiles"
-                | "playerNamePosition"
-        ),
-        "dev.rustclient.camera" => matches!(
-            key,
-            "cameraSpeed" | "invertYaw" | "invertPitch" | "relaxCameraPitch"
-        ),
-        "dev.rustclient.statusbars" => key != "enableRestorationBars",
-        _ => false,
-    };
-    (!implemented).then(|| pending_reason(plugin, key))
-}
-#[expect(
-    clippy::too_many_lines,
-    reason = "one arm per unported setting, grouped by plugin"
-)]
-fn pending_reason(plugin: &str, key: &str) -> String {
-    match (plugin, key) {
-        ("dev.rustclient.gpu", "expandedMapLoadingChunks") => {
-            "Needs the extended scene loading ring and matching fog/culling bounds; not ported yet.".into()
-        }
-        ("dev.rustclient.roofremoval", "overridePOH") => {
-            "Needs the player-owned-house roof override data, which is not ported yet.".into()
-        }
-        (
-            "dev.rustclient.entityhider",
-            "hidePartyMembers" | "hideFriends" | "hideClanMates" | "hideClanChatMembers" | "hideIgnores",
-        ) => "Needs the party, friends, friends chat, clan and ignore lists, which the client does not keep yet.".into(),
-        ("dev.rustclient.entityhider", "hidePets" | "hideDeadNpcs") => {
-            "Needs follower and death state for NPCs, which the client does not keep yet.".into()
-        }
-        ("dev.rustclient.entityhider", "hideWorldEntities") => {
-            "Boats are not loaded by this client yet.".into()
-        }
-        ("dev.rustclient.entityhider", "hideProjectiles") => {
-            "Projectiles are not drawn by this client yet.".into()
-        }
-        ("dev.rustclient.idlenotifier", "interactionidle") => {
-            "Needs the player's interact target, which the client does not keep yet; the idle-logout warning also cannot tell when you are in combat."
-                .into()
-        }
-        (
-            "dev.rustclient.camera",
-            "inner" | "outerLimit" | "controlFunction" | "ctrlZoomValue" | "zoomIncrement",
-        ) => "The zoom limits and scroll-wheel zoom are client-script variables and callbacks, which this client does not run yet.".into(),
-        ("dev.rustclient.camera", "disableCameraShake") => {
-            "Camera shake is not implemented, so there is nothing to disable.".into()
-        }
-        (
-            "dev.rustclient.camera",
-            "rightClickMovesCamera" | "rightClickObjects" | "rightClickExamine"
-            | "rightClickMenuBlocksCamera" | "middleClickMenu",
-        ) => "Remaps mouse buttons depending on the open menu, which the client does not model yet.".into(),
-        ("dev.rustclient.interfacestyles", "hdHealthBars") => {
-            "Needs the health bar renderer to take the 2010 bar sprites, which the client does not expose yet."
-                .into()
-        }
-        ("dev.rustclient.interfacestyles", "hdMenu" | "menuAlpha" | "condensePlayerOptions") => {
-            "Changes the right-click menu, which the client does not model as a plugin surface yet."
-                .into()
-        }
-        ("dev.rustclient.interfacestyles", "rsCrossSprites") => {
-            "Replaces the click cross sprites, which this client does not let plugins override yet."
-                .into()
-        }
-        ("dev.rustclient.interfacestyles", "alwaysStack") => {
-            "Changes a client-script callback result, and callbacks are not exposed to plugins yet."
-                .into()
-        }
-        ("dev.rustclient.npchighlight", "highlightOutline" | "outlineFeather") => {
-            "The model outline needs an outline renderer, which this client does not have yet."
-                .into()
-        }
-        ("dev.rustclient.npchighlight", "ignoreDeadNpcs" | "ignorePets") => {
-            "Needs death and follower state for NPCs, which the client does not keep yet.".into()
-        }
-        (
-            "dev.rustclient.npchighlight",
-            "highlightMenuStyle" | "deadNpcMenuColor",
-        ) => "Colours entries in the right-click menu, which the client does not model yet.".into(),
-        ("dev.rustclient.npchighlight", "showRespawnTimer") => {
-            "Needs NPC death and respawn tracking, which the client does not keep yet.".into()
-        }
-        (
-            "dev.rustclient.npchighlight" | "dev.rustclient.playerindicators",
-            "drawMinimapNames",
-        ) => "Plugin text on the minimap is not drawn by this client yet.".into(),
-        (
-            "dev.rustclient.playerindicators",
-            "highlightPartyMembers" | "highlightFriends" | "highlightFriendsChat"
-            | "highlightTeamMembers" | "highlightClanMembers" | "partyMemberNameColor"
-            | "friendNameColor" | "clanMemberColor" | "teamMemberColor" | "clanChatMemberColor"
-            | "clanMenuIcons" | "clanchatMenuIcons",
-        ) => "Needs the party, friends, friends chat, clan and team lists, which the client does not keep yet.".into(),
-        ("dev.rustclient.playerindicators", "colorPlayerMenu") => {
-            "Colours player entries in the right-click menu, which the client does not model yet."
-                .into()
-        }
-        ("dev.rustclient.statusbars", "enableRestorationBars") => {
-            "The restore previews need item and food healing data, which the client does not keep yet.".into()
-        }
-        ("dev.rustclient.stretchedmode", "increasedPerformance") => {
-            "GPU canvas sampling is controlled by the GPU plugin's UI scaling setting; this source toggle is not mapped yet."
-                .into()
-        }
-        ("dev.rustclient.gpu", "removeVertexSnapping" | "numThreads") => {
-            "Belongs to RuneLite's zone uploader, which this renderer does not have yet.".into()
-        }
-        ("dev.rustclient.menuentryswapper", _) => {
-            "Not ported: swaps act on the right-click menu's entries, which the client does not expose to plugins yet."
-                .into()
-        }
-        ("dev.rustclient.devtools", _) => {
-            "Not ported: the inspectors need widget, variable and script views the client does not expose to plugins yet."
-                .into()
-        }
-        _ => "Effect port pending; source default shown".into(),
-    }
-}
-/// Typed projection of the accepted `dev.rustclient.gpu` document; unknown or mistyped values keep defaults.
-fn gpu_settings(schema: &ConfigSchema, document: &ConfigDocument) -> GpuSettings {
-    let mut settings = GpuSettings::default();
-    let boolean = |key| match value(schema, document, key) {
-        Some(ConfigValue::Boolean(value)) => Some(*value),
-        _ => None,
-    };
-    let integer = |key| match value(schema, document, key) {
-        Some(ConfigValue::Integer(value)) => u32::try_from(*value).ok(),
-        _ => None,
-    };
-    let choice = |key| match value(schema, document, key) {
-        Some(ConfigValue::Choice(value)) => Some(value.as_str()),
-        _ => None,
-    };
-    settings.material = MaterialOptions {
-        smooth_banding: boolean("smoothBanding").unwrap_or(true),
-        bright_textures: boolean("brightTextures").unwrap_or(false),
-    };
-    settings.draw_distance = integer("drawDistance").unwrap_or(settings.draw_distance);
-    settings.hide_unrelated_maps =
-        boolean("hideUnrelatedMaps").unwrap_or(settings.hide_unrelated_maps);
-    settings.fog_depth = integer("fogDepth").unwrap_or(settings.fog_depth);
-    settings.anisotropy = integer("anisotropicFilteringLevel").unwrap_or(settings.anisotropy);
-    settings.color_blind_intensity =
-        integer("colorBlindIntensity").unwrap_or(settings.color_blind_intensity);
-    settings.unlock_fps = boolean("unlockFps").unwrap_or(settings.unlock_fps);
-    settings.fps_target = integer("fpsTarget").unwrap_or(settings.fps_target);
-    settings.anti_aliasing = match choice("antiAliasingMode") {
-        Some("DISABLED") => AntiAliasing::Disabled,
-        Some("MSAA_4") => AntiAliasing::Msaa4,
-        Some("MSAA_8") => AntiAliasing::Msaa8,
-        Some("MSAA_16") => AntiAliasing::Msaa16,
-        _ => AntiAliasing::Msaa2,
-    };
-    settings.color_blind = match choice("colorBlindMode") {
-        Some("PROTANOPIA") => ColorBlind::Protanopia,
-        Some("DEUTERANOPIA") => ColorBlind::Deuteranopia,
-        Some("TRITANOPIA") => ColorBlind::Tritanopia,
-        _ => ColorBlind::None,
-    };
-    settings.ui_scaling = match choice("uiScalingMode") {
-        Some("NEAREST") => rustclient_renderer::UiScaling::Nearest,
-        Some("LINEAR") => rustclient_renderer::UiScaling::Linear,
-        Some("MITCHELL") => rustclient_renderer::UiScaling::Mitchell,
-        Some("CATMULL_ROM") => rustclient_renderer::UiScaling::CatmullRom,
-        Some("XBR") => rustclient_renderer::UiScaling::Xbr,
-        _ => rustclient_renderer::UiScaling::Hybrid,
-    };
-    settings.vsync = match choice("vsyncMode") {
-        Some("ON") => VsyncMode::On,
-        Some("ADAPTIVE") => VsyncMode::Adaptive,
-        _ => VsyncMode::Off,
-    };
-    settings
-}
-fn notes(effective: &EffectiveGpu) -> BTreeMap<String, String> {
-    effective
-        .deviations
-        .iter()
-        .map(|deviation| (deviation.key.to_owned(), deviation.reason.clone()))
-        .collect()
-}
-/// Behavior that holds on every adapter but that the option's name does not promise.
-fn static_note(key: &str) -> Option<String> {
-    (key == "drawDistance").then(|| {
-        "Uses the revision-240 inclusive eight-tile zone square; fog still uses the requested tile distance."
-            .into()
-    })
-}
-fn apply_effect(schema: &ConfigSchema, document: &ConfigDocument, window: &Window) {
-    if schema.plugin.as_str() == "dev.rustclient.runelite" {
-        window.set_resizable(
-            value(schema, document, "lockWindowSize") != Some(&ConfigValue::Boolean(true)),
-        );
-        window.set_window_level(
-            if value(schema, document, "gameAlwaysOnTop") == Some(&ConfigValue::Boolean(true)) {
-                WindowLevel::AlwaysOnTop
-            } else {
-                WindowLevel::Normal
-            },
-        );
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use rustclient_plugin_host::configuration::Configuration;
-
-    fn gpu_configuration() -> Configuration {
-        let schema = rustclient_plugin_host::required::schemas()
-            .expect("embedded schemas")
-            .into_iter()
-            .find(|schema| schema.plugin.as_str() == "dev.rustclient.gpu")
-            .expect("embedded GPU schema");
-        Configuration::new(schema, None).expect("defaults validate")
-    }
-
-    #[test]
-    fn schema_defaults_equal_the_renderer_source_defaults() {
-        let config = gpu_configuration();
-        assert_eq!(
-            gpu_settings(config.schema(), config.document()),
-            GpuSettings::default()
-        );
-    }
-
-    #[test]
-    fn every_gpu_option_is_either_applied_or_explains_why_not() {
-        let config = gpu_configuration();
-        for setting in &config.schema().settings {
-            let reason = availability("dev.rustclient.gpu", &setting.key);
-            assert!(
-                reason.as_deref() != Some("Effect port pending; source default shown"),
-                "{} has no specific pending reason",
-                setting.key
-            );
-        }
-    }
-
-    #[test]
-    fn intermediate_sizes_during_our_own_resize_are_not_user_resizes() {
-        let start = Instant::now();
-        let mut pending = Some(PendingResize::new(1_043, start));
-        assert!(!PendingResize::accepts(&mut pending, 801, start));
-        assert!(!PendingResize::accepts(&mut pending, 950, start));
-        assert!(pending.is_some());
-        assert!(!PendingResize::accepts(&mut pending, 1_044, start));
-        assert!(pending.is_none());
-        assert!(PendingResize::accepts(&mut pending, 900, start));
-    }
-
-    #[test]
-    fn a_size_the_platform_never_delivers_expires() {
-        let start = Instant::now();
-        let mut pending = Some(PendingResize::new(1_043, start));
-        assert!(!PendingResize::accepts(&mut pending, 900, start));
-        assert!(PendingResize::accepts(
-            &mut pending,
-            900,
-            start + RESIZE_SETTLE
-        ));
-        assert!(pending.is_none());
     }
 }

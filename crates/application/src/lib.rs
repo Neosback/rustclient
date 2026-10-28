@@ -7,6 +7,7 @@
 
 pub mod builtin_config;
 mod interaction;
+pub mod shell_preferences;
 pub use interaction::{validate_walk, validate_world_action, world_actions};
 
 mod random;
@@ -23,7 +24,9 @@ mod sequence_policy;
 pub use sequence_policy::SequencePolicyResolver;
 
 mod scene;
-pub use scene::{LoadedScene, load_scene, reproject_scene};
+pub use scene::{
+    LoadedScene, load_scene, load_scene_from_cache, load_scene_with_inputs, reproject_scene,
+};
 
 pub mod scripts;
 

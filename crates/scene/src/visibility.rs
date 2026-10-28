@@ -75,6 +75,7 @@ pub struct SceneVisibility {
     pub hidden: RoofMask,
     pub zones: Option<ZoneWindow>,
     pub hide_unrelated_maps: bool,
+    pub model_view: Option<crate::ModelView>,
 }
 impl SceneVisibility {
     #[must_use]
@@ -84,7 +85,22 @@ impl SceneVisibility {
             hidden: RoofMask::default(),
             zones: None,
             hide_unrelated_maps: false,
+            model_view: None,
         }
+    }
+    #[must_use]
+    pub fn with_model_view(mut self, view: crate::ModelView) -> Self {
+        self.model_view = Some(view);
+        self
+    }
+    #[must_use]
+    pub fn shows_model(&self, model: &crate::SceneModel) -> bool {
+        self.model_view.is_none_or(|view| {
+            model
+                .sort_source
+                .as_ref()
+                .is_none_or(|source| source.admitted(view))
+        })
     }
     #[must_use]
     pub fn with_policy(

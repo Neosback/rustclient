@@ -1,3 +1,4 @@
+mod sorted_models;
 use super::*;
 use rustclient_cache::world::*;
 use rustclient_model::{
@@ -564,6 +565,7 @@ fn entity_models_stand_on_the_ground_with_their_tops_above_it() {
         model,
         Placement {
             position: [0, 0],
+            depth_policy: rustclient_model::ModelDepthPolicy::DepthWrite,
             plane: Plane::MIN,
             size: 1,
             footprint: 0,
@@ -984,4 +986,101 @@ fn absent_map_catalog_tiles_remain_unwalkable_without_inventing_visible_floors()
     let mesh = build_mesh(&empty, empty.descriptor(), from).unwrap();
     assert_eq!(mesh.stats.terrain_triangles, 0);
     assert_eq!(empty.ground_height(Plane::MIN, [256, 256]).unwrap(), 0);
+}
+
+#[test]
+fn npc_projection_keeps_base_depth_policy_when_appearance_morphs() {
+    use crate::entity_mesh::{
+        EntityCatalog, EntityPresentation, HiddenActors, build_entities_geometry,
+    };
+    use rustclient_cache::{
+        GroupId, IndexId, Source,
+        osrs240::{definitions, entity_assets::EntityAssets},
+    };
+    use rustclient_game_state::{
+        AuthenticatedPlayer, GameState, InitialPlacement, SemanticOperation,
+    };
+    use rustclient_model::*;
+    let asset = scene(with_model());
+    let mut state = GameState::new();
+    state
+        .apply_operation(SemanticOperation::AuthenticateSession {
+            revision: REVISION_240,
+            player: AuthenticatedPlayer {
+                profile: ServerProfileId::new(1),
+                player: PlayerIndex::new(1),
+                member: false,
+                staff_level: 0,
+            },
+        })
+        .unwrap();
+    state
+        .apply_operation(SemanticOperation::EstablishInitialPlacement(
+            InitialPlacement {
+                position: WorldTile::new(0, 0, Plane::MIN),
+                map_anchor: WorldTile::new(0, 0, Plane::MIN),
+                area: None,
+            },
+        ))
+        .unwrap();
+    state
+        .apply_operation(SemanticOperation::UpdateNpcs(NpcInfoUpdate {
+            new_npcs: vec![NewNpc {
+                index: NpcIndex::new(1),
+                definition_id: NpcDefinitionId::new(1),
+                delta_x: 0,
+                delta_y: 0,
+                orientation: 0,
+            }],
+            ..Default::default()
+        }))
+        .unwrap();
+    let before = state.semantic_fingerprint();
+    for (base_deferred, morph_deferred) in [(false, false), (true, false), (false, true)] {
+        let mut batch = EntityAssets::default();
+        for (id, deferred) in [(1, base_deferred), (2, morph_deferred)] {
+            let bytes: &[u8] = if deferred { &[147, 0] } else { &[0] };
+            let mut def = definitions::npc(
+                bytes,
+                NpcDefinitionId::new(id),
+                Source::group(IndexId(2), GroupId(9)),
+            )
+            .unwrap();
+            def.models.push(ModelId::new(1));
+            if id == 1 {
+                def.morphs = Some(NpcMorphs {
+                    varbit: None,
+                    varp: Some(VarpId::new(1)),
+                    transforms: vec![Some(NpcDefinitionId::new(2)); 2],
+                });
+            }
+            batch.npcs.insert(def.id, def);
+        }
+        let mut catalog = EntityCatalog::default();
+        assert!(catalog.merge(&asset, batch).is_empty());
+        let mut geometry = SceneGeometry::default();
+        build_entities_geometry(
+            &asset,
+            &catalog,
+            state.entities(),
+            &ActorMotion::default(),
+            &BTreeMap::new(),
+            EntityPresentation {
+                interpolation: &AnimationInterpolation::default(),
+                hidden: &HiddenActors::default(),
+            },
+            &mut geometry,
+        )
+        .unwrap();
+        assert_eq!(geometry.models.len(), 1);
+        assert_eq!(
+            geometry.models[0].depth_policy,
+            if base_deferred {
+                ModelDepthPolicy::SortedDeferredWrite
+            } else {
+                ModelDepthPolicy::DepthWrite
+            }
+        );
+        assert_eq!(state.semantic_fingerprint(), before);
+    }
 }

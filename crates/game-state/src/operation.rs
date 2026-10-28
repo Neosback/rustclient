@@ -240,13 +240,17 @@ impl GameState {
             SemanticOperation::SelectGameFrameTab(tab) => self.apply_select_tab(tab),
             SemanticOperation::SetDestination(destination) => self.apply_destination(destination),
             SemanticOperation::RebuildMap(anchor) => {
-                let placement = self
+                let (placement, changed) = self
                     .rebuild_map(anchor)
                     .map_err(OperationError::Connection)?;
-                Ok(OperationCommit::new(
-                    Some(SemanticEvent::MapRebuilt(placement)),
-                    StateDelta::MAP_REBUILD,
-                ))
+                Ok(if changed {
+                    OperationCommit::new(
+                        Some(SemanticEvent::MapRebuilt(placement)),
+                        StateDelta::MAP_REBUILD,
+                    )
+                } else {
+                    OperationCommit::new(None, StateDelta::default())
+                })
             }
             SemanticOperation::InstallScene(scene) => {
                 self.install_scene(scene)

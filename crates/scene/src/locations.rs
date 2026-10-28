@@ -89,9 +89,11 @@ pub(crate) fn build(
         let target = model.target;
         emit(asset, mesh, model)?;
         if mesh.geometry.vertices.len() > first {
-            mesh.geometry
-                .models
-                .push(first..mesh.geometry.vertices.len());
+            mesh.geometry.models.push(crate::mesh::SceneModel {
+                vertices: first..mesh.geometry.vertices.len(),
+                depth_policy: rustclient_model::ModelDepthPolicy::DepthWrite,
+                sort_source: None,
+            });
             mesh.geometry.picks.push(crate::PickRange {
                 vertices: first..mesh.geometry.vertices.len(),
                 target,

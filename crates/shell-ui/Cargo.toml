@@ -21,6 +21,8 @@ anyrender_vello_cpu = "=0.8.0"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 dioxus-web = "=0.7.10"
+wasm-bindgen.workspace = true
+web-sys = { workspace = true, features = ["Element", "PointerEvent", "EventTarget"] }
 
 [dev-dependencies]
 image.workspace = true

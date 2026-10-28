@@ -25,6 +25,9 @@ def main():
                 content = '\n'.join((SHADERS / name).read_text() for name in
                     ('colorblind.wgsl', 'ui_scale.wgsl', 'ui_xbr.wgsl')).encode()
                 kind = 'text/plain; charset=utf-8'
+            elif self.path == '/probe/depth':
+                content = Path(__file__).with_name('depth_probe.js').read_bytes()
+                kind = 'text/javascript; charset=utf-8'
             elif self.path == '/shader/world':
                 content = '\n'.join((SHADERS / name).read_text() for name in
                     ('colorblind.wgsl', 'world.wgsl')).encode()

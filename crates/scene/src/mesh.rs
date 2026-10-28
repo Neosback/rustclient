@@ -51,11 +51,18 @@ pub struct SceneGeometry {
     pub opaque: Vec<u32>,
     pub transparent: Vec<u32>,
     /// Non-overlapping vertex spans, one per emitted model, used for face ordering.
-    pub models: Vec<std::ops::Range<usize>>,
+    pub models: Vec<SceneModel>,
     /// Ordered vertex spans emitted for the same posed models submitted to the GPU.
     pub picks: Vec<PickRange>,
     /// Disposable overhead anchors extracted from the posed actor geometry.
     pub actor_labels: Vec<ActorLabelAnchor>,
+}
+/// One whole emitted model, retaining its source raster policy alongside its existing vertex span.
+#[derive(Debug, Clone)]
+pub struct SceneModel {
+    pub vertices: std::ops::Range<usize>,
+    pub depth_policy: rustclient_model::ModelDepthPolicy,
+    pub sort_source: Option<std::sync::Arc<crate::ModelSortSource>>,
 }
 #[derive(Debug, Clone, Copy)]
 pub enum ActorLabelId {
@@ -203,7 +210,9 @@ pub fn build_mesh_with_inputs(
     spawn: WorldTile,
     inputs: &crate::SceneryInputs,
 ) -> Result<WorldMesh> {
-    if asset.descriptor() != descriptor || !descriptor.contains(spawn) {
+    if asset.descriptor().with_plane(descriptor.origin().plane) != descriptor
+        || !descriptor.contains(spawn)
+    {
         return Err(SceneError(
             "mesh extraction does not match authoritative scene reference".into(),
         ));

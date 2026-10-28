@@ -10,7 +10,7 @@ mod read_only;
 mod storage;
 
 pub use clock::NativeClock;
-pub use read_only::DirectoryBlobs;
+pub use read_only::{BlobReadStats, DirectoryBlobs};
 pub use storage::DirectoryStorage;
 
 mod tcp;

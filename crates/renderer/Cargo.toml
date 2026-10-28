@@ -17,6 +17,7 @@ rustclient-cache = { path = "../cache" }
 wgpu.workspace = true
 
 [dev-dependencies]
+pollster.workspace = true
 naga = { version = "30.0.1", default-features = false, features = ["wgsl-in"] }
 
 [lints]

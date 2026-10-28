@@ -96,6 +96,8 @@ pub fn decode(bytes: &[u8], id: WidgetId, source: Source) -> Result<WidgetDefini
         1337 => WidgetContent::WorldViewport,
         1338 => WidgetContent::Minimap,
         1339 => WidgetContent::Compass,
+        1400 => WidgetContent::WorldMap,
+        1401 => WidgetContent::WorldMapOverview,
         n => WidgetContent::Other(n),
     };
     let offset = [i32::from(r.i16()?), i32::from(r.i16()?)];

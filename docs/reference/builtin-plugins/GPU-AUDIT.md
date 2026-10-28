@@ -119,3 +119,10 @@ Its limited camera framing is documented separately from outstanding Java/gamepl
 accumulation and shared canvas consumer. Native actual-GPU checks and 31 core-feature WebGPU checks
 pass. This closes the implementation obligation for alphaOverlay while preserving separate source/
 gameplay visual acceptance. The canvas uniform is now 64 bytes; no extra pass or scene is introduced.
+
+## Sorted actor depth continuation
+
+[The actor-depth checkpoint](GPU-ACTOR-DEPTH-2026-10-27.md) implements the source mode-2 opaque
+color/depth sequence, typed model-span policy and opcode-147 retention. Native source-priority/depth
+diagnostics and 35 browser checks pass. This implements the two-pass machinery; source front-face/bucket/near-plane acceptance and broader tint/world-view/
+NPC-customization and runtime gates remain open. The frozen ledger still has ten obligations.

@@ -128,6 +128,12 @@ pub struct ReferenceCameraPose {
     pub pitch: u16,
     pub zoom: i32,
 }
+impl ReferenceCameraPose {
+    #[must_use]
+    pub fn model_view(self) -> rustclient_scene::ModelView {
+        rustclient_scene::ModelView::new(self.position, self.yaw, self.pitch)
+    }
+}
 /// Disposable camera state; retained independently of GPU resource recreation.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct GameplayCameraController {
@@ -319,13 +325,18 @@ impl GameplayCameraController {
             [2. / viewport.width as f32, 0., 0., 0.],
             [0., -2. / viewport.height as f32, 0., 0.],
             [0., 0., 0., 1.],
-            [0., 0., 100., 0.],
+            [0., 0., rustclient_scene::SORT_NEAR, 0.],
         ]);
-        let pitch = f32::from(pose.pitch) * std::f32::consts::TAU / 2048.;
-        let yaw = f32::from(pose.yaw) * std::f32::consts::TAU / 2048.;
+        let [ys, yc, ps, pc] = pose.model_view().coefficients();
+        let view = Mat4::from_cols_array_2d(&[
+            [yc, ys * ps, -ys * pc, 0.],
+            [0., pc, ps, 0.],
+            [ys, -yc * ps, yc * pc, 0.],
+            [0., 0., 0., 1.],
+        ]);
         let translation =
             Mat4::from_translation(-Vec3::from_array(pose.position.map(|v| v as f32)));
-        scale * projection * Mat4::from_rotation_x(pitch) * Mat4::from_rotation_y(yaw) * translation
+        scale * projection * view * translation
     }
     /// Project a scene-local point through the world render matrix into logical viewport pixels.
     /// Returns absence for points behind the near plane or outside the shaped viewport.
@@ -354,7 +365,7 @@ impl GameplayCameraController {
         point: [i32; 3],
     ) -> Option<([f32; 2], [f32; 2])> {
         let clip = self.matrix(viewport) * Vec3::from_array(point.map(|v| v as f32)).extend(1.);
-        if !clip.is_finite() || clip.w < 100. {
+        if !clip.is_finite() || clip.w < rustclient_scene::SORT_NEAR {
             return None;
         }
         let ndc = clip.truncate() / clip.w;

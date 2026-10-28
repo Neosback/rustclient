@@ -1,6 +1,6 @@
 //! Native scene worker and disposable camera state.
 use crate::LoadEvent;
-use rustclient_application::{LoadedScene, load_scene};
+use rustclient_application::{LoadedScene, load_scene_from_cache};
 use rustclient_cache::{
     Cache, CacheProfile,
     osrs240::entity_assets::{EntityLoader, EntityRequest},
@@ -8,8 +8,12 @@ use rustclient_cache::{
 use rustclient_game_state::InitialPlacement;
 use rustclient_platform_native::DirectoryBlobs;
 use rustclient_renderer::{CameraInput, CameraTarget, GameplayCameraController};
-use std::path::PathBuf;
+use std::{
+    path::{Path, PathBuf},
+    sync::{Arc, OnceLock},
+};
 use winit::event_loop::EventLoopProxy;
+pub type SharedCacheSlot = Arc<OnceLock<Result<Arc<Cache<DirectoryBlobs>>, String>>>;
 pub struct SceneView {
     pub generation: u64,
     /// Reused every client cycle; never aliases the animated-scenery geometry.
@@ -19,6 +23,7 @@ pub struct SceneView {
     pub animator_in_flight: Option<rustclient_model::ClientCycle>,
     pub cache_dir: PathBuf,
     pub profile: CacheProfile,
+    pub shared_cache: SharedCacheSlot,
     pub loading: bool,
     pub attempted: bool,
     pub loaded: Option<LoadedScene>,
@@ -46,6 +51,7 @@ impl SceneView {
             animator_in_flight: None,
             cache_dir: options.cache_dir.clone(),
             profile: options.profile,
+            shared_cache: Arc::new(OnceLock::new()),
             loading: false,
             attempted: false,
             loaded: None,
@@ -87,18 +93,32 @@ impl SceneView {
         self.camera = None;
         self.input = CameraInput::default();
     }
-    /// Drop the loaded region but keep what is not tied to it: the camera and the actors' drawn
-    /// positions, rotations and poses, which are world-space and continue across a map rebuild.
+    /// Drop the loaded region but keep what is not tied to it: the camera, the actors' drawn
+    /// positions, rotations and poses, and already-decoded entity definitions/models/animations.
     pub fn invalidate_map(&mut self) {
         let camera = self.camera;
         let motion = std::mem::take(&mut self.motion);
+        let entity_catalog = std::mem::take(&mut self.entity_catalog);
         self.clear();
         self.camera = camera;
         self.motion = motion;
+        self.entity_catalog = entity_catalog;
+    }
+    pub fn open_shared_cache(
+        cache_dir: &Path,
+        slot: &OnceLock<Result<Arc<Cache<DirectoryBlobs>>, String>>,
+    ) -> Result<Arc<Cache<DirectoryBlobs>>, String> {
+        slot.get_or_init(|| {
+            DirectoryBlobs::open(cache_dir)
+                .map_err(|e| e.to_string())
+                .and_then(|source| Cache::open(source).map(Arc::new).map_err(|e| e.to_string()))
+        })
+        .clone()
     }
     pub fn start(
         &mut self,
         placement: InitialPlacement,
+        inputs: rustclient_scene::SceneryInputs,
         generation: u64,
         proxy: EventLoopProxy<LoadEvent>,
     ) -> Result<(), String> {
@@ -107,19 +127,16 @@ impl SceneView {
         }
         let path = self.cache_dir.clone();
         let profile = self.profile;
+        let shared_cache = Arc::clone(&self.shared_cache);
         std::thread::Builder::new()
             .name("spawn-scene-loader".into())
             .spawn(move || {
-                let result = DirectoryBlobs::open(path)
-                    .map_err(|e| e.to_string())
-                    .and_then(|source| {
-                        load_scene(source, profile, placement, |message| {
-                            let _ = proxy.send_event(LoadEvent::SceneProgress(
-                                generation,
-                                message.to_owned(),
-                            ));
-                        })
-                    });
+                let result = Self::open_shared_cache(&path, &shared_cache).and_then(|cache| {
+                    load_scene_from_cache(&cache, profile, placement, &inputs, |message| {
+                        let _ = proxy
+                            .send_event(LoadEvent::SceneProgress(generation, message.to_owned()));
+                    })
+                });
                 let _ = proxy.send_event(LoadEvent::SceneLoaded(generation, Box::new(result)));
             })
             .map_err(|e| format!("scene worker: {e}"))?;
@@ -189,13 +206,11 @@ impl SceneView {
         let (sender, receiver) = std::sync::mpsc::channel::<EntityRequest>();
         let path = self.cache_dir.clone();
         let profile = self.profile;
+        let shared_cache = Arc::clone(&self.shared_cache);
         std::thread::Builder::new()
             .name("entity-assets".into())
             .spawn(move || {
-                let cache = match DirectoryBlobs::open(path)
-                    .map_err(|e| e.to_string())
-                    .and_then(|source| Cache::open(source).map_err(|e| e.to_string()))
-                {
+                let cache = match Self::open_shared_cache(&path, &shared_cache) {
                     Ok(cache) => cache,
                     Err(error) => {
                         eprintln!("entity assets: {error}");

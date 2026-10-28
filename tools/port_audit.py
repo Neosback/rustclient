@@ -18,7 +18,9 @@ STATUSES = {'untriaged', 'evidence-found', 'specified', 'partial', 'implemented'
             'verified', 'not-needed', 'injection-only', 'blocked'}
 VERIFICATIONS = {'unrecorded', 'source-reviewed', 'contract-tested', 'live-tested',
                  'visual-accepted', 'not-applicable'}
-DECLARATION = re.compile(r'^   (?![ @])(?P<header>[^\n;{}]+\([^{};]*?\)\s*(?:throws\s+[^{};]+)?)[{;]', re.M)
+# Vineflower uses three spaces; the pinned RuneLite Java helpers use one tab. Keep both
+# at member indentation so calls nested inside method bodies are not declarations.
+DECLARATION = re.compile(r'^(?:   (?![ @])|\t(?![ \t@]))(?P<header>[^\n;{}]+\([^{};]*?\)\s*(?:throws\s+[^{};]+)?)[{;]', re.M)
 NON_CODE = re.compile(r'"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'|//[^\n]*|/\*[\s\S]*?\*/')
 
 
