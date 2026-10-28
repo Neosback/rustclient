@@ -14,6 +14,9 @@ overview rendering, native pan/zoom and compass reset exist. Full gameplay parit
 remains incomplete: selected NPC masks can terminate sessions, instances are
 rejected, ground-item and server scenery updates/actions/dialogue are incomplete,
 actor effects/model widgets/audio and many packet/script consumers remain open.
+Server pings and reflection checks go unanswered, and a reasoned server logout ends
+as a protocol error. Of 606 named CS2 opcodes, 185 still fail in the host. Of 131
+pinned RuneLite plugins, 11 have partial ports.
 
 The native WIT component/host/overlay sample and a JS-host transpilation proof
 exist; full plugin feature coverage and browser runtime integration remain open.
@@ -53,9 +56,11 @@ Verify the exact pinned checkout with:
 cargo run -p xtask -- references status
 ```
 
-The reference trees are outside the RustClient Cargo workspace. Direct RuneLite
-235 and rsprox snapshots now supplement the RustOSRS submodule. rsprox supplies
-both client and server packet evidence; OpenRune and its pinned rsprot sources
+The reference trees are outside the RustClient Cargo workspace. The exact-240
+evidence is the rl-suite deob (`references/rl-suite-240`), the open-runelite 240
+tree and the pinned injected 240 jar; the readable RuneLite 235 tree, rsprox and the
+RustOSRS submodule supplement them. rsprox supplies both client and server packet
+evidence, including an `osrs-240` module; OpenRune and its pinned rsprot sources
 resolve revision-240 differences. OpenRune FileStore supplies additional cache
 opcode/decoder evidence. See [the integration guide](docs/reference/REVISION-240.md)
 and [the current delivery plan](docs/plan/REVISION-240-delivery.md).

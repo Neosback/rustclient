@@ -1,7 +1,7 @@
 {
   "review_date": "2026-10-28",
   "initial_rust_commit": "0a91c0237c5d2bb4825a549ffc89497dfe671208",
-  "reviewed_rust_commit": "bd3aae10d4a37c46401aaf71be2fa415cbe623e8",
+  "reviewed_rust_commit": "b0c57e072fe9365c44142e719bea30a45e93ebd4",
   "worktree_note": "Review began with dirty native/world-map/renderer/shell changes, committed externally as bd3aae10 during inspection. No acceptance is inferred from that commit. Only documentation/tooling changed by this review.",
   "method": "Targeted static source/caller inspection; no CodeGraph index present. Not exhaustive behavioral verification.",
   "pasted_input_sha256": "0d896a6f52f66fc5a3c7e0d46369dadcd47639c878026abc947a8336d1a3ee63",
@@ -242,17 +242,80 @@
     {
       "path": "references/rl-suite-240/sources-semantic/classBB.java",
       "sha256": "9b299f51dce52286186c8d8ce9d5fc5bd5c48d73abf448cd1a24490dee75409a"
+    },
+    {
+      "path": "crates/cache/src/osrs240/script_opcodes.rs",
+      "sha256": "a4f12b6d84c9f9c5d332a0de709791c1bda4132dc7dfbe687884f276bb5f0330"
+    },
+    {
+      "path": "crates/cache/src/script.rs",
+      "sha256": "70ecd32d010253da212c8e4b264791bd785a571b9ea3d6fcb4ed6082f31c8c49"
+    },
+    {
+      "path": "crates/plugin-bridge/src/project.rs",
+      "sha256": "c85ac1cd97d00b10122c6bbbd92063ee4fb66af3da546c5b7c40d2383b0170d7"
+    },
+    {
+      "path": "crates/plugin-bridge/src/diff.rs",
+      "sha256": "d46d0be4448bf8aac9d87a89d93bf54f2b714092fcf2d54824db9a86fb0aa669"
+    },
+    {
+      "path": "crates/plugin-api/src/events.rs",
+      "sha256": "880b34a5b95357ef5cd6d65d402a76c1761dee9d5d65fc15a8d51eba399c8ccb"
+    },
+    {
+      "path": "crates/input/src/lib.rs",
+      "sha256": "720f8058ab2a0e6fc0f2aee3ca9e7b62a9739dda473c04580a320e37932c28e7"
+    },
+    {
+      "path": "crates/plugin-runtime-web/src/lib.rs",
+      "sha256": "f6fd0055359abd767dff9f655eae6e9f76e84916b9098e95151e4c4d21ce8a6c"
+    },
+    {
+      "path": "apps/native/src/input_activity.rs",
+      "sha256": "75d17a1c6da906b61626aff59d0f14c49554c113eeec069c75fe88b4059eec93"
+    },
+    {
+      "path": "crates/cache/src/osrs240/script_tables.rs",
+      "sha256": "60cff2319dc06ec450d9d605425bef9e0d29055176b0b0f74aa29cc7c3a85fa2"
+    },
+    {
+      "path": "crates/cache/src/osrs240/mod.rs",
+      "sha256": "bc292181057fde4bbd7c95965d215b98e21bb44a52951d08fb9e905c0c54b8ae"
+    },
+    {
+      "path": "references/rsprox-master/protocol/osrs-240/src/main/kotlin/net/rsprox/protocol/v240/game/outgoing/decoder/prot/GameServerProtId.kt",
+      "sha256": "bb39207b4e429bc0f68253e2863425b1c8d2e50b15f5a6e4dd64b17ab527b3bb"
+    },
+    {
+      "path": "references/rsprox-master/protocol/osrs-240/src/main/kotlin/net/rsprox/protocol/v240/game/incoming/decoder/prot/GameClientProtId.kt",
+      "sha256": "61b501f0443cb4dd0621b3e2670c9bc93037ff5091259a4dd1c60a01eb5c11f9"
+    },
+    {
+      "path": "references/open-runelite-rev-240/cache/src/main/java/net/runelite/cache/ConfigType.java",
+      "sha256": "04e76c9e77ef58b621546f69907e568b9192ed7134c1174efc6490fa1ae6bc0b"
+    },
+    {
+      "path": "references/open-runelite-rev-240/cache/src/main/java/net/runelite/cache/IndexType.java",
+      "sha256": "99c9a8144cec4306b350cf215c96e15aed9846f4c5a8272400780bc8f5bb081a"
     }
   ],
   "packet_coverage_counts": {
     "missing-encoder": 98,
     "encoded-subset": 19,
-    "framed-unhandled": 111,
+    "framed-unhandled": 110,
     "semantic-subset": 31,
     "rejected": 1,
-    "partial": 6,
+    "partial": 7,
     "codec-context": 2,
     "unassigned": 1
   },
-  "validation": "See REVISION-240-delivery.md for documentation checks. Cargo/live/Java/GPU/visual checks not run by this review."
+  "validation": "See REVISION-240-delivery.md for documentation checks. Cargo/live/Java/GPU/visual checks not run by this review.",
+  "followup_review": {
+    "date": "2026-10-28",
+    "rust_commit": "b0c57e072fe9365c44142e719bea30a45e93ebd4",
+    "note": "Crates/apps/plugins/wit/xtask and Cargo files are byte-identical to bd3aae10; the follow-up re-inspected the same Rust tree against pinned references and added generated denominators. Only documentation/tooling changed.",
+    "method": "Targeted static inspection plus generated inventories (tools/parity_inventory.py); rsprox osrs-240 GameServerProtId/GameClientProtId compared with the pinned deob packet tables. Not exhaustive behavioral verification.",
+    "validation": "See CURRENT-AUDIT.md follow-up section. No Cargo, Java, live-login, GPU, performance or visual checks were run."
+  }
 }

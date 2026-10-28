@@ -1,0 +1,132 @@
+plugin	name	enabled_by_default	flags	java_files	java_lines	network	rustclient_status	category	blocking	disposition	note
+account	Account	true		1	150	no	not-started	external-service	plugin-api	needs-decision	RuneLite account login; RustClient has no RuneLite account service
+achievementdiary	Diary Requirements	true		21	2206	no	not-started	content-helper	widgets|scripts|var-domains	proposed-applicable	
+agility	Agility	true		9	1506	no	not-started	content-helper	world-effects|dynamic-scenery|ground-items|plugin-api	proposed-applicable	
+ammo	Ammo	false		2	266	no	not-started	client-feature	widgets|plugin-api	proposed-applicable	equipment inventory infobox
+animsmoothing	Animation Smoothing	false		1	108	no	partial-module	client-feature	action-legacy|action-cached	proposed-applicable	
+antidrag	Anti Drag	false		2	407	no	not-started	client-feature	widget-input|plugin-api	proposed-applicable	drag dead-time override
+attackstyles	Attack Styles	false		4	745	no	not-started	client-feature	widgets|var-domains|plugin-api	proposed-applicable	
+bank	Bank	true		4	1059	no	not-started	client-feature	widgets|scripts|plugin-api	proposed-applicable	
+banktags	Bank Tags	true		13	4182	no	not-started	client-feature	widgets|scripts|plugin-api	proposed-applicable	script callbacks/layouts
+barbarianassault	Barbarian Assault	true		7	690	no	not-started	content-helper	widgets|plugin-api	proposed-applicable	
+barrows	Barrows Brothers	true		5	664	no	not-started	content-helper	widgets|minimap|plugin-api	proposed-applicable	
+blastfurnace	Blast Furnace	true		7	659	no	not-started	content-helper	widgets|dynamic-scenery|plugin-api	proposed-applicable	
+blastmine	Blast Mine	true		6	672	no	not-started	content-helper	dynamic-scenery|plugin-api	proposed-applicable	
+boosts	Boosts Information	true		6	1027	no	not-started	client-feature	widgets|plugin-api	proposed-applicable	
+bosstimer	Boss Timers	true		3	288	no	not-started	content-helper	npc-defs|plugin-api	proposed-applicable	
+camera	Camera	false		3	847	no	partial-module	client-feature	camera|plugin-api	proposed-applicable	
+cannon	Cannon	true		6	874	no	not-started	content-helper	world-effects|dynamic-scenery|plugin-api	proposed-applicable	
+chatchannel	Chat Channels	true		5	1129	no	not-started	client-feature	private-clan-chat|plugin-api	proposed-applicable	
+chatcommands	Chat Commands	true		4	3423	no	not-started	external-service	public-chat|private-clan-chat|plugin-api	needs-decision	hiscore/price lookups need network service decision
+chatfilter	Chat Filter	false		3	698	no	not-started	client-feature	public-chat|plugin-api	proposed-applicable	
+chathistory	Chat History	true		3	568	no	not-started	client-feature	public-chat|plugin-api	proposed-applicable	
+chatnotifications	Chat Notifications	false		2	541	no	not-started	client-feature	public-chat|required-plugins	proposed-applicable	
+cluescrolls	Clue Scroll	true		44	11230	no	not-started	content-helper	world-map|ground-items|widgets|plugin-api	proposed-applicable	
+combatlevel	Combat Level	true		3	477	no	not-started	client-feature	widgets|plugin-api	proposed-applicable	
+config	Configuration	true	hidden	15	5438	no	not-started	client-feature	sidebar|required-plugins	proposed-applicable	settings panel equivalent is the RustClient shell
+cooking	Cooking	true		5	510	no	not-started	content-helper	actor-effects|plugin-api	proposed-applicable	
+corp	Corporeal Beast	true		3	469	no	not-started	content-helper	actor-effects|plugin-api	proposed-applicable	
+crowdsourcing	OSRS Wiki Crowdsourcing	false		22	1654	yes	not-started	external-service	plugin-api	needs-decision	submits data to OSRS Wiki
+customcursor	Custom Cursor	false		3	281	no	not-started	client-feature	canvas|plugin-api	proposed-applicable	
+dailytaskindicators	Daily Task Indicator	true		2	419	no	not-started	content-helper	var-domains|plugin-api	proposed-applicable	
+defaultworld	Default World	true		2	219	no	not-started	client-feature	login|plugin-api	proposed-applicable	needs world list
+devtools	Developer Tools	true	developer	27	5401	no	schema-only	developer	plugin-api|widgets|scripts	proposed-applicable	
+discord	Discord	true		6	1489	yes	not-started	external-service	plugin-api	needs-decision	Discord IPC/platform API
+dpscounter	DPS Counter	false		5	699	no	not-started	content-helper	actor-effects|plugin-api	proposed-applicable	party-dependent
+driftnet	Drift Net	false		5	728	no	not-started	content-helper	dynamic-scenery|plugin-api	proposed-applicable	
+emojis	Emojis	false		2	478	yes	not-started	client-feature	public-chat|fonts	proposed-applicable	downloads emoji sprites
+entityhider	Entity Hider	false		2	554	no	partial-module	client-feature	actor-effects|world-effects|plugin-api	proposed-applicable	
+examine	Examine	true		2	301	no	not-started	client-feature	menus|public-chat	proposed-applicable	
+fairyring	Fairy Rings	true		3	434	no	not-started	content-helper	widgets|scripts|plugin-api	proposed-applicable	
+fishing	Fishing	true		7	1192	no	not-started	content-helper	actor-effects|plugin-api	proposed-applicable	
+fps	FPS Control	false		4	468	no	partial-module	client-feature	required-plugins	proposed-applicable	
+friendlist	Friend List	true		2	298	no	not-started	client-feature	private-clan-chat|plugin-api	proposed-applicable	
+friendnotes	Friend Notes	true		4	544	no	not-started	client-feature	private-clan-chat|plugin-api	proposed-applicable	
+gpu	GPU	true		21	6512	no	required-service	client-feature	gpu|materials|depth	required	required in RustClient
+grandexchange	Grand Exchange	true		14	2584	yes	not-started	external-service	widgets|scripts|plugin-api	needs-decision	GE offers are client state; price lookups are network
+grounditems	Ground Items	true		17	2793	no	not-started	client-feature	ground-items|menus|plugin-api	proposed-applicable	
+groundmarkers	Ground Markers	true		7	1131	no	not-started	client-feature	plugin-api	proposed-applicable	tile overlays + persisted markers
+herbiboars	Herbiboar	true		7	1032	no	not-started	content-helper	dynamic-scenery|plugin-api	proposed-applicable	
+hiscore	HiScore	true		4	1397	no	not-started	external-service	plugin-api	needs-decision	Jagex hiscore HTTP
+hunter	Hunter	true		4	938	no	not-started	content-helper	dynamic-scenery|plugin-api	proposed-applicable	
+idlenotifier	Idle Notifier	false		2	1315	no	partial-module	client-feature	actor-effects|facing|plugin-api	proposed-applicable	
+implings	Implings	true		6	967	no	not-started	content-helper	minimap|plugin-api	proposed-applicable	
+info	Info Panel	true		3	462	no	not-started	client-feature	sidebar	proposed-applicable	RuneLite info panel
+instancemap	Instance Map	true		3	578	no	not-started	client-feature	instances|plugin-api	proposed-applicable	
+interacthighlight	Interact Highlight	false		3	934	no	not-started	client-feature	facing|menus|plugin-api	proposed-applicable	
+interfacestyles	Interface Styles	false		7	1382	no	partial-module	client-feature	widgets|plugin-api	proposed-applicable	
+inventorygrid	Inventory Grid	false		3	317	no	not-started	client-feature	widget-input|plugin-api	proposed-applicable	
+inventorytags	Inventory Tags	false		4	535	no	not-started	client-feature	widgets|plugin-api	proposed-applicable	
+inventoryviewer	Inventory Viewer	false		3	279	no	not-started	client-feature	plugin-api	proposed-applicable	
+itemcharges	Item Charges	true		7	2169	no	not-started	content-helper	public-chat|widgets|plugin-api	proposed-applicable	
+itemidentification	Item Identification	false		5	1333	no	not-started	client-feature	widgets|plugin-api	proposed-applicable	
+itemprices	Item Prices	false		2	419	no	not-started	external-service	widgets|plugin-api	needs-decision	price data source
+itemstats	Item Stats	true		46	4339	no	not-started	client-feature	widgets|plugin-api	proposed-applicable	
+keyremapping	Key Remapping	false		3	779	no	not-started	client-feature	widget-input|plugin-api	proposed-applicable	
+kingdomofmiscellania	Kingdom of Miscellania	false		3	441	no	not-started	content-helper	var-domains|plugin-api	proposed-applicable	
+kourendlibrary	Kourend Library	true		10	2176	no	not-started	content-helper	widgets|plugin-api	proposed-applicable	
+loginscreen	Login Screen	true		3	563	yes	not-started	client-feature	login	proposed-applicable	background download is network
+logouttimer	Logout Timer	false		2	126	no	not-started	client-feature	login|plugin-api	proposed-applicable	
+loottracker	Loot Tracker	true		13	3637	yes	not-started	external-service	ground-items|actor-effects|plugin-api	needs-decision	cloud sync is network
+lowmemory	Low Detail	false		2	182	no	not-started	client-feature	gpu	proposed-applicable	
+menuentryswapper	Menu Entry Swapper	false		11	3106	no	schema-only	client-feature	menus|plugin-api	proposed-applicable	
+metronome	Metronome	false		2	174	no	not-started	client-feature	audio|plugin-api	proposed-applicable	
+minimap	Minimap	true		3	429	no	not-started	client-feature	minimap|plugin-api	proposed-applicable	
+mining	Mining	false		8	930	no	not-started	content-helper	dynamic-scenery|plugin-api	proposed-applicable	
+motherlode	Motherlode Mine	false		3	693	no	not-started	content-helper	dynamic-scenery|plugin-api	proposed-applicable	
+mousehighlight	Mouse Tooltips	true		3	308	no	not-started	client-feature	menus|plugin-api	proposed-applicable	
+mta	Mage Training Arena	false		13	1792	no	not-started	content-helper	widgets|plugin-api	proposed-applicable	
+music	Music	true		2	567	no	not-started	client-feature	audio|var-domains	proposed-applicable	
+nightmarezone	Nightmare Zone	true		4	674	no	not-started	content-helper	widgets|var-domains|plugin-api	proposed-applicable	
+notes	Notes	true		3	305	no	not-started	client-feature	sidebar	proposed-applicable	
+npchighlight	NPC Indicators	true		4	1487	no	partial-module	client-feature	menus|minimap|plugin-api	proposed-applicable	
+npcunaggroarea	NPC Aggression Timer	false		5	900	no	not-started	content-helper	plugin-api	proposed-applicable	
+objectindicators	Object Markers	false		5	1245	no	not-started	client-feature	dynamic-scenery|menus|plugin-api	proposed-applicable	
+openrl	Open RuneLite Plugin	true	hidden	249	49267	yes	not-started	fork-specific	plugin-api	needs-decision	open-runelite fork internals, not stock RuneLite
+opponentinfo	Opponent Information	true		5	758	no	not-started	client-feature	actor-effects|facing|plugin-api	proposed-applicable	
+party	Party	false		14	2071	no	not-started	external-service	plugin-api	needs-decision	party websocket service
+pestcontrol	Pest Control	true		6	630	no	not-started	content-helper	widgets|plugin-api	proposed-applicable	
+playerindicators	Player Indicators	true		7	1124	no	partial-module	client-feature	private-clan-chat|menus|minimap|plugin-api	proposed-applicable	
+poh	Player-owned House	true		6	902	no	not-started	content-helper	instances|dynamic-scenery|plugin-api	proposed-applicable	
+poison	Poison	true		4	540	no	not-started	client-feature	var-domains|actor-effects|plugin-api	proposed-applicable	
+prayer	Prayer	true		10	1880	no	not-started	client-feature	var-domains|widgets|plugin-api	proposed-applicable	
+puzzlesolver	Puzzle Solver	true		17	2733	no	not-started	content-helper	widgets|plugin-api	proposed-applicable	
+pyramidplunder	Pyramid Plunder	false		4	615	no	not-started	content-helper	dynamic-scenery|plugin-api	proposed-applicable	
+questlist	Quest List	true		1	217	no	not-started	client-feature	widgets|scripts|plugin-api	proposed-applicable	
+raids	Chambers Of Xeric	true		13	2372	no	not-started	content-helper	instances|widgets|plugin-api	proposed-applicable	
+randomevents	Random Events	false		2	582	no	not-started	content-helper	facing|plugin-api	proposed-applicable	
+regenmeter	Regeneration Meter	true		3	383	no	not-started	client-feature	var-domains|plugin-api	proposed-applicable	
+reportbutton	Report Button	true		4	398	no	not-started	client-feature	widgets|plugin-api	proposed-applicable	
+roofremoval	Roof Removal	false		3	466	no	partial-module	client-feature	roofs	proposed-applicable	
+runecraft	Runecraft	true		6	1042	no	not-started	content-helper	world-effects|plugin-api	proposed-applicable	
+runenergy	Run Energy	true		3	588	no	not-started	client-feature	widgets|plugin-api	proposed-applicable	
+runepouch	Rune Pouch	true		3	410	no	not-started	client-feature	var-domains|plugin-api	proposed-applicable	
+screenmarkers	Screen Markers	true		10	1734	no	not-started	client-feature	plugin-api	proposed-applicable	
+screenshot	Screenshot	true		2	1376	no	not-started	client-feature	plugin-api	proposed-applicable	platform clipboard/storage capability
+skillcalculator	Skill Calculator	true		40	4933	no	not-started	client-feature	sidebar|plugin-api	proposed-applicable	
+skybox	Skybox	false		3	724	no	not-started	client-feature	gpu	proposed-applicable	
+slayer	Slayer	true		8	1622	no	not-started	content-helper	public-chat|widgets|plugin-api	proposed-applicable	
+smelting	Smelting	true		4	367	no	not-started	content-helper	public-chat|plugin-api	proposed-applicable	
+specialcounter	Special Attack Counter	false		8	1423	no	not-started	content-helper	actor-effects|plugin-api	proposed-applicable	party-dependent
+spellbook	Spellbook	true		2	551	no	not-started	client-feature	widgets|scripts|plugin-api	proposed-applicable	
+statusbars	Status Bars	false		5	820	no	partial-module	client-feature	actor-effects|plugin-api	proposed-applicable	
+stretchedmode	Stretched Mode	false		4	355	no	partial-module	client-feature	canvas	proposed-applicable	
+team	Team	false		4	703	no	not-started	client-feature	appearance|plugin-api	proposed-applicable	
+tearsofguthix	Tears Of Guthix	true		3	308	no	not-started	content-helper	dynamic-scenery|plugin-api	proposed-applicable	
+tileindicators	Tile Indicators	false		3	398	no	not-started	client-feature	plugin-api	proposed-applicable	
+timersandbuffs	Timers & Buffs	true		8	2484	no	not-started	client-feature	var-domains|actor-effects|plugin-api	proposed-applicable	
+timestamp	Chat Timestamps	false		2	225	no	not-started	client-feature	public-chat	proposed-applicable	
+timetracking	Time Tracking	true		43	9338	no	not-started	content-helper	var-domains|widgets|plugin-api	proposed-applicable	
+tithefarm	Tithe Farm	true		6	543	no	not-started	content-helper	dynamic-scenery|plugin-api	proposed-applicable	
+twitch	Twitch	false		5	697	no	not-started	external-service	public-chat|plugin-api	needs-decision	Twitch IRC
+virtuallevels	Virtual Levels	false		2	187	no	not-started	client-feature	scripts|plugin-api	proposed-applicable	
+wiki	Wiki	true		4	1323	yes	not-started	external-service	menus|plugin-api	needs-decision	opens/queries wiki
+wintertodt	Wintertodt	true		6	876	no	not-started	content-helper	world-effects|plugin-api	proposed-applicable	
+woodcutting	Woodcutting	false		7	1830	no	not-started	content-helper	dynamic-scenery|plugin-api	proposed-applicable	
+worldhopper	World Hopper	true		20	3609	no	not-started	client-feature	login|plugin-api	proposed-applicable	world list + hop
+worldmap	World Map	true		18	3868	no	not-started	client-feature	world-map|plugin-api	proposed-applicable	
+xpdrop	XP Drop	true		2	391	no	not-started	client-feature	widgets|scripts|plugin-api	proposed-applicable	
+xpglobes	XP Globes	false		4	815	no	not-started	client-feature	plugin-api	proposed-applicable	
+xptracker	XP Tracker	true		19	3284	yes	not-started	external-service	plugin-api	needs-decision	local tracker plus network wise-old-man style sync
+xpupdater	XP Updater	false		2	312	yes	not-started	external-service	plugin-api	needs-decision	external tracker updates
+zalcano	Zalcano	false		3	454	no	not-started	content-helper	world-effects|plugin-api	proposed-applicable	

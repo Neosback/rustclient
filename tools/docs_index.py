@@ -65,7 +65,11 @@ def render():
         '[method ledger](reference/rs240-port/SYMBOL-LEDGER.tsv), '
         '[review baseline](reference/rs240-port/REVIEW-BASELINE.json), '
         '[source pins](reference/source-manifest.json), '
-        '[deviations](plan/PARITY-DEVIATIONS.tsv), GPU/first-party JSON/TSV ledgers. '
+        '[deviations](plan/PARITY-DEVIATIONS.tsv), '
+        '[CS2 host coverage](reference/rs240-port/CS2-HOST-COVERAGE.tsv), '
+        '[RuneLite plugins](reference/builtin-plugins/RUNELITE-PLUGINS.tsv) and '
+        '[events](reference/builtin-plugins/RUNELITE-EVENTS.tsv) '
+        '(`tools/parity_inventory.py`), GPU/first-party JSON/TSV ledgers. '
         'Source mappings, dispatch paths and test presence are distinct from acceptance.', '',
     ]
     for group, names in groups.items():

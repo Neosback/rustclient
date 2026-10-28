@@ -28,7 +28,8 @@ commit, not submodules.
   the semantic-name Vineflower sources, the semantic map and the audit reports.
   Class names are stable `classXX` names, not the old 235 names; every original
   name is kept in `@ObfuscatedName`.
-- `rsprox-master` carries client and server packet information through OSRS 235.
+- `rsprox-master` carries client and server packet information through OSRS 241,
+  including an `osrs-240` module whose opcode tables agree with the deob 240 tables.
   Cross-check revision changes against OpenRune's selected rsprot 240 sources.
 
 ## RuneLite 235 tree

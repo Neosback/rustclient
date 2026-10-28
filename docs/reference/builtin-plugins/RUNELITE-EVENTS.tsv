@@ -1,0 +1,84 @@
+runelite_event	plugin_api_event	status	note
+AccountHashChanged		absent	
+ActorDeath		absent	
+AmbientSoundEffectCreated		absent	
+AnimationChanged	AnimationChanged	emitted	
+AreaSoundEffectPlayed		absent	
+BeforeMenuRender		absent	
+BeforeRender		absent	
+CanvasSizeChanged		absent	
+ChatMessage	ChatMessage	emitted	
+ClanChannelChanged		absent	
+ClanMemberJoined		absent	
+ClanMemberLeft		absent	
+ClientTick	ClientTick	emitted	
+CommandExecuted		absent	
+ConfigButtonClicked		absent	
+DecorativeObjectDespawned		absent	
+DecorativeObjectSpawned		absent	
+FakeXpDrop		absent	
+FocusChanged	FocusChanged	emitted	
+FriendsChatChanged		absent	
+FriendsChatMemberJoined		absent	
+FriendsChatMemberLeft		absent	
+GameObjectDespawned		absent	
+GameObjectSpawned		absent	
+GameStateChanged	GameStateChanged	emitted	
+GameTick	GameTick	emitted	
+GrandExchangeOfferChanged		absent	
+GrandExchangeSearched		absent	
+GraphicChanged	GraphicChanged	declared-source-absent	ActorState.graphic is always None: no spot-animation state in GameState
+GraphicsObjectCreated		absent	
+GroundObjectDespawned		absent	
+GroundObjectSpawned		absent	
+HitsplatApplied	HitsplatApplied	declared-source-absent	ActorState.hitsplats is always empty: no hitsplat state in GameState
+InteractingChanged	InteractingChanged	declared-source-absent	ActorState.interacting is always None: no target-facing state in GameState
+ItemContainerChanged	ItemContainerChanged	emitted	
+ItemDespawned		absent	
+ItemQuantityChanged		absent	
+ItemSpawned		absent	
+MenuEntryAdded	MenuEntryAdded	declared-never-emitted	no host/bridge construction outside tests
+MenuOpened	MenuOpened	declared-never-emitted	no host/bridge construction outside tests
+MenuOptionClicked	MenuOptionClicked	declared-never-emitted	no host/bridge construction outside tests
+MenuShouldLeftClick		absent	
+NameableNameChanged		absent	
+NpcChanged	NpcChanged	emitted	
+NpcDespawned	NpcDespawned	emitted	
+NpcSpawned	NpcSpawned	emitted	
+OverheadTextChanged	OverheadTextChanged	emitted	
+PlayerChanged	PlayerChanged	emitted	
+PlayerDespawned	PlayerDespawned	emitted	
+PlayerMenuOptionsChanged		absent	
+PlayerSpawned	PlayerSpawned	emitted	
+PostAnimation		absent	
+PostClientTick		absent	
+PostHealthBarConfig		absent	
+PostItemComposition		absent	
+PostMenuSort	PostMenuSort	declared-never-emitted	no host/bridge construction outside tests
+PostObjectComposition		absent	
+PostStructComposition		absent	
+PreMapLoad	PreMapLoad	emitted	
+ProjectileMoved		absent	
+RemovedFriend		absent	
+ResizeableChanged	ResizeableChanged	emitted	
+ScriptCallbackEvent		absent	
+ScriptPostFired	ScriptPostFired	declared-never-emitted	no host/bridge construction outside tests
+ScriptPreFired		absent	
+SoundEffectPlayed		absent	
+StatChanged	StatChanged	emitted	
+UsernameChanged		absent	
+VarClientIntChanged		absent	
+VarClientStrChanged		absent	
+VarbitChanged	VarbitChanged	emitted	
+VolumeChanged		absent	
+WallObjectDespawned		absent	
+WallObjectSpawned		absent	
+WidgetClosed	WidgetClosed	emitted	
+WidgetDrag		absent	
+WidgetLoaded	WidgetLoaded	emitted	
+WorldChanged		absent	
+WorldEntityDespawned		absent	
+WorldEntitySpawned		absent	
+WorldListLoad		absent	
+WorldViewLoaded		absent	
+WorldViewUnloaded		absent	

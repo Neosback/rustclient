@@ -1,6 +1,7 @@
 # Revision-240 delivery status
 
-Reviewed 2026-10-28 at `bd3aae10d4a37c46401aaf71be2fa415cbe623e8`.
+Reviewed 2026-10-28 at `bd3aae10d4a37c46401aaf71be2fa415cbe623e8`; follow-up at
+`b0c57e072fe9365c44142e719bea30a45e93ebd4` (identical Rust tree).
 Target: nearly 1:1 OSRS 240 behavior and applicable pinned RuneLite feature effects,
 initially OpenRune 240.2, with shared desktop/browser semantics. Full parity is open.
 
@@ -15,11 +16,11 @@ This page is a compact entry point, not another independent backlog.
 | Area | Present | Open boundary |
 | --- | --- | --- |
 | Core | Typed state/operations, ordered commits/events/deltas, explicit clocks, replay/fingerprints | Every new retained field/lifecycle must join the same contracts |
-| Native session/world | Cache-backed title/login, normal maps, selected player/NPC updates, movement, scenery/animation projections | Valid selected NPC masks rejected; instance/nested-world lifecycle incomplete; server ground-item/scenery mutations and broad packet consumers missing |
+| Native session/world | Cache-backed title/login, normal maps, selected player/NPC updates, movement, scenery/animation projections | Valid selected NPC masks rejected; instance/nested-world lifecycle incomplete; server ground-item/scenery mutations and broad packet consumers missing; ping/reflection replies, idle telemetry, reasoned logout and world transfer absent |
 | Interaction/UI | NPC/location/widget subsets, menus/chat, inventory sync, substantial widget/CS2 host | Dialogue/player/item/target/drag paths, rich menus, model widgets, remaining opcodes/DB branches and input parity |
 | World map | Cache assets/controller/CS2, viewport/overview drawing, native pan/zoom, newer load/reset/error repairs | Exact controller/lifecycle/ownership, labels/hover/menus and native/browser acceptance |
 | Renderer/shell | Shared wgpu projections/reconstruction, GPU settings subsets; egui shell integrated at bd3aae10 | GPU/core ledger obligations, replacement-shell controls/performance and classic visual acceptance |
-| Plugins | Native WIT component/host/overlay slice, 0.2 compiled plugin services, first-party subsets, JS-host transpilation proof | Full applicable feature/API/hook inventory, external authoring/runtime/platform delivery and live acceptance |
+| Plugins | Native WIT component/host/overlay slice, 0.2 compiled plugin services, first-party subsets, JS-host transpilation proof, plugin/event inventories | Dispositions for 131 plugins, hook/`Client` API inventory, events that cannot fire, empty SDK/web-runtime crates, live acceptance |
 | Audio/social/camera | Bounded script sound requests, public-chat subset and local camera controls | Playback/music/ambient consumers, social/clan/var-domain and scripted-camera behavior |
 | Browser/distribution | Renderer/canvas bootstrap, shared Wasm compilation, development launch tooling | Integrated shared gameplay/cache/transport/UI/audio/plugin loop and packaged acceptance |
 
@@ -49,6 +50,17 @@ change. Historical results remain in their dated checkpoints and do not certify
 this baseline. [The review baseline](../reference/rs240-port/REVIEW-BASELINE.json)
 pins inspected files and selected archive entries; [the audit](../reference/rs240-port/CURRENT-AUDIT.md)
 records corrections to the pasted assessment.
+
+### Follow-up review validation
+
+The follow-up at `b0c57e07` added `tools/parity_inventory.py` and its three generated
+TSVs, new matrix rows, packet-row corrections and documentation fixes. These checks ran
+and passed: `tools/port_matrix.py --check` (56 domains, 269 packet slots),
+`tools/port_audit.py --check` (154 rows, 18,341 untriaged declarations),
+`tools/parity_inventory.py --check`, `tools/docs_index.py --check`, a Markdown
+destination scan and `git diff --check`. The one Rust edit is a doc comment in
+`crates/plugin-runtime-web`. For that crate only, `cargo fmt --check` and `cargo check`
+passed. No workspace Cargo, Clippy, test, Java, live, GPU or visual check ran.
 
 ## Maintaining a single current path
 

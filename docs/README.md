@@ -10,7 +10,7 @@ Historical checkpoints remain at stable paths for source citations and exact val
 
 Generated index: `python3 tools/docs_index.py --write`; check with `--check`. This classifies document authority; it does not certify every factual sentence.
 
-Current machine-readable data: [domain matrix](reference/rs240-port/PORT-MATRIX.tsv), [packet coverage](reference/rs240-port/PACKET-COVERAGE.tsv), [method ledger](reference/rs240-port/SYMBOL-LEDGER.tsv), [review baseline](reference/rs240-port/REVIEW-BASELINE.json), [source pins](reference/source-manifest.json), [deviations](plan/PARITY-DEVIATIONS.tsv), GPU/first-party JSON/TSV ledgers. Source mappings, dispatch paths and test presence are distinct from acceptance.
+Current machine-readable data: [domain matrix](reference/rs240-port/PORT-MATRIX.tsv), [packet coverage](reference/rs240-port/PACKET-COVERAGE.tsv), [method ledger](reference/rs240-port/SYMBOL-LEDGER.tsv), [review baseline](reference/rs240-port/REVIEW-BASELINE.json), [source pins](reference/source-manifest.json), [deviations](plan/PARITY-DEVIATIONS.tsv), [CS2 host coverage](reference/rs240-port/CS2-HOST-COVERAGE.tsv), [RuneLite plugins](reference/builtin-plugins/RUNELITE-PLUGINS.tsv) and [events](reference/builtin-plugins/RUNELITE-EVENTS.tsv) (`tools/parity_inventory.py`), GPU/first-party JSON/TSV ledgers. Source mappings, dispatch paths and test presence are distinct from acceptance.
 
 ## Normative specifications
 

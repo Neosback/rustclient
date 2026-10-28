@@ -3,9 +3,12 @@
 Reviewed: 2026-10-28. Start: `0a91c0237c5d2bb4825a549ffc89497dfe671208`
 with pre-existing dirty work; source inspection refreshed at
 `bd3aae10d4a37c46401aaf71be2fa415cbe623e8` after that work was committed during
-review. [REVIEW-BASELINE.json](REVIEW-BASELINE.json) records file hashes, selected
-RSProt entries and the pasted input hash. No Rust implementation changed in this
-review. No live session, render acceptance or Cargo suite was run for it.
+review. A follow-up review at `b0c57e072fe9365c44142e719bea30a45e93ebd4` (Rust
+tree byte-identical to bd3aae10) re-checked these findings and added the generated
+denominators in [the follow-up section](#follow-up-review-at-b0c57e07).
+[REVIEW-BASELINE.json](REVIEW-BASELINE.json) records file hashes, selected
+RSProt entries and the pasted input hash. No Rust implementation changed in either
+review. No live session, render acceptance or Cargo suite was run for them.
 
 This is a domain/source audit and re-review of the supplied assessment, not an
 exhaustive method-by-method proof. [SPEC-0019](../../specs/SPEC-0019-port-parity.md)
@@ -123,13 +126,98 @@ These statements were removed from active guidance. Old milestone files now carr
 historical-scope notices; their local validation/results remain evidence for their
 recorded snapshots. The speculative HD feature menu is optional research.
 
-**Inventory remains incomplete.** The initial checker report had 153 ledger rows:
-67 verification-unrecorded, 33 source-reviewed, 51 contract-tested, 2 live-tested.
-The declaration scan found 18,433 declarations, 18,342 without method-level ledger
+**Inventory remains incomplete.** The initial checker report had 153 ledger rows;
+after this review's source-row updates the checker reports 154: 66
+verification-unrecorded, 35 source-reviewed, 51 contract-tested, 2 live-tested.
+The declaration scan found 18,433 declarations, 18,341 without method-level ledger
 triage. Aliases/injection and heterogeneous scopes prevent a port percentage.
 This review updates source rows and pins previously unlisted ledger source files;
 that repairs provenance coverage, not behavior. Full source tests/cases/assets,
 script host-opcode and RuneLite feature/API dispositions still need inventories.
+
+## Follow-up review at b0c57e07
+
+Scope: is the audit above still accurate, what is absent from the denominator, and
+which documents are stale. The Rust tree is identical to bd3aae10. Every blocker and
+re-review row above was re-checked against code and still holds: the NPC SUPPORTED
+mask, the player KNOWN mask, opcode 12 rejection, Deferred dispatch, the absence of
+ground-item/spot/hitsplat/projectile state, DB Long errors, WidgetKey without F-keys,
+and compass `set_yaw(0)`.
+
+### Port defects not recorded before
+
+1. **A reasoned server logout is reported as a protocol failure.** `game.rs` turns
+   LOGOUT_WITHREASON (56) into `ProtocolError("server logout", "reason code N")`.
+   The packet audit listed it as `framed-unhandled`; it is now `partial`. LOGOUT_TRANSFER
+   (26) is treated as a plain logout and its world-transfer payload is discarded.
+2. **Ping and anti-cheat requests go unanswered.** SEND_PING (115) and
+   REFLECTION_CHECKER (125) are framed but Deferred, and there is no SEND_PING_REPLY
+   (32) or REFLECTION_CHECK_REPLY (12). IDLE (7) and the EVENT_MOUSE_*/KEYBOARD/
+   APPLET_FOCUS/CAMERA_POSITION reports are never sent. `input_activity.rs` tracks
+   idleness for plugins only. Whether the selected server sends or enforces these is
+   unmeasured. Trace it before setting priority. Reflection replies are a SPEC-0009
+   decision, not something to emulate blindly.
+3. **Server widget mutations are missing as a family.** Sixteen interface packets
+   (fifteen IF_* plus TRIGGER_ONDIALOGABORT),
+   including IF_SETOBJECT, IF_SETMODEL_V2, IF_SETANIM, IF_SETCOLOUR, IF_SETPOSITION and
+   IF_CLEARINV, are framed but unhandled. The matrix now tracks them as `widget-mutations`.
+   Hint arrows, player options, hidden ops and interaction modes are tracked as
+   `server-interaction-state`, and Grand Exchange state as `stockmarket`.
+4. **Definition families are missing.** The cache adapter decodes config groups 1, 3, 4,
+   5, 6, 8, 9, 10, 11, 12, 14, 34, 35, 38 and 39. It has no SPOTANIM (13), VARCLIENT
+   (15/19), VARPLAYER (16), HITSPLAT (32) or HEALTHBAR (33) decoder. No reader touches
+   the audio indices (4, 6, 11, 14, 15) or gamevals (24). Actor effects, varc
+   persistence and audio cannot be completed without these (`cache-families`).
+5. **Input semantics live in the native app.** SPEC-0001 assigns input semantics to
+   `crates/input` and keeps reusable logic out of `apps/*`. In practice world picking,
+   menu construction, hover text, click crosses, widget pointer routing, key mapping and
+   camera keys live in `NativeApp` (winit-typed). `crates/input` only holds the title
+   `EditKey`. This is a recorded ownership contradiction (`shared-input`, `incorrect`),
+   and it blocks shared browser gameplay.
+6. **Empty crates whose names imply delivered features.** `crates/audio`,
+   `crates/plugin-runtime-web` and `plugin-sdk/rust` contain only a module doc comment.
+   The web-runtime doc comment said "implemented in CP11". Only the Node/jco proof in
+   `scripts/` exists (CP11.8 open), so the comment has been corrected.
+7. **Plugin events that cannot fire.** Plugin API 0.2 declares 28 of the 83 RuneLite
+   API events. GraphicChanged, InteractingChanged and HitsplatApplied are diffed from
+   actor fields that `plugin-bridge/src/project.rs` hard-codes as empty. The menu events
+   and ScriptPostFired are never constructed. So first-party features that depend on
+   them are inert, not merely unverified.
+
+### Generated denominators (roadmap batch 0, partial)
+
+`python3 tools/parity_inventory.py --check` regenerates and validates:
+
+| Inventory | Current counts | Limit |
+| --- | --- | --- |
+| [CS2-HOST-COVERAGE.tsv](CS2-HOST-COVERAGE.tsv) | 606 adapter-named opcodes: 421 have a host dispatch arm, 185 fail as unsupported (e.g. MES, RANDOM, OC_*, friend/clan, stock market, model widgets, RESUME_*DIALOG, world list). 318 cache-used numbers have no adapter name | A dispatch arm is a static reference, not proof of behavior |
+| [RUNELITE-PLUGINS.tsv](../builtin-plugins/RUNELITE-PLUGINS.tsv) | 131 pinned plugins: 11 partial modules, 2 schema-only, GPU required, 117 not started; each row names its blocking matrix rows | Category/disposition columns are review proposals until the user accepts them; external-service and fork-specific rows need a decision |
+| [RUNELITE-EVENTS.tsv](../builtin-plugins/RUNELITE-EVENTS.tsv) | 83 API events: 20 emitted, 3 source-absent, 5 never emitted, 55 absent | Hooks, injected accessors and `Client` methods are not yet inventoried |
+
+The pinned rsprox `osrs-240` GameServerProtId/GameClientProtId tables agree with the
+deob packet tables for every commonly named opcode (148 server and 100 client names,
+0 mismatches, differing only in `_V1`/`LONGDIALOG` naming). This is independent
+in-repository corroboration of packet identities, not a substitute for the selected
+RSProt sources, which remain external.
+
+Untriaged declarations concentrate in `Client` (1,123), `Scene` (429), `Widget` (330),
+`Actor` (326), `classXY` (321, buffer), `classLH` (307), `Model` (262),
+`RenderOverview` (229, world map), `GameEngine` (227), `classBB` (174, script
+dispatcher) and `ClientPreferences` (155). Regenerate this with `port_audit.py --inventory`.
+
+Still missing from batch 0: the RuneLite hook/accessor/`Client` API disposition, the
+source test/case/fixture inventory, stock mask branch tables per payload, and a list of
+cache layout variants checked against actual-cache vectors.
+
+### Documentation corrections in this follow-up
+
+- `references/README.md` said rsprox carries packets "through OSRS 235". The vendored
+  tree has `osrs-240` and `osrs-241` modules.
+- The root README described the reference set as only 235 RuneLite plus rsprox. It
+  now names the exact-240 trees.
+- SPEC-0010 claimed to be the accepted execution plan. Its status now defers ordering
+  to the roadmap and keeps the CP decomposition as history.
+- The ledger counts above were refreshed to the checker's current output.
 
 ## Validation boundary and next work
 
@@ -137,9 +225,15 @@ Documentation checks validate paths, schemas, generated data and source pins. Th
 are not semantic tests. This review ran the port tools and documentation/link/
 provenance checks; exact final results are recorded in the delivery status. It did
 not repeat historical Cargo, GPU, Java, live-login, performance or visual results.
+The follow-up ran `tools/port_matrix.py --check`, `tools/port_audit.py --check`,
+`tools/parity_inventory.py --check` and `tools/docs_index.py --check`, plus a
+Markdown destination scan and `git diff --check`. Cargo ran only `fmt --check` and
+`check` on `rustclient-plugin-runtime-web` for its doc-comment edit. No workspace
+Cargo, Java, live or visual check ran.
 
 Follow batches 0-3 of the canonical roadmap first: freeze packet/mask/source-case
-coverage, close selected valid-traffic failures and map lifecycle, preserve world
+coverage, trace which session-control packets the selected server sends, close
+selected valid-traffic failures and map lifecycle, preserve world
 mutations, then connect full interactions/dialogue. Continue actor/UI/audio/social,
 render/plugin and browser acceptance in the same shared owners. No missing feature
 is excused as a Rust improvement; use the explicit deviations register.

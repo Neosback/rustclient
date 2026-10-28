@@ -1,6 +1,6 @@
 # SPEC-0010: Implementation Roadmap
 
-**Status:** Accepted as initial execution plan
+**Status:** Accepted as the initial foundation decomposition; execution order is superseded by [PORTING-ROADMAP.md](../plan/PORTING-ROADMAP.md) under [SPEC-0019](SPEC-0019-port-parity.md). CP exit criteria below remain the record for their checkpoints.
 
 The roadmap is dependency-ordered. A checkpoint is complete only when its acceptance criteria and validation evidence are recorded. Do not skip semantics to build a visually impressive shell that cannot be tested.
 
