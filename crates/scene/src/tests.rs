@@ -28,6 +28,7 @@ fn assets() -> WorldAssets {
     WorldAssets {
         squares: vec![MapSquare {
             coord: RegionCoord::new(0, 0),
+            source: rustclient_cache::world::MapSquareSource::Archive,
             tiles,
             locations: Vec::new(),
         }],
@@ -891,7 +892,7 @@ fn roof_modes_hide_the_roofs_over_their_target_tiles() {
 }
 #[test]
 fn roof_visibility_combines_the_level_cut_with_hidden_roofs() {
-    let mut visibility = RoofVisibility::everything();
+    let mut visibility = SceneVisibility::everything();
     let tag = |level: u16, slot: u16| level | (slot << 2);
     assert!(visibility.shows(tag(3, 7)));
     visibility.hidden.hide(7);
@@ -952,4 +953,35 @@ fn area_overrides_force_tiles_roofed_for_slots_and_the_line_of_sight_cut() {
         RoofTargets::default(),
     );
     assert!(!hidden.is_empty());
+}
+
+#[test]
+fn absent_map_catalog_tiles_remain_unwalkable_without_inventing_visible_floors() {
+    let mut catalog = assets();
+    for tile in &mut catalog.squares[0].tiles {
+        tile.underlay = None;
+        tile.overlay = None;
+    }
+    let normal = SceneAsset::new(catalog, WorldTile::new(0, 0, Plane::MIN), 8, 8).unwrap();
+    let from = WorldTile::new(2, 2, Plane::MIN);
+    let to = WorldTile::new(3, 3, Plane::MIN);
+    assert!(
+        CollisionMap::build(&normal, &SceneryInputs::default())
+            .unwrap()
+            .reachable(from, to)
+    );
+    let mut catalog = assets();
+    catalog.squares[0].source = MapSquareSource::Absent;
+    for tile in &mut catalog.squares[0].tiles {
+        *tile = TerrainTile::default();
+    }
+    let empty = SceneAsset::new(catalog, WorldTile::new(0, 0, Plane::MIN), 8, 8).unwrap();
+    assert!(
+        !CollisionMap::build(&empty, &SceneryInputs::default())
+            .unwrap()
+            .reachable(from, to)
+    );
+    let mesh = build_mesh(&empty, empty.descriptor(), from).unwrap();
+    assert_eq!(mesh.stats.terrain_triangles, 0);
+    assert_eq!(empty.ground_height(Plane::MIN, [256, 256]).unwrap(), 0);
 }

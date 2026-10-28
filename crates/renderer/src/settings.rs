@@ -54,10 +54,24 @@ pub enum VsyncMode {
     Adaptive,
 }
 
+/// Source GPU canvas sampling modes. All operate on the logical game canvas.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u32)]
+pub enum UiScaling {
+    Nearest,
+    Linear,
+    Mitchell,
+    CatmullRom,
+    Xbr,
+    Hybrid,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct GpuSettings {
-    /// Tiles; also the fog boundary. Geometry beyond it is not culled yet (see the ledger).
+    /// Tiles; fog boundary and revision-240 inclusive zone admission (radius = tiles >> 3).
     pub draw_distance: u32,
+    pub hide_unrelated_maps: bool,
+    pub ui_scaling: UiScaling,
     pub material: MaterialOptions,
     pub anti_aliasing: AntiAliasing,
     /// 0 disables fog; otherwise fade width in tiles.
@@ -75,6 +89,8 @@ impl Default for GpuSettings {
     fn default() -> Self {
         Self {
             draw_distance: 50,
+            hide_unrelated_maps: true,
+            ui_scaling: UiScaling::Hybrid,
             material: MaterialOptions::default(),
             anti_aliasing: AntiAliasing::Msaa2,
             fog_depth: 0,
@@ -94,12 +110,23 @@ pub struct GpuCapabilities {
     /// Ascending MSAA sample counts the world color and depth formats both support (always contains 1).
     pub sample_counts: Vec<u32>,
     pub present_modes: Vec<wgpu::PresentMode>,
+    /// Capabilities exposed by the created device, distinct from adapter possibilities.
+    pub device_limits: wgpu::Limits,
+    pub adapter_limits: wgpu::Limits,
+    pub enabled_features: wgpu::Features,
+    pub supported_features: wgpu::Features,
+    pub backend: wgpu::Backend,
 }
 impl Default for GpuCapabilities {
     fn default() -> Self {
         Self {
             sample_counts: vec![1, 2, 4],
             present_modes: vec![wgpu::PresentMode::Fifo],
+            device_limits: wgpu::Limits::default(),
+            adapter_limits: wgpu::Limits::default(),
+            enabled_features: wgpu::Features::empty(),
+            supported_features: wgpu::Features::empty(),
+            backend: wgpu::Backend::Noop,
         }
     }
 }
@@ -145,6 +172,11 @@ pub(crate) fn capabilities(
     GpuCapabilities {
         sample_counts,
         present_modes,
+        device_limits: device.limits(),
+        adapter_limits: adapter.limits(),
+        enabled_features: device.features(),
+        supported_features: adapter.features(),
+        backend: adapter.get_info().backend,
     }
 }
 
@@ -163,6 +195,7 @@ pub struct EffectiveGpu {
     /// Frames per second the application should not exceed; 0 means uncapped.
     pub frame_cap: u32,
     pub anisotropy: u16,
+    pub mipmaps: bool,
     pub deviations: Vec<Deviation>,
 }
 
@@ -238,7 +271,7 @@ impl GpuSettings {
         if anisotropy > 1 {
             deviations.push(Deviation {
                 key: "anisotropicFilteringLevel",
-                reason: "wgpu applies anisotropy only with linear filtering, so textures are also smoothed when magnified."
+                reason: "wgpu requires linear anisotropic minification; magnification and cutout masks remain nearest sampled."
                     .into(),
             });
         }
@@ -247,6 +280,7 @@ impl GpuSettings {
             present_mode,
             frame_cap,
             anisotropy,
+            mipmaps: self.anisotropy != 0,
             deviations,
         }
     }
@@ -267,6 +301,7 @@ mod tests {
         GpuCapabilities {
             sample_counts: samples.to_vec(),
             present_modes: modes.to_vec(),
+            ..GpuCapabilities::default()
         }
     }
 
@@ -347,7 +382,9 @@ mod tests {
                 anisotropy: level,
                 ..GpuSettings::default()
             };
-            assert_eq!(settings.resolve(&GpuCapabilities::default()).anisotropy, 1);
+            let effective = settings.resolve(&GpuCapabilities::default());
+            assert_eq!(effective.anisotropy, 1);
+            assert_eq!(effective.mipmaps, level != 0);
         }
         let high = GpuSettings {
             anisotropy: 16,

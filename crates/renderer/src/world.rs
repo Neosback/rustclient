@@ -1,7 +1,7 @@
 use crate::{GameplayCameraController, RenderError, SurfaceSize};
 use glam::Vec3;
 use rustclient_model::SceneAssetId;
-use rustclient_scene::{RoofVisibility, SceneVertex, WorldMesh};
+use rustclient_scene::{SceneVertex, SceneVisibility, WorldMesh};
 
 /// World WGSL group/binding map. The shader declares exactly this layout.
 const WORLD_GROUP: u32 = 0;
@@ -22,8 +22,10 @@ struct CameraUniform {
     color: [f32; 4],
     /// Hidden roof slots, bit `slot % 32` of word `slot / 32` (`rustclient_scene::RoofMask`).
     hidden_roofs: [u32; 128],
+    zones: [i32; 4],
+    admission: [u32; 4],
 }
-const CAMERA_BYTES: u64 = 640;
+const CAMERA_BYTES: u64 = 672;
 /// Local units per tile, `Perspective.LOCAL_TILE_SIZE`.
 const LOCAL_TILE_SIZE: f32 = 128.;
 pub(crate) struct WorldGpu {
@@ -43,7 +45,9 @@ pub(crate) struct WorldGpu {
     textures: wgpu::TextureView,
     animations: wgpu::Buffer,
     anisotropy: u16,
+    mipmaps: bool,
     pub target: super::world_target::WorldTarget,
+    pub target_generation: u64,
     surface_format: wgpu::TextureFormat,
     size: SurfaceSize,
     physical_viewport: [f32; 4],
@@ -51,7 +55,7 @@ pub(crate) struct WorldGpu {
         GameplayCameraController,
         crate::CameraViewport,
         u32,
-        RoofVisibility,
+        SceneVisibility,
         rustclient_model::ScreenBrightness,
         crate::GpuSettings,
     )>,
@@ -124,8 +128,8 @@ impl WorldGpu {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
-        let (textures, animations) = crate::world_textures::upload(device, queue, mesh);
-        let bind = bind_group(device, &layout, &camera, &textures, 1, &animations);
+        let (textures, animations) = crate::world_textures::upload(device, queue, mesh)?;
+        let bind = bind_group(device, &layout, &camera, &textures, 1, true, &animations);
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("world pipeline layout"),
             bind_group_layouts: &[Some(&layout)],
@@ -133,7 +137,7 @@ impl WorldGpu {
         });
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("world shader"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("shaders/world.wgsl").into()),
+            source: wgpu::ShaderSource::Wgsl(crate::shader_sources::world().into()),
         });
         let opaque_pipeline = pipeline(
             device,
@@ -173,7 +177,9 @@ impl WorldGpu {
             textures,
             animations,
             anisotropy: 1,
+            mipmaps: true,
             target,
+            target_generation: 1,
             surface_format: format,
             size,
             physical_viewport: [0., 0., size.width as f32, size.height as f32],
@@ -205,11 +211,12 @@ impl WorldGpu {
         );
         self.target =
             super::world_target::WorldTarget::new(device, self.size, self.surface_format, samples);
+        self.target_generation = self.target_generation.wrapping_add(1);
         self.last_camera = None;
     }
     /// Replace only the texture sampler (and the bind group that references it).
-    pub fn set_anisotropy(&mut self, device: &wgpu::Device, anisotropy: u16) {
-        if self.anisotropy == anisotropy {
+    pub fn set_filtering(&mut self, device: &wgpu::Device, anisotropy: u16, mipmaps: bool) {
+        if self.anisotropy == anisotropy && self.mipmaps == mipmaps {
             return;
         }
         self.bind = bind_group(
@@ -218,9 +225,11 @@ impl WorldGpu {
             &self.camera,
             &self.textures,
             anisotropy,
+            mipmaps,
             &self.animations,
         );
         self.anisotropy = anisotropy;
+        self.mipmaps = mipmaps;
         self.last_camera = None;
     }
     pub fn update_dynamic(
@@ -252,6 +261,7 @@ impl WorldGpu {
                 self.target.samples,
             );
             self.size = size;
+            self.target_generation = self.target_generation.wrapping_add(1);
             self.last_camera = None;
         }
     }
@@ -276,7 +286,7 @@ impl WorldGpu {
             cycle,
             None,
             rustclient_model::ViewportSettings::default(),
-            &RoofVisibility::everything(),
+            &SceneVisibility::everything(),
             rustclient_model::ScreenBrightness::default(),
             gpu,
         );
@@ -298,7 +308,7 @@ impl WorldGpu {
         cycle: u32,
         bounds: Option<rustclient_game_ui::Rect>,
         settings: rustclient_model::ViewportSettings,
-        visibility: &RoofVisibility,
+        visibility: &SceneVisibility,
         brightness: rustclient_model::ScreenBrightness,
         gpu: crate::GpuSettings,
     ) {
@@ -332,13 +342,27 @@ impl WorldGpu {
             self.physical_viewport[2].min(self.size.width as f32 - self.physical_viewport[0]);
         self.physical_viewport[3] =
             self.physical_viewport[3].min(self.size.height as f32 - self.physical_viewport[1]);
+        let pose = camera.pose(viewport);
+        // Normal UI rendering supplies the same frame admission used by picking. Standalone
+        // world captures derive it here, after zoom/DPI/viewport shaping are resolved.
+        let derived;
+        let visibility = if visibility.zones.is_none() {
+            derived = visibility.clone().with_policy(
+                [pose.position[0], pose.position[2]],
+                gpu.draw_distance,
+                gpu.hide_unrelated_maps,
+            );
+            &derived
+        } else {
+            visibility
+        };
         if self.last_camera.as_ref().is_some_and(|last| {
             *last == (camera, viewport, cycle, visibility.clone(), brightness, gpu)
         }) {
             return;
         }
-        let pose = camera.pose(viewport);
         let eye = Vec3::from_array(pose.position.map(|v| v as f32));
+        let (zones, admission) = visibility.gpu_admission();
         let uniform = CameraUniform {
             view_projection: camera.matrix(viewport).to_cols_array_2d(),
             cycle,
@@ -361,6 +385,8 @@ impl WorldGpu {
                 0.,
             ],
             hidden_roofs: *visibility.hidden.words(),
+            zones,
+            admission,
         };
         queue.write_buffer(&self.camera, 0, bytemuck::bytes_of(&uniform));
         let yaw = f32::from(pose.yaw) * std::f32::consts::TAU / 2048.;
@@ -439,9 +465,10 @@ fn bind_group(
     camera: &wgpu::Buffer,
     textures: &wgpu::TextureView,
     anisotropy: u16,
+    mipmaps: bool,
     animations: &wgpu::Buffer,
 ) -> wgpu::BindGroup {
-    let sampler = crate::world_textures::sampler(device, anisotropy);
+    let sampler = crate::world_textures::sampler(device, anisotropy, mipmaps);
     device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("world camera binding"),
         layout,
@@ -487,7 +514,7 @@ fn pipeline(
             buffers: &[Some(wgpu::VertexBufferLayout {
                 array_stride: std::mem::size_of::<SceneVertex>() as u64,
                 step_mode: wgpu::VertexStepMode::Vertex,
-                attributes: &wgpu::vertex_attr_array![0=>Sint16x4,1=>Uint32,2=>Uint16x4],
+                attributes: &wgpu::vertex_attr_array![0=>Sint16x4,1=>Uint32,2=>Uint16x4,3=>Uint32],
             })],
         },
         primitive: wgpu::PrimitiveState {
@@ -539,11 +566,11 @@ mod tests {
     /// check the `Camera` struct occupies exactly the bytes the buffer is sized for.
     #[test]
     fn world_shader_validates_and_camera_block_matches_the_uniform() {
-        let source = include_str!("shaders/world.wgsl");
-        let module = naga::front::wgsl::parse_str(source).expect("world.wgsl parses");
+        let source = crate::shader_sources::world();
+        let module = naga::front::wgsl::parse_str(&source).expect("world.wgsl parses");
         let info = naga::valid::Validator::new(
             naga::valid::ValidationFlags::all(),
-            naga::valid::Capabilities::all(),
+            naga::valid::Capabilities::empty(),
         )
         .validate(&module)
         .expect("world.wgsl validates");

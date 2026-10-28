@@ -93,7 +93,7 @@ impl NativeApp {
                 let Some((origin, direction)) = self.world_ray(window, x, y) else {
                     return Ok(false);
                 };
-                let visibility = self.roof_visibility(window);
+                let visibility = self.scene_visibility(window);
                 let Some(tile) = rustclient_scene::pick_terrain(
                     &loaded.mesh,
                     scene,
@@ -190,7 +190,7 @@ impl NativeApp {
             return None;
         }
         let (origin, direction) = self.world_ray(window, x, y)?;
-        let visibility = self.roof_visibility(window);
+        let visibility = self.scene_visibility(window);
         let hit =
             rustclient_scene::pick_surface(&loaded.mesh.geometry, origin, direction, &visibility);
         // Static scenery wins exact ties, matching the previous two-way comparison.
@@ -284,15 +284,15 @@ impl NativeApp {
     /// What the scene draws this frame: the roof line-of-sight cut (or the player's plane when
     /// the "hide roofs" game option is on) plus the roofs plugins asked to hide. Every level
     /// draws before a player exists.
-    pub(super) fn roof_visibility(&self, window: &Window) -> rustclient_scene::RoofVisibility {
+    pub(super) fn scene_visibility(&self, window: &Window) -> rustclient_scene::SceneVisibility {
         let (Some(loaded), Some(view)) = (self.scene.loaded.as_ref(), self.roof_view(window))
         else {
-            return rustclient_scene::RoofVisibility::everything();
+            return rustclient_scene::SceneVisibility::everything();
         };
         let origin = loaded.asset.descriptor().origin();
         let local = |x: i32, y: i32| [x - origin.x, y - origin.y];
         let modes = rustclient_scene::RoofModes(self.plugins.output().scene.roofs.bits());
-        rustclient_scene::RoofVisibility {
+        rustclient_scene::SceneVisibility {
             top_level: view.top_level(&loaded.mesh.roofs),
             hidden: view.hidden(
                 &loaded.mesh.roofs,
@@ -302,7 +302,17 @@ impl NativeApp {
                     destination: self.state.destination().map(|d| local(d.x, d.y)),
                 },
             ),
+            ..rustclient_scene::SceneVisibility::everything()
         }
+        .with_policy(
+            view.camera,
+            self.renderer
+                .as_ref()
+                .map_or(50, |renderer| renderer.gpu_settings().draw_distance),
+            self.renderer
+                .as_ref()
+                .is_none_or(|renderer| renderer.gpu_settings().hide_unrelated_maps),
+        )
     }
     /// Track the tile under the pointer for the hovered-roof mode.
     ///
@@ -323,10 +333,8 @@ impl NativeApp {
         {
             let descriptor = loaded.asset.descriptor();
             let base = descriptor.origin();
-            let mut visibility = rustclient_scene::RoofVisibility::everything();
-            visibility.top_level = self
-                .roof_view(window)
-                .map_or(3, |view| view.top_level(&loaded.mesh.roofs));
+            let mut visibility = self.scene_visibility(window);
+            visibility.hidden = rustclient_scene::RoofMask::default();
             rustclient_scene::pick_terrain(&loaded.mesh, descriptor, origin, direction, &visibility)
                 .map(|tile| [tile.x - base.x, tile.y - base.y])
         } else {
@@ -433,7 +441,7 @@ impl NativeApp {
                 loaded.asset.descriptor(),
                 origin,
                 direction,
-                &self.roof_visibility(window),
+                &self.scene_visibility(window),
             )
         {
             entries.push((

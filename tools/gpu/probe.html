@@ -1,0 +1,92 @@
+<!doctype html><meta charset="utf-8"><title>RustClient WebGPU baseline probe</title>
+<style>body{background:#191c21;color:#e0e6ed;font:16px system-ui;padding:24px;max-width:1100px;margin:auto}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#101216;padding:16px;border-radius:8px}canvas{width:136px;height:104px;image-rendering:pixelated;margin:8px}h1{font-size:24px}.pass{color:#8bd9a0}.fail{color:#ff9292}</style>
+<h1>RustClient WebGPU baseline probe</h1><p id="status">Running bounded shader/readback fixtures…</p><div id="images"></div><pre id="report"></pre>
+<script type="module">
+const result={secureContext:isSecureContext,webgpu:!!navigator.gpu,checks:[],limits:{},supportedFeatures:[],enabledFeatures:[]};
+const status=document.querySelector('#status'),report=document.querySelector('#report');
+const check=(name,passed,details={})=>{result.checks.push({name,passed,...details});if(!passed)throw Error(name+': '+JSON.stringify(details));};
+async function run(){
+ check('WebGPU available',!!navigator.gpu);
+ const adapter=await navigator.gpu.requestAdapter();check('adapter available',!!adapter);
+ const device=await adapter.requestDevice();
+ for(const key of ['maxTextureDimension2D','maxTextureArrayLayers','maxBufferSize','maxUniformBufferBindingSize','maxStorageBufferBindingSize','maxBindGroups','maxSampledTexturesPerShaderStage','maxStorageBuffersPerShaderStage','maxInterStageShaderVariables','maxComputeInvocationsPerWorkgroup','maxComputeWorkgroupStorageSize'])result.limits[key]=device.limits[key];
+ result.supportedFeatures=[...adapter.features];result.enabledFeatures=[...device.features];
+ const errors=[];device.addEventListener('uncapturederror',e=>errors.push(e.error.message));
+ const source=await(await fetch('/shader/ui')).text();
+ const module=device.createShaderModule({label:'RustClient shared canvas WGSL',code:source});
+ const compilation=await module.getCompilationInfo();check('canvas compilation',!compilation.messages.some(m=>m.type==='error'),{messages:compilation.messages.map(m=>m.message)});
+ const worldSource=await(await fetch('/shader/world')).text();
+ const world=device.createShaderModule({label:'RustClient shared world WGSL',code:worldSource});
+ const worldInfo=await world.getCompilationInfo();check('world compilation',!worldInfo.messages.some(m=>m.type==='error'),{messages:worldInfo.messages.map(m=>m.message)});
+ // This bounded diagnostic entry executes the same admission function as vs_main.
+ const admissionModule=device.createShaderModule({code:worldSource+`
+ @group(1) @binding(0) var<storage,read> probes:array<u32>;
+ @group(1) @binding(1) var<storage,read_write> answers:array<u32>;
+ @compute @workgroup_size(1) fn admission_probe(@builtin(global_invocation_id) id:vec3<u32>) {
+  if id.x<arrayLength(&probes) {answers[id.x]=select(0u,1u,tile_admitted(probes[id.x]));}
+ }`});
+ const admissionPipeline=await device.createComputePipelineAsync({layout:'auto',compute:{module:admissionModule,entryPoint:'admission_probe'}});
+ for(const [name,eye,distance,hide] of [['zone boundary',6600,50,true],['signed zero-radius',-1,0,true],['filter disabled',0,8,false]]) {
+  const center=eye>>10,radius=Math.min(distance,184)>>3;
+  const low=(center-radius)*8,high=(center+radius)*8;
+  const cases=[[low,low,0],[low-1,low,0],[high+7,high+7,0],[high+8,high,0],[0,0,0],[-1,-1,0],[high,high,1],[0,0,2]];
+  const expected=cases.map(([x,z,flag])=>Number(flag!==2&&!(hide&&flag===1)&&Math.abs((x>>3)-center)<=radius&&Math.abs((z>>3)-center)<=radius));
+  const raw=new Uint32Array(cases.map(([x,z,flag])=>(x&1023)|((z&1023)<<10)|(flag===1?1<<20:flag===2?1<<21:0)));
+  const uniform=device.createBuffer({size:672,usage:GPUBufferUsage.UNIFORM|GPUBufferUsage.COPY_DST});
+  const bytes=new ArrayBuffer(672);new Int32Array(bytes,640,4).set([center-radius,center-radius,center+radius,center+radius]);new Uint32Array(bytes,656,4).set([1,Number(hide),0,0]);device.queue.writeBuffer(uniform,0,bytes);
+  const input=device.createBuffer({size:raw.byteLength,usage:GPUBufferUsage.STORAGE|GPUBufferUsage.COPY_DST});device.queue.writeBuffer(input,0,raw);
+  const output=device.createBuffer({size:raw.byteLength,usage:GPUBufferUsage.STORAGE|GPUBufferUsage.COPY_SRC});
+  const readback=device.createBuffer({size:raw.byteLength,usage:GPUBufferUsage.MAP_READ|GPUBufferUsage.COPY_DST});
+  const cameraBind=device.createBindGroup({layout:admissionPipeline.getBindGroupLayout(0),entries:[{binding:0,resource:{buffer:uniform}}]});
+  const probeBind=device.createBindGroup({layout:admissionPipeline.getBindGroupLayout(1),entries:[{binding:0,resource:{buffer:input}},{binding:1,resource:{buffer:output}}]});
+  const encoder=device.createCommandEncoder(),pass=encoder.beginComputePass();pass.setPipeline(admissionPipeline);pass.setBindGroup(0,cameraBind);pass.setBindGroup(1,probeBind);pass.dispatchWorkgroups(cases.length);pass.end();encoder.copyBufferToBuffer(output,0,readback,0,raw.byteLength);device.queue.submit([encoder.finish()]);
+  await readback.mapAsync(GPUMapMode.READ);const actual=[...new Uint32Array(readback.getMappedRange())];check(name+' WGSL admission',actual.every((v,i)=>v===expected[i]),{actual,expected});readback.unmap();for(const buffer of [uniform,input,output,readback])buffer.destroy();
+ }
+ const pipeline=await device.createRenderPipelineAsync({layout:'auto',vertex:{module,entryPoint:'vs_main'},fragment:{module,entryPoint:'fs_main',targets:[{format:'rgba8unorm'}]}});
+ const blank=device.createTexture({size:[1,1],format:'rgba8unorm',usage:GPUTextureUsage.TEXTURE_BINDING});
+ const solid=new Uint8Array(Array.from({length:9},()=>[73,129,201,255]).flat());
+ const edges=new Uint8Array([0,0,0,255,255,255,255,255,255,255,255,255,0,0,0,255]);
+ async function capture(pixels,width,height,outWidth,outHeight,mode,colorMode=0,intensity=100,overlay=[0,0,0,0]){
+  const image=device.createTexture({size:[width,height],format:'rgba8unorm',usage:GPUTextureUsage.COPY_DST|GPUTextureUsage.TEXTURE_BINDING});
+  const premul=pixels.slice();for(let i=0;i<premul.length;i+=4)for(let c=0;c<3;c++)premul[i+c]=Math.floor(premul[i+c]*premul[i+3]/255);
+  device.queue.writeTexture({texture:image},premul,{bytesPerRow:width*4},[width,height]);
+  const uniform=device.createBuffer({size:64,usage:GPUBufferUsage.UNIFORM|GPUBufferUsage.COPY_DST});
+  const bytes=new ArrayBuffer(64),u=new Uint32Array(bytes),f=new Float32Array(bytes);u.set([width,height,mode,colorMode]);f.set([0,0,outWidth,outHeight,intensity,0,0,0],4);f.set(overlay.map(v=>v/255),12);device.queue.writeBuffer(uniform,0,bytes);
+  const bind=device.createBindGroup({layout:pipeline.getBindGroupLayout(0),entries:[{binding:0,resource:{buffer:uniform}},{binding:1,resource:image.createView()},{binding:2,resource:blank.createView()}]});
+  const target=device.createTexture({size:[outWidth,outHeight],format:'rgba8unorm',usage:GPUTextureUsage.RENDER_ATTACHMENT|GPUTextureUsage.COPY_SRC});
+  const stride=Math.ceil(outWidth*4/256)*256;
+  const readback=device.createBuffer({size:stride*outHeight,usage:GPUBufferUsage.MAP_READ|GPUBufferUsage.COPY_DST});
+  const encoder=device.createCommandEncoder(),pass=encoder.beginRenderPass({colorAttachments:[{view:target.createView(),loadOp:'clear',storeOp:'store',clearValue:[0,0,0,1]}]});
+  pass.setPipeline(pipeline);pass.setBindGroup(0,bind);pass.draw(3);pass.end();encoder.copyTextureToBuffer({texture:target},{buffer:readback,bytesPerRow:stride},[outWidth,outHeight]);device.queue.submit([encoder.finish()]);
+  await readback.mapAsync(GPUMapMode.READ);const mapped=new Uint8Array(readback.getMappedRange()),output=new Uint8Array(outWidth*outHeight*4);
+  for(let y=0;y<outHeight;y++)output.set(mapped.subarray(y*stride,y*stride+outWidth*4),y*outWidth*4);
+  readback.unmap();image.destroy();uniform.destroy();target.destroy();readback.destroy();return output;
+ }
+ const names=['Nearest','Linear','Mitchell','CatmullRom','Xbr','Hybrid'];
+ for(let mode=0;mode<names.length;mode++){
+  const name=names[mode],pixels=await capture(solid,3,3,11,9,mode);
+  check(name+' solid/transfer',pixels.every((v,i)=>Math.abs(v-[73,129,201,255][i%4])<=1));
+  const edge=await capture(edges,2,2,17,13,mode);
+  const canvas=document.createElement('canvas');canvas.width=17;canvas.height=13;const ctx=canvas.getContext('2d');ctx.putImageData(new ImageData(new Uint8ClampedArray(edge),17,13),0,0);canvas.title=name;document.querySelector('#images').append(canvas);
+  try{
+   const response=await fetch('/native/'+name+'.png');if(!response.ok)throw Error('required native fixture missing: '+name);if(response.ok){const bitmap=await createImageBitmap(await response.blob(),{colorSpaceConversion:'none'});const c=document.createElement('canvas');c.width=17;c.height=13;const x=c.getContext('2d');x.drawImage(bitmap,0,0);const native=x.getImageData(0,0,17,13).data;let max=0,total=0;for(let i=0;i<edge.length;i++){const d=Math.abs(edge[i]-native[i]);max=Math.max(max,d);total+=d;}check(name+' native/browser pixels',max<=2,{maximumChannelDelta:max,meanChannelDelta:total/edge.length});}
+  }catch(e){throw Error(name+' comparison: '+e.message);}
+ }
+ const midpoint=await capture(edges,2,2,3,3,1);check('encoded-space bilinear midpoint',[...midpoint.slice(16,19)].every(v=>Math.abs(v-128)<=1),{pixel:[...midpoint.slice(16,20)]});
+ const baseline=await capture(solid,3,3,11,9,5),neutral=await capture(solid,3,3,11,9,5,2,0),corrected=await capture(solid,3,3,11,9,5,2,100);
+ check('zero correction neutral',baseline.every((v,i)=>v===neutral[i]));check('full correction changes UI',baseline.some((v,i)=>v!==corrected[i]));
+ const overlay=[63,0,127,191];
+ const layered=await capture(new Uint8Array([0,255,0,255,0,0,255,128,0,0,0,0]),3,1,3,1,0,0,100,overlay);
+ const expected=[0,255,0,255,31,0,191,255,63,0,127,255];
+ check('viewport overlay beneath UI',layered.every((v,i)=>Math.abs(v-expected[i])<=1),{actual:[...layered],expected});
+ for(let mode=0;mode<6;mode++){
+  const pixels=await capture(new Uint8Array(4),1,1,7,5,mode,0,100,overlay);
+  check(names[mode]+' viewport overlay',pixels.every((v,i)=>Math.abs(v-[63,0,127,255][i%4])<=1));
+ }
+ const overlayNeutral=await capture(new Uint8Array(4),1,1,7,5,5,0,100,overlay),overlayCorrected=await capture(new Uint8Array(4),1,1,7,5,5,2,100,overlay);
+ check('viewport overlay color correction',overlayNeutral.some((v,i)=>v!==overlayCorrected[i]));
+ await device.queue.onSubmittedWorkDone();check('no uncaptured GPU errors',errors.length===0,{errors});device.destroy();
+}
+try{await run();result.passed=true;status.textContent='PASS — '+result.checks.length+' shared shader and pixel checks';status.className='pass';}catch(e){result.passed=false;result.error=e.stack||String(e);status.textContent='FAIL — '+e.message;status.className='fail';}
+report.textContent=JSON.stringify(result,null,2);await fetch('/result',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(result)});
+</script>

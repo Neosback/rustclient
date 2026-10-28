@@ -96,7 +96,9 @@ pub struct ActorSequenceSlot {
     pub sequence: Option<SequenceId>,
     /// Resolved definition policy for the active action sequence.
     pub policy: Option<SequencePolicy>,
+    /// Legacy frame index or cached-model time position for resolved playback.
     pub frame: Option<u32>,
+    /// Legacy within-frame counter; unresolved fixtures retain an aggregate compatibility timer.
     pub cycle: i32,
     pub delay: i32,
     /// Playback iteration counter. Restart mode 2 resets only this value.

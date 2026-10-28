@@ -11,6 +11,8 @@ mod text;
 pub mod widgets;
 pub use context_menu::ContextMenu;
 mod presentation;
+mod viewport_overlay;
+pub use viewport_overlay::ViewportOverlay;
 
 pub use controller::{TitlePreferences, TitleUi};
 pub use draw::{Quad, Rect, StretchedCanvas, TitleViewport, UiFrame, UiImageId};

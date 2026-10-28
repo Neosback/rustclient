@@ -39,8 +39,7 @@ impl SequenceTiming {
     #[must_use]
     pub const fn frame_step(&self) -> Option<u16> {
         match self {
-            Self::Legacy { frame_step, .. } => *frame_step,
-            Self::CachedModel { frame_step, .. } => *frame_step,
+            Self::Legacy { frame_step, .. } | Self::CachedModel { frame_step, .. } => *frame_step,
         }
     }
 }

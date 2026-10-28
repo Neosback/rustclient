@@ -1,8 +1,6 @@
 //! Non-sRGB multisampled world target and explicit display conversion.
 use crate::SurfaceSize;
 pub(crate) const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
-/// Sample count of offscreen captures, which do not follow the user's GPU settings.
-pub(crate) const CAPTURE_SAMPLES: u32 = 4;
 pub(crate) struct WorldTarget {
     pub texture: wgpu::Texture,
     pub resolved: wgpu::TextureView,

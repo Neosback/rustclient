@@ -55,7 +55,7 @@ pub fn project(
     state: &GameState,
     assets: &TitleAssets,
     frame: &mut UiFrame,
-    top_level: u8,
+    visibility: &rustclient_scene::SceneVisibility,
 ) {
     let Some(WorldView {
         camera,
@@ -67,7 +67,12 @@ pub fn project(
         return;
     };
     let label = |anchor: &ActorLabelAnchor| {
-        if anchor.level > top_level {
+        if scene
+            .entity_geometry
+            .vertices
+            .get(anchor.vertices.start)
+            .is_none_or(|vertex| !visibility.shows_vertex(vertex))
+        {
             return None;
         }
         let (speech, player, local) = match anchor.actor {

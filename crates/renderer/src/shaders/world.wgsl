@@ -1,13 +1,13 @@
 // RuneLite GPU material transfer: runelite-gpu/vert.glsl + frag.glsl.
 // HSL gamma is applied in the vertex conversion; texture gamma in the fragment shader.
 // fog: x depth in tiles (0 = off), y draw distance in local units, z/w eye x/z. color: x color-blind mode, y intensity.
-struct Camera { view_projection: mat4x4<f32>, cycle: u32, top_level: u32, brightness:f32, material_flags:u32, fog:vec4<f32>, fog_color:vec4<f32>, color:vec4<f32>, hidden_roofs:array<vec4<u32>,32> }
+struct Camera { view_projection: mat4x4<f32>, cycle: u32, top_level: u32, brightness:f32, material_flags:u32, fog:vec4<f32>, fog_color:vec4<f32>, color:vec4<f32>, hidden_roofs:array<vec4<u32>,32>, zones:vec4<i32>, admission:vec4<u32> }
 struct Animations { values:array<vec4<f32>,256> }
 @group(0) @binding(0) var<uniform> camera:Camera;
 @group(0) @binding(1) var textures:texture_2d_array<f32>;
 @group(0) @binding(2) var tex_sampler:sampler;
 @group(0) @binding(3) var<uniform> animations:Animations;
-struct Input { @location(0) position:vec4<i32>, @location(1) abhsl:u32, @location(2) texture_uv:vec4<u32> }
+struct Input { @location(0) position:vec4<i32>, @location(1) abhsl:u32, @location(2) texture_uv:vec4<u32>, @location(3) draw_tile:u32 }
 struct Vertex {
  @builtin(position) clip:vec4<f32>,
  @location(0) alpha:f32,
@@ -53,34 +53,27 @@ fn fog_amount(world:vec3<f32>)->f32 {
  let distance=nearest-CORNER*TILE*max(0.0,(nearest+CORNER*CORNER)/(second+CORNER*CORNER));
  return 1.0-clamp(distance/(camera.fog.x*TILE),0.0,1.0);
 }
-// RuneLite colorblind.glsl, matrices in the same column order (row-vector * matrix in both languages).
-const RGB2LMS=mat3x3<f32>(vec3<f32>(17.8824,43.5161,4.11935),vec3<f32>(3.45565,27.1554,3.86714),vec3<f32>(0.0299566,0.184309,1.46709));
-const LMS2RGB=mat3x3<f32>(vec3<f32>(0.0809444479,-0.130504409,0.116721066),vec3<f32>(-0.0102485335,0.0540193266,-0.113614708),vec3<f32>(-0.000365296938,-0.00412161469,0.693511405));
-const PROTAN=mat3x3<f32>(vec3<f32>(0.0,2.02344,-2.52581),vec3<f32>(0.0,1.0,0.0),vec3<f32>(0.0,0.0,1.0));
-const DEUTERAN=mat3x3<f32>(vec3<f32>(1.0,0.0,0.0),vec3<f32>(0.494207,0.0,1.24827),vec3<f32>(0.0,0.0,1.0));
-const TRITAN=mat3x3<f32>(vec3<f32>(1.0,0.0,0.0),vec3<f32>(0.0,1.0,0.0),vec3<f32>(-0.395913,0.801109,0.0));
-const CORRECTIONS=mat3x3<f32>(vec3<f32>(0.0,0.0,0.0),vec3<f32>(0.7,1.0,0.0),vec3<f32>(0.7,0.0,1.0));
-fn colorblind(color:vec3<f32>)->vec3<f32> {
- let lms_in=color*RGB2LMS;
- var lms=lms_in*PROTAN;
- if camera.color.x==2.0 {lms=lms_in*DEUTERAN;}
- if camera.color.x==3.0 {lms=lms_in*TRITAN;}
- let error=color-lms*LMS2RGB;
- let correction=(error*CORRECTIONS)*clamp(camera.color.y/100.0,0.0,1.0);
- return color+correction;
-}
 fn roof_hidden(slot:u32)->bool {
  if slot==0u {return false;}
  return ((camera.hidden_roofs[slot>>7u][(slot>>5u)&3u]>>(slot&31u))&1u)!=0u;
 }
 fn finish(rgb:vec3<f32>,alpha:f32,fog:f32)->vec4<f32> {
  var c=rgb;
- if camera.color.x>0.0 {c=colorblind(c);}
+ if camera.color.x>0.0 {c=correct_color(c,u32(camera.color.x),camera.color.y);}
  return vec4<f32>(mix(c,camera.fog_color.rgb,fog),alpha);
+}
+// Mirrors scene::DrawTile and ZoneWindow. A whole model shares its owning tile.
+fn tile_admitted(raw:u32)->bool {
+ if (raw & (1u<<21u)) != 0u {return false;}
+ if camera.admission.y != 0u && (raw & (1u<<20u)) != 0u {return false;}
+ if camera.admission.x == 0u {return true;}
+ let tile=vec2<i32>(bitcast<i32>(raw<<22u)>>22u,bitcast<i32>(raw<<12u)>>22u);
+ let zone=tile>>vec2<u32>(3u);
+ return all(zone>=camera.zones.xy) && all(zone<=camera.zones.zw);
 }
 @vertex fn vs_main(input:Input)->Vertex {
  var out:Vertex;
- if (input.texture_uv.w&3u)>camera.top_level || roof_hidden(input.texture_uv.w>>2u) {
+ if !tile_admitted(input.draw_tile) || (input.texture_uv.w&3u)>camera.top_level || roof_hidden(input.texture_uv.w>>2u) {
     // Tile render level above this frame's top level (roofs, upper floors) or a roof hidden by
     // roof removal (texture_uv.w packs level | roof slot << 2): all three vertices collapse to
     // one point, so the triangle is dropped before rasterization.
@@ -108,8 +101,14 @@ fn finish(rgb:vec3<f32>,alpha:f32,fog:f32)->vec4<f32> {
  let dx=dpdx(input.uv);let dy=dpdy(input.uv);
  if input.texture>0u {
     let layer=i32(input.texture-1u);
-    if textureSampleLevel(textures,tex_sampler,input.uv,layer,0.0).a<1.0 {discard;}
-    let rgb=pow(textureSampleGrad(textures,tex_sampler,input.uv,layer,dx,dy).rgb,vec3<f32>(camera.brightness));
+    let size=vec2<f32>(textureDimensions(textures,0));
+    let point=vec2<i32>(floor(vec2<f32>(clamp(input.uv.x,0.0,1.0),fract(input.uv.y))*size));
+    let texel=clamp(point,vec2<i32>(0),vec2<i32>(size)-vec2<i32>(1));
+    let base=textureLoad(textures,texel,layer,0);
+    if base.a<1.0 {discard;}
+    let sampled=textureSampleGrad(textures,tex_sampler,input.uv,layer,dx,dy).rgb;
+    let magnified=max(length(dx*size),length(dy*size))<=1.0;
+    let rgb=pow(select(sampled,base.rgb,magnified),vec3<f32>(camera.brightness));
     // RuneLite textureLightMode selects HSL RGB for the old bright-texture path.
     let light=select(vec3<f32>(input.hsl/127.0),input.color,(camera.material_flags&2u)!=0u);
     return finish(rgb*light,input.alpha,input.fog);

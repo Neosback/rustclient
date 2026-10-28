@@ -137,6 +137,7 @@ pub fn project_widgets_with_drag(
     use crate::widgets::{WidgetBounds, WidgetTree, resolve_widget};
     frame.world_viewport = None;
     frame.world_overlay_index = None;
+    frame.viewport_overlay = crate::ViewportOverlay::default();
     frame.minimap_sprite = None;
     frame.compass_sprite = None;
     frame.canvas = Some(state.interfaces().window().canvas);
@@ -149,6 +150,7 @@ pub fn project_widgets_with_drag(
         dragged,
     )
     .map_err(|e| e.to_string())?;
+    let mut overlay_viewport = None;
     for node in &tree.nodes {
         let widget = resolve_widget(state.interfaces(), definitions, node.address)
             .map_err(|e| e.to_string())?;
@@ -160,6 +162,18 @@ pub fn project_widgets_with_drag(
         if widget.content == WidgetContent::WorldViewport {
             frame.world_viewport = Some(rect);
             frame.world_overlay_index = Some(frame.quads.len());
+            frame.viewport_overlay = crate::ViewportOverlay::default();
+            let shape = crate::viewport::viewport_shape(
+                node.bounds.width,
+                node.bounds.height,
+                frame.viewport_settings,
+            );
+            overlay_viewport = Some(Rect::new(
+                rect.x + f(shape.inset[0]),
+                rect.y + f(shape.inset[1]),
+                f(shape.size[0]),
+                f(shape.size[1]),
+            ));
             continue;
         }
         if widget.content == WidgetContent::Minimap {
@@ -218,6 +232,15 @@ pub fn project_widgets_with_drag(
                 filled,
                 transparency,
             } => {
+                if frame.viewport_overlay.absorb(
+                    overlay_viewport,
+                    rect,
+                    filled,
+                    color,
+                    transparency,
+                ) {
+                    continue;
+                }
                 let color = rgba(color, 255 - transparency);
                 if filled {
                     frame.image_tinted(UiImageId::White, rect, clip, color);

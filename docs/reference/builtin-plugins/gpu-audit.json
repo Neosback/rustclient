@@ -1,0 +1,1000 @@
+{
+  "schema": 1,
+  "scope": "Classic GPU plugin; full parity/HD readiness incomplete",
+  "files": [
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GLBuffer.java",
+      "sha256": "70f3543edd7a0ce0cb3de8f73aa74efdc98275fd56367edb57b2386e3abeb850",
+      "status": "engine-adaptation",
+      "owners": [
+        "crates/renderer/src/world_geometry.rs",
+        "crates/renderer/src/surface.rs"
+      ],
+      "verification": "Source reviewed; automated/backend evidence listed in GPU-AUDIT.md; full Java runtime differential NOT-RUN",
+      "notes": "Java GL/buffer/matrix/template helper replaced by wgpu resources, glam and bundled WGSL composition; no Java binary/API compatibility claimed."
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuFloatBuffer.java",
+      "sha256": "5ca2bcf0817c7adb6554347d314e254bf56f0cae16a1d3392459d1a2e55393b5",
+      "status": "engine-adaptation",
+      "owners": [
+        "crates/renderer/src/world_geometry.rs",
+        "crates/renderer/src/surface.rs"
+      ],
+      "verification": "Source reviewed; automated/backend evidence listed in GPU-AUDIT.md; full Java runtime differential NOT-RUN",
+      "notes": "Java GL/buffer/matrix/template helper replaced by wgpu resources, glam and bundled WGSL composition; no Java binary/API compatibility claimed."
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuIntBuffer.java",
+      "sha256": "31a1f4b3dfadcd5c00307ceee6fed9547109e1a8c45967966044bbbce261bf71",
+      "status": "engine-adaptation",
+      "owners": [
+        "crates/renderer/src/world_geometry.rs",
+        "crates/renderer/src/surface.rs"
+      ],
+      "verification": "Source reviewed; automated/backend evidence listed in GPU-AUDIT.md; full Java runtime differential NOT-RUN",
+      "notes": "Java GL/buffer/matrix/template helper replaced by wgpu resources, glam and bundled WGSL composition; no Java binary/API compatibility claimed."
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPlugin.java",
+      "sha256": "9508b008327ed496d320e5f315706d8a1462e9181a6e8a91e9d6940a214849d9",
+      "status": "partial",
+      "owners": [
+        "crates/renderer/src/world_geometry.rs",
+        "crates/renderer/src/surface.rs",
+        "crates/renderer/src/world.rs",
+        "crates/renderer/src/shaders/world.wgsl",
+        "crates/renderer/src/ui_canvas.rs",
+        "crates/renderer/src/shaders/ui_scale.wgsl"
+      ],
+      "verification": "Source reviewed; automated/backend evidence listed in GPU-AUDIT.md; full Java runtime differential NOT-RUN",
+      "notes": "Lifecycle/settings/upload/display implemented in engine owners; region loading, tint, floating vertices, workers and live acceptance remain open."
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPluginConfig.java",
+      "sha256": "1d9fc492672061830d8a5817348a22e1b7a01a5af0a962459c0fa833feed39b9",
+      "status": "partial",
+      "owners": [
+        "crates/renderer/src/settings.rs",
+        "apps/native/src/shell.rs"
+      ],
+      "verification": "Source reviewed; automated/backend evidence listed in GPU-AUDIT.md; full Java runtime differential NOT-RUN",
+      "notes": "All 16 descriptors retained; setting effects tracked separately."
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/Mat4.java",
+      "sha256": "cea9758e1afb837827fe78b33ac4f0ac4ef7bc9c6ae75751770a4389452df02e",
+      "status": "engine-adaptation",
+      "owners": [
+        "crates/renderer/src/world_geometry.rs",
+        "crates/renderer/src/surface.rs"
+      ],
+      "verification": "Source reviewed; automated/backend evidence listed in GPU-AUDIT.md; full Java runtime differential NOT-RUN",
+      "notes": "Java GL/buffer/matrix/template helper replaced by wgpu resources, glam and bundled WGSL composition; no Java binary/API compatibility claimed."
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/ModelUploader.java",
+      "sha256": "79a3b1f9f6bd6aafcff7f2b5d21677c695828bdcb730d45f49b7dac35bd71047",
+      "status": "partial",
+      "owners": [
+        "crates/scene/src/entity_mesh.rs",
+        "crates/renderer/src/world_geometry.rs"
+      ],
+      "verification": "Source reviewed; automated/backend evidence listed in GPU-AUDIT.md; full Java runtime differential NOT-RUN",
+      "notes": "Integer model meshes and face-priority owner retained; floating animation upload and source per-entity tint absent. Source SORTED_NO_DEPTH temporary-renderable policy also has no Rust render-mode projection/pipeline yet."
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/RegionManager.java",
+      "sha256": "257cbeb7b2e99c224697c703a0bf68cf5d2e94cfa7c4ca173fb97466a2de5803",
+      "status": "partial",
+      "owners": [
+        "crates/scene/src/regions.rs",
+        "crates/scene/src/visibility.rs",
+        "crates/scene/src/lib.rs"
+      ],
+      "verification": "Normal-map metadata, setting transaction, CPU admission and native/WebGPU shader contracts pass; instance-loader/runtime side-effect acceptance open",
+      "notes": "Scene-center group classifies whole scenery tiles/models on every plane; actors remain independent. No terrain/collision/state mutation. Instance bypass API tested, but application rejects instance travel before asset assembly. Minimap/source callback side effects not visually accepted."
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/SceneUploader.java",
+      "sha256": "a8ee331ba88e72448285c63e73f2fe9f052e969e8ce9099414b603518e5b191a",
+      "status": "partial",
+      "owners": [
+        "crates/scene/src/mesh.rs",
+        "crates/renderer/src/world_geometry.rs"
+      ],
+      "verification": "Source reviewed; automated/backend evidence listed in GPU-AUDIT.md; full Java runtime differential NOT-RUN",
+      "notes": "Single shared extraction tags one owning tile per terrain primitive/whole scenery model for shared GPU/picking zone/region admission. Expanded ring, source frustum and multi-zone alpha acceptance remain open."
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/Shader.java",
+      "sha256": "b1c49906990d0508f165fdcb7a173a2de70f74737a93979d406337f73fe28a8c",
+      "status": "engine-adaptation",
+      "owners": [
+        "crates/renderer/src/world_geometry.rs",
+        "crates/renderer/src/surface.rs"
+      ],
+      "verification": "Source reviewed; automated/backend evidence listed in GPU-AUDIT.md; full Java runtime differential NOT-RUN",
+      "notes": "Java GL/buffer/matrix/template helper replaced by wgpu resources, glam and bundled WGSL composition; no Java binary/API compatibility claimed."
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/ShaderException.java",
+      "sha256": "3c8eeb7a5e1ce6a9e13b8c1c6360f47d1e8014a199995e8e956d7b89a5feccfb",
+      "status": "engine-adaptation",
+      "owners": [
+        "crates/renderer/src/world_geometry.rs",
+        "crates/renderer/src/surface.rs"
+      ],
+      "verification": "Source reviewed; automated/backend evidence listed in GPU-AUDIT.md; full Java runtime differential NOT-RUN",
+      "notes": "Java GL/buffer/matrix/template helper replaced by wgpu resources, glam and bundled WGSL composition; no Java binary/API compatibility claimed."
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/TextureManager.java",
+      "sha256": "107fe7a3c72a9c4534db889cd45b11799a7d954cce59a8c60998ecdb02c8863e",
+      "status": "partial",
+      "owners": [
+        "crates/renderer/src/world_textures.rs",
+        "crates/renderer/src/shaders/world.wgsl"
+      ],
+      "verification": "Source reviewed; automated/backend evidence listed in GPU-AUDIT.md; full Java runtime differential NOT-RUN",
+      "notes": "128px array, integer mips, scroll, wrapping, nearest masks/magnification and anisotropic minification; fixed 256-layer guard differs from source definition-count allocation."
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/VAO.java",
+      "sha256": "e2b7f36e29431b9c1396783800594b587c14ffcb71c315627a62f1becbacc445",
+      "status": "engine-adaptation",
+      "owners": [
+        "crates/renderer/src/world_geometry.rs",
+        "crates/renderer/src/surface.rs"
+      ],
+      "verification": "Source reviewed; automated/backend evidence listed in GPU-AUDIT.md; full Java runtime differential NOT-RUN",
+      "notes": "Java GL/buffer/matrix/template helper replaced by wgpu resources, glam and bundled WGSL composition; no Java binary/API compatibility claimed."
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/VBO.java",
+      "sha256": "f3850b4a4ebce0f1aedb967682a25cd206f1d79e76296e92559edefd945a9c2a",
+      "status": "engine-adaptation",
+      "owners": [
+        "crates/renderer/src/world_geometry.rs",
+        "crates/renderer/src/surface.rs"
+      ],
+      "verification": "Source reviewed; automated/backend evidence listed in GPU-AUDIT.md; full Java runtime differential NOT-RUN",
+      "notes": "Java GL/buffer/matrix/template helper replaced by wgpu resources, glam and bundled WGSL composition; no Java binary/API compatibility claimed."
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/Zone.java",
+      "sha256": "f54b9739b1622c2a0031ff3e37657a559f5e5ae7cf9753d317bd8098299b4f9d",
+      "status": "engine-adaptation",
+      "owners": [
+        "crates/renderer/src/world_geometry.rs",
+        "crates/renderer/src/surface.rs"
+      ],
+      "verification": "Source reviewed; automated/backend evidence listed in GPU-AUDIT.md; full Java runtime differential NOT-RUN",
+      "notes": "Java GL/buffer/matrix/template helper replaced by wgpu resources, glam and bundled WGSL composition; no Java binary/API compatibility claimed."
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/config/AntiAliasingMode.java",
+      "sha256": "6b742223426b3e425583b4d9172595b9b88405b7213e0c2bc86dc341e7f189cf",
+      "status": "implemented",
+      "owners": [
+        "crates/renderer/src/settings.rs",
+        "crates/renderer/src/world_target.rs"
+      ],
+      "verification": "Source reviewed; automated/backend evidence listed in GPU-AUDIT.md; full Java runtime differential NOT-RUN",
+      "notes": "Requested/effective format sample counts negotiated from actual device capabilities."
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/config/ColorBlindMode.java",
+      "sha256": "6d7fdba3683a69e77e4a6735d8880c28815b4324163e8ec83090a76e566557b6",
+      "status": "implemented",
+      "owners": [
+        "crates/renderer/src/settings.rs",
+        "crates/renderer/src/shaders/colorblind.wgsl"
+      ],
+      "verification": "Source reviewed; automated/backend evidence listed in GPU-AUDIT.md; full Java runtime differential NOT-RUN",
+      "notes": "Three source matrices and intensity shared by world and UI."
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/config/UIScalingMode.java",
+      "sha256": "02bfeafe2506e57013efc55817e76f691b2267e245c0371956421419a5b7cd24",
+      "status": "implemented",
+      "owners": [
+        "crates/renderer/src/settings.rs",
+        "crates/renderer/src/ui_canvas.rs",
+        "crates/renderer/src/shaders/ui_scale.wgsl",
+        "crates/renderer/src/shaders/ui_xbr.wgsl"
+      ],
+      "verification": "Source reviewed; automated/backend evidence listed in GPU-AUDIT.md; full Java runtime differential NOT-RUN",
+      "notes": "All six source modes mapped; source xBR uninitialized f4 explicitly corrected."
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/regions/Region.java",
+      "sha256": "92898dbdd584694158c5b72f48dfc07404b0fa5c635a1612b8469086452b68ea",
+      "status": "implemented",
+      "owners": [
+        "crates/scene/src/regions.rs"
+      ],
+      "verification": "Rust source nonintersection/Lumbridge/Zanaris case and bounded-parser contract pass; Java binary differential NOT-RUN",
+      "notes": "Bundled resource parser supports absolute/relative rectangles, cursor and group commands; direct deterministic lookup replaces Java last-hit/region-mark optimization. Frozen rectangles do not overlap."
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/regions/Regions.java",
+      "sha256": "0befa4012fec63c9da1fa8ef9dcf35f5cd35c50f83cd467a8fcbc31927abefe6",
+      "status": "implemented",
+      "owners": [
+        "crates/scene/src/regions.rs"
+      ],
+      "verification": "Rust source nonintersection/Lumbridge/Zanaris case and bounded-parser contract pass; Java binary differential NOT-RUN",
+      "notes": "Bundled resource parser supports absolute/relative rectangles, cursor and group commands; direct deterministic lookup replaces Java last-hit/region-mark optimization. Frozen rectangles do not overlap."
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/template/Template.java",
+      "sha256": "a53415e193005ac44afbe27839715d11dcfda6b00fd530a45ab4e9c5fc93dc58",
+      "status": "engine-adaptation",
+      "owners": [
+        "crates/renderer/src/world_geometry.rs",
+        "crates/renderer/src/surface.rs"
+      ],
+      "verification": "Source reviewed; automated/backend evidence listed in GPU-AUDIT.md; full Java runtime differential NOT-RUN",
+      "notes": "Java GL/buffer/matrix/template helper replaced by wgpu resources, glam and bundled WGSL composition; no Java binary/API compatibility claimed."
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/resources/net/runelite/client/plugins/gpu/.clang-format",
+      "sha256": "118f3c9acb0785cee436d35e8ef7a951118a0f44a527b614295d0170704297ca",
+      "status": "bookkeeping",
+      "owners": [],
+      "verification": "See GPU-AUDIT.md for actual executed checks and separate visual status",
+      "notes": "Source formatting metadata; not an executable shader."
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/resources/net/runelite/client/plugins/gpu/colorblind.glsl",
+      "sha256": "b2e723a74c211cf149f9dc831c083f133c2ba84f5039bdb2ec857c7b69b0bf36",
+      "status": "implemented",
+      "owners": [
+        "crates/renderer/src/shaders/colorblind.wgsl"
+      ],
+      "verification": "See GPU-AUDIT.md for actual executed checks and separate visual status",
+      "notes": "Applicable shader semantics translated to bundled WGSL; full Java pixel differential NOT-RUN."
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/resources/net/runelite/client/plugins/gpu/frag.glsl",
+      "sha256": "ea6b6f1160d2b0fb82cc72040a55467e5640255d865ae35bc702ce3fd57e1066",
+      "status": "implemented",
+      "owners": [
+        "crates/renderer/src/world.rs",
+        "crates/renderer/src/shaders/world.wgsl"
+      ],
+      "verification": "See GPU-AUDIT.md for actual executed checks and separate visual status",
+      "notes": "Applicable shader semantics translated to bundled WGSL; full Java pixel differential NOT-RUN."
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/resources/net/runelite/client/plugins/gpu/fragui.glsl",
+      "sha256": "e6e2964d6befa57c45f712fbaeba98a431fa40e960c5289ef12b12230f6682ae",
+      "status": "implemented",
+      "owners": [
+        "crates/renderer/src/ui_canvas.rs",
+        "crates/renderer/src/shaders/ui_scale.wgsl",
+        "crates/renderer/src/shaders/ui_xbr.wgsl",
+        "crates/game-ui/src/viewport_overlay.rs"
+      ],
+      "verification": "Widget selection/reset/letterbox and exact byte contracts; actual native GPU overlay occlusion, premultiplication, six scaling modes and correction pass; 31 core-feature WebGPU checks pass. Source visual acceptance remains open.",
+      "notes": "Six scaling modes, source full-viewport widget alphaOverlay beneath sampled UI, encoded premultiplied composition and color correction implemented. Stateless frame/triangle projection replaces source globals/quad; source xBR correction remains documented. Java visual acceptance NOT-RUN."
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/resources/net/runelite/client/plugins/gpu/hsl_to_rgb.glsl",
+      "sha256": "a052ec368216729acbbd8fdf2b0d81f47f911a00f85e3f0512085dfa7b433030",
+      "status": "implemented",
+      "owners": [
+        "crates/renderer/src/world.rs",
+        "crates/renderer/src/shaders/world.wgsl"
+      ],
+      "verification": "See GPU-AUDIT.md for actual executed checks and separate visual status",
+      "notes": "Applicable shader semantics translated to bundled WGSL; full Java pixel differential NOT-RUN."
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/resources/net/runelite/client/plugins/gpu/regions/regions.txt",
+      "sha256": "a79d0f4ad54e80e4aa9fb179d1b919c46c60490b72d18b26c442090ea838e0e1",
+      "status": "implemented",
+      "owners": [
+        "crates/scene/src/regions.rs",
+        "crates/scene/resources/gpu-regions.txt"
+      ],
+      "verification": "Byte identity and source group assertions pass",
+      "notes": "Bundled BSD resource classifies immutable scenery metadata; no runtime reference-tree access.",
+      "bundledCopy": "crates/scene/resources/gpu-regions.txt"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/resources/net/runelite/client/plugins/gpu/scale/bicubic.glsl",
+      "sha256": "fec31c95d83a31f009b923d3afc1c39c31162dfbab7337a4e9836393f8e3ec79",
+      "status": "implemented",
+      "owners": [
+        "crates/renderer/src/ui_canvas.rs",
+        "crates/renderer/src/shaders/ui_scale.wgsl"
+      ],
+      "verification": "See GPU-AUDIT.md for actual executed checks and separate visual status",
+      "notes": "Source radial cubic kernels/anti-ringing or hybrid formula translated; native/browser actual-GPU fixtures pass; full Java pixel differential NOT-RUN."
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/resources/net/runelite/client/plugins/gpu/scale/hybrid.glsl",
+      "sha256": "e2958c8e450721e1207af96cfbf63de7e77b990e5cf3d0e64bc2744b3925b093",
+      "status": "implemented",
+      "owners": [
+        "crates/renderer/src/ui_canvas.rs",
+        "crates/renderer/src/shaders/ui_scale.wgsl"
+      ],
+      "verification": "See GPU-AUDIT.md for actual executed checks and separate visual status",
+      "notes": "Source radial cubic kernels/anti-ringing or hybrid formula translated; native/browser actual-GPU fixtures pass; full Java pixel differential NOT-RUN."
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/resources/net/runelite/client/plugins/gpu/scale/xbr_lv2_common.glsl",
+      "sha256": "d6278874b91947b69681c8617ea168c932ac104f41ba7c028686822f1f1b8355",
+      "status": "implemented",
+      "owners": [
+        "crates/renderer/src/ui_canvas.rs",
+        "crates/renderer/src/shaders/ui_scale.wgsl",
+        "crates/renderer/src/shaders/ui_xbr.wgsl"
+      ],
+      "verification": "See GPU-AUDIT.md for actual executed checks and separate visual status",
+      "notes": "Active CORNER_C path translated, neighborhood computed in fragment; source f4 was uninitialized, Rust uses rotationally correct h5.yzwx. This is an intentional source correction, not bit parity."
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/resources/net/runelite/client/plugins/gpu/scale/xbr_lv2_frag.glsl",
+      "sha256": "4c6bb208c08865314b079b2eb0943eda100e379dd28b5c6691d54ce866dfc777",
+      "status": "implemented",
+      "owners": [
+        "crates/renderer/src/ui_canvas.rs",
+        "crates/renderer/src/shaders/ui_scale.wgsl",
+        "crates/renderer/src/shaders/ui_xbr.wgsl"
+      ],
+      "verification": "See GPU-AUDIT.md for actual executed checks and separate visual status",
+      "notes": "Active CORNER_C path translated, neighborhood computed in fragment; source f4 was uninitialized, Rust uses rotationally correct h5.yzwx. This is an intentional source correction, not bit parity."
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/resources/net/runelite/client/plugins/gpu/scale/xbr_lv2_vert.glsl",
+      "sha256": "c7a9c8c44cffe71dc370500bea93f99ff0ba5e93e5cb8289ce0e3e2858ffb89f",
+      "status": "implemented",
+      "owners": [
+        "crates/renderer/src/ui_canvas.rs",
+        "crates/renderer/src/shaders/ui_scale.wgsl",
+        "crates/renderer/src/shaders/ui_xbr.wgsl"
+      ],
+      "verification": "See GPU-AUDIT.md for actual executed checks and separate visual status",
+      "notes": "Active CORNER_C path translated, neighborhood computed in fragment; source f4 was uninitialized, Rust uses rotationally correct h5.yzwx. This is an intentional source correction, not bit parity."
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/resources/net/runelite/client/plugins/gpu/vert.glsl",
+      "sha256": "847dd6c2ad7330eda248d94b48bbe834574a1182ebc7773d4a2737f0f704fce3",
+      "status": "partial",
+      "owners": [
+        "crates/renderer/src/world.rs",
+        "crates/renderer/src/shaders/world.wgsl"
+      ],
+      "verification": "See GPU-AUDIT.md for actual executed checks and separate visual status",
+      "notes": "HSL/gamma/depth-bias/fog and roof visibility; entity tint, extended bounds and source world-view projection acceptance incomplete."
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/resources/net/runelite/client/plugins/gpu/vertui.glsl",
+      "sha256": "e43b9a33438906fba2c67452f5c32a28a258343794c4d1c621d8473bce4c3825",
+      "status": "implemented",
+      "owners": [
+        "crates/renderer/src/ui_canvas.rs",
+        "crates/renderer/src/shaders/ui_scale.wgsl",
+        "crates/renderer/src/shaders/ui_xbr.wgsl",
+        "crates/game-ui/src/viewport_overlay.rs"
+      ],
+      "verification": "Widget selection/reset/letterbox and exact byte contracts; actual native GPU overlay occlusion, premultiplication, six scaling modes and correction pass; 31 core-feature WebGPU checks pass. Source visual acceptance remains open.",
+      "notes": "Six scaling modes, source full-viewport widget alphaOverlay beneath sampled UI, encoded premultiplied composition and color correction implemented. Stateless frame/triangle projection replaces source globals/quad; source xBR correction remains documented. Java visual acceptance NOT-RUN."
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/test/java/net/runelite/client/plugins/gpu/ShaderTest.java",
+      "sha256": "4ac7b4c1c4f942e543ddc591c5e7fa1479c0c3d82e67efabc8b8bdd0d2489ae9",
+      "status": "partial",
+      "owners": [
+        "crates/renderer/src/ui_canvas.rs",
+        "crates/renderer/src/world.rs",
+        "apps/native/src/bin/gpu_probe.rs",
+        "tools/gpu/probe.html"
+      ],
+      "verification": "No Java source test execution or source-case MATCH claimed",
+      "notes": "Source compiles the XBR/deuteranopia GLSL variant. Rust validates portable composed WGSL and executes six UI modes on Metal/browser; Java test itself and full differential NOT-RUN."
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/test/java/net/runelite/client/plugins/gpu/regions/RegionsTest.java",
+      "sha256": "4aed86f14b434a3539089b9df52b741329fe64149b34a99f4eabdcdb9d3ac811",
+      "status": "implemented",
+      "owners": [
+        "crates/scene/src/regions.rs"
+      ],
+      "verification": "Rust source-case assertions pass; Java JUnit execution/differential MATCH not claimed",
+      "notes": "Preserves every source assertion: rectangle nonintersection, Lumbridge group zero and Zanaris group nonzero. Added bounded grammar and instance-bypass contracts."
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/test/java/net/runelite/client/plugins/gpu/template/TemplateTest.java",
+      "sha256": "4b5ccc3798fd77e1db07d3e3df729aed5cdf277fc2878c0e0b77eaa51b097389",
+      "status": "partial",
+      "owners": [
+        "crates/renderer/src/shader_sources.rs"
+      ],
+      "verification": "No Java source test execution or source-case MATCH claimed",
+      "notes": "Source nested include string expansion is replaced by static composition; direct Java case not ported. Shader composition validated, not a lossless source-case MATCH."
+    },
+    {
+      "path": "runelite-gpu/.DS_Store",
+      "sha256": "94cad88063c6ad84c2920d66ed77944e12f3b8ee5e62c164aaea74bf2d6ea10a",
+      "status": "bookkeeping",
+      "owners": [],
+      "verification": "Source resource identity checked by tools/gpu/audit.py",
+      "notes": "Local platform metadata; not shader code."
+    },
+    {
+      "path": "runelite-gpu/cl_types.cl",
+      "sha256": "54abeab254b9e4938aa16af594a18ea91869dec343f177b7e371c5da6d43a07b",
+      "status": "excluded",
+      "owners": [],
+      "verification": "Source resource identity checked by tools/gpu/audit.py",
+      "notes": "Historical compute/OpenCL path is not loaded by the pinned active Java GPU plugin; preserve as separate evidence."
+    },
+    {
+      "path": "runelite-gpu/colorblind.glsl",
+      "sha256": "b2e723a74c211cf149f9dc831c083f133c2ba84f5039bdb2ec857c7b69b0bf36",
+      "status": "implemented",
+      "owners": [
+        "crates/renderer/src/shaders/colorblind.wgsl"
+      ],
+      "verification": "Source resource identity checked by tools/gpu/audit.py",
+      "notes": "Applicable shader semantics translated to bundled WGSL; full Java pixel differential NOT-RUN.",
+      "matches": "references/open-runelite-rev-240/runelite-client/src/main/resources/net/runelite/client/plugins/gpu/colorblind.glsl"
+    },
+    {
+      "path": "runelite-gpu/common.cl",
+      "sha256": "2cfc73dd949d3bced127e774a3dda65c20913e4672796f0302386b4b2feae703",
+      "status": "excluded",
+      "owners": [],
+      "verification": "Source resource identity checked by tools/gpu/audit.py",
+      "notes": "Historical compute/OpenCL path is not loaded by the pinned active Java GPU plugin; preserve as separate evidence."
+    },
+    {
+      "path": "runelite-gpu/common.glsl",
+      "sha256": "7c48f651d56ccfa5f219b5ffdf4509174323325987b0105994d0b8ffc084f715",
+      "status": "excluded",
+      "owners": [],
+      "verification": "Source resource identity checked by tools/gpu/audit.py",
+      "notes": "Historical compute/OpenCL path is not loaded by the pinned active Java GPU plugin; preserve as separate evidence."
+    },
+    {
+      "path": "runelite-gpu/comp.cl",
+      "sha256": "e569db01ae01b2d06c4c9ad83463b234c9fb64ddcf57b1d1d78d8fb68f65b922",
+      "status": "excluded",
+      "owners": [],
+      "verification": "Source resource identity checked by tools/gpu/audit.py",
+      "notes": "Historical compute/OpenCL path is not loaded by the pinned active Java GPU plugin; preserve as separate evidence."
+    },
+    {
+      "path": "runelite-gpu/comp.glsl",
+      "sha256": "2bdd0b9a40babf1459058fb93877d1d831eb924e870386e4397d5d0333bcd61b",
+      "status": "excluded",
+      "owners": [],
+      "verification": "Source resource identity checked by tools/gpu/audit.py",
+      "notes": "Historical compute/OpenCL path is not loaded by the pinned active Java GPU plugin; preserve as separate evidence."
+    },
+    {
+      "path": "runelite-gpu/comp_unordered.cl",
+      "sha256": "fe19defcd69553d4d7803736a2229334e84e97b557550049f767724b5fe5936f",
+      "status": "excluded",
+      "owners": [],
+      "verification": "Source resource identity checked by tools/gpu/audit.py",
+      "notes": "Historical compute/OpenCL path is not loaded by the pinned active Java GPU plugin; preserve as separate evidence."
+    },
+    {
+      "path": "runelite-gpu/comp_unordered.glsl",
+      "sha256": "0c366b6b0e53b2da336b35075570085b76810deebde80dbdc11ee590ab87bbcb",
+      "status": "excluded",
+      "owners": [],
+      "verification": "Source resource identity checked by tools/gpu/audit.py",
+      "notes": "Historical compute/OpenCL path is not loaded by the pinned active Java GPU plugin; preserve as separate evidence."
+    },
+    {
+      "path": "runelite-gpu/frag.glsl",
+      "sha256": "ea6b6f1160d2b0fb82cc72040a55467e5640255d865ae35bc702ce3fd57e1066",
+      "status": "implemented",
+      "owners": [
+        "crates/renderer/src/world.rs",
+        "crates/renderer/src/shaders/world.wgsl"
+      ],
+      "verification": "Source resource identity checked by tools/gpu/audit.py",
+      "notes": "Applicable shader semantics translated to bundled WGSL; full Java pixel differential NOT-RUN.",
+      "matches": "references/open-runelite-rev-240/runelite-client/src/main/resources/net/runelite/client/plugins/gpu/frag.glsl"
+    },
+    {
+      "path": "runelite-gpu/fragui.glsl",
+      "sha256": "e6e2964d6befa57c45f712fbaeba98a431fa40e960c5289ef12b12230f6682ae",
+      "status": "implemented",
+      "owners": [
+        "crates/renderer/src/ui_canvas.rs",
+        "crates/renderer/src/shaders/ui_scale.wgsl",
+        "crates/renderer/src/shaders/ui_xbr.wgsl",
+        "crates/game-ui/src/viewport_overlay.rs"
+      ],
+      "verification": "Widget selection/reset/letterbox and exact byte contracts; actual native GPU overlay occlusion, premultiplication, six scaling modes and correction pass; 31 core-feature WebGPU checks pass. Source visual acceptance remains open.",
+      "notes": "Six scaling modes, source full-viewport widget alphaOverlay beneath sampled UI, encoded premultiplied composition and color correction implemented. Stateless frame/triangle projection replaces source globals/quad; source xBR correction remains documented. Java visual acceptance NOT-RUN.",
+      "matches": "references/open-runelite-rev-240/runelite-client/src/main/resources/net/runelite/client/plugins/gpu/fragui.glsl"
+    },
+    {
+      "path": "runelite-gpu/hsl_to_rgb.glsl",
+      "sha256": "a052ec368216729acbbd8fdf2b0d81f47f911a00f85e3f0512085dfa7b433030",
+      "status": "implemented",
+      "owners": [
+        "crates/renderer/src/world.rs",
+        "crates/renderer/src/shaders/world.wgsl"
+      ],
+      "verification": "Source resource identity checked by tools/gpu/audit.py",
+      "notes": "Applicable shader semantics translated to bundled WGSL; full Java pixel differential NOT-RUN.",
+      "matches": "references/open-runelite-rev-240/runelite-client/src/main/resources/net/runelite/client/plugins/gpu/hsl_to_rgb.glsl"
+    },
+    {
+      "path": "runelite-gpu/priority_render.cl",
+      "sha256": "27e0dc2cd0bceb9122305e21a6facaed0ebd58546a0915b61c90f9b414f3a7b1",
+      "status": "excluded",
+      "owners": [],
+      "verification": "Source resource identity checked by tools/gpu/audit.py",
+      "notes": "Historical compute/OpenCL path is not loaded by the pinned active Java GPU plugin; preserve as separate evidence."
+    },
+    {
+      "path": "runelite-gpu/priority_render.glsl",
+      "sha256": "ca56d9081055e5073b6c19afa44d28b4f2c83b29ec11f722ba83208174489431",
+      "status": "excluded",
+      "owners": [],
+      "verification": "Source resource identity checked by tools/gpu/audit.py",
+      "notes": "Historical compute/OpenCL path is not loaded by the pinned active Java GPU plugin; preserve as separate evidence."
+    },
+    {
+      "path": "runelite-gpu/regions/regions.txt",
+      "sha256": "a79d0f4ad54e80e4aa9fb179d1b919c46c60490b72d18b26c442090ea838e0e1",
+      "status": "implemented",
+      "owners": [
+        "crates/scene/src/regions.rs",
+        "crates/scene/resources/gpu-regions.txt"
+      ],
+      "verification": "Byte identity and source group assertions pass",
+      "notes": "Bundled BSD resource classifies immutable scenery metadata; no runtime reference-tree access.",
+      "matches": "references/open-runelite-rev-240/runelite-client/src/main/resources/net/runelite/client/plugins/gpu/regions/regions.txt"
+    },
+    {
+      "path": "runelite-gpu/runelite2008HDGPU/bloom-combine.frag",
+      "sha256": "fc1e976424575581847b3ac387c34623b1baff0323c15dd1fe72e9f6fe1dfa47",
+      "status": "excluded",
+      "owners": [],
+      "verification": "Source resource identity checked by tools/gpu/audit.py",
+      "notes": "Separate future HD plugin, excluded by approved classic GPU scope; not loaded into classic renderer."
+    },
+    {
+      "path": "runelite-gpu/runelite2008HDGPU/bloom-gaussian-blur.frag",
+      "sha256": "0176746c381025d984c3f8225f1a905d219c0934842ecdc2d14c2a4c7626358a",
+      "status": "excluded",
+      "owners": [],
+      "verification": "Source resource identity checked by tools/gpu/audit.py",
+      "notes": "Separate future HD plugin, excluded by approved classic GPU scope; not loaded into classic renderer."
+    },
+    {
+      "path": "runelite-gpu/runelite2008HDGPU/bloom-test.frag",
+      "sha256": "71fb236468bb0760c41b771925bc74ba445d20af0d9f06b706f7d0471c1a0267",
+      "status": "excluded",
+      "owners": [],
+      "verification": "Source resource identity checked by tools/gpu/audit.py",
+      "notes": "Separate future HD plugin, excluded by approved classic GPU scope; not loaded into classic renderer."
+    },
+    {
+      "path": "runelite-gpu/runelite2008HDGPU/bloom.vert",
+      "sha256": "4484529c0e6a731114d85714e402a6a81d93b212bff81e1d54faea861464c90d",
+      "status": "excluded",
+      "owners": [],
+      "verification": "Source resource identity checked by tools/gpu/audit.py",
+      "notes": "Separate future HD plugin, excluded by approved classic GPU scope; not loaded into classic renderer."
+    },
+    {
+      "path": "runelite-gpu/runelite2008HDGPU/board.frag",
+      "sha256": "6316988bf655edb1e11afcf6e8d62b0e7c2f07848ddc707c86ec5f12e1b20617",
+      "status": "excluded",
+      "owners": [],
+      "verification": "Source resource identity checked by tools/gpu/audit.py",
+      "notes": "Separate future HD plugin, excluded by approved classic GPU scope; not loaded into classic renderer."
+    },
+    {
+      "path": "runelite-gpu/runelite2008HDGPU/board.vert",
+      "sha256": "71b2c79c1088a29e5679f3640e9dad77b4fa694051f555406d3ca265500df930",
+      "status": "excluded",
+      "owners": [],
+      "verification": "Source resource identity checked by tools/gpu/audit.py",
+      "notes": "Separate future HD plugin, excluded by approved classic GPU scope; not loaded into classic renderer."
+    },
+    {
+      "path": "runelite-gpu/runelite2008HDGPU/gui-cubic.frag",
+      "sha256": "689ca232fc1d45ed30eaf3c3950c4bfefdf7a7edfd08958784b8e2415e237b2b",
+      "status": "excluded",
+      "owners": [],
+      "verification": "Source resource identity checked by tools/gpu/audit.py",
+      "notes": "Separate future HD plugin, excluded by approved classic GPU scope; not loaded into classic renderer."
+    },
+    {
+      "path": "runelite-gpu/runelite2008HDGPU/gui.frag",
+      "sha256": "25eb0baaffe1348fe5e6b07611f0a564e282711700153ea4f6de06339377c0af",
+      "status": "excluded",
+      "owners": [],
+      "verification": "Source resource identity checked by tools/gpu/audit.py",
+      "notes": "Separate future HD plugin, excluded by approved classic GPU scope; not loaded into classic renderer."
+    },
+    {
+      "path": "runelite-gpu/runelite2008HDGPU/gui.vert",
+      "sha256": "7077f70ef9a777c32271994b4a50def4799a7fc2497d8f7a7b87dd6e706addd9",
+      "status": "excluded",
+      "owners": [],
+      "verification": "Source resource identity checked by tools/gpu/audit.py",
+      "notes": "Separate future HD plugin, excluded by approved classic GPU scope; not loaded into classic renderer."
+    },
+    {
+      "path": "runelite-gpu/runelite2008HDGPU/main.frag",
+      "sha256": "e49f20214ff5240e5363f94775d4a355a4d6a987d9c21819c8000328aff7eabc",
+      "status": "excluded",
+      "owners": [],
+      "verification": "Source resource identity checked by tools/gpu/audit.py",
+      "notes": "Separate future HD plugin, excluded by approved classic GPU scope; not loaded into classic renderer."
+    },
+    {
+      "path": "runelite-gpu/runelite2008HDGPU/main.vert",
+      "sha256": "1379efc48cf9dd5794cd7e54f9f5d36b79377d0f2126f3fb393b3d182fae5353",
+      "status": "excluded",
+      "owners": [],
+      "verification": "Source resource identity checked by tools/gpu/audit.py",
+      "notes": "Separate future HD plugin, excluded by approved classic GPU scope; not loaded into classic renderer."
+    },
+    {
+      "path": "runelite-gpu/runelite2008HDGPU/mc.frag",
+      "sha256": "acca6af7a3cfde731604ec458ccaa504b448602b70849a6b2668a739615111ee",
+      "status": "excluded",
+      "owners": [],
+      "verification": "Source resource identity checked by tools/gpu/audit.py",
+      "notes": "Separate future HD plugin, excluded by approved classic GPU scope; not loaded into classic renderer."
+    },
+    {
+      "path": "runelite-gpu/runelite2008HDGPU/mc.vert",
+      "sha256": "8432348599c38611c9ac25e0dc434a21aff9952eb286317bbdde110ec17527b7",
+      "status": "excluded",
+      "owners": [],
+      "verification": "Source resource identity checked by tools/gpu/audit.py",
+      "notes": "Separate future HD plugin, excluded by approved classic GPU scope; not loaded into classic renderer."
+    },
+    {
+      "path": "runelite-gpu/runelite2008HDGPU/mmpx.comp",
+      "sha256": "46c009bd13a6db3feeffb0abcba98bc1119f4a19ab2449b1fca9a07e1cf0cedf",
+      "status": "excluded",
+      "owners": [],
+      "verification": "Source resource identity checked by tools/gpu/audit.py",
+      "notes": "Separate future HD plugin, excluded by approved classic GPU scope; not loaded into classic renderer."
+    },
+    {
+      "path": "runelite-gpu/runelite2008HDGPU/mmpx.frag",
+      "sha256": "d8d7296eb4da99e21b5e2bdf1a998849a2ebbe559ceff6fb66f87c40ae8c2ff7",
+      "status": "excluded",
+      "owners": [],
+      "verification": "Source resource identity checked by tools/gpu/audit.py",
+      "notes": "Separate future HD plugin, excluded by approved classic GPU scope; not loaded into classic renderer."
+    },
+    {
+      "path": "runelite-gpu/runelite2008HDGPU/mmpx.vert",
+      "sha256": "6898172451996dabd26034994aa3b69b9cacc647f7f3ab7d96f020751f9d0272",
+      "status": "excluded",
+      "owners": [],
+      "verification": "Source resource identity checked by tools/gpu/audit.py",
+      "notes": "Separate future HD plugin, excluded by approved classic GPU scope; not loaded into classic renderer."
+    },
+    {
+      "path": "runelite-gpu/runelite2008HDGPU/particle.frag",
+      "sha256": "6feab2a1f4dbf60ee3a38ff0aa58026a8e62fdd7ce98b06feafd7f6562bcc505",
+      "status": "excluded",
+      "owners": [],
+      "verification": "Source resource identity checked by tools/gpu/audit.py",
+      "notes": "Separate future HD plugin, excluded by approved classic GPU scope; not loaded into classic renderer."
+    },
+    {
+      "path": "runelite-gpu/runelite2008HDGPU/particle.vert",
+      "sha256": "8363ab165f632d5d0cfc44b0fa22963a8ea89a202fd379be2e0fadee754f1eab",
+      "status": "excluded",
+      "owners": [],
+      "verification": "Source resource identity checked by tools/gpu/audit.py",
+      "notes": "Separate future HD plugin, excluded by approved classic GPU scope; not loaded into classic renderer."
+    },
+    {
+      "path": "runelite-gpu/runelite2008HDGPU/shadow.frag",
+      "sha256": "eda96cbbde48f62959ebef09f001ccc4fe389e741f2b7075fdf89b3528dd32da",
+      "status": "excluded",
+      "owners": [],
+      "verification": "Source resource identity checked by tools/gpu/audit.py",
+      "notes": "Separate future HD plugin, excluded by approved classic GPU scope; not loaded into classic renderer."
+    },
+    {
+      "path": "runelite-gpu/runelite2008HDGPU/shadow.vert",
+      "sha256": "0c5aadb6018cd4ad245de6b8f07fc13afae28839dc448a491f2beb28dddadb6c",
+      "status": "excluded",
+      "owners": [],
+      "verification": "Source resource identity checked by tools/gpu/audit.py",
+      "notes": "Separate future HD plugin, excluded by approved classic GPU scope; not loaded into classic renderer."
+    },
+    {
+      "path": "runelite-gpu/runelite2008HDGPU/tile.frag",
+      "sha256": "4bf256cbc9df0ea21ab6489e74b654ba06f6b11a7e3672266a3de4d5ecbb0a43",
+      "status": "excluded",
+      "owners": [],
+      "verification": "Source resource identity checked by tools/gpu/audit.py",
+      "notes": "Separate future HD plugin, excluded by approved classic GPU scope; not loaded into classic renderer."
+    },
+    {
+      "path": "runelite-gpu/runelite2008HDGPU/tile.vert",
+      "sha256": "55ab483067007f2c67158e67cdf5ff377485f142fb464bbe336c5db5500b9cc1",
+      "status": "excluded",
+      "owners": [],
+      "verification": "Source resource identity checked by tools/gpu/audit.py",
+      "notes": "Separate future HD plugin, excluded by approved classic GPU scope; not loaded into classic renderer."
+    },
+    {
+      "path": "runelite-gpu/runelite2008HDGPU/water.frag",
+      "sha256": "1cc527cbdb701b93ec3fcebcc42e9e56dc4d2c56ca7901d310b6cdab58cabd8f",
+      "status": "excluded",
+      "owners": [],
+      "verification": "Source resource identity checked by tools/gpu/audit.py",
+      "notes": "Separate future HD plugin, excluded by approved classic GPU scope; not loaded into classic renderer."
+    },
+    {
+      "path": "runelite-gpu/runelite2008HDGPU/water.vert",
+      "sha256": "e0fcd7032d770f2a4d4dcbf3ee1fb3ec24164ccc0adc9ef23f1417adb10ace77",
+      "status": "excluded",
+      "owners": [],
+      "verification": "Source resource identity checked by tools/gpu/audit.py",
+      "notes": "Separate future HD plugin, excluded by approved classic GPU scope; not loaded into classic renderer."
+    },
+    {
+      "path": "runelite-gpu/scale/bicubic.glsl",
+      "sha256": "fec31c95d83a31f009b923d3afc1c39c31162dfbab7337a4e9836393f8e3ec79",
+      "status": "implemented",
+      "owners": [
+        "crates/renderer/src/ui_canvas.rs",
+        "crates/renderer/src/shaders/ui_scale.wgsl"
+      ],
+      "verification": "Source resource identity checked by tools/gpu/audit.py",
+      "notes": "Source radial cubic kernels/anti-ringing or hybrid formula translated; native/browser actual-GPU fixtures pass; full Java pixel differential NOT-RUN.",
+      "matches": "references/open-runelite-rev-240/runelite-client/src/main/resources/net/runelite/client/plugins/gpu/scale/bicubic.glsl"
+    },
+    {
+      "path": "runelite-gpu/scale/hybrid.glsl",
+      "sha256": "e2958c8e450721e1207af96cfbf63de7e77b990e5cf3d0e64bc2744b3925b093",
+      "status": "implemented",
+      "owners": [
+        "crates/renderer/src/ui_canvas.rs",
+        "crates/renderer/src/shaders/ui_scale.wgsl"
+      ],
+      "verification": "Source resource identity checked by tools/gpu/audit.py",
+      "notes": "Source radial cubic kernels/anti-ringing or hybrid formula translated; native/browser actual-GPU fixtures pass; full Java pixel differential NOT-RUN.",
+      "matches": "references/open-runelite-rev-240/runelite-client/src/main/resources/net/runelite/client/plugins/gpu/scale/hybrid.glsl"
+    },
+    {
+      "path": "runelite-gpu/scale/xbr_lv2_common.glsl",
+      "sha256": "d6278874b91947b69681c8617ea168c932ac104f41ba7c028686822f1f1b8355",
+      "status": "implemented",
+      "owners": [
+        "crates/renderer/src/ui_canvas.rs",
+        "crates/renderer/src/shaders/ui_scale.wgsl",
+        "crates/renderer/src/shaders/ui_xbr.wgsl"
+      ],
+      "verification": "Source resource identity checked by tools/gpu/audit.py",
+      "notes": "Active CORNER_C path translated, neighborhood computed in fragment; source f4 was uninitialized, Rust uses rotationally correct h5.yzwx. This is an intentional source correction, not bit parity.",
+      "matches": "references/open-runelite-rev-240/runelite-client/src/main/resources/net/runelite/client/plugins/gpu/scale/xbr_lv2_common.glsl"
+    },
+    {
+      "path": "runelite-gpu/scale/xbr_lv2_frag.glsl",
+      "sha256": "4c6bb208c08865314b079b2eb0943eda100e379dd28b5c6691d54ce866dfc777",
+      "status": "implemented",
+      "owners": [
+        "crates/renderer/src/ui_canvas.rs",
+        "crates/renderer/src/shaders/ui_scale.wgsl",
+        "crates/renderer/src/shaders/ui_xbr.wgsl"
+      ],
+      "verification": "Source resource identity checked by tools/gpu/audit.py",
+      "notes": "Active CORNER_C path translated, neighborhood computed in fragment; source f4 was uninitialized, Rust uses rotationally correct h5.yzwx. This is an intentional source correction, not bit parity.",
+      "matches": "references/open-runelite-rev-240/runelite-client/src/main/resources/net/runelite/client/plugins/gpu/scale/xbr_lv2_frag.glsl"
+    },
+    {
+      "path": "runelite-gpu/scale/xbr_lv2_vert.glsl",
+      "sha256": "c7a9c8c44cffe71dc370500bea93f99ff0ba5e93e5cb8289ce0e3e2858ffb89f",
+      "status": "implemented",
+      "owners": [
+        "crates/renderer/src/ui_canvas.rs",
+        "crates/renderer/src/shaders/ui_scale.wgsl",
+        "crates/renderer/src/shaders/ui_xbr.wgsl"
+      ],
+      "verification": "Source resource identity checked by tools/gpu/audit.py",
+      "notes": "Active CORNER_C path translated, neighborhood computed in fragment; source f4 was uninitialized, Rust uses rotationally correct h5.yzwx. This is an intentional source correction, not bit parity.",
+      "matches": "references/open-runelite-rev-240/runelite-client/src/main/resources/net/runelite/client/plugins/gpu/scale/xbr_lv2_vert.glsl"
+    },
+    {
+      "path": "runelite-gpu/vert.glsl",
+      "sha256": "847dd6c2ad7330eda248d94b48bbe834574a1182ebc7773d4a2737f0f704fce3",
+      "status": "partial",
+      "owners": [
+        "crates/renderer/src/world.rs",
+        "crates/renderer/src/shaders/world.wgsl"
+      ],
+      "verification": "Source resource identity checked by tools/gpu/audit.py",
+      "notes": "HSL/gamma/depth-bias/fog and roof visibility; entity tint, extended bounds and source world-view projection acceptance incomplete.",
+      "matches": "references/open-runelite-rev-240/runelite-client/src/main/resources/net/runelite/client/plugins/gpu/vert.glsl"
+    },
+    {
+      "path": "runelite-gpu/vertui.glsl",
+      "sha256": "e43b9a33438906fba2c67452f5c32a28a258343794c4d1c621d8473bce4c3825",
+      "status": "implemented",
+      "owners": [
+        "crates/renderer/src/ui_canvas.rs",
+        "crates/renderer/src/shaders/ui_scale.wgsl",
+        "crates/renderer/src/shaders/ui_xbr.wgsl",
+        "crates/game-ui/src/viewport_overlay.rs"
+      ],
+      "verification": "Widget selection/reset/letterbox and exact byte contracts; actual native GPU overlay occlusion, premultiplication, six scaling modes and correction pass; 31 core-feature WebGPU checks pass. Source visual acceptance remains open.",
+      "notes": "Six scaling modes, source full-viewport widget alphaOverlay beneath sampled UI, encoded premultiplied composition and color correction implemented. Stateless frame/triangle projection replaces source globals/quad; source xBR correction remains documented. Java visual acceptance NOT-RUN.",
+      "matches": "references/open-runelite-rev-240/runelite-client/src/main/resources/net/runelite/client/plugins/gpu/vertui.glsl"
+    }
+  ],
+  "settings": [
+    {
+      "key": "drawDistance",
+      "default": "50",
+      "status": "implemented",
+      "owner": "crates/scene/src/visibility.rs + crates/renderer/src/shaders/world.wgsl + apps/native/src/interaction.rs",
+      "verification": "240 Scene.method4474 inclusive zone-loop contract, shared picking/overlay admission, native live-cache distance-zero capture and WebGPU boundary readback pass; exact Java visual/frustum/multi-zone-alpha acceptance open"
+    },
+    {
+      "key": "hideUnrelatedMaps",
+      "default": "true",
+      "status": "implemented",
+      "owner": "crates/scene/src/regions.rs + visibility.rs + crates/renderer/src/shaders/world.wgsl",
+      "verification": "Source RegionsTest/parser contracts, owned resource byte identity and native/WebGPU admission pass. LIVE sparse mixed-group Metal capture: 53,583 changed channel bytes; reconstruction byte-identical. Camera framing limited; Java/gameplay visual acceptance open. Instance bypass contract tested; travel unsupported."
+    },
+    {
+      "key": "expandedMapLoadingChunks",
+      "default": "3",
+      "status": "unimplemented",
+      "owner": null,
+      "verification": "Loaded scene remains 104x104; extended ring absent"
+    },
+    {
+      "key": "smoothBanding",
+      "default": "true",
+      "status": "implemented",
+      "owner": "crates/renderer/src/material_options.rs + shaders/world.wgsl",
+      "verification": "World probe captures; reference pixel comparison not run"
+    },
+    {
+      "key": "antiAliasingMode",
+      "default": "AntiAliasingMode.MSAA_2",
+      "status": "implemented",
+      "owner": "crates/renderer/src/settings.rs + world_target.rs",
+      "verification": "Actual Metal sample counts 1/2/4; resolution tests; browser core resolves 2x to 4x"
+    },
+    {
+      "key": "uiScalingMode",
+      "default": "UIScalingMode.HYBRID",
+      "status": "implemented",
+      "owner": "crates/renderer/src/ui_canvas.rs + shaders/ui_scale.wgsl + shaders/ui_xbr.wgsl",
+      "verification": "Six actual-GPU modes on native and browser; channel delta <=1 on edge fixture; xBR f4 source defect explicitly corrected; reference comparison not run"
+    },
+    {
+      "key": "fogDepth",
+      "default": "0",
+      "status": "partial",
+      "owner": "crates/renderer/src/shaders/world.wgsl",
+      "verification": "World probe; source formula on 104x104 only; expanded scene absent"
+    },
+    {
+      "key": "anisotropicFilteringLevel",
+      "default": "1",
+      "status": "implemented",
+      "owner": "crates/renderer/src/world_textures.rs + shaders/world.wgsl",
+      "verification": "0 disables mip selection, nearest magnification/mask in shader; actual 16x world capture; reference comparison not run"
+    },
+    {
+      "key": "colorBlindMode",
+      "default": "ColorBlindMode.NONE",
+      "status": "implemented",
+      "owner": "crates/renderer/src/shaders/colorblind.wgsl + ui_scale.wgsl + world.wgsl",
+      "verification": "Native/browser zero/full correction pixel probes; applies world and UI; reference comparison not run"
+    },
+    {
+      "key": "colorBlindIntensity",
+      "default": "100",
+      "status": "implemented",
+      "owner": "crates/renderer/src/shaders/colorblind.wgsl + ui_scale.wgsl + world.wgsl",
+      "verification": "Native/browser zero/full correction pixel probes; reference comparison not run"
+    },
+    {
+      "key": "brightTextures",
+      "default": "false",
+      "status": "implemented",
+      "owner": "crates/renderer/src/material_options.rs + shaders/world.wgsl",
+      "verification": "World probe captures; reference pixel comparison not run"
+    },
+    {
+      "key": "unlockFps",
+      "default": "true",
+      "status": "implemented",
+      "owner": "apps/native/src/frame_limit.rs + main.rs",
+      "verification": "Deadline/stricter-limit tests and actual native title-window 30/50/60 FPS smoke pass; authenticated gameplay/vsync timing NOT-RUN; floating animation separate"
+    },
+    {
+      "key": "vsyncMode",
+      "default": "SyncMode.OFF",
+      "status": "partial",
+      "owner": "crates/renderer/src/settings.rs + surface.rs",
+      "verification": "Resolution unit tests; native window vsync measurement not run; browser FIFO fallback"
+    },
+    {
+      "key": "fpsTarget",
+      "default": "60",
+      "status": "implemented",
+      "owner": "apps/native/src/frame_limit.rs + main.rs",
+      "verification": "Deadline/stricter-limit tests and actual native title-window 30/50/60 FPS smoke pass; authenticated gameplay/vsync timing NOT-RUN; floating animation separate"
+    },
+    {
+      "key": "removeVertexSnapping",
+      "default": "true",
+      "status": "unimplemented",
+      "owner": null,
+      "verification": "SceneVertex remains i16; float animation output absent"
+    },
+    {
+      "key": "numThreads",
+      "default": "3",
+      "status": "unimplemented",
+      "owner": null,
+      "verification": "No configurable zone upload pool; existing loaders do not implement this option"
+    }
+  ],
+  "openGates": [
+    {
+      "id": "regions",
+      "requirement": "Normal-map filtering, source-defined sparse map initialization and actual LIVE mixed-group admission/reconstruction implemented. Real instance-loader wiring, minimap/source callbacks and Java/gameplay visual acceptance remain; the cache is no longer a boundary-fixture blocker."
+    },
+    {
+      "id": "extended-scenes",
+      "requirement": "Load/project extended scene zones and update fog bounds without a second scene or hardcoded 104-tile assumption."
+    },
+    {
+      "id": "zone-acceptance",
+      "requirement": "240 inclusive zone admission is implemented for drawing/picking/overlays. CPU upload/sort reduction, source frustum/multi-zone-alpha and exact visual acceptance remain."
+    },
+    {
+      "id": "float-vertices",
+      "requirement": "Retain float animation vertices and implement removeVertexSnapping without changing semantic actor positions."
+    },
+    {
+      "id": "workers",
+      "requirement": "Implement measurable upload scheduling/render worker policy; numThreads is currently inert and disabled in UI."
+    },
+    {
+      "id": "entity-tint",
+      "requirement": "Retain committed tint metadata and apply source tint semantics; world-view/boat transforms require exact 240 acceptance. Source temporary-renderable SORTED_NO_DEPTH policy also needs retained render-mode metadata and a typed depth-policy path."
+    },
+    {
+      "id": "source-differential",
+      "requirement": "Run exact 240 runtime/Java shader comparisons and complete source-case MATCH or justified architecture adaptations; green Rust tests are insufficient."
+    },
+    {
+      "id": "desktop-acceptance",
+      "requirement": "Measure live fixed/classic/modern panel resize, focus, vsync/FPS caps and input; current captures do not establish live window behavior."
+    },
+    {
+      "id": "web-gameplay",
+      "requirement": "Playable browser lifecycle/device loss/input/scene integration still absent; offscreen WebGPU probes only."
+    },
+    {
+      "id": "hd-budget",
+      "requirement": "Add material/texture paging, storage chunking, HDR/shadow/postprocess services and memory/quality budgets before 117HD port."
+    }
+  ]
+}

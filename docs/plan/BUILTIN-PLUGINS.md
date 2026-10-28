@@ -77,3 +77,47 @@ these additions do not complete GPU/core behavior or browser gameplay.
 
 Validation of this reconciliation is recorded in [the checkpoint](SIDEBAR-PORT-AUDIT-2026-10-26.md); automated checks
 and desktop observations are separate.
+
+## GPU audit continuation — 2026-10-26
+
+The [GPU audit](../reference/builtin-plugins/GPU-AUDIT.md) and
+[frozen per-file/setting ledger](../reference/builtin-plugins/gpu-audit.json) supersede stale GPU
+status rows. All 16 settings and all active/historical/supplied resources are accounted for.
+Six canvas scaling modes, shared UI/world correction, encoded composition, source filtering policy,
+actual format sample negotiation, capability/resource guards and native presentation scheduling now
+have implementations and focused/backend checks. Existing actor action-lifetime changes remain in
+this shared checkout and are validated by the workspace gates below; this GPU work does not replace them.
+
+The source xBR uninitialized f4 has an explicit deterministic correction. Active Java resources are
+translated by applicable semantics; obsolete compute/OpenCL and separately scoped 2008HD are not
+activated simply to claim every supplied file runs. There are 11 explicit open implementation/
+acceptance/HD gates. This is not a completed GPU plugin or 117HD readiness claim.
+
+Validation at this GPU checkpoint: formatting, workspace/all-target checks, strict workspace/all-target
+Clippy, all native binaries and the Wasm check pass. Full workspace tests: **545 passed, 0 failed,
+1 ignored** (live packet replay requires explicit fixture environment). The source/setting/resource
+checker and 42-domain matrix checker pass; the completion checker intentionally returns incomplete
+with 11 open gates. Focused native/backend evidence: six canvas modes, exact 1x/2x title pixels,
+byte-identical world reconstruction and 20 core-feature browser checks. Isolated native title-window
+pacing smoke passes for 30/locked-50/60 targets. These do not establish exact Java runtime parity,
+authenticated fixed/classic/modern interaction, device-loss acceptance, browser gameplay or HD readiness.
+The GPU tool scripts, shader translations and notices live in the repository; target artifacts are
+regenerated locally. No reference source or supplied shader evidence was edited.
+
+
+## GPU zone and related-map continuation — 2026-10-27
+
+[The checkpoint](../reference/builtin-plugins/GPU-ZONES-2026-10-27.md) records implemented exact-240
+inclusive eight-tile zone admission and normal-map related-group filtering. Picking, overhead speech,
+hovered-roof queries and world plugin overlays share frame visibility with the renderer. Typed anchor
+metadata preserves whole models and enables setting changes without cache reload, scene duplication
+or GameState/collision mutation. The owned region resource keeps its notice and is byte-checked.
+The source ledger and matrix distinguish these effects from remaining instance/minimap/frustum/
+multi-zone-alpha/runtime acceptance. Real underground boundary captures could not run with absent
+required archives; no empty terrain was fabricated. Full GPU/117HD completion remains open.
+
+Validation of this continuation: formatting, workspace/all-target checks, strict Clippy, all native
+binaries and Wasm pass; full workspace tests **547 passed, 0 failed, 1 ignored**. Actual native GPU
+quad admission/title/world reconstruction and 23 browser checks pass. Source, matrix and symbol
+checkers pass; the symbol checker now validates all manifest roots. Sparse-cache region-boundary
+visuals, live/reference acceptance and complete GPU/HD readiness remain open.

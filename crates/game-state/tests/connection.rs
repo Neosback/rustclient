@@ -39,12 +39,12 @@ fn authentication_and_initial_placement_replay_exactly_and_reset_on_disconnect()
         stream.push(commit);
         envelopes.push(ReplayEnvelope::new(operation, commit));
     }
-    // Schema 27 adds authoritative actor turning state.
+    // Schema 28 adds cached-model action rewind timing.
     assert_eq!(
         state.semantic_fingerprint().get(),
-        5_497_594_681_641_651_761
+        3_836_480_065_533_031_186
     );
-    assert_eq!(stream.finish().get(), 12_329_873_617_629_666_673);
+    assert_eq!(stream.finish().get(), 1_823_466_541_112_395_732);
     assert_eq!(state.lifecycle(), SessionLifecycle::Active);
     assert_eq!(state.authenticated_player(), Some(player()));
     assert_eq!(state.initial_placement(), Some(placement()));

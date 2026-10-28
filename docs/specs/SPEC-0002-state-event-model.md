@@ -440,3 +440,19 @@ Schema-27 regression anchors: inactive `6737528060347041486`, revision-240 tick-
 `5497594681641651761`, authenticated-placement commit stream `12329873617629666673`.
 Earlier schema sections retain historical anchors. Turning behavior and focused acceptance are
 specified in SPEC-0017 and traced in `docs/reference/rs240-port/FACING-TURNING.md`.
+
+
+## Action playback continuation: fingerprint schema 28
+
+Resolved cached-model timing encodes optional frame rewind after the existing optional frame
+range. The schema version changes to 28; no second action timer is introduced. Existing actor
+frame, legacy cycle, loop counter, delay, policy and timing-resolution fields retain ownership,
+reset/removal semantics and entity-cycle delta/replay coverage. Resolved cached actions use frame
+as their time cursor while leaving legacy cycle untouched; resolved legacy actions carry their
+within-frame remainder. The owning behavior contract is SPEC-0017.
+
+Schema-28 exact vectors: inactive `16047970197847965105`, revision-240 tick-5
+`262747495747773555`, revision-240.2 tick-5 `6494532345383939362`, reference commit stream
+`12266812576389399527`, empty stream `18056086669613358074`, authenticated placement
+`3836480065533031186`, authenticated-placement commit stream `1823466541112395732`.
+Prior schema sections are historical anchors.

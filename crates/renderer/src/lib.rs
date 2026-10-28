@@ -6,9 +6,14 @@
 #![forbid(unsafe_code)]
 
 mod capture;
+mod shader_sources;
 mod surface;
 mod ui;
-pub use capture::{capture_ui, capture_ui_with_images};
+mod ui_canvas;
+pub use capture::{
+    capture_canvas, capture_canvas_with_overlay, capture_capabilities, capture_ui,
+    capture_ui_with_images, capture_ui_with_settings,
+};
 pub use ui::{DynamicImage, DynamicImages, UiStats};
 
 pub use surface::{
@@ -23,7 +28,8 @@ mod transparency;
 mod world;
 pub use material_options::MaterialOptions;
 pub use settings::{
-    AntiAliasing, ColorBlind, Deviation, EffectiveGpu, GpuCapabilities, GpuSettings, VsyncMode,
+    AntiAliasing, ColorBlind, Deviation, EffectiveGpu, GpuCapabilities, GpuSettings, UiScaling,
+    VsyncMode,
 };
 mod shell;
 pub use shell::{ShellLayer, ShellStats};

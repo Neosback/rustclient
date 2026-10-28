@@ -83,8 +83,15 @@ def audit():
         except ValueError as error:
             errors.append(f'{label}: {error}')
     manifest = json.loads((ROOT / 'docs/reference/source-manifest.json').read_text())
-    source = next(item for item in manifest['sources'] if item['id'] == 'rl-suite-240')
-    pins = {str(Path(source['root']) / entry['path']): entry['sha256'] for entry in source['files']}
+    # The method ledger also cites pinned RuneLite plugin/helper sources. Checking only
+    # rl-suite-240 incorrectly reported those manifest-backed entries as unpinned.
+    pins = {}
+    for source in manifest['sources']:
+        for entry in source.get('files', []):
+            name = str(Path(source['root']) / entry['path'])
+            if name in pins and pins[name] != entry['sha256']:
+                errors.append(f'conflicting source pins: {name}')
+            pins[name] = entry['sha256']
     used = {row['source_path'] for row in rows}
     for name in sorted(used):
         if name in pins and inside(name).is_file() and hashlib.sha256(inside(name).read_bytes()).hexdigest() != pins[name]:

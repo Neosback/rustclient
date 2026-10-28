@@ -690,10 +690,10 @@ impl NativeApp {
         if self.occluded {
             return;
         }
-        // A plugin's frame limit declines a frame that would come too soon after the last one.
+        // GPU pacing and an optional FPS plugin share the existing presentation clock.
         if !self
             .frame_limit
-            .allow(self.plugins.output().frame_limit, Instant::now())
+            .allow(self.presentation_limit(), Instant::now())
         {
             return;
         }
@@ -736,13 +736,13 @@ impl NativeApp {
                         }
                     }
                 }
-                let visibility = self.roof_visibility(&window);
+                let visibility = self.scene_visibility(&window);
                 actor_overlays::project(
                     &self.scene,
                     &self.state,
                     assets,
                     &mut self.frame,
-                    visibility.top_level,
+                    &visibility,
                 );
                 interaction::project_pointer_overlays(
                     &mut self.frame,
@@ -761,7 +761,7 @@ impl NativeApp {
                     assets,
                     &self.plugins.output().overlay,
                     &mut self.frame,
-                    visibility.top_level,
+                    &visibility,
                 );
                 self.plugins
                     .overlay(&self.state, assets, &self.widget_assets, &mut self.frame);
@@ -900,7 +900,7 @@ impl NativeApp {
             let pointer = self.cursor.map(|(x, y)| self.ui_pointer(&window, x, y));
             self.shell
                 .project_overlay(&mut self.frame, &self.widget_tree, pointer);
-            let visibility = self.roof_visibility(&window);
+            let visibility = self.scene_visibility(&window);
             self.renderer.as_mut().map(|renderer| {
                 if let (Some(descriptor), Some(camera)) =
                     (self.state.loaded_scene(), self.scene.camera)
@@ -1460,8 +1460,10 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
             WindowEvent::Resized(size) => {
                 self.shell.on_window_resized(&window);
                 self.synchronize_window();
-                if let Some(renderer) = &mut self.renderer {
-                    renderer.resize(SurfaceSize::new(size.width, size.height));
+                if let Some(renderer) = &mut self.renderer
+                    && let Err(error) = renderer.resize(SurfaceSize::new(size.width, size.height))
+                {
+                    eprintln!("window resize: {error}");
                 }
                 window.request_redraw();
             }
@@ -1469,8 +1471,10 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                 self.shell.on_window_resized(&window);
                 self.synchronize_window();
                 let size = window.inner_size();
-                if let Some(renderer) = &mut self.renderer {
-                    renderer.resize(SurfaceSize::new(size.width, size.height));
+                if let Some(renderer) = &mut self.renderer
+                    && let Err(error) = renderer.resize(SurfaceSize::new(size.width, size.height))
+                {
+                    eprintln!("window resize: {error}");
                 }
                 window.request_redraw();
             }
@@ -1920,7 +1924,7 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                 window.request_redraw();
             }
             self.performance.tick(tick_start);
-            event_loop.set_control_flow(ControlFlow::WaitUntil(self.next_step));
+            self.schedule_presentation(event_loop);
             return;
         }
         if let (Some(assets), Some(flames)) = (&self.assets, &mut self.flames) {
@@ -1941,13 +1945,45 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
             if now >= self.next_step {
                 self.next_step = now + STEP;
             }
-            event_loop.set_control_flow(ControlFlow::WaitUntil(self.next_step));
+            self.schedule_presentation(event_loop);
         } else {
             event_loop.set_control_flow(ControlFlow::Wait);
         }
     }
 }
 impl NativeApp {
+    fn presentation_limit(&self) -> Option<u32> {
+        frame_limit::combined_limit(
+            self.renderer
+                .as_ref()
+                .map_or(50, |renderer| renderer.effective_gpu().frame_cap),
+            self.plugins.output().frame_limit,
+        )
+    }
+
+    /// Presentation deadlines are independent of the fixed semantic cycle. No catch-up frames.
+    fn schedule_presentation(&self, event_loop: &ActiveEventLoop) {
+        let Some(window) = &self.window else {
+            return;
+        };
+        if self.occluded || self.renderer.is_none() {
+            event_loop.set_control_flow(ControlFlow::WaitUntil(self.next_step));
+            return;
+        }
+        let now = Instant::now();
+        match self.frame_limit.deadline(self.presentation_limit()) {
+            Some(deadline) if deadline > now => {
+                event_loop.set_control_flow(ControlFlow::WaitUntil(self.next_step.min(deadline)));
+            }
+            Some(_) | None => {
+                window.request_redraw();
+                // Uncapped/FIFO rendering is paced by presentation; capped frames establish their
+                // next deadline in redraw. Semantic catch-up remains bounded by about_to_wait.
+                event_loop.set_control_flow(ControlFlow::Poll);
+            }
+        }
+    }
+
     fn ui_pointer(&self, window: &Window, x: f64, y: f64) -> (f32, f32) {
         let size = self.shell.game_size(window);
         TitleViewport {

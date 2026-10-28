@@ -184,33 +184,6 @@ impl RoofMask {
     }
 }
 
-/// Everything the renderer and picking need to decide whether a vertex is drawn this frame.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct RoofVisibility {
-    /// Highest tile render level drawn (see [`RoofView::top_level`]).
-    pub top_level: u8,
-    /// Roof slots hidden on top of the level cut.
-    pub hidden: RoofMask,
-}
-
-impl RoofVisibility {
-    /// Every level drawn and nothing hidden.
-    #[must_use]
-    pub fn everything() -> Self {
-        Self {
-            top_level: 3,
-            hidden: RoofMask::default(),
-        }
-    }
-
-    /// Whether a vertex with this packed render tag survives the cut.
-    #[must_use]
-    pub fn shows(&self, tag: u16) -> bool {
-        usize::from(tag & 3) <= usize::from(self.top_level)
-            && !self.hidden.hides(usize::from(tag >> 2))
-    }
-}
-
 /// Contiguous roofed regions of each plane, numbered from 1.
 ///
 /// A roof is an 8-connected component of tiles flagged `0x4` on one plane. Geometry on plane

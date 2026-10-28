@@ -32,6 +32,7 @@ pub(crate) struct GeometryGpu {
 }
 impl GeometryGpu {
     pub fn new(device: &wgpu::Device, geometry: &SceneGeometry) -> Result<Self, RenderError> {
+        validate(geometry, device.limits().max_buffer_size)?;
         let data: [&[u8]; 3] = [
             bytemuck::cast_slice(&geometry.vertices),
             bytemuck::cast_slice(&geometry.opaque),
@@ -154,6 +155,7 @@ impl GeometryGpu {
         queue: &wgpu::Queue,
         geometry: &SceneGeometry,
     ) -> Result<(), RenderError> {
+        validate(geometry, device.limits().max_buffer_size)?;
         let data: [&[u8]; 3] = [
             bytemuck::cast_slice(&geometry.vertices),
             bytemuck::cast_slice(&geometry.opaque),
@@ -268,4 +270,96 @@ fn point(vertex: &SceneVertex) -> Vec3 {
         f32::from(vertex.position[1]),
         f32::from(vertex.position[2]),
     )
+}
+
+fn validate(geometry: &SceneGeometry, maximum: u64) -> Result<(), RenderError> {
+    for bytes in [
+        bytemuck::cast_slice::<_, u8>(&geometry.vertices),
+        bytemuck::cast_slice(&geometry.opaque),
+        bytemuck::cast_slice(&geometry.transparent),
+    ] {
+        if bytes.len().max(4) as u64 > maximum {
+            return Err(RenderError::World("geometry buffer exceeds device limits"));
+        }
+    }
+    if !geometry.opaque.len().is_multiple_of(3)
+        || !geometry.transparent.len().is_multiple_of(3)
+        || geometry
+            .opaque
+            .iter()
+            .chain(&geometry.transparent)
+            .any(|&index| index as usize >= geometry.vertices.len())
+    {
+        return Err(RenderError::World("invalid triangle index stream"));
+    }
+    if geometry
+        .vertices
+        .iter()
+        .any(|vertex| vertex.texture_uv[0] > 256 || !(0..=11).contains(&vertex.position[3]))
+    {
+        return Err(RenderError::World(
+            "invalid classic material or face priority",
+        ));
+    }
+    if geometry.vertices.as_chunks::<3>().0.iter().any(|triangle| {
+        triangle
+            .iter()
+            .any(|vertex| vertex.draw_tile != triangle[0].draw_tile)
+    }) {
+        return Err(RenderError::World(
+            "triangle has inconsistent draw-tile anchors",
+        ));
+    }
+    let mut end = 0;
+    for span in &geometry.models {
+        if span.start < end || span.start > span.end || span.end > geometry.vertices.len() {
+            return Err(RenderError::World("invalid model span ordering"));
+        }
+        if let Some(first) = geometry
+            .vertices
+            .get(span.start)
+            .filter(|_| !span.is_empty())
+            && geometry.vertices[span.clone()]
+                .iter()
+                .any(|vertex| vertex.draw_tile != first.draw_tile)
+        {
+            return Err(RenderError::World(
+                "model has inconsistent draw-tile anchors",
+            ));
+        }
+        end = span.end;
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn malformed_or_oversized_geometry_is_rejected_before_allocating_or_writing_gpu_buffers() {
+        let vertex = SceneVertex {
+            position: [0; 4],
+            abhsl: 0,
+            texture_uv: [0; 4],
+            draw_tile: rustclient_scene::DrawTile::default(),
+        };
+        let mut geometry = SceneGeometry {
+            vertices: vec![vertex; 3],
+            opaque: vec![0, 1, 2],
+            ..Default::default()
+        };
+        assert!(validate(&geometry, 1024).is_ok());
+        assert!(validate(&geometry, 4).is_err());
+        geometry.opaque[2] = 3;
+        assert!(validate(&geometry, 1024).is_err());
+        geometry.opaque[2] = 2;
+        geometry.vertices[0].texture_uv[0] = 257;
+        assert!(validate(&geometry, 1024).is_err());
+        geometry.vertices[0].texture_uv[0] = 0;
+        geometry.vertices[0].draw_tile = rustclient_scene::DrawTile::actor([8, 0]);
+        assert!(validate(&geometry, 1024).is_err());
+        geometry.vertices[0].draw_tile = rustclient_scene::DrawTile::default();
+        geometry.models = vec![0..2, 1..3];
+        assert!(validate(&geometry, 1024).is_err());
+    }
 }

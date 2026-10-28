@@ -516,6 +516,8 @@ fn availability(plugin: &str, key: &str) -> Option<String> {
         "dev.rustclient.gpu" => matches!(
             key,
             "drawDistance"
+                | "hideUnrelatedMaps"
+                | "uiScalingMode"
                 | "smoothBanding"
                 | "brightTextures"
                 | "antiAliasingMode"
@@ -524,6 +526,8 @@ fn availability(plugin: &str, key: &str) -> Option<String> {
                 | "colorBlindMode"
                 | "colorBlindIntensity"
                 | "vsyncMode"
+                | "unlockFps"
+                | "fpsTarget"
         ),
         "dev.rustclient.runelite" => matches!(
             key,
@@ -589,15 +593,11 @@ fn availability(plugin: &str, key: &str) -> Option<String> {
 )]
 fn pending_reason(plugin: &str, key: &str) -> String {
     match (plugin, key) {
-        ("dev.rustclient.gpu", "hideUnrelatedMaps" | "expandedMapLoadingChunks") => {
-            "Needs neighbouring map regions to be loaded; not ported yet.".into()
+        ("dev.rustclient.gpu", "expandedMapLoadingChunks") => {
+            "Needs the extended scene loading ring and matching fog/culling bounds; not ported yet.".into()
         }
         ("dev.rustclient.roofremoval", "overridePOH") => {
             "Needs the player-owned-house roof override data, which is not ported yet.".into()
-        }
-        ("dev.rustclient.gpu", "uiScalingMode") => {
-            "Stretched mode is ported, but this renderer draws the interface at window resolution with nearest sampling; the sampling modes do not apply."
-                .into()
         }
         (
             "dev.rustclient.entityhider",
@@ -677,11 +677,7 @@ fn pending_reason(plugin: &str, key: &str) -> String {
             "The restore previews need item and food healing data, which the client does not keep yet.".into()
         }
         ("dev.rustclient.stretchedmode", "increasedPerformance") => {
-            "The interface is always sampled nearest-neighbour when stretched, so there is no slower algorithm to turn off."
-                .into()
-        }
-        ("dev.rustclient.gpu", "unlockFps" | "fpsTarget") => {
-            "Frames still render once per 20 ms game cycle; unlocked-frame interpolation is not ported yet."
+            "GPU canvas sampling is controlled by the GPU plugin's UI scaling setting; this source toggle is not mapped yet."
                 .into()
         }
         ("dev.rustclient.gpu", "removeVertexSnapping" | "numThreads") => {
@@ -718,6 +714,8 @@ fn gpu_settings(schema: &ConfigSchema, document: &ConfigDocument) -> GpuSettings
         bright_textures: boolean("brightTextures").unwrap_or(false),
     };
     settings.draw_distance = integer("drawDistance").unwrap_or(settings.draw_distance);
+    settings.hide_unrelated_maps =
+        boolean("hideUnrelatedMaps").unwrap_or(settings.hide_unrelated_maps);
     settings.fog_depth = integer("fogDepth").unwrap_or(settings.fog_depth);
     settings.anisotropy = integer("anisotropicFilteringLevel").unwrap_or(settings.anisotropy);
     settings.color_blind_intensity =
@@ -737,6 +735,14 @@ fn gpu_settings(schema: &ConfigSchema, document: &ConfigDocument) -> GpuSettings
         Some("TRITANOPIA") => ColorBlind::Tritanopia,
         _ => ColorBlind::None,
     };
+    settings.ui_scaling = match choice("uiScalingMode") {
+        Some("NEAREST") => rustclient_renderer::UiScaling::Nearest,
+        Some("LINEAR") => rustclient_renderer::UiScaling::Linear,
+        Some("MITCHELL") => rustclient_renderer::UiScaling::Mitchell,
+        Some("CATMULL_ROM") => rustclient_renderer::UiScaling::CatmullRom,
+        Some("XBR") => rustclient_renderer::UiScaling::Xbr,
+        _ => rustclient_renderer::UiScaling::Hybrid,
+    };
     settings.vsync = match choice("vsyncMode") {
         Some("ON") => VsyncMode::On,
         Some("ADAPTIVE") => VsyncMode::Adaptive,
@@ -754,7 +760,7 @@ fn notes(effective: &EffectiveGpu) -> BTreeMap<String, String> {
 /// Behavior that holds on every adapter but that the option's name does not promise.
 fn static_note(key: &str) -> Option<String> {
     (key == "drawDistance").then(|| {
-        "Sets the fog boundary; geometry beyond it is still drawn until zone culling is ported."
+        "Uses the revision-240 inclusive eight-tile zone square; fog still uses the requested tile distance."
             .into()
     })
 }

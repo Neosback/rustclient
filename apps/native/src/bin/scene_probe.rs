@@ -29,8 +29,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         started.elapsed().as_secs_f64() * 1000.
     );
     println!(
-        "squares {}, locations {}, objects {}, models {}",
+        "squares {} ({} absent), locations {}, objects {}, models {}",
         assets.squares.len(),
+        assets
+            .squares
+            .iter()
+            .filter(|s| s.source == rustclient_cache::world::MapSquareSource::Absent)
+            .count(),
         assets
             .squares
             .iter()
@@ -184,6 +189,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         );
         for (name, settings) in [
             (
+                "distance-zero",
+                rustclient_renderer::GpuSettings {
+                    draw_distance: 0,
+                    ..defaults
+                },
+            ),
+            (
                 "fog",
                 rustclient_renderer::GpuSettings {
                     fog_depth: 12,
@@ -217,6 +229,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let _ = device.poll(wgpu::PollType::wait_indefinitely());
                 },
             ))?;
+            if name == "distance-zero" && pixels == baseline {
+                return Err("zero draw distance did not change GPU pixels".into());
+            }
             image::save_buffer(
                 path.join(format!("gpu-{name}.png")),
                 &pixels,

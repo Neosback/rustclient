@@ -1,9 +1,11 @@
 //! Scene geometry generation for live player and NPC entities.
 
+mod actor_animation;
+use actor_animation::{DirectionalSequences, Playback, pose_model, select_movement};
+
 use crate::{
-    ActorMotion, AnimationAssets, Result, SceneAsset, SceneGeometry,
-    lighting::Light,
-    motion::{ActorPose, Facing, Pace, Pose},
+    ActorMotion, AnimationAssets, Result, SceneAsset, SceneGeometry, lighting::Light,
+    motion::ActorPose,
 };
 use rustclient_cache::{
     osrs240::{
@@ -395,129 +397,9 @@ pub fn build_entities_geometry(
     Ok(())
 }
 
-/// Every movement animation an actor authors, indexed forward, back, left, right.
-struct DirectionalSequences {
-    idle: Option<SequenceId>,
-    turn_left: Option<SequenceId>,
-    turn_right: Option<SequenceId>,
-    walk: [Option<SequenceId>; 4],
-    run: [Option<SequenceId>; 4],
-    crawl: [Option<SequenceId>; 4],
-}
-
-/// The animation the reference client plays for a movement pose (`Actor.method3284` and
-/// `classKN.method6539`): a missing directional animation falls back to the forward walk, a
-/// missing run or crawl variant to the walk of the same direction, and a missing turn animation
-/// to the forward walk.
-fn select_movement(pose: Pose, sequences: &DirectionalSequences) -> Option<SequenceId> {
-    match pose {
-        Pose::Idle => sequences.idle,
-        Pose::TurnLeft => sequences.turn_left.or(sequences.walk[0]),
-        Pose::TurnRight => sequences.turn_right.or(sequences.walk[0]),
-        Pose::Move { facing, pace } => {
-            let direction = match facing {
-                Facing::Forward => 0,
-                Facing::Back => 1,
-                Facing::Left => 2,
-                Facing::Right => 3,
-            };
-            let direction = if sequences.walk[direction].is_some() {
-                direction
-            } else {
-                0
-            };
-            match pace {
-                Pace::Run => sequences.run[direction],
-                Pace::Crawl => sequences.crawl[direction],
-                Pace::Walk => None,
-            }
-            .or(sequences.walk[direction])
-        }
-    }
-}
-
 /// Footprint corner of a tile in world units.
 fn corner(tile: rustclient_model::WorldTile) -> [i32; 2] {
     [tile.x * 128, tile.y * 128]
-}
-
-/// Apply the sequence pose selected by `cycle`: a cached-model (skeletal) animation when the
-/// sequence names one, otherwise the legacy frame.
-///
-/// A skeletal animation that failed to decode or prepare was already reported as an advisory;
-/// its sequence is drawn in rest pose rather than failing the whole scene.
-///
-/// With `blend`, a legacy frame is mixed toward the next one by how far into its delay the
-/// sequence is (animation smoothing); skeletal animations already evaluate per cycle.
-fn pose_model(
-    asset: &SceneAsset,
-    catalog: &EntityCatalog,
-    model: &mut StaticModel,
-    sequence: Option<SequenceId>,
-    cycle: u32,
-    action: bool,
-    blend: bool,
-) -> Result<bool> {
-    let Some(sequence) = sequence else {
-        return Ok(true);
-    };
-    let Some(sequence) = catalog.animations.sequence(asset, sequence) else {
-        return Ok(true);
-    };
-    if let Some(animation) = sequence.skeletal {
-        let Some(animation) = catalog.animations.cached(animation) else {
-            return Ok(true);
-        };
-        let Some(frame) =
-            crate::animation::actor_skeletal_frame(sequence, u64::from(cycle), action)
-        else {
-            return Ok(false);
-        };
-        crate::animation::pose_skeletal(
-            animation,
-            frame,
-            &mut model.vertices,
-            &mut model.faces,
-            &model.skeletal_weights,
-        )?;
-        return Ok(true);
-    }
-    let Some((index, in_frame)) =
-        crate::animation::actor_frame_position(sequence, u64::from(cycle), action)?
-    else {
-        return Ok(false);
-    };
-    if let Some(frame) = sequence
-        .frames
-        .get(index)
-        .and_then(|id| catalog.animations.frame(asset, *id))
-        && let Some(skeleton) = catalog.animations.skeleton(asset, frame.skeleton)
-    {
-        let blended = blend
-            .then(|| {
-                let next = sequence
-                    .frames
-                    .get(index + 1)
-                    .and_then(|id| catalog.animations.frame(asset, *id));
-                crate::animation::blend_frames(
-                    &skeleton.transforms,
-                    frame,
-                    next,
-                    i32::try_from(in_frame.saturating_sub(1)).unwrap_or(0),
-                    i32::from(sequence.delays[index]),
-                )
-            })
-            .flatten();
-        crate::animation::pose(
-            &mut model.vertices,
-            &mut model.faces,
-            &model.vertex_skins,
-            blended.as_ref().unwrap_or(frame),
-            &skeleton.transforms,
-            0,
-        )?;
-    }
-    Ok(true)
 }
 
 fn build_player(
@@ -580,19 +462,21 @@ fn build_player(
             player.animation_cycle,
         ),
     };
-    let (sequence, cycle, action) =
-        if player.sequence.sequence.is_some() && player.sequence.delay == 0 {
-            (
-                player.sequence.sequence,
-                player.sequence.cycle.max(0).cast_unsigned(),
-                true,
-            )
-        } else {
-            (base, base_cycle, false)
-        };
-    let posed_action = pose_model(asset, catalog, &mut model, sequence, cycle, action, blend)?;
+    let playback = Playback::for_actor(
+        player.sequence,
+        player.sequence_timing_resolved,
+        base,
+        base_cycle,
+    );
+    let posed_action = pose_model(asset, catalog, &mut model, playback, blend)?;
     if !posed_action {
-        pose_model(asset, catalog, &mut model, base, base_cycle, false, blend)?;
+        pose_model(
+            asset,
+            catalog,
+            &mut model,
+            Playback::movement(base, base_cycle),
+            blend,
+        )?;
     }
 
     let first_vertex = geometry.vertices.len();
@@ -608,7 +492,11 @@ fn build_player(
             height_offset: sequence_height_offset(
                 asset,
                 catalog,
-                if posed_action { sequence } else { base },
+                if posed_action {
+                    playback.sequence()
+                } else {
+                    base
+                },
             ),
         },
         Light::entity(64, 850),
@@ -689,18 +577,17 @@ fn build_npc(
             npc.animation_cycle,
         ),
     };
-    let (sequence, cycle, action) = if npc.sequence.sequence.is_some() && npc.sequence.delay == 0 {
-        (
-            npc.sequence.sequence,
-            npc.sequence.cycle.max(0).cast_unsigned(),
-            true,
-        )
-    } else {
-        (base, base_cycle, false)
-    };
-    let posed_action = pose_model(asset, catalog, &mut model, sequence, cycle, action, blend)?;
+    let playback =
+        Playback::for_actor(npc.sequence, npc.sequence_timing_resolved, base, base_cycle);
+    let posed_action = pose_model(asset, catalog, &mut model, playback, blend)?;
     if !posed_action {
-        pose_model(asset, catalog, &mut model, base, base_cycle, false, blend)?;
+        pose_model(
+            asset,
+            catalog,
+            &mut model,
+            Playback::movement(base, base_cycle),
+            blend,
+        )?;
     }
     // The reference scales the animated model, so bone translations stay in unscaled units.
     if def.scale_width != 128 || def.scale_height != 128 {
@@ -725,7 +612,11 @@ fn build_npc(
             height_offset: sequence_height_offset(
                 asset,
                 catalog,
-                if posed_action { sequence } else { base },
+                if posed_action {
+                    playback.sequence()
+                } else {
+                    base
+                },
             ),
         },
         Light::entity(
@@ -892,6 +783,10 @@ pub(crate) fn emit_model(
         geometry.model_triangle(points, face_colors, uv, face, u16::from(level))?;
     }
 
+    let draw_tile = crate::DrawTile::actor([center_fine_x >> 7, center_fine_z >> 7]);
+    for vertex in &mut geometry.vertices[first..] {
+        vertex.draw_tile = draw_tile;
+    }
     if geometry.vertices.len() > first {
         geometry.models.push(first..geometry.vertices.len());
     }

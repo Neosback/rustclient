@@ -26,7 +26,7 @@ pub fn project(
     assets: &TitleAssets,
     commands: &[LayeredOverlay],
     frame: &mut UiFrame,
-    top_level: u8,
+    visibility: &rustclient_scene::SceneVisibility,
 ) {
     if !commands.iter().any(|item| {
         matches!(
@@ -50,7 +50,7 @@ pub fn project(
                 fill_argb,
                 width,
             } => {
-                if let Some(polygon) = tile_polygon(&view, loaded, tile, *size, top_level) {
+                if let Some(polygon) = tile_polygon(&view, loaded, tile, *size, visibility) {
                     paint(frame, view.clip, &polygon, [*argb, *fill_argb], *width);
                 }
             }
@@ -60,7 +60,7 @@ pub fn project(
                 fill_argb,
                 width,
             } => {
-                let Some(anchor) = anchor(scene, *actor, top_level) else {
+                let Some(anchor) = anchor(scene, *actor, visibility) else {
                     continue;
                 };
                 let hull = actor_hull(&view, scene, anchor);
@@ -77,7 +77,7 @@ pub fn project(
                 align,
                 x_offset,
             } => {
-                let Some(anchor) = anchor(scene, *actor, top_level) else {
+                let Some(anchor) = anchor(scene, *actor, visibility) else {
                     continue;
                 };
                 let [x, top, z] = anchor.position;
@@ -119,8 +119,12 @@ pub fn project(
     }
 }
 
-/// The posed model anchor of `actor`, if it is in the scene and visible at `top_level`.
-fn anchor(scene: &SceneView, actor: ActorRef, top_level: u8) -> Option<&ActorLabelAnchor> {
+/// The posed model anchor of `actor`, if it is in the scene and admitted by the current scene visibility.
+fn anchor<'a>(
+    scene: &'a SceneView,
+    actor: ActorRef,
+    visibility: &rustclient_scene::SceneVisibility,
+) -> Option<&'a ActorLabelAnchor> {
     scene
         .entity_geometry
         .actor_labels
@@ -134,7 +138,13 @@ fn anchor(scene: &SceneView, actor: ActorRef, top_level: u8) -> Option<&ActorLab
             }
             _ => false,
         })
-        .filter(|anchor| anchor.level <= top_level)
+        .filter(|anchor| {
+            scene
+                .entity_geometry
+                .vertices
+                .get(anchor.vertices.start)
+                .is_some_and(|vertex| visibility.shows_vertex(vertex))
+        })
 }
 
 /// Project a scene-local point to frame coordinates; points behind the camera are absent.
@@ -156,9 +166,11 @@ fn tile_polygon(
     loaded: &rustclient_application::LoadedScene,
     tile: &rustclient_plugin_api::WorldPoint,
     size: u8,
-    top_level: u8,
+    visibility: &rustclient_scene::SceneVisibility,
 ) -> Option<Vec<(i32, i32)>> {
-    if tile.plane > top_level {
+    if tile.plane > visibility.top_level
+        || !visibility.shows_tile(loaded.asset.draw_tile([tile.x, tile.y]))
+    {
         return None;
     }
     let plane = Plane::new(tile.plane)?;

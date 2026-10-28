@@ -19,11 +19,11 @@ fn run_operations(operations: &[SemanticOperation]) -> (GameState, CommitStreamF
 }
 
 #[test]
-fn state_fingerprint_v27_has_exact_regression_vectors() {
+fn state_fingerprint_v28_has_exact_regression_vectors() {
     let mut state = GameState::new();
     assert_eq!(
         state.semantic_fingerprint().get(),
-        6_737_528_060_347_041_486
+        16_047_970_197_847_965_105
     );
 
     state
@@ -33,7 +33,7 @@ fn state_fingerprint_v27_has_exact_regression_vectors() {
         .apply_operation(SemanticOperation::AdvanceTick(TickSpan::new(5)))
         .expect("small tick advance cannot overflow");
 
-    assert_eq!(state.semantic_fingerprint().get(), 40_832_697_715_145_450);
+    assert_eq!(state.semantic_fingerprint().get(), 262_747_495_747_773_555);
 }
 
 #[test]
@@ -87,7 +87,7 @@ fn state_fingerprint_distinguishes_revision_identity() {
     );
     assert_eq!(
         subrevision.semantic_fingerprint().get(),
-        3_256_232_498_427_926_759
+        6_494_532_345_383_939_362
     );
 }
 
@@ -225,12 +225,21 @@ fn active_sequence_timing_resolution_participates_in_canonical_state() {
     }));
     let cached = state_with_timing(Some(SequenceTiming::CachedModel {
         range: Some((0, 5)),
+        frame_step: None,
     }));
     assert_ne!(
         unresolved.semantic_fingerprint(),
         legacy.semantic_fingerprint()
     );
     assert_ne!(legacy.semantic_fingerprint(), cached.semantic_fingerprint());
+    let rewinding = state_with_timing(Some(SequenceTiming::CachedModel {
+        range: Some((0, 5)),
+        frame_step: Some(2),
+    }));
+    assert_ne!(
+        cached.semantic_fingerprint(),
+        rewinding.semantic_fingerprint()
+    );
 }
 
 #[test]
@@ -252,7 +261,7 @@ fn equivalent_observable_state_has_equivalent_fingerprint() {
 }
 
 #[test]
-fn commit_stream_fingerprint_v27_has_exact_regression_vector() {
+fn commit_stream_fingerprint_v28_has_exact_regression_vector() {
     let operations = [
         BEGIN_240,
         SemanticOperation::AdvanceTick(TickSpan::new(2)),
@@ -261,10 +270,10 @@ fn commit_stream_fingerprint_v27_has_exact_regression_vector() {
     ];
     let (_, fingerprint) = run_operations(&operations);
 
-    assert_eq!(fingerprint.get(), 1_995_568_586_010_286_370);
+    assert_eq!(fingerprint.get(), 12_266_812_576_389_399_527);
     assert_eq!(
         CommitStreamFingerprintBuilder::new().finish().get(),
-        14_935_260_352_713_089_699
+        18_056_086_669_613_358_074
     );
 }
 

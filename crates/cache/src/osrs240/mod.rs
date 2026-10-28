@@ -16,14 +16,14 @@ pub mod scripts;
 pub mod sequence_policy;
 mod terrain;
 pub mod widgets;
+mod world_maps;
 use crate::{
     Cache, CacheProfile, FileId, GroupId, IndexId, Source,
     error::Result,
-    world::{FloorMaterial, KitDefinition, MapSquare, ObjectDefinition, StaticModel, WorldAssets},
+    world::{FloorMaterial, KitDefinition, ObjectDefinition, StaticModel, WorldAssets},
 };
 use rustclient_model::{
-    FloorOverlayId, FloorUnderlayId, KitId, ModelId, ObjectDefinitionId, RegionCoord, SequenceId,
-    WorldTile,
+    FloorOverlayId, FloorUnderlayId, KitId, ModelId, ObjectDefinitionId, SequenceId, WorldTile,
 };
 use rustclient_platform::ReadOnlyBlobs;
 use sha2::{Digest, Sha256};
@@ -57,7 +57,8 @@ impl CacheProfile {
 
     /// Load immutable CPU assets for a normal bounded window.
     /// # Errors
-    /// Rejects missing/corrupt assets, unsupported encodings and invalid extents.
+    /// Rejects missing/corrupt declared assets, unsupported encodings and invalid extents.
+    /// Undeclared map groups use the revision's explicit empty-region initialization.
     pub fn load_world<S: ReadOnlyBlobs>(
         self,
         cache: &Cache<S>,
@@ -95,7 +96,7 @@ impl CacheProfile {
         digest.update(width.to_le_bytes());
         digest.update(height.to_le_bytes());
         let (squares, needed, auxiliary_map_files) =
-            load_maps(cache, origin, (end_x, end_y), &mut digest, &mut progress)?;
+            world_maps::load(cache, origin, (end_x, end_y), &mut digest, &mut progress)?;
         progress("floor definitions");
         let (underlays, overlays) = load_floors(cache, &mut digest)?;
         let mut warnings = Vec::new();
@@ -171,86 +172,6 @@ fn load_kits<S: ReadOnlyBlobs>(cache: &Cache<S>, digest: &mut Sha256) -> Kits {
     (kits, model_ids)
 }
 
-fn load_maps<S: ReadOnlyBlobs>(
-    cache: &Cache<S>,
-    origin: WorldTile,
-    end: (i32, i32),
-    digest: &mut Sha256,
-    progress: &mut impl FnMut(&str),
-) -> Result<(Vec<MapSquare>, BTreeSet<ObjectDefinitionId>, usize)> {
-    let (end_x, end_y) = end;
-    let context = Source::group(IndexId(5), GroupId(0));
-    let mut auxiliary_map_files = 0;
-    let mut squares = Vec::new();
-    let mut needed = BTreeSet::new();
-    // Include the far border, whose tile anchors supply shared height corners.
-    for x in origin.x / 64..=end_x / 64 {
-        for y in origin.y / 64..=end_y / 64 {
-            if x > 255 || y > 255 {
-                return Err(context.error("world extent", "region outside profile range"));
-            }
-            progress("map squares");
-            let group = GroupId(
-                u32::try_from(x * 256 + y)
-                    .map_err(|_| context.error("map lookup", "group overflow"))?,
-            );
-            let source = Source::group(IndexId(5), group);
-            let files = cache.group_files(IndexId(5), group)?;
-            let get = |id: u32| {
-                files
-                    .iter()
-                    .find(|(f, _)| f.0 == id)
-                    .map(|(_, b)| b.as_slice())
-                    .ok_or_else(|| source.error("map lookup", format!("missing file {id}")))
-            };
-            auxiliary_map_files += files.iter().filter(|(id, _)| id.0 > 1).count();
-            for (id, bytes) in files.iter().filter(|(id, _)| id.0 <= 1) {
-                hash_file(
-                    digest,
-                    Source {
-                        file: Some(*id),
-                        ..source
-                    },
-                    bytes,
-                );
-            }
-            let coord = RegionCoord::new(x, y);
-            let tiles = terrain::terrain(
-                get(0)?,
-                coord,
-                Source {
-                    file: Some(FileId(0)),
-                    ..source
-                },
-            )?;
-            let locations = terrain::locations(
-                get(1)?,
-                coord,
-                Source {
-                    file: Some(FileId(1)),
-                    ..source
-                },
-            )?;
-            needed.extend(
-                locations
-                    .iter()
-                    .filter(|l| {
-                        l.tile.x >= origin.x
-                            && l.tile.x < end_x
-                            && l.tile.y >= origin.y
-                            && l.tile.y < end_y
-                    })
-                    .map(|l| l.object),
-            );
-            squares.push(MapSquare {
-                coord,
-                tiles,
-                locations,
-            });
-        }
-    }
-    Ok((squares, needed, auxiliary_map_files))
-}
 type Floors = (
     BTreeMap<FloorUnderlayId, FloorMaterial>,
     BTreeMap<FloorOverlayId, FloorMaterial>,

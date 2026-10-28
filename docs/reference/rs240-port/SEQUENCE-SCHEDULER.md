@@ -346,9 +346,9 @@ The scheduler then sets the fallback controller to the authored idle sequence. I
 
 This is compatibility behavior for animation-resource readiness. RustClient may express the fallback differently architecturally, but it must not reinterpret `unreadyCycles` as gameplay sequence age.
 
-## 12. Current RustClient mismatches
+## 12. Historical RustClient mismatches
 
-The earlier audit found several semantic gaps that remain implementation work.
+The original audit found the following gaps. Use the dated implementation checkpoint below for current ownership/status.
 
 ### Cache policy loss
 
@@ -458,6 +458,62 @@ Next research should move to:
 
 Do not reopen `classQR.field5598` as an elapsed-time candidate or `field5599` as an ambiguous counter unless new contradictory exact-240 evidence appears.
 
-## Verification
+## Historical research verification
 
-Source/manual evidence only for this wave. No `verify.sh`, tests, Clippy, CI, compilation, mapping regeneration, or workspace gate was run.
+Source/manual evidence only for the original research wave. No `verify.sh`, tests, Clippy, CI, compilation, mapping regeneration, or workspace gate was run.
+
+
+## Action implementation checkpoint, 2026-10-26
+
+`game-state::sequence_playback` now advances resolved actor action lifetimes, after movement and
+body turning. Legacy playback uses strict `>` boundaries, carries the remainder instead of
+resetting every new frame to one, normalizes stale frame indices, rewinds the authored count and
+terminates at invalid rewinds/max loops. For a positive rewind, the source total-duration modulo
+also applies to a one-cycle request: total duration one yields an advance of zero. Rust checks
+only the first two nonzero durations to establish that special case, avoiding an ordinary full
+frame-table sum per actor/cycle.
+
+Cached playback increments `ActorSequenceSlot::frame` as a zero-based time cursor, compares it
+with end minus start, rewinds by the authored count, increments iterations and clears the action
+on terminal completion. It leaves the legacy `cycle` counter unchanged. The cache timing adapter
+now retains the cached rewind; schema 28 fingerprints it independently from range and actor state.
+The global timing registry remains immutable evidence, and new actors still require their own
+resolved bit rather than inheriting readiness from an old actor at the same index.
+
+The `classKB.method6491` delay-one path hold runs after movement, using remaining pre-assignment
+path backlog and forced-cycle bounds. A consumed positive delay never advances the action in
+that same cycle. Semantic cycle deltas/replay expose completion; per-frame/audio callbacks are
+not implemented by this checkpoint.
+
+`scene::entity_mesh::actor_animation` samples committed frames/time for resolved actions, including
+legacy within-frame smoothing input. It does not compute their loop lifetime from elapsed time.
+Elapsed sampling remains for movement poses and deliberately unresolved direct fixtures. The
+existing animation height-offset selection uses the same selected playback. Missing animation
+resources retain existing rendering fallback; no asset-readiness parity is claimed.
+
+Rust robustness difference: resolved empty legacy timing or a zero-duration repeating tail clears
+the action in bounded work. The source can fault or spin on those degenerate definitions. This is
+not an assertion that their invalid-data runtime outcomes match. Missing timing remains explicitly
+unresolved, with the prior aggregate compatibility path; it is not classified or given a guessed
+cached duration. Action absence keeps RustClient's canonical cleared-slot representation.
+
+Focused evidence: `game-state/src/sequence_playback.rs`, `game-state/tests/action_playback.rs`,
+`cache/src/osrs240/sequence_policy.rs`, `scene/src/entity_mesh/actor_animation.rs`, and cached-rewind
+fingerprint regression assertions. Cases cover local/remote/NPC completion, positive delays,
+preexisting walking, forced hold bounds, range offsets, zero/missing/invalid rewinds, loop limits,
+replay, client-cycle partition, reset/index reuse, and committed pose sampling. These are manual
+source-derived contracts, not a complete live differential run.
+
+Still incomplete: movement/idle/fallback controller lifetime and synchronization, model readiness,
+freeze-window retention/ordering, slot-specific frame/audio callbacks, spot effects, full sequence
+blending and logged-in visual acceptance. Do not label the entire actor scheduler complete.
+
+Implementation verification (Rust 1.99.0): formatting check, workspace/all-target check,
+strict workspace/all-target Clippy, workspace tests (537 passed, zero failed, one ignored),
+web Wasm check and native binary build all passed. Logs are under
+`target/action-playback-{fmt,workspace-check,clippy,workspace-tests,wasm,native}.log`.
+The ignored packet replay test requires a live capture and local-player index. Matrix validation
+passed for 42 domains and all 13 TypeScript evidence hashes; symbol-ledger validation passed
+for 138 rows. Added source-manifest pins for classRD/classEJ/classKB; reference sources were not
+edited. The reference MCP status query returned connection refused, so no new runtime trace or
+fixed/classic/modern visual comparison is claimed for this checkpoint.

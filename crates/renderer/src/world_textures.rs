@@ -5,7 +5,8 @@ pub(crate) fn upload(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     mesh: &WorldMesh,
-) -> (wgpu::TextureView, wgpu::Buffer) {
+) -> Result<(wgpu::TextureView, wgpu::Buffer), crate::RenderError> {
+    validate(mesh, &device.limits())?;
     let texture = device.create_texture(&wgpu::TextureDescriptor {
         label: Some("reference texture array"),
         size: wgpu::Extent3d {
@@ -71,11 +72,34 @@ pub(crate) fn upload(
         contents: bytemuck::cast_slice(&animations),
         usage: wgpu::BufferUsages::UNIFORM,
     });
-    (view, animations)
+    Ok((view, animations))
 }
-/// Magnification stays nearest like `RuneLite`'s texture config; wgpu only permits anisotropy
-/// above 1 with every filter linear, so a filtered level also smooths magnification.
-pub(crate) fn sampler(device: &wgpu::Device, anisotropy: u16) -> wgpu::Sampler {
+fn validate(mesh: &WorldMesh, limits: &wgpu::Limits) -> Result<(), crate::RenderError> {
+    if limits.max_texture_array_layers < 256 || limits.max_texture_dimension_2d < 128 {
+        return Err(crate::RenderError::World(
+            "classic texture array exceeds device limits",
+        ));
+    }
+    for (id, asset) in &mesh.textures {
+        if id.get() >= 256 || asset.image.width() != 128 || asset.image.height() != 128 {
+            return Err(crate::RenderError::World(
+                "invalid classic texture layer or image dimensions",
+            ));
+        }
+    }
+    for vertex in &mesh.geometry.vertices {
+        if vertex.texture_uv[0] > 256 {
+            return Err(crate::RenderError::World(
+                "mesh texture exceeds classic shader capacity",
+            ));
+        }
+    }
+    Ok(())
+}
+
+/// wgpu requires all-linear filters for anisotropy. The world shader explicitly samples nearest
+/// level zero for magnification and cutout alpha; only minification uses this filtered sampler.
+pub(crate) fn sampler(device: &wgpu::Device, anisotropy: u16, mipmaps: bool) -> wgpu::Sampler {
     let filter = if anisotropy > 1 {
         wgpu::FilterMode::Linear
     } else {
@@ -89,6 +113,7 @@ pub(crate) fn sampler(device: &wgpu::Device, anisotropy: u16) -> wgpu::Sampler {
         min_filter: filter,
         mipmap_filter: wgpu::MipmapFilterMode::Linear,
         anisotropy_clamp: anisotropy.max(1),
+        lod_max_clamp: if mipmaps { 32. } else { 0. },
         ..Default::default()
     })
 }
@@ -123,5 +148,51 @@ mod tests {
             ),
             [138, 50, 100, 191]
         );
+    }
+}
+
+#[cfg(test)]
+mod validation_tests {
+    use super::*;
+    use rustclient_cache::{GroupId, Image, IndexId, Source, world::TextureAsset};
+    use rustclient_model::{SceneAssetId, TextureId};
+    #[test]
+    fn invalid_texture_resources_fail_before_any_gpu_upload() {
+        let mut mesh = WorldMesh {
+            asset: SceneAssetId::new([1; 32]),
+            geometry: rustclient_scene::SceneGeometry::default(),
+            dynamic: rustclient_scene::SceneGeometry::default(),
+            focus: [0.; 3],
+            stats: rustclient_scene::SceneStats::default(),
+            textures: std::collections::BTreeMap::default(),
+            roofs: std::sync::Arc::default(),
+        };
+        let limits = wgpu::Limits::default();
+        assert!(validate(&mesh, &limits).is_ok());
+        let mut small = limits.clone();
+        small.max_texture_array_layers = 128;
+        assert!(validate(&mesh, &small).is_err());
+        small = limits.clone();
+        small.max_texture_dimension_2d = 64;
+        assert!(validate(&mesh, &small).is_err());
+        let source = Source::group(IndexId(0), GroupId(0));
+        let asset = TextureAsset {
+            image: Image::new(1, 1, vec![255; 4], source).unwrap(),
+            animation_direction: 0,
+            animation_speed: 0,
+            opaque: true,
+        };
+        mesh.textures.insert(TextureId::new(0), asset.clone());
+        assert!(validate(&mesh, &limits).is_err());
+        mesh.textures.clear();
+        let asset = TextureAsset {
+            image: Image::new(128, 128, vec![255; 128 * 128 * 4], source).unwrap(),
+            ..asset
+        };
+        mesh.textures.insert(TextureId::new(256), asset.clone());
+        assert!(validate(&mesh, &limits).is_err());
+        mesh.textures.clear();
+        mesh.textures.insert(TextureId::new(255), asset);
+        assert!(validate(&mesh, &limits).is_ok());
     }
 }

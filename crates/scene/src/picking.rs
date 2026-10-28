@@ -1,5 +1,5 @@
 //! Pointer queries over the exact retained CPU terrain triangles.
-use crate::{RoofVisibility, WorldMesh};
+use crate::{SceneVisibility, WorldMesh};
 use rustclient_model::{SceneDescriptor, WorldTile};
 
 /// Pick the closest terrain triangle using the ray supplied by the rendering
@@ -15,7 +15,7 @@ pub fn pick_terrain(
     descriptor: SceneDescriptor,
     origin: [f32; 3],
     direction: [f32; 3],
-    visibility: &RoofVisibility,
+    visibility: &SceneVisibility,
 ) -> Option<WorldTile> {
     if mesh.asset != descriptor.id() || origin.iter().chain(&direction).any(|n| !n.is_finite()) {
         return None;
@@ -23,7 +23,7 @@ pub fn pick_terrain(
     let triangle_count = usize::try_from(mesh.stats.terrain_triangles).ok()?;
     let mut nearest = f32::INFINITY;
     for triangle in mesh.geometry.vertices.chunks_exact(3).take(triangle_count) {
-        if !visibility.shows(triangle[0].render_tag()) {
+        if !visibility.shows_vertex(&triangle[0]) {
             continue;
         }
         let points = std::array::from_fn(|i| {
@@ -95,16 +95,14 @@ pub fn pick_surface(
     geometry: &crate::SceneGeometry,
     origin: [f32; 3],
     direction: [f32; 3],
-    visibility: &RoofVisibility,
+    visibility: &SceneVisibility,
 ) -> Option<SurfaceHit> {
     if origin.iter().chain(&direction).any(|v| !v.is_finite()) {
         return None;
     }
     let mut hit = None;
     for (i, triangle) in geometry.vertices.chunks_exact(3).enumerate() {
-        if triangle.iter().all(|v| v.abhsl >> 24 == 255)
-            || !visibility.shows(triangle[0].render_tag())
-        {
+        if triangle.iter().all(|v| v.abhsl >> 24 == 255) || !visibility.shows_vertex(&triangle[0]) {
             continue;
         }
         let points = std::array::from_fn(|i| {

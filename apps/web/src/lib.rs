@@ -113,7 +113,11 @@ mod browser {
                 WindowEvent::CloseRequested => event_loop.exit(),
                 WindowEvent::Resized(size) => {
                     if let Some(renderer) = self.shared.borrow_mut().renderer.as_mut() {
-                        renderer.resize(SurfaceSize::new(size.width, size.height));
+                        if let Err(error) =
+                            renderer.resize(SurfaceSize::new(size.width, size.height))
+                        {
+                            log_error(&format!("canvas resize: {error}"));
+                        }
                         if size.width != 0 && size.height != 0 {
                             window.request_redraw();
                         }

@@ -139,6 +139,7 @@ pub(crate) fn build(
                 } else {
                     FACE_CODES[shape]
                 };
+                let first_vertex = mesh.geometry.vertices.len();
                 for face in rows.chunks_exact(4) {
                     let indices = std::array::from_fn::<_, 3, _>(|i| {
                         let n = face[i + 1];
@@ -164,6 +165,10 @@ pub(crate) fn build(
                         tag,
                     )?;
                     mesh.stats.terrain_triangles += 1;
+                }
+                let draw_tile = asset.draw_tile([wx, wy]);
+                for vertex in &mut mesh.geometry.vertices[first_vertex..] {
+                    vertex.draw_tile = draw_tile;
                 }
             }
         }

@@ -93,6 +93,8 @@ pub struct UiFrame {
     pub world_viewport: Option<Rect>,
     /// Painter boundary of the world widget, before interfaces mounted above it.
     pub world_overlay_index: Option<usize>,
+    /// Premultiplied full-viewport widget overlay beneath the sampled UI.
+    pub viewport_overlay: crate::ViewportOverlay,
     pub viewport_settings: rustclient_model::ViewportSettings,
     pub scene_brightness: rustclient_model::ScreenBrightness,
     /// Mask sprites authored on the minimap and compass widgets; absent when not laid out.

@@ -22,6 +22,7 @@ fn asset() -> SceneAsset {
         WorldAssets {
             squares: vec![MapSquare {
                 coord: RegionCoord::new(0, 0),
+                source: rustclient_cache::world::MapSquareSource::Archive,
                 tiles: vec![TerrainTile::default(); 4 * 64 * 64],
                 locations: vec![],
             }],

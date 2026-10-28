@@ -188,6 +188,26 @@
         {
           "path": "sources-semantic/classGA.java",
           "sha256": "d3da0d9cebc1e55f80b2bb41b75e077dcf2653b770b6161c063c454ea89fc693"
+        },
+        {
+          "path": "sources-semantic/classRD.java",
+          "sha256": "a683d6c873be466ad70e0544d2687bcc7b3f4e45019bc5dfb8b20c04d3274d64"
+        },
+        {
+          "path": "sources-semantic/classEJ.java",
+          "sha256": "aed160d7cc5149cb996e1c55939c4314682c1a3f6453588c864fc069478fe336"
+        },
+        {
+          "path": "sources-semantic/classKB.java",
+          "sha256": "89ccd94f7870c534019efdcd5185ce11283a8c8e17188f8b495a8347e77070b4"
+        },
+        {
+          "path": "sources-semantic/rl4.java",
+          "sha256": "bf415c4191138c5eb261bae528867a441bfce6db454296b111395ec356a9fba5"
+        },
+        {
+          "path": "sources-semantic/CollisionData.java",
+          "sha256": "0fd0b5ea7b1f2f099fa81fae394483a2b0d53a0d6197e207f2de20ad8da909f8"
         }
       ]
     },
@@ -226,6 +246,26 @@
         {
           "path": "runelite-client/src/main/resources/net/runelite/client/plugins/gpu/frag.glsl",
           "sha256": "ea6b6f1160d2b0fb82cc72040a55467e5640255d865ae35bc702ce3fd57e1066"
+        },
+        {
+          "path": "runelite-client/src/main/java/net/runelite/client/plugins/gpu/RegionManager.java",
+          "sha256": "257cbeb7b2e99c224697c703a0bf68cf5d2e94cfa7c4ca173fb97466a2de5803"
+        },
+        {
+          "path": "runelite-client/src/main/java/net/runelite/client/plugins/gpu/regions/Regions.java",
+          "sha256": "0befa4012fec63c9da1fa8ef9dcf35f5cd35c50f83cd467a8fcbc31927abefe6"
+        },
+        {
+          "path": "runelite-client/src/main/java/net/runelite/client/plugins/gpu/regions/Region.java",
+          "sha256": "92898dbdd584694158c5b72f48dfc07404b0fa5c635a1612b8469086452b68ea"
+        },
+        {
+          "path": "runelite-client/src/main/resources/net/runelite/client/plugins/gpu/regions/regions.txt",
+          "sha256": "a79d0f4ad54e80e4aa9fb179d1b919c46c60490b72d18b26c442090ea838e0e1"
+        },
+        {
+          "path": "runelite-client/src/test/java/net/runelite/client/plugins/gpu/regions/RegionsTest.java",
+          "sha256": "4aed86f14b434a3539089b9df52b741329fe64149b34a99f4eabdcdb9d3ac811"
         }
       ]
     },

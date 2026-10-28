@@ -1,4 +1,5 @@
 use super::*;
+use rustclient_model::RegionCoord;
 use rustclient_model::{ModelId, ModelPoint};
 const TERRAIN: &[u8] = include_bytes!("../../tests/fixtures/world/terrain.bin");
 const LOCATIONS: &[u8] = include_bytes!("../../tests/fixtures/world/locations.bin");

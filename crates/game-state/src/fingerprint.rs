@@ -528,7 +528,10 @@ fn write_active_sequence_timing(
             }
             match frame_step {
                 None => fingerprint.write_u8(0),
-                Some(step) => { fingerprint.write_u8(1); fingerprint.write_u16(*step); }
+                Some(step) => {
+                    fingerprint.write_u8(1);
+                    fingerprint.write_u16(*step);
+                }
             }
         }
     }

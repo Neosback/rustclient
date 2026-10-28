@@ -1,8 +1,5 @@
-//! Frame pacing for a plugin's frame limit (`FpsPlugin`'s draw listener).
-//!
-//! The source sleeps after each paint to hold a target rate. The shell instead declines to present a
-//! frame that would come sooner than one interval after the last presented one; the redraw requests
-//! that follow every 20 ms game cycle (and input) pick the schedule back up.
+//! One presentation clock for GPU policy and the optional FPS plugin.
+//! Game cycles keep their own 20 ms deadline; rendering never advances semantic time.
 
 use std::time::{Duration, Instant};
 
@@ -12,13 +9,18 @@ pub(super) struct FrameLimit {
 }
 
 impl FrameLimit {
+    /// The next allowed presentation, or no deadline when uncapped/not yet presented.
+    pub(super) fn deadline(&self, limit: Option<u32>) -> Option<Instant> {
+        self.last?.checked_add(interval(limit?))
+    }
+
     /// Whether a frame may be presented at `now` when at most `limit` frames per second are allowed.
     pub(super) fn allow(&mut self, limit: Option<u32>, now: Instant) -> bool {
         let Some(fps) = limit else {
             self.last = Some(now);
             return true;
         };
-        let interval = Duration::from_micros(1_000_000 / u64::from(fps.max(1)));
+        let interval = interval(fps);
         if self
             .last
             .is_some_and(|last| now.saturating_duration_since(last) < interval)
@@ -27,6 +29,20 @@ impl FrameLimit {
         }
         self.last = Some(now);
         true
+    }
+}
+
+fn interval(fps: u32) -> Duration {
+    Duration::from_nanos(1_000_000_000_u64.div_ceil(u64::from(fps.max(1))))
+}
+
+/// Zero GPU cap means uncapped; the stricter active policy wins.
+pub(super) fn combined_limit(gpu: u32, plugin: Option<u32>) -> Option<u32> {
+    match (gpu, plugin) {
+        (0, None) => None,
+        (0, Some(plugin)) => Some(plugin.max(1)),
+        (gpu, None) => Some(gpu),
+        (gpu, Some(plugin)) => Some(gpu.min(plugin.max(1))),
     }
 }
 
@@ -71,5 +87,35 @@ mod tests {
         let start = Instant::now();
         assert!(pacer.allow(Some(1), start));
         assert!(pacer.allow(None, start + Duration::from_millis(1)));
+    }
+}
+
+#[cfg(test)]
+mod gpu_tests {
+    use super::*;
+    #[test]
+    fn stricter_gpu_or_plugin_policy_wins() {
+        assert_eq!(combined_limit(50, Some(120)), Some(50));
+        assert_eq!(combined_limit(120, Some(30)), Some(30));
+        assert_eq!(combined_limit(0, Some(30)), Some(30));
+        assert_eq!(combined_limit(0, None), None);
+    }
+    #[test]
+    fn deadlines_follow_changes_and_never_catch_up_missed_frames() {
+        let mut clock = FrameLimit::default();
+        let start = Instant::now();
+        assert_eq!(clock.deadline(Some(60)), None);
+        assert!(clock.allow(Some(60), start));
+        assert_eq!(
+            clock.deadline(Some(60)),
+            Some(start + Duration::from_nanos(16_666_667))
+        );
+        assert!(!clock.allow(Some(60), start + Duration::from_micros(16_666)));
+        assert!(clock.allow(Some(60), start + Duration::from_secs(2)));
+        assert_eq!(
+            clock.deadline(Some(50)),
+            Some(start + Duration::from_millis(2020))
+        );
+        assert_eq!(clock.deadline(None), None);
     }
 }

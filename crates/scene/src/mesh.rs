@@ -10,6 +10,8 @@ pub struct SceneVertex {
     /// Texture+1, signed 8.8 U and V, and the render tag: the tile render level in the low two
     /// bits and the roof slot above them (see [`SceneVertex::render_level`]).
     pub texture_uv: [u16; 4],
+    /// One owning tile for whole-model/terrain admission, shared with picking.
+    pub draw_tile: crate::DrawTile,
 }
 impl SceneVertex {
     /// Lowest "top level" at which this vertex is drawn: tiles, locations and actors
@@ -150,6 +152,7 @@ impl SceneGeometry {
             position: [0; 4],
             abhsl: 0,
             texture_uv: [0; 4],
+            draw_tile: crate::DrawTile::default(),
         }; 3];
         for i in 0..3 {
             let p = points[i];

@@ -486,6 +486,9 @@ fn pose(
 }
 
 fn emit(asset: &SceneAsset, mesh: &mut WorldMesh, prepared: PreparedModel) -> Result<()> {
+    let tile = prepared.loc.tile;
+    let draw_tile = asset.draw_tile([tile.x, tile.y]);
+    let first_vertex = mesh.geometry.vertices.len();
     let tag = render_tag(
         asset,
         &mesh.roofs,
@@ -533,6 +536,9 @@ fn emit(asset: &SceneAsset, mesh: &mut WorldMesh, prepared: PreparedModel) -> Re
         mesh.geometry
             .model_triangle(points, colors, uv, face, tag)?;
         mesh.stats.model_triangles += 1;
+    }
+    for vertex in &mut mesh.geometry.vertices[first_vertex..] {
+        vertex.draw_tile = draw_tile;
     }
     Ok(())
 }
@@ -653,6 +659,13 @@ pub(crate) fn shadows(
     let mut shadows = vec![0; (width + 1) * (height + 1)];
     let stride = height + 1;
     let origin = asset.descriptor.origin();
+    for x in 0..=width {
+        for y in 0..=height {
+            shadows[x * stride + y] = asset
+                .tile(plane, origin.x + x as i32, origin.y + y as i32)
+                .map_or(0, |tile| i32::from(tile.base_shadow));
+        }
+    }
     {
         for loc in &effective_locations(asset, inputs) {
             let x = loc.tile.x - origin.x;

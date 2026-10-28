@@ -64,3 +64,23 @@ and cyclic/out-of-range bone parents. Hierarchies are bounded to 1024 bones and
 curve expansion to 8,388,608 float samples per animation; exceeding those budgets
 is a contextual asset error, never silent partial decoding. Failed preparation
 remains a reported advisory and does not satisfy a parity gate.
+
+## Sparse normal-map archives (revision 240, 2026-10-27)
+
+Owners: the revision cache adapter classifies reference-table absence and performs the source map
+initialization; scene consumes immutable availability, height and base-shadow metadata. A group
+absent from index 5's reference table is an unavailable map square, not a corrupt required payload.
+It has no decoded floors or locations, retains blocked terrain traversal, and uses the exact 240
+empty-area initialization. A listed group's absent payload, missing required terrain/location file,
+invalid container/CRC/version or decode error remains an error. No catch-all fallback is permitted.
+
+The injected 240 loader `rl4.method10135` tests group presence before treating null data as pending.
+Its `method10138` initializes missing ground areas for scene-center chunk Y below 800: inclusive
+region edges clipped to the core window, ground base shadow 127, west/east/south/north height-copy
+order. Upper planes keep their initialized zero heights. This is source-defined empty space, not a
+procedural substitute map. Instance templates and expanded-ring assembly remain outside this slice.
+
+Availability and source-defined base shadows are catalog data; their changes affect asset identity,
+not live entity authority. Validate bounds, missing-versus-listed error separation, edge/corner copy
+order, high-Y behavior and collision treatment with focused fixtures. Re-run selected-cache region
+captures separately; passing codec tests does not establish Java/runtime visual acceptance.

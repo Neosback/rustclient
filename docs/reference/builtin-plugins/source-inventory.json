@@ -1663,9 +1663,9 @@
       "key": "drawDistance",
       "javaType": "int",
       "defaultExpression": "50",
-      "status": "partial",
-      "rustOwner": "crates/renderer/src/shaders/world.wgsl (fog boundary only)",
-      "verification": "capture-run: visual only; geometry beyond the distance is not culled"
+      "status": "implemented",
+      "rustOwner": "crates/scene/src/visibility.rs + crates/renderer/src/shaders/world.wgsl + apps/native/src/interaction.rs",
+      "verification": "240 Scene.method4474 inclusive zone-loop contract, shared picking/overlay admission, native live-cache distance-zero capture and WebGPU boundary readback pass; exact Java visual/frustum/multi-zone-alpha acceptance open"
     },
     {
       "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPluginConfig.java",
@@ -1673,9 +1673,9 @@
       "key": "hideUnrelatedMaps",
       "javaType": "boolean",
       "defaultExpression": "true",
-      "status": "unimplemented",
-      "rustOwner": null,
-      "verification": "not-run"
+      "status": "implemented",
+      "rustOwner": "crates/scene/src/regions.rs + visibility.rs + crates/renderer/src/shaders/world.wgsl",
+      "verification": "Source RegionsTest/parser contracts, owned resource byte identity and native/WebGPU admission pass. LIVE sparse mixed-group Metal capture: 53,583 changed channel bytes; reconstruction byte-identical. Camera framing limited; Java/gameplay visual acceptance open. Instance bypass contract tested; travel unsupported."
     },
     {
       "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPluginConfig.java",
@@ -1685,7 +1685,7 @@
       "defaultExpression": "3",
       "status": "unimplemented",
       "rustOwner": null,
-      "verification": "not-run"
+      "verification": "Loaded scene remains 104x104; extended ring absent"
     },
     {
       "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPluginConfig.java",
@@ -1693,9 +1693,9 @@
       "key": "smoothBanding",
       "javaType": "boolean",
       "defaultExpression": "true",
-      "status": "unimplemented",
-      "rustOwner": null,
-      "verification": "not-run"
+      "status": "implemented",
+      "rustOwner": "crates/renderer/src/material_options.rs + shaders/world.wgsl",
+      "verification": "World probe captures; reference pixel comparison not run"
     },
     {
       "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPluginConfig.java",
@@ -1705,7 +1705,7 @@
       "defaultExpression": "AntiAliasingMode.MSAA_2",
       "status": "implemented",
       "rustOwner": "crates/renderer/src/settings.rs + world_target.rs",
-      "verification": "unit-test: resolution; capture-run: MSAA off and 4x on the dev GPU"
+      "verification": "Actual Metal sample counts 1/2/4; resolution tests; browser core resolves 2x to 4x"
     },
     {
       "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPluginConfig.java",
@@ -1713,9 +1713,9 @@
       "key": "uiScalingMode",
       "javaType": "UIScalingMode",
       "defaultExpression": "UIScalingMode.HYBRID",
-      "status": "unimplemented",
-      "rustOwner": null,
-      "verification": "not-run"
+      "status": "implemented",
+      "rustOwner": "crates/renderer/src/ui_canvas.rs + shaders/ui_scale.wgsl + shaders/ui_xbr.wgsl",
+      "verification": "Six actual-GPU modes on native and browser; channel delta <=1 on edge fixture; xBR f4 source defect explicitly corrected; reference comparison not run"
     },
     {
       "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPluginConfig.java",
@@ -1723,9 +1723,9 @@
       "key": "fogDepth",
       "javaType": "int",
       "defaultExpression": "0",
-      "status": "implemented",
-      "rustOwner": "crates/renderer/src/shaders/world.wgsl (fog_amount)",
-      "verification": "capture-run: visual only, no pixel comparison with RuneLite"
+      "status": "partial",
+      "rustOwner": "crates/renderer/src/shaders/world.wgsl",
+      "verification": "World probe; source formula on 104x104 only; expanded scene absent"
     },
     {
       "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPluginConfig.java",
@@ -1733,9 +1733,9 @@
       "key": "anisotropicFilteringLevel",
       "javaType": "int",
       "defaultExpression": "1",
-      "status": "partial",
-      "rustOwner": "crates/renderer/src/world_textures.rs (sampler)",
-      "verification": "capture-run: sampler validated at 16x; wgpu also smooths magnification"
+      "status": "implemented",
+      "rustOwner": "crates/renderer/src/world_textures.rs + shaders/world.wgsl",
+      "verification": "0 disables mip selection, nearest magnification/mask in shader; actual 16x world capture; reference comparison not run"
     },
     {
       "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPluginConfig.java",
@@ -1744,8 +1744,8 @@
       "javaType": "ColorBlindMode",
       "defaultExpression": "ColorBlindMode.NONE",
       "status": "implemented",
-      "rustOwner": "crates/renderer/src/shaders/world.wgsl (colorblind)",
-      "verification": "capture-run: zero intensity is neutral, correction changes pixels; not compared with RuneLite"
+      "rustOwner": "crates/renderer/src/shaders/colorblind.wgsl + ui_scale.wgsl + world.wgsl",
+      "verification": "Native/browser zero/full correction pixel probes; applies world and UI; reference comparison not run"
     },
     {
       "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPluginConfig.java",
@@ -1754,8 +1754,8 @@
       "javaType": "int",
       "defaultExpression": "100",
       "status": "implemented",
-      "rustOwner": "crates/renderer/src/shaders/world.wgsl (colorblind)",
-      "verification": "capture-run: zero intensity is neutral; not compared with RuneLite"
+      "rustOwner": "crates/renderer/src/shaders/colorblind.wgsl + ui_scale.wgsl + world.wgsl",
+      "verification": "Native/browser zero/full correction pixel probes; reference comparison not run"
     },
     {
       "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPluginConfig.java",
@@ -1763,9 +1763,9 @@
       "key": "brightTextures",
       "javaType": "boolean",
       "defaultExpression": "false",
-      "status": "unimplemented",
-      "rustOwner": null,
-      "verification": "not-run"
+      "status": "implemented",
+      "rustOwner": "crates/renderer/src/material_options.rs + shaders/world.wgsl",
+      "verification": "World probe captures; reference pixel comparison not run"
     },
     {
       "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPluginConfig.java",
@@ -1773,9 +1773,9 @@
       "key": "unlockFps",
       "javaType": "boolean",
       "defaultExpression": "true",
-      "status": "unimplemented",
-      "rustOwner": null,
-      "verification": "not-run"
+      "status": "implemented",
+      "rustOwner": "apps/native/src/frame_limit.rs + main.rs",
+      "verification": "Deadline/stricter-limit tests and actual native title-window 30/50/60 FPS smoke pass; authenticated gameplay/vsync timing NOT-RUN; floating animation separate"
     },
     {
       "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPluginConfig.java",
@@ -1784,8 +1784,8 @@
       "javaType": "SyncMode",
       "defaultExpression": "SyncMode.OFF",
       "status": "partial",
-      "rustOwner": "crates/renderer/src/settings.rs + surface.rs (present mode)",
-      "verification": "unit-test: resolution; never run against a window surface in this session"
+      "rustOwner": "crates/renderer/src/settings.rs + surface.rs",
+      "verification": "Resolution unit tests; native window vsync measurement not run; browser FIFO fallback"
     },
     {
       "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPluginConfig.java",
@@ -1793,9 +1793,9 @@
       "key": "fpsTarget",
       "javaType": "int",
       "defaultExpression": "60",
-      "status": "unimplemented",
-      "rustOwner": null,
-      "verification": "not-run"
+      "status": "implemented",
+      "rustOwner": "apps/native/src/frame_limit.rs + main.rs",
+      "verification": "Deadline/stricter-limit tests and actual native title-window 30/50/60 FPS smoke pass; authenticated gameplay/vsync timing NOT-RUN; floating animation separate"
     },
     {
       "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPluginConfig.java",
@@ -1805,7 +1805,7 @@
       "defaultExpression": "true",
       "status": "unimplemented",
       "rustOwner": null,
-      "verification": "not-run"
+      "verification": "SceneVertex remains i16; float animation output absent"
     },
     {
       "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPluginConfig.java",
@@ -1815,7 +1815,7 @@
       "defaultExpression": "3",
       "status": "unimplemented",
       "rustOwner": null,
-      "verification": "not-run"
+      "verification": "No configurable zone upload pool; existing loaders do not implement this option"
     }
   ],
   "resources": [

@@ -34,6 +34,10 @@ impl CollisionMap {
         let origin = descriptor.origin();
         for x in origin.x..origin.x + i32::try_from(descriptor.width()).unwrap_or(0) {
             for y in origin.y..origin.y + i32::try_from(descriptor.height()).unwrap_or(0) {
+                if !asset.terrain_available(x, y) {
+                    map.block(WorldTile::new(x, y, origin.plane));
+                    continue;
+                }
                 for plane in 0..=3 {
                     let Some(plane) = Plane::new(plane) else {
                         continue;

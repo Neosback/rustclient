@@ -448,7 +448,7 @@ fn texture(device: &wgpu::Device, width: u32, height: u32, label: &str) -> wgpu:
         mip_level_count: 1,
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
-        format: wgpu::TextureFormat::Rgba8UnormSrgb,
+        format: wgpu::TextureFormat::Rgba8Unorm,
         usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
         view_formats: &[],
     })
@@ -638,9 +638,9 @@ fn add_quad(
     };
     let position = |x: f32, y: f32| viewport.ndc(x, y);
     let tint = [
-        linear(quad.tint[0]),
-        linear(quad.tint[1]),
-        linear(quad.tint[2]),
+        normalized(quad.tint[0]),
+        normalized(quad.tint[1]),
+        normalized(quad.tint[2]),
         f32::from(quad.tint[3]) / 255.,
     ];
     let top_left = Vertex {
@@ -688,9 +688,9 @@ fn add_rotated_quad(
     let radians = f32::from(quad.rotation) * std::f32::consts::TAU / 65_536.;
     let (sin, cos) = radians.sin_cos();
     let tint = [
-        linear(quad.tint[0]),
-        linear(quad.tint[1]),
-        linear(quad.tint[2]),
+        normalized(quad.tint[0]),
+        normalized(quad.tint[1]),
+        normalized(quad.tint[2]),
         f32::from(quad.tint[3]) / 255.,
     ];
     let mut polygon = Vec::with_capacity(8);
@@ -760,13 +760,8 @@ fn add_rotated_quad(
     }
 }
 
-fn linear(channel: u8) -> f32 {
-    let value = f32::from(channel) / 255.;
-    if value <= 0.04045 {
-        value / 12.92
-    } else {
-        ((value + 0.055) / 1.055).powf(2.4)
-    }
+fn normalized(channel: u8) -> f32 {
+    f32::from(channel) / 255.
 }
 
 #[cfg(test)]

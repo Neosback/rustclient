@@ -25,3 +25,15 @@ Synthetic fixture SHA-256:
 - `model-fe.bin` (40 bytes): `6f46d24d02c81bf916dee9ba2792865cbf3d3d5c556a36df9fc33bf0c87d23ef`
 - `object.bin` (31 bytes): `1d3ccff1a63ad83e64787bc97831fba25a5f0e2f387b6a90d7ae525ffad7cdfd`
 - `terrain.bin` (32777 bytes): `610eed2143dddcfc5c32abb3b0c5d43c5222a5ddcd3806b303471ea5c123d9a3`
+
+## Sparse normal-map grammar (2026-10-27)
+
+The bounded in-module fixture in `osrs240/world_maps.rs` constructs terrain bytes
+`[0, 1, 10]` repeated 16,384 times (explicit elevation steps) and location bytes `[0]`
+(no placements). Reference-table absence is supplied explicitly, independently of payload errors.
+The fixture verifies initialization order, inclusive edges/corners, base shadows, upper planes,
+high-Y behavior, identity separation and strict declared-group failures. These authored grammar
+vectors contain no cache assets. Source: injected-240 `rl4.method10135`, `method10138` and `method10122`;
+`rl4.java` SHA-256 `bf415c4191138c5eb261bae528867a441bfce6db454296b111395ec356a9fba5`. Source pins also live in `docs/reference/source-manifest.json`.
+Real-cache Metal evidence and its visual limits are recorded in
+`docs/reference/builtin-plugins/GPU-SPARSE-MAPS-2026-10-27.md`.

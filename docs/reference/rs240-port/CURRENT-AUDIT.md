@@ -28,9 +28,11 @@ No percentage is inferred from declarations, files, plugin names or green worksp
    definition turn rates now commit after movement in GameState, with source-boundary, forced-order,
    replay/index-reuse and projection reconstruction tests. Keep position authority in GameState; do not add a visual
    collision clamp or speculative path reroute.
-4. **Action lifetime:** legacy scheduling includes restart/priority/gates and frame-boundary behavior.
-   `game-state::sequence_playback` still uses aggregate-cycle advancement for cached-model actions;
-   their authoritative completion/loop lifetime is unfinished. Decode/pose success does not close it.
+4. **Action lifetime:** resolved cached actions now use a frame/time cursor, authored rewind and
+   terminal loop limit in GameState. Legacy actions retain their within-frame remainder; both
+   families implement the delay-one path hold and feed committed cursors into action posing.
+   Freeze windows, asset-readiness fallback, movement/idle slot lifetime and frame/audio callbacks
+   remain incomplete. Decode/pose success alone does not close those remaining obligations.
 5. **Recognized actor data is still discarded:** spot slots, hits/headbars, tint/transparency,
    customization and rich facing need typed retention and actual consumers. See
    [PLAYER-EXTENDED-STATE.md](PLAYER-EXTENDED-STATE.md) and [WORLD-EFFECTS.md](WORLD-EFFECTS.md).
@@ -108,10 +110,33 @@ remain acceptance obligations until demonstrated in the new executable.
 
 ## Tracking gaps in the existing method ledger
 
-The current `tools/port_audit.py --check` report contains 133 symbol rows: 67 have verification
-unrecorded, 33 source-reviewed, 31 contract-tested and 2 live-tested; none is visual-accepted.
+The current `tools/port_audit.py --check` report contains 146 symbol rows: 67 have verification
+unrecorded, 32 source-reviewed, 45 contract-tested and 2 live-tested; none is visual-accepted.
 These are mixed symbol records, not equally sized features or a completion percentage. Historical
 “verified” statuses with unrecorded verification must not be promoted into release acceptance.
 The tool also reports ledger sources absent from its partial source-manifest pin list. That does
 not show modification, but it is an evidence-custody gap to close before stronger parity claims.
 The original injected-jar pin and generated per-source hashes remain distinct provenance records.
+
+
+GPU continuation: [the GPU-specific audit](../builtin-plugins/GPU-AUDIT.md) now records every scoped
+setting and active/historical resource with source hashes and separate verification. Six UI scaling
+modes, shared world/UI correction, resource-budget checks and native presentation deadlines have
+implementations. Normal-map region and 240 zone admission now have implementations with shared picking/overlays.
+Extended loading, float vertices, workers, tint and instance/minimap/frustum/runtime acceptance
+remain open; see [the zone continuation](../builtin-plugins/GPU-ZONES-2026-10-27.md). Actual Metal/core WebGPU probes and offline title-window pacing pass; none close
+exact-240 live visual, browser gameplay or HD readiness gates.
+
+
+The symbol checker now uses every source-manifest root when validating used source pins; previously
+it checked only rl-suite-240 and incorrectly called the pinned RuneLite plugin helpers unpinned.
+This fixes provenance reporting, not behavioral completion. Unpinned historical entries still remain.
+
+Sparse maps: [the correction](../builtin-plugins/GPU-SPARSE-MAPS-2026-10-27.md) separates valid undeclared
+map squares from corrupt declared archives. Source height/shadow initialization and blocked traversal
+are retained. The supplied LIVE cache now executes the mixed-group Metal boundary probe; numeric
+admission/reconstruction pass, with camera-framing and Java/gameplay acceptance limits documented.
+
+Full-viewport widget alpha overlay now has its source-derived producer and shared compositor path;
+[the checkpoint](../builtin-plugins/GPU-OVERLAY-2026-10-27.md) records exact byte selection/reset,
+letterboxing and actual native/browser GPU evidence. Ten broader GPU obligations remain open.

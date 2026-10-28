@@ -30,11 +30,13 @@ mod locations;
 pub use locations::location_key;
 mod mesh;
 mod picking;
+mod regions;
 mod roofs;
+pub use regions::RelatedMaps;
+mod visibility;
 pub use picking::{SurfaceHit, pick_surface, pick_terrain};
-pub use roofs::{
-    ROOF_SLOTS, RoofArea, RoofMask, RoofModes, RoofTargets, RoofView, RoofVisibility, RoofVolumes,
-};
+pub use roofs::{ROOF_SLOTS, RoofArea, RoofMask, RoofModes, RoofTargets, RoofView, RoofVolumes};
+pub use visibility::{DrawTile, SceneVisibility, ZoneWindow};
 mod shapes;
 mod terrain;
 mod uv;
@@ -58,6 +60,8 @@ type Result<T> = std::result::Result<T, SceneError>;
 pub struct SceneAsset {
     descriptor: SceneDescriptor,
     assets: WorldAssets,
+    /// Normal world-map chunk groups; no semantic/collision data is removed.
+    related_maps: RelatedMaps,
     /// `ObjectComposition.floor_lift` of each tile's floor decoration, keyed by the plane the
     /// client files the decoration under (bridge decks sit one plane lower) and world tile.
     floor_lifts: std::collections::HashMap<(u8, i32, i32), u8>,
@@ -74,6 +78,20 @@ type OverriddenRoofs = (
 /// Shape code of a floor decoration, the client's "ground object".
 const FLOOR_DECORATION: u8 = 22;
 impl SceneAsset {
+    /// Scenery admission derives from the owning tile, leaving source terrain/collision intact.
+    #[must_use]
+    pub fn draw_tile(&self, tile: [i32; 2]) -> DrawTile {
+        let origin = self.descriptor.origin();
+        let Some(x) = tile[0].checked_sub(origin.x) else {
+            return DrawTile::scenery([i32::MIN; 2], false);
+        };
+        let Some(z) = tile[1].checked_sub(origin.y) else {
+            return DrawTile::scenery([i32::MIN; 2], false);
+        };
+        DrawTile::scenery([x, z], self.related_maps.contains(tile))
+    }
+    /// Assemble normal world-map square assets. Instance templates require a distinct assembly
+    /// path and the related-map bypass; the application currently rejects instance travel.
     /// # Errors
     /// Rejects inconsistent extents, tile counts or missing height borders.
     pub fn new(assets: WorldAssets, origin: WorldTile, width: u32, height: u32) -> Result<Self> {
@@ -92,6 +110,7 @@ impl SceneAsset {
         .ok_or_else(|| SceneError("invalid scene footprint".into()))?;
         let mut this = Self {
             descriptor,
+            related_maps: RelatedMaps::for_world_map([origin.x, origin.y], [width, height])?,
             assets,
             floor_lifts: std::collections::HashMap::new(),
             roofs: std::sync::Arc::default(),
@@ -211,6 +230,17 @@ impl SceneAsset {
             + usize::try_from(x.rem_euclid(64)).ok()? * 64
             + usize::try_from(y.rem_euclid(64)).ok()?;
         square.tiles.get(index)
+    }
+    /// Whether this tile belongs to a declared terrain archive. Void still supplies initialized
+    /// heights for shading/contouring but retains the source's blocked traversal initialization.
+    pub(crate) fn terrain_available(&self, x: i32, y: i32) -> bool {
+        self.assets
+            .squares
+            .iter()
+            .find(|square| square.coord.x == x.div_euclid(64) && square.coord.y == y.div_euclid(64))
+            .is_some_and(|square| {
+                square.source == rustclient_cache::world::MapSquareSource::Archive
+            })
     }
     /// Resolve a currently present location through the same overrides/morphs used to render it.
     /// # Errors

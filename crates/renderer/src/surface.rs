@@ -109,6 +109,11 @@ impl std::error::Error for RendererInitError {}
 pub enum RenderError {
     /// `wgpu` reported a validation failure while acquiring the surface texture.
     Validation,
+    /// Physical target exceeds the created device's texture budget.
+    SurfaceSize {
+        requested: SurfaceSize,
+        maximum: u32,
+    },
     /// Invalid UI asset, upload or projection input.
     Ui(&'static str),
     /// Invalid world mesh, camera or GPU resource input.
@@ -118,6 +123,11 @@ pub enum RenderError {
 impl fmt::Display for RenderError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::SurfaceSize { requested, maximum } => write!(
+                formatter,
+                "surface {}x{} exceeds device texture dimension {maximum}",
+                requested.width, requested.height
+            ),
             Self::World(message) => write!(formatter, "world projection: {message}"),
             Self::Ui(message) => write!(formatter, "UI projection: {message}"),
             Self::Validation => formatter.write_str("wgpu surface validation failure"),
@@ -141,6 +151,7 @@ pub struct SurfaceRenderer {
     view_format: wgpu::TextureFormat,
     configured: bool,
     ui: Option<UiGpu>,
+    ui_canvas: Option<crate::ui_canvas::UiCanvas>,
     world: Option<WorldGpu>,
     settings: crate::GpuSettings,
     effective: crate::EffectiveGpu,
@@ -199,7 +210,7 @@ impl SurfaceRenderer {
         let effective = settings.resolve(&self.capabilities);
         if let Some(world) = &mut self.world {
             world.set_samples(&self.device, effective.samples);
-            world.set_anisotropy(&self.device, effective.anisotropy);
+            world.set_filtering(&self.device, effective.anisotropy, effective.mipmaps);
         }
         if effective.present_mode != self.config.present_mode {
             self.config.present_mode = effective.present_mode;
@@ -211,6 +222,12 @@ impl SurfaceRenderer {
         self.effective = effective;
         &self.effective
     }
+    /// Accepted render-policy projection; picking uses the same preferences as rasterization.
+    #[must_use]
+    pub const fn gpu_settings(&self) -> crate::GpuSettings {
+        self.settings
+    }
+
     /// The behavior currently in effect, for diagnostics and the settings panel.
     #[must_use]
     pub fn effective_gpu(&self) -> &crate::EffectiveGpu {
@@ -323,6 +340,7 @@ impl SurfaceRenderer {
             view_format,
             configured: false,
             ui: None,
+            ui_canvas: None,
             world: None,
             settings,
             effective,
@@ -334,8 +352,16 @@ impl SurfaceRenderer {
             staged: StagedGeometry::default(),
             device_lost,
         };
-        renderer.resize(size);
+        renderer
+            .resize(size)
+            .map_err(|error| RendererInitError::Device(error.to_string().into()))?;
         Ok(renderer)
+    }
+
+    /// Actual adapter/device features and limits for diagnostics and renderer-policy decisions.
+    #[must_use]
+    pub const fn gpu_capabilities(&self) -> &crate::GpuCapabilities {
+        &self.capabilities
     }
 
     /// Upload immutable title resources once per GPU lifetime.
@@ -346,9 +372,13 @@ impl SurfaceRenderer {
         self.ui = Some(UiGpu::new(
             &self.device,
             &self.queue,
-            self.view_format,
+            crate::ui_canvas::FORMAT,
             assets,
         )?);
+        self.ui_canvas = Some(crate::ui_canvas::UiCanvas::new(
+            &self.device,
+            self.view_format,
+        ));
         Ok(())
     }
 
@@ -363,13 +393,18 @@ impl SurfaceRenderer {
         if let Some(ui) = &mut self.ui {
             return ui.replace_images(&self.device, &self.queue, assets, images);
         }
-        self.ui = Some(UiGpu::with_images(
+        let ui = UiGpu::with_images(
             &self.device,
             &self.queue,
-            self.view_format,
+            crate::ui_canvas::FORMAT,
             assets,
             images,
-        )?);
+        )?;
+        self.ui = Some(ui);
+        self.ui_canvas = Some(crate::ui_canvas::UiCanvas::new(
+            &self.device,
+            self.view_format,
+        ));
         Ok(())
     }
     /// Upload a disposable world mesh once per asset/GPU lifetime.
@@ -385,7 +420,14 @@ impl SurfaceRenderer {
             self.effective.samples,
         )?);
         if let Some(world) = &mut self.world {
-            world.set_anisotropy(&self.device, self.effective.anisotropy);
+            world.set_filtering(
+                &self.device,
+                self.effective.anisotropy,
+                self.effective.mipmaps,
+            );
+        }
+        if let Some(canvas) = &mut self.ui_canvas {
+            canvas.invalidate_world();
         }
         self.staged = StagedGeometry::default();
         Ok(())
@@ -440,7 +482,7 @@ impl SurfaceRenderer {
         &mut self,
         asset: rustclient_model::SceneAssetId,
         camera: GameplayCameraController,
-        visibility: &rustclient_scene::RoofVisibility,
+        visibility: &rustclient_scene::SceneVisibility,
         cycle: rustclient_model::ClientCycle,
         frame: &UiFrame,
         images: crate::ui::DynamicImages<'_>,
@@ -491,10 +533,7 @@ impl SurfaceRenderer {
             frame.scene_brightness,
             self.settings,
         );
-        self.ui
-            .as_mut()
-            .ok_or(RenderError::Ui("title fonts unavailable"))?
-            .prepare(&self.device, &self.queue, frame, &[], images, viewport)?;
+        self.prepare_ui(frame, &[], images, viewport, true)?;
         Ok(self.present_frame(
             surface_texture,
             ClearColor {
@@ -537,17 +576,13 @@ impl SurfaceRenderer {
             Err(outcome) => return outcome,
         };
         let viewport = self.viewport(frame.canvas.map_or(765, |s| s.width), scale);
-        self.ui
-            .as_mut()
-            .ok_or(RenderError::Ui("title assets not uploaded"))?
-            .prepare(
-                &self.device,
-                &self.queue,
-                frame,
-                flames,
-                crate::ui::DynamicImages::default(),
-                viewport,
-            )?;
+        self.prepare_ui(
+            frame,
+            flames,
+            crate::ui::DynamicImages::default(),
+            viewport,
+            false,
+        )?;
         Ok(self.present_frame(
             surface_texture,
             ClearColor {
@@ -563,12 +598,17 @@ impl SurfaceRenderer {
     }
 
     /// Reconfigure for a new physical size. Zero-sized surfaces are suspended.
-    pub fn resize(&mut self, size: SurfaceSize) {
+    /// # Errors
+    /// Rejects targets beyond the negotiated device texture dimension, preserving old resources.
+    pub fn resize(&mut self, size: SurfaceSize) -> Result<(), RenderError> {
         if size.is_zero() {
             self.configured = false;
-            return;
+            return Ok(());
         }
-
+        validate_size(size, self.device.limits().max_texture_dimension_2d)?;
+        if self.configured && self.config.width == size.width && self.config.height == size.height {
+            return Ok(());
+        }
         self.config.width = size.width;
         self.config.height = size.height;
         self.surface.configure(&self.device, &self.config);
@@ -576,6 +616,7 @@ impl SurfaceRenderer {
         if let Some(world) = &mut self.world {
             world.resize(&self.device, size);
         }
+        Ok(())
     }
 
     /// Render and present a deterministic clear frame.
@@ -644,6 +685,39 @@ impl SurfaceRenderer {
         }
     }
 
+    fn prepare_ui(
+        &mut self,
+        frame: &UiFrame,
+        flames: &[u8],
+        images: crate::ui::DynamicImages<'_>,
+        viewport: TitleViewport,
+        draw_world: bool,
+    ) -> Result<(), RenderError> {
+        let canvas = self
+            .ui_canvas
+            .as_mut()
+            .ok_or(RenderError::Ui("game canvas unavailable"))?;
+        let source_viewport = canvas.prepare(
+            &self.device,
+            &self.queue,
+            frame,
+            viewport,
+            self.settings,
+            self.world.as_ref().filter(|_| draw_world),
+        )?;
+        self.ui
+            .as_mut()
+            .ok_or(RenderError::Ui("UI assets unavailable"))?
+            .prepare(
+                &self.device,
+                &self.queue,
+                frame,
+                flames,
+                images,
+                source_viewport,
+            )
+    }
+
     fn present_frame<F: FnOnce()>(
         &mut self,
         surface_texture: wgpu::SurfaceTexture,
@@ -672,9 +746,12 @@ impl SurfaceRenderer {
         if draw_world && let Some(world) = &self.world {
             world.render_scene(&mut encoder);
         }
+        if draw_ui && let (Some(canvas), Some(ui)) = (&self.ui_canvas, &self.ui) {
+            canvas.render(&mut encoder, ui);
+        }
         {
-            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("rustclient surface pass"),
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("game display and shell"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &texture_view,
                     depth_slice: None,
@@ -689,45 +766,13 @@ impl SurfaceRenderer {
                 occlusion_query_set: None,
                 multiview_mask: None,
             });
-            if draw_world && let Some(world) = &self.world {
-                world.target.composite(&mut render_pass);
+            if draw_ui {
+                if let Some(canvas) = &self.ui_canvas {
+                    canvas.draw(&mut pass);
+                }
+            } else if draw_world && let Some(world) = &self.world {
+                world.target.composite(&mut pass);
             }
-            if draw_ui
-                && !draw_world
-                && let Some(ui) = &self.ui
-            {
-                ui.draw(&mut render_pass);
-            }
-            if !draw_ui || !draw_world {
-                self.shell_staging.draw(
-                    self.shell_gpu.as_ref(),
-                    &mut render_pass,
-                    [self.config.width, self.config.height],
-                );
-            }
-        }
-
-        if draw_ui
-            && draw_world
-            && let Some(ui) = &self.ui
-        {
-            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("world UI overlay"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &texture_view,
-                    depth_slice: None,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Load,
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                depth_stencil_attachment: None,
-                timestamp_writes: None,
-                occlusion_query_set: None,
-                multiview_mask: None,
-            });
-            ui.draw(&mut pass);
             self.shell_staging.draw(
                 self.shell_gpu.as_ref(),
                 &mut pass,
@@ -745,9 +790,30 @@ impl SurfaceRenderer {
     }
 }
 
+fn validate_size(size: SurfaceSize, maximum: u32) -> Result<(), RenderError> {
+    if !size.is_zero() && (size.width > maximum || size.height > maximum) {
+        return Err(RenderError::SurfaceSize {
+            requested: size,
+            maximum,
+        });
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn physical_targets_respect_the_negotiated_limit_before_creation() {
+        assert!(validate_size(SurfaceSize::new(8192, 8192), 8192).is_ok());
+        assert!(matches!(
+            validate_size(SurfaceSize::new(8193, 1), 8192),
+            Err(RenderError::SurfaceSize { maximum: 8192, .. })
+        ));
+        assert!(validate_size(SurfaceSize::new(1, 8193), 8192).is_err());
+        assert!(validate_size(SurfaceSize::new(0, u32::MAX), 8192).is_ok());
+    }
 
     #[test]
     fn zero_dimension_suspends_surface() {

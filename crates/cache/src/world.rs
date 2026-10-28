@@ -14,6 +14,8 @@ pub struct TerrainTile {
     pub overlay: Option<TerrainOverlay>,
     /// Original terrain flags, including bridge, roof and minimum-plane rules.
     pub settings: u8,
+    /// Source map-initialization shadow before object shadows are applied.
+    pub base_shadow: u8,
 }
 #[derive(Debug, Clone, Copy)]
 pub struct TerrainOverlay {
@@ -21,10 +23,18 @@ pub struct TerrainOverlay {
     pub shape: u8,
     pub rotation: u8,
 }
-/// One decoded source square; traversal is plane, local X, local Y.
+/// Whether the map square is declared by the cache index. Absent squares are source-defined void,
+/// distinct from a declared archive with a corrupt or unavailable payload.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MapSquareSource {
+    Archive,
+    Absent,
+}
+/// One source square; traversal is plane, local X, local Y.
 #[derive(Debug)]
 pub struct MapSquare {
     pub coord: RegionCoord,
+    pub source: MapSquareSource,
     pub tiles: Vec<TerrainTile>,
     pub locations: Vec<StaticLocation>,
 }

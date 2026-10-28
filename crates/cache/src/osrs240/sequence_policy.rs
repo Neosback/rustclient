@@ -53,8 +53,11 @@ pub fn resolve_timing<S: ReadOnlyBlobs>(
     profile: CacheProfile,
     id: SequenceId,
 ) -> Result<SequenceTiming> {
-    let sequence = asset(cache, profile, id)?;
-    Ok(if sequence.skeletal.is_some() {
+    Ok(timing(asset(cache, profile, id)?))
+}
+
+fn timing(sequence: SequenceAsset) -> SequenceTiming {
+    if sequence.skeletal.is_some() {
         SequenceTiming::CachedModel {
             range: sequence.range,
             frame_step: sequence.frame_step,
@@ -64,5 +67,34 @@ pub fn resolve_timing<S: ReadOnlyBlobs>(
             frame_delays: sequence.delays,
             frame_step: sequence.frame_step,
         }
-    })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn cached_timing_retains_authored_range_and_rewind_without_assuming_defaults() {
+        let source = Source::group(IndexId(2), GroupId(12));
+        for (bytes, range, frame_step) in [
+            (vec![13, 0, 0, 0, 1, 0], None, None),
+            (
+                vec![13, 0, 0, 0, 1, 15, 0, 3, 0, 9, 2, 0, 2, 0],
+                Some((3, 9)),
+                Some(2),
+            ),
+            (
+                vec![13, 0, 0, 0, 1, 15, 0, 9, 0, 3, 2, 0, 0, 0],
+                Some((9, 3)),
+                Some(0),
+            ),
+        ] {
+            let sequence = animation::sequence(&bytes, SequenceId::new(1), source).unwrap();
+            assert_eq!(
+                timing(sequence),
+                SequenceTiming::CachedModel { range, frame_step }
+            );
+        }
+    }
 }

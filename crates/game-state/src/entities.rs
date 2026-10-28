@@ -267,7 +267,13 @@ impl WorldEntitiesState {
                     .sequence
                     .filter(|_| player.sequence_timing_resolved)
                     .and_then(|id| timings.get(&id));
-                crate::sequence_playback::advance_one(&mut player.sequence, timing);
+                if !crate::sequence_playback::hold_for_path(
+                    &mut player.sequence,
+                    player.exact_move,
+                    current_cycle,
+                ) {
+                    crate::sequence_playback::advance_one(&mut player.sequence, timing);
+                }
                 if player.sequence.sequence.is_none() {
                     player.sequence_timing_resolved = false;
                 }
@@ -282,7 +288,13 @@ impl WorldEntitiesState {
                     .sequence
                     .filter(|_| npc.sequence_timing_resolved)
                     .and_then(|id| timings.get(&id));
-                crate::sequence_playback::advance_one(&mut npc.sequence, timing);
+                if !crate::sequence_playback::hold_for_path(
+                    &mut npc.sequence,
+                    npc.exact_move,
+                    current_cycle,
+                ) {
+                    crate::sequence_playback::advance_one(&mut npc.sequence, timing);
+                }
                 if npc.sequence.sequence.is_none() {
                     npc.sequence_timing_resolved = false;
                 }
