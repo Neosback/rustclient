@@ -1,7 +1,7 @@
 //! Shared `RuneLite` chrome; navigation is session presentation, never accepted settings.
 use super::{
     Color32, ConfigValue, EguiPanel, Pos2, Rect, ShellAction, ShellModel, SidebarMetrics,
-    SidebarState, Vec2,
+    SidebarState, Vec2, theme,
 };
 impl EguiPanel {
     #[expect(

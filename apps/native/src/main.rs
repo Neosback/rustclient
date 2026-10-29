@@ -694,8 +694,11 @@ impl NativeApp {
                     .motion
                     .observe(self.state.entities(), self.state.scenery().cycle());
                 self.request_widget_assets();
-                if previous_scene != self.state.loaded_scene() {
-                    self.context_menu.close();
+                // SPEC-0021 lifetime: a scene change or the loss of the interface root ends any menu.
+                if previous_scene != self.state.loaded_scene()
+                    || self.state.interfaces().root().is_none()
+                {
+                    self.close_menus();
                 }
                 if self.state.loaded_scene().is_none() && (rebuild || previous_scene.is_some()) {
                     self.context_menu.close();
@@ -1075,10 +1078,6 @@ impl NativeApp {
                     &mut self.click_cross,
                     &self.state,
                 );
-                self.context_menu
-                    .project(assets, &self.widget_assets.font_icons, &mut self.frame);
-                self.widget_menu
-                    .project(assets, &self.widget_assets.font_icons, &mut self.frame);
                 world_overlays::project(
                     &self.scene,
                     assets,
@@ -1304,6 +1303,13 @@ impl NativeApp {
             let pointer = self.cursor.map(|(x, y)| self.ui_pointer(&window, x, y));
             self.shell
                 .project_overlay(&mut self.frame, &self.widget_tree, pointer);
+            // SPEC-0021 input arbitration: an open menu is the topmost layer, so it paints last.
+            if let Some(assets) = &self.assets {
+                self.context_menu
+                    .project(assets, &self.widget_assets.font_icons, &mut self.frame);
+                self.widget_menu
+                    .project(assets, &self.widget_assets.font_icons, &mut self.frame);
+            }
             let visibility = self.scene_visibility(&window);
             self.renderer.as_mut().map(|renderer| {
                 if let (Some(descriptor), Some(camera)) =
@@ -1845,7 +1851,9 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                         }
                     }
                 };
-                if let Some((x, y)) = self.cursor {
+                if let Some((x, y)) = self.cursor.filter(|_| {
+                    !rustclient_game_ui::arbitration::suppress_gestures(self.menu_open())
+                }) {
                     let (x, y) = self.ui_pointer(&window, x, y);
                     let over_world_map = self.frame.quads.iter().any(|q| {
                         q.image == rustclient_game_ui::UiImageId::WorldMap
@@ -1916,6 +1924,7 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
             }
             WindowEvent::CursorLeft { .. } => {
                 self.scene.input.middle = false;
+                self.close_menus();
                 self.cursor = None;
                 self.ui.clear_hover();
                 self.hover = None;
@@ -1928,7 +1937,9 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                 button: MouseButton::Middle,
                 ..
             } if self.scene.camera.is_some() => {
-                self.scene.input.middle = state == ElementState::Pressed;
+                // A press never starts a camera drag under an open menu; a release always ends one.
+                self.scene.input.middle = state == ElementState::Pressed
+                    && !rustclient_game_ui::arbitration::suppress_gestures(self.menu_open());
             }
             WindowEvent::MouseInput {
                 state: ElementState::Pressed,
@@ -1941,17 +1952,7 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                         && self.state.interfaces().root().is_some()
                     {
                         // Popups own input above every underlying gameframe widget.
-                        if self.context_menu.is_open() {
-                            if let Err(error) = self.world_click(&window, x, y, false) {
-                                eprintln!("menu action: {error}");
-                            }
-                            window.request_redraw();
-                            return;
-                        }
-                        if self.widget_menu.is_open() {
-                            if let Err(error) = self.widget_click(x, y, false) {
-                                eprintln!("widget menu: {error}");
-                            }
+                        if self.press_open_menu(&window, x, y) {
                             window.request_redraw();
                             return;
                         }
@@ -2031,6 +2032,11 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
             {
                 if let Some((x, y)) = self.cursor {
                     let (x, y) = self.ui_pointer(&window, x, y);
+                    // An open menu takes the press first: select the row under the pointer, or close.
+                    if self.press_open_menu(&window, x, y) {
+                        window.request_redraw();
+                        return;
+                    }
                     match self.widget_click(x, y, true) {
                         Ok(true) => {
                             window.request_redraw();
@@ -2050,6 +2056,7 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
             }
             WindowEvent::Focused(false) => {
                 self.window_focused = false;
+                self.close_menus();
                 self.scene.input = rustclient_renderer::CameraInput::default();
                 self.widget_pointer = widget_pointer::WidgetPointer::default();
                 self.modifiers = ModifiersState::default();

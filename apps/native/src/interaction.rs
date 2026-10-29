@@ -469,7 +469,12 @@ impl NativeApp {
                 .map(|(label, action)| (label, WorldChoice::Action(action), Some(target))),
             );
         }
-        if self.pointer_over_world(x, y)
+        // The same gate as the left-click walk: nothing to walk on while loading, in the diagnostics
+        // view, or without a session.
+        if !self.scene.loading
+            && !self.scene.diagnostics
+            && self.connection.is_some()
+            && self.pointer_over_world(x, y)
             && let Some(loaded) = &self.scene.loaded
             && let Some(scene) = active_scene
             && let Some((origin, direction)) = self.world_ray(window, x, y)
@@ -492,6 +497,40 @@ impl NativeApp {
             ));
         }
         Ok(entries)
+    }
+    /// A world or widget menu is open (SPEC-0021 input arbitration).
+    pub(super) fn menu_open(&self) -> bool {
+        self.context_menu.is_open() || self.widget_menu.is_open()
+    }
+    pub(super) fn close_menus(&mut self) {
+        self.context_menu.close();
+        self.widget_menu.close();
+    }
+    /// Opening a menu cancels any hold, drag and held camera input without firing their release
+    /// listeners: the press that started them now belongs to the menu.
+    pub(super) fn cancel_gestures(&mut self) {
+        self.scene.input = rustclient_renderer::CameraInput::default();
+        self.widget_pointer = crate::widget_pointer::WidgetPointer::default();
+        self.world_map_drag = None;
+    }
+    /// A press while a menu is open: the menu selects the row under the pointer or closes, and
+    /// nothing beneath receives it. Returns whether a menu took the press.
+    pub(super) fn press_open_menu(&mut self, window: &Window, x: f32, y: f32) -> bool {
+        if self.context_menu.is_open() {
+            if let Err(error) = self.world_click(window, x, y, false) {
+                eprintln!("menu action: {error}");
+                window.set_title(&format!("RustClient - {error}"));
+            }
+            return true;
+        }
+        if self.widget_menu.is_open() {
+            if let Err(error) = self.widget_click(x, y, false) {
+                eprintln!("widget menu: {error}");
+                window.set_title(&format!("RustClient - {error}"));
+            }
+            return true;
+        }
+        false
     }
     /// Refresh the mouse-over text after the pointer moved.
     pub(super) fn update_hover(&mut self, window: &Window) {
@@ -597,7 +636,7 @@ impl NativeApp {
                     &self.widget_assets.font_icons,
                     self.state.interfaces().window().canvas,
                 );
-                self.scene.input = rustclient_renderer::CameraInput::default();
+                self.cancel_gestures();
             }
             return Ok(true);
         }

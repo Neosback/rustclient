@@ -1,6 +1,9 @@
 //! Native input focus boundary. Shell events are consumed before cache widgets/world input.
 use crate::NativeApp;
 use keyboard_types::{Code, Key as PanelKey, Modifiers};
+use rustclient_game_ui::arbitration::{
+    KeyRoute, PressFacts, PressRoute, route_key, route_press, toggle_active,
+};
 use winit::{
     event::{ElementState, Ime, MouseButton, MouseScrollDelta, WindowEvent},
     keyboard::{Key, NamedKey, PhysicalKey},
@@ -35,7 +38,16 @@ impl NativeApp {
                     self.release_game_input();
                     return true;
                 }
-                if !self.shell.focused {
+                let menu_key = matches!(
+                    event.logical_key,
+                    Key::Named(
+                        NamedKey::Escape
+                            | NamedKey::Enter
+                            | NamedKey::ArrowUp
+                            | NamedKey::ArrowDown
+                    )
+                );
+                if route_key(self.menu_open(), menu_key, self.shell.focused) != KeyRoute::Shell {
                     return false;
                 }
                 let key = if event.logical_key == Key::Named(NamedKey::Space) {
@@ -95,6 +107,8 @@ impl NativeApp {
                 self.cursor = Some((position.x, position.y));
                 let point = self.shell.point(window, position.x, position.y);
                 if let Some([x, y]) = point {
+                    // The panel is a separate surface: the pointer is far outside any canvas menu.
+                    self.close_menus();
                     self.shell.panel.pointer(x, y, None, self.shell.held);
                     self.ui.clear_hover();
                     self.hover = None;
@@ -137,11 +151,19 @@ impl NativeApp {
                             765
                         };
                         self.ensure_widget_tree();
-                        if self
+                        let rect = self
                             .shell
-                            .overlay_button_rect(canvas_width, &self.widget_tree)
-                            .contains(ux, uy)
-                        {
+                            .overlay_button_rect(canvas_width, &self.widget_tree);
+                        let painted =
+                            self.shell
+                                .overlay_button_painted(canvas_width, rect, Some((ux, uy)));
+                        let route = route_press(PressFacts {
+                            menu_open: self.menu_open(),
+                            over_shell_panel: false,
+                            over_active_toggle: rect.contains(ux, uy)
+                                && toggle_active(painted, self.menu_open()),
+                        });
+                        if route == PressRoute::ShellToggle {
                             self.shell.toggle_sidebar(window);
                             self.release_game_input();
                             return true;

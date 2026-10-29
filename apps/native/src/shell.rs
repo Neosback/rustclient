@@ -192,6 +192,22 @@ impl Shell {
             .map_or(5., |node| (node.bounds.y + node.bounds.height) as f32);
         rustclient_game_ui::Rect::new(x, y, self.arrow.width as f32, self.arrow.height as f32)
     }
+    /// Whether the toggle button is currently painted, and so clickable: always while the sidebar
+    /// is hidden, otherwise only while the pointer is near it.
+    #[expect(clippy::cast_precision_loss, reason = "canvas dimensions fit f32")]
+    pub fn overlay_button_painted(
+        &self,
+        canvas_width: u32,
+        rect: rustclient_game_ui::Rect,
+        pointer: Option<(f32, f32)>,
+    ) -> bool {
+        self.sidebar() == SidebarState::Hidden
+            || pointer.is_some_and(|(px, py)| {
+                px >= rect.x - 15.
+                    && px <= canvas_width as f32 + rustclient_shell_ui::SidebarMetrics::RAIL as f32
+                    && py >= 0.
+            })
+    }
     /// Paint the `open_rs.png` (or horizontally flipped `open_rs.png` when the sidebar is visible)
     /// overlay on the top-right of the game canvas.
     #[expect(clippy::cast_precision_loss, reason = "small icon dimensions fit f32")]
@@ -203,13 +219,7 @@ impl Shell {
     ) {
         let canvas_width = frame.canvas.map_or(765, |canvas| canvas.width);
         let rect = self.overlay_button_rect(canvas_width, widget_tree);
-        let in_range = self.sidebar() == SidebarState::Hidden
-            || pointer.is_some_and(|(px, py)| {
-                px >= rect.x - 15.
-                    && px <= canvas_width as f32 + rustclient_shell_ui::SidebarMetrics::RAIL as f32
-                    && py >= 0.
-            });
-        if !in_range {
+        if !self.overlay_button_painted(canvas_width, rect, pointer) {
             return;
         }
         let clip = rustclient_game_ui::Rect::new(0., 0., 16_384., 16_384.);

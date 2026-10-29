@@ -1,4 +1,5 @@
 //! Availability belongs to the shared configuration owner, independent of UI toolkit.
+#[must_use]
 pub fn availability(plugin: &str, key: &str) -> Option<String> {
     if key == rustclient_plugin_host::configuration::ENABLED_KEY {
         return None;

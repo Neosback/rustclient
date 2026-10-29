@@ -1,4 +1,4 @@
-//! Logical pixels resolved by the pinned `RuneLite`/FlatLaf shell oracle.
+//! Logical pixels resolved by the pinned `RuneLite`/`FlatLaf` shell oracle.
 pub struct SidebarMetrics;
 impl SidebarMetrics {
     pub const INNER_PANEL: u32 = 225;

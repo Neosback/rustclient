@@ -1,5 +1,6 @@
 //! Cache-backed title input and disposable draw projection. No GPU/platform ownership.
 #![forbid(unsafe_code)]
+pub mod arbitration;
 mod context_menu;
 mod controller;
 mod draw;

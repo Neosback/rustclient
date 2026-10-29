@@ -185,7 +185,8 @@ fn desktop_panel_ships_fonts_for_plugin_labels_and_controls() {
     assert!(
         x >= 0.
             && y >= 0.
-            && x + width <= rustclient_shell_ui::SidebarMetrics::OPEN as f32
+            && x + width
+                <= f32::from(u16::try_from(rustclient_shell_ui::SidebarMetrics::OPEN).unwrap())
             && y + height <= 503.,
         "control rect {x},{y},{width},{height}"
     );

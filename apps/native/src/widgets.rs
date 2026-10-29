@@ -220,6 +220,7 @@ impl NativeApp {
                             self.state.interfaces().window().canvas,
                         );
                         self.context_menu.close();
+                        self.cancel_gestures();
                     }
                 } else if let Some((_, action)) = entries.first() {
                     self.send_widget_action(*action)?;
@@ -243,6 +244,7 @@ impl NativeApp {
                         self.state.interfaces().window().canvas,
                     );
                     self.context_menu.close();
+                    self.cancel_gestures();
                 }
                 return Ok(true);
             }

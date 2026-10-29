@@ -239,6 +239,49 @@ mod tests {
         assert!(!menu.is_open());
     }
     #[test]
+    fn a_menu_opened_at_any_canvas_corner_stays_inside_the_canvas_and_selects_its_rows() {
+        let font = font();
+        let canvas = rustclient_model::CanvasSize {
+            width: 765,
+            height: 503,
+        };
+        for (x, y) in [(0., 0.), (764., 0.), (0., 502.), (764., 502.)] {
+            let mut menu = ContextMenu::<u8>::default();
+            menu.open(
+                x,
+                y,
+                vec![("Use".into(), 1), ("Examine".into(), 2)],
+                &font,
+                &[],
+                canvas,
+            );
+            let bounds = menu.bounds.unwrap();
+            assert!(
+                bounds.x >= 0.
+                    && bounds.y >= 0.
+                    && bounds.x + bounds.width <= 765.
+                    && bounds.y + bounds.height <= 503.,
+                "corner {x},{y}: {bounds:?}"
+            );
+            // The first row is selectable at its own position wherever the menu was clamped.
+            assert_eq!(menu.click(bounds.x + 3., bounds.y + 31.), Some(1));
+            assert!(!menu.is_open());
+        }
+    }
+    #[test]
+    fn a_press_outside_the_leave_margin_closes_without_selecting() {
+        let font = font();
+        let canvas = rustclient_model::CanvasSize {
+            width: 765,
+            height: 503,
+        };
+        let mut menu = ContextMenu::<u8>::default();
+        menu.open(300., 200., vec![("Use".into(), 1)], &font, &[], canvas);
+        assert_eq!(menu.click(0., 0.), None);
+        assert!(!menu.is_open());
+    }
+
+    #[test]
     fn labels_measure_rich_text_and_actions_remain_captured_until_selection() {
         let font = font();
         let mut menu = ContextMenu::<u8>::default();

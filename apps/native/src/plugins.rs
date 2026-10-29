@@ -147,7 +147,10 @@ impl Plugins {
             if !registered {
                 continue;
             }
-            if !enabled {
+            if enabled {
+                self.pending
+                    .insert(key.to_owned(), (schema.plugin.clone(), config, enabled));
+            } else {
                 if let Err(fault) = self.set.configure(
                     &schema.plugin,
                     config.clone(),
@@ -161,9 +164,6 @@ impl Plugins {
                 self.pending.remove(key);
                 self.applied.insert(key.to_owned(), (config, enabled));
                 self.output = self.set.retained_output();
-            } else {
-                self.pending
-                    .insert(key.to_owned(), (schema.plugin.clone(), config, enabled));
             }
         }
     }
