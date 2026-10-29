@@ -53,3 +53,9 @@ Current reference/revision decisions: [revision-240 integration guide](../refere
 Current delivery gaps: [revision-240 delivery plan](../plan/REVISION-240-delivery.md).
 
 - [SPEC-0019: OSRS 240 / RuneLite behavioral parity](SPEC-0019-port-parity.md) — nearly 1:1 observable behavior, Rust improvements, differences and evidence gates.
+- [SPEC-0020: Client cycle and session runtime](SPEC-0020-client-cycle.md) — Draft. Stock 20 ms cycle order, packet budget and groups, outbound flush, keepalive, idle and reconnect.
+- [SPEC-0021: Input, picking and menus](SPEC-0021-input-menus.md) — Draft. Shared input events, the stock menu model, sort, selection modes and action dispatch.
+
+The [porting roadmap](../plan/PORTING-ROADMAP.md) reserves SPEC-0022 through SPEC-0028 for later
+phases (actors, map lifecycle, zone updates, interfaces and scripts, social, audio, preferences
+and world map). Each is written when its phase starts.

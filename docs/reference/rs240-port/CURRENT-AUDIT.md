@@ -184,7 +184,7 @@ and compass `set_yaw(0)`.
    and ScriptPostFired are never constructed. So first-party features that depend on
    them are inert, not merely unverified.
 
-### Generated denominators (roadmap batch 0, partial)
+### Generated denominators (roadmap phase 0, partial)
 
 `python3 tools/parity_inventory.py --check` regenerates and validates:
 
@@ -205,7 +205,7 @@ Untriaged declarations concentrate in `Client` (1,123), `Scene` (429), `Widget` 
 `RenderOverview` (229, world map), `GameEngine` (227), `classBB` (174, script
 dispatcher) and `ClientPreferences` (155). Regenerate this with `port_audit.py --inventory`.
 
-Still missing from batch 0: the RuneLite hook/accessor/`Client` API disposition, the
+Still missing from phase 0: the RuneLite hook/accessor/`Client` API disposition, the
 source test/case/fixture inventory, stock mask branch tables per payload, and a list of
 cache layout variants checked against actual-cache vectors.
 
@@ -219,6 +219,44 @@ cache layout variants checked against actual-cache vectors.
   to the roadmap and keeps the CP decomposition as history.
 - The ledger counts above were refreshed to the checker's current output.
 
+## Deob-first review (2026-10-29, `dbb2b500`)
+
+This pass traced the stock 240 client logic rather than the RuneLite layer. The anchors are in
+[CLIENT-LOGIC-MAP](CLIENT-LOGIC-MAP.md). The normative result is
+[SPEC-0020](../../specs/SPEC-0020-client-cycle.md) and
+[SPEC-0021](../../specs/SPEC-0021-input-menus.md) (both drafts).
+
+1. **The client cycle does not follow stock order.** In stock, `client.method2172`
+   (doCycleLoggedIn) applies at most 100 packets per cycle in `method2198`, at a fixed point
+   after the timers and the Cancel entry. It applies a PACKET_GROUP_START group atomically,
+   only once all of its bytes have arrived (`method2346`:6987). Actors, scripts, menus, walk,
+   camera and idle checks follow, then one flush at the end of the cycle. RustClient applies
+   packets whenever winit delivers network events. It ignores packet groups, and the network
+   worker sends outbound packets immediately. The driver lives in `NativeApp::about_to_wait`
+   (matrix `client-cycle`, `incorrect`).
+2. **Keepalive, idle and watchdog differ.** Stock sends NO_TIMEOUT after 50 cycles without an
+   outbound packet and IDLE after 15000 idle cycles. More than 750 cycles without input enter
+   the reconnect path (`classCN.method2546`). RustClient sends KeepAlive every 5 s, never sends
+   IDLE, and ends the session after 15 s.
+3. **The menu model is stock-defined and absent.** 240 `Menu.method12757` entries carry ten
+   fields, including world view and shift-click. `client.method2307` sorts opcodes above 1000
+   below the rest (client.java:35374), and `classQP.method9746` subtracts the 2000
+   deprioritization offset (classQP.java:114-119). The RustClient nearest-target menus do not
+   implement either rule.
+4. **Packet sites are now generated.** [DEOB-PACKET-SITES.tsv](DEOB-PACKET-SITES.tsv) gives every
+   packet's read or write sites in the deob. Five client packets have no creation site
+   (EVENT_MOUSE_CLICK_V1, EVENT_NATIVE_MOUSE_MOVE, RSEVEN_STATUS,
+   MEMBERSHIP_PROMOTION_ELIGIBILITY, HISCORE_REQUEST). Confirm this in bytecode before
+   classifying them as not-needed instead of missing.
+5. **A ledger label was too narrow.** `classKN.method6539` is the whole per-cycle actor update
+   (235 `class85.updateActorSequence`), called per player in `method2172` and per NPC through
+   `classCZ.method2849`. It is not only turning. The ledger row stays, and a new NPC-loop row
+   was added.
+
+New ledger rows cite the cycle, menu and region anchors. The four newly cited deob files are
+pinned in the source manifest. PARITY-DEVIATIONS has two new *proposed* candidates, CYCLE-CATCHUP
+and RAY-PICKING. Neither is accepted.
+
 ## Validation boundary and next work
 
 Documentation checks validate paths, schemas, generated data and source pins. They
@@ -231,9 +269,9 @@ Markdown destination scan and `git diff --check`. Cargo ran only `fmt --check` a
 `check` on `rustclient-plugin-runtime-web` for its doc-comment edit. No workspace
 Cargo, Java, live or visual check ran.
 
-Follow batches 0-3 of the canonical roadmap first: freeze packet/mask/source-case
-coverage, trace which session-control packets the selected server sends, close
-selected valid-traffic failures and map lifecycle, preserve world
-mutations, then connect full interactions/dialogue. Continue actor/UI/audio/social,
-render/plugin and browser acceptance in the same shared owners. No missing feature
+Follow the spec-gated phases of the canonical roadmap: accept SPEC-0020 and move the client
+cycle into application first, then fix valid inbound actor traffic, map lifecycle and world
+mutations. After those come SPEC-0021 input/menus and every outbound action, then actors,
+interfaces/scripts, social, audio, camera/world map, rendering, plugins and browser
+acceptance, all in the same shared owners. No missing feature
 is excused as a Rust improvement; use the explicit deviations register.

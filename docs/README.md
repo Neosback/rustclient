@@ -34,6 +34,8 @@ Current machine-readable data: [domain matrix](reference/rs240-port/PORT-MATRIX.
 - [specs/SPEC-0017-gameframe-entities.md](specs/SPEC-0017-gameframe-entities.md)
 - [specs/SPEC-0018-playable-desktop.md](specs/SPEC-0018-playable-desktop.md)
 - [specs/SPEC-0019-port-parity.md](specs/SPEC-0019-port-parity.md)
+- [specs/SPEC-0020-client-cycle.md](specs/SPEC-0020-client-cycle.md)
+- [specs/SPEC-0021-input-menus.md](specs/SPEC-0021-input-menus.md)
 
 ## Architecture decisions
 
@@ -66,6 +68,7 @@ Current machine-readable data: [domain matrix](reference/rs240-port/PORT-MATRIX.
 - [reference/rs240-port/ACTOR-CATCH-UP.md](reference/rs240-port/ACTOR-CATCH-UP.md)
 - [reference/rs240-port/ACTOR-PATH-QUEUE.md](reference/rs240-port/ACTOR-PATH-QUEUE.md)
 - [reference/rs240-port/ACTOR-RUNTIME.md](reference/rs240-port/ACTOR-RUNTIME.md)
+- [reference/rs240-port/CLIENT-LOGIC-MAP.md](reference/rs240-port/CLIENT-LOGIC-MAP.md)
 - [reference/rs240-port/FACING-TURNING.md](reference/rs240-port/FACING-TURNING.md)
 - [reference/rs240-port/FORCED-MOVEMENT.md](reference/rs240-port/FORCED-MOVEMENT.md)
 - [reference/rs240-port/GAMEFRAME-INTERFACES.md](reference/rs240-port/GAMEFRAME-INTERFACES.md)

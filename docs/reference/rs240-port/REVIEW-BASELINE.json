@@ -298,6 +298,46 @@
     {
       "path": "references/open-runelite-rev-240/cache/src/main/java/net/runelite/cache/IndexType.java",
       "sha256": "99c9a8144cec4306b350cf215c96e15aed9846f4c5a8272400780bc8f5bb081a"
+    },
+    {
+      "path": "references/rl-suite-240/sources-semantic/client.java",
+      "sha256": "7c61d35b0f260c2cd8fbf1ae4436b6ef19954c93f79e13b27657c465c544043e"
+    },
+    {
+      "path": "references/rl-suite-240/sources-semantic/Menu.java",
+      "sha256": "071651eef9b1470e65accf4ac4611c59e258fef30a4b94380da27f7d6cdd49c8"
+    },
+    {
+      "path": "references/rl-suite-240/sources-semantic/classQP.java",
+      "sha256": "a1dd92f91c1236847ca051f64d140a90fec2973e7b9326b3f937fd7158a1816a"
+    },
+    {
+      "path": "references/rl-suite-240/sources-semantic/classCN.java",
+      "sha256": "c410d7563b8ec84e5c9a62111fce07e5b02a9620107105892689f6be002f86be"
+    },
+    {
+      "path": "references/rl-suite-240/sources-semantic/classCZ.java",
+      "sha256": "6db98e11ffaefc30f42b5fc6c3610e09dbbd8f1e2346e3b32c1c767ee1b8da0b"
+    },
+    {
+      "path": "references/rl-suite-240/sources-semantic/classEY.java",
+      "sha256": "3fb94c039b0acc0e9c2773db2a98327ea6e6cf514239723192b6c285970e6268"
+    },
+    {
+      "path": "references/rl-suite-240/sources-semantic/classJB.java",
+      "sha256": "11d0f1e395b2161edad1cdc259bdb97fcf9f79e1515e4032756eb2d143e4e4cf"
+    },
+    {
+      "path": "references/rl-suite-240/sources-semantic/classFK.java",
+      "sha256": "d9cc5fb9aa9dec0dc73915bf2e998fdea708804862c0d87812af631e18291533"
+    },
+    {
+      "path": "references/runelite-melxin-235/runescape-client/src/main/java/Client.java",
+      "sha256": "72af4f9723a9704ff23faa7d862e287048e54ec49760f44e1137aca451830a9d"
+    },
+    {
+      "path": "references/runelite-melxin-235/runescape-client/src/main/java/Menu.java",
+      "sha256": "01a73d640030b4350a52877634d70ecee77a6880226da3a7cacfb1038fe4f665"
     }
   ],
   "packet_coverage_counts": {
@@ -317,5 +357,11 @@
     "note": "Crates/apps/plugins/wit/xtask and Cargo files are byte-identical to bd3aae10; the follow-up re-inspected the same Rust tree against pinned references and added generated denominators. Only documentation/tooling changed.",
     "method": "Targeted static inspection plus generated inventories (tools/parity_inventory.py); rsprox osrs-240 GameServerProtId/GameClientProtId compared with the pinned deob packet tables. Not exhaustive behavioral verification.",
     "validation": "See CURRENT-AUDIT.md follow-up section. No Cargo, Java, live-login, GPU, performance or visual checks were run."
+  },
+  "deob_review": {
+    "date": "2026-10-29",
+    "rust_commit": "dbb2b50040f0bb0c8d5521c63eaf6cf127c6d11e",
+    "note": "Deob-first review of stock 240 client logic; Rust tree unchanged since bd3aae10. Produced CLIENT-LOGIC-MAP, SPEC-0020/0021 drafts, DEOB-PACKET-SITES and the phase roadmap.",
+    "validation": "tools/port_matrix.py, port_audit.py, parity_inventory.py and docs_index.py --check; Markdown destination scan; git diff --check. No Cargo, Java, live or visual check."
   }
 }

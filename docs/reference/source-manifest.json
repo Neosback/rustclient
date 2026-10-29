@@ -400,6 +400,22 @@
         {
           "path": "sources-semantic/classVX.java",
           "sha256": "2e7bf52d505f0c474fd1eb7aebf08ea7a7f3257ef701f016431ebf2df8c7808d"
+        },
+        {
+          "path": "sources-semantic/classCZ.java",
+          "sha256": "6db98e11ffaefc30f42b5fc6c3610e09dbbd8f1e2346e3b32c1c767ee1b8da0b"
+        },
+        {
+          "path": "sources-semantic/classEY.java",
+          "sha256": "3fb94c039b0acc0e9c2773db2a98327ea6e6cf514239723192b6c285970e6268"
+        },
+        {
+          "path": "sources-semantic/classJB.java",
+          "sha256": "11d0f1e395b2161edad1cdc259bdb97fcf9f79e1515e4032756eb2d143e4e4cf"
+        },
+        {
+          "path": "sources-semantic/classFK.java",
+          "sha256": "d9cc5fb9aa9dec0dc73915bf2e998fdea708804862c0d87812af631e18291533"
         }
       ]
     },

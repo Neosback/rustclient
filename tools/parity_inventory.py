@@ -11,6 +11,8 @@ Outputs (all are inventories, never completion percentages):
   `disposition` and `note` are hand-owned review data and are preserved by --write.
 - docs/reference/builtin-plugins/RUNELITE-EVENTS.tsv: every RuneLite API event class against the
   versioned RustClient plugin event enum and whether host code constructs it.
+- docs/reference/rs240-port/DEOB-PACKET-SITES.tsv: every packet slot from PACKET-COVERAGE with the
+  pinned 240 deob methods/lines that read (server) or build (client) it.
 """
 import argparse
 import csv
@@ -27,6 +29,7 @@ CS2_OUT = ROOT / 'docs/reference/rs240-port/CS2-HOST-COVERAGE.tsv'
 PLUGIN_OUT = ROOT / 'docs/reference/builtin-plugins/RUNELITE-PLUGINS.tsv'
 EVENT_OUT = ROOT / 'docs/reference/builtin-plugins/RUNELITE-EVENTS.tsv'
 MATRIX = ROOT / 'docs/reference/rs240-port/PORT-MATRIX.tsv'
+PACKET_SITES_OUT = ROOT / 'docs/reference/rs240-port/DEOB-PACKET-SITES.tsv'
 
 CATEGORIES = {'client-feature', 'content-helper', 'external-service', 'developer', 'fork-specific'}
 DISPOSITIONS = {'proposed-applicable', 'needs-decision', 'required'}
@@ -170,6 +173,44 @@ def events():
     return tsv(rows, ['runelite_event', 'plugin_api_event', 'status', 'note']), rows
 
 
+METHOD = re.compile(r'^   (?:[a-z]+ )*[\w<>\[\],. ]+ (\w+)\([^;]*$')
+
+
+def deob_packets():
+    """Locate every stock read/write site of each packet in the pinned 240 deob.
+
+    Server packets are matched where the dispatcher compares the current packet with the
+    classJJ constant; client packets wherever a classJS constant is referenced (packet
+    creation). Sites are navigation anchors into immutable sources, not behavior claims.
+    """
+    sources = ROOT / 'references/rl-suite-240/sources-semantic'
+    sites = {'server-to-client': {}, 'client-to-server': {}}
+    patterns = {'server-to-client': re.compile(r'classJJ\.([A-Z][A-Z0-9_]+) == |== classJJ\.([A-Z][A-Z0-9_]+)'),
+                'client-to-server': re.compile(r'classJS\.([A-Z][A-Z0-9_]+)')}
+    for path in sorted(sources.glob('*.java')):
+        if path.name in ('classJJ.java', 'classJS.java'):
+            continue
+        method = '?'
+        for number, line in enumerate(path.read_text(errors='ignore').splitlines(), 1):
+            declared = METHOD.match(line)
+            if declared:
+                method = declared.group(1)
+            for direction, pattern in patterns.items():
+                for match in pattern.finditer(line):
+                    name = match.group(1) or match.group(2)
+                    sites[direction].setdefault(name, []).append(f'{path.stem}.{method}:{number}')
+    with (ROOT / 'docs/reference/rs240-port/PACKET-COVERAGE.tsv').open(newline='') as stream:
+        coverage = list(csv.DictReader(stream, delimiter='\t'))
+    rows = []
+    for row in coverage:
+        found = sites[row['direction']].get(row['name'], [])
+        unique = list(dict.fromkeys(found))
+        shown = '|'.join(unique[:6]) + (f'|+{len(unique) - 6} more' if len(unique) > 6 else '')
+        rows.append([row['direction'], row['opcode'], row['name'], row['status'],
+                     len(unique), shown or '-'])
+    return tsv(rows, ['direction', 'opcode', 'name', 'rust_status', 'deob_sites', 'anchors']), rows
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     group = parser.add_mutually_exclusive_group(required=True)
@@ -177,7 +218,8 @@ def main():
     group.add_argument('--check', action='store_true')
     args = parser.parse_args()
     summaries = []
-    for path, build, column in [(CS2_OUT, cs2, 4), (PLUGIN_OUT, plugins, 7), (EVENT_OUT, events, 2)]:
+    for path, build, column in [(CS2_OUT, cs2, 4), (PLUGIN_OUT, plugins, 7), (EVENT_OUT, events, 2),
+                                (PACKET_SITES_OUT, deob_packets, 3)]:
         expected, rows = build()
         if args.write:
             path.write_text(expected)
