@@ -66,6 +66,7 @@ Current machine-readable data: [domain matrix](reference/rs240-port/PORT-MATRIX.
 
 - [patches/README.md](patches/README.md)
 - [reference/REVISION-235-TO-240.md](reference/REVISION-235-TO-240.md)
+- [reference/SIDEBAR-LIFECYCLE-2026-10-29.md](reference/SIDEBAR-LIFECYCLE-2026-10-29.md)
 - [reference/TSPS-241-REVIEW-2026-10-29.md](reference/TSPS-241-REVIEW-2026-10-29.md)
 - [reference/TSPS-GIT-SHORTLIST-2026-10-29.md](reference/TSPS-GIT-SHORTLIST-2026-10-29.md)
 - [reference/rs240-port/ACTOR-CATCH-UP.md](reference/rs240-port/ACTOR-CATCH-UP.md)
@@ -122,6 +123,7 @@ Current machine-readable data: [domain matrix](reference/rs240-port/PORT-MATRIX.
 - [plan/SPAWN-scene.md](plan/SPAWN-scene.md)
 - [plan/TITLE-offline-cache.md](plan/TITLE-offline-cache.md)
 - [plan/TSPS-ADOPTION-2026-10-29.md](plan/TSPS-ADOPTION-2026-10-29.md)
+- [plan/WALL-DECOR-240-2026-10-29.md](plan/WALL-DECOR-240-2026-10-29.md)
 - [reference/builtin-plugins/GPU-ACTOR-DEPTH-2026-10-27.md](reference/builtin-plugins/GPU-ACTOR-DEPTH-2026-10-27.md)
 - [reference/builtin-plugins/GPU-MODEL-SORT-2026-10-28.md](reference/builtin-plugins/GPU-MODEL-SORT-2026-10-28.md)
 - [reference/builtin-plugins/GPU-OVERLAY-2026-10-27.md](reference/builtin-plugins/GPU-OVERLAY-2026-10-27.md)

@@ -1,6 +1,8 @@
 # SPEC-0021: Input, picking and menus
 
-**Status:** Draft, 2026-10-29. Implementation must not start until this spec is accepted.
+**Status:** Draft, 2026-10-29. The "Input arbitration" section was accepted on 2026-10-29
+at the user's direction and may be implemented. The unified menu model, selection modes,
+sort/priority and picking sections remain draft; implementation of those must not start until accepted.
 **Owners:** `input` (platform-neutral input events and key codes), `application` (menu model,
 entry construction order, selection modes, action dispatch to intents), `scene` (pick
 candidates), `game-ui` (menu paint and hit bands), `protocol` (encoders). `apps/*` translate
@@ -108,6 +110,42 @@ PARITY-DEVIATIONS, not an accepted improvement.
 
 Paint and hit bands follow the stock `Menu` drawing (15-pixel rows, header "Choose Option",
 submenus) and the existing game-ui contracts. Tall menus and submenus remain open.
+
+### Input arbitration (accepted)
+
+Evidence: 240 `Menu.method12762` (pointer test with a 10-pixel margin; inside it the menu owns the
+pointer), `Menu.method12725` (dispatch through `classQP.method9746`), `Menu.method12757` (reset).
+The 235 `Client.doCycleLoggedIn` menu branch is the navigation aid; it was not re-read for this
+slice, so the "outside press closes without acting" rule below is the long-standing client
+behavior and carries a re-read obligation against `classPQ.method9204/9191` before the unified
+model lands. Mapping to Rust owners: `game-ui::arbitration` (pure decisions), `apps/native`
+(feeds it winit-derived facts and nothing else).
+
+1. **Modal menu.** While a menu is open, a press (either button) is consumed by the menu: inside
+   it selects the row under the pointer, outside its 10-pixel margin closes it. Nothing beneath
+   (shell chrome, sidebar toggle, widgets, world, walk) receives that press or the matching release.
+2. **Suppression.** While open, hover text, widget hold/drag/repeat, wheel zoom/scroll and middle-drag
+   camera are suppressed. Opening a menu cancels any hold, drag and held camera input already in
+   progress, without firing its release/drag-complete listeners.
+3. **Topmost paint.** The menu is painted after every other canvas layer (widgets, overlays, plugin
+   overlays, click cross, shell toggle). Painting order and hit order agree.
+4. **Shell chrome never outranks a menu.** Hit zones that sit on the canvas (the sidebar toggle
+   button) are active only while the button is painted and no menu is open. The shell panel is a
+   separate surface: a press or pointer move over it closes an open canvas menu, as leaving the menu's
+   10-pixel margin does.
+5. **Keys.** Escape, Enter and navigation keys reach an open menu whatever shell focus is. Shell
+   keyboard focus swallows other keys only when the shell reports that it wants them.
+6. **Lifetime.** A menu closes on: loss of the interface root, scene change, disconnect, logout,
+   reconnect, window-metric change, focus loss and the cursor leaving the canvas. The interface epoch
+   advances on every interface or inventory operation, so it does not close a menu by itself;
+   instead every selection is revalidated against its captured epoch and identity when chosen.
+   A selection that fails revalidation is a visible no-op with a diagnostic, never silent.
+7. **Walk here** is offered only when a walk could be sent now (not loading, not a diagnostics view,
+   connected), the same gate as the left-click walk.
+
+Blocking summary (what each layer may take from the pointer): open menu > shell chrome on the
+canvas > widget with click handlers / no-click-through containers > world viewport. A layer that
+declines a press passes it to the next; a layer that takes it ends dispatch.
 
 ## Failure behavior
 

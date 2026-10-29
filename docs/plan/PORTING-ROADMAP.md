@@ -28,7 +28,12 @@ Contract: [SPEC-0019](../specs/SPEC-0019-port-parity.md). Source navigation:
    readable 235 tree is for navigation, and every 235 rule is re-read in 240. RuneLite
    (`references/open-runelite-rev-240`) defines what plugins observe and how GPU features
    behave. It never defines stock rules. Wire layouts come from selected RSProt, and cache
-   layouts from the actual cache.
+   layouts from the actual cache. TSPS (`tsps-main`, a TypeScript revision-241 browser client
+   fork) is a secondary cross-check only: it supplies scenarios, algorithms and failure cases,
+   never rules. It is not a deob port (its wall-decoration offsets are 235-style plus its own
+   corrections). When it disagrees with the 240 deob, 240 wins and the difference is recorded as
+   evidence. Behavior taken from it needs a deob anchor or a deviation row, and BSD-2-Clause
+   attribution if code is derived.
 3. **Owners, not mirrors.** Port semantics into the existing crate owners. Java class shapes,
    static state and injection are not copied.
 4. **Exit.** The spec's acceptance tests pass. PORT-MATRIX, PACKET-COVERAGE, SYMBOL-LEDGER and
@@ -147,6 +152,12 @@ research can run alongside any phase.
   `HealthBarDefinition.resumePauseWidget`.
 - **RuneLite:** `MenuAction` (75 values), `MenuEntry`, and the `menuentryswapper`,
   `mousehighlight` and `keyremapping` plugins.
+- **Supporting research (TSPS, scenario inventory only):** `MenuEngine.ts` (left-click rule,
+  sort), `check.ts` world-click guards, `widgetClickGuard.ts` and `choose-option.ts` (menu consumes
+  the press, one-frame guard after close), and `widgetReleaseInput.ts` (drag order differs from 240).
+  Its text-based opcode inference and hard-coded chrome boxes are not stock rules.
+- **Arbitration slice (2026-10-29):** SPEC-0021 "Input arbitration" is accepted and implemented first
+  (modal menu, shell-chrome gating, lifetime). The unified menu model remains the next pass.
 - **Matrix rows:** `shared-input`, `menus`, `menu-paint`, `outbound-actions`, `widget-input`,
   `server-interaction-state`.
 
@@ -240,6 +251,10 @@ Scoped follow-up: [2026-10-29 implementation evidence](TSPS-ADOPTION-2026-10-29.
 - **240 anchors:** `Scene.method4508/4511/4474`, `Model`, `ModelData`, `Texture`,
   `IntProjection`/`FloatProjection`, and the `DrawCallbacks` sites.
 - **RuneLite:** the `gpu` plugin and its shaders ([GPU-AUDIT](../reference/builtin-plugins/GPU-AUDIT.md)).
+- **Pulled forward (2026-10-29, user request):** wall-decoration placement is re-read against 240
+  `classDI.method3340/3336` and `Scene.method4495/4502`; see
+  [WALL-DECOR-240-2026-10-29](WALL-DECOR-240-2026-10-29.md). TSPS wall-decoration code is a negative
+  reference only (235-style offsets plus non-stock nudges).
 - **Matrix rows:** `gpu`, `depth`, `materials`, `roofs`, `canvas`.
 
 ### Phase 12: RuneLite feature layer
