@@ -1001,10 +1001,124 @@
     {
       "id": "web-gameplay",
       "requirement": "Playable browser lifecycle/device loss/input/scene integration still absent; offscreen WebGPU probes only."
-    },
+    }
+  ],
+  "futureHdGates": [
     {
       "id": "hd-budget",
       "requirement": "Add material/texture paging, storage chunking, HDR/shadow/postprocess services and memory/quality budgets before 117HD port."
+    }
+  ],
+  "reviewCheckpoint": "docs/reference/SIDEBAR-LIFECYCLE-2026-10-29.md",
+  "completionOrder": [
+    {
+      "id": "extended-scenes",
+      "dependsOn": [],
+      "sourceAnchors": [
+        "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPlugin.java#onConfigChanged/loadScene",
+        "references/open-runelite-rev-240/runelite-client/src/main/resources/net/runelite/client/plugins/gpu/vert.glsl#expandedMapLoadingChunks"
+      ],
+      "owners": [
+        "crates/game-state/src/lib.rs",
+        "crates/scene/src/visibility.rs",
+        "crates/renderer/src/shaders/world.wgsl",
+        "apps/native/src/interaction.rs"
+      ],
+      "acceptance": "One authoritative extended scene; normal/instance ring loading, border terrain, fog/culling/picking/residency use identical bounds; travel/cancel/rebuild and exact 240 captures. Setting remains disabled until real loading exists.",
+      "status": "open"
+    },
+    {
+      "id": "float-vertices",
+      "dependsOn": [],
+      "sourceAnchors": [
+        "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPlugin.java#NO_VERTEX_SNAPPING",
+        "references/rl-suite-240/sources-semantic/Model.java"
+      ],
+      "owners": [
+        "crates/scene/src/entity_mesh.rs",
+        "crates/scene/src/entity_mesh/actor_animation.rs",
+        "crates/renderer/src/world_geometry.rs"
+      ],
+      "acceptance": "Preserve float pose vertices through projection/upload, select source snapping mode; do not change committed actor position. Compare posed vertices, terrain contouring, normals/depth, picking and exact client animation cases.",
+      "status": "open"
+    },
+    {
+      "id": "workers",
+      "dependsOn": [
+        "extended-scenes",
+        "float-vertices"
+      ],
+      "sourceAnchors": [
+        "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPlugin.java#startUp/onConfigChanged",
+        "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/SceneUploader.java"
+      ],
+      "owners": [
+        "apps/native/src/scene.rs",
+        "crates/scene/src/entity_mesh.rs",
+        "crates/renderer/src/world_geometry.rs"
+      ],
+      "acceptance": "Bound upload jobs/bytes, tag scene/actor/resource generations, cancel obsolete work, preserve order. numThreads must affect actual measured scheduling with native/browser limits; benchmark upload latency/CPU/queue age/memory and cold/replacement loads, not settings persistence.",
+      "status": "open"
+    },
+    {
+      "id": "metadata-worldviews-order",
+      "dependsOn": [
+        "extended-scenes",
+        "float-vertices"
+      ],
+      "sourceAnchors": [
+        "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPlugin.java#drawZoneOpaque/drawZoneAlpha/loadScene",
+        "references/open-runelite-rev-240/runelite-client/src/main/resources/net/runelite/client/plugins/gpu/vert.glsl",
+        "references/rl-suite-240/sources-semantic/Model.java"
+      ],
+      "owners": [
+        "crates/game-state/src/lib.rs",
+        "crates/cache/src/osrs240/models.rs",
+        "crates/scene/src/entity_mesh.rs",
+        "crates/renderer/src/world.rs"
+      ],
+      "acceptance": "Retain tint and zero-only authored alpha-array presence, live NPC customization, world-view/boat transforms and instance owner facts; cover source near/frustum/priority and multi-zone alpha cases. Existing sorted-no-depth correction stays explicit; require source case evidence.",
+      "status": "open"
+    },
+    {
+      "id": "platform-lifecycle",
+      "dependsOn": [
+        "workers",
+        "metadata-worldviews-order"
+      ],
+      "sourceAnchors": [
+        "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPlugin.java#setupSyncMode/startUp/shutDown"
+      ],
+      "owners": [
+        "apps/native/src/frame_limit.rs",
+        "apps/native/src/main.rs",
+        "apps/web/src/lib.rs",
+        "crates/renderer/src/surface.rs"
+      ],
+      "acceptance": "Measure real window gameplay FPS/vsync, hidden/minimized transitions, effective limits and device reconstruction on native/browser. Shared shell/reconstructed offscreen textures are partial evidence; browser gameplay/session/device-loss still open.",
+      "status": "open"
+    },
+    {
+      "id": "source-differential",
+      "dependsOn": [
+        "extended-scenes",
+        "float-vertices",
+        "workers",
+        "metadata-worldviews-order",
+        "platform-lifecycle"
+      ],
+      "sourceAnchors": [
+        "references/open-runelite-rev-240/runelite-client/src/test/java/net/runelite/client/plugins/gpu/ShaderTest.java",
+        "references/open-runelite-rev-240/runelite-client/src/test/java/net/runelite/client/plugins/gpu/regions/RegionsTest.java",
+        "references/open-runelite-rev-240/runelite-client/src/test/java/net/runelite/client/plugins/gpu/template/TemplateTest.java"
+      ],
+      "owners": [
+        "tools/parity/runelite240.py",
+        "tools/gpu/audit.py",
+        "docs/reference/builtin-plugins/gpu-audit.json"
+      ],
+      "acceptance": "Bounded ADR-0004 reference/actual/difference results and per-source-test disposition: ShaderTest compilation intent adapted, no Java MATCH; RegionsTest assertions ported but no Java execution; TemplateTest static-bundle adaptation, no lossless-case claim. xBR f4 correction prevents undefined-source bit parity.",
+      "status": "open"
     }
   ]
 }

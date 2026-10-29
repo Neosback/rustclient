@@ -1,4 +1,4 @@
-# Classic GPU audit — updated 2026-10-27
+# Classic GPU audit — updated 2026-10-29
 
 **Partial implementation. Not ready to declare the classic plugin complete or begin a parity claim for
 117HD.** The [frozen ledger](gpu-audit.json) covers all 16 source settings and 83 Java/resource/test/
@@ -86,7 +86,8 @@ render-policy services; external plugins do not receive GPU handles.
 
 ## Remaining gates
 
-The ledger retains 10 explicit obligations. Normal-map filtering and actual 240 zone admission are
+The ledger retains 9 classic acceptance obligations. The historical hd-budget obligation is now
+`futureHdGates`, outside the classic completion denominator. Normal-map filtering and actual 240 zone admission are
 now implemented; their instance/minimap/runtime, frustum and multi-zone-alpha acceptance remains open.
 Expanded loading/fog bounds, float vertices, workers, tint/world views, source runtime,
 desktop/browser acceptance and HD budgets remain incomplete. Stored defaults are not implementations.
@@ -126,3 +127,32 @@ gameplay visual acceptance. The canvas uniform is now 64 bytes; no extra pass or
 color/depth sequence, typed model-span policy and opcode-147 retention. Native source-priority/depth
 diagnostics and 35 browser checks pass. This implements the two-pass machinery; source front-face/bucket/near-plane acceptance and broader tint/world-view/
 NPC-customization and runtime gates remain open. The frozen ledger still has ten obligations.
+
+
+## Approved completion order — 2026-10-29
+
+The machine-readable `completionOrder` in [gpu-audit.json](gpu-audit.json) records source anchors,
+implementation owners, dependencies and acceptance for each group. It is the current ordering of
+these existing gaps, not a new source inventory or completion percentage. None is closed by this
+sidebar/lifecycle pass. Independent preparation can overlap; downstream acceptance waits for facts.
+
+1. **Extended scenes.** Extend the authoritative loading owner, then share its bounds with scene
+   admission, fog, culling, picking and residency. No second scene or cosmetic draw-distance override.
+2. **Float poses.** Preserve source floating vertices and implement removeVertexSnapping in projection
+   and upload. Committed actor positions/animation state remain unchanged. This can begin alongside 1.
+3. **Upload scheduling.** After 1/2 establish payloads and invalidation, measure bounded scheduling and
+   useful numThreads behavior. Include cancellation, generations, memory and browser policy.
+4. **Metadata, world views and ordering.** After 1/2, retain tint, authored alpha-array presence, NPC
+   customization and world-view/instance transforms; finish frustum and multi-zone ordering cases.
+5. **Platform lifecycle.** Complete real FPS/vsync and reconstruction acceptance after scheduling and
+   scene ownership settle. Native title-window/probe results and the new shared browser shell remain
+   partial evidence; playable browser gameplay and real device-loss acceptance are open.
+6. **Reference acceptance.** Close exact 240 comparisons and source-test dispositions only after the
+   preceding dependencies. Preserve the existing xBR f4 correction as a documented source deviation.
+
+`expandedMapLoadingChunks`, `removeVertexSnapping` and `numThreads` remain disabled/unimplemented.
+Fog and vsync remain partial. Shared GPU preference interpretation, effective hardware-limit notes,
+Always on presentation and lifecycle statuses do not implement those missing rendering semantics.
+Source-test/resource inventories and successful shader compilation do not establish plugin parity.
+117HD material paging, HDR/shadows/postprocess and budgets stay a separate later workstream. No Rust
+software rasterizer or new external GPU callback ABI is introduced.

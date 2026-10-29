@@ -208,6 +208,7 @@ impl NativeApp {
             },
         };
         self.plugins.update(&self.state, &inputs);
+        self.shell.set_plugin_statuses(self.plugins.statuses());
         // Sprites a plugin draws are decoded by the same worker as widget sprites.
         if self.plugins.requested_sprites().any(|sprite| {
             !self

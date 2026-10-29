@@ -4,13 +4,20 @@
 
 /// Marker retained for host-side workspace checks.
 pub const FOUNDATION_READY: bool = true;
+#[cfg(target_arch = "wasm32")]
+mod shell;
 
 #[cfg(target_arch = "wasm32")]
 mod browser {
     use std::{cell::RefCell, rc::Rc, sync::Arc};
 
     use rustclient_renderer::{ClearColor, FrameOutcome, SurfaceRenderer, SurfaceSize};
-    use wasm_bindgen::prelude::*;
+    use wasm_bindgen::{JsCast, prelude::*};
+    fn now() -> f64 {
+        web_sys::window()
+            .and_then(|w| w.performance())
+            .map_or(0., |p| p.now() / 1000.)
+    }
     use wasm_bindgen_futures::spawn_local;
     use winit::{
         application::ApplicationHandler,
@@ -25,6 +32,8 @@ mod browser {
         window: Option<Arc<Window>>,
         renderer: Option<SurfaceRenderer>,
         initializing_renderer: bool,
+        shell: Option<super::shell::Shell>,
+        clipboard: Vec<(String, Closure<dyn FnMut(web_sys::ClipboardEvent)>)>,
     }
 
     #[derive(Default)]
@@ -57,7 +66,10 @@ mod browser {
                     let mut state = shared.borrow_mut();
                     state.initializing_renderer = false;
                     match result {
-                        Ok(renderer) => {
+                        Ok(mut renderer) => {
+                            if let Some(shell) = state.shell.as_mut() {
+                                shell.apply_gpu(&mut renderer);
+                            }
                             state.renderer = Some(renderer);
                             true
                         }
@@ -92,7 +104,67 @@ mod browser {
                     return;
                 }
             };
+            window.set_ime_allowed(true);
+            match super::shell::Shell::new() {
+                Ok(shell) => self.shared.borrow_mut().shell = Some(shell),
+                Err(error) => {
+                    log_error(&error);
+                    event_loop.exit();
+                    return;
+                }
+            }
             self.shared.borrow_mut().window = Some(window);
+            if let Some(document) = web_sys::window().and_then(|w| w.document()) {
+                for name in ["copy", "cut", "paste"] {
+                    let weak = Rc::downgrade(&self.shared);
+                    let callback = Closure::<dyn FnMut(web_sys::ClipboardEvent)>::new(
+                        move |event: web_sys::ClipboardEvent| {
+                            let Some(shared) = weak.upgrade() else {
+                                return;
+                            };
+                            let mut state = shared.borrow_mut();
+                            let Some(shell) = state.shell.as_mut() else {
+                                return;
+                            };
+                            if !shell.panel.wants_keyboard_input() {
+                                return;
+                            }
+                            let Some(data) = event.clipboard_data() else {
+                                return;
+                            };
+                            if event.type_() == "paste" {
+                                if let Ok(text) = data.get_data("text/plain") {
+                                    shell.panel.paste(text);
+                                    event.prevent_default();
+                                }
+                            } else {
+                                shell.panel.clipboard_event(event.type_() == "cut");
+                                if let Err(error) = shell.panel.render(now()) {
+                                    log_error(&error);
+                                    return;
+                                }
+                                if let Some(text) = shell.panel.take_copied_text()
+                                    && data.set_data("text/plain", &text).is_ok()
+                                {
+                                    event.prevent_default();
+                                }
+                            }
+                            if let Some(window) = &state.window {
+                                window.request_redraw();
+                            }
+                        },
+                    );
+                    if document
+                        .add_event_listener_with_callback(name, callback.as_ref().unchecked_ref())
+                        .is_ok()
+                    {
+                        self.shared
+                            .borrow_mut()
+                            .clipboard
+                            .push((name.into(), callback));
+                    }
+                }
+            }
             self.begin_renderer_init();
         }
 
@@ -109,6 +181,9 @@ mod browser {
                 return;
             }
 
+            if let Some(shell) = self.shared.borrow_mut().shell.as_mut() {
+                shell.input(&window, &event);
+            }
             match event {
                 WindowEvent::CloseRequested => event_loop.exit(),
                 WindowEvent::Resized(size) => {
@@ -124,9 +199,51 @@ mod browser {
                     }
                 }
                 WindowEvent::RedrawRequested => {
-                    let result = self.shared.borrow_mut().renderer.as_mut().map(|renderer| {
-                        renderer.render_clear(ClearColor::BOOTSTRAP, || window.pre_present_notify())
-                    });
+                    let result = {
+                        let mut state = self.shared.borrow_mut();
+                        let SharedState {
+                            renderer, shell, ..
+                        } = &mut *state;
+                        renderer.as_mut().map(|renderer| {
+                            if let Some(shell) = shell.as_mut() {
+                                if let Err(error) = shell.update(&window, renderer, now()) {
+                                    log_error(&error);
+                                }
+                                if let Some(rect) = shell.panel.ime_cursor() {
+                                    let scale = window.scale_factor();
+                                    let chrome = (f64::from(shell.width()) * scale)
+                                        .round()
+                                        .min(f64::from(window.inner_size().width));
+                                    let x = f64::from(window.inner_size().width) - chrome
+                                        + f64::from(rect[0]) * scale;
+                                    window.set_ime_cursor_area(
+                                        winit::dpi::PhysicalPosition::new(
+                                            x,
+                                            f64::from(rect[1]) * scale,
+                                        ),
+                                        winit::dpi::PhysicalSize::new(
+                                            f64::from(rect[2]) * scale,
+                                            f64::from(rect[3]) * scale,
+                                        ),
+                                    );
+                                }
+                                if let Some(canvas) =
+                                    winit::platform::web::WindowExtWebSys::canvas(window.as_ref())
+                                {
+                                    let _ = canvas.set_attribute(
+                                        "data-shell-passes",
+                                        &shell.panel.stats().passes.to_string(),
+                                    );
+                                    let _ = canvas.set_attribute(
+                                        "data-shell-width",
+                                        &shell.width().to_string(),
+                                    );
+                                }
+                            }
+                            renderer
+                                .render_clear(ClearColor::BOOTSTRAP, || window.pre_present_notify())
+                        })
+                    };
 
                     match result {
                         Some(Ok(FrameOutcome::Reconfigured)) => window.request_redraw(),
@@ -146,7 +263,36 @@ mod browser {
                         }
                     }
                 }
-                _ => {}
+                _ => {
+                    window.request_redraw();
+                }
+            }
+        }
+        fn new_events(&mut self, _event_loop: &ActiveEventLoop, cause: winit::event::StartCause) {
+            if matches!(cause, winit::event::StartCause::ResumeTimeReached { .. })
+                && let Some(window) = &self.shared.borrow().window
+            {
+                window.request_redraw();
+            }
+        }
+        fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
+            let state = self.shared.borrow();
+            event_loop.set_control_flow(
+                state
+                    .shell
+                    .as_ref()
+                    .and_then(|s| s.panel.repaint_in(now()))
+                    .map_or(ControlFlow::Wait, ControlFlow::wait_duration),
+            );
+        }
+        fn exiting(&mut self, _event_loop: &ActiveEventLoop) {
+            if let Some(document) = web_sys::window().and_then(|w| w.document()) {
+                for (name, callback) in self.shared.borrow_mut().clipboard.drain(..) {
+                    let _ = document.remove_event_listener_with_callback(
+                        &name,
+                        callback.as_ref().unchecked_ref(),
+                    );
+                }
             }
         }
     }

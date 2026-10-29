@@ -1,4 +1,4 @@
-//! Composition of application preferences, retained DOM pixels and engine-owned effects.
+//! Composition of application preferences, shared egui presentation and engine-owned effects.
 use rustclient_application::{
     builtin_config::BuiltinConfigurations, shell_preferences::ShellPreferences,
 };
@@ -73,7 +73,11 @@ impl Shell {
             preferences.pinned.iter().map(ToString::to_string).collect();
         channel.model.borrow_mut().error =
             (!diagnostics.is_empty()).then(|| diagnostics.join("\n"));
-        let mut panel = EguiPanel::new(channel.clone(), [36, 503], 1.)?;
+        let mut panel = EguiPanel::new(
+            channel.clone(),
+            [rustclient_shell_ui::SidebarMetrics::RAIL, 503],
+            1.,
+        )?;
         match rustclient_platform_native::NativeClipboard::new() {
             Ok(clipboard) => panel.set_clipboard(Box::new(clipboard)),
             Err(error) => eprintln!("shell clipboard unavailable: {error}"),
@@ -201,7 +205,9 @@ impl Shell {
         let rect = self.overlay_button_rect(canvas_width, widget_tree);
         let in_range = self.sidebar() == SidebarState::Hidden
             || pointer.is_some_and(|(px, py)| {
-                px >= rect.x - 15. && px <= canvas_width as f32 + 36. && py >= 0.
+                px >= rect.x - 15.
+                    && px <= canvas_width as f32 + rustclient_shell_ui::SidebarMetrics::RAIL as f32
+                    && py >= 0.
             });
         if !in_range {
             return;
@@ -494,6 +500,15 @@ impl Shell {
             window.request_redraw();
         }
         changed
+    }
+    pub fn set_plugin_statuses(
+        &mut self,
+        statuses: BTreeMap<String, (rustclient_plugin_host::LifecycleStatus, Option<String>)>,
+    ) {
+        if self.channel.model.borrow().runtime != statuses {
+            self.channel.model.borrow_mut().runtime = statuses;
+            self.panel.invalidate();
+        }
     }
     fn project(&self) {
         self.channel.model.borrow_mut().plugins = self

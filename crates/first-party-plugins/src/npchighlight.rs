@@ -40,6 +40,9 @@ fn layered(command: OverlayCommand) -> LayeredOverlay {
 }
 
 impl NativePlugin for NpcHighlight {
+    fn subscribes_game_events(&self) -> bool {
+        false
+    }
     fn output(&mut self, call: &mut PluginCall<'_>) -> Result<PluginOutput, PluginFault> {
         let config = call.config;
         let mut output = PluginOutput::default();

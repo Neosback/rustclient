@@ -31,6 +31,9 @@ fn enabled(setting: &str, in_pvp: bool) -> bool {
 }
 
 impl NativePlugin for PlayerIndicators {
+    fn subscribes_game_events(&self) -> bool {
+        false
+    }
     fn output(&mut self, call: &mut PluginCall<'_>) -> Result<PluginOutput, PluginFault> {
         let config = call.config;
         let in_pvp = [INSIDE_WILDERNESS, PVP_AREA_CLIENT]

@@ -1,246 +1,129 @@
-#![cfg(feature = "legacy-native")]
-#![cfg(not(target_arch = "wasm32"))]
-#![allow(clippy::float_cmp)]
+//! Semantic geometry/input contracts for the single native/browser component; no pixel goldens.
 use keyboard_types::{Code, Key, Modifiers};
-use rustclient_plugin_host::{
-    configuration::{ConfigValue, Configuration},
-    required::all_schemas,
+use rustclient_plugin_host::{configuration::Configuration, required::all_schemas};
+use rustclient_shell_ui::{
+    EguiPanel, PluginPanel, ShellAction, ShellChannel, SidebarMetrics, SidebarState,
 };
-use rustclient_shell_ui::{PluginPanel, RetainedPanel, ShellAction, ShellChannel, SidebarState};
-
-fn click(panel: &mut RetainedPanel, selector: &str) {
-    let [x, y, width, height] = panel
-        .element_bounds(selector)
-        .unwrap_or_else(|| panic!("missing {selector}"));
-    panel.pointer(x + width / 2., y + height / 2., Some(true), true);
-    panel.pointer(x + width / 2., y + height / 2., Some(false), false);
-    panel.render();
-}
-fn enter(panel: &mut RetainedPanel) {
-    panel.key(Key::Enter, Code::Enter, Modifiers::empty(), true, None);
-    panel.render();
-}
-fn search(panel: &mut RetainedPanel, text: &str) {
-    click(panel, "#plugin-search");
-    panel.key(
-        Key::Character("a".into()),
-        Code::KeyA,
-        if cfg!(target_os = "macos") {
-            Modifiers::SUPER
-        } else {
-            Modifiers::CONTROL
-        },
-        true,
-        None,
-    );
-    panel.ime_commit(text.into());
-    panel.render();
-}
-fn state(panel: &mut RetainedPanel, channel: &ShellChannel, sidebar: SidebarState, scale: u32) {
-    channel.model.borrow_mut().sidebar = sidebar;
-    panel
-        .resize(
-            [sidebar.width().max(1) * scale, 800 * scale],
-            f32::from(u16::try_from(scale).unwrap()),
-        )
-        .unwrap();
-    panel.invalidate();
-    panel.set_visible(sidebar != SidebarState::Hidden);
-    panel.render();
-}
-
-#[test]
-#[expect(
-    clippy::too_many_lines,
-    reason = "one native DOM serially exercises state and draft lifecycles"
-)]
-fn sidebar_restores_navigation_and_drafts_do_not_publish_while_interacting() {
-    for scale in [1, 2] {
-        let channel = ShellChannel::default();
-        channel.model.borrow_mut().sidebar = rustclient_shell_ui::SidebarState::Panel;
-        for schema in all_schemas().unwrap() {
-            let config = Configuration::new(schema, None).unwrap();
-            channel
-                .model
-                .borrow_mut()
-                .plugins
-                .push(PluginPanel::project(&config, |_| None));
-        }
-        let mut panel = RetainedPanel::new(
-            channel.clone(),
-            [278 * scale, 800 * scale],
-            f32::from(u16::try_from(scale).unwrap()),
-        )
-        .unwrap();
-        panel.set_visible(true);
-        panel.render().unwrap();
-
-        panel.pointer(50., 20., None, false);
-        panel.render();
-        let before = panel.stats();
-        for index in 0_u16..600 {
-            panel.pointer(50. + f32::from(index % 10), 20., None, false);
-        }
-        assert!(panel.render().is_none());
-        assert_eq!(
-            panel.stats(),
-            before,
-            "unchanged hover must do zero recurring work"
-        );
-        assert!(channel.drain().is_empty());
-
-        channel
-            .model
-            .borrow_mut()
-            .pinned
-            .insert("dev.rustclient.roofremoval".into());
-        panel.invalidate();
-        panel.render();
-        assert!(
-            panel
-                .element_bounds("[data-plugin='dev.rustclient.roofremoval']")
-                .unwrap()[1]
-                < panel
-                    .element_bounds("[data-plugin='dev.rustclient.gpu']")
-                    .unwrap()[1]
-        );
-        channel.model.borrow_mut().pinned.clear();
-        panel.invalidate();
-        panel.render();
-        search(&mut panel, "GPU");
-        click(&mut panel, ".pin-button");
-        assert_eq!(
-            channel.drain(),
-            vec![ShellAction::ToggleFavorite {
-                plugin: "dev.rustclient.gpu".into()
-            }]
-        );
-        channel
-            .model
-            .borrow_mut()
-            .pinned
-            .insert("dev.rustclient.gpu".into());
-        panel.invalidate();
-        panel.render();
-        click(&mut panel, "#clear-search");
-        assert_eq!(panel.input_value("#plugin-search").as_deref(), Some(""));
-        let favorite = panel
-            .element_bounds("[data-plugin='dev.rustclient.gpu']")
-            .unwrap();
-        let other = panel
-            .element_bounds("[data-plugin='dev.rustclient.animsmoothing']")
-            .unwrap();
-        assert!(favorite[1] < other[1], "favorites must sort first");
-
-        search(&mut panel, "GPU");
-        click(&mut panel, ".card-open");
-        let [x, y, width, height] = panel.element_bounds("[role='slider']").unwrap();
-        panel.pointer(x + width / 2., y + height / 2., Some(true), true);
-        panel.render();
-        assert!(channel.drain().is_empty(), "mousedown must not publish");
-        panel.pointer(x + width + 100., y + height / 2., None, true);
-        panel.render();
-        assert!(channel.drain().is_empty(), "drag must not publish");
-        assert_eq!(panel.input_value(".number-input").as_deref(), Some("184"));
-        panel.pointer(x + width + 100., y + height / 2., Some(false), false);
-        panel.render();
-        assert_eq!(
-            channel.drain(),
-            vec![ShellAction::Configure {
-                plugin: "dev.rustclient.gpu".into(),
-                key: "drawDistance".into(),
-                value: ConfigValue::Integer(184)
-            }]
-        );
-        // Simulate a rejected transaction: the accepted model stays unchanged.
-        channel.model.borrow_mut().error = Some("test storage failure".into());
-        panel.invalidate();
-        panel.render();
-        assert_eq!(panel.input_value(".number-input").as_deref(), Some("50"));
-        channel.model.borrow_mut().error = None;
-        panel.invalidate();
-        panel.render();
-
-        let [x, y, width, height] = panel.element_bounds("[role='slider']").unwrap();
-        panel.pointer(x + width / 2., y + height / 2., Some(true), true);
-        panel.render();
-        panel.key(Key::Escape, Code::Escape, Modifiers::empty(), true, None);
-        panel.pointer(x + width / 2., y + height / 2., Some(false), false);
-        panel.render();
-        assert!(
-            channel.drain().is_empty(),
-            "Escape cancels the captured draft"
-        );
-        panel.pointer(x + width / 2., y + height / 2., Some(true), true);
-        panel.clear_focus();
-        panel.render();
-        assert!(channel.drain().is_empty(), "capture loss cancels the draft");
-
-        click(&mut panel, ".number-input");
-        panel.key(
-            Key::Character("a".into()),
-            Code::KeyA,
-            if cfg!(target_os = "macos") {
-                Modifiers::SUPER
-            } else {
-                Modifiers::CONTROL
-            },
-            true,
-            None,
-        );
-        panel.ime_commit("72".into());
-        panel.render();
-        assert!(channel.drain().is_empty(), "numeric typing is draft-only");
-        enter(&mut panel);
-        assert!(matches!(
-            channel.drain().as_slice(),
-            [ShellAction::Configure {
-                value: ConfigValue::Integer(72),
-                ..
-            }]
-        ));
-
-        // Scrolling only changes paint, and hiding/restoring keeps the selected plugin and offset.
-        let [sx, sy, _, _] = panel.element_bounds("#settings-scroll").unwrap();
-        let layouts = panel.stats().layouts;
-        panel.scroll(sx + 10., sy + 10., [0., -180.]);
-        panel.render();
-        assert_eq!(panel.stats().layouts, layouts);
-        let before = panel.element_bounds("[role='slider']").unwrap()[1];
-        click(&mut panel, "#plugins-nav");
-        assert_eq!(channel.drain(), vec![ShellAction::Close]);
-        state(&mut panel, &channel, SidebarState::Rail, scale);
-        assert!(panel.element_bounds(".panel").is_none());
-        assert_eq!(panel.element_bounds(".rail").unwrap()[2], 36.);
-        state(&mut panel, &channel, SidebarState::Panel, scale);
-        assert_eq!(panel.element_bounds("[role='slider']").unwrap()[1], before);
-        state(&mut panel, &channel, SidebarState::Hidden, scale);
-        let idle = panel.stats();
-        panel.pointer(20., 20., None, false);
-        panel.update();
-        panel.render();
-        assert_eq!(
-            panel.stats(),
-            idle,
-            "hidden chrome must do no recurring work"
-        );
-        state(&mut panel, &channel, SidebarState::Panel, scale);
-        assert!(panel.element_bounds("#settings-scroll").is_some());
-        click(&mut panel, "[aria-label='Back to plugins']");
-        assert_eq!(panel.input_value("#plugin-search").as_deref(), Some("GPU"));
-        assert!(
-            panel
-                .element_bounds("[data-plugin='dev.rustclient.gpu']")
-                .is_some()
-        );
-
-        // A native title tooltip is actual rendered DOM, not a no-op HTML title attribute.
-        let [tx, ty, tw, th] = panel.element_bounds(".card-open").unwrap();
-        panel.pointer(tx + tw / 2., ty + th / 2., None, false);
-        panel.render();
-        assert!(panel.element_bounds("[role='tooltip']").is_some());
-        panel.pointer_leave();
-        panel.render();
-        assert!(panel.element_bounds("[role='tooltip']").is_none());
+fn fixture(scale: f32) -> (EguiPanel, ShellChannel) {
+    let channel = ShellChannel::default();
+    channel.model.borrow_mut().sidebar = SidebarState::Panel;
+    channel.model.borrow_mut().plugins = all_schemas()
+        .unwrap()
+        .into_iter()
+        .map(|schema| PluginPanel::project(&Configuration::new(schema, None).unwrap(), |_| None))
+        .collect();
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        clippy::cast_precision_loss,
+        reason = "five bounded DPI fixtures"
+    )]
+    let mut panel = EguiPanel::new(
+        channel.clone(),
+        [
+            (SidebarMetrics::OPEN as f32 * scale).round() as u32,
+            (503. * scale).round() as u32,
+        ],
+        scale,
+    )
+    .unwrap();
+    panel.set_visible(true);
+    for t in 0..4 {
+        panel.render(f64::from(t) * 0.1).unwrap();
     }
+    (panel, channel)
+}
+fn click(panel: &mut EguiPanel, target: &str, time: f64) {
+    let [x, y, w, h] = panel
+        .target_bounds(target)
+        .unwrap_or_else(|| panic!("missing {target}"));
+    panel.pointer(x + w / 2., y + h / 2., Some(true), true);
+    panel.render(time).unwrap();
+    panel.pointer(x + w / 2., y + h / 2., Some(false), false);
+    panel.render(time + 0.01).unwrap();
+    panel.pointer_leave();
+    panel.render(time + 0.02).unwrap();
+}
+#[test]
+fn source_metrics_and_hidpi_targets_share_one_extent_without_hidden_work() {
+    assert_eq!(
+        (
+            SidebarMetrics::INNER_PANEL,
+            SidebarMetrics::SCROLL_ALLOWANCE,
+            SidebarMetrics::RAIL,
+            SidebarMetrics::OPEN
+        ),
+        (225, 17, 31, 273)
+    );
+    for scale in [1., 1.25, 1.5, 1.75, 2.] {
+        let (mut panel, channel) = fixture(scale);
+        let [x, _, w, h] = panel.target_bounds("toggle-panel").unwrap();
+        assert!(
+            x >= 242. && x + w <= 274. && (h - 26.).abs() < 0.01,
+            "{scale}: {x} {w} {h}"
+        );
+        click(&mut panel, "toggle-panel", 1.);
+        assert_eq!(channel.drain(), [ShellAction::TogglePanel]);
+        panel.set_visible(false);
+        let before = panel.stats();
+        for n in 0..100 {
+            panel.pointer(10., 10., Some(true), true);
+            assert!(!panel.render(f64::from(n) + 2.).unwrap());
+        }
+        assert_eq!(panel.stats().passes, before.passes);
+        assert!(channel.drain().is_empty());
+        assert!(panel.target_bounds("toggle-panel").is_none());
+    }
+}
+#[test]
+fn required_badges_configuration_search_favorites_and_back_keep_their_owners() {
+    let (mut panel, channel) = fixture(1.);
+    assert!(
+        panel
+            .target_bounds("always-on:dev.rustclient.gpu")
+            .is_some()
+    );
+    assert!(panel.target_bounds("enabled:dev.rustclient.gpu").is_none());
+    click(&mut panel, "favorite:dev.rustclient.gpu", 1.);
+    assert_eq!(
+        channel.drain(),
+        [ShellAction::ToggleFavorite {
+            plugin: "dev.rustclient.gpu".into()
+        }]
+    );
+    click(&mut panel, "search", 2.);
+    panel.key(
+        Key::Character("gpu".into()),
+        Code::Unidentified,
+        Modifiers::empty(),
+        true,
+        Some("gpu".into()),
+    );
+    panel.render(2.1).unwrap();
+    assert!(panel.target_bounds("plugin:dev.rustclient.gpu").is_some());
+    assert!(
+        panel
+            .target_bounds("plugin:dev.rustclient.camera")
+            .is_none()
+    );
+    click(&mut panel, "configure:dev.rustclient.gpu", 3.);
+    assert!(
+        panel
+            .target_bounds("always-on:dev.rustclient.gpu")
+            .is_some()
+    );
+    assert!(panel.target_bounds("enabled:dev.rustclient.gpu").is_none());
+    click(&mut panel, "back", 4.);
+    assert!(
+        panel
+            .target_bounds("plugin:dev.rustclient.camera")
+            .is_none()
+    );
+    click(&mut panel, "clear-search", 5.);
+    assert!(
+        panel
+            .target_bounds("plugin:dev.rustclient.camera")
+            .is_some()
+    );
+    assert!(channel.drain().is_empty());
 }

@@ -29,7 +29,12 @@ fn fixture(control: Control, value: ConfigValue) -> (EguiPanel, ShellChannel) {
             note: None,
         }],
     });
-    let mut panel = EguiPanel::new(channel.clone(), [556, 1006], 2.).unwrap();
+    let mut panel = EguiPanel::new(
+        channel.clone(),
+        [rustclient_shell_ui::SidebarMetrics::OPEN * 2, 1006],
+        2.,
+    )
+    .unwrap();
     panel.set_visible(true);
     panel.render(0.).unwrap();
     panel.render(0.1).unwrap();
@@ -177,5 +182,11 @@ fn desktop_panel_ships_fonts_for_plugin_labels_and_controls() {
     assert!(!definitions.families[&egui::FontFamily::Proportional].is_empty());
     let (panel, _) = fixture(Control::Boolean, ConfigValue::Boolean(false));
     let [x, y, width, height] = panel.target_bounds("toggle-panel").unwrap();
-    assert!(x >= 0. && y >= 0. && x + width <= 278. && y + height <= 503.);
+    assert!(
+        x >= 0.
+            && y >= 0.
+            && x + width <= rustclient_shell_ui::SidebarMetrics::OPEN as f32
+            && y + height <= 503.,
+        "control rect {x},{y},{width},{height}"
+    );
 }

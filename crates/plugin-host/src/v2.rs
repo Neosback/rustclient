@@ -426,12 +426,50 @@ pub(crate) fn validate(
 }
 
 impl PluginSet {
-    /// Union of the grants of every enabled plugin: what the projector must build.
+    /// Re-merge surviving level output after a lifecycle change, without invoking plugins
+    /// or replaying edge-triggered notifications/menu/camera requests.
+    #[must_use]
+    pub fn retained_output(&self) -> HostOutput {
+        let mut merged = HostOutput::default();
+        for plugin in &self.plugins {
+            if let Some((activation, value)) = &plugin.lifecycle.output
+                && plugin.accepts_activation(*activation)
+            {
+                let mut value = value.clone();
+                value.notifications.clear();
+                value.menu_edits.clear();
+                value.camera.retain(|command| {
+                    matches!(
+                        command,
+                        CameraCommand::Speed(_)
+                            | CameraCommand::ZoomLimits { .. }
+                            | CameraCommand::InvertYaw(_)
+                            | CameraCommand::InvertPitch(_)
+                            | CameraCommand::RelaxPitch(_)
+                    )
+                });
+                merged.merge(&plugin.manifest.id, value);
+            }
+        }
+        merged.finish();
+        merged
+    }
+    /// Whether any running instance subscribes to gameplay events. Each event is still
+    /// filtered against its read capability during dispatch. Query-only plugins need snapshots
+    /// but incur no event derivation or per-subscriber event allocation.
+    #[must_use]
+    pub fn has_game_subscribers(&self) -> bool {
+        self.plugins
+            .iter()
+            .any(|plugin| plugin.running() && plugin.wants_game_events())
+    }
+
+    /// Union of the grants of every running plugin: what the projector must build.
     #[must_use]
     pub fn granted(&self) -> CapabilitySet {
         self.plugins
             .iter()
-            .filter(|plugin| plugin.enabled)
+            .filter(|plugin| plugin.running())
             .flat_map(|plugin| plugin.manifest.capabilities.iter())
             .collect()
     }
@@ -447,13 +485,17 @@ impl PluginSet {
         for index in 0..self.plugins.len() {
             let fault_limit = self.fault_limit;
             let plugin = &mut self.plugins[index];
+            if !plugin.enabled() {
+                continue;
+            }
             let granted = &plugin.manifest.capabilities;
             let visible: Vec<GameEvent> = events
                 .iter()
                 .filter(|event| {
-                    event
-                        .required_capability()
-                        .is_none_or(|capability| granted.contains(capability))
+                    plugin.wants_game_events()
+                        && event
+                            .required_capability()
+                            .is_none_or(|capability| granted.contains(capability))
                 })
                 .cloned()
                 .collect();
@@ -462,6 +504,7 @@ impl PluginSet {
             }
             let _ = Self::invoke(
                 plugin,
+                crate::lifecycle::Phase::Game,
                 view,
                 storage,
                 logs,
@@ -484,6 +527,7 @@ impl PluginSet {
             let plugin = &mut self.plugins[index];
             let Some(produced) = Self::invoke(
                 plugin,
+                crate::lifecycle::Phase::Output,
                 view,
                 storage,
                 logs,
@@ -493,6 +537,7 @@ impl PluginSet {
                 continue;
             };
             if produced.is_empty() {
+                plugin.lifecycle.output = None;
                 continue;
             }
             let capabilities = plugin.manifest.capabilities.clone();
@@ -509,6 +554,7 @@ impl PluginSet {
                     );
                 }
             }
+            plugin.lifecycle.output = Some((plugin.activation(), checked.clone()));
             merged.merge(&plugin.manifest.id.clone(), checked);
         }
         merged.finish();

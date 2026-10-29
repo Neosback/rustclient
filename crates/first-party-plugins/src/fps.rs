@@ -47,6 +47,9 @@ fn enforced_limit(
 }
 
 impl NativePlugin for Fps {
+    fn subscribes_game_events(&self) -> bool {
+        false
+    }
     fn output(&mut self, call: &mut PluginCall<'_>) -> Result<PluginOutput, PluginFault> {
         let config = call.config;
         let client = call.client().unwrap_or_default();

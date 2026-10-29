@@ -176,6 +176,14 @@ impl RoofRemoval {
 }
 
 impl NativePlugin for RoofRemoval {
+    fn shutdown(&mut self, _call: &mut PluginCall<'_>) -> Result<(), PluginFault> {
+        self.cached = None;
+        Ok(())
+    }
+    fn subscribes_game_events(&self) -> bool {
+        false
+    }
+
     fn init(&mut self, _call: &mut PluginCall<'_>) -> Result<(), PluginFault> {
         if self.overrides.is_empty() {
             self.overrides = load_overrides();

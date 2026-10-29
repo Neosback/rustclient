@@ -373,6 +373,11 @@ fn current_viewport(widgets: &[WidgetSnapshot]) -> Option<(Viewport, &WidgetSnap
 }
 
 impl NativePlugin for StatusBars {
+    fn shutdown(&mut self, _call: &mut PluginCall<'_>) -> Result<(), PluginFault> {
+        *self = Self::default();
+        Ok(())
+    }
+
     fn init(&mut self, _call: &mut PluginCall<'_>) -> Result<(), PluginFault> {
         *self = Self::default();
         Ok(())

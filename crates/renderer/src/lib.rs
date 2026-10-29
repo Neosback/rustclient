@@ -28,8 +28,8 @@ mod transparency;
 mod world;
 pub use material_options::MaterialOptions;
 pub use settings::{
-    AntiAliasing, ColorBlind, Deviation, EffectiveGpu, GpuCapabilities, GpuSettings, UiScaling,
-    VsyncMode,
+    AntiAliasing, ColorBlind, Deviation, EffectiveGpu, GpuCapabilities, GpuPreference, GpuSettings,
+    UiScaling, VsyncMode,
 };
 mod shell;
 pub use shell::{EguiShellLayer, EguiShellStats, ShellLayer, ShellStats, capture_gpu_shell};

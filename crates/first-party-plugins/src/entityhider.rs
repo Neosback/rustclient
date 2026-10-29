@@ -112,6 +112,9 @@ pub(crate) fn draws_npc(
 pub(crate) struct EntityHider;
 
 impl NativePlugin for EntityHider {
+    fn subscribes_game_events(&self) -> bool {
+        false
+    }
     fn output(&mut self, call: &mut PluginCall<'_>) -> Result<PluginOutput, PluginFault> {
         let config = call.config;
         let switches = Switches {

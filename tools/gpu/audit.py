@@ -61,11 +61,22 @@ def main():
         row = settings.get(key, {})
         if row.get('default') != source['defaultExpression'] or row.get('status') != source['status']:
             errors.append(f'setting inventory/ledger mismatch: {key}')
+    steps = {row['id']: row for row in ledger.get('completionOrder', [])}
+    for row in steps.values():
+        if not row.get('acceptance') or row.get('status') != 'open':
+            errors.append(f"missing completion evidence: {row['id']}")
+        if any(dependency not in steps for dependency in row['dependsOn']):
+            errors.append(f"unknown dependency: {row['id']}")
+        for path in row['sourceAnchors'] + row['owners']:
+            if not (ROOT / path.split('#')[0]).is_file():
+                errors.append(f"missing completion anchor/owner: {path}")
+    if any(gate['id'] == 'hd-budget' for gate in ledger['openGates']):
+        errors.append('117HD budget must remain outside classic completion denominator')
     if errors:
         print('\n'.join(errors), file=sys.stderr)
         return 1
     print(f"GPU inventory verified: {len(settings)} settings; {len(files)} pinned source/resource/test files.")
-    print(f"Open gates: {len(ledger['openGates'])}; hashes/coverage are not parity or completion.")
+    print(f"Open classic gates: {len(ledger['openGates'])}; separate future HD gates: {len(ledger.get('futureHdGates', []))}; hashes/coverage are not parity or completion.")
     if args.require_complete and ledger['openGates']:
         for gate in ledger['openGates']:
             print(f"  {gate['id']}: {gate['requirement']}")

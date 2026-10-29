@@ -5,7 +5,9 @@
 //! what the adapter will actually do, so the shell can show a difference instead of pretending.
 //! Semantics follow `RuneLite`'s `GpuPlugin` (`setupSyncMode`, `AntiAliasingMode`, `ColorBlindMode`).
 
+mod preferences;
 use crate::MaterialOptions;
+pub use preferences::GpuPreference;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AntiAliasing {

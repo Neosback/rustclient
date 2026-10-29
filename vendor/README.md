@@ -1,3 +1,11 @@
+# Historical shell compatibility dependencies
+
+As of 2026-10-29, the shared egui sidebar replaces the Dioxus/Blitz implementation on native and
+browser. These archives and patches remain for historical reproducibility; workspace Cargo patches,
+active dependencies and the retired DOM sidebar tests have been removed. Current semantic contracts
+are in `crates/shell-ui/tests/`. The following notes describe the earlier implementation, not an
+active runtime dependency or current verification claim.
+
 # Native shell compatibility dependency
 
 `blitz-dom-0.2.4` is the crates.io source archive, SHA-256

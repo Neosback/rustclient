@@ -35,6 +35,41 @@ fn everything() -> CapabilitySet {
     .into_iter()
     .collect()
 }
+#[test]
+fn bootstrap_reads_current_facts_without_consuming_another_observers_history() {
+    let mut state = session();
+    let mut projector = Projector::new();
+    let frame = Frame::default();
+    let sources = Sources::default();
+    let wanted = everything();
+    let _ = projector.project(&state, &frame, &sources, &wanted);
+    apply(
+        &mut state,
+        SemanticOperation::Scenery(SceneryOperation::SetVariable {
+            id: VarpId::new(42),
+            value: 7,
+        }),
+    );
+    let before = state.semantic_fingerprint();
+    let bootstrap = projector.snapshot(&state, &frame, &sources, &wanted);
+    assert_eq!(bootstrap.vars.varp(42), 7);
+    assert_eq!(before, state.semantic_fingerprint());
+    let (_, events) = projector.project(&state, &frame, &sources, &wanted);
+    assert!(events.iter().any(|event| matches!(
+        event,
+        GameEvent::VarbitChanged {
+            kind: VarKind::Varp,
+            id: 42,
+            value: 7
+        }
+    )));
+    assert!(
+        projector
+            .project(&state, &frame, &sources, &wanted)
+            .1
+            .is_empty()
+    );
+}
 
 fn apply(state: &mut GameState, operation: SemanticOperation) {
     state.apply_operation(operation).expect("operation commits");
@@ -304,5 +339,32 @@ fn only_granted_categories_are_projected() {
         events
             .iter()
             .all(|e| !matches!(e, GameEvent::PlayerSpawned(_)))
+    );
+}
+
+#[test]
+fn no_subscriber_advances_history_without_replaying_events_when_one_appears() {
+    let mut state = session();
+    let mut projector = Projector::new();
+    let wanted: CapabilitySet = [Capability::GameReadVars].into_iter().collect();
+    let frame = Frame::default();
+    let sources = Sources::default();
+    let fingerprint = state.semantic_fingerprint();
+    let (_, events) = projector.project_with_events(&state, &frame, &sources, &wanted, false);
+    assert!(events.is_empty());
+    assert_eq!(fingerprint, state.semantic_fingerprint());
+    apply(
+        &mut state,
+        SemanticOperation::Scenery(SceneryOperation::SetVariable {
+            id: VarpId::new(42),
+            value: 7,
+        }),
+    );
+    let (_, events) = projector.project_with_events(&state, &frame, &sources, &wanted, false);
+    assert!(events.is_empty());
+    let (_, events) = projector.project_with_events(&state, &frame, &sources, &wanted, true);
+    assert!(
+        events.is_empty(),
+        "subscribing replayed an already committed change: {events:?}"
     );
 }

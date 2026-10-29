@@ -1,4 +1,6 @@
 //! Application ownership and two-phase publication of plugin and required-service configuration.
+mod availability;
+pub use availability::availability;
 use rustclient_platform::{BlobStorage, StorageKey};
 use rustclient_plugin_api::PluginId;
 use rustclient_plugin_host::{

@@ -558,6 +558,66 @@
         {
           "path": "runelite-client/src/main/java/net/runelite/client/plugins/gpu/ModelUploader.java",
           "sha256": "79a3b1f9f6bd6aafcff7f2b5d21677c695828bdcb730d45f49b7dac35bd71047"
+        },
+        {
+          "path": "runelite-client/src/main/java/net/runelite/client/ui/PluginPanel.java",
+          "sha256": "500099ed49b814b4125809a1a76a73cf341350ebc406259b5064dc2355adfd7f"
+        },
+        {
+          "path": "runelite-client/src/main/java/net/runelite/client/ui/ClientUI.java",
+          "sha256": "427fdd13f2ddebb5e3334b65015338ae577e3814648fc2e6b61a4d5cdc38f82e"
+        },
+        {
+          "path": "runelite-client/src/main/java/net/runelite/client/ui/FontManager.java",
+          "sha256": "dc09c5141a306b73f11a7e6da7c9609ed9bb19226219aa1768afbdfd5cbfe2f3"
+        },
+        {
+          "path": "runelite-client/src/main/java/net/runelite/client/ui/ColorScheme.java",
+          "sha256": "7c73b9aea7d12c1c426830f7ecefac84b2bebcf0b06367f5aa80e97e63478c2f"
+        },
+        {
+          "path": "runelite-client/src/main/java/net/runelite/client/ui/laf/RuneLiteLAF.java",
+          "sha256": "61d94c3434c0a7e1e475ab6cd13466615ed016eb22d7e175a7d3b55214781b60"
+        },
+        {
+          "path": "runelite-client/src/main/java/net/runelite/client/ui/components/ToggleButton.java",
+          "sha256": "039f6b23e55dedc43e66ba6454727a6c12b6adef01b28370fc56cec36b694cab"
+        },
+        {
+          "path": "runelite-client/src/main/java/net/runelite/client/plugins/config/PluginListItem.java",
+          "sha256": "7b328cdee3868f92cc7a590eba91bbacd5812872d988def6a5548c852f7e2fdd"
+        },
+        {
+          "path": "runelite-client/src/main/java/net/runelite/client/plugins/config/PluginListPanel.java",
+          "sha256": "0faea3de9b06e5626a0abf5b55633d9f8a6e31bd48588573da05d79efa386958"
+        },
+        {
+          "path": "runelite-client/src/main/java/net/runelite/client/plugins/PluginManager.java",
+          "sha256": "972d23b17c8d8070352580de57d2c8d0c4a09cfdae3fee5f9a3f29c8160e9b21"
+        },
+        {
+          "path": "runelite-client/src/main/java/net/runelite/client/eventbus/EventBus.java",
+          "sha256": "db6bfde895259c958f83e768e67078be5f1176d4bd4aab5aa73bb713db70734a"
+        },
+        {
+          "path": "runelite-client/src/main/resources/net/runelite/client/ui/runescape.ttf",
+          "sha256": "7477bbfd998b8e16e8a1e898fd49fb736a6fdfa00e7eb364d4d441f10290f03a"
+        },
+        {
+          "path": "runelite-client/src/main/resources/net/runelite/client/ui/runescape_bold.ttf",
+          "sha256": "c8b9afefe105a78717fde9692deafbf2361b54bcf9c8019b6d817de94f1c6168"
+        },
+        {
+          "path": "runelite-client/src/main/resources/net/runelite/client/ui/runescape_small.ttf",
+          "sha256": "fe43104752ad819d5b037bb544a194f7dc8fdf1c2dfe7f4cdf20a4f98896ed8a"
+        },
+        {
+          "path": "runelite-client/src/main/resources/net/runelite/client/ui/components/switcher_on.png",
+          "sha256": "0e171b72f70b48ddd9b72808a7c787340dcd840277a108bbdfbb5437bbf1f10e"
+        },
+        {
+          "path": "runelite-client/src/main/resources/net/runelite/client/plugins/config/star_on.png",
+          "sha256": "7711d061be66cf03367834448fc1a606fe5a940323cff66ea162d3555fd38923"
         }
       ]
     },

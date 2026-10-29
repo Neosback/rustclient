@@ -18,6 +18,11 @@ pub(crate) struct XpTracker {
     was_logged_in: bool,
 }
 impl NativePlugin for XpTracker {
+    fn shutdown(&mut self, _call: &mut PluginCall<'_>) -> Result<(), PluginFault> {
+        *self = Self::default();
+        Ok(())
+    }
+
     fn init(&mut self, _call: &mut PluginCall<'_>) -> Result<(), PluginFault> {
         *self = Self::default();
         self.skills = vec![None; 23];

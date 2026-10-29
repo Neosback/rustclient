@@ -64,7 +64,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     |_| None,
                 ));
         }
-        let size = [278 * scale, 503 * scale];
+        let size = [
+            rustclient_shell_ui::SidebarMetrics::OPEN * scale,
+            503 * scale,
+        ];
         let mut panel = EguiPanel::new(channel, size, scale as f32)?;
         panel.set_visible(true);
         for index in 0..10 {

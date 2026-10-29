@@ -25,11 +25,13 @@ pub(super) struct Plugins {
     logs: StderrLogSink,
     started: bool,
     tick: u64,
+    last_frame: Frame,
     projector: Projector,
     output: HostOutput,
     unsupported_reported: bool,
     /// Last configuration pushed to each first-party plugin, so unchanged ones are not re-sent.
     applied: BTreeMap<String, (PluginConfig, bool)>,
+    pending: BTreeMap<String, (rustclient_plugin_api::PluginId, PluginConfig, bool)>,
 }
 
 /// Shell-owned facts and cache definitions the projector consults.
@@ -63,10 +65,12 @@ impl Plugins {
                 logs,
                 started: false,
                 tick: 0,
+                last_frame: Frame::default(),
                 projector: Projector::new(),
                 output: HostOutput::default(),
                 unsupported_reported: false,
                 applied: BTreeMap::new(),
+                pending: BTreeMap::new(),
             };
         }
         match NativeRuntime::new() {
@@ -108,10 +112,12 @@ impl Plugins {
             logs,
             started: false,
             tick: 0,
+            last_frame: Frame::default(),
             projector: Projector::new(),
             output: HostOutput::default(),
             unsupported_reported: false,
             applied: BTreeMap::new(),
+            pending: BTreeMap::new(),
         }
     }
 
@@ -134,25 +140,31 @@ impl Plugins {
             {
                 continue;
             }
-            // Not every catalogued plugin is ported yet; those have no instance to configure.
             let registered = self
                 .set
                 .iter()
                 .any(|plugin| plugin.manifest.id == schema.plugin);
-            if registered
-                && let Err(fault) = self.set.configure(
+            if !registered {
+                continue;
+            }
+            if !enabled {
+                if let Err(fault) = self.set.configure(
                     &schema.plugin,
                     config.clone(),
-                    enabled,
+                    false,
                     &StaticView::default(),
                     &mut self.storage,
                     &mut self.logs,
-                )
-            {
-                eprintln!("plugin {key} configuration: {fault}");
-                continue;
+                ) {
+                    eprintln!("plugin {key} cleanup: {fault}");
+                }
+                self.pending.remove(key);
+                self.applied.insert(key.to_owned(), (config, enabled));
+                self.output = self.set.retained_output();
+            } else {
+                self.pending
+                    .insert(key.to_owned(), (schema.plugin.clone(), config, enabled));
             }
-            self.applied.insert(key.to_owned(), (config, enabled));
         }
     }
 
@@ -191,14 +203,41 @@ impl Plugins {
     /// Nothing is projected unless an enabled plugin holds a grant, so an idle plugin set costs
     /// only the capability union.
     pub(super) fn update(&mut self, state: &GameState, inputs: &Inputs<'_>) {
+        self.last_frame = inputs.frame;
+        for (key, (id, config, enabled)) in std::mem::take(&mut self.pending) {
+            let grants = self
+                .set
+                .iter()
+                .find(|plugin| plugin.manifest.id == id)
+                .map(|plugin| plugin.manifest.capabilities.clone())
+                .unwrap_or_default();
+            let bootstrap = self
+                .projector
+                .snapshot(state, &inputs.frame, &inputs.sources, &grants);
+            if let Err(fault) = self.set.configure(
+                &id,
+                config.clone(),
+                enabled,
+                &SnapshotView(&bootstrap),
+                &mut self.storage,
+                &mut self.logs,
+            ) {
+                eprintln!("plugin {key} startup: {fault}");
+            }
+            self.applied.insert(key, (config, enabled));
+        }
         let wanted = self.set.granted();
         if wanted.is_empty() {
             self.output = HostOutput::default();
             return;
         }
-        let (snapshot, events) =
-            self.projector
-                .project(state, &inputs.frame, &inputs.sources, &wanted);
+        let (snapshot, events) = self.projector.project_with_events(
+            state,
+            &inputs.frame,
+            &inputs.sources,
+            &wanted,
+            self.set.has_game_subscribers(),
+        );
         let view = SnapshotView(&snapshot);
         self.set
             .dispatch_game(&events, &view, &mut self.storage, &mut self.logs);
@@ -213,6 +252,21 @@ impl Plugins {
             return;
         }
         self.started = false;
+        let (snapshot, events) = self.projector.project(
+            state,
+            &Frame {
+                loading: false,
+                ..self.last_frame
+            },
+            &Sources::default(),
+            &self.set.granted(),
+        );
+        self.set.dispatch_game(
+            &events,
+            &SnapshotView(&snapshot),
+            &mut self.storage,
+            &mut self.logs,
+        );
         self.projector.reset();
         self.output = HostOutput::default();
         let view = SessionView::from_state(state, self.tick);
@@ -224,6 +278,22 @@ impl Plugins {
         );
     }
 
+    pub(super) fn statuses(
+        &self,
+    ) -> BTreeMap<String, (rustclient_plugin_host::LifecycleStatus, Option<String>)> {
+        self.set
+            .iter()
+            .map(|plugin| {
+                (
+                    plugin.manifest.id.to_string(),
+                    (
+                        plugin.status(),
+                        plugin.last_fault().map(ToString::to_string),
+                    ),
+                )
+            })
+            .collect()
+    }
     /// Notifications raised by the last update, each reported once.
     pub(super) fn take_notifications(&mut self) -> Vec<Notification> {
         std::mem::take(&mut self.output.notifications)

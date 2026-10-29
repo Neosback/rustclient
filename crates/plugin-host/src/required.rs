@@ -155,6 +155,12 @@ impl PluginSet {
                 format!("{id} is required"),
             ));
         }
+        if plugin.running() && plugin.configured_enabled() != enabled {
+            return Err(PluginFault::new(
+                FaultKind::Contract,
+                "active instances require configure with cleanup context",
+            ));
+        }
         plugin.enabled = enabled;
         Ok(())
     }
@@ -172,6 +178,12 @@ impl PluginSet {
             return Err(PluginFault::new(
                 FaultKind::Contract,
                 format!("{id} is required"),
+            ));
+        }
+        if self.plugins[index].running() {
+            return Err(PluginFault::new(
+                FaultKind::Contract,
+                "stop the instance with configure before unregistering",
             ));
         }
         self.plugins.remove(index);

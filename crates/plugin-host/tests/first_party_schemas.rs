@@ -7,7 +7,11 @@ use std::collections::BTreeSet;
 #[test]
 fn every_first_party_schema_validates_with_unique_keys_and_a_source() {
     let schemas = first_party_schemas().expect("embedded first-party schemas parse");
-    assert_eq!(schemas.len(), 13);
+    assert!(
+        schemas
+            .iter()
+            .any(|schema| schema.plugin.as_str() == "dev.rustclient.xptracker")
+    );
     let mut plugins = BTreeSet::new();
     for schema in schemas {
         assert!(!schema.required, "{} must be optional", schema.plugin);

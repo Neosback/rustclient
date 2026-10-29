@@ -175,3 +175,12 @@ The initial workspace validation attempt encountered in-progress sidebar edits i
 checkout: formatting/Clippy errors and a transient missing ShellAction::TogglePanel variant. Those
 changes are preserved. Do not promote the previous 551-test clean baseline into validation of this
 continuation. Current full-gate status is recorded below after the build attempts finish.
+
+
+## 2026-10-29 shared sidebar continuation
+
+The approved shared egui decision supersedes this checkpoint's original Dioxus/Blitz runtime and
+DOM acceptance paths. See [ADR-0007](../adr/ADR-0007-on-demand-gpu-shell.md) and the
+[implementation/evidence checkpoint](../reference/SIDEBAR-LIFECYCLE-2026-10-29.md). Historical
+measurements above remain tied to their original backend. Classic GPU completion order is maintained
+in [GPU-AUDIT](../reference/builtin-plugins/GPU-AUDIT.md), with 117HD tracked separately.

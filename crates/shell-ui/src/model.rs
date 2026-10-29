@@ -1,10 +1,6 @@
 //! Presentation snapshots and typed user actions. Accepted settings stay in plugin-host.
 use rustclient_plugin_host::configuration::{ConfigValue, Configuration, ENABLED_KEY, Setting};
-use std::{
-    cell::{Cell, RefCell},
-    collections::BTreeSet,
-    rc::Rc,
-};
+use std::{cell::RefCell, collections::BTreeSet, rc::Rc};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SettingView {
@@ -99,8 +95,8 @@ impl SidebarState {
     pub const fn width(self) -> u32 {
         match self {
             Self::Hidden => 0,
-            Self::Rail => 36,
-            Self::Panel => 278,
+            Self::Rail => crate::SidebarMetrics::RAIL,
+            Self::Panel => crate::SidebarMetrics::OPEN,
         }
     }
 }
@@ -111,6 +107,10 @@ pub struct ShellModel {
     pub error: Option<String>,
     pub sidebar: SidebarState,
     pub pinned: BTreeSet<String>,
+    pub runtime: std::collections::BTreeMap<
+        String,
+        (rustclient_plugin_host::LifecycleStatus, Option<String>),
+    >,
 }
 impl Default for ShellModel {
     fn default() -> Self {
@@ -119,28 +119,15 @@ impl Default for ShellModel {
             error: None,
             sidebar: SidebarState::Hidden,
             pinned: BTreeSet::new(),
+            runtime: std::collections::BTreeMap::new(),
         }
     }
-}
-
-#[derive(Clone, PartialEq)]
-pub(crate) struct Tooltip {
-    pub text: String,
-    pub left: f32,
-    pub top: f32,
 }
 
 #[derive(Clone, Default)]
 pub struct ShellChannel {
     pub model: Rc<RefCell<ShellModel>>,
     actions: Rc<RefCell<Vec<ShellAction>>>,
-    pub(crate) tooltip: Rc<Cell<Option<dioxus::prelude::Signal<Option<Tooltip>>>>>,
-    drag_cancel: Rc<RefCell<Option<dioxus::prelude::EventHandler<()>>>>,
-    drag_commit: Rc<RefCell<Option<dioxus::prelude::EventHandler<()>>>>,
-    pub(crate) sections: Rc<RefCell<std::collections::BTreeMap<String, bool>>>,
-    /// Native toolkit lacks element-relative mouse coordinates; the retained DOM adapter supplies them.
-    #[cfg(not(target_arch = "wasm32"))]
-    pub(crate) pointer_origin_x: Rc<Cell<Option<f64>>>,
 }
 impl PartialEq for ShellChannel {
     fn eq(&self, other: &Self) -> bool {
@@ -148,30 +135,6 @@ impl PartialEq for ShellChannel {
     }
 }
 impl ShellChannel {
-    pub(crate) fn start_drag(
-        &self,
-        cancel: dioxus::prelude::EventHandler<()>,
-        commit: dioxus::prelude::EventHandler<()>,
-    ) {
-        self.cancel_drag();
-        *self.drag_cancel.borrow_mut() = Some(cancel);
-        *self.drag_commit.borrow_mut() = Some(commit);
-    }
-    pub(crate) fn cancel_drag(&self) {
-        let cancel = self.drag_cancel.borrow_mut().take();
-        self.drag_commit.borrow_mut().take();
-        if let Some(cancel) = cancel {
-            cancel.call(());
-        }
-    }
-    pub(crate) fn finish_drag(&self) {
-        let commit = self.drag_commit.borrow_mut().take();
-        self.drag_cancel.borrow_mut().take();
-        if let Some(commit) = commit {
-            commit.call(());
-        }
-    }
-
     pub fn send(&self, action: ShellAction) {
         self.actions.borrow_mut().push(action);
     }
@@ -189,7 +152,7 @@ mod sidebar_defaults {
         assert_eq!(SidebarState::default(), SidebarState::Hidden);
         assert_eq!(ShellModel::default().sidebar, SidebarState::Hidden);
         assert_eq!(SidebarState::Hidden.width(), 0);
-        assert_eq!(SidebarState::Rail.width(), 36);
-        assert_eq!(SidebarState::Panel.width(), 278);
+        assert_eq!(SidebarState::Rail.width(), crate::SidebarMetrics::RAIL);
+        assert_eq!(SidebarState::Panel.width(), crate::SidebarMetrics::OPEN);
     }
 }

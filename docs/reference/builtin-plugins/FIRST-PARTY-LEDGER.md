@@ -306,3 +306,13 @@ The schema generator preserves only four effective source keys for this slice:
 logout pause keeps the source default enabled; exposing its toggle awaits a
 real elapsed-time service, since session cycles cannot measure offline time. This is
 one of 12 partial first-party modules, not a completed RuneLite plugin.
+
+
+## 2026-10-29 lifecycle/sidebar continuation
+
+[The current checkpoint](../SIDEBAR-LIFECYCLE-2026-10-29.md) records the shared native/browser egui
+panel, required Always on badges, current-snapshot enablement, explicit shutdown and activation
+revocation, operational statuses and per-phase fault isolation. It does not close the semantic gaps
+in the plugin rows above. The [hook/API owner map](HOOK-API-OWNERS.tsv) distinguishes declarations,
+emission, reachability and independent verification. Missing actor facts and menu/script hooks remain
+unavailable. External ABI 0.1 stays compatible; executable ABI 0.2 remains deferred.

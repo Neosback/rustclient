@@ -2,6 +2,19 @@
 
 **Status:** Draft
 
+## Shared sidebar continuation (approved 2026-10-29)
+
+ADR-0007's egui panel replaces both native retained DOM and browser DOM chrome.
+The pinned RuneLite measurement defines logical panel/rail dimensions, fonts,
+assets and control spacing. One shared metrics owner supplies reserved widths,
+painting, clipping and input transforms; it supersedes the historical 36/278
+pixel reservations below. DPI conversion rounds the complete chrome extent once.
+Preserve game extent, zero-width hidden state, rail/panel navigation and accepted
+configuration persistence. No TSPS Retina-only rail zoom is adopted. Required GPU
+stays searchable with an Always on badge and configuration control. Pixel/native
+and browser acceptance remain separate from compilation; record font rasterization
+differences explicitly under ADR-0004.
+
 ## Retained shell (approved 2026-10-25; native backend revision 2026-10-28)
 
 The original shell uses Dioxus HTML/CSS components and Blitz CPU painting.

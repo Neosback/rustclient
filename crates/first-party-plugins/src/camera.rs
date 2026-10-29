@@ -18,6 +18,9 @@ use rustclient_plugin_host::{PluginCall, PluginFault};
 pub(crate) struct Camera;
 
 impl NativePlugin for Camera {
+    fn subscribes_game_events(&self) -> bool {
+        false
+    }
     fn output(&mut self, call: &mut PluginCall<'_>) -> Result<PluginOutput, PluginFault> {
         let config = call.config;
         // `cameraSpeed` is a decimal in thousandths; `setCameraSpeed` clamps to 0.2..=5.0.

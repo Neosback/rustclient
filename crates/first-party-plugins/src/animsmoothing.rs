@@ -43,6 +43,9 @@ pub(crate) const DENIED: [u32; 23] = [
 pub(crate) struct AnimationSmoothingPlugin;
 
 impl NativePlugin for AnimationSmoothingPlugin {
+    fn subscribes_game_events(&self) -> bool {
+        false
+    }
     fn output(&mut self, _call: &mut PluginCall<'_>) -> Result<PluginOutput, PluginFault> {
         Ok(PluginOutput {
             scene: Some(SceneFlags {

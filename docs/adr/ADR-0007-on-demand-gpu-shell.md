@@ -3,6 +3,14 @@
 Status: implementing, 2026-10-28. Supersedes the native CPU-paint requirement in
 SPEC-0007, following the user's request to replace the sidebar's costly hover path.
 
+Approved continuation, 2026-10-29: one egui component and retained wgpu target serve
+native and the browser shell harness. Retire the parallel Dioxus/Blitz sidebar.
+Reference-resolved metrics, owned RuneLite fonts/icons, clipping and input share
+one shell-ui owner. GPU remains searchable with an Always on badge and configuration
+button; its stable identity/settings do not migrate. Required services have no
+enable switch. Browser shell acceptance does not imply playable browser acceptance.
+The engine remains GPU-backed; no software rasterizer is introduced.
+
 The retained Dioxus/Blitz panel avoids unchanged-frame work, but the current release
 trace still measures 14.87 ms p95 per cross-row hover transition at 2x DPI. It performs
 120 layouts and CPU rasterizations for 120 transitions. This competes with the world

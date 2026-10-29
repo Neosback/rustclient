@@ -17,6 +17,9 @@ use rustclient_plugin_host::{PluginCall, PluginFault};
 pub(crate) struct StretchedMode;
 
 impl NativePlugin for StretchedMode {
+    fn subscribes_game_events(&self) -> bool {
+        false
+    }
     fn output(&mut self, call: &mut PluginCall<'_>) -> Result<PluginOutput, PluginFault> {
         let config = call.config;
         let percent = config.integer("scalingFactor").clamp(

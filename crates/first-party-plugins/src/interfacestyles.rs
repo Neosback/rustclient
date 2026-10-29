@@ -69,6 +69,14 @@ fn decode(skin: Skin) -> Vec<SpriteOverride> {
 }
 
 impl NativePlugin for InterfaceStyles {
+    fn subscribes_game_events(&self) -> bool {
+        false
+    }
+    fn shutdown(&mut self, _call: &mut PluginCall<'_>) -> Result<(), PluginFault> {
+        *self = Self::default();
+        Ok(())
+    }
+
     fn output(&mut self, call: &mut PluginCall<'_>) -> Result<PluginOutput, PluginFault> {
         let Some(skin) = Skin::parse(call.config.choice("gameframe")) else {
             self.cached = None;

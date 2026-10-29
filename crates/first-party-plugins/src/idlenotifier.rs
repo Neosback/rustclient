@@ -610,6 +610,11 @@ fn npc_at<'a>(call: &mut PluginCall<'a>, index: u16) -> Option<&'a NpcSnapshot> 
 }
 
 impl NativePlugin for IdleNotifier {
+    fn shutdown(&mut self, _call: &mut PluginCall<'_>) -> Result<(), PluginFault> {
+        *self = Self::new();
+        Ok(())
+    }
+
     fn init(&mut self, call: &mut PluginCall<'_>) -> Result<(), PluginFault> {
         // `startUp`: the six-hour mark cannot be known when enabled while already logged in.
         *self = Self::new();

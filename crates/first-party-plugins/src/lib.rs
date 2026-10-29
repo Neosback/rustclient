@@ -32,6 +32,17 @@ use rustclient_plugin_host::{
 
 /// A plugin written against the 0.2 surface only.
 pub trait NativePlugin {
+    /// Release per-activation state after host output/subscription revocation.
+    /// # Errors
+    /// Cleanup errors remain diagnostic and do not reactivate the plugin.
+    fn shutdown(&mut self, _call: &mut PluginCall<'_>) -> Result<(), PluginFault> {
+        Ok(())
+    }
+    /// Passive event interests, never a substitute for capability grants.
+    fn subscribes_game_events(&self) -> bool {
+        true
+    }
+
     /// Reset to a clean state; called when the plugin starts and every time it is switched on.
     ///
     /// # Errors
@@ -64,6 +75,13 @@ pub trait NativePlugin {
 struct Adapter<T>(T);
 
 impl<T: NativePlugin> PluginInstance for Adapter<T> {
+    fn shutdown(&mut self, call: &mut PluginCall<'_>) -> Result<(), PluginFault> {
+        self.0.shutdown(call)
+    }
+    fn subscribes_game_events(&self) -> bool {
+        self.0.subscribes_game_events()
+    }
+
     fn init(&mut self, call: &mut PluginCall<'_>) -> Result<(), PluginFault> {
         self.0.init(call)
     }

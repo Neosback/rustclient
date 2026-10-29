@@ -1,0 +1,10 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>RustClient shared shell harness</title>
+<style>html,body{margin:0;background:#141414;color:#c6c6c6;font:14px sans-serif}p{margin:8px}canvas{display:block;width:100vw;height:calc(100vh - 42px);outline:none}</style>
+<p>Shared sidebar harness · F10: show/hide · F9: panel/rail · Gameplay and external plugin runtime are not connected.</p>
+<script type="module">
+import init from './pkg/rustclient_web.js';
+try {await init();} catch(error) {document.querySelector('p').textContent = `Harness unavailable: ${error}`; console.error(error);}
+</script>

@@ -2,6 +2,29 @@
 
 **Status:** Draft
 
+## Lifecycle continuation (approved 2026-10-29)
+
+Configured enablement and operational status are separate. The host owns stopped,
+starting, running, stopping and faulted states, activation identities and diagnostics.
+Only running instances receive events or contribute output. Startup receives a
+current, capability-mediated snapshot without advancing shared projection history.
+Failure rolls back subscriptions/output and invokes cleanup once. Disable/unload
+revokes scheduling before cleanup; cleanup failure cannot restore stale output.
+Session Started/Stopped remain distinct from instance activation/shutdown.
+
+The default runtime fault threshold remains three failures per callback phase;
+success in another phase does not reset that streak. Startup failure immediately
+prevents scheduling. Required registrations are retained on faults and expose a
+diagnostic rather than an effective-looking optional switch. Event interests are
+host-side scheduling hints intersected with grants, never authorization. Default
+interest is all supported events for compatibility. Core commits/replay are not
+suppressed by plugin interest. The external 0.1 ABI remains supported; executable
+0.2 binding remains deferred. Internal lifecycle extensions do not add guest imports.
+
+Acceptance includes startup while logged in, rollback, cleanup failure, per-phase
+fault isolation, reactivation, stale activation output, current snapshot isolation,
+capability filtering and required-service/session independence.
+
 ## Required built-ins (approved 2026-10-25)
 
 The host registers `dev.rustclient.gpu` and `dev.rustclient.runelite` as required

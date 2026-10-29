@@ -10,7 +10,9 @@
 #![forbid(unsafe_code)]
 
 pub mod configuration;
+mod lifecycle;
 pub mod required;
+pub use lifecycle::{ActivationId, LifecycleStatus};
 mod v2;
 
 pub use configuration::PluginConfig;
@@ -206,6 +208,17 @@ impl PluginCall<'_> {
 
 /// One loaded plugin execution.
 pub trait PluginInstance {
+    /// Revoke instance-owned resources. Host scheduling/output is already revoked.
+    /// # Errors
+    /// Cleanup faults remain diagnostic; the instance is never rescheduled implicitly.
+    fn shutdown(&mut self, _call: &mut PluginCall<'_>) -> Result<(), PluginFault> {
+        Ok(())
+    }
+    /// Host-side interest hint, intersected with capability grants. Old instances receive all events.
+    fn subscribes_game_events(&self) -> bool {
+        true
+    }
+
     /// Initialize after grants, before any event.
     ///
     /// # Errors
@@ -303,7 +316,7 @@ pub struct LoadedPlugin {
     /// Validated package manifest.
     pub manifest: PluginManifest,
     instance: Box<dyn PluginInstance>,
-    faults: u32,
+    lifecycle: lifecycle::Lifecycle,
     enabled: bool,
     required: bool,
     config: PluginConfig,
@@ -316,16 +329,17 @@ impl LoadedPlugin {
     pub fn required(&self) -> bool {
         self.required
     }
-    /// Whether the plugin is still scheduled.
+    /// Legacy configured-enable view, with isolated optional faults disabled.
+    /// Use `running()` for scheduling and `configured_enabled()` for persisted intent.
     #[must_use]
     pub fn enabled(&self) -> bool {
-        self.enabled
+        self.enabled && (self.required || self.status() != LifecycleStatus::Faulted)
     }
 
     /// Consecutive faults recorded for this plugin.
     #[must_use]
     pub fn faults(&self) -> u32 {
-        self.faults
+        self.lifecycle.streaks.iter().copied().max().unwrap_or(0)
     }
 }
 
@@ -385,7 +399,7 @@ impl PluginSet {
         self.plugins.push(LoadedPlugin {
             manifest,
             instance,
-            faults: 0,
+            lifecycle: lifecycle::Lifecycle::default(),
             enabled: true,
             required: false,
             config: PluginConfig::default(),
@@ -415,7 +429,6 @@ impl PluginSet {
             .iter()
             .position(|plugin| plugin.manifest.id == *id)
             .ok_or_else(|| PluginFault::new(FaultKind::Contract, format!("unknown plugin {id}")))?;
-        let fault_limit = self.fault_limit;
         let plugin = &mut self.plugins[index];
         if plugin.required && !enabled {
             return Err(PluginFault::new(
@@ -423,19 +436,14 @@ impl PluginSet {
                 format!("{id} is required"),
             ));
         }
-        let turned_on = enabled && !plugin.enabled;
-        plugin.config = config;
+        let turned_on = enabled && plugin.status() != LifecycleStatus::Running;
         plugin.enabled = enabled;
+        plugin.config = config;
+        if !enabled {
+            lifecycle::stop(plugin, view, storage, logs)?;
+        }
         if turned_on {
-            plugin.faults = 0;
-            let _ = Self::invoke(
-                plugin,
-                view,
-                storage,
-                logs,
-                fault_limit,
-                |instance, call| instance.init(call),
-            );
+            lifecycle::start(plugin, view, storage, logs)?;
         }
         Ok(())
     }
@@ -464,17 +472,10 @@ impl PluginSet {
         storage: &mut dyn PluginStorage,
         logs: &mut dyn LogSink,
     ) {
-        for index in 0..self.plugins.len() {
-            let fault_limit = self.fault_limit;
-            let plugin = &mut self.plugins[index];
-            let _ = Self::invoke(
-                plugin,
-                view,
-                storage,
-                logs,
-                fault_limit,
-                |instance, call| instance.init(call),
-            );
+        for plugin in &mut self.plugins {
+            if plugin.status() == LifecycleStatus::Stopped {
+                let _ = lifecycle::start(plugin, view, storage, logs);
+            }
         }
     }
 
@@ -486,11 +487,20 @@ impl PluginSet {
         storage: &mut dyn PluginStorage,
         logs: &mut dyn LogSink,
     ) {
+        if events
+            .iter()
+            .any(|event| matches!(event, PluginEvent::Stopped))
+        {
+            for plugin in &mut self.plugins {
+                plugin.lifecycle.output = None;
+            }
+        }
         for index in 0..self.plugins.len() {
             let fault_limit = self.fault_limit;
             let plugin = &mut self.plugins[index];
             let _ = Self::invoke(
                 plugin,
+                lifecycle::Phase::Session,
                 view,
                 storage,
                 logs,
@@ -513,6 +523,7 @@ impl PluginSet {
             let plugin = &mut self.plugins[index];
             if let Some(mut produced) = Self::invoke(
                 plugin,
+                lifecycle::Phase::Overlay,
                 view,
                 storage,
                 logs,
@@ -530,55 +541,14 @@ impl PluginSet {
     /// `view`, `storage` and `logs` may be touched only through the mediated [`PluginCall`].
     fn invoke<T>(
         plugin: &mut LoadedPlugin,
+        phase: lifecycle::Phase,
         view: &dyn HostView,
         storage: &mut dyn PluginStorage,
         logs: &mut dyn LogSink,
         fault_limit: u32,
         action: impl FnOnce(&mut dyn PluginInstance, &mut PluginCall<'_>) -> Result<T, PluginFault>,
     ) -> Option<T> {
-        if !plugin.enabled {
-            return None;
-        }
-        let result = {
-            let LoadedPlugin {
-                manifest,
-                instance,
-                denied,
-                config,
-                ..
-            } = plugin;
-            let mut call = PluginCall {
-                plugin: &manifest.id,
-                capabilities: &manifest.capabilities,
-                view,
-                storage,
-                logs,
-                config,
-                denied,
-            };
-            action(instance.as_mut(), &mut call)
-        };
-        match result {
-            Ok(value) => {
-                plugin.faults = 0;
-                Some(value)
-            }
-            Err(fault) => {
-                plugin.faults = plugin.faults.saturating_add(1);
-                let id = &plugin.manifest.id;
-                let level = if fault.kind == FaultKind::Budget {
-                    LogLevel::Warn
-                } else {
-                    LogLevel::Error
-                };
-                logs.log(id, level, &fault.to_string());
-                if plugin.faults >= fault_limit && plugin.enabled && !plugin.required {
-                    plugin.enabled = false;
-                    logs.log(id, LogLevel::Warn, "plugin disabled after repeated faults");
-                }
-                None
-            }
-        }
+        lifecycle::invoke(plugin, phase, view, storage, logs, fault_limit, action)
     }
 }
 

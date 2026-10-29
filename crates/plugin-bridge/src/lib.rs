@@ -79,18 +79,16 @@ impl Projector {
         (table, index)
     }
 
-    /// Project the current state and derive the events since the previous projection.
-    ///
-    /// `wanted` is the union of grants across enabled plugins; categories nobody can read are not
-    /// built. Events for categories whose grant appears later report existing contents as new.
-    pub fn project(
+    /// Build current approved facts without advancing event history or timing baselines.
+    /// Used for one instance's bootstrap; it cannot consume another plugin's events.
+    pub fn snapshot(
         &mut self,
         state: &GameState,
         frame: &Frame,
         sources: &Sources<'_>,
         wanted: &CapabilitySet,
-    ) -> (GameSnapshot, Vec<GameEvent>) {
-        let (table, index) = self.varbit_table(sources);
+    ) -> GameSnapshot {
+        let (table, _) = self.varbit_table(sources);
         let client = project::client(state, frame);
         let mut snapshot = GameSnapshot {
             client,
@@ -139,6 +137,35 @@ impl Projector {
             snapshot.widgets = self.widget_snapshots(state, sources);
         }
 
+        snapshot
+    }
+
+    /// Project the current state and derive the events since the previous projection.
+    ///
+    /// `wanted` is the union of grants across enabled plugins; categories nobody can read are not
+    /// built. Events for categories whose grant appears later report existing contents as new.
+    pub fn project(
+        &mut self,
+        state: &GameState,
+        frame: &Frame,
+        sources: &Sources<'_>,
+        wanted: &CapabilitySet,
+    ) -> (GameSnapshot, Vec<GameEvent>) {
+        self.project_with_events(state, frame, sources, wanted, true)
+    }
+
+    /// Project needed query facts while skipping event derivation if no running subscriber exists.
+    /// History still advances: enabling a subscriber cannot replay unobserved cycles or changes.
+    pub fn project_with_events(
+        &mut self,
+        state: &GameState,
+        frame: &Frame,
+        sources: &Sources<'_>,
+        wanted: &CapabilitySet,
+        emit_events: bool,
+    ) -> (GameSnapshot, Vec<GameEvent>) {
+        let snapshot = self.snapshot(state, frame, sources, wanted);
+        let (_, index) = self.varbit_table(sources);
         let timing = Timing {
             client_ticks: self.last_cycle.map_or(0, |last| {
                 u32::try_from(snapshot.client.cycle.saturating_sub(last)).unwrap_or(u32::MAX)
@@ -148,7 +175,9 @@ impl Projector {
         };
         self.last_cycle = Some(snapshot.client.cycle);
         self.last_tick = Some(snapshot.client.tick);
-        let events = if let Some(previous) = &self.previous {
+        let events = if !emit_events {
+            Vec::new()
+        } else if let Some(previous) = &self.previous {
             derive(previous, &snapshot, &index, timing)
         } else {
             // First projection: actors present are new and the lifecycle moved out of the
