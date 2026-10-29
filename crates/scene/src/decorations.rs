@@ -2,13 +2,19 @@
 //!
 //! The reference client files at most one of each per tile: a later location replaces the earlier one.
 //! A wall decoration is displaced by the boundary already on its tile, and a later wall of the right
-//! kind retroactively rescales it (`Scene.method5576`). Porting the client's order instead of looking
-//! up the final wall is what keeps decorations flush when a decoration is authored before its wall.
+//! kind retroactively sets its offset (revision 240 `classDI.method3340`, `Scene.method4502`).
+//! Porting the client's order instead of looking up the final wall is what keeps decorations flush
+//! when a decoration is authored before its wall.
 //!
-//! Diagonal (`256` flag) plates are additionally snapped flush against the type-9 slab they sit on.
-//! That is not client behaviour: the client paints decorations over their wall regardless of depth,
-//! while this renderer depth-tests, so plates that land inside the slab would z-fight or vanish.
-//! The rule is ported from `RustOSRS` (`snap_diagonal_decorations`).
+//! The 240 rule is absolute and idempotent: a later type 0 or 2 wall with displacement `dd != 16`
+//! sets every nonzero axis of the decoration's first plate to `sign * (dd + 1)`, a later type 9 wall
+//! to `sign * (dd / 2 + 1)`. It runs only while the scene loads, never for a server-added location
+//! (`classDI.method3336`), and never touches the second plate. See
+//! `docs/plan/WALL-DECOR-240-2026-10-29.md` for the stock tables and citations.
+//!
+//! The optional diagonal snap (`FLUSH_DIAGONAL_DECORATIONS`, off) is not client behaviour: it
+//! snaps `256`-flag plates against the type-9 slab they sit on. It was ported from `RustOSRS` to
+//! compensate for 235-era offsets that the 240 placement above no longer needs.
 
 use crate::{
     Result, SceneAsset,
@@ -18,8 +24,9 @@ use rustclient_cache::world::StaticLocation;
 use rustclient_model::WorldTile;
 use std::collections::{BTreeSet, HashMap};
 
-/// Non-reference diagonal-decoration fix; see the module documentation.
-const FLUSH_DIAGONAL_DECORATIONS: bool = true;
+/// Non-reference diagonal-decoration fix; see the module documentation. Off: stock 240 offsets are
+/// used as they are.
+const FLUSH_DIAGONAL_DECORATIONS: bool = false;
 
 /// Decoration state for each location of one scene build, indexed like the location list.
 pub(crate) struct Plan {
@@ -55,6 +62,17 @@ impl Plan {
     }
 }
 
+/// How the client treats one location when it files it on its tile.
+#[derive(Clone, Copy)]
+struct Placed {
+    shape: u8,
+    rotation: u8,
+    /// Whether the client would create its scene object, which it does only when the primary model exists.
+    inserted: bool,
+    /// Whether this location runs the load-path rescale; a server-added location never does.
+    rescales: bool,
+}
+
 /// Which scene tile and slot a location occupies; the client keeps one object per layer slot.
 #[derive(Default)]
 struct Sequencer {
@@ -76,17 +94,14 @@ impl Sequencer {
             dropped[previous] = true;
         }
     }
-    /// One location, in file order. `inserted` is whether the client would create its scene object,
-    /// which it does only when the primary model exists.
-    fn place(
-        &mut self,
-        index: usize,
-        loc: &StaticLocation,
-        shape: u8,
-        rotation: u8,
-        inserted: bool,
-        displacement: i32,
-    ) {
+    /// One location, in file order (`Scene.method4502` runs only on the load path).
+    fn place(&mut self, index: usize, loc: &StaticLocation, placed: Placed, displacement: i32) {
+        let Placed {
+            shape,
+            rotation,
+            inserted,
+            rescales,
+        } = placed;
         let tile = loc.tile;
         match shape {
             0..=3 if inserted => {
@@ -104,13 +119,20 @@ impl Sequencer {
             22 if inserted => Self::replace(&mut self.floor_owner, &mut self.dropped, tile, index),
             _ => {}
         }
-        // `Scene.method5576`: these wall kinds rescale a decoration that is already on the tile.
-        if matches!(loc.shape, 0 | 2 | 9 | 12..=u8::MAX)
+        // `Scene.method4502`: walls of kinds 0, 2 and 9 set the offset of a decoration already on
+        // the tile. Kinds 1, 3 and 12+ never call it.
+        let argument = match loc.shape {
+            0 | 2 => Some(1 + displacement),
+            9 => Some(1 + displacement / 2),
+            _ => None,
+        };
+        if rescales
             && displacement != 16
+            && let Some(argument) = argument
             && let Some(owner) = self.decoration_owner.get(&tile)
             && let Some(offset) = self.offsets.get_mut(owner)
         {
-            *offset = offset.map(|v| displacement * v / 16);
+            *offset = offset.map(|v| v.signum() * argument);
         }
     }
 }
@@ -122,6 +144,17 @@ pub(crate) fn plan(
     inputs: &crate::SceneryInputs,
     locations: &[StaticLocation],
     tiles: Option<&BTreeSet<WorldTile>>,
+) -> Result<Plan> {
+    plan_with(asset, inputs, locations, tiles, FLUSH_DIAGONAL_DECORATIONS)
+}
+
+/// `plan` with the optional diagonal snap chosen by the caller.
+pub(crate) fn plan_with(
+    asset: &SceneAsset,
+    inputs: &crate::SceneryInputs,
+    locations: &[StaticLocation],
+    tiles: Option<&BTreeSet<WorldTile>>,
+    flush_diagonals: bool,
 ) -> Result<Plan> {
     let d = asset.descriptor;
     let origin = d.origin();
@@ -158,17 +191,27 @@ pub(crate) fn plan(
         if loc.shape == 9 && inserted {
             hosts.insert(loc.tile, index);
         }
+        let server_added = matches!(
+            inputs
+                .locations
+                .get(&crate::locations::location_key(loc))
+                .map(|o| o.change),
+            Some(rustclient_model::LocationChange::Replace(_))
+        );
         sequencer.place(
             index,
             loc,
-            shape,
-            rotation,
-            inserted,
+            Placed {
+                shape,
+                rotation,
+                inserted,
+                rescales: !server_added,
+            },
             i32::from(def.decoration_displacement),
         );
     }
     let mut plates = HashMap::new();
-    if FLUSH_DIAGONAL_DECORATIONS {
+    if flush_diagonals {
         for (&tile, &owner) in &sequencer.decoration_owner {
             let loc = &locations[owner];
             if !(6..=8).contains(&loc.shape) || sequencer.dropped[owner] {
@@ -340,76 +383,111 @@ mod tests {
         }
     }
     fn sequence(steps: &[(StaticLocation, u8, i32)]) -> Sequencer {
+        sequence_with(steps, true)
+    }
+    fn sequence_with(steps: &[(StaticLocation, u8, i32)], rescales: bool) -> Sequencer {
         let mut sequencer = Sequencer {
             dropped: vec![false; steps.len()],
             ..Sequencer::default()
         };
         for (index, (location, rotation, displacement)) in steps.iter().enumerate() {
-            sequencer.place(
-                index,
-                location,
-                location.shape,
-                *rotation,
-                true,
-                *displacement,
-            );
+            let placed = Placed {
+                shape: location.shape,
+                rotation: *rotation,
+                inserted: true,
+                rescales,
+            };
+            sequencer.place(index, location, placed, *displacement);
         }
         sequencer
     }
 
     #[test]
-    fn decoration_after_a_wall_is_displaced_by_that_wall() {
+    fn decoration_after_a_wall_is_displaced_by_that_wall_plus_one() {
+        // 240 `classDI.method3340`: type 5 takes `dd + 1`, types 6 and 8 take `dd / 2 + 1`.
         let s = sequence(&[(loc(1, 0, (3, 3)), 0, 32), (loc(2, 5, (3, 3)), 0, 16)]);
-        assert_eq!(s.offsets[&1], [32, 0]);
+        assert_eq!(s.offsets[&1], [33, 0]);
         let s = sequence(&[(loc(1, 0, (3, 3)), 0, 32), (loc(2, 6, (3, 3)), 0, 16)]);
-        assert_eq!(s.offsets[&1], [16, -16]);
+        assert_eq!(s.offsets[&1], [17, -17]);
+        let s = sequence(&[(loc(2, 6, (3, 3)), 0, 16)]);
+        assert_eq!(
+            s.offsets[&0],
+            [9, -9],
+            "no wall: defaults 16 and 8, plus one"
+        );
+        let s = sequence(&[(loc(2, 5, (3, 3)), 0, 16)]);
+        assert_eq!(s.offsets[&0], [17, 0]);
     }
 
     #[test]
-    fn decoration_before_a_thick_wall_is_rescaled_to_the_same_offset() {
-        // Placed first it takes the defaults (16 and 8); the wall's 32 then scales them by 32/16.
+    fn decoration_before_a_thick_wall_is_set_to_the_same_offset() {
         let s = sequence(&[(loc(2, 5, (3, 3)), 0, 16), (loc(1, 0, (3, 3)), 0, 32)]);
-        assert_eq!(s.offsets[&0], [32, 0]);
+        assert_eq!(s.offsets[&0], [33, 0]);
+        // Type 2 uses `dd + 1`; a diagonal first plate keeps its sign on both axes.
         let s = sequence(&[(loc(2, 6, (3, 3)), 0, 16), (loc(1, 2, (3, 3)), 0, 32)]);
-        assert_eq!(s.offsets[&0], [16, -16]);
+        assert_eq!(s.offsets[&0], [33, -33]);
+        // Type 9 uses `dd / 2 + 1`, which is the diagonal rule.
+        let s = sequence(&[(loc(2, 6, (3, 3)), 0, 16), (loc(1, 9, (3, 3)), 0, 32)]);
+        assert_eq!(s.offsets[&0], [17, -17]);
     }
 
     #[test]
-    fn only_wall_kinds_zero_two_nine_and_twelve_up_rescale() {
-        for (shape, rescales) in [
-            (0, true),
-            (1, false),
-            (2, true),
-            (3, false),
-            (9, true),
-            (10, false),
-            (11, false),
-            (12, true),
-            (21, true),
+    fn straight_and_inside_unit_offsets_are_rescaled_too() {
+        // Type 4 and type 7 start at a unit step, which is nonzero, so the wall rescales them.
+        let s = sequence(&[(loc(2, 4, (3, 3)), 1, 16), (loc(1, 0, (3, 3)), 0, 32)]);
+        assert_eq!(s.offsets[&0], [0, -33]);
+        let s = sequence(&[(loc(2, 7, (3, 3)), 0, 16), (loc(1, 9, (3, 3)), 0, 32)]);
+        assert_eq!(s.offsets[&0], [-17, 17]);
+    }
+
+    #[test]
+    fn only_wall_kinds_zero_two_and_nine_rescale() {
+        for (shape, rescaled) in [
+            (0, Some(41)),
+            (1, None),
+            (2, Some(41)),
+            (3, None),
+            (9, Some(21)),
+            (10, None),
+            (11, None),
+            (12, None),
+            (21, None),
         ] {
-            let s = sequence(&[(loc(2, 5, (3, 3)), 0, 16), (loc(1, shape, (3, 3)), 0, 32)]);
-            assert_eq!(
-                s.offsets[&0],
-                if rescales { [32, 0] } else { [16, 0] },
-                "shape {shape}"
-            );
+            let s = sequence(&[(loc(2, 5, (3, 3)), 0, 16), (loc(1, shape, (3, 3)), 0, 40)]);
+            assert_eq!(s.offsets[&0], [rescaled.unwrap_or(17), 0], "shape {shape}");
         }
     }
 
     #[test]
     fn a_default_displacement_wall_never_rescales() {
         let s = sequence(&[(loc(2, 5, (3, 3)), 0, 16), (loc(1, 0, (3, 3)), 0, 16)]);
-        assert_eq!(s.offsets[&0], [16, 0]);
+        assert_eq!(s.offsets[&0], [17, 0]);
     }
 
     #[test]
-    fn rescaling_compounds_across_walls() {
+    fn rescaling_is_absolute_not_compounding() {
+        // The last wall wins: 8 then sets `1 + 8`, whatever 32 did before it.
         let s = sequence(&[
             (loc(2, 5, (3, 3)), 0, 16),
             (loc(1, 0, (3, 3)), 0, 32),
             (loc(3, 0, (3, 3)), 0, 8),
         ]);
-        assert_eq!(s.offsets[&0], [16, 0]);
+        assert_eq!(s.offsets[&0], [9, 0]);
+        let s = sequence(&[
+            (loc(2, 5, (3, 3)), 0, 16),
+            (loc(1, 0, (3, 3)), 0, 32),
+            (loc(3, 0, (3, 3)), 0, 32),
+        ]);
+        assert_eq!(s.offsets[&0], [33, 0], "idempotent");
+    }
+
+    #[test]
+    fn a_server_added_wall_does_not_rescale() {
+        let s = sequence_with(
+            &[(loc(2, 5, (3, 3)), 0, 16), (loc(1, 0, (3, 3)), 0, 32)],
+            false,
+        );
+        assert_eq!(s.offsets[&0], [17, 0]);
     }
 
     #[test]
@@ -428,15 +506,33 @@ mod tests {
     }
 
     #[test]
-    fn placement_requests_nudge_straight_decorations_and_centre_the_second_plate() {
-        assert_eq!(placement_requests(4, 0, [0, 0]), [(4, 0, [1, 0])]);
-        assert_eq!(placement_requests(4, 3, [0, 0]), [(4, 3, [0, 1])]);
-        assert_eq!(placement_requests(5, 1, [0, -34]), [(4, 1, [0, -35])]);
+    fn placement_requests_carry_the_240_offsets_and_the_second_plate() {
+        use crate::locations::decoration_offset as offset;
         assert_eq!(
-            placement_requests(8, 0, [17, -17]),
-            [(4, 4, [17, -17]), (4, 6, [0, 0])]
+            placement_requests(4, 0, offset(4, 0, None)),
+            [(4, 0, [1, 0])]
         );
-        assert_eq!(placement_requests(7, 1, [0, 0]), [(4, 7, [0, 0])]);
-        assert_eq!(placement_requests(6, 2, [-17, 17]), [(4, 6, [-17, 17])]);
+        assert_eq!(
+            placement_requests(4, 3, offset(4, 3, None)),
+            [(4, 3, [0, 1])]
+        );
+        assert_eq!(
+            placement_requests(5, 1, offset(5, 1, Some(34))),
+            [(4, 1, [0, -35])]
+        );
+        // Shape 8: first plate `dd / 2 + 1`, second plate its own unit step (not the centre).
+        assert_eq!(
+            placement_requests(8, 0, offset(8, 0, Some(34))),
+            [(4, 4, [18, -18]), (4, 6, [-1, 1])]
+        );
+        // Shape 7 is drawn with the opposite orientation and its unit offset.
+        assert_eq!(
+            placement_requests(7, 1, offset(7, 1, None)),
+            [(4, 7, [1, 1])]
+        );
+        assert_eq!(
+            placement_requests(6, 2, offset(6, 2, Some(35))),
+            [(4, 6, [-18, 18])]
+        );
     }
 }

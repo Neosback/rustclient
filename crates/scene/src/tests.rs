@@ -221,23 +221,23 @@ fn boundary_pairs_and_wall_decoration_offsets_match_client_rules() {
         locations::placement_requests(2, 3, [0, 0]),
         [(2, 7, [0, 0]), (2, 0, [0, 0])]
     );
-    // Type 5 takes the wall's full displacement plus the client's one-unit nudge.
+    // 240 `classDI.method3340`: type 5 takes the wall's displacement plus one.
     assert_eq!(
         locations::placement_requests(5, 1, locations::decoration_offset(5, 1, Some(34))),
         [(4, 1, [0, -35])]
     );
     assert_eq!(
         locations::placement_requests(6, 2, locations::decoration_offset(6, 2, Some(35))),
-        [(4, 6, [-17, 17])]
+        [(4, 6, [-18, 18])]
     );
     assert_eq!(
-        locations::placement_requests(7, 1, [0, 0]),
-        [(4, 7, [0, 0])]
+        locations::placement_requests(7, 1, locations::decoration_offset(7, 1, None)),
+        [(4, 7, [1, 1])]
     );
-    // The second plate of a type-8 decoration is drawn at the plain tile centre.
+    // The second plate of a type-8 decoration takes its own unit step along the opposite diagonal.
     assert_eq!(
         locations::placement_requests(8, 0, locations::decoration_offset(8, 0, Some(34))),
-        [(4, 4, [17, -17]), (4, 6, [0, 0])]
+        [(4, 4, [18, -18]), (4, 6, [-1, 1])]
     );
 }
 
@@ -340,7 +340,7 @@ fn a_later_wall_decoration_replaces_the_earlier_one_on_its_tile() {
 }
 
 #[test]
-fn diagonal_decoration_plates_are_snapped_flush_against_their_type_nine_slab() {
+fn opt_in_diagonal_snap_places_plates_flush_against_their_type_nine_slab() {
     let mut a = assets();
     let mut wall = definition();
     wall.models = vec![ModelReference {
@@ -369,7 +369,11 @@ fn diagonal_decoration_plates_are_snapped_flush_against_their_type_nine_slab() {
     let locations = [located(1, 9), located(2, 8)];
     a.squares[0].locations = locations.to_vec();
     let a = scene(a);
-    let plan = decorations::plan(&a, &SceneryInputs::default(), &locations, None).unwrap();
+    // Opt-in only: stock 240 offsets are used unless the snap is requested.
+    let stock = decorations::plan(&a, &SceneryInputs::default(), &locations, None).unwrap();
+    assert_eq!(stock.requests(1, 8, 0), [(4, 4, [9, -9]), (4, 6, [-1, 1])]);
+    let plan =
+        decorations::plan_with(&a, &SceneryInputs::default(), &locations, None, true).unwrap();
     // The offset plate (orientation + 4) sits on the slab's inner face; the plain plate lifts one
     // unit off the outer face, as `RustOSRS` measured with the client's own models.
     assert_eq!(plan.requests(1, 8, 0), [(4, 4, [-12, -12]), (4, 6, [1, 1])]);

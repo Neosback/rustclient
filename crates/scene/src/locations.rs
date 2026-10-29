@@ -290,10 +290,29 @@ fn prepare(
     } else {
         def.size
     };
-    let x0 = loc.tile.x + i32::from(size[0] / 2);
-    let y0 = loc.tile.y + i32::from(size[1] / 2);
-    let x1 = loc.tile.x + i32::from(size[0].div_ceil(2));
-    let y1 = loc.tile.y + i32::from(size[1].div_ceil(2));
+    // `classDI.method3340`: the four corners are the footprint's middle; a footprint reaching past
+    // the scene edge falls back to the tile's own corners so the height lookup stays in range.
+    let origin = asset.descriptor.origin();
+    let (x0, x1) = if loc.tile.x - origin.x + i32::from(size[0])
+        <= i32::try_from(asset.descriptor.width()).unwrap_or(i32::MAX)
+    {
+        (
+            loc.tile.x + i32::from(size[0] / 2),
+            loc.tile.x + i32::from(size[0].div_ceil(2)),
+        )
+    } else {
+        (loc.tile.x, loc.tile.x + 1)
+    };
+    let (y0, y1) = if loc.tile.y - origin.y + i32::from(size[1])
+        <= i32::try_from(asset.descriptor.height()).unwrap_or(i32::MAX)
+    {
+        (
+            loc.tile.y + i32::from(size[1] / 2),
+            loc.tile.y + i32::from(size[1].div_ceil(2)),
+        )
+    } else {
+        (loc.tile.y, loc.tile.y + 1)
+    };
     let base = (asset.elevation(loc.tile.plane, x0, y0)?
         + asset.elevation(loc.tile.plane, x1, y0)?
         + asset.elevation(loc.tile.plane, x0, y1)?
@@ -303,6 +322,13 @@ fn prepare(
         loc.tile.x * 128 + i32::from(size[0]) * 64,
         loc.tile.y * 128 + i32::from(size[1]) * 64,
     ];
+    // Walls and wall decorations are drawn at the tile centre whatever the definition footprint
+    // (`Scene.method4473/4495` take no x/y); the contour and pose still use the footprint centre.
+    let place = if shape <= 8 {
+        [loc.tile.x * 128 + 64, loc.tile.y * 128 + 64]
+    } else {
+        center
+    };
     let mut normals = crate::lighting::calculate(&model.vertices, &model.faces);
     let base_normals = &normals;
     let empty_merged = vec![None; model.vertices.len()];
@@ -376,9 +402,9 @@ fn prepare(
                 point
             };
             ModelPoint::new(
-                center[0] + p.x + offset[0] - asset.descriptor.origin().x * 128,
+                place[0] + p.x + offset[0] - origin.x * 128,
                 p.y - base,
-                center[1] + p.z + offset[1] - asset.descriptor.origin().y * 128,
+                place[1] + p.z + offset[1] - origin.y * 128,
             )
         })
         .collect();
@@ -388,9 +414,9 @@ fn prepare(
         merged,
         points,
         origin: ModelPoint::new(
-            center[0] + offset[0] - asset.descriptor.origin().x * 128,
+            place[0] + offset[0] - origin.x * 128,
             -base,
-            center[1] + offset[1] - asset.descriptor.origin().y * 128,
+            place[1] + offset[1] - origin.y * 128,
         ),
         loc: *loc,
         size,
@@ -604,47 +630,50 @@ fn sample(asset: &SceneAsset, plane: Plane, x: i32, y: i32) -> Result<i32> {
     Ok((a * (128 - fy) + b * fy) >> 7)
 }
 
-/// Unit step the client nudges a straight wall decoration along its wall normal, by orientation.
+/// Unit step along a wall normal, by orientation (240 `classDI.field1505/1506`).
 const CARDINAL: [[i32; 2]; 4] = [[1, 0], [0, -1], [-1, 0], [0, 1]];
+/// Unit step along a diagonal wall normal, by orientation (240 `classDI.field1507/1508`).
 const DIAGONAL: [[i32; 2]; 4] = [[1, -1], [-1, -1], [-1, 1], [1, 1]];
 
-/// First-plate displacement the client assigns a wall decoration when it is placed. `existing` is the
-/// `decoration_displacement` of the boundary already on the tile: type 5 is displaced by all of it
-/// (default 16), types 6 and 8 by half of it (default 8).
+/// First-plate displacement the 240 client assigns a wall decoration when it is placed
+/// (`classDI.method3340`). `existing` is the `decoration_displacement` of the boundary already on the
+/// tile: type 5 is displaced by all of it (default 16) plus one, types 6 and 8 by half of it
+/// (default 8) plus one. Types 4 and 7 take a single unit step; type 7 steps along the opposite
+/// diagonal because it is drawn with the opposite orientation.
 pub(crate) fn decoration_offset(shape: u8, rotation: u8, existing: Option<i32>) -> [i32; 2] {
     let rotation = usize::from(rotation & 3);
     match shape {
-        5 => CARDINAL[rotation].map(|v| v * existing.unwrap_or(16)),
-        6 | 8 => DIAGONAL[rotation].map(|v| v * existing.map_or(8, |d| d / 2)),
+        4 => CARDINAL[rotation],
+        5 => CARDINAL[rotation].map(|v| v * (existing.unwrap_or(16) + 1)),
+        6 | 8 => DIAGONAL[rotation].map(|v| v * (existing.map_or(8, |d| d / 2) + 1)),
+        7 => DIAGONAL[(rotation + 2) & 3],
         _ => [0, 0],
     }
 }
 
 /// Model requests `(shape, orientation, offset)` that realise one placed location. `offset` is the
-/// first wall-decoration plate's displacement, already rescaled by any later wall (see
-/// `decorations`); other shapes ignore it. Straight decorations (types 4 and 5) are also nudged one
-/// unit along their wall normal; the second plate of type 8 is drawn at the plain tile centre.
+/// first wall-decoration plate's displacement, as set by `decoration_offset` and any later wall
+/// (see `decorations`); other shapes ignore it. The second plate of type 8 takes its own unit step
+/// along the opposite diagonal and is never rescaled.
 pub(crate) fn placement_requests(
     shape: u8,
     rotation: u8,
     offset: [i32; 2],
 ) -> Vec<(u8, u8, [i32; 2])> {
     let mut requests = Vec::with_capacity(2);
-    let nudge = CARDINAL[usize::from(rotation & 3)];
+    let opposite = (rotation + 2) & 3;
     match shape {
         2 => {
             requests.push((2, rotation + 4, [0, 0]));
             requests.push((2, (rotation + 1) & 3, [0, 0]));
         }
-        4 => requests.push((4, rotation, nudge)),
-        5 => requests.push((4, rotation, [offset[0] + nudge[0], offset[1] + nudge[1]])),
-        6 | 8 => {
+        4 | 5 => requests.push((4, rotation, offset)),
+        6 => requests.push((4, rotation + 4, offset)),
+        7 => requests.push((4, opposite + 4, offset)),
+        8 => {
             requests.push((4, rotation + 4, offset));
-            if shape == 8 {
-                requests.push((4, ((rotation + 2) & 3) + 4, [0, 0]));
-            }
+            requests.push((4, opposite + 4, DIAGONAL[usize::from(opposite & 3)]));
         }
-        7 => requests.push((4, ((rotation + 2) & 3) + 4, [0, 0])),
         11 => requests.push((10, rotation, [0, 0])),
         shape => requests.push((shape, rotation, [0, 0])),
     }
