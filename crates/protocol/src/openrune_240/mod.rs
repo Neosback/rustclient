@@ -2,6 +2,7 @@
 //! See SPEC-0014 and tests/fixtures/PROVENANCE.md for exact evidence and scope.
 mod actions;
 pub(crate) mod bit_reader;
+pub(crate) mod control;
 pub(crate) mod game;
 pub(crate) mod huffman;
 mod info_fields;

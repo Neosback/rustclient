@@ -23,7 +23,7 @@ pub async fn capture_gpu_shell(
         usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
         mapped_at_creation: false,
     });
-    let mut encoder = device.create_command_encoder(&Default::default());
+    let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
     staging.prepare(&device, &queue, &mut encoder, &mut gpu);
     // A continuous world frame or unchanged input cannot cause another paint/upload.
     staging.set(layer, &mut placement)?;

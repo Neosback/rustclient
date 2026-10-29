@@ -155,7 +155,9 @@ impl EguiStaging {
             queue.submit(commands);
         }
         self.stats.geometry_uploads += 1;
-        let view = gpu.texture.create_view(&Default::default());
+        let view = gpu
+            .texture
+            .create_view(&wgpu::TextureViewDescriptor::default());
         let pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("changed retained GPU shell"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {

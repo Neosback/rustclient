@@ -149,6 +149,13 @@ struct NativeApp {
     cursor: Option<(f64, f64)>,
     ime_preedit: bool,
     next_step: Instant,
+    cycle_origin: Instant,
+    session_counters: rustclient_application::cycle::SessionCounters,
+    keepalive_pending: bool,
+    pending_authentication: Option<SemanticOperation>,
+    pending_network_failure: Option<(rustclient_game_state::LoginFailure, String)>,
+    cycle_clock: rustclient_application::cycle::CycleClock,
+    ingress: rustclient_application::cycle::CycleIngress<Vec<network::NetworkEvent>>,
     cycle: u64,
     failed: bool,
     load_status: String,
@@ -463,6 +470,13 @@ impl NativeApp {
             cursor: None,
             ime_preedit: false,
             next_step: Instant::now(),
+            cycle_origin: Instant::now(),
+            session_counters: rustclient_application::cycle::SessionCounters::default(),
+            keepalive_pending: false,
+            pending_authentication: None,
+            pending_network_failure: None,
+            cycle_clock: rustclient_application::cycle::CycleClock::default(),
+            ingress: rustclient_application::cycle::CycleIngress::default(),
             cycle: 0,
             failed: false,
             load_status: "Opening cache…".into(),
@@ -530,7 +544,254 @@ impl NativeApp {
         self.failed = true;
         event_loop.exit();
     }
+    fn validate_outbound(&self, outbound: &network::Outbound) -> bool {
+        if let Some(action) = outbound.world_action {
+            return self.scene.loaded.as_ref().is_some_and(|loaded| {
+                rustclient_application::validate_world_action(
+                    &self.state,
+                    &loaded.asset,
+                    &self.scene.entity_catalog,
+                    action,
+                    false,
+                )
+                .is_ok()
+            });
+        }
+        match &outbound.intent {
+            rustclient_protocol::ClientIntent::Walk {
+                destination,
+                invert_run,
+            }
+            | rustclient_protocol::ClientIntent::MinimapWalk {
+                destination,
+                invert_run,
+                ..
+            } => self
+                .scene
+                .loaded
+                .as_ref()
+                .zip(self.state.loaded_scene())
+                .is_some_and(|(loaded, scene)| {
+                    rustclient_application::validate_walk(
+                        &self.state,
+                        &loaded.asset,
+                        scene,
+                        *destination,
+                        *invert_run,
+                    )
+                    .is_ok()
+                }),
+            rustclient_protocol::ClientIntent::WidgetAction(action) => {
+                self.scripts.as_ref().is_some_and(|scripts| {
+                    rustclient_application::validate_widget_action(
+                        &self.state,
+                        &scripts.interfaces,
+                        *action,
+                    )
+                    .is_ok()
+                })
+            }
+            _ => true,
+        }
+    }
+    fn apply_session_control(&mut self, control: rustclient_protocol::SessionControl) {
+        match control {
+            rustclient_protocol::SessionControl::Ping { first, second } => {
+                if let Some(connection) = &self.connection {
+                    let fps = self.performance.fps();
+                    if let Err(error) = connection.send(network::Outbound {
+                        world_action: None,
+                        map_epoch: self.map_epoch,
+                        interface_epoch: None,
+                        intent: rustclient_protocol::ClientIntent::PingReply { first, second, fps },
+                    }) {
+                        eprintln!("ping reply: {error}");
+                    }
+                }
+            }
+            end => {
+                self.disconnect();
+                self.apply(Some(SemanticOperation::SetTitleScreen(
+                    rustclient_game_state::TitleScreen::Welcome,
+                )));
+                let message = match end {
+                    rustclient_protocol::SessionControl::LogoutWithReason(reason) => {
+                        format!("Server logout (reason {reason})")
+                    }
+                    rustclient_protocol::SessionControl::Transfer { world, .. } => {
+                        format!("World transfer requested: {world}; world transfer unavailable")
+                    }
+                    _ => "Logged out".to_owned(),
+                };
+                if let Some(window) = &self.window {
+                    window.set_title(&format!("RustClient — {message}"));
+                }
+            }
+        }
+    }
+    fn apply_server_script(&mut self, epoch: u64, request: rustclient_model::ScriptRequest) {
+        self.interface_epoch = epoch;
+        if let Some(scripts) = &mut self.scripts {
+            match scripts.enqueue(request, None) {
+                Ok(()) => {
+                    for error in scripts.drain(&mut self.state) {
+                        if self.reported_script_errors.len() < 256
+                            && self.reported_script_errors.insert(error.clone())
+                        {
+                            eprintln!("client script: {error}");
+                        }
+                    }
+                }
+                Err(error) => eprintln!("client script: {error}"),
+            }
+        }
+        self.widget_tree.nodes.clear();
+        self.flush_script_intents();
+        self.request_widget_assets();
+        if let Some(window) = &self.window {
+            window.request_redraw();
+        }
+    }
+    fn apply_network_event(&mut self, event: network::NetworkEvent) {
+        match event {
+            network::NetworkEvent::Control(control) => self.apply_session_control(control),
+            network::NetworkEvent::Ready => {}
+            network::NetworkEvent::Received => self.session_counters.received(),
+            network::NetworkEvent::Written => {
+                self.session_counters.written();
+                self.keepalive_pending = false;
+            }
+            network::NetworkEvent::Batch(batch) => {
+                for event in batch.payload {
+                    self.apply_network_event(event);
+                }
+            }
+            network::NetworkEvent::Progress(message) => {
+                if let Some(window) = &self.window {
+                    window.set_title(&format!("RustClient - {message}"));
+                }
+            }
+            network::NetworkEvent::Script(epoch, request) => {
+                self.apply_server_script(epoch, request);
+            }
+            network::NetworkEvent::Operation(map_epoch, interface_epoch, operation) => {
+                self.hover_dirty = true;
+                self.interface_epoch = interface_epoch;
+                self.map_epoch = map_epoch;
+                let rebuild = matches!(operation, SemanticOperation::RebuildMap(_));
+                let previous_scene = self.state.loaded_scene();
+                self.apply(Some(operation));
+                self.scene
+                    .motion
+                    .observe(self.state.entities(), self.state.scenery().cycle());
+                self.request_widget_assets();
+                if previous_scene != self.state.loaded_scene() {
+                    self.context_menu.close();
+                }
+                if self.state.loaded_scene().is_none() && (rebuild || previous_scene.is_some()) {
+                    self.context_menu.close();
+                    self.scene.invalidate_map();
+                    self.minimap = None;
+                } else if rebuild && self.state.loaded_scene().is_some() {
+                    self.acknowledge_map();
+                }
+                if let Some(loaded) = &mut self.scene.loaded {
+                    let mut current: rustclient_scene::SceneryInputs = self.state.scenery().into();
+                    current.retain_scene_dependencies(&loaded.asset);
+                    if loaded.projection_inputs.same_geometry(&current) {
+                        loaded.projection_generation = current.generation;
+                    }
+                }
+                if !self.scene.loading
+                    && let Some(loaded) = &self.scene.loaded
+                    && loaded.projection_generation != self.state.scenery().generation()
+                    && let Some(placement) = self.state.initial_placement()
+                {
+                    let asset = loaded.asset.clone();
+                    if let Err(e) = self.scene.reproject(
+                        asset,
+                        placement,
+                        self.scene.scenery_inputs(self.state.scenery()),
+                        self.scene.generation,
+                        self.proxy.clone(),
+                    ) {
+                        eprintln!("scenery projection: {e}");
+                    }
+                }
+                if self.state.initial_placement().is_some()
+                    && let Some(window) = &self.window
+                    && !self.scene.attempted
+                    && self.scene.loaded.is_none()
+                    && !self.scene.loading
+                {
+                    window.set_title("RustClient - Loading spawn scene");
+                    if let Some(placement) = self.state.initial_placement()
+                        && let Err(error) = self.scene.start(
+                            placement,
+                            self.scene.scenery_inputs(self.state.scenery()),
+                            self.scene.generation,
+                            self.proxy.clone(),
+                        )
+                    {
+                        eprintln!("{error}");
+                    }
+                }
+            }
+            network::NetworkEvent::Failed(category, diagnostic) => {
+                eprintln!("connection: {diagnostic}");
+                self.disconnect();
+                self.apply(Some(SemanticOperation::SetTitleScreen(
+                    rustclient_game_state::TitleScreen::Credentials(
+                        rustclient_game_state::LoginStatus::Failed(category),
+                    ),
+                )));
+            }
+        }
+    }
+    fn enqueue_network_event(&mut self, event: network::NetworkEvent) {
+        let batch = match event {
+            network::NetworkEvent::Batch(batch) => batch,
+            network::NetworkEvent::Operation(
+                _,
+                _,
+                op @ SemanticOperation::AuthenticateSession { .. },
+            ) => {
+                self.pending_authentication = Some(op);
+                return;
+            }
+            network::NetworkEvent::Failed(category, diagnostic) => {
+                self.pending_network_failure = Some((category, diagnostic));
+                return;
+            }
+            event @ network::NetworkEvent::Operation(..) => {
+                rustclient_application::cycle::InboundBatch {
+                    packets: 1,
+                    wire_bytes: 1,
+                    payload: vec![event],
+                }
+            }
+            event => {
+                self.apply_network_event(event);
+                return;
+            }
+        };
+        if let Err(error) = self.ingress.enqueue(batch) {
+            self.pending_network_failure = Some((
+                rustclient_game_state::LoginFailure::Protocol,
+                error.to_string(),
+            ));
+        }
+    }
     fn disconnect(&mut self) {
+        self.ingress.clear();
+        self.pending_authentication = None;
+        self.pending_network_failure = None;
+        self.session_counters = rustclient_application::cycle::SessionCounters::default();
+        self.keepalive_pending = false;
+        self.cycle_origin = Instant::now();
+        self.cycle_clock = rustclient_application::cycle::CycleClock::new(
+            rustclient_platform::MonotonicTime::default(),
+        );
         self.entered_world = false;
         self.widget_pointer = widget_pointer::WidgetPointer::default();
         self.hover = None;
@@ -712,7 +973,9 @@ impl NativeApp {
             return;
         }
         let frame_start = Instant::now();
-        if let Err(error)=self.shell.update_panel(&window){eprintln!("shell input: {error}");}
+        if let Err(error) = self.shell.update_panel(&window) {
+            eprintln!("shell input: {error}");
+        }
         if self.shell.actions(
             &window,
             self.renderer.as_mut(),
@@ -1383,110 +1646,17 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
             }
 
             LoadEvent::Network(generation, event) if generation == self.connection_generation => {
-                match event {
-                    network::NetworkEvent::Progress(message) => {
-                        if let Some(window) = &self.window {
-                            window.set_title(&format!("RustClient - {message}"));
-                        }
+                if matches!(event, network::NetworkEvent::Ready) {
+                    let events = self
+                        .connection
+                        .as_ref()
+                        .map(network::ConnectionHandle::drain_events)
+                        .unwrap_or_default();
+                    for event in events {
+                        self.enqueue_network_event(event);
                     }
-                    network::NetworkEvent::Script(epoch, request) => {
-                        self.interface_epoch = epoch;
-                        if let Some(scripts) = &mut self.scripts {
-                            match scripts.enqueue(request, None) {
-                                Ok(()) => {
-                                    for error in scripts.drain(&mut self.state) {
-                                        if self.reported_script_errors.len() < 256
-                                            && self.reported_script_errors.insert(error.clone())
-                                        {
-                                            eprintln!("client script: {error}");
-                                        }
-                                    }
-                                }
-                                Err(error) => eprintln!("client script: {error}"),
-                            }
-                        }
-                        self.widget_tree.nodes.clear();
-                        self.flush_script_intents();
-                        self.request_widget_assets();
-                        if let Some(window) = &self.window {
-                            window.request_redraw();
-                        }
-                    }
-                    network::NetworkEvent::Operation(map_epoch, interface_epoch, operation) => {
-                        self.hover_dirty = true;
-                        self.interface_epoch = interface_epoch;
-                        self.map_epoch = map_epoch;
-                        let rebuild = matches!(operation, SemanticOperation::RebuildMap(_));
-                        let previous_scene = self.state.loaded_scene();
-                        self.apply(Some(operation));
-                        self.scene
-                            .motion
-                            .observe(self.state.entities(), self.state.scenery().cycle());
-                        self.request_widget_assets();
-                        if previous_scene != self.state.loaded_scene() {
-                            self.context_menu.close();
-                        }
-                        if self.state.loaded_scene().is_none()
-                            && (rebuild || previous_scene.is_some())
-                        {
-                            self.context_menu.close();
-                            self.scene.invalidate_map();
-                            self.minimap = None;
-                        } else if rebuild && self.state.loaded_scene().is_some() {
-                            self.acknowledge_map();
-                        }
-                        if let Some(loaded) = &mut self.scene.loaded {
-                            let mut current: rustclient_scene::SceneryInputs =
-                                self.state.scenery().into();
-                            current.retain_scene_dependencies(&loaded.asset);
-                            if loaded.projection_inputs.same_geometry(&current) {
-                                loaded.projection_generation = current.generation;
-                            }
-                        }
-                        if !self.scene.loading
-                            && let Some(loaded) = &self.scene.loaded
-                            && loaded.projection_generation != self.state.scenery().generation()
-                            && let Some(placement) = self.state.initial_placement()
-                        {
-                            let asset = loaded.asset.clone();
-                            if let Err(e) = self.scene.reproject(
-                                asset,
-                                placement,
-                                self.scene.scenery_inputs(self.state.scenery()),
-                                self.scene.generation,
-                                self.proxy.clone(),
-                            ) {
-                                eprintln!("scenery projection: {e}");
-                            }
-                        }
-                        if self.state.initial_placement().is_some()
-                            && let Some(window) = &self.window
-                            && !self.scene.attempted
-                            && self.scene.loaded.is_none()
-                            && !self.scene.loading
-                        {
-                            window.set_title("RustClient - Loading spawn scene");
-                            if let Some(placement) = self.state.initial_placement()
-                                && let Err(error) = self.scene.start(
-                                    placement,
-                                    self.scene.scenery_inputs(self.state.scenery()),
-                                    self.scene.generation,
-                                    self.proxy.clone(),
-                                )
-                            {
-                                eprintln!("{error}");
-                            }
-                        }
-                    }
-                    network::NetworkEvent::Failed(category, diagnostic) => {
-                        eprintln!("connection: {diagnostic}");
-                        self.disconnect();
-                        self.apply(Some(SemanticOperation::SetTitleScreen(
-                            rustclient_game_state::TitleScreen::Credentials(
-                                rustclient_game_state::LoginStatus::Failed(category),
-                            ),
-                        )));
-                    }
+                } else {
+                    self.enqueue_network_event(event);
                 }
             }
             LoadEvent::DynamicReady(session, generation, cycle, result) => {
@@ -1949,8 +2119,10 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
     )]
     fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
         let tick_start = Instant::now();
-        if self.state.authenticated_player().is_some() {
-            if let Some(window) = self.window.clone() {
+        if self.connection.is_some() || self.state.authenticated_player().is_some() {
+            if self.state.authenticated_player().is_some()
+                && let Some(window) = self.window.clone()
+            {
                 let hover_start = Instant::now();
                 self.update_hover(&window);
                 self.performance
@@ -1959,13 +2131,57 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                     window.request_redraw();
                 }
             }
-            self.synchronize_window();
-            self.plugins.start(&self.state);
             let now = Instant::now();
+            if now > self.next_step {
+                self.performance
+                    .cycle_debt(now.duration_since(self.next_step));
+            }
+            let due = match self
+                .cycle_clock
+                .due(rustclient_platform::MonotonicTime::from_duration(
+                    now.duration_since(self.cycle_origin),
+                )) {
+                Ok(due) => due,
+                Err(error) => {
+                    self.apply_network_event(network::NetworkEvent::Failed(
+                        rustclient_game_state::LoginFailure::Protocol,
+                        error.to_string(),
+                    ));
+                    0
+                }
+            };
             let mut advanced = false;
-            let mut steps: u32 = 0;
-            while now >= self.next_step && steps < 5 {
-                steps += 1;
+            for _ in 0..due {
+                if let Some((category, diagnostic)) = self.pending_network_failure.take() {
+                    self.apply_network_event(network::NetworkEvent::Failed(category, diagnostic));
+                    break;
+                }
+                if let Some(authentication) = self.pending_authentication.take() {
+                    self.apply_network_event(network::NetworkEvent::Operation(
+                        0,
+                        0,
+                        authentication,
+                    ));
+                }
+                self.ingress.begin_cycle();
+                while let Some(events) = self.ingress.next_batch() {
+                    for event in events {
+                        self.apply_network_event(event);
+                    }
+                }
+                if self.state.authenticated_player().is_none() {
+                    if let (Some(assets), Some(flames)) = (&self.assets, &mut self.flames) {
+                        let random = &mut self.random;
+                        flames.step(&assets.runes, || random.next_sample().get());
+                        self.cycle = self.cycle.wrapping_add(1);
+                        if let Some(window) = &self.window {
+                            window.request_redraw();
+                        }
+                    }
+                    continue;
+                }
+                self.synchronize_window();
+                self.plugins.start(&self.state);
                 advanced = true;
                 let operation = SemanticOperation::Scenery(
                     rustclient_game_state::SceneryOperation::AdvanceCycles(1),
@@ -2014,9 +2230,6 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                 }
                 self.widget_pointer_cycle();
                 self.flush_script_intents();
-                self.next_step += STEP;
-            }
-            if advanced {
                 if let Some(scripts) = &mut self.scripts {
                     match scripts.resize_widgets(&mut self.state) {
                         Ok(errors) => {
@@ -2032,18 +2245,36 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                     }
                 }
                 self.flush_script_intents();
-                self.plugins.advance(&self.state, steps);
+
+                self.session_counters.advance();
+                if let Some(connection) = &self.connection {
+                    if self.session_counters.keepalive_due() && !self.keepalive_pending {
+                        match connection.send(network::Outbound {
+                            world_action: None,
+                            map_epoch: self.map_epoch,
+                            interface_epoch: None,
+                            intent: rustclient_protocol::ClientIntent::KeepAlive,
+                        }) {
+                            Ok(()) => self.keepalive_pending = true,
+                            Err(error) => eprintln!("keepalive queue: {error}"),
+                        }
+                    }
+                    if let Err(error) =
+                        connection.flush(|outbound| self.validate_outbound(outbound))
+                    {
+                        eprintln!("outbound flush: {error}");
+                    }
+                }
+                self.plugins.advance(&self.state, 1);
                 self.update_plugins();
+            }
+            self.next_step = self.cycle_origin + self.cycle_clock.deadline().as_duration();
+            if advanced {
                 self.sync_roof_areas();
                 self.sync_interpolation();
                 self.sync_camera_tuning();
                 self.sync_sprite_overrides();
                 self.sync_hidden_actors();
-            }
-            if now >= self.next_step {
-                self.performance
-                    .cycle_debt(now.duration_since(self.next_step));
-                self.next_step = now + STEP;
             }
             // A hidden window presents nothing: posing scenery and entities for it is wasted
             // work, and the next visible cycle rebuilds both from authoritative state.

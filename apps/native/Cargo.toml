@@ -36,3 +36,72 @@ sysinfo = { version = "0.39.6", default-features = false, features = ["system"] 
 
 [lints]
 workspace = true
+
+# Diagnostic executables run explicitly; they contain no Rust test cases.
+# Keep them in all-target check/Clippy without empty cargo-test harnesses.
+
+[[bin]]
+name = "entity_probe"
+path = "src/bin/entity_probe.rs"
+test = false
+bench = false
+
+[[bin]]
+name = "gpu_probe"
+path = "src/bin/gpu_probe.rs"
+test = false
+bench = false
+
+[[bin]]
+name = "gpu_shell_probe"
+path = "src/bin/gpu_shell_probe.rs"
+test = false
+bench = false
+
+[[bin]]
+name = "interface_probe"
+path = "src/bin/interface_probe.rs"
+test = false
+bench = false
+
+[[bin]]
+name = "login_probe"
+path = "src/bin/login_probe.rs"
+test = false
+bench = false
+
+[[bin]]
+name = "plugin_probe"
+path = "src/bin/plugin_probe.rs"
+test = false
+bench = false
+
+[[bin]]
+name = "reference_replay"
+path = "src/bin/reference_replay.rs"
+test = false
+bench = false
+
+[[bin]]
+name = "scene_probe"
+path = "src/bin/scene_probe.rs"
+test = false
+bench = false
+
+[[bin]]
+name = "script_probe"
+path = "src/bin/script_probe.rs"
+test = false
+bench = false
+
+[[bin]]
+name = "sprite_probe"
+path = "src/bin/sprite_probe.rs"
+test = false
+bench = false
+
+[[bin]]
+name = "worldmap_probe"
+path = "src/bin/worldmap_probe.rs"
+test = false
+bench = false

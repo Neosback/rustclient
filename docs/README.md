@@ -85,6 +85,7 @@ Current machine-readable data: [domain matrix](reference/rs240-port/PORT-MATRIX.
 - [plan/BUILTIN-PLUGINS.md](plan/BUILTIN-PLUGINS.md)
 - [plan/CHAT-ACTORS-240.md](plan/CHAT-ACTORS-240.md)
 - [plan/CHECKPOINT_TEMPLATE.md](plan/CHECKPOINT_TEMPLATE.md)
+- [plan/CLIENT-CYCLE-runtime.md](plan/CLIENT-CYCLE-runtime.md)
 - [plan/CP0-reference-infrastructure.md](plan/CP0-reference-infrastructure.md)
 - [plan/CP1-semantic-model.md](plan/CP1-semantic-model.md)
 - [plan/CP11-plugin-slice.md](plan/CP11-plugin-slice.md)

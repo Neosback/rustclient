@@ -148,6 +148,7 @@ impl NativeApp {
             }
         });
         connection.send(network::Outbound {
+            world_action: None,
             map_epoch: self.map_epoch,
             interface_epoch: None,
             intent,
@@ -166,6 +167,7 @@ impl NativeApp {
     pub(super) fn acknowledge_map(&self) {
         if let Some(connection) = &self.connection
             && let Err(e) = connection.send(network::Outbound {
+                world_action: None,
                 map_epoch: self.map_epoch,
                 interface_epoch: None,
                 intent: rustclient_protocol::ClientIntent::MapBuildComplete,
@@ -256,7 +258,7 @@ impl NativeApp {
     }
     /// The roof line-of-sight inputs for this frame, once a scene and a player exist.
     fn roof_view(&self, window: &Window) -> Option<rustclient_scene::RoofView> {
-        let (Some(loaded), Some((_camera, _, _viewport)), Some(player)) = (
+        let (Some(loaded), Some((camera, _, viewport)), Some(player)) = (
             self.scene.loaded.as_ref(),
             self.world_camera(window),
             self.state.entities().local_player(),
@@ -322,7 +324,6 @@ impl NativeApp {
                 .as_ref()
                 .is_none_or(|renderer| renderer.gpu_settings().hide_unrelated_maps),
         )
-
     }
     /// Track the tile under the pointer for the hovered-roof mode.
     ///
@@ -396,6 +397,7 @@ impl NativeApp {
             WorldTarget::Location { key, .. } => Some(key.tile),
         };
         connection.send(network::Outbound {
+            world_action: Some(action),
             map_epoch: self.map_epoch,
             interface_epoch: None,
             intent,

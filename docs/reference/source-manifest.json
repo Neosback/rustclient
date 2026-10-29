@@ -416,6 +416,26 @@
         {
           "path": "sources-semantic/classFK.java",
           "sha256": "d9cc5fb9aa9dec0dc73915bf2e998fdea708804862c0d87812af631e18291533"
+        },
+        {
+          "path": "sources-semantic/classMG.java",
+          "sha256": "1a3982813ee70274a4cf48a86dc1ad1f0ddde05ddd5610598228ec0f9d7f1ec4"
+        },
+        {
+          "path": "sources-semantic/classQN.java",
+          "sha256": "efac71f5123314e9b3174ddca0224dd63025d3f21cb4932117c16a470da9772b"
+        },
+        {
+          "path": "sources-semantic/classDS.java",
+          "sha256": "ded1348b7ab3b5390f80d623521679bd8d17b85c9aaedfe24530cb0b9cc9dd33"
+        },
+        {
+          "path": "sources-semantic/TileItem.java",
+          "sha256": "a5052258a8ab5e5ec1da37dc6b877ca2c114e3325a83ff33e953a62b1852b309"
+        },
+        {
+          "path": "sources-semantic/classCC.java",
+          "sha256": "4c8989b88a253bab118a67f7acefd6ceefc15e83100b76006c690904cf7a7eff"
         }
       ]
     },

@@ -57,7 +57,7 @@ impl Image {
         Self::new(bitmap.width(), bitmap.height(), bitmap.into_raw(), source)
     }
 
-    /// Standard image files used by the world map's ImageIO path, independently of sprites.
+    /// Standard image files used by the world map's `ImageIO` path, independently of sprites.
     pub(crate) fn standard(bytes: &[u8], source: Source) -> Result<Self> {
         let mut reader = image::ImageReader::new(std::io::Cursor::new(bytes))
             .with_guessed_format()

@@ -1,5 +1,5 @@
 //! Schema-generated controls; only validated final edits enter the existing configuration path.
-use super::*;
+use super::{Color32, ConfigValue, EguiPanel, ShellAction};
 use crate::SettingView;
 use rustclient_plugin_host::configuration::Control;
 impl EguiPanel {
@@ -65,16 +65,14 @@ impl EguiPanel {
                                 .entry(key.clone())
                                 .or_insert_with(|| format!("{value:08X}"));
                             let r = ui.text_edit_singleline(text);
-                            if r.lost_focus()
+                            if (r.lost_focus()
                                 || r.has_focus()
-                                    && ui.input(|input| input.key_pressed(egui::Key::Enter))
-                            {
-                                if let Ok(color) =
+                                    && ui.input(|input| input.key_pressed(egui::Key::Enter)))
+                                && let Ok(color) =
                                     u32::from_str_radix(text.trim().trim_start_matches('#'), 16)
-                                {
-                                    *value = color;
-                                    commit = true;
-                                }
+                            {
+                                *value = color;
+                                commit = true;
                             }
                             self.editor(&key, &r);
                         }

@@ -54,13 +54,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     for scale in [1_u32, 2] {
         let channel = ShellChannel::default();
         channel.model.borrow_mut().sidebar = SidebarState::Panel;
-        for schema in all_schemas() {
+        for schema in all_schemas()? {
             channel
                 .model
                 .borrow_mut()
                 .plugins
                 .push(PluginPanel::project(
-                    &Configuration::new(schema,None)?,
+                    &Configuration::new(schema, None)?,
                     |_| None,
                 ));
         }

@@ -363,5 +363,200 @@
     "rust_commit": "dbb2b50040f0bb0c8d5521c63eaf6cf127c6d11e",
     "note": "Deob-first review of stock 240 client logic; Rust tree unchanged since bd3aae10. Produced CLIENT-LOGIC-MAP, SPEC-0020/0021 drafts, DEOB-PACKET-SITES and the phase roadmap.",
     "validation": "tools/port_matrix.py, port_audit.py, parity_inventory.py and docs_index.py --check; Markdown destination scan; git diff --check. No Cargo, Java, live or visual check."
+  },
+  "desktop_cycle_slice": {
+    "base_commit": "ef76ce75e791d6e3f45241951560588ed4c05b61",
+    "checkpoint": "docs/plan/CLIENT-CYCLE-runtime.md",
+    "scope": "Uncommitted implementation slice; full phase 1 and the desktop gameplay milestone remain open. Original review hashes above retain their historical scope.",
+    "files": [
+      {
+        "path": ".github/workflows/ci.yml",
+        "sha256": "abd46aff34ad5c4e256db49a640412cc0f89966a9e84e63354773c4a61ca8e56"
+      },
+      {
+        "path": "Cargo.toml",
+        "sha256": "de69f152e5f4183eb65ca35e0ff656dbcd35875fbb88b6413be259101ab9e050"
+      },
+      {
+        "path": "apps/native/Cargo.toml",
+        "sha256": "3f36d4d7264e172480c6ae6ffba8e62e14fea2648e82eed7c98d375425923237"
+      },
+      {
+        "path": "apps/native/src/bin/gpu_probe/depth.rs",
+        "sha256": "73f9a4bee5117aaff74234969484568c19a850e2e3ddc4cc39d52d2eba5c7677"
+      },
+      {
+        "path": "apps/native/src/bin/gpu_shell_probe.rs",
+        "sha256": "1bf75efc68acda42b5acca66b4d749d8bd5322db7f74995e5dda09970259fe44"
+      },
+      {
+        "path": "apps/native/src/bin/login_probe.rs",
+        "sha256": "c55438ef5de7bc27c08904f99b355fcf1423c2dd8332c382fecb80877a2a768f"
+      },
+      {
+        "path": "apps/native/src/bin/reference_replay.rs",
+        "sha256": "bff6998d60a3d8eca1dbe60479b5cd46ca47d8bad013a106e95a1cc7063f13c9"
+      },
+      {
+        "path": "apps/native/src/interaction.rs",
+        "sha256": "d93f11f466a813f5bd58acabad6ffdcbaabb712a30b336361c9132bc8aebce6a"
+      },
+      {
+        "path": "apps/native/src/main.rs",
+        "sha256": "bfdfa212228c17a105ab5e669bb6a9bdba84705930ac0f4541337f6d2caaeacc"
+      },
+      {
+        "path": "apps/native/src/network.rs",
+        "sha256": "a87e10ede8df1668fd59ae6847624fe7329dda68f6225cdd763033770d18236d"
+      },
+      {
+        "path": "apps/native/src/shell.rs",
+        "sha256": "d303ff6fb258af3db6c76953352b09a69e6e906c8168fbdd829bb1ac38659c5c"
+      },
+      {
+        "path": "apps/native/src/widget_pointer.rs",
+        "sha256": "be622ffb327fe50bd8069f9df32ebc336a2823bbb7c165333ecc22c67f3666da"
+      },
+      {
+        "path": "apps/native/src/widgets.rs",
+        "sha256": "9e671dc78a069bfc8c916c8ea85ef17b445d65828ca5f13c07ea39f74cfeba2e"
+      },
+      {
+        "path": "crates/application/src/connection.rs",
+        "sha256": "eec2596c6816ca22d374152b31472e222863136dcae19949d69e6da4c563fe96"
+      },
+      {
+        "path": "crates/application/src/cycle.rs",
+        "sha256": "98c39acbf0b49251b7e63b77e4ec3d1e5303799743a89e7c28750e53d9ee5bac"
+      },
+      {
+        "path": "crates/application/src/lib.rs",
+        "sha256": "dc9e1940d439c3f3c33168d52aaddb71e477b1fc86a664c2dad1244a064c6413"
+      },
+      {
+        "path": "crates/application/tests/client_cycle.rs",
+        "sha256": "904ba319a3a1e9eceb18a15031258b843fb15442a6b4672d310080cd798b2e40"
+      },
+      {
+        "path": "crates/cache/src/assets.rs",
+        "sha256": "60d0001a60d8f30ba70b418e9a480161bdeae86f775600165aa55cfbeaf64f75"
+      },
+      {
+        "path": "crates/game-state/src/actor_path.rs",
+        "sha256": "ecb682bae35acb5d9106e3c73449b1ab954250fa5b873250a63bf63636264262"
+      },
+      {
+        "path": "crates/game-state/src/inventory.rs",
+        "sha256": "bebf308ecb3ee95d3e79ddca3594abf05b7320d9e9bfe74b6c85ec8f306d544f"
+      },
+      {
+        "path": "crates/protocol/src/lib.rs",
+        "sha256": "0b0d8ebe7a99efbfa974130020a30cfe543c818fb171edd20dfa2944294247e7"
+      },
+      {
+        "path": "crates/protocol/src/openrune_240/control.rs",
+        "sha256": "d20aebe012308b92774472546564a7e9fe69c1a304bd3d9246c4e59f6a8477cd"
+      },
+      {
+        "path": "crates/protocol/src/openrune_240/game.rs",
+        "sha256": "af4a8be98311136d346ce72326b0cb40d4cfb67dd7747466b8e03f8f1c404fc9"
+      },
+      {
+        "path": "crates/protocol/src/openrune_240/mod.rs",
+        "sha256": "448b55f6edf69596f65dd4822b13ed532e584b1ddfe479e67aa34c26acab772b"
+      },
+      {
+        "path": "crates/protocol/tests/packet_groups.rs",
+        "sha256": "ff1645abc2ad12245fd52993c9cbbbcc12af0032314e50f0874c60aeaa7fe7c1"
+      },
+      {
+        "path": "crates/renderer/src/shell/egui.rs",
+        "sha256": "9528c349434c8de85445af3f3fc737f99311de470a0ef055ec75a827641fb2f7"
+      },
+      {
+        "path": "crates/renderer/src/shell/egui_capture.rs",
+        "sha256": "4162ca00ec7c9de77fe6af157300788c25389cde664eef40bf633276d8a45fc7"
+      },
+      {
+        "path": "crates/scene/src/entity_mesh.rs",
+        "sha256": "b2fb00453e05c63aaf8d510730ff4bd28c31e66669430aa4f43de20c7b9e5a27"
+      },
+      {
+        "path": "crates/scene/src/entity_mesh/emission.rs",
+        "sha256": "86bbb1c8e48ae6f5886c75466b2d6edf7586cf09aa29b6539a65a527a009c9ba"
+      },
+      {
+        "path": "crates/scene/src/lib.rs",
+        "sha256": "85d0a62ff764abd0a5d8507d4be7bc579a49cbd7f21e0c5d8d74e95136f67950"
+      },
+      {
+        "path": "crates/scene/src/locations.rs",
+        "sha256": "89164f4b5b525c2280976fcd86fe8c1b21f6ba0ee45ea662da65ce01d4b5e735"
+      },
+      {
+        "path": "crates/scene/src/mesh.rs",
+        "sha256": "e974e26279d8b609a6eb87a618093b09dea885d14fa1a9b0c6fc2c29a840bbaa"
+      },
+      {
+        "path": "crates/scene/src/picking.rs",
+        "sha256": "525e0f9d0737c3b7d0a876e2795185aebb6281bb45496ff68db61f4276394523"
+      },
+      {
+        "path": "crates/scene/src/picking/clickbox.rs",
+        "sha256": "740d1e6bcc68312ba10c9562cc776d376226922a42c420eba3780b245c710d7b"
+      },
+      {
+        "path": "crates/scene/src/picking/spatial.rs",
+        "sha256": "1ced5875aab6c426db5e348e2dc3828bb7bbe56e4655018a6bad359c81d5ab83"
+      },
+      {
+        "path": "crates/scene/src/picking/spatial_tests.rs",
+        "sha256": "555ba3cce14e11c0b5544ed168b5cbebe9040ba47610604ec8acdc55885446ea"
+      },
+      {
+        "path": "crates/shell-ui/src/assets.rs",
+        "sha256": "c6225e118a432c3d8144b6ee86b351b896711962805355254344153f87e581a1"
+      },
+      {
+        "path": "crates/shell-ui/src/egui_panel.rs",
+        "sha256": "71b16198e51b96e2dfe9db65dfeda09b6f5bfb88f1f954aa9a3d06b2a13f744b"
+      },
+      {
+        "path": "crates/shell-ui/src/egui_panel/controls.rs",
+        "sha256": "0042e54cf51d5ebea88b44548a6ddbc14b1e498ef8813773aaea19ba6657b20c"
+      },
+      {
+        "path": "crates/shell-ui/src/egui_panel/input.rs",
+        "sha256": "aacb745ceeb4e53b693fff6bd5eee4d43623cf1949d907aa6e475d9f8c7eb834"
+      },
+      {
+        "path": "crates/shell-ui/src/lib.rs",
+        "sha256": "f9d1e742e4b281dd04673f986bfddcc941c0f2ab275ba55a783bded5f4a47c30"
+      },
+      {
+        "path": "crates/shell-ui/tests/egui_contracts.rs",
+        "sha256": "06bd7dcb959e92c8bbae5e9864293ff4f63d2f2e53237e277d4ff42621843927"
+      },
+      {
+        "path": "crates/shell-ui/tests/first_party_controls.rs",
+        "sha256": "4d2c2282c1cf75acd8d274474a33c15694af3610d3de222e36e6b9719c310130"
+      },
+      {
+        "path": "crates/shell-ui/tests/interaction_trace.rs",
+        "sha256": "198a9007134f0ef1cc0590519fe45f00a63d34c7b3af4a91fddc83275fa117cc"
+      },
+      {
+        "path": "crates/shell-ui/tests/retained_controls.rs",
+        "sha256": "a7be10bdb80c901660d3ee0dcc242450361b4cafd8d6ba984ba31957a2282a3d"
+      },
+      {
+        "path": "crates/shell-ui/tests/sidebar_contracts.rs",
+        "sha256": "faca2360b577f34b63769a877c5c04fa848d24d86b9ff08080b333d541db3ddb"
+      }
+    ],
+    "removed_files": [
+      "crates/scene/src/picking/model_tests.rs"
+    ],
+    "validation": "See checkpoint for completed commands, ignored tests, interrupted repetition and NOT-RUN live/visual gates."
   }
 }

@@ -59,12 +59,26 @@ pub(crate) fn emit_model(
         .map(|(i, &f)| crate::lighting::bake_lit(f, i, &normals, &merged, light))
         .collect();
 
-    let origin=ModelPoint::new(center_fine_x,ground_height,center_fine_z);
-    let placed:Vec<_>=model.vertices.iter().map(|&point|{
-        let point=rotate_y(point,orientation);
-        Ok(ModelPoint::new(center_fine_x.checked_add(point.x).ok_or_else(||crate::SceneError("actor projection x overflow".into()))?,ground_height.checked_add(point.y).ok_or_else(||crate::SceneError("actor projection height overflow".into()))?,center_fine_z.checked_add(point.z).ok_or_else(||crate::SceneError("actor projection z overflow".into()))?))
-    }).collect::<Result<_>>()?;
-    let pick_bounds=crate::PickBounds::new(origin,&placed)?;
+    let origin = ModelPoint::new(center_fine_x, ground_height, center_fine_z);
+    let placed: Vec<_> = model
+        .vertices
+        .iter()
+        .map(|&point| {
+            let point = rotate_y(point, orientation);
+            Ok(ModelPoint::new(
+                center_fine_x
+                    .checked_add(point.x)
+                    .ok_or_else(|| crate::SceneError("actor projection x overflow".into()))?,
+                ground_height
+                    .checked_add(point.y)
+                    .ok_or_else(|| crate::SceneError("actor projection height overflow".into()))?,
+                center_fine_z
+                    .checked_add(point.z)
+                    .ok_or_else(|| crate::SceneError("actor projection z overflow".into()))?,
+            ))
+        })
+        .collect::<Result<_>>()?;
+    let pick_bounds = crate::PickBounds::new(origin, &placed)?;
     let first = geometry.vertices.len();
     // The GPU uploader caps original face indices, before hidden/back-face filtering.
     // Authored zero-only transparency-array presence is not yet retained by the cache model.
@@ -89,7 +103,10 @@ pub(crate) fn emit_model(
             [[0.; 2]; 3]
         };
 
-        let points=face.vertices.map(|index|{let point=placed[index as usize];[point.x,point.y,point.z]});
+        let points = face.vertices.map(|index| {
+            let point = placed[index as usize];
+            [point.x, point.y, point.z]
+        });
 
         geometry.model_triangle(points, face_colors, uv, face, u16::from(level))?;
     }

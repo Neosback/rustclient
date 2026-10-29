@@ -38,7 +38,10 @@ mod regions;
 mod roofs;
 pub use regions::RelatedMaps;
 mod visibility;
-pub use picking::{PickBounds,PickPrecision,PickProjection,ClickHit,pick_targets,PickIndexStats, ScenePickIndex, SurfaceHit, pick_surface, pick_terrain};
+pub use picking::{
+    ClickHit, PickBounds, PickIndexStats, PickPrecision, PickProjection, ScenePickIndex,
+    SurfaceHit, pick_surface, pick_targets, pick_terrain,
+};
 pub use roofs::{ROOF_SLOTS, RoofArea, RoofMask, RoofModes, RoofTargets, RoofView, RoofVolumes};
 pub use visibility::{DrawTile, SceneVisibility, ZoneWindow};
 mod shapes;

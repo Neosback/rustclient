@@ -48,6 +48,7 @@ impl NativeApp {
             && let Some(connection) = &self.connection
         {
             match connection.send(network::Outbound {
+                world_action: None,
                 map_epoch: self.map_epoch,
                 interface_epoch: None,
                 intent: rustclient_protocol::ClientIntent::WindowStatus {
@@ -134,6 +135,7 @@ impl NativeApp {
             .ok_or("widget action requires a connection")?;
         for intent in intents {
             connection.send(network::Outbound {
+                world_action: None,
                 map_epoch: self.map_epoch,
                 interface_epoch: Some(self.interface_epoch),
                 intent,

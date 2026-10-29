@@ -55,7 +55,8 @@ fn indexed_hits_match_original_queries_including_edges_occluders_and_visibility(
     geometry.picks.push(PickRange {
         vertices: geometry.vertices.len() - 3..geometry.vertices.len(),
         target,
-        bounds:None,precision:crate::PickPrecision::ProjectedFaces,
+        bounds: None,
+        precision: crate::PickPrecision::ProjectedFaces,
     });
     let index = ScenePickIndex::new(&geometry).unwrap();
     assert!(index.stats().resident_bytes < geometry.vertices.len() * 2);

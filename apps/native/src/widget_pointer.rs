@@ -214,6 +214,7 @@ impl NativeApp {
         };
         for intent in intents {
             if let Err(error) = connection.send(network::Outbound {
+                world_action: None,
                 map_epoch: self.map_epoch,
                 interface_epoch: Some(self.interface_epoch),
                 intent,

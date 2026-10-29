@@ -44,7 +44,7 @@ pub struct EguiPanel {
     frame: EguiPanelFrame,
     stats: EguiPanelStats,
     clipboard: Option<Box<dyn rustclient_platform::Clipboard>>,
-    ime_cursor:Option<Rect>,
+    ime_cursor: Option<Rect>,
 }
 impl EguiPanel {
     /// # Errors
@@ -70,8 +70,8 @@ impl EguiPanel {
         Ok(Self {
             ctx,
             channel,
-            input: Default::default(),
-            modifiers: Default::default(),
+            input: egui::RawInput::default(),
+            modifiers: egui::Modifiers::default(),
             size,
             scale,
             visible: false,
@@ -79,17 +79,17 @@ impl EguiPanel {
             deadline: None,
             selected: None,
             query: String::new(),
-            drafts: Default::default(),
-            text: Default::default(),
+            drafts: BTreeMap::default(),
+            text: BTreeMap::default(),
             capture: None,
             hits: Vec::new(),
             pointer: Pos2::ZERO,
             targets: BTreeMap::new(),
             shapes: Vec::new(),
-            frame: Default::default(),
-            stats: Default::default(),
+            frame: EguiPanelFrame::default(),
+            stats: EguiPanelStats::default(),
             clipboard: None,
-            ime_cursor:None,
+            ime_cursor: None,
         })
     }
     pub fn set_visible(&mut self, visible: bool) {
@@ -127,7 +127,10 @@ impl EguiPanel {
         &self.frame
     }
     #[must_use]
-    pub fn ime_cursor(&self)->Option<[f32;4]>{self.ime_cursor.map(|rect|[rect.min.x,rect.min.y,rect.width(),rect.height()])}
+    pub fn ime_cursor(&self) -> Option<[f32; 4]> {
+        self.ime_cursor
+            .map(|rect| [rect.min.x, rect.min.y, rect.width(), rect.height()])
+    }
     pub fn set_clipboard(&mut self, value: Box<dyn rustclient_platform::Clipboard>) {
         self.clipboard = Some(value);
     }
@@ -166,7 +169,11 @@ impl EguiPanel {
         );
         let output = ctx.run_ui(self.input.take(), |ui| self.content(ui, &model));
         self.stats.passes += output.platform_output.num_completed_passes as u64;
-        self.ime_cursor=output.platform_output.ime.as_ref().map(|ime|ime.cursor_rect);
+        self.ime_cursor = output
+            .platform_output
+            .ime
+            .as_ref()
+            .map(|ime| ime.cursor_rect);
         let delay = output
             .viewport_output
             .get(&egui::ViewportId::ROOT)
@@ -227,6 +234,10 @@ impl EguiPanel {
             });
         });
     }
+    #[expect(
+        clippy::too_many_lines,
+        reason = "one panel pass lays out navigation and schema-generated settings"
+    )]
     fn panel(&mut self, ui: &mut egui::Ui, model: &ShellModel) {
         if let Some(id) = self.selected.clone()
             && let Some(plugin) = model.plugins.iter().find(|plugin| plugin.id == id)

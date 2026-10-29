@@ -59,6 +59,10 @@ fn save(path: &Path, name: &str, pixels: &[u8]) -> Result<()> {
     )?;
     Ok(())
 }
+#[expect(
+    clippy::too_many_lines,
+    reason = "single diagnostic scene setup, render and capture lifecycle"
+)]
 pub fn capture(path: &Path) -> Result<()> {
     let target = CameraTarget {
         x: 512,

@@ -267,17 +267,35 @@ impl Shell {
         ])
     }
     /// Process input before accepted actions are drained; world frames do not invalidate the UI.
-    #[expect(clippy::cast_possible_truncation,clippy::cast_sign_loss,reason="validated bounded panel dimensions and native DPI")]
-    pub fn update_panel(&mut self,window:&Window)->Result<(),String>{
-        self.panel.set_visible(self.sidebar()!=SidebarState::Hidden);
-        if self.sidebar()==SidebarState::Hidden{return Ok(());}
-        let scale=window.scale_factor();
-        let size=[(f64::from(self.width())*scale).round() as u32,window.inner_size().height];
-        if size.contains(&0){return Ok(());}
-        self.panel.resize(size,scale as f32)?;
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "validated bounded panel dimensions and native DPI"
+    )]
+    pub fn update_panel(&mut self, window: &Window) -> Result<(), String> {
+        self.panel
+            .set_visible(self.sidebar() != SidebarState::Hidden);
+        if self.sidebar() == SidebarState::Hidden {
+            return Ok(());
+        }
+        let scale = window.scale_factor();
+        let size = [
+            (f64::from(self.width()) * scale).round() as u32,
+            window.inner_size().height,
+        ];
+        if size.contains(&0) {
+            return Ok(());
+        }
+        self.panel.resize(size, scale as f32)?;
         self.panel.render(self.ui_clock.elapsed().as_secs_f64())?;
-        if let Some([x,y,width,height])=self.panel.ime_cursor(){
-            window.set_ime_cursor_area(winit::dpi::LogicalPosition::new(f64::from(x)+f64::from(self.game_size(window).width)/scale,f64::from(y)),winit::dpi::LogicalSize::new(f64::from(width.max(1.)),f64::from(height.max(1.))));
+        if let Some([x, y, width, height]) = self.panel.ime_cursor() {
+            window.set_ime_cursor_area(
+                winit::dpi::LogicalPosition::new(
+                    f64::from(x) + f64::from(self.game_size(window).width) / scale,
+                    f64::from(y),
+                ),
+                winit::dpi::LogicalSize::new(f64::from(width.max(1.)), f64::from(height.max(1.))),
+            );
         }
         Ok(())
     }

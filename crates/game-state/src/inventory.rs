@@ -30,6 +30,7 @@ impl InventoryState {
     pub fn get(&self, id: InventoryId) -> Option<&[Option<ItemStack>]> {
         self.containers.get(&id).map(Vec::as_slice)
     }
+    #[must_use]
     pub fn iter(&self) -> impl ExactSizeIterator<Item = (InventoryId, &[Option<ItemStack>])> {
         self.containers
             .iter()

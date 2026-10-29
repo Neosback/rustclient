@@ -5,6 +5,11 @@ Reviewed 2026-10-28 at `bd3aae10d4a37c46401aaf71be2fa415cbe623e8`; follow-up at
 Target: nearly 1:1 OSRS 240 behavior and applicable pinned RuneLite feature effects,
 initially OpenRune 240.2, with shared desktop/browser semantics. Full parity is open.
 
+The subsequent [cycle-infrastructure checkpoint](CLIENT-CYCLE-runtime.md) restores
+buildability and implements bounded native cycle ingress/egress, packet groups,
+keepalive timing and typed controls/ping replies. Full phase 1 and desktop gameplay
+acceptance remain open; historical validation below is unchanged.
+
 [The roadmap](PORTING-ROADMAP.md) owns execution order;
 [SPEC-0019](../specs/SPEC-0019-port-parity.md) owns the contract;
 [the matrix](../reference/rs240-port/PORT-MATRIX.md) owns domain status;
@@ -16,7 +21,7 @@ This page is a compact entry point, not another independent backlog.
 | Area | Present | Open boundary |
 | --- | --- | --- |
 | Core | Typed state/operations, ordered commits/events/deltas, explicit clocks, replay/fingerprints | Every new retained field/lifecycle must join the same contracts |
-| Native session/world | Cache-backed title/login, normal maps, selected player/NPC updates, movement, scenery/animation projections | Valid selected NPC masks rejected; instance/nested-world lifecycle incomplete; server ground-item/scenery mutations and broad packet consumers missing; ping/reflection replies, idle telemetry, reasoned logout and world transfer absent |
+| Native session/world | Cache-backed title/login, normal maps, selected player/NPC updates, movement, scenery/animation projections | Valid selected NPC masks rejected; instance/nested-world lifecycle incomplete; server ground-item/scenery mutations and broad packet consumers missing; reflection/idle telemetry, full reason panels, reconnect/world transfer absent; typed controls and ping reply subset delivered |
 | Interaction/UI | NPC/location/widget subsets, menus/chat, inventory sync, substantial widget/CS2 host | Dialogue/player/item/target/drag paths, rich menus, model widgets, remaining opcodes/DB branches and input parity |
 | World map | Cache assets/controller/CS2, viewport/overview drawing, native pan/zoom, newer load/reset/error repairs | Exact controller/lifecycle/ownership, labels/hover/menus and native/browser acceptance |
 | Renderer/shell | Shared wgpu projections/reconstruction, GPU settings subsets; egui shell integrated at bd3aae10 | GPU/core ledger obligations, replacement-shell controls/performance and classic visual acceptance |

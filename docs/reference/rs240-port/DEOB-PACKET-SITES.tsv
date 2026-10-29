@@ -31,7 +31,7 @@ client-to-server	28	-	missing-encoder	0	-
 client-to-server	29	CONNECTION_TELEMETRY	missing-encoder	2	client.method2172:3281|client.method2173:42914
 client-to-server	30	EVENT_APPLET_FOCUS	missing-encoder	4	client.method2172:3643|client.method2172:3660|client.method2173:43085|client.method2173:43092
 client-to-server	31	-	missing-encoder	0	-
-client-to-server	32	SEND_PING_REPLY	missing-encoder	5	client.method2346:6997|client.method2199:16184|client.method2200:38987|client.method2201:46051|client.method2202:48550
+client-to-server	32	SEND_PING_REPLY	encoded-subset	5	client.method2346:6997|client.method2199:16184|client.method2200:38987|client.method2201:46051|client.method2202:48550
 client-to-server	33	CLANCHANNEL_FULL_REQUEST	missing-encoder	3	client.method2215:20296|client.method2216:23298|client.method2217:49136
 client-to-server	34	-	missing-encoder	0	-
 client-to-server	35	OPNPC4_V2	encoded-subset	3	classSW.method10742:143|client.method1974:21777|client.method1975:28972
@@ -173,7 +173,7 @@ server-to-client	53	SITE_SETTINGS	framed-unhandled	5	client.method2346:6223|clie
 server-to-client	54	IF_SETHIDE	semantic-subset	5	client.method2346:5192|client.method2199:14413|client.method2200:37216|client.method2201:44279|client.method2202:46779
 server-to-client	55	HIDELOCOPS	framed-unhandled	5	client.method2346:7083|client.method2199:16270|client.method2200:39073|client.method2201:46137|client.method2202:48636
 server-to-client	56	LOGOUT_WITHREASON	partial	5	client.method2346:6519|client.method2199:15711|client.method2200:38514|client.method2201:45578|client.method2202:48077
-server-to-client	57	PACKET_GROUP_START	framed-unhandled	5	client.method2346:6987|client.method2199:16174|client.method2200:38977|client.method2201:46041|client.method2202:48540
+server-to-client	57	PACKET_GROUP_START	semantic-subset	5	client.method2346:6987|client.method2199:16174|client.method2200:38977|client.method2201:46041|client.method2202:48540
 server-to-client	58	RESET_ANIMS	semantic-subset	5	client.method2346:5606|client.method2199:14820|client.method2200:37623|client.method2201:44687|client.method2202:47186
 server-to-client	59	IF_SETANIM	framed-unhandled	5	client.method2346:6159|client.method2199:15359|client.method2200:38162|client.method2201:45226|client.method2202:47725
 server-to-client	60	IF_CLEARINV	framed-unhandled	5	client.method2346:6361|client.method2199:15558|client.method2200:38361|client.method2201:45425|client.method2202:47924
@@ -231,7 +231,7 @@ server-to-client	111	SET_NPC_UPDATE_ORIGIN	codec-context	5	client.method2346:700
 server-to-client	112	HIDEOBJOPS	framed-unhandled	5	client.method2346:6407|client.method2199:15604|client.method2200:38407|client.method2201:45471|client.method2202:47970
 server-to-client	113	CAM_SHAKE	framed-unhandled	5	client.method2346:5339|client.method2199:14556|client.method2200:37359|client.method2201:44422|client.method2202:46922
 server-to-client	114	OBJ_ADD_SPECIFIC	framed-unhandled	5	client.method2346:5143|client.method2199:14364|client.method2200:37167|client.method2201:44230|client.method2202:46730
-server-to-client	115	SEND_PING	framed-unhandled	5	client.method2346:6993|client.method2199:16180|client.method2200:38983|client.method2201:46047|client.method2202:48546
+server-to-client	115	SEND_PING	semantic-subset	5	client.method2346:6993|client.method2199:16180|client.method2200:38983|client.method2201:46047|client.method2202:48546
 server-to-client	116	IF_CLOSESUB	semantic-subset	5	client.method2346:7245|client.method2199:16432|client.method2200:39235|client.method2201:46299|client.method2202:48798
 server-to-client	117	NPC_ANIM_SPECIFIC	framed-unhandled	5	client.method2346:4969|client.method2199:14194|client.method2200:36999|client.method2201:44062|client.method2202:46560
 server-to-client	118	UPDATE_ZONE_PARTIAL_FOLLOWS	codec-context	5	client.method2346:5787|client.method2199:15000|client.method2200:37803|client.method2201:44867|client.method2202:47366

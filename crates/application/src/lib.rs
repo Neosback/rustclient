@@ -17,6 +17,8 @@ pub use random::{DeterministicRandomSource, RandomSample, RandomSeed, SplitMix64
 mod title;
 pub use title::{load_title, load_title_preferences, save_title_preferences};
 
+pub mod cycle;
+
 mod connection;
 pub use connection::{ConnectionDecoder, ConnectionInput};
 

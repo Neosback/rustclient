@@ -275,3 +275,14 @@ mutations. After those come SPEC-0021 input/menus and every outbound action, the
 interfaces/scripts, social, audio, camera/world map, rendering, plugins and browser
 acceptance, all in the same shared owners. No missing feature
 is excused as a Rust improvement; use the explicit deviations register.
+
+## Dependable-desktop implementation slice (2026-10-28)
+
+The implementation after `ef76ce75` fixes the build blockers and introduces shared
+cycle clock/ingress/egress contracts, native S4 packet application, atomic packet
+groups, acknowledged-write keepalive timing and typed session control with ping
+replies. See [the checkpoint](../../plan/CLIENT-CYCLE-runtime.md) for exact validation.
+Historical findings above apply to their recorded baselines. The current matrix
+and packet inventory now distinguish these implemented subsets from the remaining
+full phase-1 obligations. NPC masks, world mutation/ground items, complete input
+and dialogue, reconnect, browser gameplay and live acceptance remain open.

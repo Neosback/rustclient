@@ -15,6 +15,12 @@ jobs:
           targets: wasm32-unknown-unknown
       - name: Format
         run: cargo fmt --all --check
+      - name: Documentation and parity inventories
+        run: |
+          python3 tools/port_matrix.py --check
+          python3 tools/port_audit.py --check
+          python3 tools/parity_inventory.py --check
+          python3 tools/docs_index.py --check
       - name: Check workspace
         run: cargo check --workspace --all-targets
       - name: Clippy
@@ -23,3 +29,5 @@ jobs:
         run: cargo test --workspace
       - name: Check web target
         run: cargo check -p rustclient-web --target wasm32-unknown-unknown
+      - name: Check shared runtime for web
+        run: cargo check -p rustclient-application --target wasm32-unknown-unknown

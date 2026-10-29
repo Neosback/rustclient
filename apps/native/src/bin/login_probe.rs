@@ -153,6 +153,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
                         return;
                     }
                     let result = match input {
+                        ConnectionInput::Control(_) => Ok(Vec::new()),
                         ConnectionInput::Operation(op) => sequence_policies
                             .resolve_operation(op)
                             .map_err(|error| format!("actor scheduling cache: {error}"))

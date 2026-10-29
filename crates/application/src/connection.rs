@@ -10,6 +10,7 @@ use rustclient_protocol::{LoginSession, Result, ServerProfile, ServerUpdate, Ses
 pub enum ConnectionInput {
     Operation(SemanticOperation),
     Script(rustclient_model::ScriptRequest),
+    Control(rustclient_protocol::SessionControl),
 }
 pub struct ConnectionDecoder {
     codec: SessionCodec,
@@ -63,12 +64,12 @@ impl ConnectionDecoder {
         let mut script = false;
         let connected = self.receive_inputs(bytes, |input| match input {
             ConnectionInput::Operation(op) => emit(op),
-            ConnectionInput::Script(_) => script = true,
+            ConnectionInput::Script(_) | ConnectionInput::Control(_) => script = true,
         })?;
         if script {
             return Err(rustclient_protocol::ProtocolError {
                 stage: "connection consumer",
-                detail: "script execution consumer required".into(),
+                detail: "script or session-control consumer required".into(),
                 transport: None,
             });
         }
@@ -82,86 +83,119 @@ impl ConnectionDecoder {
         bytes: &[u8],
         mut deliver: impl FnMut(ConnectionInput),
     ) -> Result<bool> {
+        self.receive_batches(bytes, |batch| {
+            for input in batch.payload {
+                deliver(input);
+            }
+        })
+    }
+    /// Preserve packet boundaries and atomic groups for application cycle ingress.
+    /// # Errors
+    /// Forwards bounded protocol failures without mutating authoritative state.
+    pub fn receive_batches(
+        &mut self,
+        bytes: &[u8],
+        mut deliver_batch: impl FnMut(crate::cycle::InboundBatch<Vec<ConnectionInput>>),
+    ) -> Result<bool> {
         let mut connected = true;
-        self.codec.receive(bytes, |update| match update {
-            ServerUpdate::ChatFilters(values) => deliver(ConnectionInput::Operation(
-                SemanticOperation::ChatFilters(values),
-            )),
-            ServerUpdate::GameMessage(message) => deliver(ConnectionInput::Operation(
-                SemanticOperation::GameMessage(message),
-            )),
-            ServerUpdate::InitialPlacement(p) => deliver(ConnectionInput::Operation(
-                SemanticOperation::EstablishInitialPlacement(InitialPlacement {
-                    position: p.position,
-                    map_anchor: p.map_anchor,
-                    area: p.area,
-                }),
-            )),
-            ServerUpdate::RebuildMap { map_anchor } => {
-                deliver(ConnectionInput::Operation(SemanticOperation::RebuildMap(
-                    map_anchor,
-                )));
+        self.codec.receive_batches(bytes, |batch| {
+            let mut inputs = Vec::new();
+            for update in batch.updates {
+                translate(update, |input| inputs.push(input), &mut connected);
             }
-            ServerUpdate::Interface(update) => deliver(ConnectionInput::Operation(
-                SemanticOperation::Interface(update),
-            )),
-            ServerUpdate::Inventory(update) => deliver(ConnectionInput::Operation(
-                SemanticOperation::Inventory(update),
-            )),
-            ServerUpdate::PlayerInfo(info) => deliver(ConnectionInput::Operation(
-                SemanticOperation::UpdatePlayers(info),
-            )),
-            ServerUpdate::NpcInfo(info) => deliver(ConnectionInput::Operation(
-                SemanticOperation::UpdateNpcs(info),
-            )),
-            ServerUpdate::MapFlag(destination) => deliver(ConnectionInput::Operation(
-                SemanticOperation::SetDestination(destination),
-            )),
-            ServerUpdate::ResetActorAnimations => deliver(ConnectionInput::Operation(
-                SemanticOperation::ResetActorAnimations,
-            )),
-            ServerUpdate::LocationZoneReset(origin) => {
-                deliver(ConnectionInput::Operation(SemanticOperation::Scenery(
-                    rustclient_game_state::SceneryOperation::ResetLocationArea {
-                        offset: origin.offset,
-                        plane: origin.plane,
-                        size: [8, 8],
-                    },
-                )));
-            }
-            ServerUpdate::LocationAnim(anim) => {
-                deliver(ConnectionInput::Operation(SemanticOperation::Scenery(
-                    rustclient_game_state::SceneryOperation::TriggerLocationAnimation {
-                        offset: anim.offset,
-                        plane: anim.plane,
-                        placement: anim.placement,
-                        sequence: anim.sequence,
-                    },
-                )));
-            }
-            ServerUpdate::Variable(update) => deliver(ConnectionInput::Operation(
-                SemanticOperation::Scenery(match update {
-                    rustclient_protocol::VariableUpdate::Set { id, value } => {
-                        rustclient_game_state::SceneryOperation::SetVariable { id, value }
-                    }
-                    rustclient_protocol::VariableUpdate::Reset => {
-                        rustclient_game_state::SceneryOperation::ResetVariables
-                    }
-                    rustclient_protocol::VariableUpdate::Sync => {
-                        rustclient_game_state::SceneryOperation::SynchronizeVariables
-                    }
-                }),
-            )),
-            ServerUpdate::Tick => deliver(ConnectionInput::Operation(
-                SemanticOperation::AdvanceTick(TickSpan::ONE),
-            )),
-            ServerUpdate::LoggedOut => connected = false,
-            ServerUpdate::PlayerStatus(update) => deliver(ConnectionInput::Operation(
-                SemanticOperation::PlayerStatus(update),
-            )),
-            ServerUpdate::Script(request) => deliver(ConnectionInput::Script(request)),
-            ServerUpdate::Deferred => {}
+            deliver_batch(crate::cycle::InboundBatch {
+                packets: batch.packets,
+                wire_bytes: batch.wire_bytes,
+                payload: inputs,
+            });
         })?;
         Ok(connected)
+    }
+}
+fn translate(update: ServerUpdate, mut deliver: impl FnMut(ConnectionInput), connected: &mut bool) {
+    match update {
+        ServerUpdate::ChatFilters(values) => deliver(ConnectionInput::Operation(
+            SemanticOperation::ChatFilters(values),
+        )),
+        ServerUpdate::GameMessage(message) => deliver(ConnectionInput::Operation(
+            SemanticOperation::GameMessage(message),
+        )),
+        ServerUpdate::InitialPlacement(p) => deliver(ConnectionInput::Operation(
+            SemanticOperation::EstablishInitialPlacement(InitialPlacement {
+                position: p.position,
+                map_anchor: p.map_anchor,
+                area: p.area,
+            }),
+        )),
+        ServerUpdate::RebuildMap { map_anchor } => {
+            deliver(ConnectionInput::Operation(SemanticOperation::RebuildMap(
+                map_anchor,
+            )));
+        }
+        ServerUpdate::Interface(update) => deliver(ConnectionInput::Operation(
+            SemanticOperation::Interface(update),
+        )),
+        ServerUpdate::Inventory(update) => deliver(ConnectionInput::Operation(
+            SemanticOperation::Inventory(update),
+        )),
+        ServerUpdate::PlayerInfo(info) => deliver(ConnectionInput::Operation(
+            SemanticOperation::UpdatePlayers(info),
+        )),
+        ServerUpdate::NpcInfo(info) => deliver(ConnectionInput::Operation(
+            SemanticOperation::UpdateNpcs(info),
+        )),
+        ServerUpdate::MapFlag(destination) => deliver(ConnectionInput::Operation(
+            SemanticOperation::SetDestination(destination),
+        )),
+        ServerUpdate::ResetActorAnimations => deliver(ConnectionInput::Operation(
+            SemanticOperation::ResetActorAnimations,
+        )),
+        ServerUpdate::LocationZoneReset(origin) => {
+            deliver(ConnectionInput::Operation(SemanticOperation::Scenery(
+                rustclient_game_state::SceneryOperation::ResetLocationArea {
+                    offset: origin.offset,
+                    plane: origin.plane,
+                    size: [8, 8],
+                },
+            )));
+        }
+        ServerUpdate::LocationAnim(anim) => {
+            deliver(ConnectionInput::Operation(SemanticOperation::Scenery(
+                rustclient_game_state::SceneryOperation::TriggerLocationAnimation {
+                    offset: anim.offset,
+                    plane: anim.plane,
+                    placement: anim.placement,
+                    sequence: anim.sequence,
+                },
+            )));
+        }
+        ServerUpdate::Variable(update) => deliver(ConnectionInput::Operation(
+            SemanticOperation::Scenery(match update {
+                rustclient_protocol::VariableUpdate::Set { id, value } => {
+                    rustclient_game_state::SceneryOperation::SetVariable { id, value }
+                }
+                rustclient_protocol::VariableUpdate::Reset => {
+                    rustclient_game_state::SceneryOperation::ResetVariables
+                }
+                rustclient_protocol::VariableUpdate::Sync => {
+                    rustclient_game_state::SceneryOperation::SynchronizeVariables
+                }
+            }),
+        )),
+        ServerUpdate::Tick => deliver(ConnectionInput::Operation(SemanticOperation::AdvanceTick(
+            TickSpan::ONE,
+        ))),
+        ServerUpdate::LoggedOut => *connected = false,
+        ServerUpdate::PlayerStatus(update) => deliver(ConnectionInput::Operation(
+            SemanticOperation::PlayerStatus(update),
+        )),
+        ServerUpdate::Script(request) => deliver(ConnectionInput::Script(request)),
+        ServerUpdate::Control(control) => {
+            if control.terminates_session() {
+                *connected = false;
+            }
+            deliver(ConnectionInput::Control(control));
+        }
+        ServerUpdate::Deferred => {}
     }
 }

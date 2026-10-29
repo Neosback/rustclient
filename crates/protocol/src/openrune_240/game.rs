@@ -7,6 +7,29 @@ pub struct GamePacket {
     pub opcode: u16,
     pub payload: Vec<u8>,
 }
+impl GamePacket {
+    fn wire_size(&self) -> usize {
+        let prefix = match LENGTHS[usize::from(self.opcode)] {
+            -1 => 1,
+            -2 => 2,
+            _ => 0,
+        };
+        usize::from(self.opcode >= 128) + 1 + prefix + self.payload.len()
+    }
+}
+/// Ordered decoded output for one ordinary packet or one complete packet group.
+#[derive(Debug)]
+pub struct PacketBatch {
+    /// Includes the group marker, matching the stock packet-loop counter.
+    pub packets: usize,
+    pub wire_bytes: usize,
+    pub updates: Vec<ServerUpdate>,
+}
+struct PacketGroup {
+    remaining: usize,
+    wire_bytes: usize,
+    packets: Vec<GamePacket>,
+}
 /// Incremental frame reader: cipher state advances only when a byte is available.
 pub struct GameFramer {
     cipher: Isaac,
@@ -221,6 +244,11 @@ pub enum ClientIntent {
         height: u16,
     },
     KeepAlive,
+    PingReply {
+        first: i32,
+        second: i32,
+        fps: u32,
+    },
     /// User-selected destination. Confirmed player position does not change.
     Walk {
         destination: WorldTile,
@@ -256,6 +284,9 @@ impl ClientIntent {
     pub fn encode(self, cipher: &mut Isaac) -> Result<Vec<u8>> {
         let (opcode, payload) = match self {
             Self::KeepAlive => (99, vec![]),
+            Self::PingReply { first, second, fps } => {
+                (32, super::control::ping_reply(first, second, fps))
+            }
             Self::CloseModal => (98, vec![]),
             Self::Chat(chat) => {
                 // MESSAGE_PUBLIC and CLIENT_CHEAT are both VAR_BYTE.
@@ -384,6 +415,7 @@ pub enum ServerUpdate {
     LocationZoneReset(super::zone::ZoneOrigin),
     Tick,
     LoggedOut,
+    Control(super::control::SessionControl),
     Deferred,
 }
 /// Server variable values, defaulting to zero on reset. Profile bytes stay here.
@@ -425,6 +457,7 @@ pub struct SessionCodec {
     chat_codec: Option<super::huffman::Huffman>,
     npcs: NpcInfoDecoder,
     zones: super::zone::ZoneDecoder,
+    group: Option<PacketGroup>,
 }
 impl SessionCodec {
     #[must_use]
@@ -442,6 +475,7 @@ impl SessionCodec {
             chat_codec: None,
             npcs: NpcInfoDecoder::default(),
             zones: super::zone::ZoneDecoder::default(),
+            group: None,
         }
     }
     /// Supply the selected cache's immutable Huffman codec before receiving player chat.
@@ -464,129 +498,196 @@ impl SessionCodec {
     }
     /// Deliver complete, profile-decoded updates in stream order.
     /// # Errors
-    /// Fails on invalid framing or unsupported map transitions.
-    #[expect(
-        clippy::too_many_lines,
-        reason = "single ordered profile packet dispatch"
-    )]
+    /// Rejects malformed packets and incomplete or invalid group boundaries.
     pub fn receive(&mut self, bytes: &[u8], mut emit: impl FnMut(ServerUpdate)) -> Result<()> {
+        self.receive_batches(bytes, |batch| {
+            for update in batch.updates {
+                emit(update);
+            }
+        })
+    }
+
+    /// Deliver an ordinary packet or a complete atomic packet group.
+    /// No group member is decoded or published until every declared wire byte is available.
+    /// # Errors
+    /// Rejects invalid framing, nested groups and groups ending inside a packet.
+    pub fn receive_batches(
+        &mut self,
+        bytes: &[u8],
+        mut emit: impl FnMut(PacketBatch),
+    ) -> Result<()> {
         self.framer.feed(bytes)?;
         while let Some(packet) = self.framer.next_packet()? {
             self.framed_packets = self.framed_packets.saturating_add(1);
-            let update = match packet.opcode {
-                18 | 76 => {
-                    let values = match (packet.opcode, packet.payload.as_slice()) {
-                        (18, [trade, public]) if *trade <= 2 && *public <= 4 => {
-                            [Some(*public), None, Some(*trade)]
-                        }
-                        (76, [private]) if *private <= 2 => [None, Some(*private), None],
-                        _ => {
-                            return Err(ProtocolError::new(
-                                "chat settings",
-                                "invalid filter payload",
-                            ));
-                        }
-                    };
-                    ServerUpdate::ChatFilters(values)
+            let size = packet.wire_size();
+            if packet.opcode == 57 {
+                if self.group.is_some() {
+                    return Err(ProtocolError::new("packet group", "nested group"));
                 }
-                73 => ServerUpdate::GameMessage(super::chat::decode(&packet.payload)?),
-                19 | 63 | 66 | 120 => ServerUpdate::PlayerStatus(super::scripts::status(
-                    packet.opcode,
-                    &packet.payload,
-                )?),
-                10 => ServerUpdate::Script(super::scripts::decode(&packet.payload)?),
-                39 if self.awaiting_rebuild => {
-                    let bootstrap = decode_bootstrap(&packet)?;
-                    let tracking = self.players.bootstrap(&packet.payload)?;
-                    self.awaiting_rebuild = false;
-                    emit(ServerUpdate::InitialPlacement(bootstrap));
-                    ServerUpdate::PlayerInfo(tracking)
+                let [hi, lo] = packet.payload.as_slice() else {
+                    return Err(ProtocolError::new("packet group", "invalid header"));
+                };
+                let length = i16::from_be_bytes([*hi, *lo]);
+                let remaining = usize::try_from(length)
+                    .map_err(|_| ProtocolError::new("packet group", "negative byte count"))?;
+                if remaining == 0 {
+                    emit(PacketBatch {
+                        packets: 1,
+                        wire_bytes: size,
+                        updates: Vec::new(),
+                    });
+                } else {
+                    self.group = Some(PacketGroup {
+                        remaining,
+                        wire_bytes: size,
+                        packets: Vec::new(),
+                    });
                 }
-                39 => {
-                    let map_anchor = decode_map_anchor(&packet.payload)?;
-                    self.npcs.clear_origin();
-                    self.zones.clear();
-                    ServerUpdate::RebuildMap { map_anchor }
+                continue;
+            }
+            let (packets, wire_bytes, count) = if let Some(group) = &mut self.group {
+                group.remaining = group
+                    .remaining
+                    .checked_sub(size)
+                    .ok_or_else(|| ProtocolError::new("packet group", "boundary inside packet"))?;
+                group.wire_bytes += size;
+                group.packets.push(packet);
+                if group.remaining != 0 {
+                    continue;
                 }
-                12 => {
-                    return Err(ProtocolError::new(
-                        "map rebuild",
-                        "instanced rebuild is not supported",
-                    ));
-                }
-                91 => {
-                    let update = self
-                        .players
-                        .decode_with_chat(&packet.payload, self.chat_codec.as_ref())?;
-                    ServerUpdate::PlayerInfo(update)
-                }
-                58 => ServerUpdate::ResetActorAnimations,
-                111 => {
-                    self.npcs.set_origin(&packet.payload)?;
-                    ServerUpdate::Deferred
-                }
-                150 => {
-                    let update = self.npcs.decode(&packet.payload, false)?;
-                    ServerUpdate::NpcInfo(update)
-                }
-                141 => {
-                    let update = self.npcs.decode(&packet.payload, true)?;
-                    ServerUpdate::NpcInfo(update)
-                }
-                118 | 126 => {
-                    let origin = self.zones.header(packet.opcode, &packet.payload)?;
-                    if packet.opcode == 126 {
-                        ServerUpdate::LocationZoneReset(origin)
-                    } else {
-                        ServerUpdate::Deferred
-                    }
-                }
-                49 => {
-                    for animation in self.zones.enclosed(&packet.payload)? {
-                        emit(ServerUpdate::LocationAnim(animation));
-                    }
-                    ServerUpdate::Deferred
-                }
-                123 => self
-                    .zones
-                    .animation(&packet.payload)?
-                    .map_or(ServerUpdate::Deferred, ServerUpdate::LocationAnim),
-                84 => {
-                    let update = decode_loc_anim_specific(&packet.payload)?;
-                    update.map_or(ServerUpdate::Deferred, ServerUpdate::LocationAnim)
-                }
-                11 | 30 | 35 | 45 | 51 | 54 | 78 | 106 | 116 => ServerUpdate::Interface(
-                    super::interfaces::decode(packet.opcode, &packet.payload)?,
-                ),
-                14 | 23 | 74 => ServerUpdate::Inventory(super::inventory::decode(
-                    packet.opcode,
-                    &packet.payload,
-                )?),
-                68 | 94 | 100 | 127 => ServerUpdate::Variable(decode_variable(&packet)?),
-                136 => ServerUpdate::MapFlag(super::minimap::flag(&packet.payload)?),
-                92 => ServerUpdate::Tick,
-                56 => {
-                    let [reason] = packet.payload.as_slice() else {
-                        return Err(ProtocolError::new(
-                            "server logout",
-                            "invalid reason payload",
-                        ));
-                    };
-                    return Err(ProtocolError::new(
-                        "server logout",
-                        format!("reason code {reason}"),
-                    ));
-                }
-                26 | 37 => ServerUpdate::LoggedOut,
-                _ => ServerUpdate::Deferred,
+                let group = self
+                    .group
+                    .take()
+                    .ok_or_else(|| ProtocolError::new("packet group", "missing group"))?;
+                let count = group.packets.len() + 1;
+                (group.packets, group.wire_bytes, count)
+            } else {
+                (vec![packet], size, 1)
             };
-            let is_logout = update == ServerUpdate::LoggedOut;
-            emit(update);
-            if is_logout {
+            let mut updates = Vec::new();
+            let mut logged_out = false;
+            for packet in packets {
+                logged_out = self.decode_packet(&packet, |update| updates.push(update))?;
+                if logged_out {
+                    break;
+                }
+            }
+            emit(PacketBatch {
+                packets: count,
+                wire_bytes,
+                updates,
+            });
+            if logged_out {
                 break;
             }
         }
         Ok(())
+    }
+
+    fn decode_packet(
+        &mut self,
+        packet: &GamePacket,
+        mut emit: impl FnMut(ServerUpdate),
+    ) -> Result<bool> {
+        let update = match packet.opcode {
+            18 | 76 => {
+                let values = match (packet.opcode, packet.payload.as_slice()) {
+                    (18, [trade, public]) if *trade <= 2 && *public <= 4 => {
+                        [Some(*public), None, Some(*trade)]
+                    }
+                    (76, [private]) if *private <= 2 => [None, Some(*private), None],
+                    _ => {
+                        return Err(ProtocolError::new(
+                            "chat settings",
+                            "invalid filter payload",
+                        ));
+                    }
+                };
+                ServerUpdate::ChatFilters(values)
+            }
+            73 => ServerUpdate::GameMessage(super::chat::decode(&packet.payload)?),
+            19 | 63 | 66 | 120 => {
+                ServerUpdate::PlayerStatus(super::scripts::status(packet.opcode, &packet.payload)?)
+            }
+            10 => ServerUpdate::Script(super::scripts::decode(&packet.payload)?),
+            39 if self.awaiting_rebuild => {
+                let bootstrap = decode_bootstrap(packet)?;
+                let tracking = self.players.bootstrap(&packet.payload)?;
+                self.awaiting_rebuild = false;
+                emit(ServerUpdate::InitialPlacement(bootstrap));
+                ServerUpdate::PlayerInfo(tracking)
+            }
+            39 => {
+                let map_anchor = decode_map_anchor(&packet.payload)?;
+                self.npcs.clear_origin();
+                self.zones.clear();
+                ServerUpdate::RebuildMap { map_anchor }
+            }
+            12 => {
+                return Err(ProtocolError::new(
+                    "map rebuild",
+                    "instanced rebuild is not supported",
+                ));
+            }
+            91 => {
+                let update = self
+                    .players
+                    .decode_with_chat(&packet.payload, self.chat_codec.as_ref())?;
+                ServerUpdate::PlayerInfo(update)
+            }
+            58 => ServerUpdate::ResetActorAnimations,
+            111 => {
+                self.npcs.set_origin(&packet.payload)?;
+                ServerUpdate::Deferred
+            }
+            150 => {
+                let update = self.npcs.decode(&packet.payload, false)?;
+                ServerUpdate::NpcInfo(update)
+            }
+            141 => {
+                let update = self.npcs.decode(&packet.payload, true)?;
+                ServerUpdate::NpcInfo(update)
+            }
+            118 | 126 => {
+                let origin = self.zones.header(packet.opcode, &packet.payload)?;
+                if packet.opcode == 126 {
+                    ServerUpdate::LocationZoneReset(origin)
+                } else {
+                    ServerUpdate::Deferred
+                }
+            }
+            49 => {
+                for animation in self.zones.enclosed(&packet.payload)? {
+                    emit(ServerUpdate::LocationAnim(animation));
+                }
+                ServerUpdate::Deferred
+            }
+            123 => self
+                .zones
+                .animation(&packet.payload)?
+                .map_or(ServerUpdate::Deferred, ServerUpdate::LocationAnim),
+            84 => {
+                let update = decode_loc_anim_specific(&packet.payload)?;
+                update.map_or(ServerUpdate::Deferred, ServerUpdate::LocationAnim)
+            }
+            11 | 30 | 35 | 45 | 51 | 54 | 78 | 106 | 116 => {
+                ServerUpdate::Interface(super::interfaces::decode(packet.opcode, &packet.payload)?)
+            }
+            14 | 23 | 74 => {
+                ServerUpdate::Inventory(super::inventory::decode(packet.opcode, &packet.payload)?)
+            }
+            68 | 94 | 100 | 127 => ServerUpdate::Variable(decode_variable(packet)?),
+            136 => ServerUpdate::MapFlag(super::minimap::flag(&packet.payload)?),
+            92 => ServerUpdate::Tick,
+            26 | 37 | 56 | 115 => {
+                ServerUpdate::Control(super::control::decode(packet.opcode, &packet.payload)?)
+            }
+            _ => ServerUpdate::Deferred,
+        };
+        let is_logout = matches!(&update, ServerUpdate::LoggedOut)
+            || matches!(&update, ServerUpdate::Control(control) if control.terminates_session());
+        emit(update);
+        Ok(is_logout)
     }
 }
 

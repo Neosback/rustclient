@@ -1,4 +1,4 @@
-use super::*;
+use super::{ConfigValue, EguiPanel, Pos2, ShellAction, Vec2};
 use keyboard_types::{Code, Key, Modifiers};
 impl EguiPanel {
     pub fn pointer(&mut self, x: f32, y: f32, pressed: Option<bool>, held: bool) {
@@ -64,6 +64,10 @@ impl EguiPanel {
         });
         self.dirty = true;
     }
+    #[expect(
+        clippy::needless_pass_by_value,
+        reason = "owned key matches the platform input adapter contract"
+    )]
     pub fn key(
         &mut self,
         key: Key,
@@ -86,7 +90,11 @@ impl EguiPanel {
         self.input
             .events
             .push(egui::Event::ModifiersChanged(self.modifiers));
-        if pressed&&key==Key::Escape {self.ctx.stop_dragging();self.drafts.clear();self.text.clear();}
+        if pressed && key == Key::Escape {
+            self.ctx.stop_dragging();
+            self.drafts.clear();
+            self.text.clear();
+        }
         let name = key.to_string();
         if pressed && let Some((plugin, setting)) = self.capture.take() {
             if key != Key::Escape
@@ -167,8 +175,8 @@ impl EguiPanel {
         self.input.events.push(egui::Event::WindowFocused(false));
         self.input.focused = false;
         self.capture = None;
-        self.ime_cursor=None;
-        self.modifiers=egui::Modifiers::default();
+        self.ime_cursor = None;
+        self.modifiers = egui::Modifiers::default();
         self.drafts.clear();
         self.text.clear();
         self.dirty = true;

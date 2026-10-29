@@ -1,4 +1,4 @@
-#![cfg(feature="legacy-native")]
+#![cfg(feature = "legacy-native")]
 #![cfg(not(target_arch = "wasm32"))]
 use rustclient_plugin_host::{
     configuration::{ConfigValue, Configuration},

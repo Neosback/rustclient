@@ -155,3 +155,20 @@ are exact 240 `classCX.method2697` / `classZM.method14115`, corroborated by read
 `class184.method4319`. Inline synthetic vectors in `outgoing_chat.rs` exercise all standard
 prefixes, mixed case/order, patterns, malformed patterns, CP1252 and payload bounds.
 These vectors do not establish full clan-chat support or a desktop visual comparison.
+
+## Cycle packet groups and session controls
+
+`tests/packet_groups.rs` uses minimal constructed encrypted streams (seed `[0; 4]`)
+from the pinned 240 packet table and client.method2198/2346 control flow. The reply
+golden uses selected RSProt `osrs-240-desktop` `1.0.0-ALPHA-20260825`, entry
+`net/rsprot/protocol/game/incoming/codec/misc/client/SendPingReplyDecoder.kt`, SHA-256 `54bb7c289150d3a644f2cae671401c0fa02fe0b27c29a1b105d58c5303c026dc`.
+These are codec/ordering contracts, not captured gameplay or complete session acceptance.
+
+Packet-group limit and byte-count provenance (same selected version):
+
+- `osrs-240-desktop` `net/rsprot/protocol/game/outgoing/codec/misc/client/PacketGroupStartEncoder.kt`: SHA-256 `810e2f098c6ce0204768f98fcd42d7d73210e918f1485832a69127428b8b10c7`.
+
+- `osrs-240-model` `net/rsprot/protocol/game/outgoing/misc/client/PacketGroupStart.kt`: SHA-256 `3038f9799fedf87e3d19fe9c35609cc1bc9532864553b65b17571a64a5e7cacd`.
+
+The model documents a maximum of 32,767 group bytes, consistent with the
+stock signed-short read; excess sizes disconnect during selected-server encoding.

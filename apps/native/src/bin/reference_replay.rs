@@ -80,6 +80,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
                 return;
             }
             let result = match input {
+                ConnectionInput::Control(_) => Ok(Vec::new()),
                 ConnectionInput::Operation(op) => scripts.commit(&mut state, op),
                 ConnectionInput::Script(request) => scripts
                     .enqueue(request, None)
