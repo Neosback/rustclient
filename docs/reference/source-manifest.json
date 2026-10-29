@@ -436,6 +436,62 @@
         {
           "path": "sources-semantic/classCC.java",
           "sha256": "4c8989b88a253bab118a67f7acefd6ceefc15e83100b76006c690904cf7a7eff"
+        },
+        {
+          "path": "sources-semantic/classOG.java",
+          "sha256": "34a673f8be92eac167ac9fd86492a216b72cba81ed478dd52057999f005644af"
+        },
+        {
+          "path": "sources-semantic/classQA.java",
+          "sha256": "2eaa0b42451230ccfdfde0644d980a45e093522a82a7c4cc4b6ba1ba2a09845e"
+        },
+        {
+          "path": "sources-semantic/classKI.java",
+          "sha256": "680a6b3396d6f099644a4e522f71bf5012c3c2991ee18ef8e02d6a044ea1abdd"
+        },
+        {
+          "path": "sources-semantic/classJG.java",
+          "sha256": "0fbaff9b53b95c3b359aca3f74ea8e25c3b2a12dbb597e2ad3230b534cbb2b27"
+        },
+        {
+          "path": "sources-semantic/classEL.java",
+          "sha256": "681eaef0fdc0f080edf3045a18a57728ff82a3bbdecc9777b101b68bf3737938"
+        },
+        {
+          "path": "sources-semantic/classCF.java",
+          "sha256": "35c0acab056fb430a64bd83aa18c4d52bdd60369b0eca968f29e06196e1b06c5"
+        },
+        {
+          "path": "sources-semantic/classKJ.java",
+          "sha256": "9928be25fa8e002fb203c6ae2254dba6fd0c188824baaf8adc8a9c6f08e20001"
+        },
+        {
+          "path": "sources-semantic/classSG.java",
+          "sha256": "12fa18ea351d832c916225a81ba7e74e77430c809acb78f2be8dead1114fb930"
+        },
+        {
+          "path": "sources-semantic/classDE.java",
+          "sha256": "a42a589f15dfc19487be91549501ca9ddc5aaeacaf86812678f10fb8547c35f9"
+        },
+        {
+          "path": "sources-semantic/classCR.java",
+          "sha256": "1ef00be93d43d90d9d8d7f37db54c83d738f6ee6ebc7a52abc21ddb96bab6a4f"
+        },
+        {
+          "path": "sources-semantic/classXQ.java",
+          "sha256": "e56df09f6411f5b0ff7b57af5e68048025260735975c94b567cf70a1a8f5c8b6"
+        },
+        {
+          "path": "sources-semantic/classXY.java",
+          "sha256": "cf0f7c4913f662eddfdb733809c704398181f5847d72c20071e1ff992c808b72"
+        },
+        {
+          "path": "sources-semantic/classGN.java",
+          "sha256": "d8c38cca1c075b1b5630bda349430b22753224eff7ab3fc805fa41aede0fbc53"
+        },
+        {
+          "path": "sources-semantic/classOY.java",
+          "sha256": "59c43980e935ff2cb31b4e014791ef5346f4c02442a741a4bc866b35d67ac092"
         }
       ]
     },

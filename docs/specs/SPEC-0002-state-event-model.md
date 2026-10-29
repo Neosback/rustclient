@@ -459,3 +459,18 @@ Schema-28 exact vectors: inactive `16047970197847965105`, revision-240 tick-5
 `12266812576389399527`, empty stream `18056086669613358074`, authenticated placement
 `3836480065533031186`, authenticated-placement commit stream `1823466541112395732`.
 Prior schema sections are historical anchors.
+
+## Desktop interaction continuation: fingerprint schema 29
+
+Schema 29 adds canonical sorted per-location action overrides (five enabled flags and five
+optional length-prefixed UTF-8 labels) and the interface operation-key scope (All/None/interface/
+widget). LocationOptionsChanged uses event tag 23 and its location key. Existing location
+replacement events continue to encode geometry/animation before and after the mutation.
+Options and scope use existing lifecycle/reset/replay owners; neither resource rasters nor
+worker history enter the fingerprint.
+
+Exact vectors: inactive `11238732911601325660`, revision-240 tick-5
+`18013236414894162980`, revision-240.2 tick-5 `4726832712926433191`, begin/tick/no-op/end
+stream `12387194914640535716`, empty stream `233507859283860133`, authenticated placement
+`7173393852060750725`, authenticated-placement stream `1360232279156113563`.
+Earlier schema sections record historical anchors.

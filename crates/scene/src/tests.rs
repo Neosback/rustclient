@@ -989,6 +989,10 @@ fn absent_map_catalog_tiles_remain_unwalkable_without_inventing_visible_floors()
 }
 
 #[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "one morph/depth emission fixture also verifies pose reuse and resource invalidation"
+)]
 fn npc_projection_keeps_base_depth_policy_when_appearance_morphs() {
     use crate::entity_mesh::{
         EntityCatalog, EntityPresentation, HiddenActors, build_entities_geometry,
@@ -1061,7 +1065,7 @@ fn npc_projection_keeps_base_depth_policy_when_appearance_morphs() {
         let mut geometry = SceneGeometry::default();
         build_entities_geometry(
             &asset,
-            &catalog,
+            &mut catalog,
             state.entities(),
             &ActorMotion::default(),
             &BTreeMap::new(),
@@ -1073,6 +1077,46 @@ fn npc_projection_keeps_base_depth_policy_when_appearance_morphs() {
         )
         .unwrap();
         assert_eq!(geometry.models.len(), 1);
+        let original = geometry.clone();
+        geometry.clear();
+        build_entities_geometry(
+            &asset,
+            &mut catalog,
+            state.entities(),
+            &ActorMotion::default(),
+            &BTreeMap::new(),
+            EntityPresentation {
+                interpolation: &AnimationInterpolation::default(),
+                hidden: &HiddenActors::default(),
+            },
+            &mut geometry,
+        )
+        .unwrap();
+        assert_eq!(geometry.vertices, original.vertices);
+        assert_eq!(geometry.opaque, original.opaque);
+        assert_eq!(geometry.transparent, original.transparent);
+        assert_eq!(geometry.picks.len(), original.picks.len());
+        assert_eq!(catalog.pose_cache_stats().hits, 1);
+        assert_eq!(catalog.pose_cache_stats().builds, 1);
+        assert!(catalog.pose_cache_stats().retained_model_bytes > 0);
+        // New resources invalidate rest/fallback poses even when the requested sample is unchanged.
+        catalog.merge(&asset, EntityAssets::default());
+        geometry.clear();
+        build_entities_geometry(
+            &asset,
+            &mut catalog,
+            state.entities(),
+            &ActorMotion::default(),
+            &BTreeMap::new(),
+            EntityPresentation {
+                interpolation: &AnimationInterpolation::default(),
+                hidden: &HiddenActors::default(),
+            },
+            &mut geometry,
+        )
+        .unwrap();
+        assert_eq!(geometry.vertices, original.vertices);
+        assert_eq!(catalog.pose_cache_stats().builds, 2);
         assert_eq!(
             geometry.models[0].depth_policy,
             if base_deferred {
@@ -1083,4 +1127,13 @@ fn npc_projection_keeps_base_depth_policy_when_appearance_morphs() {
         );
         assert_eq!(state.semantic_fingerprint(), before);
     }
+}
+
+#[test]
+fn authored_zero_scale_collapses_the_axis_without_placement_or_depth_corrections() {
+    let mut def = definition();
+    def.scale = [1, 1, 0];
+    def.translation = [0; 3];
+    let point = locations::transform(ModelPoint::new(128, -256, 384), &def, 10, 0, false).unwrap();
+    assert_eq!(point, ModelPoint::new(1, -2, 0));
 }

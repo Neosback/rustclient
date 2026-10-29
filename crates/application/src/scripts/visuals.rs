@@ -66,6 +66,33 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
                 }
                 _ => {}
             }
+            if let Some(sprite) = state
+                .interfaces()
+                .runtime()
+                .get(&node.address)
+                .and_then(|runtime| runtime.secondary_sprite)
+            {
+                request.sprites.insert(sprite);
+            }
+            if node.address.child.is_none()
+                && let Some(alternate) = self
+                    .interfaces
+                    .get(&node.id.interface)
+                    .and_then(|group| group.legacy(node.id))
+                    .and_then(|legacy| legacy.alternate.as_ref())
+            {
+                match alternate {
+                    WidgetBody::Sprite {
+                        sprite: Some(id), ..
+                    } => {
+                        request.sprites.insert(*id);
+                    }
+                    WidgetBody::Text { font: Some(id), .. } => {
+                        request.fonts.insert(*id);
+                    }
+                    _ => {}
+                }
+            }
             if let Some((item, count)) = state
                 .interfaces()
                 .runtime()

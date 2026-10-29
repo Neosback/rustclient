@@ -17,7 +17,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut item_ids: Vec<u32> = Vec::new();
     // Plain numbers are NPC definitions; `i<number>` selects an item definition. `a-b` is an
     // inclusive range of either.
-    for arg in args {
+    let args: Vec<_> = args.collect();
+    let benchmark = args.iter().any(|arg| arg == "--pose-benchmark");
+    for arg in args.into_iter().filter(|arg| arg != "--pose-benchmark") {
         let (ids, text) = match arg.strip_prefix('i') {
             Some(item) => (&mut item_ids, item),
             None => (&mut npc_ids, arg.as_str()),
@@ -65,7 +67,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             eprintln!("  pose failure: {failure}");
         }
     }
-    let triangles = mesh_batches(&scene, &catalog, &npc_ids)?;
+    let triangles = mesh_batches(&scene, &mut catalog, &npc_ids, benchmark)?;
     println!(
         "requested NPCs {} items {}; entity triangles {triangles}; failures {failures}; elapsed {:?}",
         npc_ids.len(),
@@ -102,10 +104,15 @@ fn report_batch(decoded: &EntityAssets) {
     );
 }
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "one bounded probe setup, comparison and timing workflow"
+)]
 fn mesh_batches(
     scene: &SceneAsset,
-    catalog: &entity_mesh::EntityCatalog,
+    catalog: &mut entity_mesh::EntityCatalog,
     npc_ids: &[u32],
+    benchmark: bool,
 ) -> Result<usize, Box<dyn std::error::Error>> {
     let tile = WorldTile::new(3222, 3218, Plane::MIN);
     let mut triangles = 0;
@@ -144,15 +151,62 @@ fn mesh_batches(
             ..NpcInfoUpdate::default()
         };
         state.apply_operation(SemanticOperation::UpdateNpcs(update))?;
+        if benchmark {
+            let mut expected = None;
+            for reuse in [false, true] {
+                catalog.clear_pose_cache();
+                let before = catalog.pose_cache_stats();
+                let start = std::time::Instant::now();
+                for _ in 0..200 {
+                    if !reuse {
+                        catalog.clear_pose_cache();
+                    }
+                    geometry.clear();
+                    entity_mesh::build_entities_geometry(
+                        scene,
+                        catalog,
+                        state.entities(),
+                        &rustclient_scene::ActorMotion::default(),
+                        &std::collections::BTreeMap::new(),
+                        entity_mesh::EntityPresentation {
+                            interpolation: &rustclient_scene::AnimationInterpolation::default(),
+                            hidden: &entity_mesh::HiddenActors::default(),
+                        },
+                        &mut geometry,
+                    )?;
+                }
+                let elapsed = start.elapsed();
+                if let Some((vertices, opaque, transparent)) = &expected {
+                    if *vertices != geometry.vertices
+                        || *opaque != geometry.opaque
+                        || *transparent != geometry.transparent
+                    {
+                        return Err("cached pose emission differs from rebuilt projection".into());
+                    }
+                } else {
+                    expected = Some((
+                        geometry.vertices.clone(),
+                        geometry.opaque.clone(),
+                        geometry.transparent.clone(),
+                    ));
+                }
+                let after = catalog.pose_cache_stats();
+                println!(
+                    "pose-benchmark actors={} reuse={reuse} iterations=200 elapsed_us={} builds={} hits={} retained_model_bytes={} identical_final_geometry=true",
+                    ids.len(),
+                    elapsed.as_micros(),
+                    after.builds - before.builds,
+                    after.hits - before.hits,
+                    after.retained_model_bytes
+                );
+            }
+        }
         // Exercise more than the first sample of each animation without retaining geometry.
         for cycle in [0, 10] {
             state.apply_operation(SemanticOperation::Scenery(SceneryOperation::AdvanceCycles(
                 cycle,
             )))?;
-            geometry.vertices.clear();
-            geometry.picks.clear();
-            geometry.opaque.clear();
-            geometry.transparent.clear();
+            geometry.clear();
             entity_mesh::build_entities_geometry(
                 scene,
                 catalog,

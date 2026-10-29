@@ -11,7 +11,7 @@ use crate::{GameState, OperationCommit, SemanticEvent, SessionLifecycle};
 ///
 /// Any change to field ordering, tags, integer encoding, or fingerprint
 /// algorithm that changes canonical output must increment this version.
-pub const SEMANTIC_FINGERPRINT_VERSION: u16 = 28;
+pub const SEMANTIC_FINGERPRINT_VERSION: u16 = 29;
 
 const FNV_OFFSET_BASIS: u64 = 0xCBF2_9CE4_8422_2325;
 const FNV_PRIME: u64 = 0x0000_0100_0000_01B3;
@@ -185,6 +185,26 @@ impl GameState {
             write_one_location_override(&mut fingerprint, *value);
         }
 
+        fingerprint.write_u32(
+            u32::try_from(scenery.location_options().len()).expect("bounded location options"),
+        );
+        for (key, options) in scenery.location_options() {
+            write_location_key(&mut fingerprint, *key);
+            for enabled in options.enabled.enabled() {
+                fingerprint.write_u8(u8::from(enabled));
+            }
+            for label in &options.labels {
+                match label {
+                    None => fingerprint.write_u8(0),
+                    Some(label) => {
+                        fingerprint.write_u8(1);
+                        fingerprint
+                            .write_u32(u32::try_from(label.len()).expect("bounded location label"));
+                        fingerprint.write_bytes(label.as_bytes());
+                    }
+                }
+            }
+        }
         match self.selected_tab() {
             None => fingerprint.write_u8(0),
             Some(tab) => {
@@ -720,6 +740,10 @@ fn write_event(fingerprint: &mut StableFingerprint64, event: SemanticEvent) {
             fingerprint.write_bytes(&current.to_le_bytes());
         }
         SemanticEvent::VariablesReset => fingerprint.write_u8(9),
+        SemanticEvent::LocationOptionsChanged { key } => {
+            fingerprint.write_u8(23);
+            write_location_key(fingerprint, key);
+        }
         SemanticEvent::LocationChanged {
             key,
             previous,

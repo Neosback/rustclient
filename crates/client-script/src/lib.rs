@@ -419,9 +419,17 @@ impl Stacks {
         Ok(out)
     }
 }
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub enum EventFlow {
+    #[default]
+    Continue,
+    Finish,
+}
 #[derive(Default)]
 pub struct Context {
     pub active: [Option<WidgetAddress>; 2],
+    pub resize_depth: u8,
+    pub flow: EventFlow,
 }
 pub trait Host {
     /// # Errors
@@ -768,7 +776,7 @@ pub fn execute(
                     }
                 }
             }
-            Ok(false)
+            Ok(context.flow == EventFlow::Finish)
         })();
         match result {
             Ok(true) => return Ok(()),

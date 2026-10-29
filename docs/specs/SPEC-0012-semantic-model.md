@@ -322,6 +322,12 @@ separately from absence. InventoryUpdate expresses replacement, ordered patches
 and removal; limits and session ownership belong to game-state, encodings to the
 profile. These internal semantic types do not extend the versioned plugin API.
 
+`WidgetOperation` also distinguishes authored button clicks, varp toggles and
+varp selections from indexed operations and dialogue continuation. Only indexed
+operations expose an operation index. These action values are transient commands;
+they introduce no retained state or fingerprint encoding. Revision-specific menu
+codes, CS1 selectors and packet layouts remain in adapters (SPEC-0025).
+
 
 ### Input and visible-player lifetime continuation
 
@@ -418,3 +424,15 @@ start. Missing, zero or out-of-range rewinds become terminal at end crossing. Re
 counter and is untouched by cached advancement. Definition timing remains immutable adapter
 evidence, separate from actor-owned playback and assignment policy. Schema 28 includes the
 cached rewind wherever resolved timing contributes to the semantic fingerprint.
+
+### Placement actions and widget key scope (schema 29)
+
+SceneryState retains optional action overrides by LocationKey: five visibility flags and five
+optional labels, distinct from the immutable object definition. Server replacement/deletion
+clears prior animation and action state; area reset, map replacement and logout clear the
+corresponding values. Options-only changes emit LocationOptionsChanged and a scenery delta.
+Sorted keys, flags and length-prefixed optional UTF-8 labels participate in the fingerprint.
+
+InterfaceState retains the operation-key dispatch scope as All, None, Interface or Widget.
+It uses the existing interface update/event/delta, reset and replay path. It is separate from
+the per-widget op_keys bindings. Retention does not establish operation-key dispatch support.

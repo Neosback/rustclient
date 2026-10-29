@@ -240,3 +240,16 @@ retains only its placeholder/last image and performs no recurring raster/upload 
 World-map primary presses follow resolved widget paint order and clipping. Buttons
 above the map receive their press before map dragging begins. The map image rectangle
 alone is not an input target and must not intercept a close button over that rectangle.
+
+### Actor CPU pose reuse (authorized 2026-10-29)
+
+The existing entity catalog may retain a bounded, disposable last model-local pose
+per visible actor. Keys compare the complete appearance/resolved morph and exact
+legacy/cached animation samples, including smoothing and fallback movement. Actor
+position, terrain, lighting, draw policy and pick emission are evaluated anew.
+Resource merges, scene-asset changes and actor removal invalidate retained poses.
+A 32 MiB retained-model budget bounds this cache; oversized poses still render.
+No GPU skinning, float approximation, depth offset or GameState mutation is involved.
+Counters report lookups, hits, builds and retained model bytes. Before/after probes
+compare identical emitted bytes and timings; synthetic/cache probes do not establish
+native/browser visual parity or a whole-client frame-rate improvement.

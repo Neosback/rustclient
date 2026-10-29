@@ -113,7 +113,7 @@ pub(super) fn location(
     Ok((opcode, out))
 }
 
-/// 240 `IF_BUTTONX`: combined component, child, object, one-based operation.
+/// 240 widget button, indexed operation and continuation families.
 pub(super) fn widget(action: rustclient_model::WidgetAction) -> Result<(u8, Vec<u8>)> {
     let widget = action.address.widget;
     if widget.interface.get() >= 65535
@@ -127,19 +127,83 @@ pub(super) fn widget(action: rustclient_model::WidgetAction) -> Result<(u8, Vec<
         ));
     }
     let packed = (widget.interface.get() << 16) | widget.component;
+    if action.operation.is_button() {
+        if action.address.child.is_some() || action.item.is_some() {
+            return Err(ProtocolError::new(
+                "legacy button encode",
+                "authored button requires a base component and no item",
+            ));
+        }
+        // classQP.method9746; selected RSProt If1ButtonDecoder.gCombinedId().
+        return Ok((11, packed.to_be_bytes().to_vec()));
+    }
     let child = action.address.child.map_or(Ok(65535), bounded)?;
+    if action.operation.is_continue() {
+        // classUL.method11465 -> classXY.method13037/13244: int BE, short LE-add.
+        let mut out = packed.to_be_bytes().to_vec();
+        out.extend([
+            child.to_le_bytes()[0].wrapping_add(128),
+            child.to_le_bytes()[1],
+        ]);
+        return Ok((82, out));
+    }
     let item = action.item.map_or(Ok(65535), |id| bounded(id.get()))?;
     let mut out = Vec::with_capacity(9);
     out.extend(packed.to_be_bytes());
     out.extend(child.to_be_bytes());
     out.extend(item.to_be_bytes());
-    out.push(action.operation.index() + 1);
+    out.push(
+        action.operation.index().ok_or_else(|| {
+            ProtocolError::new("widget action encode", "expected indexed operation")
+        })? + 1,
+    );
     Ok((1, out))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn authored_buttons_share_if1_packet_and_reject_dynamic_or_item_context() {
+        use rustclient_model::{
+            InterfaceId, ItemDefinitionId, WidgetAction, WidgetAddress, WidgetId, WidgetOperation,
+        };
+        for operation in [
+            WidgetOperation::BUTTON_CLICK,
+            WidgetOperation::BUTTON_TOGGLE,
+            WidgetOperation::BUTTON_SELECT,
+        ] {
+            let action = WidgetAction {
+                address: WidgetAddress::component(WidgetId::new(InterfaceId::new(0x1234), 0x5678)),
+                operation,
+                item: None,
+                interface_epoch: 0,
+            };
+            assert_eq!(widget(action).unwrap(), (11, vec![0x12, 0x34, 0x56, 0x78]));
+            for bad in [
+                WidgetAction {
+                    address: WidgetAddress {
+                        child: Some(0),
+                        ..action.address
+                    },
+                    ..action
+                },
+                WidgetAction {
+                    item: Some(ItemDefinitionId::new(995)),
+                    ..action
+                },
+            ] {
+                let mut cipher = crate::Isaac::new([1, 2, 3, 4]);
+                let mut fresh = crate::Isaac::new([1, 2, 3, 4]);
+                assert!(
+                    super::super::game::ClientIntent::WidgetAction(bad)
+                        .encode(&mut cipher)
+                        .is_err()
+                );
+                assert_eq!(cipher.next_word(), fresh.next_word());
+            }
+        }
+    }
     #[test]
     fn widget_family_has_exact_fields_and_invalid_actions_preserve_cipher_state() {
         use rustclient_model::{
@@ -157,6 +221,14 @@ mod tests {
         assert_eq!(
             widget(action).unwrap(),
             (1, vec![0, 12, 0, 13, 0x12, 0x34, 3, 0xe3, 32])
+        );
+        assert_eq!(
+            widget(WidgetAction {
+                operation: WidgetOperation::CONTINUE,
+                ..action
+            })
+            .unwrap(),
+            (82, vec![0, 12, 0, 13, 0xb4, 0x12])
         );
         let mut bad = action;
         bad.address.widget.component = 65535;

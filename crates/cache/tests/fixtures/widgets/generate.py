@@ -21,3 +21,21 @@ for kind,name in [(0,'container'),(3,'rectangle'),(4,'text'),(5,'sprite'),(6,'mo
     listeners=bytes([3,0])+u32(100)+b'\0'+u32(0xffffffd6)+b'\1'+string('€')+bytes(17)
     tail=b'\xff\xff\xff'+string('Bank')+bytes([2])+string('Open')+string('Bank')+bytes([4,5,1])+string('Use')+listeners+bytes([1])+u32(0xfffffffe)+bytes([2])+u32(93)+u32(95)+bytes([0])
     (OUT/(name+'.bin')).write_bytes(header+bodies[kind]+tail)
+
+# IF1 vectors authored independently against Widget.method7215, revision 240.
+for kind in range(9):
+    b=bytearray([kind,2 if kind==6 else 1])
+    b+=struct.pack('>HhhHHBHH',0,-10,5,80,25,64,65535 if kind==0 else 0,3)
+    b+=bytes([1,2])+u16(42)+bytes([1])+u16(3)+u16(20)+u16(65535)+u16(0)
+    if kind==0:b+=u16(960)+bytes([1])
+    if kind==1:b+=u16(123)+bytes([0])
+    if kind==3:b+=bytes([1])
+    if kind in (1,4):b+=struct.pack('>BBBHB',1,2,14,496,1)
+    if kind==4:b+=string('Bank €')+string('Selected')
+    if kind in (1,3,4):b+=u32(0x123456)
+    if kind in (3,4):b+=u32(0xabcdef)+u32(0x112233)+u32(0x445566)
+    if kind==5:b+=u32(1234)+u32(0xffffffff)
+    if kind==6:b+=struct.pack('>IIHHHHH',70000,80000,808,65535,900,256,512)
+    if kind==8:b+=string('Hover only')
+    b+=string('Cast')+string('Spell')+u16(0xffff) if kind==6 else bytes([0])
+    (OUT/f'if1-{kind}.bin').write_bytes(b)

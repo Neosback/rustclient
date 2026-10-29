@@ -32,6 +32,7 @@ exact evidence below remains bounded to its recorded implementation.
 | interfacestyles | partial | widget overrides (2005 side stones), HD health bars, menu options, cross sprites, always-stack |
 | menuentryswapper | not-implemented | the right-click menu is not exposed to plugins (entries, `PostMenuSort`, edits) |
 | devtools | not-implemented | widget, variable and script views are not exposed to plugins |
+| xptracker | partial | local core/overlay exist; panel/menu, stable account persistence, real-time clock and external sync remain open |
 
 No row below was compared against the live reference client; "verified" names automated tests only.
 
@@ -281,3 +282,27 @@ Known differences:
 
 - The host raised the per-sprite edge to 1024 pixels and the count to 256, with a 4 MiB total budget per plugin, because the 2005 skin has sprites up to
   717 pixels wide (about 1 MB decoded in total).
+
+## xptracker — local subset, 2026-10-29
+
+Sources: pinned `plugins/xptracker/{XpStateSingle,XpState,XpPauseStateSingle,
+XpTrackerPlugin,XpTrackerConfig}.java` (BSD-2, retained in `NOTICE`). TSPS
+`3df1df13` supplied the lead; stock/RuneLite source controls the arithmetic and
+login behavior. [Scoped checkpoint](../../plan/TSPS-ADOPTION-2026-10-29.md).
+
+| Source behavior | Rust owner | Implemented | Verification |
+| --- | --- | --- | --- |
+| XP baseline/loss reset, ten-sample action history, 60-second minimum rate denominator, rate-only reset | `first-party-plugins::xptracker::SkillTracker` | yes | independent arithmetic, ring replacement and loss/reset contracts |
+| Explicit elapsed time, idle/logout/manual pause and gain resumes | `SkillTracker::{advance,pause,resume}` | core; live adapter uses client cycles | pause/idle/reset contracts; wall-clock behavior remains open |
+| Goals, actions/seconds remaining, account-bound save envelopes | `SkillTracker::{set_goal,summary,save,restore}` | core only | exact account/XP restore, wrong identity/stale XP/corruption rejection; no live account persistence |
+| Ignore initial login synchronization, preserve gains over ordinary map loading | `xptracker::XpTracker` | yes | host test suppresses two initial game ticks, counts later gains and region-load updates |
+| Local canvas session XP/rate/action text, hide-maxed and source ordering policy | `XpTracker::output`, `register_all` | yes; six-row local subset | mediated host overlay contract; not visually accepted |
+| Complete XP panel, skill-tab menus, stable profile persistence, full clock behavior and external sync | existing versioned plugin services plus future adapters | no | remains open; no ineffective controls exposed |
+
+The schema generator preserves only four effective source keys for this slice:
+`hideMaxed`, `pauseSkillAfter`, `resetSkillRateAfter` and
+`prioritizeRecentXpSkills`. Full source settings remain gated, including
+`saveState`: display names are not a stable account/profile identity. The live
+logout pause keeps the source default enabled; exposing its toggle awaits a
+real elapsed-time service, since session cycles cannot measure offline time. This is
+one of 12 partial first-party modules, not a completed RuneLite plugin.

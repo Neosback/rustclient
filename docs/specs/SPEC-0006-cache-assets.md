@@ -104,3 +104,11 @@ image decoder (`WorldMapRenderer` -> `classIT.method6356` / ImageIO); this is di
 from the cache's indexed sprite encoding. Preserve image dimensions and decode context.
 A malformed present image remains an explicit error. Missing optional overview data
 is different from malformed data and must not silently certify a loaded map.
+
+## Zero location scales (source/data continuation 2026-10-29)
+
+Location scale components are unsigned authored factors and may be zero. Preserve
+them, including collapsed geometry, rather than rejecting or replacing them with
+128. Revision-240 ObjectComposition and ModelData accept these factors; the selected
+LIVE cache has seven definitions with [1,1,0]. Positive footprint dimensions remain
+a separate loader invariant. This does not authorize decoration/depth nudges.

@@ -148,3 +148,19 @@ fn item_inventory_model_uses_the_240_32_bit_opcode_with_legacy_and_absent_forms(
     assert_eq!(absent.icon_model, None);
     assert!(item(&[44, 0, 0, 0x72], ItemDefinitionId::new(1), source).is_err());
 }
+
+#[test]
+fn zero_location_scale_is_authored_geometry_not_an_invalid_footprint() {
+    use rustclient_cache::{GroupId, IndexId, Source, osrs240::definitions};
+    use rustclient_model::ObjectDefinitionId;
+    let source = Source::group(IndexId(2), GroupId(6));
+    let definition = definitions::object(
+        &[65, 0, 1, 66, 0, 1, 67, 0, 0, 0],
+        ObjectDefinitionId::new(27122),
+        source,
+    )
+    .unwrap();
+    assert_eq!(definition.size, [1, 1]);
+    assert_eq!(definition.scale, [1, 1, 0]);
+    assert!(definitions::object(&[14, 0, 0], ObjectDefinitionId::new(1), source).is_err());
+}

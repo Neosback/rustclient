@@ -209,30 +209,45 @@ impl EguiPanel {
     fn content(&mut self, ui: &mut egui::Ui, model: &ShellModel) {
         ui.painter()
             .rect_filled(ui.max_rect(), 0., Color32::from_gray(39));
-        let available = ui.available_size();
-        ui.horizontal_top(|ui| {
-            if model.sidebar == SidebarState::Panel {
-                ui.allocate_ui_with_layout(
-                    Vec2::new((available.x - 36.).max(1.), available.y),
-                    egui::Layout::top_down(egui::Align::Min),
-                    |ui| {
-                        ui.set_width((available.x - 36.).max(1.));
-                        self.panel(ui, model);
-                    },
-                );
-            }
-            ui.separator();
-            ui.vertical(|ui| {
-                ui.set_width(26.);
+        let bounds = ui.available_rect_before_wrap();
+        let rail_width = 32.;
+        let rail_left = (bounds.right() - rail_width).max(bounds.left());
+        if model.sidebar == SidebarState::Panel {
+            let panel = Rect::from_min_max(
+                bounds.min + Vec2::splat(6.),
+                Pos2::new(rail_left - 6., bounds.bottom() - 6.),
+            );
+            ui.scope_builder(
+                egui::UiBuilder::new()
+                    .max_rect(panel)
+                    .layout(egui::Layout::top_down(egui::Align::Min)),
+                |ui| {
+                    ui.set_clip_rect(panel);
+                    self.panel(ui, model);
+                },
+            );
+        }
+        ui.painter().vline(
+            rail_left,
+            bounds.y_range(),
+            egui::Stroke::new(1., Color32::from_gray(55)),
+        );
+        let rail = Rect::from_min_max(Pos2::new(rail_left, bounds.top() + 3.), bounds.max);
+        ui.scope_builder(
+            egui::UiBuilder::new()
+                .max_rect(rail)
+                .layout(egui::Layout::top_down(egui::Align::Center)),
+            |ui| {
                 let response = ui
                     .add_sized([26., 30.], egui::Button::new("⚙"))
                     .on_hover_text("Configuration");
+                self.targets.insert("toggle-panel".into(), response.rect);
                 self.hit(&response);
                 if response.clicked() {
                     self.channel.send(ShellAction::TogglePanel);
                 }
-            });
-        });
+            },
+        );
     }
     #[expect(
         clippy::too_many_lines,
@@ -341,7 +356,7 @@ impl EguiPanel {
                                 self.selected = Some(plugin.id.clone());
                             }
                             if plugin.required {
-                                ui.colored_label(Color32::from_rgb(239, 147, 20), "●")
+                                ui.colored_label(Color32::from_rgb(239, 147, 20), "On")
                                     .on_hover_text("Required plugin: always on");
                             } else {
                                 let mut enabled = plugin.enabled;

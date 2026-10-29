@@ -44,15 +44,63 @@ impl Host for TestHost {
         op: Opcode,
         _: i32,
         s: &mut Stacks,
-        _: &mut Context,
+        context: &mut Context,
     ) -> Result<(), String> {
         if op == Opcode::SetVarp {
             self.observed.push(s.int()?);
+            Ok(())
+        } else if op == Opcode::CcCallonresize {
+            context.flow = rustclient_client_script::EventFlow::Finish;
             Ok(())
         } else {
             Err(format!("unsupported {op:?}"))
         }
     }
+}
+#[test]
+fn host_finish_ends_the_whole_event_and_preserves_committed_prefix() {
+    let mut host = TestHost::default();
+    host.programs.insert(
+        ScriptId::new(1),
+        program(
+            1,
+            [0; 3],
+            [0; 3],
+            &[
+                (Opcode::Iconst, 7),
+                (Opcode::SetVarp, 0),
+                (Opcode::Invoke, 2),
+                (Opcode::Iconst, 9),
+                (Opcode::SetVarp, 0),
+                (Opcode::Return, 0),
+            ],
+        ),
+    );
+    host.programs.insert(
+        ScriptId::new(2),
+        program(
+            2,
+            [0; 3],
+            [0; 3],
+            &[
+                (Opcode::CcCallonresize, 0),
+                (Opcode::Iconst, 8),
+                (Opcode::SetVarp, 0),
+                (Opcode::Return, 0),
+            ],
+        ),
+    );
+    execute(
+        &mut host,
+        ScriptRequest {
+            id: ScriptId::new(1),
+            arguments: vec![],
+        },
+        Context::default(),
+        Limits::default(),
+    )
+    .unwrap();
+    assert_eq!(host.observed, [7]);
 }
 #[test]
 fn calls_share_array_identity_and_event_locals_default_without_consuming_invoke_arguments() {

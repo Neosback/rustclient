@@ -39,12 +39,12 @@ fn authentication_and_initial_placement_replay_exactly_and_reset_on_disconnect()
         stream.push(commit);
         envelopes.push(ReplayEnvelope::new(operation, commit));
     }
-    // Schema 28 adds cached-model action rewind timing.
+    // Schema 29 retains placement action overrides and widget key dispatch scope.
     assert_eq!(
         state.semantic_fingerprint().get(),
-        3_836_480_065_533_031_186
+        7_173_393_852_060_750_725
     );
-    assert_eq!(stream.finish().get(), 1_823_466_541_112_395_732);
+    assert_eq!(stream.finish().get(), 1_360_232_279_156_113_563);
     assert_eq!(state.lifecycle(), SessionLifecycle::Active);
     assert_eq!(state.authenticated_player(), Some(player()));
     assert_eq!(state.initial_placement(), Some(placement()));

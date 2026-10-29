@@ -1,0 +1,654 @@
+{
+  "schema": 1,
+  "reviewed_on": "2026-10-29",
+  "purpose": "Selected local source evidence for TSPS-241-REVIEW-2026-10-29.md; research only, no runtime dependency or parity certification.",
+  "tsps": {
+    "root": "/Users/tylercovalt/Documents/tsps-main",
+    "git_history_available": false,
+    "cache_target": "osrs-241_2026-10-20",
+    "cache_bytes_available_and_verified": false,
+    "stock_241_wire_compatibility": "not established; custom packet encoder inspected",
+    "files": [
+      {
+        "path": "AGENTS.md",
+        "sha256": "6bedadfd8e5222f27c5a6c5366ad0942c2e7e92c5524f1c9e2ad51e158be4020",
+        "lines": 40
+      },
+      {
+        "path": "LICENSE",
+        "sha256": "8b974eced66e80a3d02a2de30e2479c209bee9777b78793c7c1953fd5f144692",
+        "lines": 25
+      },
+      {
+        "path": "client/common/utils/BuildSteps.ts",
+        "sha256": "5fb2d4ec349dc085e82e4cfa639fe3dd97937dd270d8bf3496ec0811c9c7596a",
+        "lines": 36
+      },
+      {
+        "path": "client/game/actor/ActorAnimation.ts",
+        "sha256": "06d1909691c7a831aec8e973987fc713cedc692e7d867d6d42a75471ac1409a1",
+        "lines": 124
+      },
+      {
+        "path": "client/game/chat/ChatTextMetrics.ts",
+        "sha256": "6bb9931592be9cc7e6000883e8d307f21591b69f819dcbca409a600589d73aa6",
+        "lines": 90
+      },
+      {
+        "path": "client/game/menu/WorldMenuBuilder.ts",
+        "sha256": "a10293c0431e33281386e8c8e56a9d6697387e365e02e2e60bf3e7158f51ea00",
+        "lines": 655
+      },
+      {
+        "path": "client/game/movement/NpcClientTick.ts",
+        "sha256": "b7b2881b1bc0beb9370c17581cbce7ed3268d8f5557c3d29095b86c43fce575f",
+        "lines": 345
+      },
+      {
+        "path": "client/game/sidebar/Sidebar.tsx",
+        "sha256": "b8e978e74f8da4c3e1587d1a057070d17975367af9e35c4dcfc8109483eff195",
+        "lines": 97
+      },
+      {
+        "path": "client/game/sidebar/SidebarRail.tsx",
+        "sha256": "25ced36f7110e2ca62a0aaf8786d931565071a8171a4279355c2fb54438e4e1d",
+        "lines": 40
+      },
+      {
+        "path": "client/game/sidebar/SidebarStore.ts",
+        "sha256": "42a0a29d8a2f6758b3186797057e4056edf1b3fa1f0972d079aac853c15fc39b",
+        "lines": 69
+      },
+      {
+        "path": "client/game/widgets/input/widgetMenuWheelInput.ts",
+        "sha256": "4407ff96a0f7ef27cf7fdabf7e6d52e78be29166a483cf0161da1adf54665f20",
+        "lines": 46
+      },
+      {
+        "path": "client/game/worker/RenderDataWorker.ts",
+        "sha256": "c3d18a8c0f57e4bbe402c00d4e17ba391418c8461abadd8d7fafffeabcff70b0",
+        "lines": 715
+      },
+      {
+        "path": "client/game/worker/RenderDataWorkerPool.ts",
+        "sha256": "fa048f11dde9f85216fa191c53a76c1d2a78d83350d4f86eae01cb94d5e06604",
+        "lines": 235
+      },
+      {
+        "path": "client/game/worker/WorkerInputUpdates.ts",
+        "sha256": "d1ae73db3ba673a9318a3cd73d4188782eaa7b1a2e8689ad47b1e0980fbea78d",
+        "lines": 38
+      },
+      {
+        "path": "client/game/worker/WorldMapTileJob.ts",
+        "sha256": "61d16b07d435debf97cd6ad912b06cba17521d9534ad293bf78ea6a2eebdf6e7",
+        "lines": 93
+      },
+      {
+        "path": "client/game/worldMap/WorldMapController.ts",
+        "sha256": "d0079af49ca3c3c1a184a065ccd3fa3e0a6eee4d465d5693792498664e0ea61f",
+        "lines": 320
+      },
+      {
+        "path": "client/game/worldview/WorldEntity.ts",
+        "sha256": "48be51d36d4416c7f7e1b8dbcff41081ca7cafb5868d751557791297f2eaca95",
+        "lines": 174
+      },
+      {
+        "path": "client/game/worldview/WorldView.ts",
+        "sha256": "b7f630a75f3f101c55dab90d239619499db8a83c100697715d8d1cfb02977424",
+        "lines": 126
+      },
+      {
+        "path": "client/game/worldview/WorldViewManager.ts",
+        "sha256": "9a61494492cb71f62720054aa308f50ab7c3a437517bd346f9469df1fedf89a2",
+        "lines": 135
+      },
+      {
+        "path": "client/network/packet/ClientBinaryEncoder.ts",
+        "sha256": "83c6527fbad431439e7abbd042a02071237db8cc2b644ede9e349a1d9e624b37",
+        "lines": 729
+      },
+      {
+        "path": "client/network/serverConnection/domain/itemPrices.ts",
+        "sha256": "5332d53dd1a8a225cb430de5ce8bf8426b5cbf0b63ded410a5415ba659352e6d",
+        "lines": 43
+      },
+      {
+        "path": "client/package.json",
+        "sha256": "ca2bb2e7db35af5249aa457468f8fa000337015714b42ab586427ae4072c724a",
+        "lines": 149
+      },
+      {
+        "path": "client/render/ActorVisibility.ts",
+        "sha256": "c43ddb7c75280447583a8bd6cebbdca73ddb7a81aacd0eb7066713c2a3ae6d75",
+        "lines": 38
+      },
+      {
+        "path": "client/render/MapGeometryUpload.ts",
+        "sha256": "e06653e8e784ea59e1e0ec2b6dbdb989bb0beae635b705e2435378793dff4390",
+        "lines": 72
+      },
+      {
+        "path": "client/render/gfx/GfxManager.ts",
+        "sha256": "38f578b24fdabf825f8e748ba231bb9a007277a32dd7c470ce8ee488f748ffec",
+        "lines": 497
+      },
+      {
+        "path": "client/render/loader/SdMapDataLoader.ts",
+        "sha256": "4eb47f989f356df984d7d9e385c919571a762554e444f88463ebb65bdb4119d7",
+        "lines": 2512
+      },
+      {
+        "path": "client/render/loc/SceneLocs.ts",
+        "sha256": "ea03ce8580533cdffa94453a0e8260e417c0f37b417578a62720875ea678a23c",
+        "lines": 573
+      },
+      {
+        "path": "client/render/npc/AsyncNpcPoseCache.ts",
+        "sha256": "94ca768ed00a67f963caf9a4f651692cc82448eb6be23db129b9740920c460bf",
+        "lines": 312
+      },
+      {
+        "path": "client/render/npc/DynamicNpcAnimLoader.ts",
+        "sha256": "b9cf55a43fbb265a56fc196740f6ef159ff2208cefb5ff86ca9fbe00107be684",
+        "lines": 549
+      },
+      {
+        "path": "client/render/player/LabelPose.ts",
+        "sha256": "38733b9abdb9ca290093f03945419b1f23c3c004dd09ce43bd1f04bf6813066c",
+        "lines": 196
+      },
+      {
+        "path": "client/render/webgpu/SceneryDrawBundle.ts",
+        "sha256": "c29e03bddbee5bc94ba4eba58f0332ed30f8a42346c60c21cb94f8e78c72d893",
+        "lines": 37
+      },
+      {
+        "path": "client/render/webgpu/WorldResources.ts",
+        "sha256": "c11ad545acc282f69b42a8dc8ccbe2303179bd8c0fb4f3b0424e6f194e5e7a30",
+        "lines": 767
+      },
+      {
+        "path": "client/render/webgpu/actors/WebGPUActors.ts",
+        "sha256": "0377aa6a3201d76637a535c126332e2c86ae8ed72fa56f9c60055dc4045889c6",
+        "lines": 1236
+      },
+      {
+        "path": "client/render/webgpu/actors/actorGpu.ts",
+        "sha256": "9c64ed95d6d0727ff86eeb116a0a1acdba352d6fc394a03ba365c637adf86146",
+        "lines": 436
+      },
+      {
+        "path": "client/render/webgpu/shaders/actor.wgsl.ts",
+        "sha256": "788ce42887d19be1b15b6378946b8a424d68f5c0387a242bbb5f4d470ba98899",
+        "lines": 694
+      },
+      {
+        "path": "client/render/webgpu/shaders/main.vert.wgsl.ts",
+        "sha256": "c2c4e1dd44ea937f31d46702edc06e80d906aa993fab9d6ab06fdd6bcbd71923",
+        "lines": 625
+      },
+      {
+        "path": "client/rs/cs2/CommandSignatures.ts",
+        "sha256": "48376db58dcc21e439b4cc7eec2431f9308c15913beee9451c782e734e494876",
+        "lines": 1326
+      },
+      {
+        "path": "client/rs/cs2/handlers/UnsupportedOps.ts",
+        "sha256": "856efe84fe5c19afebd5cb279a28019e9f0d68d94e00f5727b149d02f25915f6",
+        "lines": 150
+      },
+      {
+        "path": "client/rs/font/textTemplates.ts",
+        "sha256": "3657b799f13c1faac13166acdd92dc768157a447d5a3aebd9881ec2d8ea6ae34",
+        "lines": 65
+      },
+      {
+        "path": "client/rs/map/WorldMapArchiveRenderer.ts",
+        "sha256": "0bc1b6543e2643dae4bcf3db9df12a836e0248bc532c1cf92f8bb4d4cc073f59",
+        "lines": 1536
+      },
+      {
+        "path": "client/rs/scene/SceneBuilder.ts",
+        "sha256": "e9beccccac1f080324bd18d7362d59a9dd6ba0ae50600eaa44531f747800c6e9",
+        "lines": 2253
+      },
+      {
+        "path": "client/rs/scene/WallDecorationOffset.ts",
+        "sha256": "6473094ca2d9e1b3d423c5a5c6cd9fa1df7496658cf83d81088d83c3cd9c9d20",
+        "lines": 100
+      },
+      {
+        "path": "client/runelite/client/RuneLite.ts",
+        "sha256": "7ecad936b823b84fa2e18f6d1a505be3dd68d3fb1339419f51443a0c226b4c51",
+        "lines": 137
+      },
+      {
+        "path": "client/runelite/client/eventbus/EventBus.ts",
+        "sha256": "cab227bcd533ef7f527222e061869641a194a94d1b06df0ff40041774b32ffd8",
+        "lines": 125
+      },
+      {
+        "path": "client/runelite/client/plugins/PluginInjector.ts",
+        "sha256": "5846c32b16bb217d3dd348469db2c1b00a33cb02c6eb7a4ef92cc73195f73ef5",
+        "lines": 67
+      },
+      {
+        "path": "client/runelite/client/ui/ClientToolbar.ts",
+        "sha256": "c8af08e911e61e79d52bca2ad3c63acfbea0b98d893613de4ff37b27165d7ece",
+        "lines": 52
+      },
+      {
+        "path": "client/scripts/cache/cs2-sweep.ts",
+        "sha256": "53f227d38ac8cd50816c23ecb6825b1c97ac57dcec475bea412e08d0c4b4a235",
+        "lines": 294
+      },
+      {
+        "path": "client/scripts/cache/generate-command-signatures.ts",
+        "sha256": "16ff440b10d3dd325cc5531f827ffb6280ca86d684576238a0fabd9f007d2655",
+        "lines": 73
+      },
+      {
+        "path": "client/scripts/cache/interface-sweep.ts",
+        "sha256": "9d8dfa27e0e6d3bff05d3cb719218164d2eada574256fa61f0a3e2dbbfa627bb",
+        "lines": 230
+      },
+      {
+        "path": "client/tests/async-npc-pose.test.ts",
+        "sha256": "696cb3b9e259ff166c473ac028d2fcf6c41efb9427d5fddd295a18874bc269a4",
+        "lines": 500
+      },
+      {
+        "path": "client/tests/cache-config-decode.test.ts",
+        "sha256": "b588365db74b3a1582a811cd4810f159fac92ae34ea95678d92b62acd0c3e822",
+        "lines": 143
+      },
+      {
+        "path": "client/tests/cs2-rev241-ops.test.ts",
+        "sha256": "d10a0891249726159683bb9f481bcadb30068124626fd0b9166a239fb7abbe1e",
+        "lines": 87
+      },
+      {
+        "path": "client/tests/cs2-script-sweep.test.ts",
+        "sha256": "cf31c3bbb038e28b0dd2b496e5712dadaaeaffeec82ee1578e8f66a3f7ed9d32",
+        "lines": 32
+      },
+      {
+        "path": "client/tests/interface-sweep.test.ts",
+        "sha256": "c79ab6e71e75c7c95ade49e82cdfbce0d4bb112210af6072da4037658e3b5c60",
+        "lines": 21
+      },
+      {
+        "path": "client/tests/npc-gpu-pose.test.ts",
+        "sha256": "a6f035f0cd7ad30b1b8cc7c002e0beebaeb6b844f54c43c5680ebe408442c9eb",
+        "lines": 218
+      },
+      {
+        "path": "client/tests/player-gpu-pose.test.ts",
+        "sha256": "3487be4eb06bc0708ec60e6a608ce10685827635302c11e3d7fb1a4129807507",
+        "lines": 229
+      },
+      {
+        "path": "client/tests/stale-click-target.test.ts",
+        "sha256": "d28b6f88c81742247134b9d319b87cf6789262b381a5208f54a6e0caffb7a00c",
+        "lines": 106
+      },
+      {
+        "path": "client/tests/ui-ordered-texture-batching.browser.cjs",
+        "sha256": "05cd4d7ed7331de66cd35b4346680808aee9e40a2159911f8bb33bc3c6c1c5d8",
+        "lines": 125
+      },
+      {
+        "path": "client/tests/ui-ordered-texture-batching.test.ts",
+        "sha256": "ef6e5e306b8773518d217ed3b4b8eda248757effc891f032b7624abdc037da26",
+        "lines": 91
+      },
+      {
+        "path": "client/tests/wall-decoration-offset.test.ts",
+        "sha256": "8dc1fe3b6ee3f325581e73d47962e51ad7b4eb3283469096a5cb0a9f3b137c40",
+        "lines": 104
+      },
+      {
+        "path": "client/tests/webgpu-actor-batching.test.ts",
+        "sha256": "0c63a2f157cdb1b877ecc25dc44645cc07bb7bfea7e1435752bd363e9c99ef24",
+        "lines": 104
+      },
+      {
+        "path": "client/tests/worker-input-updates.test.ts",
+        "sha256": "aa1d49e0d2c64f74be6e87bce622190d18a8e477d6140b85676a4ab256aebdd5",
+        "lines": 89
+      },
+      {
+        "path": "client/widgets/gl/renderer.ts",
+        "sha256": "d46ade9b55bb5a50b69453df3cba0ca6fcad73d8e6d3baad5cb1c7d8884312c0",
+        "lines": 1054
+      },
+      {
+        "path": "client/widgets/gl/widgetsGl/clickTypes.ts",
+        "sha256": "34951a0ec127ed2921424257181678103604f7d2e4e722ee1f6cb43601a0709b",
+        "lines": 47
+      },
+      {
+        "path": "client/widgets/gl/widgetsGl/frameInput.ts",
+        "sha256": "31661f5952ee24d5f154692f9da3f51aa0f34e1b82b7c6468cab746aacb87f84",
+        "lines": 98
+      },
+      {
+        "path": "client/widgets/gl/widgetsGl/interactionMenuCache.ts",
+        "sha256": "fa4258b89af3670bb76bd9897a5fae40cdbcdb6b4c5ba01e750fac1f18468436",
+        "lines": 325
+      },
+      {
+        "path": "docs/cache-revision-update.md",
+        "sha256": "760242e6df4206520a1f09ce6b5e10706d9813f4889521473e48eeaf53b19ffe",
+        "lines": 230
+      },
+      {
+        "path": "docs/client-performance-2026-10-23.md",
+        "sha256": "e92958e9dc979701d4a815c5c239fddc98b2d50b43c0b9950d59e53c696351de",
+        "lines": 318
+      },
+      {
+        "path": "docs/runelite-performance.md",
+        "sha256": "ef4db4c642aaa31db6ca0feea83dad730ecc01e05bdbb40279d4636f65d3c2f9",
+        "lines": 75
+      },
+      {
+        "path": "server/scripts/compare-cache.ts",
+        "sha256": "bb95fea7a75a704cd53bd1fdfe3202941d46654c135d3fc48151049c011b8215",
+        "lines": 356
+      },
+      {
+        "path": "server/target.txt",
+        "sha256": "becfddee5190008ee50ded050dc7449eb4aecd2eb789c7707b82865444d6578c",
+        "lines": 1
+      }
+    ]
+  },
+  "previous_baseline": {
+    "path": "docs/reference/rs240-port/TSPS-237-EVIDENCE.json",
+    "sha256": "ca084d67a39689120d5317b3e67ca4cac50e1a6f171e04847c19b9bd6d380b99",
+    "unchanged": 9,
+    "changed": 4,
+    "files": [
+      {
+        "path": "client/package.json",
+        "previous_sha256": "ca2bb2e7db35af5249aa457468f8fa000337015714b42ab586427ae4072c724a",
+        "current_sha256": "ca2bb2e7db35af5249aa457468f8fa000337015714b42ab586427ae4072c724a",
+        "status": "unchanged"
+      },
+      {
+        "path": "client/game/movement/NpcClientTick.ts",
+        "previous_sha256": "b7b2881b1bc0beb9370c17581cbce7ed3268d8f5557c3d29095b86c43fce575f",
+        "current_sha256": "b7b2881b1bc0beb9370c17581cbce7ed3268d8f5557c3d29095b86c43fce575f",
+        "status": "unchanged"
+      },
+      {
+        "path": "client/game/worldview/WorldViewManager.ts",
+        "previous_sha256": "9a61494492cb71f62720054aa308f50ab7c3a437517bd346f9469df1fedf89a2",
+        "current_sha256": "9a61494492cb71f62720054aa308f50ab7c3a437517bd346f9469df1fedf89a2",
+        "status": "unchanged"
+      },
+      {
+        "path": "client/game/worldview/WorldView.ts",
+        "previous_sha256": "b7f630a75f3f101c55dab90d239619499db8a83c100697715d8d1cfb02977424",
+        "current_sha256": "b7f630a75f3f101c55dab90d239619499db8a83c100697715d8d1cfb02977424",
+        "status": "unchanged"
+      },
+      {
+        "path": "client/game/worldview/WorldEntity.ts",
+        "previous_sha256": "48be51d36d4416c7f7e1b8dbcff41081ca7cafb5868d751557791297f2eaca95",
+        "current_sha256": "48be51d36d4416c7f7e1b8dbcff41081ca7cafb5868d751557791297f2eaca95",
+        "status": "unchanged"
+      },
+      {
+        "path": "client/game/actor/ActorAnimation.ts",
+        "previous_sha256": "06d1909691c7a831aec8e973987fc713cedc692e7d867d6d42a75471ac1409a1",
+        "current_sha256": "06d1909691c7a831aec8e973987fc713cedc692e7d867d6d42a75471ac1409a1",
+        "status": "unchanged"
+      },
+      {
+        "path": "client/game/chat/ChatTextMetrics.ts",
+        "previous_sha256": "6bb9931592be9cc7e6000883e8d307f21591b69f819dcbca409a600589d73aa6",
+        "current_sha256": "6bb9931592be9cc7e6000883e8d307f21591b69f819dcbca409a600589d73aa6",
+        "status": "unchanged"
+      },
+      {
+        "path": "client/runelite/client/ui/ClientToolbar.ts",
+        "previous_sha256": "c8af08e911e61e79d52bca2ad3c63acfbea0b98d893613de4ff37b27165d7ece",
+        "current_sha256": "c8af08e911e61e79d52bca2ad3c63acfbea0b98d893613de4ff37b27165d7ece",
+        "status": "unchanged"
+      },
+      {
+        "path": "client/game/sidebar/Sidebar.tsx",
+        "previous_sha256": "475e8c2c48647e44a9074a71647383f1f059631cca191a76a833c08287c819a2",
+        "current_sha256": "b8e978e74f8da4c3e1587d1a057070d17975367af9e35c4dcfc8109483eff195",
+        "status": "changed"
+      },
+      {
+        "path": "client/game/sidebar/SidebarRail.tsx",
+        "previous_sha256": "25ced36f7110e2ca62a0aaf8786d931565071a8171a4279355c2fb54438e4e1d",
+        "current_sha256": "25ced36f7110e2ca62a0aaf8786d931565071a8171a4279355c2fb54438e4e1d",
+        "status": "unchanged"
+      },
+      {
+        "path": "client/game/sidebar/SidebarStore.ts",
+        "previous_sha256": "6eefef40d1bf175f55c76e079a4f688c47b3962b9a23d1f0310ca3cb8922a4e2",
+        "current_sha256": "42a0a29d8a2f6758b3186797057e4056edf1b3fa1f0972d079aac853c15fc39b",
+        "status": "changed"
+      },
+      {
+        "path": "client/game/worldMap/WorldMapController.ts",
+        "previous_sha256": "e5bdb13a9f54c9bc57e8d11e504ff71fc5cc2ba7bcff6789412b9b261c4307c0",
+        "current_sha256": "d0079af49ca3c3c1a184a065ccd3fa3e0a6eee4d465d5693792498664e0ea61f",
+        "status": "changed"
+      },
+      {
+        "path": "client/rs/map/WorldMapArchiveRenderer.ts",
+        "previous_sha256": "41179ef15182d680e5675838b7f7ba8c1785c974c0e42089c72a843cfea90e5e",
+        "current_sha256": "0bc1b6543e2643dae4bcf3db9df12a836e0248bc532c1cf92f8bb4d4cc073f59",
+        "status": "changed"
+      }
+    ]
+  },
+  "rustclient": {
+    "head": "dde7fd2ffaf3021d1dcea37701e8c26d771a5ba7",
+    "basis": "Selected working-tree bytes including pre-existing uncommitted work; not HEAD alone. preexisting_status was captured before documentation edits; the roadmap pin includes the added research link.",
+    "preexisting_status": [
+      " M Cargo.lock",
+      " M apps/native/src/bin/script_probe.rs",
+      " M apps/native/src/bin/worldmap_probe.rs",
+      " M apps/native/src/interaction.rs",
+      " M apps/native/src/main.rs",
+      " M apps/native/src/scene.rs",
+      " M crates/application/src/connection.rs",
+      " M crates/application/src/interaction.rs",
+      " M crates/application/src/lib.rs",
+      " M crates/application/src/scene.rs",
+      " M crates/application/src/scripts/input_tests.rs",
+      " M crates/application/src/scripts/mod.rs",
+      " M crates/application/src/scripts/queries.rs",
+      " M crates/application/src/scripts/widgets.rs",
+      " M crates/application/src/scripts/worldmap.rs",
+      " M crates/application/src/widget_actions.rs",
+      " M crates/application/tests/widget_actions.rs",
+      " M crates/application/tests/world_actions.rs",
+      " M crates/cache/src/osrs240/mod.rs",
+      " M crates/cache/src/osrs240/script_opcodes.rs",
+      " M crates/cache/src/osrs240/scripts.rs",
+      " M crates/cache/src/script.rs",
+      " M crates/cache/src/world.rs",
+      " M crates/game-state/src/commit.rs",
+      " M crates/game-state/src/fingerprint.rs",
+      " M crates/game-state/src/fingerprint/interfaces.rs",
+      " M crates/game-state/src/fingerprint/tests.rs",
+      " M crates/game-state/src/interfaces.rs",
+      " M crates/game-state/src/scenery.rs",
+      " M crates/game-state/tests/connection.rs",
+      " M crates/game-state/tests/scenery.rs",
+      " M crates/game-state/tests/widgets.rs",
+      " M crates/model/src/interface.rs",
+      " M crates/model/src/lib.rs",
+      " M crates/model/src/scenery.rs",
+      " M crates/protocol/src/openrune_240/actions.rs",
+      " M crates/protocol/src/openrune_240/game.rs",
+      " M crates/protocol/src/openrune_240/zone.rs",
+      " M crates/scene/src/world_map.rs",
+      " M crates/shell-ui/Cargo.toml",
+      " M crates/shell-ui/src/egui_panel.rs",
+      " M crates/shell-ui/tests/egui_contracts.rs",
+      " M docs/reference/rs240-port/CS2-HOST-COVERAGE.tsv",
+      " M docs/reference/rs240-port/DEOB-PACKET-SITES.tsv",
+      " M docs/reference/rs240-port/PACKET-COVERAGE.tsv",
+      " M docs/reference/rs240-port/PORT-MATRIX.md",
+      " M docs/reference/rs240-port/PORT-MATRIX.tsv",
+      " M docs/specs/SPEC-0002-state-event-model.md",
+      " M docs/specs/SPEC-0012-semantic-model.md",
+      " M docs/specs/SPEC-0018-playable-desktop.md",
+      "?? apps/native/src/worldmap.rs",
+      "?? crates/scene/src/world_map/"
+    ],
+    "files": [
+      {
+        "path": "ARCHITECTURE.md",
+        "sha256": "2d175a4f5090d32ff55f36a9fc90488926a3f1e02c96c6bd3f791af49c38104a",
+        "lines": 96
+      },
+      {
+        "path": "docs/specs/SPEC-0007-rendering-ui.md",
+        "sha256": "8d91142e87cbe179009265735a2602f4ab26abad6de290da08c07a398245fba9",
+        "lines": 242
+      },
+      {
+        "path": "docs/specs/SPEC-0016-reference-scenery-parity.md",
+        "sha256": "f635cabbc55593ff0660ee0f58f6faac5e5d010120cf76c0903b9061efc826b6",
+        "lines": 180
+      },
+      {
+        "path": "docs/specs/SPEC-0019-port-parity.md",
+        "sha256": "57845654467d4edc4ac835a30ffed6e88afce6d27088bb4958098ee58be8bc78",
+        "lines": 92
+      },
+      {
+        "path": "docs/plan/PORTING-ROADMAP.md",
+        "sha256": "a6159dda689e09849fadd951be5e113a1d8d15c6ca2a2f393e4ea7cb590edfa2",
+        "lines": 274
+      },
+      {
+        "path": "docs/plan/PARITY-DEVIATIONS.tsv",
+        "sha256": "bc72863854652e5aa2d9e934b5896701460f1bd2d4edf75e62cde034ccb1a504",
+        "lines": 6
+      },
+      {
+        "path": "crates/application/src/scene.rs",
+        "sha256": "87f03dda824310ce2c8b04ae66441130ef42512aa6dab36e71c094c7a6639312",
+        "lines": 175
+      },
+      {
+        "path": "crates/application/src/widget_actions.rs",
+        "sha256": "b86461a32a1ea89db8b5212c1f7467a17801f7611c04efc042a92d76dc0cc201",
+        "lines": 112
+      },
+      {
+        "path": "crates/application/src/scripts/arrays.rs",
+        "sha256": "29990d98ac44de1eda096e59337b0b660a2812ea4bfdafd3a00ce4e87a2cf1f1",
+        "lines": 170
+      },
+      {
+        "path": "crates/application/src/scripts/database.rs",
+        "sha256": "95a99de62eb4708849d36d85fb0474970b944d4a128ab8cb1144059533cf19d5",
+        "lines": 740
+      },
+      {
+        "path": "crates/application/src/scripts/queries.rs",
+        "sha256": "0b7a2b48cde40ece6a95370158d0f96ad197f2abea71eaae83e9ec0b4c934959",
+        "lines": 1084
+      },
+      {
+        "path": "crates/client-script/src/lib.rs",
+        "sha256": "1b1756ddafd978e36ed8b945b72bc84b8ed4288e8d752ecac298ca9b67cd159a",
+        "lines": 785
+      },
+      {
+        "path": "crates/scene/src/entity_mesh.rs",
+        "sha256": "b2fb00453e05c63aaf8d510730ff4bd28c31e66669430aa4f43de20c7b9e5a27",
+        "lines": 718
+      },
+      {
+        "path": "crates/scene/src/decorations.rs",
+        "sha256": "7a6d0bcf1ecbdf231aeb65a58fe4668ebab2491d24330037551c6b448867876e",
+        "lines": 442
+      },
+      {
+        "path": "crates/scene/src/locations.rs",
+        "sha256": "89164f4b5b525c2280976fcd86fe8c1b21f6ba0ee45ea662da65ce01d4b5e735",
+        "lines": 801
+      },
+      {
+        "path": "crates/scene/src/world_map.rs",
+        "sha256": "134ff2408c16cfeb732c6d74199fb964f169172ccf37c8f7788c098201912f35",
+        "lines": 458
+      },
+      {
+        "path": "crates/renderer/src/world_geometry.rs",
+        "sha256": "c69a337a5ee51c7fbc05e510846bfe595fcfdc946b8d19fc04a900242890f4ba",
+        "lines": 399
+      },
+      {
+        "path": "crates/renderer/src/ui.rs",
+        "sha256": "e424242d07b59e4aed40c2c5fe4157db6c0b3ae474e2e1184a7296e07a2a71e9",
+        "lines": 862
+      },
+      {
+        "path": "crates/renderer/src/shell/egui.rs",
+        "sha256": "9528c349434c8de85445af3f3fc737f99311de470a0ef055ec75a827641fb2f7",
+        "lines": 178
+      },
+      {
+        "path": "crates/game-ui/src/pointer.rs",
+        "sha256": "ee05a90751545d509837f6052269def511738c9b1a38cc95b4b192774308b864",
+        "lines": 209
+      },
+      {
+        "path": "crates/game-ui/src/widget_text.rs",
+        "sha256": "efd9cad799ecd18b4f18251df117668f40854423763305c0d35e00a3aab8de35",
+        "lines": 555
+      },
+      {
+        "path": "apps/native/src/main.rs",
+        "sha256": "ae70da4f2c8a3c9b69618e6f33cacefdbe7af0c0e4b3e70209d68e1bf7d30cf3",
+        "lines": 2538
+      },
+      {
+        "path": "apps/native/src/scene.rs",
+        "sha256": "ddd613611441fdde3273d08ba43bcb350a815d2bf1e1fce627c6ba3830ce9894",
+        "lines": 360
+      },
+      {
+        "path": "apps/native/src/worldmap.rs",
+        "sha256": "b99fb4a74a172ef070169fc78856d1be6f1c776cd0e6f8d18e75fd0d7cc45036",
+        "lines": 247
+      }
+    ]
+  },
+  "validation": {
+    "performed": [
+      "read architecture/specs and selected TSPS/Rust source",
+      "SHA-256 comparison of all 13 prior TSPS pins",
+      "capture selected source hashes",
+      "python3 tools/docs_index.py --write and --check",
+      "relative Markdown link existence checks for review and updated navigation",
+      "SHA-256 integrity check of all 95 selected TSPS/RustClient files and prior evidence record",
+      "git diff --check for documentation edits"
+    ],
+    "not_run": [
+      "Cargo build, Clippy or Rust tests",
+      "TSPS tests/typecheck/build",
+      "live native/browser gameplay",
+      "visual acceptance",
+      "performance benchmark reruns"
+    ],
+    "upstream_benchmark_claims": "TSPS documentation only; raw /tmp artifacts not provided or independently validated"
+  }
+}

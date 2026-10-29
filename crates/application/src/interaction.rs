@@ -102,9 +102,17 @@ pub fn world_actions(
             (
                 def.name.as_deref().unwrap_or("Object"),
                 &def.actions,
-                ActionMask::ALL,
+                state
+                    .scenery()
+                    .location_options()
+                    .get(&key)
+                    .map_or(ActionMask::ALL, |o| o.enabled),
             )
         }
+    };
+    let target_color = match target {
+        WorldTarget::Npc { .. } => "ffff00",
+        WorldTarget::Location { .. } => "ffff",
     };
     Ok(actions
         .iter()
@@ -114,8 +122,20 @@ pub fn world_actions(
             if !enabled.allows(slot) {
                 return None;
             }
+            let verb = match target {
+                WorldTarget::Location { key, .. } => state
+                    .scenery()
+                    .location_options()
+                    .get(&key)
+                    .and_then(|o| o.labels[index].as_ref())
+                    .or(verb.as_ref()),
+                WorldTarget::Npc { .. } => verb.as_ref(),
+            }?;
+            if verb.is_empty() {
+                return None;
+            }
             Some((
-                format!("{} {name}", verb.as_ref()?),
+                format!("{verb} <col={target_color}>{name}"),
                 WorldAction {
                     scene,
                     target,

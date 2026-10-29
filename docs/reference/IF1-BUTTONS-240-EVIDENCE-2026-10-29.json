@@ -1,0 +1,303 @@
+{
+  "date": "2026-10-29",
+  "checkpoint": "docs/plan/IF1-BUTTONS-240-2026-10-29.md",
+  "base_commit": "dde7fd2ffaf3021d1dcea37701e8c26d771a5ba7",
+  "scope": "Authored IF1 click/toggle/select dispatch and direct local varp assignment. Partial legacy actions; content and option effects, targeting/close/continue lifecycle and live acceptance remain open.",
+  "worktree_note": "Composite dirty worktree; prior evidence hashes remain historical. Snapshot identifies current files, not authorship of every line. No reference files modified.",
+  "sources": [
+    {
+      "path": "references/rl-suite-240/sources-semantic/classDE.java",
+      "sha256": "a42a589f15dfc19487be91549501ca9ddc5aaeacaf86812678f10fb8547c35f9"
+    },
+    {
+      "path": "references/rl-suite-240/sources-semantic/classQP.java",
+      "sha256": "a1dd92f91c1236847ca051f64d140a90fec2973e7b9326b3f937fd7158a1816a"
+    },
+    {
+      "path": "references/rl-suite-240/sources-semantic/classJS.java",
+      "sha256": "1af40ee5c7bf06f2b93114fda6f1ad59ef9bb97d1a8988b430b8d1d482666010"
+    },
+    {
+      "path": "references/rl-suite-240/sources-semantic/classXY.java",
+      "sha256": "cf0f7c4913f662eddfdb733809c704398181f5847d72c20071e1ff992c808b72"
+    },
+    {
+      "path": "references/rl-suite-240/sources-semantic/classCR.java",
+      "sha256": "1ef00be93d43d90d9d8d7f37db54c83d738f6ee6ebc7a52abc21ddb96bab6a4f"
+    },
+    {
+      "path": "references/rl-suite-240/sources-semantic/classXQ.java",
+      "sha256": "e56df09f6411f5b0ff7b57af5e68048025260735975c94b567cf70a1a8f5c8b6"
+    },
+    {
+      "path": "references/rl-suite-240/sources-semantic/classGN.java",
+      "sha256": "d8c38cca1c075b1b5630bda349430b22753224eff7ab3fc805fa41aede0fbc53"
+    },
+    {
+      "path": "references/rl-suite-240/sources-semantic/classOY.java",
+      "sha256": "59c43980e935ff2cb31b4e014791ef5346f4c02442a741a4bc866b35d67ac092"
+    }
+  ],
+  "selected_rsprot": {
+    "artifact": "osrs-240-desktop",
+    "version": "1.0.0-ALPHA-20260825",
+    "sha256": "e68db452c6de344e0520d349ae69a2b238ffef620adb462f56b400e81b241740",
+    "member": "net/rsprot/protocol/game/incoming/codec/buttons/If1ButtonDecoder.kt",
+    "member_sha256": "b380600112f16f83121caf0f375306962230a289e8a238572c38fc532eb0e3ae"
+  },
+  "snapshot": [
+    {
+      "path": "crates/model/src/interface.rs",
+      "sha256": "60d40fce2dd7cca2000c3d6cf626cc81f4db88b2e639acb74b57f9aa933e2b5e"
+    },
+    {
+      "path": "crates/application/src/widget_actions.rs",
+      "sha256": "35b4071857dc81563b25187bc49fbf91bf5aeaa3027c5bdfa43fc4d45d0b4e66"
+    },
+    {
+      "path": "crates/application/src/scripts/mod.rs",
+      "sha256": "8486d8e16a96d58d19c8f6d46966a1c239f9ec8504e25369ed2f9cd8db49dcdb"
+    },
+    {
+      "path": "crates/application/src/scripts/legacy.rs",
+      "sha256": "f81da9d3bd4c934ccc826e4a4029aedd7aba728294280afc243e82f76738073a"
+    },
+    {
+      "path": "crates/application/src/scripts/legacy/button_tests.rs",
+      "sha256": "ce1e9162707cd0948ab644d56676322d44387905e3cecae1ee4f2d067fed74b9"
+    },
+    {
+      "path": "crates/cache/src/osrs240/cs1.rs",
+      "sha256": "eab495a1b4bd311c2cf95515cea80eb23c82d2190e39a1f2919b6257ba497163"
+    },
+    {
+      "path": "crates/cache/tests/cs1.rs",
+      "sha256": "61ae03ad394c0b294c37876306784fe80e8519fb1261fe65753fceb481e767b4"
+    },
+    {
+      "path": "crates/protocol/src/openrune_240/actions.rs",
+      "sha256": "0cf98aef093293d5f0cb9ffcfc8f8ef624267fc201134c471f227e90e68c3fe7"
+    },
+    {
+      "path": "crates/game-state/src/interfaces.rs",
+      "sha256": "23589ae4aae381be849877e3ca5d9229303372cddf7c9dafbb6b481c7139d932"
+    },
+    {
+      "path": "crates/game-state/src/fingerprint/interfaces.rs",
+      "sha256": "529b76c86482597fd19a419833909a352e9d1c46a259af2c9cb18c3ae0151d2f"
+    },
+    {
+      "path": "crates/game-state/tests/widgets.rs",
+      "sha256": "c31914ec4d92954dbc69a4f47d88d41a017dd11d85705916260c682dedccdc13"
+    }
+  ],
+  "state_implication": "No new state/events. Existing client-varp transition and variable queue; unchanged canonical bytes for valid retained target priorities. Special actions rejected in target_priority. No fingerprint-version or plugin-ABI change.",
+  "contracts": {
+    "command": [
+      "cargo",
+      "test",
+      "-p",
+      "rustclient-application",
+      "-p",
+      "rustclient-cache",
+      "-p",
+      "rustclient-game-state",
+      "-p",
+      "rustclient-model",
+      "-p",
+      "rustclient-protocol",
+      "--lib"
+    ],
+    "exit_code": 0,
+    "passed": 248,
+    "ignored": 1,
+    "log": "target/if1-buttons-240/contracts.log"
+  },
+  "validation_status": "Final scoped checks passed; implementation and live acceptance remain partial.",
+  "validation": [
+    {
+      "job": "fixtures",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "rustclient-cache",
+        "--test",
+        "cs1",
+        "--test",
+        "legacy_widgets"
+      ],
+      "exit_code": 0
+    },
+    {
+      "job": "actions",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "rustclient-application",
+        "--test",
+        "widget_actions"
+      ],
+      "exit_code": 0
+    },
+    {
+      "job": "state",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "rustclient-game-state",
+        "--test",
+        "widgets"
+      ],
+      "exit_code": 0
+    },
+    {
+      "job": "fmt",
+      "command": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--check"
+      ],
+      "exit_code": 0
+    },
+    {
+      "job": "workspace",
+      "command": [
+        "cargo",
+        "check",
+        "--workspace",
+        "--all-targets"
+      ],
+      "exit_code": 0
+    },
+    {
+      "job": "clippy",
+      "command": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 101
+    },
+    {
+      "job": "wasm",
+      "command": [
+        "cargo",
+        "check",
+        "-p",
+        "rustclient-web",
+        "-p",
+        "rustclient-application",
+        "--target",
+        "wasm32-unknown-unknown"
+      ],
+      "exit_code": 0
+    }
+  ],
+  "documentation_validation": [
+    {
+      "job": "docs",
+      "command": [
+        "python3",
+        "tools/docs_index.py",
+        "--check"
+      ],
+      "exit_code": 0
+    },
+    {
+      "job": "matrix",
+      "command": [
+        "python3",
+        "tools/port_matrix.py",
+        "--check"
+      ],
+      "exit_code": 0
+    },
+    {
+      "job": "source-ledger",
+      "command": [
+        "python3",
+        "tools/port_audit.py",
+        "--check"
+      ],
+      "exit_code": 0
+    },
+    {
+      "job": "inventories",
+      "command": [
+        "python3",
+        "tools/parity_inventory.py",
+        "--check"
+      ],
+      "exit_code": 0
+    }
+  ],
+  "acceptance_limits": [
+    "Source-reviewed Rust contracts; no new live reference differential capture.",
+    "No native/browser click-chain or visual acceptance performed.",
+    "Changed direct varps explicitly diagnose unevaluated option-type side effects.",
+    "Content clicks reject before packet emission; targeting/close/pending-continue remain open.",
+    "Config group 16 option-effect decoding and complete source varp bounds remain separate obligations."
+  ],
+  "followup_validation": [
+    {
+      "job": "fmt-followup",
+      "command": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--check"
+      ],
+      "exit_code": 0
+    },
+    {
+      "job": "buttons-followup",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "rustclient-application",
+        "--lib",
+        "scripts::legacy::button_tests"
+      ],
+      "exit_code": 0
+    },
+    {
+      "job": "clippy-followup",
+      "command": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0
+    },
+    {
+      "job": "workspace-followup",
+      "command": [
+        "cargo",
+        "check",
+        "--workspace",
+        "--all-targets"
+      ],
+      "exit_code": 0
+    }
+  ],
+  "resolved_validation_failure": "Initial strict Clippy flagged a missing semicolon in a unit-test closure; fixed. The seven focused button tests, formatting, strict workspace Clippy and workspace/all-target check passed afterward. Production Wasm inputs were unaffected by this test-only syntax fix.",
+  "test_summary": {
+    "selected_tests_passed": 261,
+    "existing_live_capture_tests_ignored": 1,
+    "post_style_fix_focused_tests_passed": 7,
+    "note": "Focused follow-up tests overlap the selected suite; not added to its total."
+  }
+}

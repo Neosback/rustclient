@@ -134,6 +134,7 @@ fn script_drag_configuration_is_owned_by_interface_state_and_resets_with_the_gro
     let address = WidgetAddress::component(id);
     let mut context = Context {
         active: [Some(address); 2],
+        ..Context::default()
     };
     for (op, ints) in [
         (Opcode::CcSetdraggable, vec![65536, -1]),
@@ -320,5 +321,180 @@ fn logout_listener_allows_the_validated_server_button_before_session_shutdown() 
     assert!(
         state.authenticated_player().is_some(),
         "server confirmation ends the authenticated session"
+    );
+}
+
+#[test]
+fn cache_preference_initialization_runs_once_and_resets_with_the_session() {
+    let mut scripts = test_support::scripts();
+    // Semantic expansion of selected cache helper 626 -> 605.
+    scripts.scripts.insert(
+        ScriptId::new(626),
+        Arc::new(Script {
+            id: ScriptId::new(626),
+            name: String::new(),
+            locals: [0; 3],
+            arguments: [0; 3],
+            switches: vec![],
+            instructions: [
+                (Opcode::Iconst, 128),
+                (Opcode::SetVarcInt, 1338),
+                (Opcode::Iconst, 896),
+                (Opcode::SetVarcInt, 1339),
+                (Opcode::Iconst, 128),
+                (Opcode::SetVarcInt, 1340),
+                (Opcode::Iconst, 896),
+                (Opcode::SetVarcInt, 1341),
+                (Opcode::Return, 0),
+            ]
+            .into_iter()
+            .map(|(opcode, integer)| Instruction {
+                opcode,
+                integer,
+                text: None,
+                long: 0,
+                array_default: None,
+            })
+            .collect(),
+        }),
+    );
+    let mut state = GameState::new();
+    state
+        .apply_operation(SemanticOperation::BeginSession {
+            revision: REVISION_240,
+        })
+        .unwrap();
+    assert!(scripts.initialize_session(&mut state).unwrap().is_empty());
+    assert_eq!(
+        state.interfaces().client_variables()[&1338],
+        ScriptValue::Int(128)
+    );
+    state
+        .apply_operation(SemanticOperation::Interface(
+            InterfaceUpdate::ClientVariable {
+                id: 1338,
+                value: ScriptValue::Int(256),
+            },
+        ))
+        .unwrap();
+    assert!(scripts.initialize_session(&mut state).unwrap().is_empty());
+    assert_eq!(
+        state.interfaces().client_variables()[&1338],
+        ScriptValue::Int(256)
+    );
+    scripts.reset();
+    state
+        .apply_operation(SemanticOperation::EndSession)
+        .unwrap();
+    state
+        .apply_operation(SemanticOperation::BeginSession {
+            revision: REVISION_240,
+        })
+        .unwrap();
+    assert!(scripts.initialize_session(&mut state).unwrap().is_empty());
+    assert_eq!(
+        state.interfaces().client_variables()[&1338],
+        ScriptValue::Int(128)
+    );
+}
+
+#[test]
+fn model_setup_key_scope_and_script_continuation_reach_existing_semantic_owners() {
+    let mut scripts = test_support::scripts();
+    let mut state = GameState::new();
+    let id = WidgetId::new(InterfaceId::new(1), 0);
+    let mut widget = component(id);
+    widget.body = WidgetBody::Model {
+        model: None,
+        offset: [0; 2],
+        angles: [0; 3],
+        zoom: 100,
+        sequence: None,
+        orthographic: false,
+        sizing: [0; 3],
+    };
+    widget.permissions.continue_enabled = true;
+    scripts.interfaces.insert(
+        id.interface,
+        InterfaceDefinition::from_widgets(id.interface, vec![widget]).unwrap(),
+    );
+    scripts.scripts.insert(
+        ScriptId::new(90007),
+        Arc::new(Script {
+            id: ScriptId::new(90007),
+            name: String::new(),
+            locals: [0; 3],
+            arguments: [0; 3],
+            switches: vec![],
+            instructions: [
+                (Opcode::Iconst, 3374),
+                (Opcode::Iconst, 65536),
+                (Opcode::IfSetmodel, 0),
+                (Opcode::Iconst, 0),
+                (Opcode::Iconst, 0),
+                (Opcode::Iconst, 512),
+                (Opcode::Iconst, 1536),
+                (Opcode::Iconst, 0),
+                (Opcode::Iconst, 950),
+                (Opcode::Iconst, 65536),
+                (Opcode::IfSetmodelangle, 0),
+                (Opcode::Iconst, 65536),
+                (Opcode::SetkeyscopeWidget, 0),
+                (Opcode::Iconst, 65536),
+                (Opcode::IfResumePausebutton, 0),
+                (Opcode::Return, 0),
+            ]
+            .into_iter()
+            .map(|(opcode, integer)| Instruction {
+                opcode,
+                integer,
+                text: None,
+                long: 0,
+                array_default: None,
+            })
+            .collect(),
+        }),
+    );
+    state
+        .apply_operation(SemanticOperation::AuthenticateSession {
+            revision: REVISION_240,
+            player: rustclient_game_state::AuthenticatedPlayer {
+                profile: ServerProfileId::new(1),
+                player: PlayerIndex::new(1),
+                member: false,
+                staff_level: 0,
+            },
+        })
+        .unwrap();
+    state
+        .apply_operation(SemanticOperation::Interface(InterfaceUpdate::SetRoot(
+            Some(id.interface),
+        )))
+        .unwrap();
+    scripts
+        .enqueue(
+            ScriptRequest {
+                id: ScriptId::new(90007),
+                arguments: vec![],
+            },
+            None,
+        )
+        .unwrap();
+    assert!(scripts.drain(&mut state).is_empty());
+    assert_eq!(state.interfaces().key_scope(), WidgetKeyScope::Widget(id));
+    assert!(
+        matches!(state.interfaces().runtime()[&WidgetAddress::component(id)].body,
+        Some(WidgetBody::Model { model: Some(model), angles: [512,1536,0], zoom: 950, .. }) if model.get()==3374)
+    );
+    let intents = scripts.take_intents();
+    let [rustclient_protocol::ClientIntent::WidgetAction(action)] = intents.as_slice() else {
+        panic!("one resume intent")
+    };
+    assert_eq!(action.address, WidgetAddress::component(id));
+    assert!(action.operation.is_continue());
+    assert!(
+        crate::validate_widget_action(&state, &scripts.interfaces, *action)
+            .unwrap()
+            .is_some()
     );
 }

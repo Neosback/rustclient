@@ -15,6 +15,45 @@ fn container() -> WidgetBody {
     }
 }
 #[test]
+fn special_button_actions_cannot_be_retained_as_an_indexed_target_priority() {
+    use rustclient_model::{WidgetOperation, WidgetRuntime};
+    let mut state = GameState::new();
+    state
+        .apply_operation(SemanticOperation::BeginSession {
+            revision: Revision::with_subrevision(240, 2),
+        })
+        .unwrap();
+    let widget = WidgetId::new(InterfaceId::new(12), 13);
+    state
+        .apply_operation(SemanticOperation::Interface(InterfaceUpdate::SetRoot(
+            Some(widget.interface),
+        )))
+        .unwrap();
+    for operation in [
+        WidgetOperation::CONTINUE,
+        WidgetOperation::BUTTON_CLICK,
+        WidgetOperation::BUTTON_TOGGLE,
+        WidgetOperation::BUTTON_SELECT,
+    ] {
+        let before = state.semantic_fingerprint();
+        assert!(
+            state
+                .apply_operation(SemanticOperation::Interface(InterfaceUpdate::SetProperty {
+                    widget,
+                    property: WidgetProperty::Runtime {
+                        address: WidgetAddress::component(widget),
+                        value: Box::new(WidgetRuntime {
+                            target_priority: Some(operation),
+                            ..WidgetRuntime::default()
+                        })
+                    },
+                }))
+                .is_err()
+        );
+        assert_eq!(state.semantic_fingerprint(), before);
+    }
+}
+#[test]
 #[expect(
     clippy::too_many_lines,
     reason = "one focused semantic/codec family contract"
@@ -42,6 +81,17 @@ fn dynamic_widget_lifecycle_has_one_property_owner_atomic_failures_and_exact_rep
             property: WidgetProperty::Text("server".into()),
         },
     );
+    let before_scope = state.semantic_fingerprint();
+    update(
+        &mut state,
+        &mut recording,
+        InterfaceUpdate::KeyScope(rustclient_model::WidgetKeyScope::Widget(widget)),
+    );
+    assert_eq!(
+        state.interfaces().key_scope(),
+        rustclient_model::WidgetKeyScope::Widget(widget)
+    );
+    assert_ne!(state.semantic_fingerprint(), before_scope);
     let mut runtime = state.interfaces().runtime()[&root].clone();
     runtime.text = Some("script".into());
     update(

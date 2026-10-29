@@ -20,6 +20,7 @@ mod roofremoval;
 mod statusbars;
 mod stretchedmode;
 mod text;
+pub mod xptracker;
 
 use rustclient_plugin_api::{
     Capability, CapabilitySet, GameEvent, OverlayLine, PluginApiVersion, PluginEvent, PluginId,
@@ -104,6 +105,16 @@ fn boxed<T: NativePlugin + 'static>(plugin: T) -> Box<dyn PluginInstance> {
 }
 
 const ENTRIES: &[Entry] = &[
+    Entry {
+        name: "xptracker",
+        capabilities: &[
+            Capability::GameReadSkills,
+            Capability::GameReadClient,
+            Capability::GameReadPlayers,
+            Capability::UiOverlay,
+        ],
+        build: || boxed(xptracker::XpTracker::default()),
+    },
     Entry {
         name: "roofremoval",
         capabilities: &[Capability::SceneControl, Capability::GameReadClient],

@@ -103,6 +103,36 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "empty_stream {}",
             CommitStreamFingerprintBuilder::new().finish().get()
         );
+        let mut connected = GameState::new();
+        let mut connected_stream = CommitStreamFingerprintBuilder::new();
+        for op in [
+            SemanticOperation::AuthenticateSession {
+                revision: Revision::with_subrevision(240, 2),
+                player: rustclient_game_state::AuthenticatedPlayer {
+                    profile: rustclient_model::ServerProfileId::new(1),
+                    player: rustclient_model::PlayerIndex::new(1),
+                    member: false,
+                    staff_level: 0,
+                },
+            },
+            SemanticOperation::EstablishInitialPlacement(rustclient_game_state::InitialPlacement {
+                position: rustclient_model::WorldTile::new(
+                    3221,
+                    3218,
+                    rustclient_model::Plane::MIN,
+                ),
+                map_anchor: rustclient_model::WorldTile::new(
+                    3216,
+                    3216,
+                    rustclient_model::Plane::MIN,
+                ),
+                area: None,
+            }),
+        ] {
+            connected_stream.push(connected.apply_operation(op)?);
+        }
+        println!("connected {}", connected.semantic_fingerprint().get());
+        println!("connected_stream {}", connected_stream.finish().get());
         return Ok(());
     }
     if std::env::args().any(|arg| arg == "--item-check") {
@@ -225,10 +255,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         state.apply_operation(rustclient_game_state::SemanticOperation::BeginSession {
             revision: rustclient_model::Revision::with_subrevision(240, 2),
         })?;
+        for error in runtime.initialize_session(&mut state)? {
+            println!("initialize: {error}");
+        }
         // Optional extra interface groups follow `--execute` (e.g. 116 settings, 134 all-settings).
         let mut groups: Vec<u32> = std::env::args()
             .skip_while(|a| a != "--execute")
             .skip(1)
+            .take_while(|a| !a.starts_with("--"))
             .filter_map(|a| a.parse().ok())
             .collect();
         if groups.is_empty() {
@@ -248,6 +282,70 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             for error in errors {
                 println!("{error}");
             }
+            println!(
+                "viewport {:?}; varcs {:?}",
+                state.interfaces().viewport(),
+                [73, 74, 222, 1338, 1339, 1340, 1341]
+                    .map(|id| (id, state.interfaces().client_variables().get(&id)))
+            );
+        }
+        if let Some(position) = std::env::args().position(|a| a == "--mount") {
+            let group: u32 = std::env::args()
+                .nth(position + 1)
+                .ok_or("mount group required")?
+                .parse()?;
+            let parent: u32 = std::env::args()
+                .nth(position + 2)
+                .ok_or("parent component required")?
+                .parse()?;
+            let root = state.interfaces().root().ok_or("root required")?;
+            if group == 595 {
+                runtime.initialize_world_map()?;
+                runtime.enqueue(
+                    rustclient_model::ScriptRequest {
+                        id: ScriptId::new(1749),
+                        arguments: vec![ScriptValue::Int(
+                            rustclient_cache::osrs240::world_map::MapCoord::new(0, 3221, 3218)
+                                .packed(),
+                        )],
+                    },
+                    None,
+                )?;
+                for error in runtime.drain(&mut state) {
+                    println!("map position: {error}");
+                }
+            }
+            let errors = runtime.commit(
+                &mut state,
+                rustclient_game_state::SemanticOperation::Interface(
+                    rustclient_model::InterfaceUpdate::Open(rustclient_model::InterfaceMount {
+                        parent: rustclient_model::WidgetId::new(root, parent),
+                        interface: InterfaceId::new(group),
+                        kind: rustclient_model::InterfaceMountKind::Overlay,
+                    }),
+                ),
+            )?;
+            for error in errors {
+                println!("mount: {error}");
+            }
+            for _ in 0..20 {
+                for error in runtime.commit(
+                    &mut state,
+                    rustclient_game_state::SemanticOperation::Scenery(
+                        rustclient_game_state::SceneryOperation::AdvanceCycles(1),
+                    ),
+                )? {
+                    println!("timer: {error}");
+                }
+                for error in runtime.resize_widgets(&mut state)? {
+                    println!("resize: {error}");
+                }
+            }
+            println!(
+                "mounted {group}: {} runtime widgets; viewport {:?}",
+                state.interfaces().runtime().len(),
+                state.interfaces().viewport()
+            );
         }
         if std::env::var_os("RUSTCLIENT_COMPONENTS").is_some() {
             for (id, definition) in &runtime.interfaces {

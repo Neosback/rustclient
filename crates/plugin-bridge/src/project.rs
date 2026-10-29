@@ -49,23 +49,8 @@ pub struct Sources<'a> {
 
 /// Standard OSRS experience table: the level a given experience total reaches, capped at 99.
 #[must_use]
-#[expect(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    reason = "the table step is a positive float far below u32::MAX for levels up to 99"
-)]
 pub fn level_for_experience(experience: u32) -> u8 {
-    let mut points = 0u32;
-    let mut level = 1u8;
-    for next in 2..=99u8 {
-        let step = f64::from(next - 1) + 300.0 * 2f64.powf(f64::from(next - 1) / 7.0);
-        points += step.floor() as u32;
-        if experience < points / 4 {
-            return level;
-        }
-        level = next;
-    }
-    level
+    rustclient_cache::CacheProfile::Osrs240.real_skill_level(experience)
 }
 
 pub(crate) fn varbit_table(

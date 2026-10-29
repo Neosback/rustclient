@@ -65,10 +65,10 @@ opcode	adapter_name	runelite_name	evidence_status	host_status	live_uses	scanned_
 208			handler-only	unnamed-cache-used	1	classBB.method798,classGD.method5429
 209			handler-only	unnamed-cache-used	3	classBB.method798,classGD.method5429
 210	CcFindByParameters		adapter	host-dispatched		classBB.method798,classGD.method5429
-211			handler-only	unnamed-cache-used	33	classBB.method798,classGD.method5429
-212			handler-only	unnamed-cache-used	34	classBB.method798,classGD.method5429
-213			handler-only	unnamed-cache-used	83	classBB.method798,classGD.method5429
-214			handler-only	unnamed-cache-used	10	classBB.method798,classGD.method5429
+211	CcFindchildren		handler-only	host-dispatched	33	classBB.method798,classGD.method5429
+212	CcFindchildrenActive		handler-only	host-dispatched	34	classBB.method798,classGD.method5429
+213	CcFindchildNext		handler-only	host-dispatched	83	classBB.method798,classGD.method5429
+214	CcFindchildIndexNext		handler-only	host-dispatched	10	classBB.method798,classGD.method5429
 215			handler-only	unnamed-cache-used	6	classBB.method798,classGD.method5429
 216			handler-only	unnamed-cache-used	56	classBB.method798,classGD.method5429
 217			handler-only	unnamed-cache-used	2	classBB.method798,classGD.method5429
@@ -86,14 +86,14 @@ opcode	adapter_name	runelite_name	evidence_status	host_status	live_uses	scanned_
 1101	CcSetcolour	CC_SETCOLOUR	adapter	host-dispatched		classBB.method807,classCD.method1429
 1102	CcSetfill	CC_SETFILL	adapter	host-dispatched		classBB.method808,classCD.method1429
 1103	CcSettrans	CC_SETTRANS	adapter	host-dispatched		classBB.method807,classCD.method1429
-1104	CcSetlinewid	CC_SETLINEWID	adapter	named-unhandled		classBB.method808,classCD.method1429
+1104	CcSetlinewid	CC_SETLINEWID	adapter	host-dispatched		classBB.method808,classCD.method1429
 1105	CcSetgraphic	CC_SETGRAPHIC	adapter	host-dispatched		classBB.method807,classCD.method1429
 1106	CcSet2Dangle	CC_SET2DANGLE	adapter	host-dispatched		classCD.method1429
 1107	CcSettiling	CC_SETTILING	adapter	host-dispatched		classBB.method807,classCD.method1429
-1108	CcSetmodel	CC_SETMODEL	adapter	named-unhandled		classBB.method808,classCD.method1429
-1109	CcSetmodelangle	CC_SETMODELANGLE	adapter	named-unhandled		classBB.method808,classCD.method1429
-1110	CcSetmodelanim	CC_SETMODELANIM	adapter	named-unhandled		classCD.method1429
-1111	CcSetmodelorthog	CC_SETMODELORTHOG	adapter	named-unhandled		classBB.method808,classCD.method1429
+1108	CcSetmodel	CC_SETMODEL	adapter	host-dispatched		classBB.method808,classCD.method1429
+1109	CcSetmodelangle	CC_SETMODELANGLE	adapter	host-dispatched		classBB.method808,classCD.method1429
+1110	CcSetmodelanim	CC_SETMODELANIM	adapter	host-dispatched		classCD.method1429
+1111	CcSetmodelorthog	CC_SETMODELORTHOG	adapter	host-dispatched		classBB.method808,classCD.method1429
 1112	CcSettext	CC_SETTEXT	adapter	host-dispatched		classBB.method807,classBB.method808,classCD.method1429
 1113	CcSettextfont	CC_SETTEXTFONT	adapter	host-dispatched		classBB.method807,classBB.method808,classCD.method1429
 1114	CcSettextalign	CC_SETTEXTALIGN	adapter	host-dispatched		classBB.method807,classBB.method808,classCD.method1429
@@ -103,12 +103,12 @@ opcode	adapter_name	runelite_name	evidence_status	host_status	live_uses	scanned_
 1118	CcSetvflip	CC_SETVFLIP	adapter	host-dispatched		classBB.method808,classCD.method1429
 1119	CcSethflip	CC_SETHFLIP	adapter	host-dispatched		classBB.method808,classCD.method1429
 1120	CcSetscrollsize	CC_SETSCROLLSIZE	adapter	host-dispatched		classBB.method808,classCD.method1429
-1121	CcResumePausebutton	CC_RESUME_PAUSEBUTTON	adapter	named-unhandled		classBB.method807,classCD.method1429
+1121	CcResumePausebutton	CC_RESUME_PAUSEBUTTON	adapter	host-dispatched		classBB.method807,classCD.method1429
 1122	CcSetsecondarygraphic		adapter	host-dispatched		classBB.method807,classCD.method1429
 1123	CcSetfillcolour	CC_SETFILLCOLOUR	adapter	named-unhandled		classBB.method807,classCD.method1429
 1124			handler-only	unnamed-cache-used	12	classBB.method807,classCD.method1429
 1125			handler-only	unnamed-cache-used	2	classBB.method807,classBB.method808,classCD.method1429
-1126	CcSetlinedirection	CC_SETLINEDIRECTION	adapter	named-unhandled		classBB.method807,classBB.method808,classCD.method1429
+1126	CcSetlinedirection	CC_SETLINEDIRECTION	adapter	host-dispatched		classBB.method807,classBB.method808,classCD.method1429
 1127	CcSetmodeltransparent	CC_SETMODELTRANSPARENT	adapter	named-unhandled		classCD.method1429
 1128			unknown	unnamed-cache-used	17	
 1129			handler-only	unnamed-cache-used	3	classCD.method1429
@@ -256,7 +256,7 @@ opcode	adapter_name	runelite_name	evidence_status	host_status	live_uses	scanned_
 1800	CcGettargetmask	CC_GETTARGETMASK	adapter	host-dispatched		classBB.method835,classBB.method836,classLI.method7150
 1801	CcGetop	CC_GETOP	adapter	host-dispatched		classBB.method835,classBB.method836,classLI.method7150
 1802	CcGetopbase	CC_GETOPBASE	adapter	host-dispatched		classBB.method835,classBB.method836,classLI.method7150
-1927	CcCallonresize	CC_CALLONRESIZE	adapter	named-unhandled		classBB.method837,classBB.method838,classBB.method839,classJG.method6408
+1927	CcCallonresize	CC_CALLONRESIZE	adapter	host-dispatched		classBB.method837,classBB.method838,classBB.method839,classJG.method6408
 1928	CcTriggerop	CC_TRIGGEROP	adapter	host-dispatched		classJG.method6408
 2000	IfSetposition	IF_SETPOSITION	adapter	host-dispatched		
 2001	IfSetsize	IF_SETSIZE	adapter	host-dispatched		
@@ -267,14 +267,14 @@ opcode	adapter_name	runelite_name	evidence_status	host_status	live_uses	scanned_
 2101	IfSetcolour	IF_SETCOLOUR	adapter	host-dispatched		
 2102	IfSetfill	IF_SETFILL	adapter	host-dispatched		
 2103	IfSettrans	IF_SETTRANS	adapter	host-dispatched		
-2104	IfSetlinewid	IF_SETLINEWID	adapter	named-unhandled		
+2104	IfSetlinewid	IF_SETLINEWID	adapter	host-dispatched		
 2105	IfSetgraphic	IF_SETGRAPHIC	adapter	host-dispatched		
 2106	IfSet2Dangle	IF_SET2DANGLE	adapter	host-dispatched		
 2107	IfSettiling	IF_SETTILING	adapter	host-dispatched		
-2108	IfSetmodel	IF_SETMODEL	adapter	named-unhandled		
-2109	IfSetmodelangle	IF_SETMODELANGLE	adapter	named-unhandled		
-2110	IfSetmodelanim	IF_SETMODELANIM	adapter	named-unhandled		
-2111	IfSetmodelorthog	IF_SETMODELORTHOG	adapter	named-unhandled		
+2108	IfSetmodel	IF_SETMODEL	adapter	host-dispatched		
+2109	IfSetmodelangle	IF_SETMODELANGLE	adapter	host-dispatched		
+2110	IfSetmodelanim	IF_SETMODELANIM	adapter	host-dispatched		
+2111	IfSetmodelorthog	IF_SETMODELORTHOG	adapter	host-dispatched		
 2112	IfSettext	IF_SETTEXT	adapter	host-dispatched		
 2113	IfSettextfont	IF_SETTEXTFONT	adapter	host-dispatched		
 2114	IfSettextalign	IF_SETTEXTALIGN	adapter	host-dispatched		
@@ -284,12 +284,12 @@ opcode	adapter_name	runelite_name	evidence_status	host_status	live_uses	scanned_
 2118	IfSetvflip	IF_SETVFLIP	adapter	host-dispatched		
 2119	IfSethflip	IF_SETHFLIP	adapter	host-dispatched		
 2120	IfSetscrollsize	IF_SETSCROLLSIZE	adapter	host-dispatched		
-2121	IfResumePausebutton	IF_RESUME_PAUSEBUTTON	adapter	named-unhandled		
+2121	IfResumePausebutton	IF_RESUME_PAUSEBUTTON	adapter	host-dispatched		
 2122	IfSetsecondarygraphic		adapter-unconfirmed	host-dispatched		
 2123	IfSetfillcolour	IF_SETFILLCOLOUR	adapter	named-unhandled		
 2124			unknown	unnamed-cache-used	8	
 2125			unknown	unnamed-cache-used	4	
-2126	IfSetlinedirection	IF_SETLINEDIRECTION	adapter	named-unhandled		
+2126	IfSetlinedirection	IF_SETLINEDIRECTION	adapter	host-dispatched		
 2127	IfSetmodeltransparent	IF_SETMODELTRANSPARENT	adapter	named-unhandled		
 2200	IfSetobject	IF_SETOBJECT	adapter	host-dispatched		
 2201	IfSetnpchead	IF_SETNPCHEAD	adapter	named-unhandled		
@@ -399,7 +399,7 @@ opcode	adapter_name	runelite_name	evidence_status	host_status	live_uses	scanned_
 2800	IfGettargetmask	IF_GETTARGETMASK	adapter	host-dispatched		Actor.method3274,classBB.method849,classBB.method850,classBB.method851
 2801	IfGetop	IF_GETOP	adapter	host-dispatched		Actor.method3274,classBB.method849,classBB.method850,classBB.method851
 2802	IfGetopbase	IF_GETOPBASE	adapter	host-dispatched		Actor.method3274,classBB.method849,classBB.method850,classBB.method851
-2927	IfCallonresize	IF_CALLONRESIZE	adapter	named-unhandled		classBB.method838,classBB.method839,classJG.method6408
+2927	IfCallonresize	IF_CALLONRESIZE	adapter	host-dispatched		classBB.method838,classBB.method839,classJG.method6408
 2928	IfTriggerop	IF_TRIGGEROP	adapter	host-dispatched		classBB.method838,classBB.method839,classJG.method6408
 2929			handler-only	unnamed-cache-used	63	classBB.method837,classJG.method6408
 3100	Mes	MES	adapter	named-unhandled		classBB.method852,classBB.method853,classKU.method6609
@@ -438,11 +438,11 @@ opcode	adapter_name	runelite_name	evidence_status	host_status	live_uses	scanned_
 3133	MobileSetfps	MOBILE_SETFPS	adapter	named-unhandled		classBB.method852,classBB.method853,classBB.method854,classKU.method6609
 3134	MobileOpenstore	MOBILE_OPENSTORE	adapter	named-unhandled		classBB.method853,classBB.method854,classKU.method6609
 3135	MobileOpenstorecategory	MOBILE_OPENSTORECATEGORY	adapter	named-unhandled		classBB.method852,classBB.method853,classKU.method6609
-3136			handler-only	unnamed-unused		classBB.method852,classBB.method853,classBB.method854,classBB.method855,classKU.method6609
-3137			handler-only	unnamed-unused		classBB.method852,classBB.method853,classBB.method854,classBB.method855,classKU.method6609
-3138			handler-only	unnamed-cache-used	1	classBB.method853,classBB.method854,classBB.method855,classKU.method6609
-3139			handler-only	unnamed-unused		classBB.method853,classBB.method854,classKU.method6609
-3140			handler-only	unnamed-cache-used	1	classBB.method853,classBB.method854,classKU.method6609
+3136	SetkeyscopeWidget		handler-only	host-dispatched		classBB.method852,classBB.method853,classBB.method854,classBB.method855,classKU.method6609
+3137	SetkeyscopeInterface		handler-only	host-dispatched		classBB.method852,classBB.method853,classBB.method854,classBB.method855,classKU.method6609
+3138	SetkeyscopeAll		handler-only	host-dispatched	1	classBB.method853,classBB.method854,classBB.method855,classKU.method6609
+3139	SetkeyscopeNone		handler-only	host-dispatched		classBB.method853,classBB.method854,classKU.method6609
+3140	SetkeyscopeActive		handler-only	host-dispatched	1	classBB.method853,classBB.method854,classKU.method6609
 3141	Sethideusername	SETHIDEUSERNAME	adapter	named-unhandled		classBB.method852,classBB.method853,classBB.method855,classKU.method6609
 3142	Gethideusername	GETHIDEUSERNAME	adapter	named-unhandled		classBB.method853,classBB.method855,classKU.method6609
 3143	Setrememberusername	SETREMEMBERUSERNAME	adapter	named-unhandled		classBB.method852,classBB.method853,classBB.method854,classKU.method6609
@@ -539,7 +539,7 @@ opcode	adapter_name	runelite_name	evidence_status	host_status	live_uses	scanned_
 3322	RunweightVisible	RUNWEIGHT_VISIBLE	adapter	host-dispatched		BufferProvider.method13367
 3323	Playermod	PLAYERMOD	adapter	named-unhandled		BufferProvider.method13367
 3324	Worldflags	WORLDFLAGS	adapter	named-unhandled		BufferProvider.method13367
-3325	Movecoord	MOVECOORD	adapter	named-unhandled		BufferProvider.method13367
+3325	Movecoord	MOVECOORD	adapter	host-dispatched		BufferProvider.method13367
 3326			handler-only	unnamed-cache-used	6	BufferProvider.method13367
 3327			handler-only	unnamed-cache-used	6	BufferProvider.method13367
 3328			unknown	unnamed-cache-used	1	
@@ -768,9 +768,9 @@ opcode	adapter_name	runelite_name	evidence_status	host_status	live_uses	scanned_
 4207	OcMembers	OC_MEMBERS	adapter	host-dispatched		classBB.method877,classKI.method6526
 4208	OcPlaceholder	OC_PLACEHOLDER	adapter	named-unhandled		classBB.method877,classKI.method6526
 4209	OcUnplaceholder	OC_UNPLACEHOLDER	adapter	host-dispatched		classBB.method877,classKI.method6526
-4210	OcFind	OC_FIND	adapter	named-unhandled		classBB.method877,classKI.method6526
-4211	OcFindnext	OC_FINDNEXT	adapter	named-unhandled		classBB.method877,classKI.method6526
-4212	OcFindreset	OC_FINDRESET	adapter	named-unhandled		classBB.method877,classKI.method6526
+4210	OcFind	OC_FIND	adapter	host-dispatched		classBB.method877,classKI.method6526
+4211	OcFindnext	OC_FINDNEXT	adapter	host-dispatched		classBB.method877,classKI.method6526
+4212	OcFindreset	OC_FINDRESET	adapter	host-dispatched		classBB.method877,classKI.method6526
 4213			handler-only	unnamed-cache-used	2	classBB.method877,classKI.method6526
 4214			handler-only	unnamed-unused		classBB.method877,classKI.method6526
 4215			handler-only	unnamed-unused		classBB.method877,classKI.method6526

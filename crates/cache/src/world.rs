@@ -31,7 +31,7 @@ pub enum MapSquareSource {
     Absent,
 }
 /// One source square; traversal is plane, local X, local Y.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct MapSquare {
     pub coord: RegionCoord,
     pub source: MapSquareSource,
@@ -66,7 +66,7 @@ pub enum ObjectCollision {
     GeometryAndFloorDecoration,
 }
 /// Render-relevant immutable definition; other verified fields are consumed by the adapter.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[expect(
     clippy::struct_excessive_bools,
     reason = "independent immutable cache flags retained verbatim"
@@ -177,6 +177,11 @@ pub struct ItemDefinition {
     pub icon_offset: [i32; 2],
     pub stackable: bool,
     pub members: bool,
+    pub tradeable: bool,
+    pub note: Option<ItemDefinitionId>,
+    pub note_template: Option<ItemDefinitionId>,
+    pub bought: Option<ItemDefinitionId>,
+    pub bought_template: Option<ItemDefinitionId>,
     pub inventory_actions: [Option<String>; 5],
     pub parameters: BTreeMap<u32, rustclient_model::ScriptValue>,
     pub placeholder: Option<ItemDefinitionId>,
@@ -215,7 +220,7 @@ pub struct ModelFace {
     pub bias: i8,
     pub priority: u8,
 }
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct StaticModel {
     pub vertices: Vec<ModelPoint>,
     pub faces: Vec<ModelFace>,
@@ -225,7 +230,7 @@ pub struct StaticModel {
     pub texture_types: Vec<u8>,
 }
 /// Complete immutable inputs for a normal map window. Kept behind the scene asset's private owner.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct WorldAssets {
     pub squares: Vec<MapSquare>,
     pub underlays: BTreeMap<FloorUnderlayId, FloorMaterial>,

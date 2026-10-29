@@ -11,9 +11,31 @@ pub struct InterfaceDefinition {
     pub(crate) widgets: BTreeMap<WidgetId, WidgetDefinition>,
     pub(crate) children: BTreeMap<Option<WidgetId>, Vec<WidgetId>>,
     pub reports: Vec<crate::AssetReport>,
+    pub(crate) legacy: BTreeMap<WidgetId, LegacyPresentation>,
 }
 
 impl InterfaceDefinition {
+    /// Attach immutable metadata while assembling a decoded definition graph.
+    /// # Errors
+    /// Rejects metadata for a component outside this graph.
+    pub fn with_legacy(
+        mut self,
+        legacy: BTreeMap<WidgetId, LegacyPresentation>,
+    ) -> Result<Self, crate::CacheError> {
+        if legacy.keys().any(|id| !self.widgets.contains_key(id)) {
+            return Err(
+                crate::Source::group(crate::IndexId(3), crate::GroupId(self.id.get()))
+                    .error("interface", "legacy metadata has no component"),
+            );
+        }
+        self.legacy = legacy;
+        Ok(self)
+    }
+    /// Authored conditional/tooltip metadata of a legacy component, when present.
+    #[must_use]
+    pub fn legacy(&self, id: WidgetId) -> Option<&LegacyPresentation> {
+        self.legacy.get(&id)
+    }
     #[must_use]
     pub const fn widgets(&self) -> &BTreeMap<WidgetId, WidgetDefinition> {
         &self.widgets
@@ -63,6 +85,34 @@ impl InterfaceDefinition {
             widgets,
             children,
             reports: Vec::new(),
+            legacy: BTreeMap::new(),
         })
     }
+}
+
+/// Immutable legacy presentation metadata. Expressions are retained for revision-owned interpretation,
+/// never treated as a second store of live variables or inventory contents.
+#[derive(Debug, Clone)]
+pub struct LegacyPresentation {
+    pub button: LegacyButton,
+    pub button_text: String,
+    pub target_text: String,
+    pub hover_redirect: Option<WidgetId>,
+    pub comparisons: Vec<(u8, i32)>,
+    pub expressions: Vec<Vec<i32>>,
+    pub alternate: Option<WidgetBody>,
+    pub hover_colors: [u32; 2],
+    pub tooltip: Option<String>,
+}
+
+/// The authored action meaning of a legacy component.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LegacyButton {
+    None,
+    Click,
+    Target,
+    Close,
+    Toggle,
+    Select,
+    Continue,
 }

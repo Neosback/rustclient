@@ -5,6 +5,9 @@ mod database;
 mod gameframe_tests;
 #[cfg(test)]
 mod input_tests;
+mod item_search;
+mod legacy;
+pub use legacy::WidgetProjection;
 mod lifecycle;
 #[cfg(test)]
 mod lifecycle_tests;
@@ -13,6 +16,9 @@ mod queries;
 mod test_support;
 mod visuals;
 mod wheel;
+#[cfg(test)]
+mod widget_callbacks_tests;
+mod widget_iteration;
 mod widgets;
 pub mod worldmap;
 use rustclient_cache::{Cache, CacheProfile, script::Script, widget::InterfaceDefinition};
@@ -38,6 +44,11 @@ pub struct SoundEffectRequest {
     pub delay: u32,
 }
 type Result<T> = std::result::Result<T, String>;
+struct QueuedScript {
+    request: ScriptRequest,
+    widget: Option<WidgetAddress>,
+    resize_depth: u8,
+}
 pub struct ClientScripts<S> {
     pub cache: Cache<S>,
     pub profile: CacheProfile,
@@ -55,11 +66,16 @@ pub struct ClientScripts<S> {
     effects: Vec<rustclient_protocol::ClientIntent>,
     sound_effects: Vec<SoundEffectRequest>,
     db: database::DbState,
+    item_search: item_search::ItemSearch,
     huffman: Option<rustclient_protocol::Huffman>,
     /// Renderer-owned camera pitch and yaw in script units, supplied each frame by the host.
     camera_angles: [i32; 2],
-    queue: VecDeque<(ScriptRequest, Option<WidgetAddress>)>,
+    queue: VecDeque<QueuedScript>,
+    deferred_operations: VecDeque<WidgetAction>,
+    operation_depth: u8,
     pub world_map: worldmap::WorldMapState,
+    session_initialized: bool,
+    widget_iteration: widget_iteration::WidgetIteration,
 }
 impl<S: ReadOnlyBlobs> ClientScripts<S> {
     #[must_use]
@@ -80,11 +96,37 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
             effects: Vec::new(),
             sound_effects: Vec::new(),
             db: database::DbState::default(),
+            item_search: item_search::ItemSearch::default(),
             huffman: None,
             camera_angles: [0; 2],
             queue: VecDeque::new(),
+            deferred_operations: VecDeque::new(),
+            operation_depth: 0,
             world_map: worldmap::WorldMapState::new(),
+            session_initialized: false,
+            widget_iteration: widget_iteration::WidgetIteration::default(),
         }
+    }
+    /// Initialize cache-authored desktop preferences before opening a gameframe.
+    /// Idempotent within a session; reset makes a fresh login run the helper again.
+    /// # Errors
+    /// Reports cache/queue failures; required script failures remain diagnostics.
+    pub fn initialize_session(&mut self, state: &mut GameState) -> Result<Vec<String>> {
+        if self.session_initialized
+            || state.lifecycle() != rustclient_game_state::SessionLifecycle::Active
+        {
+            return Ok(Vec::new());
+        }
+        self.enqueue(
+            ScriptRequest {
+                id: self.profile.session_setup_script(),
+                arguments: Vec::new(),
+            },
+            None,
+        )?;
+        let errors = self.drain(state);
+        self.session_initialized = errors.is_empty();
+        Ok(errors)
     }
     /// Commit network semantic input before scheduling its listeners.
     /// # Errors
@@ -124,6 +166,14 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
             }) => Some((WidgetListener::Variable, Some(id.get().cast_signed()))),
             _ => None,
         };
+        let cycles = if let SemanticOperation::Scenery(
+            rustclient_game_state::SceneryOperation::AdvanceCycles(cycles),
+        ) = &op
+        {
+            *cycles
+        } else {
+            0
+        };
         let previous_groups = matches!(
             &op,
             SemanticOperation::Interface(
@@ -141,6 +191,10 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
             self.reset();
             return Ok(Vec::new());
         }
+        self.world_map.flash_cycle = self
+            .world_map
+            .flash_cycle
+            .wrapping_add(i32::try_from(cycles).unwrap_or(i32::MAX));
         self.synchronize_with_loads(state, &load_groups)?;
         if let Some(previous_groups) = previous_groups {
             let current = state.interfaces().groups();
@@ -169,13 +223,33 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
         state: &mut GameState,
         action: WidgetAction,
     ) -> Result<(Vec<rustclient_protocol::ClientIntent>, Vec<String>)> {
-        crate::validate_widget_action(state, &self.interfaces, action)?;
+        let intent = crate::validate_widget_action(state, &self.interfaces, action)?;
+        if action.operation.is_button() {
+            return self.perform_legacy_button(state, action);
+        }
+        if action.operation.is_continue() {
+            return Ok((intent.into_iter().collect(), Vec::new()));
+        }
+        self.perform_operation(state, action)
+    }
+    // classEA.method3815 is shared by menu selections and queued script triggers. The latter
+    // capture the item when queued and do not require a current menu label or visible hit target.
+    fn perform_operation(
+        &mut self,
+        state: &mut GameState,
+        action: WidgetAction,
+    ) -> Result<(Vec<rustclient_protocol::ClientIntent>, Vec<String>)> {
+        let index = action
+            .operation
+            .index()
+            .ok_or("expected indexed widget operation")?;
         let widget = rustclient_game_ui::widgets::resolve_widget(
             state.interfaces(),
             &self.interfaces,
             action.address,
         )
         .map_err(|e| e.to_string())?;
+        let mut errors = Vec::new();
         if let Some(args) = widget.listeners.get(&WidgetListener::Operation)
             && let Some(mut request) = request(args.clone())?
         {
@@ -184,20 +258,22 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
                     *n = self.profile.listener_argument(
                         *n,
                         Some(action.address),
-                        i32::from(action.operation.index()) + 1,
+                        i32::from(index) + 1,
                     );
                 }
             }
-            self.enqueue(request, Some(action.address))?;
+            errors = self.run_invocation(
+                state,
+                QueuedScript {
+                    request,
+                    widget: Some(action.address),
+                    resize_depth: 0,
+                },
+            );
         }
-        let errors = self.drain(state);
-        if !errors.is_empty() {
-            self.effects.clear();
-            return Err(format!(
-                "widget operation listener failed: {}",
-                errors.join("; ")
-            ));
-        }
+        // classBB reports script failures internally; classEA still applies the post-callback
+        // permission check. Preserve diagnostics and already-created effects rather than
+        // converting a listener error into a different packet policy.
         let mut intents = std::mem::take(&mut self.effects);
         // classEA.method3815 retains the selected widget across its callback. A
         // dropdown may delete its own rows; that must not cancel this validated
@@ -210,7 +286,7 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
             )
             .unwrap_or(widget.permissions);
         if state.authenticated_player().is_some()
-            && permissions.enabled_operations & (1_u32 << action.operation.index()) != 0
+            && permissions.enabled_operations & (1_u32 << index) != 0
         {
             intents.push(rustclient_protocol::ClientIntent::WidgetAction(action));
         }
@@ -368,13 +444,18 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
             .map_err(|e| e.to_string())
     }
     pub fn reset(&mut self) {
+        self.session_initialized = false;
+        self.widget_iteration = widget_iteration::WidgetIteration::default();
         self.loaded_groups.clear();
         self.layout_sizes.clear();
         self.layout_revision = None;
         self.queue.clear();
+        self.deferred_operations.clear();
+        self.operation_depth = 0;
         self.effects.clear();
         self.sound_effects.clear();
         self.db.reset();
+        self.item_search = item_search::ItemSearch::default();
         self.world_map.reset();
     }
     /// Sound effects requested since the last call, in script order.
@@ -454,10 +535,22 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
     /// # Errors
     /// Rejects an excessive event queue before allocation.
     pub fn enqueue(&mut self, request: ScriptRequest, widget: Option<WidgetAddress>) -> Result<()> {
+        self.enqueue_at_depth(request, widget, 0)
+    }
+    fn enqueue_at_depth(
+        &mut self,
+        request: ScriptRequest,
+        widget: Option<WidgetAddress>,
+        resize_depth: u8,
+    ) -> Result<()> {
         if self.queue.len() >= 4096 {
             return Err("script event queue limit".into());
         }
-        self.queue.push_back((request, widget));
+        self.queue.push_back(QueuedScript {
+            request,
+            widget,
+            resize_depth,
+        });
         Ok(())
     }
     /// Schedule a committed variable/container notification. Trigger filtering follows cache listeners.
@@ -541,33 +634,73 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
     pub fn drain(&mut self, state: &mut GameState) -> Vec<String> {
         let mut errors = Vec::new();
         for _ in 0..4096 {
-            let Some((mut request, widget)) = self.queue.pop_front() else {
+            let Some(invocation) = self.queue.pop_front() else {
                 break;
             };
-            if widget.is_some_and(|w| !state.interfaces().groups().contains(&w.widget.interface)) {
-                continue;
-            }
-            if widget.is_some() {
-                for arg in &mut request.arguments {
-                    if let ScriptValue::Int(n) = arg {
-                        *n = self.profile.listener_argument(*n, widget, 0);
-                    }
+            errors.extend(self.run_invocation(state, invocation));
+        }
+        if !self.queue.is_empty() {
+            errors.push("script event batch limit; pending events retained".into());
+        }
+        errors
+    }
+    fn run_invocation(&mut self, state: &mut GameState, invocation: QueuedScript) -> Vec<String> {
+        let QueuedScript {
+            mut request,
+            widget,
+            resize_depth,
+        } = invocation;
+        let mut errors = Vec::new();
+        if widget.is_some_and(|w| !state.interfaces().groups().contains(&w.widget.interface)) {
+            return errors;
+        }
+        if widget.is_some() {
+            for arg in &mut request.arguments {
+                if let ScriptValue::Int(n) = arg {
+                    *n = self.profile.listener_argument(*n, widget, 0);
                 }
             }
-            let mut host = ScriptHost {
-                resources: self,
-                state,
+        }
+        let mut host = ScriptHost {
+            resources: self,
+            state,
+        };
+        if let Err(error) = execute(
+            &mut host,
+            request,
+            Context {
+                active: [widget; 2],
+                resize_depth,
+                ..Context::default()
+            },
+            Limits::default(),
+        ) {
+            errors.push(error.to_string());
+        }
+        // The stock interpreter flushes this queue after the invocation, including failed scripts.
+        // Bound reentrant onOp scripts using the same kind of explicit budget as VM calls.
+        if self.operation_depth >= 64 {
+            self.deferred_operations.clear();
+            errors.push("deferred widget operation depth limit".into());
+            return errors;
+        }
+        self.operation_depth += 1;
+        for _ in 0..4096 {
+            let Some(action) = self.deferred_operations.pop_front() else {
+                break;
             };
-            if let Err(e) = execute(
-                &mut host,
-                request,
-                Context {
-                    active: [widget; 2],
-                },
-                Limits::default(),
-            ) {
-                errors.push(e.to_string());
+            match self.perform_operation(state, action) {
+                Ok((intents, diagnostics)) => {
+                    self.effects.extend(intents);
+                    errors.extend(diagnostics);
+                }
+                Err(error) => errors.push(format!("deferred widget operation: {error}")),
             }
+        }
+        self.operation_depth -= 1;
+        if !self.deferred_operations.is_empty() {
+            self.deferred_operations.clear();
+            errors.push("deferred widget operation count limit".into());
         }
         errors
     }
@@ -654,9 +787,11 @@ impl<S: ReadOnlyBlobs> Host for ScriptHost<'_, S> {
         s: &mut Stacks,
         context: &mut Context,
     ) -> Result<()> {
-        if widgets::instruction(self, op, n, s, context)?
+        if widget_iteration::instruction(self, op, n, s, context)?
+            || widgets::instruction(self, op, n, s, context)?
             || arrays::instruction(self, op, s)?
             || database::instruction(self, op, s)?
+            || item_search::instruction(self, op, s)?
             || queries::instruction(self, op, n, s)?
             || worldmap::instruction(self, op, s)?
         {

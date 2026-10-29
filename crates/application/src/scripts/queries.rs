@@ -150,6 +150,23 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
         Opcode::ChatGetfilterPublic => Some(i32::from(h.state.chat().filters()[0])),
         Opcode::ChatGetfilterPrivate => Some(i32::from(h.state.chat().filters()[1])),
         Opcode::ChatGetfilterTrade => Some(i32::from(h.state.chat().filters()[2])),
+        Opcode::SetkeyscopeWidget
+        | Opcode::SetkeyscopeInterface
+        | Opcode::SetkeyscopeAll
+        | Opcode::SetkeyscopeNone => {
+            let scope = match op {
+                Opcode::SetkeyscopeWidget => rustclient_model::WidgetKeyScope::Widget(
+                    h.resources.profile.script_widget(s.int()?)?,
+                ),
+                Opcode::SetkeyscopeInterface => rustclient_model::WidgetKeyScope::Interface(
+                    rustclient_model::InterfaceId::new(id(s.int()?)?),
+                ),
+                Opcode::SetkeyscopeAll => rustclient_model::WidgetKeyScope::All,
+                _ => rustclient_model::WidgetKeyScope::None,
+            };
+            h.apply(InterfaceUpdate::KeyScope(scope))?;
+            None
+        }
         Opcode::CamSetfollowheight => {
             let mut viewport = h.state.interfaces().viewport();
             viewport.follow_height = s.int()?.max(0).cast_unsigned();
@@ -372,7 +389,9 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
             Some(match op {
                 Stat => skill.map_or(1, |v| i32::from(v.current)),
                 StatXp => skill.map_or(0, |v| v.experience.cast_signed()),
-                _ => skill.map_or(1, |v| base_level(v.experience)),
+                _ => skill.map_or(1, |v| {
+                    i32::from(h.resources.profile.real_skill_level(v.experience))
+                }),
             })
         }
         RunweightVisible => Some(i32::from(h.state.entities().run_weight())),
@@ -383,6 +402,14 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
                 | p.tile.y.cast_unsigned())
             .cast_signed()
         })),
+        Opcode::Movecoord => {
+            let [base, delta_x, delta_plane, delta_y] = s.ints()?;
+            Some(
+                h.resources
+                    .profile
+                    .script_move_coord(base, delta_x, delta_plane, delta_y),
+            )
+        }
         Coordx | Coordy | Coordz => {
             let p = s.int()?.cast_unsigned();
             Some(match op {
@@ -755,22 +782,6 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
         s.integers.push(n);
     }
     Ok(true)
-}
-
-#[expect(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    reason = "bounded positive experience threshold formula"
-)]
-fn base_level(experience: u32) -> i32 {
-    let mut total = 0;
-    for level in 1..=125 {
-        total += (f64::from(level) + 300.0 * 2_f64.powf(f64::from(level) / 7.0)) as u32;
-        if experience < total / 4 {
-            return level;
-        }
-    }
-    126
 }
 
 #[cfg(test)]

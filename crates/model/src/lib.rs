@@ -20,8 +20,8 @@ pub use interaction::{
 mod interface;
 pub use interface::{
     CanvasSize, ClientSetting, InterfaceMount, InterfaceMountKind, InterfaceUpdate, ScriptRequest,
-    ScriptValue, WidgetAction, WidgetEventRange, WidgetOperation, WidgetPermissions,
-    WidgetProperty, WindowMetrics, WindowMode,
+    ScriptValue, WidgetAction, WidgetEventRange, WidgetKeyScope, WidgetOperation,
+    WidgetPermissions, WidgetProperty, WindowMetrics, WindowMode,
 };
 mod inventory;
 pub use inventory::{InventorySlotUpdate, InventoryUpdate, ItemStack};
@@ -61,7 +61,7 @@ pub use time::{ClientCycle, GameTick, TickSpan};
 mod scenery;
 pub use scenery::{
     AnimationStart, LocationAnimationPlacement, LocationChange, LocationDefinition, LocationKey,
-    LocationLayer,
+    LocationLayer, LocationOptions,
 };
 
 mod scene;

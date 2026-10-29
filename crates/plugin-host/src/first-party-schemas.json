@@ -1,5 +1,93 @@
 [
  {
+  "plugin": "dev.rustclient.xptracker",
+  "name": "XP Tracker",
+  "version": 1,
+  "description": "Local session XP, rates and actions overlay. Panel, account persistence and network sync are pending.",
+  "tags": [
+   "experience",
+   "levels",
+   "panel"
+  ],
+  "required": false,
+  "settings": [
+   {
+    "key": "enabled",
+    "label": "Enabled",
+    "description": "Switch XP Tracker on or off.",
+    "section": "",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": true
+    },
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/xptracker/XpTrackerPlugin.java#PluginDescriptor.enabledByDefault"
+   },
+   {
+    "key": "hideMaxed",
+    "label": "Hide maxed skills",
+    "description": "XP tracker will no longer track level 99 skills.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/xptracker/XpTrackerConfig.java#hideMaxed",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "pauseSkillAfter",
+    "label": "Auto pause after",
+    "description": "Configures how many minutes passes before pausing a skill while in game and there's no XP, 0 means disabled.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/xptracker/XpTrackerConfig.java#pauseSkillAfter",
+    "control": {
+     "type": "integer",
+     "min": -2147483648,
+     "max": 2147483647
+    },
+    "default": {
+     "type": "integer",
+     "value": 0
+    }
+   },
+   {
+    "key": "resetSkillRateAfter",
+    "label": "Auto reset after",
+    "description": "Configures how many minutes passes before resetting a skill's per hour rates while in game and there's no XP, 0 means disabled.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/xptracker/XpTrackerConfig.java#resetSkillRateAfter",
+    "control": {
+     "type": "integer",
+     "min": -2147483648,
+     "max": 2147483647
+    },
+    "default": {
+     "type": "integer",
+     "value": 0
+    }
+   },
+   {
+    "key": "prioritizeRecentXpSkills",
+    "label": "Move recently trained skills to top",
+    "description": "Configures whether skills should be organized by most recently gained XP.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/xptracker/XpTrackerConfig.java#prioritizeRecentXpSkills",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   }
+  ]
+ },
+ {
   "plugin": "dev.rustclient.roofremoval",
   "name": "Roof Removal",
   "version": 1,

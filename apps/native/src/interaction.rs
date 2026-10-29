@@ -558,6 +558,7 @@ impl NativeApp {
             }
         }
         let (label, _, target) = self.world_entries(window, x, y).ok()?.into_iter().next()?;
+        let label = plain_label(&label);
         let (verb, name) = label.split_once(' ').unwrap_or((&label, ""));
         Some(HoverText {
             verb: verb.to_owned(),

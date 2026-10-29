@@ -159,6 +159,15 @@ fn translate(update: ServerUpdate, mut deliver: impl FnMut(ConnectionInput), con
                 },
             )));
         }
+        ServerUpdate::Location(location) => deliver(ConnectionInput::Operation(
+            SemanticOperation::Scenery(rustclient_game_state::SceneryOperation::UpdateLocation {
+                offset: location.offset,
+                plane: location.plane,
+                placement: location.placement,
+                object: location.object,
+                options: location.options,
+            }),
+        )),
         ServerUpdate::LocationAnim(anim) => {
             deliver(ConnectionInput::Operation(SemanticOperation::Scenery(
                 rustclient_game_state::SceneryOperation::TriggerLocationAnimation {

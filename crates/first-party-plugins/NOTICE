@@ -9,6 +9,11 @@ port draws on are listed per plugin.
 Data files copied verbatim from the RuneLite resources keep their notice here as well:
 data/roofremoval/overrides.jsonc (roofremoval/overrides.jsonc, Hydrox6).
 
+xptracker:
+  Copyright (c) 2017, Cameron <moberg@tuta.io>
+  Copyright (c) 2018, Levi <me@levischuck.com>
+  Copyright (c) 2020, Anthony <https://github.com/while-loop>
+
 roofremoval:
   Copyright (c) 2021 Hydrox6 <ikada@protonmail.ch>
   Copyright (c) 2021, Hydrox6 <ikada@protonmail.ch>

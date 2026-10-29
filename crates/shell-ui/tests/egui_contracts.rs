@@ -168,3 +168,14 @@ fn text_editing_ime_backspace_enter_and_hotkey_capture_use_shared_values() {
         }]
     );
 }
+
+#[test]
+fn desktop_panel_ships_fonts_for_plugin_labels_and_controls() {
+    // egui 0.37 has empty defaults unless its font feature is selected explicitly.
+    let definitions = egui::FontDefinitions::default();
+    assert!(!definitions.font_data.is_empty());
+    assert!(!definitions.families[&egui::FontFamily::Proportional].is_empty());
+    let (panel, _) = fixture(Control::Boolean, ConfigValue::Boolean(false));
+    let [x, y, width, height] = panel.target_bounds("toggle-panel").unwrap();
+    assert!(x >= 0. && y >= 0. && x + width <= 278. && y + height <= 503.);
+}

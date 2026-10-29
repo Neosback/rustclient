@@ -17,6 +17,12 @@ pub(super) enum Playback {
     },
     Committed(ActorSequenceSlot),
 }
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum PoseSample {
+    Rest,
+    Cached(SequenceId, Option<i32>),
+    Legacy(SequenceId, Option<(usize, u64)>),
+}
 impl Playback {
     pub(super) fn movement(sequence: Option<SequenceId>, cycle: u32) -> Self {
         Self::Elapsed {
@@ -50,6 +56,30 @@ impl Playback {
             Self::Committed(slot) => slot.sequence,
             Self::Elapsed { sequence, .. } => sequence,
         }
+    }
+    pub(super) fn sample(
+        self,
+        asset: &SceneAsset,
+        catalog: &EntityCatalog,
+        blend: bool,
+    ) -> Result<PoseSample> {
+        let Some(id) = self.sequence() else {
+            return Ok(PoseSample::Rest);
+        };
+        let Some(sequence) = catalog.animations.sequence(asset, id) else {
+            return Ok(PoseSample::Rest);
+        };
+        if let Some(animation) = sequence.skeletal {
+            if catalog.animations.cached(animation).is_none() {
+                return Ok(PoseSample::Rest);
+            }
+            return Ok(PoseSample::Cached(id, self.cached_frame(sequence)));
+        }
+        Ok(PoseSample::Legacy(
+            id,
+            self.legacy_frame(sequence)?
+                .map(|(frame, cycle)| (frame, if blend { cycle } else { 0 })),
+        ))
     }
     fn cached_frame(self, sequence: &SequenceAsset) -> Option<i32> {
         match self {

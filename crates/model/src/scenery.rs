@@ -59,3 +59,18 @@ pub struct LocationAnimationPlacement {
     pub shape: u8,
     pub orientation: LocOrientation,
 }
+
+/// Per-placement server overrides of the five definition-authored location actions.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LocationOptions {
+    pub enabled: crate::ActionMask,
+    pub labels: [Option<String>; 5],
+}
+impl Default for LocationOptions {
+    fn default() -> Self {
+        Self {
+            enabled: crate::ActionMask::ALL,
+            labels: Default::default(),
+        }
+    }
+}

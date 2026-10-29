@@ -183,6 +183,16 @@ impl NativeApp {
         let Some(scripts) = &mut self.scripts else {
             return;
         };
+        // A server close or script deletion may retire a hover/press before its final event.
+        if !self
+            .state
+            .interfaces()
+            .groups()
+            .contains(&address.widget.interface)
+            || resolve_widget(self.state.interfaces(), &scripts.interfaces, address).is_err()
+        {
+            return;
+        }
         let event = ListenerEvent {
             mouse,
             wheel: None,

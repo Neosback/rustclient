@@ -1,5 +1,5 @@
 //! Validate menu selections against the current displayed widget projection and permissions.
-use rustclient_cache::widget::InterfaceDefinition;
+use rustclient_cache::widget::{InterfaceDefinition, LegacyButton};
 use rustclient_game_state::GameState;
 use rustclient_game_ui::widgets::{WidgetTree, resolve_widget};
 use rustclient_model::{InterfaceId, WidgetAction, WidgetAddress, WidgetOperation};
@@ -22,13 +22,41 @@ pub fn widget_actions(
         .interfaces()
         .permissions(address.widget, child)
         .unwrap_or(widget.permissions);
+    if address.child.is_none()
+        && let Some(legacy) = assets
+            .get(&address.widget.interface)
+            .and_then(|group| group.legacy(address.widget))
+    {
+        let operation = match legacy.button {
+            LegacyButton::Click => Some(WidgetOperation::BUTTON_CLICK),
+            LegacyButton::Toggle => Some(WidgetOperation::BUTTON_TOGGLE),
+            LegacyButton::Select => Some(WidgetOperation::BUTTON_SELECT),
+            LegacyButton::Continue => Some(WidgetOperation::CONTINUE),
+            // Target selection and close-dialog lifecycle need their own semantic owners.
+            LegacyButton::None | LegacyButton::Target | LegacyButton::Close => None,
+        };
+        return Ok(operation
+            .map(|operation| {
+                (
+                    legacy.button_text.clone(),
+                    WidgetAction {
+                        address,
+                        operation,
+                        item: None,
+                        interface_epoch: state.interfaces().epoch(),
+                    },
+                )
+            })
+            .into_iter()
+            .collect());
+    }
     let item = state
         .interfaces()
         .runtime()
         .get(&address)
         .and_then(|r| r.item)
         .map(|(id, _)| id);
-    Ok(widget
+    let mut actions: Vec<_> = widget
         .actions
         .iter()
         .enumerate()
@@ -51,7 +79,19 @@ pub fn widget_actions(
                 },
             ))
         })
-        .collect())
+        .collect();
+    if permissions.continue_enabled {
+        actions.push((
+            "Continue".into(),
+            WidgetAction {
+                address,
+                operation: WidgetOperation::CONTINUE,
+                item,
+                interface_epoch: state.interfaces().epoch(),
+            },
+        ));
+    }
+    Ok(actions)
 }
 /// # Errors
 /// Rejects stale topology, removed children, changed items, hidden widgets and revoked operations.
@@ -91,8 +131,16 @@ pub fn validate_widget_action(
             action.address.child.map_or(-1, u32::cast_signed),
         )
         .unwrap_or(widget.permissions);
-    Ok(
-        (permissions.enabled_operations & (1_u32 << action.operation.index()) != 0)
-            .then_some(ClientIntent::WidgetAction(action)),
-    )
+    let permitted = if action.operation.is_button() {
+        // Authored IF1 buttons do not consult ordinary operation bits (classQP.method9746).
+        true
+    } else if action.operation.is_continue() {
+        permissions.continue_enabled
+    } else {
+        action
+            .operation
+            .index()
+            .is_some_and(|index| permissions.enabled_operations & (1_u32 << index) != 0)
+    };
+    Ok(permitted.then_some(ClientIntent::WidgetAction(action)))
 }

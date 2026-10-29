@@ -28,7 +28,7 @@ decoder, traversal/forced movement, live evidence and remaining animation gaps.
   draws the cache gameframe; the handwritten chat/tabs/minimap HUD was removed.
 - Incoming game-message history and filters, player display names, reboot status,
   and script-authored viewport settings. Camera projection/picking use the same
-  cache-authored viewport and aspect/zoom settings. Current fingerprint schema is 15 (SPEC-0002).
+  cache-authored viewport and aspect/zoom settings. At that snapshot the fingerprint schema was 15 (SPEC-0002).
 - Login retains the form and Login button while connecting. Repeat submission is
   blocked; only the submitted password's mask length remains in presentation.
 - Native title bar reports presented FPS and process RSS in MiB once per second.
@@ -97,3 +97,61 @@ exactly two credential lines from stdin; never put a password in command argumen
 The transaction probe expects the named disposable fixture's total to remain 10.
 
 Current continuation validation is recorded in the [player audit](PLAYER-UPDATING-240.md).
+
+
+## Desktop playtest corrections (2026-10-29)
+
+This continuation addresses the reported map/key, popup hit-testing/colours, door visuals,
+chatbox choices, sidebar and initial zoom defects. It extends existing owners under SPEC-0018;
+the canonical roadmap/domain matrix continue to track remaining parity work.
+
+- World map: the viewport now uses geography/ground region rasters, overlay masks, walls,
+  map-scene sprites, geography icons and Verdana labels. The overview stays in its own widget.
+  Background loading is bounded to 16 regions per request and a 32 MiB retained raster budget;
+  changed/failed areas and stale worker results cannot display an earlier area's rasters.
+  The cache-authored key is retained. Its required model/line/key-scope, child-query and resize
+  instructions are implemented; enabled-flag semantics match selected RenderOverview methods.
+  MOVECOORD follows the selected OR-pack/wrapping-add helper. RustOSRS's worldmap renderer,
+  templates and editor key were inspected alongside pinned 240 WorldMapRegion/RenderOverview.
+- Doors: direct and enclosed location add/change/delete reach SceneryState. Action masks and
+  labels are retained, replacement clears prior animation, and the scene worker resolves new
+  object/model dependencies before rebuilding the projection. Existing scenery reset/replay
+  paths are extended rather than introducing another location owner.
+- Menus/dialogue: popups receive clicks above underlying gameframe widgets. NPC/location labels
+  use stock target colour markup; 0x5d5447 remains the verified stock menu fill. Continue and
+  CC/IF_RESUME_PAUSEBUTTON produce the selected resume packet through typed widget actions.
+  Retired pointer targets no longer receive leave/release callbacks after a modal closes.
+- Sidebar/zoom: egui's text/icon fonts are explicitly enabled, the configuration rail stays
+  inside its bounds, and required plugins use a readable On indicator. The existing retained
+  GPU/component controls remain in use. Cache helper 626 -> 605 initializes authored zoom
+  limits once per session, so first gameframe and settings agree on FOV 512/512.
+- Fingerprints: schema 29 includes placement action overrides and widget key scope. Exact
+  vectors and reset/replay implications are recorded in SPEC-0002 and SPEC-0012.
+
+Evidence and validation for this continuation:
+
+- User confirmed that doors open visually, dialogue choices work, and context menus can be
+  clicked over the gameframe in live play. This confirms those reported cases, not full parity.
+- The client and local server were restarted. Login and spawn loading were observed in the
+  earlier build's log. The final restarted build includes the subsequently found map timer,
+  child-query and resize-callback fixes; its final map/zoom visual retest remains pending.
+- `script_probe ... --execute 164 --mount 595 0`: zero load/resize/timer errors over 20 logic
+  cycles, 839 runtime widgets. The settings mount (134) also completes with zero script errors.
+- `worldmap_probe`: 25 detailed LIVE-cache regions, 184 geography icons, 60 nearby icon sprites
+  and three Verdana fonts, composed through the viewport path. This is a development smoke
+  artifact, not an ADR-0004 render-parity gate.
+- `gpu_shell_probe`: 1x/2x configuration/settings captures, fresh GPU reconstruction and
+  unchanged/hidden-frame work checks passed. The captures were inspected for text and layout.
+- Focused protocol/GameState/application/shell run: 227 passed, one live-capture test ignored.
+  After the live follow-up, application unit tests passed 61/61; VM contracts passed 7/7;
+  the coordinate helper contract passed; native tests passed 20/20; sidebar contracts passed
+  5/5 again. These commands overlap, so their counts must not be added as independent runs.
+- Formatting, workspace/all-target check, strict Clippy, web/application Wasm checks and the
+  domain, symbol, parity-inventory and documentation-index checks passed. The full workspace
+  test suite and ADR-0004's full visual acceptance were not rerun for this continuation.
+
+Remaining limitations retain their matrix entries: other zone payloads/ground items, temporary
+location merges, complete collision/minimap invalidation, outstanding-resume suppression,
+other resume families, widget model rendering/operation-key dispatch, exact map alignment/
+wrapping/hover/menus/smoothing and the map controller's state/replay ownership audit. This is
+not full plugin or browser gameplay acceptance.

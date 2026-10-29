@@ -2,8 +2,11 @@
 
 mod actor_animation;
 mod emission;
+mod pose_cache;
 use actor_animation::{DirectionalSequences, Playback, pose_model, select_movement};
 pub(crate) use emission::{Placement, emit_model};
+pub use pose_cache::PoseCacheStats;
+use pose_cache::{PoseCache, PoseKey};
 
 use crate::{
     ActorMotion, AnimationAssets, Result, SceneAsset, SceneGeometry, lighting::Light,
@@ -36,6 +39,7 @@ pub struct EntityCatalog {
     models: BTreeMap<ModelId, StaticModel>,
     animations: std::sync::Arc<AnimationAssets>,
     varbits: BTreeMap<VarbitId, VarbitDefinition>,
+    poses: PoseCache,
     requested_npcs: BTreeSet<NpcDefinitionId>,
     requested_items: BTreeSet<ItemDefinitionId>,
     requested_sequences: BTreeSet<SequenceId>,
@@ -48,6 +52,17 @@ enum NpcResolution<'a> {
 }
 
 impl EntityCatalog {
+    /// Disposable CPU model reuse counters; retained bytes include model vector capacities.
+    #[must_use]
+    pub fn pose_cache_stats(&self) -> PoseCacheStats {
+        self.poses.stats()
+    }
+
+    /// Discard derived model poses, retaining immutable resources and lifetime counters.
+    pub fn clear_pose_cache(&mut self) {
+        self.poses.clear();
+    }
+
     /// Definitions that live entities reference and no earlier request covered.
     ///
     /// Each id is requested once; the loader never retries absent or undecodable assets.
@@ -133,6 +148,7 @@ impl EntityCatalog {
     /// Returns advisories for cached-model animations that could not be prepared for playback;
     /// those sequences are then drawn in rest pose.
     pub fn merge(&mut self, asset: &SceneAsset, mut assets: EntityAssets) -> Vec<String> {
+        self.poses.clear();
         let failures = std::sync::Arc::make_mut(&mut self.animations).merge(asset, &mut assets);
         self.npcs.extend(assets.npcs);
         self.items.extend(assets.items);
@@ -352,51 +368,59 @@ pub struct EntityPresentation<'a> {
 /// Returns error on vertex allocation limit or pose failures.
 pub fn build_entities_geometry(
     asset: &SceneAsset,
-    catalog: &EntityCatalog,
+    catalog: &mut EntityCatalog,
     entities: &WorldEntitiesState,
     motion: &ActorMotion,
     variables: &BTreeMap<VarpId, i32>,
     presentation: EntityPresentation<'_>,
     geometry: &mut SceneGeometry,
 ) -> Result<()> {
-    let EntityPresentation {
-        interpolation,
-        hidden,
-    } = presentation;
-    for player in entities.players().values() {
-        if hidden.player(player.index.get()) {
-            continue;
+    let mut poses = std::mem::take(&mut catalog.poses);
+    poses.prepare(asset.descriptor().id(), entities);
+    let result = (|| {
+        let EntityPresentation {
+            interpolation,
+            hidden,
+        } = presentation;
+        for player in entities.players().values() {
+            if hidden.player(player.index.get()) {
+                continue;
+            }
+            let position = motion
+                .player(player.index)
+                .unwrap_or_else(|| corner(player.tile));
+            build_player(
+                asset,
+                catalog,
+                &mut poses,
+                player,
+                position,
+                motion.player_pose(player.index),
+                interpolation.blends(interpolation.players, player.sequence.sequence),
+                geometry,
+            )?;
         }
-        let position = motion
-            .player(player.index)
-            .unwrap_or_else(|| corner(player.tile));
-        build_player(
-            asset,
-            catalog,
-            player,
-            position,
-            motion.player_pose(player.index),
-            interpolation.blends(interpolation.players, player.sequence.sequence),
-            geometry,
-        )?;
-    }
-    for npc in entities.npcs().values() {
-        if hidden.npc(npc.index.get()) {
-            continue;
+        for npc in entities.npcs().values() {
+            if hidden.npc(npc.index.get()) {
+                continue;
+            }
+            let position = motion.npc(npc.index).unwrap_or_else(|| corner(npc.tile));
+            build_npc(
+                asset,
+                catalog,
+                &mut poses,
+                npc,
+                position,
+                motion.npc_pose(npc.index),
+                interpolation.blends(interpolation.npcs, npc.sequence.sequence),
+                variables,
+                geometry,
+            )?;
         }
-        let position = motion.npc(npc.index).unwrap_or_else(|| corner(npc.tile));
-        build_npc(
-            asset,
-            catalog,
-            npc,
-            position,
-            motion.npc_pose(npc.index),
-            interpolation.blends(interpolation.npcs, npc.sequence.sequence),
-            variables,
-            geometry,
-        )?;
-    }
-    Ok(())
+        Ok(())
+    })();
+    catalog.poses = poses;
+    result
 }
 
 /// Footprint corner of a tile in world units.
@@ -404,9 +428,18 @@ fn corner(tile: rustclient_model::WorldTile) -> [i32; 2] {
     [tile.x * 128, tile.y * 128]
 }
 
+#[expect(
+    clippy::too_many_arguments,
+    reason = "explicit immutable pose inputs and disposable cache"
+)]
+#[expect(
+    clippy::too_many_lines,
+    reason = "one ordered player model construction, pose and emission path"
+)]
 fn build_player(
     asset: &SceneAsset,
     catalog: &EntityCatalog,
+    poses: &mut PoseCache,
     player: &PlayerEntity,
     position: [i32; 2],
     drawn: Option<ActorPose>,
@@ -421,16 +454,6 @@ fn build_player(
         return Ok(());
     }
 
-    let Some(base_model) =
-        build_player_base(appearance, &asset.sources().kits, &catalog.items, |id| {
-            catalog.model(asset, id)
-        })
-    else {
-        return Ok(());
-    };
-
-    let recolors = body_recolors(appearance.colors);
-    let mut model = adjusted_model(&base_model, &recolors, &[], 0);
     let movement = appearance.movement_sequences;
     let (base, base_cycle) = match drawn {
         Some(drawn) => (
@@ -470,16 +493,47 @@ fn build_player(
         base,
         base_cycle,
     );
-    let posed_action = pose_model(asset, catalog, &mut model, playback, blend)?;
-    if !posed_action {
-        pose_model(
-            asset,
-            catalog,
-            &mut model,
-            Playback::movement(base, base_cycle),
-            blend,
-        )?;
-    }
+    let key = PoseKey::new(
+        asset,
+        catalog,
+        playback,
+        Playback::movement(base, base_cycle),
+        blend,
+    )?;
+    let (model, posed_action) = if let Some(found) = poses.player(player.index, appearance, key) {
+        found
+    } else {
+        let Some(base_model) =
+            build_player_base(appearance, &asset.sources().kits, &catalog.items, |id| {
+                catalog.model(asset, id)
+            })
+        else {
+            return Ok(());
+        };
+
+        let recolors = body_recolors(appearance.colors);
+        let mut model = adjusted_model(&base_model, &recolors, &[], 0);
+        let posed_action = pose_model(asset, catalog, &mut model, playback, blend)?;
+        if !posed_action {
+            pose_model(
+                asset,
+                catalog,
+                &mut model,
+                Playback::movement(base, base_cycle),
+                blend,
+            )?;
+        }
+
+        let model = std::sync::Arc::new(model);
+        poses.insert_player(
+            player.index,
+            appearance,
+            key,
+            std::sync::Arc::clone(&model),
+            posed_action,
+        );
+        (model, posed_action)
+    };
 
     let first_vertex = geometry.vertices.len();
     emit_model(
@@ -527,6 +581,7 @@ fn build_player(
 fn build_npc(
     asset: &SceneAsset,
     catalog: &EntityCatalog,
+    poses: &mut PoseCache,
     npc: &NpcEntity,
     position: [i32; 2],
     drawn: Option<ActorPose>,
@@ -536,9 +591,6 @@ fn build_npc(
 ) -> Result<()> {
     let orientation = drawn.map_or(npc.orientation, |drawn| drawn.rotation);
     let Some(def) = catalog.resolve_npc(asset, npc.definition_id, variables) else {
-        return Ok(());
-    };
-    let Some(mut model) = build_npc_base(def, |id| catalog.model(asset, id)) else {
         return Ok(());
     };
     let (base, base_cycle) = match drawn {
@@ -582,23 +634,47 @@ fn build_npc(
     };
     let playback =
         Playback::for_actor(npc.sequence, npc.sequence_timing_resolved, base, base_cycle);
-    let posed_action = pose_model(asset, catalog, &mut model, playback, blend)?;
-    if !posed_action {
-        pose_model(
-            asset,
-            catalog,
-            &mut model,
-            Playback::movement(base, base_cycle),
-            blend,
-        )?;
-    }
-    // The reference scales the animated model, so bone translations stay in unscaled units.
-    if def.scale_width != 128 || def.scale_height != 128 {
-        let (width, height) = (i32::from(def.scale_width), i32::from(def.scale_height));
-        for p in &mut model.vertices {
-            *p = ModelPoint::new(p.x * width / 128, p.y * height / 128, p.z * width / 128);
+    let key = PoseKey::new(
+        asset,
+        catalog,
+        playback,
+        Playback::movement(base, base_cycle),
+        blend,
+    )?;
+    let (model, posed_action) = if let Some(found) = poses.npc(npc.index, def.id, key) {
+        found
+    } else {
+        let Some(mut model) = build_npc_base(def, |id| catalog.model(asset, id)) else {
+            return Ok(());
+        };
+        let posed_action = pose_model(asset, catalog, &mut model, playback, blend)?;
+        if !posed_action {
+            pose_model(
+                asset,
+                catalog,
+                &mut model,
+                Playback::movement(base, base_cycle),
+                blend,
+            )?;
         }
-    }
+        // The reference scales the animated model, so bone translations stay in unscaled units.
+        if def.scale_width != 128 || def.scale_height != 128 {
+            let (width, height) = (i32::from(def.scale_width), i32::from(def.scale_height));
+            for p in &mut model.vertices {
+                *p = ModelPoint::new(p.x * width / 128, p.y * height / 128, p.z * width / 128);
+            }
+        }
+
+        let model = std::sync::Arc::new(model);
+        poses.insert_npc(
+            npc.index,
+            def.id,
+            key,
+            std::sync::Arc::clone(&model),
+            posed_action,
+        );
+        (model, posed_action)
+    };
 
     let first_vertex = geometry.vertices.len();
     let pick_bounds = emit_model(

@@ -28,6 +28,7 @@ pub struct InterfaceState {
     window: rustclient_model::WindowMetrics,
     default_window_mode: rustclient_model::WindowMode,
     viewport: rustclient_model::ViewportSettings,
+    key_scope: rustclient_model::WidgetKeyScope,
     brightness: rustclient_model::ScreenBrightness,
     settings: BTreeMap<rustclient_model::ClientSetting, bool>,
     device_preferences: BTreeMap<u8, i32>,
@@ -47,6 +48,10 @@ impl InterfaceState {
     #[must_use]
     pub const fn default_window_mode(&self) -> rustclient_model::WindowMode {
         self.default_window_mode
+    }
+    #[must_use]
+    pub const fn key_scope(&self) -> rustclient_model::WidgetKeyScope {
+        self.key_scope
     }
     #[must_use]
     pub const fn viewport(&self) -> rustclient_model::ViewportSettings {
@@ -147,6 +152,11 @@ impl InterfaceState {
             InterfaceUpdate::ScreenBrightness(value) => {
                 let changed = self.brightness != value;
                 self.brightness = value;
+                Ok(changed)
+            }
+            InterfaceUpdate::KeyScope(value) => {
+                let changed = self.key_scope != value;
+                self.key_scope = value;
                 Ok(changed)
             }
             InterfaceUpdate::Viewport(value) => {
@@ -437,7 +447,8 @@ impl InterfaceState {
                 }
                 resync_events = Some(candidate);
             }
-            InterfaceUpdate::ScreenBrightness(_)
+            InterfaceUpdate::KeyScope(_)
+            | InterfaceUpdate::ScreenBrightness(_)
             | InterfaceUpdate::Viewport(_)
             | InterfaceUpdate::Window(_)
             | InterfaceUpdate::DefaultWindowMode(_)
@@ -579,13 +590,15 @@ fn valid_value(value: &rustclient_model::ScriptValue) -> bool {
     }
 }
 fn valid_runtime(value: &rustclient_model::WidgetRuntime) -> bool {
-    value.drag.is_none_or(|drag| {
-        drag.parent.is_none_or(|parent| {
-            parent.widget.interface.get() < 65535
-                && parent.widget.component < 65535
-                && parent.child.is_none_or(|child| child < 65535)
+    value.target_priority.is_none_or(|op| op.index().is_some())
+        && value.drag.is_none_or(|drag| {
+            drag.parent.is_none_or(|parent| {
+                parent.widget.interface.get() < 65535
+                    && parent.widget.component < 65535
+                    && parent.child.is_none_or(|child| child < 65535)
+            })
         })
-    }) && value.text.as_ref().is_none_or(|s| s.len() <= 16_384)
+        && value.text.as_ref().is_none_or(|s| s.len() <= 16_384)
         && value.parameters.len() <= 4096
         && value.parameters.values().all(valid_value)
         && value

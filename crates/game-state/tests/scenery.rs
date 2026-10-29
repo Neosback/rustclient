@@ -195,3 +195,130 @@ fn network_animation_uses_current_anchor_cycle_placement_and_area_reset_replays(
     replay.replay_envelopes(&recording).unwrap();
     assert_eq!(replay.semantic_fingerprint(), state.semantic_fingerprint());
 }
+
+#[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "one placement replacement/options/replay/reset contract"
+)]
+fn server_location_replacement_retains_actions_clears_animation_and_replays_atomically() {
+    use rustclient_game_state::{AuthenticatedPlayer, InitialPlacement};
+    use rustclient_model::{
+        ActionMask, LocOrientation, LocationAnimationPlacement, LocationOptions,
+        ObjectDefinitionId, PlayerIndex, ServerProfileId, TileOffset,
+    };
+    let mut state = GameState::new();
+    let mut recording = Vec::new();
+    let mut apply = |state: &mut GameState, op: SemanticOperation| {
+        let commit = state.apply_operation(op.clone()).unwrap();
+        recording.push(ReplayEnvelope::new(op, commit));
+    };
+    apply(
+        &mut state,
+        SemanticOperation::AuthenticateSession {
+            revision: REVISION_240,
+            player: AuthenticatedPlayer {
+                profile: ServerProfileId::new(1),
+                player: PlayerIndex::new(1),
+                member: false,
+                staff_level: 0,
+            },
+        },
+    );
+    apply(
+        &mut state,
+        SemanticOperation::EstablishInitialPlacement(InitialPlacement {
+            position: WorldTile::new(3220, 3220, Plane::MIN),
+            map_anchor: WorldTile::new(3216, 3216, Plane::MIN),
+            area: None,
+        }),
+    );
+    let placement = LocationAnimationPlacement {
+        shape: 0,
+        orientation: LocOrientation::new(2).unwrap(),
+    };
+    let key = LocationKey::new(
+        WorldTile::new(3218, 3215, Plane::MIN),
+        LocationLayer::Boundary,
+    );
+    let options = LocationOptions {
+        enabled: ActionMask::new([true, false, false, false, false]),
+        labels: [Some("Open".into()), None, None, None, None],
+    };
+    let update = |object, options| {
+        SemanticOperation::Scenery(SceneryOperation::UpdateLocation {
+            offset: TileOffset { x: 2, y: -1 },
+            plane: Plane::MIN,
+            placement,
+            object,
+            options,
+        })
+    };
+    apply(
+        &mut state,
+        update(Some(ObjectDefinitionId::new(1521)), options.clone()),
+    );
+    assert_eq!(state.scenery().location_options()[&key], options);
+    let original = state.semantic_fingerprint();
+    let mut renamed = options.clone();
+    renamed.labels[0] = Some("Close".into());
+    apply(
+        &mut state,
+        update(Some(ObjectDefinitionId::new(1521)), renamed),
+    );
+    assert_ne!(state.semantic_fingerprint(), original);
+    apply(
+        &mut state,
+        SemanticOperation::Scenery(SceneryOperation::TriggerLocationAnimation {
+            offset: TileOffset { x: 2, y: -1 },
+            plane: Some(Plane::MIN),
+            placement,
+            sequence: Some(SequenceId::new(808)),
+        }),
+    );
+    assert!(state.scenery().locations()[&key].animation.is_some());
+    apply(
+        &mut state,
+        update(
+            Some(ObjectDefinitionId::new(1522)),
+            LocationOptions::default(),
+        ),
+    );
+    assert!(state.scenery().locations()[&key].animation.is_none());
+    assert!(!state.scenery().location_options().contains_key(&key));
+    let before = state.semantic_fingerprint();
+    assert!(
+        state
+            .apply_operation(SemanticOperation::Scenery(
+                SceneryOperation::UpdateLocation {
+                    offset: TileOffset { x: 2, y: -1 },
+                    plane: Plane::MIN,
+                    placement: LocationAnimationPlacement {
+                        shape: 99,
+                        ..placement
+                    },
+                    object: Some(ObjectDefinitionId::new(1523)),
+                    options
+                }
+            ))
+            .is_err()
+    );
+    assert_eq!(state.semantic_fingerprint(), before);
+    apply(&mut state, update(None, LocationOptions::default()));
+    assert_eq!(
+        state.scenery().locations()[&key].change,
+        LocationChange::Remove
+    );
+    let mut replay = GameState::new();
+    replay.replay_envelopes(&recording).unwrap();
+    assert_eq!(replay.semantic_fingerprint(), state.semantic_fingerprint());
+    state
+        .apply_operation(SemanticOperation::EndSession)
+        .unwrap();
+    assert!(state.scenery().locations().is_empty());
+    assert!(state.scenery().location_options().is_empty());
+    assert_eq!(
+        state.semantic_fingerprint(),
+        GameState::new().semantic_fingerprint()
+    );
+}

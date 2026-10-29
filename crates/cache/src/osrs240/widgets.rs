@@ -14,6 +14,8 @@ use rustclient_model::{
 use rustclient_platform::ReadOnlyBlobs;
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
+mod legacy;
+pub use legacy::decode_legacy;
 impl CacheProfile {
     /// Decode one interface's immutable component graph from the selected cache.
     /// # Errors
@@ -33,6 +35,7 @@ impl CacheProfile {
         }
         let mut widgets = BTreeMap::new();
         let mut reports = Vec::new();
+        let mut legacy = BTreeMap::new();
         for (file, bytes) in files {
             let source = Source {
                 file: Some(file),
@@ -41,7 +44,14 @@ impl CacheProfile {
             if file.0 >= 65535 {
                 return Err(source.error("interface", "component address exceeds profile range"));
             }
-            let widget = decode(&bytes, WidgetId::new(id, file.0), source)?;
+            let address = WidgetId::new(id, file.0);
+            let widget = if bytes.first().copied() == Some(255) {
+                decode(&bytes, address, source)?
+            } else {
+                let (widget, presentation) = decode_legacy(&bytes, address, source)?;
+                legacy.insert(address, presentation);
+                widget
+            };
             reports.push(crate::AssetReport {
                 name: format!("interface {}:{}", id.get(), file.0),
                 source,
@@ -53,7 +63,7 @@ impl CacheProfile {
         let mut definition =
             InterfaceDefinition::from_widgets(id, widgets.into_values().collect())?;
         definition.reports = reports;
-        Ok(definition)
+        definition.with_legacy(legacy)
     }
 }
 fn optional(value: u16) -> Option<u32> {
@@ -81,14 +91,14 @@ fn position_mode(value: i8, source: Source) -> Result<PositionMode> {
 }
 /// Decode one revision-owned component, retaining listeners for later VM execution.
 /// # Errors
-/// Rejects IF1, unknown types/modes/listener values, truncation and trailing bytes.
+/// Rejects unknown types/modes/listener values, truncation and trailing bytes.
 pub fn decode(bytes: &[u8], id: WidgetId, source: Source) -> Result<WidgetDefinition> {
     if bytes.len() > 1_048_576 {
         return Err(source.error("widget", "component byte limit"));
     }
     let mut r = Reader::new(bytes, source);
     if r.u8()? != 255 {
-        return Err(source.error("widget", "IF1/custom component format is unsupported"));
+        return decode_legacy(bytes, id, source).map(|(widget, _)| widget);
     }
     let kind = r.u8()?;
     let content = match r.u16()? {

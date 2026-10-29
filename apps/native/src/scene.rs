@@ -152,15 +152,41 @@ impl SceneView {
         generation: u64,
         proxy: EventLoopProxy<LoadEvent>,
     ) -> Result<(), String> {
+        let cache_dir = self.cache_dir.clone();
+        let shared_cache = std::sync::Arc::clone(&self.shared_cache);
+        let profile = self.profile;
         std::thread::Builder::new()
             .name("scenery-projector".into())
             .spawn(move || {
-                let result = rustclient_application::reproject_scene(asset, placement, &inputs);
+                let result = Self::open_shared_cache(&cache_dir, &shared_cache).and_then(|cache| {
+                    rustclient_application::reproject_scene_from_cache(
+                        &cache, profile, asset, placement, &inputs,
+                    )
+                });
                 let _ = proxy.send_event(LoadEvent::SceneLoaded(generation, Box::new(result)));
             })
             .map_err(|e| e.to_string())?;
         self.loading = true;
         Ok(())
+    }
+    /// Keep both projection workers on the current immutable resource closure.
+    pub fn ensure_workers(
+        &mut self,
+        asset: Arc<rustclient_scene::SceneAsset>,
+        resources_changed: bool,
+        proxy: EventLoopProxy<LoadEvent>,
+    ) {
+        if (resources_changed || self.entity_loader.is_none())
+            && let Err(error) =
+                self.start_entity_loader(asset.clone(), self.generation, proxy.clone())
+        {
+            eprintln!("entity asset worker: {error}");
+        }
+        if (resources_changed || self.animator.is_none())
+            && let Err(error) = self.start_animator(asset, self.generation, proxy)
+        {
+            eprintln!("animation worker: {error}");
+        }
     }
     pub fn start_animator(
         &mut self,

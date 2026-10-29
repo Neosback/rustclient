@@ -235,8 +235,14 @@ pub fn object(bytes: &[u8], id: ObjectDefinitionId, source: Source) -> Result<Ob
             }
         }
     }
-    if out.size.contains(&0) || out.scale.contains(&0) {
-        return Err(source.error("object definition", "invalid dimensions or scale"));
+    if out.size.contains(&0) {
+        return Err(source.error(
+            "object definition",
+            format!(
+                "invalid dimensions: size={:?}, scale={:?}",
+                out.size, out.scale
+            ),
+        ));
     }
     if solid {
         out.collision = crate::world::ObjectCollision::None;
@@ -605,6 +611,11 @@ pub fn item(bytes: &[u8], id: ItemDefinitionId, source: Source) -> Result<ItemDe
         icon_offset: [0; 2],
         stackable: false,
         members: false,
+        tradeable: false,
+        note: None,
+        note_template: None,
+        bought: None,
+        bought_template: None,
         inventory_actions: [None, None, None, None, Some("Drop".into())],
         parameters: BTreeMap::new(),
         placeholder: None,
@@ -631,15 +642,20 @@ pub fn item(bytes: &[u8], id: ItemDefinitionId, source: Source) -> Result<ItemDe
             95 => out.icon_angles[2] = r.u16()?,
             11 => out.stackable = true,
             16 => out.members = true,
+            65 => out.tradeable = true,
+            97 => out.note = Some(ItemDefinitionId::new(u32::from(r.u16()?))),
+            98 => out.note_template = Some(ItemDefinitionId::new(u32::from(r.u16()?))),
+            139 => out.bought = Some(ItemDefinitionId::new(u32::from(r.u16()?))),
+            140 => out.bought_template = Some(ItemDefinitionId::new(u32::from(r.u16()?))),
             149 => out.placeholder_template = Some(ItemDefinitionId::new(u32::from(r.u16()?))),
             148 => out.placeholder = Some(ItemDefinitionId::new(u32::from(r.u16()?))),
             35..=39 => out.inventory_actions[usize::from(op - 35)] = Some(r.string_value()?),
             3 | 30..=34 => r.string()?,
-            75 | 90..=94 | 97..=99 | 110..=112 | 139 | 140 => {
+            75 | 90..=94 | 99 | 110..=112 => {
                 r.u16()?;
             }
             // Flag opcodes without payload: stackability, tradeability, membership, market, unlock.
-            15 | 65 | 160 | 251 => {}
+            15 | 160 | 251 => {}
             42 | 113..=115 => {
                 r.u8()?;
             }

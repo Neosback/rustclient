@@ -59,8 +59,19 @@ pub fn load_scene_from_cache(
     let (origin, width, height) = profile
         .scene_window(placement.map_anchor)
         .map_err(|e| e.to_string())?;
-    let assets = profile
+    let mut assets = profile
         .load_world(cache, origin, width, height, &mut progress)
+        .map_err(|e| e.to_string())?;
+    let wanted = inputs
+        .locations
+        .values()
+        .filter_map(|value| match value.change {
+            rustclient_model::LocationChange::Replace(def) => Some(def.object),
+            _ => None,
+        })
+        .collect();
+    profile
+        .extend_world_locations(cache, &mut assets, &wanted)
         .map_err(|e| e.to_string())?;
     let asset = SceneAsset::new(assets, origin, width, height).map_err(|e| e.to_string())?;
     progress("building terrain and location mesh");
@@ -87,6 +98,47 @@ pub fn load_scene_from_cache(
         projection_generation: inputs.generation,
         projection_inputs,
     })
+}
+
+/// Resolve any new server-created location assets on the CPU worker, then project.
+/// # Errors
+/// Reports corrupt/missing cache dependencies and projection failures.
+pub fn reproject_scene_from_cache(
+    cache: &Cache<impl ReadOnlyBlobs>,
+    profile: CacheProfile,
+    mut asset: std::sync::Arc<SceneAsset>,
+    placement: InitialPlacement,
+    inputs: &rustclient_scene::SceneryInputs,
+) -> Result<LoadedScene, String> {
+    let wanted: std::collections::BTreeSet<_> = inputs
+        .locations
+        .values()
+        .filter_map(|value| match value.change {
+            rustclient_model::LocationChange::Replace(def)
+                if !asset.sources().objects.contains_key(&def.object) =>
+            {
+                Some(def.object)
+            }
+            _ => None,
+        })
+        .collect();
+    if !wanted.is_empty() {
+        let descriptor = asset.descriptor();
+        let mut sources = asset.sources().clone();
+        profile
+            .extend_world_locations(cache, &mut sources, &wanted)
+            .map_err(|e| e.to_string())?;
+        asset = std::sync::Arc::new(
+            SceneAsset::new(
+                sources,
+                descriptor.origin(),
+                descriptor.width(),
+                descriptor.height(),
+            )
+            .map_err(|e| e.to_string())?,
+        );
+    }
+    reproject_scene(asset, placement, inputs)
 }
 
 /// Rebuild an immutable projection from committed inputs without cache I/O.

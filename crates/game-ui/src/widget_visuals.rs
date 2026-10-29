@@ -126,13 +126,27 @@ pub fn project_widgets(
 /// Project a drag through the same layout used by pointer hit testing.
 /// # Errors
 /// Reports incomplete assets or an invalid layout.
-#[expect(clippy::too_many_lines, reason = "painter-ordered widget grammar")]
 pub fn project_widgets_with_drag(
     state: &GameState,
     definitions: &BTreeMap<InterfaceId, InterfaceDefinition>,
     assets: &WidgetVisualAssets,
     frame: &mut UiFrame,
     dragged: Option<crate::pointer::DraggedWidget>,
+) -> Result<crate::widgets::WidgetTree, String> {
+    project_widgets_with_presentation(state, definitions, assets, frame, dragged, |_, _| Ok(()))
+}
+/// Paint through an application-supplied disposable body presentation. Layout and hit testing
+/// still use the authoritative topology; the callback can select visual fields and cannot change layout.
+/// # Errors
+/// Reports the same bounded layout/asset failures or an explicit presentation failure.
+#[expect(clippy::too_many_lines, reason = "painter-ordered widget grammar")]
+pub fn project_widgets_with_presentation(
+    state: &GameState,
+    definitions: &BTreeMap<InterfaceId, InterfaceDefinition>,
+    assets: &WidgetVisualAssets,
+    frame: &mut UiFrame,
+    dragged: Option<crate::pointer::DraggedWidget>,
+    mut present: impl FnMut(rustclient_model::WidgetAddress, &mut WidgetBody) -> Result<(), String>,
 ) -> Result<crate::widgets::WidgetTree, String> {
     use crate::widgets::{WidgetBounds, WidgetTree, resolve_widget};
     frame.world_viewport = None;
@@ -152,8 +166,9 @@ pub fn project_widgets_with_drag(
     .map_err(|e| e.to_string())?;
     let mut overlay_viewport = None;
     for node in &tree.nodes {
-        let widget = resolve_widget(state.interfaces(), definitions, node.address)
+        let mut widget = resolve_widget(state.interfaces(), definitions, node.address)
             .map_err(|e| e.to_string())?;
+        present(node.address, &mut widget.body)?;
         let rect = node.bounds.rect();
         let clip = node.clip.rect();
         if clip.width <= 0. || clip.height <= 0. {

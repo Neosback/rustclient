@@ -36,6 +36,7 @@ Current machine-readable data: [domain matrix](reference/rs240-port/PORT-MATRIX.
 - [specs/SPEC-0019-port-parity.md](specs/SPEC-0019-port-parity.md)
 - [specs/SPEC-0020-client-cycle.md](specs/SPEC-0020-client-cycle.md)
 - [specs/SPEC-0021-input-menus.md](specs/SPEC-0021-input-menus.md)
+- [specs/SPEC-0025-interface-script-host.md](specs/SPEC-0025-interface-script-host.md)
 
 ## Architecture decisions
 
@@ -65,6 +66,8 @@ Current machine-readable data: [domain matrix](reference/rs240-port/PORT-MATRIX.
 
 - [patches/README.md](patches/README.md)
 - [reference/REVISION-235-TO-240.md](reference/REVISION-235-TO-240.md)
+- [reference/TSPS-241-REVIEW-2026-10-29.md](reference/TSPS-241-REVIEW-2026-10-29.md)
+- [reference/TSPS-GIT-SHORTLIST-2026-10-29.md](reference/TSPS-GIT-SHORTLIST-2026-10-29.md)
 - [reference/rs240-port/ACTOR-CATCH-UP.md](reference/rs240-port/ACTOR-CATCH-UP.md)
 - [reference/rs240-port/ACTOR-PATH-QUEUE.md](reference/rs240-port/ACTOR-PATH-QUEUE.md)
 - [reference/rs240-port/ACTOR-RUNTIME.md](reference/rs240-port/ACTOR-RUNTIME.md)
@@ -103,9 +106,11 @@ Current machine-readable data: [domain matrix](reference/rs240-port/PORT-MATRIX.
 - [plan/CP3H-cp3-exit-audit.md](plan/CP3H-cp3-exit-audit.md)
 - [plan/CP3I-deterministic-randomness.md](plan/CP3I-deterministic-randomness.md)
 - [plan/CP3J-semantic-fingerprints.md](plan/CP3J-semantic-fingerprints.md)
+- [plan/CS1-240-2026-10-29.md](plan/CS1-240-2026-10-29.md)
 - [plan/ENTITY-assets.md](plan/ENTITY-assets.md)
 - [plan/GAMEFRAME-240.md](plan/GAMEFRAME-240.md)
 - [plan/GRAPHICS-FEATURE-MENU.md](plan/GRAPHICS-FEATURE-MENU.md)
+- [plan/IF1-BUTTONS-240-2026-10-29.md](plan/IF1-BUTTONS-240-2026-10-29.md)
 - [plan/NPC-ANIMATION-240.md](plan/NPC-ANIMATION-240.md)
 - [plan/OPENRUNE-login.md](plan/OPENRUNE-login.md)
 - [plan/PLAYABLE-desktop.md](plan/PLAYABLE-desktop.md)
@@ -116,6 +121,7 @@ Current machine-readable data: [domain matrix](reference/rs240-port/PORT-MATRIX.
 - [plan/SIDEBAR-PORT-AUDIT-2026-10-26.md](plan/SIDEBAR-PORT-AUDIT-2026-10-26.md)
 - [plan/SPAWN-scene.md](plan/SPAWN-scene.md)
 - [plan/TITLE-offline-cache.md](plan/TITLE-offline-cache.md)
+- [plan/TSPS-ADOPTION-2026-10-29.md](plan/TSPS-ADOPTION-2026-10-29.md)
 - [reference/builtin-plugins/GPU-ACTOR-DEPTH-2026-10-27.md](reference/builtin-plugins/GPU-ACTOR-DEPTH-2026-10-27.md)
 - [reference/builtin-plugins/GPU-MODEL-SORT-2026-10-28.md](reference/builtin-plugins/GPU-MODEL-SORT-2026-10-28.md)
 - [reference/builtin-plugins/GPU-OVERLAY-2026-10-27.md](reference/builtin-plugins/GPU-OVERLAY-2026-10-27.md)

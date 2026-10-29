@@ -422,3 +422,56 @@ change the scroll position and bypass the scrollbar's scripts. Tests establish
 text/metric/input contracts, not pixel or complete interface parity. Acceptance
 tracks each window/layout/input/text behavior separately in the existing 240
 symbol ledger; a source mapping alone is never a verified-port claim.
+
+## Desktop playtest corrections (2026-10-29)
+
+The existing scenery owner accepts relative server placements, resolved against the current
+map anchor and explicit plane. Replacement sets object/shape/orientation, clears the previous
+renderable's animation, and replaces per-placement action visibility and optional labels.
+Deletion clears those actions. Invalid shape/coordinate/label inputs commit nothing. Area reset,
+map replacement and session shutdown clear both placements and their action overrides. Schema
+29 fingerprints sorted placement actions and the widget operation-key scope. The ordinary
+ChangeLocation operation restores definition-authored actions when replacing an override.
+
+The selected zone adapter decodes direct LOC_ADD_CHANGE_V2/LOC_DEL and their enclosed forms
+alongside location animation, preserving order and validating the complete enclosed payload
+before publishing updates. Selected RSProt LocAddChangeV2Encoder/LocDelEncoder and exact-240
+classUL.method11465/classXY.method13037/13244 are the wire evidence. Newly created locations
+may require definitions/models absent from the initial region closure: the existing cache
+adapter extends those immutable resources on the scene worker before projection. This keeps
+the selected map identity and semantic placements; it does not introduce another location owner.
+
+Continue is a distinct WidgetOperation with the existing address, item and interface epoch.
+It uses continue_enabled rather than an ordinary operation bit, bypasses the on-operation
+callback, and encodes RESUME_PAUSEBUTTON. CC/IF_RESUME_PAUSEBUTTON queue the same typed action.
+The cycle flush revalidates it against the displayed widget, item and permissions. Other resume
+families and outstanding-resume suppression are not accepted by this correction.
+
+Before the first desktop gameframe, application runs selected cache helper 626 -> 605 to
+initialize the authored zoom limits. It runs once per session and resets on logout; resize and
+settings scripts then select the same initial zoom. Model/angle/sequence/orthographic and line
+setters retain their values through the existing WidgetRuntime body. Script key-scope selectors
+retain All/None/Interface/Widget in InterfaceState; operation-key delivery remains incomplete.
+
+The map viewport projects geography/ground archives, shaped floor overlays, walls, map scenes,
+geography-derived icons and Verdana labels. The overview image is used only by the overview
+widget. Native owns a bounded background asset/raster batch and rejects old area/zoom results;
+scene owns raster composition. Cache-authored interface 595 creates the key; no replacement
+legend/controller is introduced. Enabled/disabled script booleans follow the selected
+RenderOverview methods, and flash time advances with logic cycles. Exact map alignment,
+wrapping, hover/menu behavior, smoothing and full state/replay ownership remain parity work.
+
+Open popups receive clicks before underlying gameframe widgets. Cache/definition target colour
+markup accompanies NPC/location action labels; the existing 0x5d5447 menu fill is the stock
+240 colour. The shell explicitly bundles text/icon fonts, bounds the configuration rail inside
+its viewport and retains the demand-driven GPU presentation contract of ADR-0007. These are
+playtest corrections, not ADR-0004 visual acceptance or complete plugin behavior.
+
+Live follow-up: map timer script 1715 also requires MOVECOORD. The selected profile packs the
+plane/x/y offset with bitwise OR and then performs wrapping addition to the base, as in
+BufferProvider and classKY.method6623. Script 9179 uses the classLZ widget child-query cursor:
+mode 0 snapshots all dynamic slots, mode 1 direct children, mode 2 depth-first descendants;
+next-widget and next-index consume that disposable query. It remains runtime cursor state,
+not a second widget owner. CC/IF_CALLONRESIZE enqueue the existing listener with a maximum
+resize-event depth of ten; a missing callback finishes the current VM event. Pointer leave/
+release delivery ignores widgets retired by a server close or script deletion.

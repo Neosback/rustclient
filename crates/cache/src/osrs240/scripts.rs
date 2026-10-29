@@ -272,6 +272,18 @@ impl CacheProfile {
 }
 
 impl CacheProfile {
+    /// 240 `BufferProvider`'s `MOVECOORD` packs the offset with OR, then adds the base.
+    #[must_use]
+    pub const fn script_move_coord(self, base: i32, x: i32, plane: i32, y: i32) -> i32 {
+        base.wrapping_add((plane << 28) | (x << 14) | y)
+    }
+    /// Selected cache helper 626 calls `CAMERA_SET_ZOOM_LIMITS` (605) with its
+    /// authored defaults. Run before the first gameframe so absent saved varcs
+    /// cannot be mistaken for a valid zoom range by its resize script.
+    #[must_use]
+    pub const fn session_setup_script(self) -> ScriptId {
+        ScriptId::new(626)
+    }
     /// Java short narrowing and exponential script FOV units.
     #[must_use]
     #[expect(
@@ -354,5 +366,17 @@ impl CacheProfile {
             }),
             _ => Err(format!("unsupported device option {option}")),
         }
+    }
+}
+
+#[cfg(test)]
+mod script_units {
+    use super::*;
+    #[test]
+    fn coordinate_offsets_use_the_selected_or_pack_and_wrapping_addition() {
+        let profile = CacheProfile::OpenRune240;
+        assert_eq!(profile.script_move_coord(0, 1, 2, 3), 0x2000_4003);
+        assert_eq!(profile.script_move_coord(0, 1, 0, -1), -1);
+        assert_eq!(profile.script_move_coord(i32::MAX, 0, 0, 1), i32::MIN);
     }
 }

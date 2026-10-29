@@ -71,6 +71,16 @@ impl WorldMapState {
         }
     }
 
+    /// Display size queried by scripts is in tiles, rather than canvas pixels.
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "bounded canvas pixels divided by a source zoom of at least one"
+    )]
+    pub fn set_display_pixels(&mut self, size: [u32; 2]) {
+        let zoom = f64::from(rustclient_scene::world_map::pixels_per_tile(self.zoom));
+        self.display_size = size.map(|pixels| (f64::from(pixels.min(16384)) / zoom).ceil() as i32);
+    }
+
     pub fn reset(&mut self) {
         // Cache assets survive logout; account-dependent interaction/position does not.
         self.center_tile = self
@@ -136,6 +146,10 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
             .into_iter()
             .map(|area| (area.id, area))
             .collect();
+        self.world_map.elements = self
+            .profile
+            .load_world_map_elements(&self.cache, &mut Vec::new())
+            .map_err(|e| e.to_string())?;
         let main = self
             .world_map
             .areas
@@ -353,15 +367,16 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
         }
         Opcode::WorldmapDisableelements => {
             let disable = s.int()?;
-            world_map.elements_disabled = disable == 1;
+            // The selected source's misleadingly named disable opcodes take an enabled flag.
+            world_map.elements_disabled = disable != 1;
         }
         Opcode::WorldmapDisableelement => {
             let [elem, disable] = s.ints()?;
             if let Ok(elem) = u32::try_from(elem) {
                 if disable == 1 {
-                    world_map.disabled_elements.insert(elem);
-                } else {
                     world_map.disabled_elements.remove(&elem);
+                } else {
+                    world_map.disabled_elements.insert(elem);
                 }
             }
         }
@@ -369,26 +384,26 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
             let [cat, disable] = s.ints()?;
             if let Ok(cat) = u32::try_from(cat) {
                 if disable == 1 {
-                    world_map.disabled_categories.insert(cat);
-                } else {
                     world_map.disabled_categories.remove(&cat);
+                } else {
+                    world_map.disabled_categories.insert(cat);
                 }
             }
         }
         Opcode::WorldmapGetdisableelements => {
-            s.integers.push(i32::from(world_map.elements_disabled));
+            s.integers.push(i32::from(!world_map.elements_disabled));
         }
         Opcode::WorldmapGetdisableelement => {
             let elem = s.int()?;
             let disabled =
                 u32::try_from(elem).is_ok_and(|id| world_map.disabled_elements.contains(&id));
-            s.integers.push(i32::from(disabled));
+            s.integers.push(i32::from(!disabled));
         }
         Opcode::WorldmapGetdisableelementcategory => {
             let cat = s.int()?;
             let disabled =
                 u32::try_from(cat).is_ok_and(|id| world_map.disabled_categories.contains(&id));
-            s.integers.push(i32::from(disabled));
+            s.integers.push(i32::from(!disabled));
         }
         Opcode::WorldmapListelementStart => {
             world_map.list_iterator_index = 0;
@@ -599,6 +614,8 @@ mod tests {
         stacks.integers.push(50);
         instruction(&mut host, Opcode::WorldmapSetzoom, &mut stacks).unwrap();
         assert_eq!(host.resources.world_map.zoom, 50.0);
+        host.resources.world_map.set_display_pixels([800, 600]);
+        assert_eq!(host.resources.world_map.display_size, [400, 300]);
 
         // 4. Config bounds and size
         stacks.integers.push(1);
@@ -612,6 +629,23 @@ mod tests {
         instruction(&mut host, Opcode::WorldmapDisableelements, &mut stacks).unwrap();
         instruction(&mut host, Opcode::WorldmapGetdisableelements, &mut stacks).unwrap();
         assert_eq!(stacks.int().unwrap(), 1);
+        assert!(!host.resources.world_map.elements_disabled);
+        stacks.integers.extend([4, 0]);
+        instruction(
+            &mut host,
+            Opcode::WorldmapDisableelementcategory,
+            &mut stacks,
+        )
+        .unwrap();
+        assert!(host.resources.world_map.disabled_categories.contains(&4));
+        stacks.integers.push(4);
+        instruction(
+            &mut host,
+            Opcode::WorldmapGetdisableelementcategory,
+            &mut stacks,
+        )
+        .unwrap();
+        assert_eq!(stacks.int().unwrap(), 0);
 
         // 6. MEC metadata
         stacks.integers.push(10);

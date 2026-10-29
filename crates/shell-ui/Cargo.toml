@@ -14,7 +14,7 @@ rustclient-plugin-host = { path = "../plugin-host" }
 rustclient-platform = { path = "../platform" }
 dioxus = { version = "=0.7.10", default-features = false, features = ["macro", "html", "signals", "hooks"] }
 keyboard-types = "=0.7.0"
-egui = "=0.37.0"
+egui = { version = "=0.37.0", features = ["monochrome_emoji_fonts"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 dioxus-native-dom = { version = "=0.7.10", optional = true }

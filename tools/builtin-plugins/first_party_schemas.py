@@ -25,6 +25,7 @@ OUT = ROOT / "crates/plugin-host/src/first-party-schemas.json"
 
 # (directory, rust id suffix, config interface file or None)
 PLUGIN_LIST = [
+    ("xptracker", "xptracker"),
     ("roofremoval", "roofremoval"),
     ("animsmoothing", "animsmoothing"),
     ("stretchedmode", "stretchedmode"),
@@ -186,7 +187,7 @@ def unquote(value):
     return json.loads('"' + m[1] + '"') if m else value.strip()
 
 
-def parse_config(plugin_dir, rel_dir):
+def parse_config(plugin_dir, rel_dir, supported=None):
     configs = sorted(plugin_dir.glob("*Config.java"))
     if not configs:
         return None, []
@@ -232,7 +233,7 @@ def parse_config(plugin_dir, rel_dir):
         units = re.search(r'@Units\(([^)]*)\)', annotations)
         default_expr = (re.search(r"return\s+(.*?);", body or "", re.S) or [None, ""])[1].strip()
         key = unquote(attrs.get("keyName", ""))
-        if attrs.get("hidden", "false") == "true" or not key:
+        if attrs.get("hidden", "false") == "true" or not key or (supported is not None and key not in supported):
             continue
         section = attrs.get("section")
         item = {
@@ -304,7 +305,12 @@ def main():
         plugin_dir = PLUGINS / "plugins" / directory
         meta = descriptor(plugin_dir)
         rel = str(plugin_dir.relative_to(ROOT))
-        sections, items = parse_config(plugin_dir, rel)
+        supported = None
+        if suffix == "xptracker":
+            # Only controls with an implemented local-overlay effect are exposed.
+            supported = {"hideMaxed", "pauseSkillAfter", "resetSkillRateAfter", "prioritizeRecentXpSkills"}
+            meta["description"] = "Local session XP, rates and actions overlay. Panel, account persistence and network sync are pending."
+        sections, items = parse_config(plugin_dir, rel, supported)
         settings = [{
             "key": "enabled",
             "label": "Enabled",

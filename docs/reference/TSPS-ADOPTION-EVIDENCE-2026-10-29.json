@@ -1,0 +1,826 @@
+{
+  "date": "2026-10-29",
+  "scope": "Scoped TSPS shortlist transfers; full roadmap phases and RuneLite feature parity remain incomplete.",
+  "base_commit": "dde7fd2ffaf3021d1dcea37701e8c26d771a5ba7",
+  "worktree_note": "Existing dirty native/world-map/interface changes were preserved. File hashes identify the current composite snapshot, not authorship of every line.",
+  "tsps_review_tip": "cf20aea7d18e451f49ea4532b26367b8c35f6b28",
+  "authority_inputs": [
+    {
+      "path": "references/rl-suite-240/sources-semantic/classOG.java",
+      "sha256": "34a673f8be92eac167ac9fd86492a216b72cba81ed478dd52057999f005644af"
+    },
+    {
+      "path": "references/rl-suite-240/sources-semantic/classQA.java",
+      "sha256": "2eaa0b42451230ccfdfde0644d980a45e093522a82a7c4cc4b6ba1ba2a09845e"
+    },
+    {
+      "path": "references/rl-suite-240/sources-semantic/classKI.java",
+      "sha256": "680a6b3396d6f099644a4e522f71bf5012c3c2991ee18ef8e02d6a044ea1abdd"
+    },
+    {
+      "path": "references/rl-suite-240/sources-semantic/Widget.java",
+      "sha256": "9dbab17c5c894b17fc701f8f139189bd27437469cbb69338f944d47fbefd2627"
+    },
+    {
+      "path": "references/rl-suite-240/sources-semantic/classJG.java",
+      "sha256": "0fbaff9b53b95c3b359aca3f74ea8e25c3b2a12dbb597e2ad3230b534cbb2b27"
+    },
+    {
+      "path": "references/rl-suite-240/sources-semantic/classBB.java",
+      "sha256": "9b299f51dce52286186c8d8ce9d5fc5bd5c48d73abf448cd1a24490dee75409a"
+    },
+    {
+      "path": "references/rl-suite-240/sources-semantic/classEA.java",
+      "sha256": "ffa33d2523c5301a3a8ff5a12a2c6422c84a400bb1233bd21c4a9c6544fc2867"
+    },
+    {
+      "path": "references/rl-suite-240/sources-semantic/ItemComposition.java",
+      "sha256": "3179fd57411f51fbc3762cc55c183054a64b2e2bd668ef126dd59bea330bb5b9"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/xptracker/XpStateSingle.java",
+      "sha256": "df65c2ed7ac4c5c5fe048dd63a3cd7959536fefcc84b1c705fa76a44595603f2"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/xptracker/XpState.java",
+      "sha256": "73ba414556b72a2abbfbbef8847a56cbaa284aa19b5cb8eb429aaaf36e23b50f"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/xptracker/XpPauseStateSingle.java",
+      "sha256": "efb54187f657e8ad0b7fb259f3f54592bc0dfdd431a237186ce6083e828d485e"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/xptracker/XpTrackerPlugin.java",
+      "sha256": "fca3b381cc0645dc27684e2661a82794e05cbe023d5ef467b38bb88f5db778bd"
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/xptracker/XpTrackerConfig.java",
+      "sha256": "e52f180edd8cd3e86787cbd9b7d8dcba17a17f17a5b677654a992e9b719bc8c3"
+    }
+  ],
+  "rust_snapshot": [
+    {
+      "path": "crates/cache/src/osrs240/item_search.rs",
+      "sha256": "262ed71e3d090a0ce1e8968b221f09945dfcd3dfb650f204df81009123ac7bfe"
+    },
+    {
+      "path": "crates/cache/src/osrs240/definitions.rs",
+      "sha256": "9ca7e1c362f124a2ade7ad8cf56bff7048f265b55efe6f810460be3bb123cb69"
+    },
+    {
+      "path": "crates/cache/src/world.rs",
+      "sha256": "6a283d10ae65aeb0034705864a0a080030e018003f6395a531d39069f4738e6d"
+    },
+    {
+      "path": "crates/cache/src/osrs240/audit.rs",
+      "sha256": "199fee9b74d817f481327a5713707183d573c0664debb8f11012467d22527228"
+    },
+    {
+      "path": "crates/cache/src/osrs240/audit/stacks.rs",
+      "sha256": "ab5a05e7a6161cadb72e7621beb31f2082eb706dfededb2b61c0ebfcaed60ee3"
+    },
+    {
+      "path": "crates/cache/src/osrs240/widgets.rs",
+      "sha256": "0048c2735624e16eb39cbb2b8ffbe80cc8294a12c318d7b19b5bdaeb8b071473"
+    },
+    {
+      "path": "crates/cache/src/osrs240/widgets/legacy.rs",
+      "sha256": "a114d1bc6d3c4b2cd96ffd05c3a9961300fa0a39bb186ea34bc765d5eed6ab14"
+    },
+    {
+      "path": "crates/cache/src/widget.rs",
+      "sha256": "9188b0c0a90c519d0142d413ec74aae0fd0bf76ec75634784118cc6725f83a15"
+    },
+    {
+      "path": "crates/cache/src/osrs240/mod.rs",
+      "sha256": "e97a7ddc6356bf0dc75e8d939e2594c373e20fa65c85f64bff56528ed0423b36"
+    },
+    {
+      "path": "crates/application/src/scripts/mod.rs",
+      "sha256": "71b2b386aa32e76535fc1b87f9841bbd48ec70204121494b8bd90cc8f9304994"
+    },
+    {
+      "path": "crates/application/src/scripts/item_search.rs",
+      "sha256": "fb467db7f803febbe67ca2f44935fabd1319cc47bc0dee6c8997858b722b95ed"
+    },
+    {
+      "path": "crates/application/src/scripts/widgets.rs",
+      "sha256": "d1343b6a1a2cb4d7cfba57d0b708cb715ea1aa38c3d8cb1416b6dcbe2188ff7e"
+    },
+    {
+      "path": "crates/application/src/scripts/widget_callbacks_tests.rs",
+      "sha256": "a75a0b6552eee42d0edf0d5df2e818418407e94afdb7e815fbdabac83f04e160"
+    },
+    {
+      "path": "crates/cache/tests/item_search.rs",
+      "sha256": "a4b99a0b6cb8017947ff3bf34c5ca927af1d4688bd94c7a622fbfcf592249c50"
+    },
+    {
+      "path": "crates/cache/tests/legacy_widgets.rs",
+      "sha256": "bc187218c4f851163ff616501bb482d243ecfbab5d2ffc41c877c4eed76f3edb"
+    },
+    {
+      "path": "crates/cache/tests/fixtures/widgets/generate.py",
+      "sha256": "61a06800e28e60dec97fd550b802dfd6b8668b88fe9c90391143f250129420b3"
+    },
+    {
+      "path": "crates/scene/src/entity_mesh.rs",
+      "sha256": "588b1fd967b62873aa96396dd5026186bc3e559e71d3b3bf619b30bf9c86393c"
+    },
+    {
+      "path": "crates/scene/src/entity_mesh/actor_animation.rs",
+      "sha256": "47807356bb06e878cf61878c045851b9dccca7d02ed1c62c5417992a7e467254"
+    },
+    {
+      "path": "crates/scene/src/entity_mesh/pose_cache.rs",
+      "sha256": "a10e0324344e36f9f893537225c0c0f05e7c632bdb2b7f2fdc1e0ded4a52dbd1"
+    },
+    {
+      "path": "crates/scene/src/tests.rs",
+      "sha256": "df0f772dc94130fd8f4615fa676a6012c9eb2cde0c6976eec5124734d469aeca"
+    },
+    {
+      "path": "apps/native/src/main.rs",
+      "sha256": "7eb1906a5ff4e7b26e1192b91b6d8d418fbf4f77a534535fd62894622480d95d"
+    },
+    {
+      "path": "apps/native/src/bin/entity_probe.rs",
+      "sha256": "a9344ed488015d1bdfc4bde06b0cc895a6a870b4657844237987fcb553a603d2"
+    },
+    {
+      "path": "xtask/src/cache.rs",
+      "sha256": "08ee5262f0cdc32492d827d11385e439236f41e0db8f36cb0606575c60f2187a"
+    },
+    {
+      "path": "xtask/src/main.rs",
+      "sha256": "30774f97fc078053673ec13a9883bffcb8c4d521ef0252ab3873ec96a6dc85e0"
+    },
+    {
+      "path": "crates/first-party-plugins/src/lib.rs",
+      "sha256": "172c57c8c31139d051209601ba1a97fb2ce857223725b36380454ed9a379903e"
+    },
+    {
+      "path": "crates/first-party-plugins/src/xptracker.rs",
+      "sha256": "541781981a8d864f52d1e661b6c7626aa7a959705662fc6e67ed577f13c4803f"
+    },
+    {
+      "path": "crates/first-party-plugins/src/xptracker/state.rs",
+      "sha256": "392b72509bc1a9381c57ce9c2faa0ed23378b0e6667de78e2d880281be21593d"
+    },
+    {
+      "path": "crates/first-party-plugins/src/xptracker/tests.rs",
+      "sha256": "0c4647bb2ba0f05bbc9491ca0d30ea3b0128e3fda414adc8b55c3a922b693e1b"
+    },
+    {
+      "path": "crates/first-party-plugins/NOTICE",
+      "sha256": "ed204f25700d4418c8495a2da010c3438678947bca59b2daa27a572710bd7e85"
+    },
+    {
+      "path": "crates/plugin-host/src/first-party-schemas.json",
+      "sha256": "dcd9cde0cb92f01956152ec9e0a85fa650464826168111d441bbe527659dc523"
+    },
+    {
+      "path": "tools/builtin-plugins/first_party_schemas.py",
+      "sha256": "bd4942608def1fdff3fbb0cea34aa8d0d933449e09dcec02e09b611b417f48b0"
+    },
+    {
+      "path": "crates/cache/tests/fixtures/widgets/if1-0.bin",
+      "sha256": "c44d575afdd4c06bb89dac925a9fd5e095cac76e32338eea75c2147fe9719d91"
+    },
+    {
+      "path": "crates/cache/tests/fixtures/widgets/if1-1.bin",
+      "sha256": "7803eca47c0978436cefc7722bca072757e9ff0479ba85357a6dbff59297bb94"
+    },
+    {
+      "path": "crates/cache/tests/fixtures/widgets/if1-2.bin",
+      "sha256": "484fc81560ac89b00f5e6a30ebd73bde610ad2789f06708b1c8d7f0890a9b92b"
+    },
+    {
+      "path": "crates/cache/tests/fixtures/widgets/if1-3.bin",
+      "sha256": "a7a1348dd04c571fc6434e5d0a311e31ca34b1b35b94dcd32b598936770d576f"
+    },
+    {
+      "path": "crates/cache/tests/fixtures/widgets/if1-4.bin",
+      "sha256": "9af5a2a9f98694df73a3124354cd349608da76be57f54b0b1ff4fce1e1bbc378"
+    },
+    {
+      "path": "crates/cache/tests/fixtures/widgets/if1-5.bin",
+      "sha256": "b469700d0bd49ebc8e63b0c6c7367d9e7fe447ec1fb19a269f5bcf47b39874d4"
+    },
+    {
+      "path": "crates/cache/tests/fixtures/widgets/if1-6.bin",
+      "sha256": "76ae7a5883cf0a9cff16f764917731ee619093e0e07dde333d84f3a883bbff46"
+    },
+    {
+      "path": "crates/cache/tests/fixtures/widgets/if1-7.bin",
+      "sha256": "1a1b5324ea43839bb0bec9c1781ea23f76ff9c94e6e24f1ad0e846b2ba71ac93"
+    },
+    {
+      "path": "crates/cache/tests/fixtures/widgets/if1-8.bin",
+      "sha256": "359ef9c3b342b96a2a2551f0d6f02722af5a15e95f1d643581caca733ecb58ce"
+    }
+  ],
+  "cache_audit": {
+    "profile": "openrune-240",
+    "metadata_fingerprint": "f12db51150826c019f1ad156b7431a26f62023db736fffff3f989a97a368c3f5",
+    "scope_indexes": [
+      2,
+      3,
+      12
+    ],
+    "config_grammars": [
+      1,
+      3,
+      4,
+      5,
+      6,
+      8,
+      9,
+      10,
+      11,
+      12,
+      14,
+      34
+    ],
+    "declared_files": 234706,
+    "counts": {
+      "Decoded": 196660,
+      "Unchecked": 37379,
+      "Unsupported": 629,
+      "Failed": 38
+    },
+    "by_index": {
+      "2": {
+        "Decoded": 161123,
+        "Unchecked": 37379,
+        "Unsupported": 2,
+        "Failed": 7
+      },
+      "3": {
+        "Decoded": 26407,
+        "Failed": 20
+      },
+      "12": {
+        "Failed": 11,
+        "Decoded": 9130,
+        "Unsupported": 627
+      }
+    },
+    "interface_decoded_formats": {
+      "IF3": 24311,
+      "IF1": 2096
+    },
+    "stack_reports": 9757,
+    "stack_reports_with_failures": 0,
+    "stack_reports_with_unchecked_boundaries": 9033,
+    "stack_limit": "Static fixed-effect CFG paths only; invocation, variable effects, typed 240 array operations and unvisited code are unchecked. No runtime stack-effect differential or complete script parity claim.",
+    "failed_files": [
+      {
+        "index": 2,
+        "group": 6,
+        "file": 27122,
+        "detail": "index 2 / group 6 / file 27122 [object definition]: invalid dimensions or scale"
+      },
+      {
+        "index": 2,
+        "group": 6,
+        "file": 34954,
+        "detail": "index 2 / group 6 / file 34954 [object definition]: invalid dimensions or scale"
+      },
+      {
+        "index": 2,
+        "group": 6,
+        "file": 38847,
+        "detail": "index 2 / group 6 / file 38847 [object definition]: invalid dimensions or scale"
+      },
+      {
+        "index": 2,
+        "group": 6,
+        "file": 44548,
+        "detail": "index 2 / group 6 / file 44548 [object definition]: invalid dimensions or scale"
+      },
+      {
+        "index": 2,
+        "group": 6,
+        "file": 44772,
+        "detail": "index 2 / group 6 / file 44772 [object definition]: invalid dimensions or scale"
+      },
+      {
+        "index": 2,
+        "group": 6,
+        "file": 46148,
+        "detail": "index 2 / group 6 / file 46148 [object definition]: invalid dimensions or scale"
+      },
+      {
+        "index": 2,
+        "group": 6,
+        "file": 62385,
+        "detail": "index 2 / group 6 / file 62385 [object definition]: invalid dimensions or scale"
+      },
+      {
+        "index": 3,
+        "group": 19,
+        "file": 19,
+        "detail": "index 3 / group 19 / file 19 [binary]: unexpected trailing bytes; format=IF3 kind=6"
+      },
+      {
+        "index": 3,
+        "group": 272,
+        "file": 4,
+        "detail": "index 3 / group 272 / file 4 [binary]: unexpected trailing bytes; format=IF3 kind=6"
+      },
+      {
+        "index": 3,
+        "group": 415,
+        "file": 70,
+        "detail": "index 3 / group 415 / file 70 [binary]: unexpected trailing bytes; format=IF3 kind=6"
+      },
+      {
+        "index": 3,
+        "group": 428,
+        "file": 4,
+        "detail": "index 3 / group 428 / file 4 [binary]: unexpected trailing bytes; format=IF3 kind=6"
+      },
+      {
+        "index": 3,
+        "group": 1099,
+        "file": 0,
+        "detail": "index 3 / group 1099 [integrity]: reference decoded-size metadata mismatch: reported 0, decoded 1059"
+      },
+      {
+        "index": 3,
+        "group": 1099,
+        "file": 1,
+        "detail": "index 3 / group 1099 [integrity]: reference decoded-size metadata mismatch: reported 0, decoded 1059"
+      },
+      {
+        "index": 3,
+        "group": 1099,
+        "file": 2,
+        "detail": "index 3 / group 1099 [integrity]: reference decoded-size metadata mismatch: reported 0, decoded 1059"
+      },
+      {
+        "index": 3,
+        "group": 1099,
+        "file": 3,
+        "detail": "index 3 / group 1099 [integrity]: reference decoded-size metadata mismatch: reported 0, decoded 1059"
+      },
+      {
+        "index": 3,
+        "group": 1099,
+        "file": 4,
+        "detail": "index 3 / group 1099 [integrity]: reference decoded-size metadata mismatch: reported 0, decoded 1059"
+      },
+      {
+        "index": 3,
+        "group": 1099,
+        "file": 5,
+        "detail": "index 3 / group 1099 [integrity]: reference decoded-size metadata mismatch: reported 0, decoded 1059"
+      },
+      {
+        "index": 3,
+        "group": 1099,
+        "file": 6,
+        "detail": "index 3 / group 1099 [integrity]: reference decoded-size metadata mismatch: reported 0, decoded 1059"
+      },
+      {
+        "index": 3,
+        "group": 1099,
+        "file": 7,
+        "detail": "index 3 / group 1099 [integrity]: reference decoded-size metadata mismatch: reported 0, decoded 1059"
+      },
+      {
+        "index": 3,
+        "group": 1099,
+        "file": 8,
+        "detail": "index 3 / group 1099 [integrity]: reference decoded-size metadata mismatch: reported 0, decoded 1059"
+      },
+      {
+        "index": 3,
+        "group": 1099,
+        "file": 9,
+        "detail": "index 3 / group 1099 [integrity]: reference decoded-size metadata mismatch: reported 0, decoded 1059"
+      },
+      {
+        "index": 3,
+        "group": 1099,
+        "file": 10,
+        "detail": "index 3 / group 1099 [integrity]: reference decoded-size metadata mismatch: reported 0, decoded 1059"
+      },
+      {
+        "index": 3,
+        "group": 1099,
+        "file": 11,
+        "detail": "index 3 / group 1099 [integrity]: reference decoded-size metadata mismatch: reported 0, decoded 1059"
+      },
+      {
+        "index": 3,
+        "group": 1099,
+        "file": 12,
+        "detail": "index 3 / group 1099 [integrity]: reference decoded-size metadata mismatch: reported 0, decoded 1059"
+      },
+      {
+        "index": 3,
+        "group": 1099,
+        "file": 13,
+        "detail": "index 3 / group 1099 [integrity]: reference decoded-size metadata mismatch: reported 0, decoded 1059"
+      },
+      {
+        "index": 3,
+        "group": 1099,
+        "file": 14,
+        "detail": "index 3 / group 1099 [integrity]: reference decoded-size metadata mismatch: reported 0, decoded 1059"
+      },
+      {
+        "index": 3,
+        "group": 1099,
+        "file": 15,
+        "detail": "index 3 / group 1099 [integrity]: reference decoded-size metadata mismatch: reported 0, decoded 1059"
+      },
+      {
+        "index": 12,
+        "group": 0,
+        "file": 0,
+        "detail": "index 12 / group 0 / file 0 [script]: invalid footer or allocation limit"
+      },
+      {
+        "index": 12,
+        "group": 45500,
+        "file": 0,
+        "detail": "index 12 / group 45500 [integrity]: reference decoded-size metadata mismatch: reported 0, decoded 243"
+      },
+      {
+        "index": 12,
+        "group": 45503,
+        "file": 0,
+        "detail": "index 12 / group 45503 [integrity]: reference decoded-size metadata mismatch: reported 0, decoded 1990"
+      },
+      {
+        "index": 12,
+        "group": 45506,
+        "file": 0,
+        "detail": "index 12 / group 45506 [integrity]: reference decoded-size metadata mismatch: reported 0, decoded 295"
+      },
+      {
+        "index": 12,
+        "group": 45509,
+        "file": 0,
+        "detail": "index 12 / group 45509 [integrity]: reference decoded-size metadata mismatch: reported 0, decoded 365"
+      },
+      {
+        "index": 12,
+        "group": 45512,
+        "file": 0,
+        "detail": "index 12 / group 45512 [integrity]: reference decoded-size metadata mismatch: reported 0, decoded 557"
+      },
+      {
+        "index": 12,
+        "group": 45515,
+        "file": 0,
+        "detail": "index 12 / group 45515 [integrity]: reference decoded-size metadata mismatch: reported 0, decoded 121"
+      },
+      {
+        "index": 12,
+        "group": 45518,
+        "file": 0,
+        "detail": "index 12 / group 45518 [integrity]: reference decoded-size metadata mismatch: reported 0, decoded 900"
+      },
+      {
+        "index": 12,
+        "group": 45521,
+        "file": 0,
+        "detail": "index 12 / group 45521 [integrity]: reference decoded-size metadata mismatch: reported 0, decoded 195"
+      },
+      {
+        "index": 12,
+        "group": 45524,
+        "file": 0,
+        "detail": "index 12 / group 45524 [integrity]: reference decoded-size metadata mismatch: reported 0, decoded 157"
+      },
+      {
+        "index": 12,
+        "group": 45527,
+        "file": 0,
+        "detail": "index 12 / group 45527 [integrity]: reference decoded-size metadata mismatch: reported 0, decoded 249"
+      }
+    ],
+    "warnings": [
+      "index 2 / group 5 [integrity hint]: reference decoded-size metadata mismatch: reported 8225, decoded 8237",
+      "index 2 / group 6 [integrity hint]: reference decoded-size metadata mismatch: reported 2439447, decoded 2452568",
+      "index 2 / group 9 [integrity hint]: reference decoded-size metadata mismatch: reported 1792969, decoded 1806666",
+      "index 2 / group 10 [integrity hint]: reference decoded-size metadata mismatch: reported 2650025, decoded 2914149",
+      "index 2 / group 11 [integrity hint]: reference decoded-size metadata mismatch: reported 23344, decoded 24621",
+      "index 2 / group 14 [integrity hint]: reference decoded-size metadata mismatch: reported 190871, decoded 190881",
+      "interface graph: index 3 / group 19 / file 19 [binary]: unexpected trailing bytes",
+      "interface graph: index 3 / group 272 / file 4 [binary]: unexpected trailing bytes",
+      "interface graph: index 3 / group 415 / file 70 [binary]: unexpected trailing bytes",
+      "interface graph: index 3 / group 428 / file 4 [binary]: unexpected trailing bytes"
+    ],
+    "full_report": {
+      "path": "target/tsps-adoption/cache-audit.tsv",
+      "sha256": "999a58663dadb5e9a4b2746d0abfd4f86e38da6ac4ab5a6245a2a962d7fecf72"
+    },
+    "exit_status_note": "Successful command exit means inventory completed, not that all files decoded or passed stack/visual acceptance."
+  },
+  "interface_load_script_probe": {
+    "roots": [
+      {
+        "root": 12,
+        "runtime_widgets": 1682,
+        "script_errors": 0
+      },
+      {
+        "root": 149,
+        "runtime_widgets": 29,
+        "script_errors": 0
+      },
+      {
+        "root": 548,
+        "runtime_widgets": 103,
+        "script_errors": 0
+      },
+      {
+        "root": 161,
+        "runtime_widgets": 116,
+        "script_errors": 0
+      },
+      {
+        "root": 116,
+        "runtime_widgets": 171,
+        "script_errors": 0
+      },
+      {
+        "root": 134,
+        "runtime_widgets": 346,
+        "script_errors": 0
+      }
+    ],
+    "limit": "Bounded offline BeginSession/cache-authored initialization; no connected gameplay or native/browser visual acceptance."
+  },
+  "pose_probe": {
+    "repeats": [
+      {
+        "actors": "16",
+        "reuse": "false",
+        "iterations": "200",
+        "elapsed_us": "89459",
+        "builds": "3200",
+        "hits": "0",
+        "retained_model_bytes": "440792",
+        "identical_final_geometry": "true"
+      },
+      {
+        "actors": "16",
+        "reuse": "true",
+        "iterations": "200",
+        "elapsed_us": "61341",
+        "builds": "16",
+        "hits": "3184",
+        "retained_model_bytes": "440792",
+        "identical_final_geometry": "true"
+      },
+      {
+        "actors": "16",
+        "reuse": "false",
+        "iterations": "200",
+        "elapsed_us": "87744",
+        "builds": "3200",
+        "hits": "0",
+        "retained_model_bytes": "440792",
+        "identical_final_geometry": "true"
+      },
+      {
+        "actors": "16",
+        "reuse": "true",
+        "iterations": "200",
+        "elapsed_us": "60496",
+        "builds": "16",
+        "hits": "3184",
+        "retained_model_bytes": "440792",
+        "identical_final_geometry": "true"
+      },
+      {
+        "actors": "16",
+        "reuse": "false",
+        "iterations": "200",
+        "elapsed_us": "85010",
+        "builds": "3200",
+        "hits": "0",
+        "retained_model_bytes": "440792",
+        "identical_final_geometry": "true"
+      },
+      {
+        "actors": "16",
+        "reuse": "true",
+        "iterations": "200",
+        "elapsed_us": "67588",
+        "builds": "16",
+        "hits": "3184",
+        "retained_model_bytes": "440792",
+        "identical_final_geometry": "true"
+      }
+    ],
+    "binary_sha256": "a0ca7b24aacc5eb36ea5ffd44e301cdf97322525c08ae1afc9a9a50261fd10bd",
+    "limit": "16 NPC definitions, 200 identical redraws; compares warm reuse with forced cache clearing, including miss/bookkeeping overhead. Not a pre-change binary benchmark, changing-pose/whole-client FPS, peak RSS, GPU timing or live visual acceptance."
+  },
+  "validation": [
+    {
+      "job": "contracts",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "rustclient-cache",
+        "-p",
+        "rustclient-application",
+        "-p",
+        "rustclient-first-party-plugins",
+        "--lib"
+      ],
+      "exit_code": 0
+    },
+    {
+      "job": "legacy",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "rustclient-cache",
+        "--test",
+        "legacy_widgets"
+      ],
+      "exit_code": 0
+    },
+    {
+      "job": "xp-followup",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "rustclient-first-party-plugins",
+        "xptracker"
+      ],
+      "exit_code": 0
+    },
+    {
+      "job": "workspace",
+      "command": [
+        "cargo",
+        "check",
+        "--workspace",
+        "--all-targets"
+      ],
+      "exit_code": 0
+    },
+    {
+      "job": "clippy",
+      "command": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0
+    },
+    {
+      "job": "wasm",
+      "command": [
+        "cargo",
+        "check",
+        "-p",
+        "rustclient-web",
+        "-p",
+        "rustclient-application",
+        "-p",
+        "rustclient-first-party-plugins",
+        "--target",
+        "wasm32-unknown-unknown"
+      ],
+      "exit_code": 0
+    },
+    {
+      "job": "audit",
+      "command": [
+        "cargo",
+        "xtask",
+        "cache",
+        "audit",
+        "--cache-dir",
+        "/Users/tylercovalt/Desktop/OpenRune Project/OpenRune-Server/.data/cache/LIVE",
+        "--cache-profile",
+        "openrune-240"
+      ],
+      "exit_code": 0
+    },
+    {
+      "job": "fmt",
+      "command": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--check"
+      ],
+      "exit_code": 0
+    }
+  ],
+  "additional_validation": [
+    {
+      "command": "cargo test -p rustclient-cache -p rustclient-application -p rustclient-scene -p rustclient-first-party-plugins",
+      "outcome": "284 passed; 1 ignored; 0 failed across 21 unit/integration/doc suites before the final small follow-ups; final changed contracts rerun separately."
+    },
+    {
+      "command": "cargo test -p rustclient-cache --lib",
+      "outcome": "32 passed after marking typed array effects context-dependent."
+    },
+    {
+      "command": "cargo test -p rustclient-first-party-plugins xptracker",
+      "outcome": "4 passed after map-load lifecycle and supported-control follow-ups."
+    },
+    {
+      "command": "python3 tools/parity_inventory.py --check",
+      "outcome": "passed"
+    },
+    {
+      "command": "python3 tools/port_matrix.py --check",
+      "outcome": "passed"
+    },
+    {
+      "command": "python3 tools/port_audit.py --check",
+      "outcome": "passed; no unpinned ledger sources"
+    },
+    {
+      "command": "python3 tools/docs_index.py --check",
+      "outcome": "passed"
+    },
+    {
+      "command": "git diff --check -- . :!*.tsv",
+      "outcome": "passed; generated TSV empty terminal cells validated by inventory/column checks"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "target/tsps-adoption/broad-contracts.log",
+      "sha256": "22a62fda99a853a700eff4dcbb98a6ed00f5d627f6ebd03343a7847c21ab0620"
+    },
+    {
+      "path": "target/tsps-adoption/cache-audit-contracts.log",
+      "sha256": "2a4b7a0c5cddbbe925cb9b08a135698e3a79008aba4c705deed7dff2cdea8752"
+    },
+    {
+      "path": "target/tsps-adoption/interfaces.log",
+      "sha256": "b69b5b89d3a95cae9e0a22468af84b09c93548f472105272d7b24504773757f9"
+    },
+    {
+      "path": "target/tsps-adoption/pose-initial.log",
+      "sha256": "b0a6f465bdb93f9716f64c9b62b71a305423c9eb07ff0d52f4966c6ffd49ca4f"
+    },
+    {
+      "path": "target/tsps-adoption/pose-repeats.log",
+      "sha256": "3e0c25027d98bf773c1460b188da335f994b32cf49ea8ddfd5fd4f35847e3acf"
+    },
+    {
+      "path": "target/tsps-adoption/contracts.log",
+      "sha256": "2ea4bde344df03504c8f2b07bf0a16d8c31081530a98d458db7fc20fedf2d34b"
+    },
+    {
+      "path": "target/tsps-adoption/legacy.log",
+      "sha256": "0f077999ed7477d302b82bd89111490915f1f59af8e150b37a688edc8e2520bf"
+    },
+    {
+      "path": "target/tsps-adoption/xp-followup.log",
+      "sha256": "84617524bf8c27e8840cd8771815d69e47c6acc0a9159d9827131373fb80a5a9"
+    },
+    {
+      "path": "target/tsps-adoption/workspace.log",
+      "sha256": "9fb9b5c28cb404ec09e4a15cb0c092b203987532bf5bb9fa5bd93c2099536d0f"
+    },
+    {
+      "path": "target/tsps-adoption/clippy.log",
+      "sha256": "b1970c4671d0a3ce9a158b6b7e786fc3b0f6d2470a8db776dd461711ea129e06"
+    },
+    {
+      "path": "target/tsps-adoption/wasm.log",
+      "sha256": "4af4bcedbf54182fe9712fee1288ed23edead4f3b0ca9e6521fd2e8a8a057420"
+    },
+    {
+      "path": "target/tsps-adoption/audit.log",
+      "sha256": "4ff9503952d4845343fb15fee5db10165fd59c0a53d0d5f4b9a72f098a86e4aa"
+    },
+    {
+      "path": "target/tsps-adoption/fmt.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "open_acceptance": [
+    "Full IF1 CS1/actions/painting",
+    "Full session world-membership selection and cold-index worker scheduling",
+    "Content-type widget actions and complete drag packet/runtime behavior",
+    "Full RuneLite XP panel/menu, stable account persistence, real elapsed time and external sync",
+    "Changing-pose/appearance/morph performance and full lifecycle acceptance",
+    "Replacement-load cancellation/staged static uploads",
+    "Live stock runtime differential, native and browser logged-in visual/gameplay acceptance"
+  ]
+}

@@ -10,7 +10,7 @@ client-to-server	7	IDLE	missing-encoder	2	client.method2172:4163|client.method21
 client-to-server	8	OPLOC3_V2	encoded-subset	2	classIK.method6263:172|client.method1973:28830
 client-to-server	9	OPOBJ6	missing-encoder	4	classQP.method9746:426|client.method1966:27074|client.method1967:27660|client.method1968:28246
 client-to-server	10	OPWORLDENTITYT	missing-encoder	4	classQP.method9746:1016|client.method1966:27390|client.method1967:27976|client.method1968:28562
-client-to-server	11	IF_BUTTON	missing-encoder	12	classQP.method9746:184|classQP.method9746:590|classQP.method9746:1109|client.method1966:26955|client.method1966:27160|client.method1966:27455|+6 more
+client-to-server	11	IF_BUTTON	encoded-subset	12	classQP.method9746:184|classQP.method9746:590|classQP.method9746:1109|client.method1966:26955|client.method1966:27160|client.method1966:27455|+6 more
 client-to-server	12	REFLECTION_CHECK_REPLY	missing-encoder	2	client.method2172:3268|client.method2173:42905
 client-to-server	13	TELEPORT	missing-encoder	3	client.method2095:20054|client.method2096:31989|client.method2097:35725
 client-to-server	14	BUG_REPORT	missing-encoder	5	classBB.method852:5728|classBB.method853:6106|classBB.method854:6484|classBB.method855:6862|classKU.method6609:390
@@ -81,7 +81,7 @@ client-to-server	78	CLICKWORLDMAP	missing-encoder	2	RenderOverview.method12463:2
 client-to-server	79	CLIENT_CHEAT	encoded-subset	3	VarbitComposition.method9259:348|client.method1723:11863|client.method1724:17687
 client-to-server	80	IF_BUTTONT	missing-encoder	4	classQP.method9746:348|client.method1966:27020|client.method1967:27606|client.method1968:28192
 client-to-server	81	IGNORELIST_ADD	missing-encoder	4	classBW.method1316:346|classBW.method1317:472|classBW.method1318:1061|classBW.method1319:1140
-client-to-server	82	RESUME_PAUSEBUTTON	missing-encoder	6	classUL.method11465:611|client.method1983:23491|client.method1984:24357|client.method1985:29209|client.method1986:29669|client.method1987:31585
+client-to-server	82	RESUME_PAUSEBUTTON	encoded-subset	6	classUL.method11465:611|client.method1983:23491|client.method1984:24357|client.method1985:29209|client.method1986:29669|client.method1987:31585
 client-to-server	83	EVENT_MOUSE_SCROLL	missing-encoder	2	client.method2172:3549|client.method2173:43037
 client-to-server	84	OPOBJU	missing-encoder	4	classQP.method9746:546|client.method1966:27140|client.method1967:27726|client.method1968:28312
 client-to-server	85	OPWORLDENTITYU	missing-encoder	4	classQP.method9746:614|client.method1966:27176|client.method1967:27762|client.method1968:28348
@@ -154,10 +154,10 @@ server-to-client	34	CAM_SMOOTHRESET	framed-unhandled	5	client.method2346:6423|cl
 server-to-client	35	IF_OPENTOP	semantic-subset	5	client.method2346:5587|client.method2199:14802|client.method2200:37605|client.method2201:44668|client.method2202:47168
 server-to-client	36	MESSAGE_PRIVATE	framed-unhandled	5	client.method2346:5910|client.method2199:15119|client.method2200:37922|client.method2201:44986|client.method2202:47485
 server-to-client	37	LOGOUT	semantic-subset	5	client.method2346:5368|client.method2199:14584|client.method2200:37387|client.method2201:44450|client.method2202:46950
-server-to-client	38	LOC_ADD_CHANGE_V2	framed-unhandled	5	client.method2346:4963|client.method2199:14188|client.method2200:36993|client.method2201:44056|client.method2202:46554
+server-to-client	38	LOC_ADD_CHANGE_V2	semantic-subset	5	client.method2346:4963|client.method2199:14188|client.method2200:36993|client.method2201:44056|client.method2202:46554
 server-to-client	39	REBUILD_NORMAL_V2	semantic-subset	5	client.method2346:6925|client.method2199:16112|client.method2200:38915|client.method2201:45979|client.method2202:48478
 server-to-client	40	MIDI_JINGLE	framed-unhandled	5	client.method2346:6050|client.method2199:15252|client.method2200:38055|client.method2201:45119|client.method2202:47618
-server-to-client	41	LOC_DEL	framed-unhandled	5	client.method2346:6380|client.method2199:15577|client.method2200:38380|client.method2201:45444|client.method2202:47943
+server-to-client	41	LOC_DEL	semantic-subset	5	client.method2346:6380|client.method2199:15577|client.method2200:38380|client.method2201:45444|client.method2202:47943
 server-to-client	42	IF_SETPLAYERMODEL_BASECOLOUR	framed-unhandled	5	client.method2346:5858|client.method2199:15071|client.method2200:37874|client.method2201:44938|client.method2202:47437
 server-to-client	43	MESSAGE_CLANCHANNEL	framed-unhandled	5	client.method2346:5527|client.method2199:14742|client.method2200:37545|client.method2201:44608|client.method2202:47108
 server-to-client	44	UNKNOWN_STRING	framed-unhandled	5	client.method2346:6187|client.method2199:15387|client.method2200:38190|client.method2201:45254|client.method2202:47753

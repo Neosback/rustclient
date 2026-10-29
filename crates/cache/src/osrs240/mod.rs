@@ -1,11 +1,14 @@
 //! Explicit OSRS/OpenRune 240 binary and archive adapter.
 
 mod animation;
+pub mod audit;
+pub mod cs1;
 pub mod db_tables;
 pub mod definitions;
 mod dependencies;
 pub mod entity_assets;
 pub(crate) mod font_metrics;
+pub mod item_search;
 pub mod models;
 pub mod npc_model;
 pub mod npc_path_policy;
@@ -14,6 +17,7 @@ mod script_opcodes;
 pub mod script_tables;
 pub mod scripts;
 pub mod sequence_policy;
+mod skills;
 mod terrain;
 pub mod widgets;
 pub mod world_map;
@@ -54,6 +58,81 @@ impl CacheProfile {
             .filter(|y| *y >= 0)
             .ok_or_else(|| source.error("scene window", "invalid anchor y"))?;
         Ok((WorldTile::new(x, y, anchor.plane), 104, 104))
+    }
+
+    /// Floor materials used by the world map's region painter.
+    /// # Errors
+    /// Rejects missing or corrupt cache floor definitions.
+    pub fn load_world_map_overlays<S: ReadOnlyBlobs>(
+        self,
+        cache: &Cache<S>,
+    ) -> Result<BTreeMap<FloorOverlayId, FloorMaterial>> {
+        load_floors(cache, &mut Sha256::new()).map(|(_, overlays)| overlays)
+    }
+
+    /// Extend an immutable region's resource closure for server-created locations.
+    /// The region identity remains its original map selection; these resources come from
+    /// the same pinned cache and do not change the map or authoritative placements.
+    /// # Errors
+    /// Rejects missing definitions, models, or animation dependencies.
+    pub fn extend_world_locations<S: ReadOnlyBlobs>(
+        self,
+        cache: &Cache<S>,
+        assets: &mut WorldAssets,
+        needed: &BTreeSet<ObjectDefinitionId>,
+    ) -> Result<()> {
+        if needed.iter().all(|id| assets.objects.contains_key(id)) {
+            return Ok(());
+        }
+        let missing = needed
+            .iter()
+            .filter(|id| !assets.objects.contains_key(id))
+            .copied()
+            .collect();
+        let mut digest = Sha256::new();
+        let (objects, model_ids) = load_objects(
+            cache,
+            self,
+            &missing,
+            &mut digest,
+            &mut assets.size_hint_warnings,
+        )?;
+        let missing_models = model_ids
+            .into_iter()
+            .filter(|id| !assets.models.contains_key(id))
+            .collect();
+        let models = load_models(cache, missing_models, &mut digest)?;
+        let sequences = objects
+            .values()
+            .filter_map(|d| d.animation)
+            .filter(|id| !assets.sequences.contains_key(id))
+            .collect();
+        let (sequences, frames, skeletons) = dependencies::animations(
+            cache,
+            &sequences,
+            &mut digest,
+            self,
+            &mut assets.size_hint_warnings,
+        )?;
+        let wanted = objects
+            .values()
+            .filter_map(|d| d.morphs.as_ref().and_then(|m| m.varbit))
+            .filter(|id| !assets.varbits.contains_key(id))
+            .collect();
+        let varbits = dependencies::varbits(
+            cache,
+            &wanted,
+            &mut digest,
+            self,
+            &mut assets.size_hint_warnings,
+        )?;
+        assets.objects.extend(objects);
+        assets.models.extend(models);
+        assets.sequences.extend(sequences);
+        assets.frames.extend(frames);
+        assets.skeletons.extend(skeletons);
+        assets.varbits.extend(varbits);
+        Ok(())
     }
 
     /// Load immutable CPU assets for a normal bounded window.

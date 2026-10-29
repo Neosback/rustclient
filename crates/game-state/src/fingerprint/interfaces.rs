@@ -57,7 +57,19 @@ pub(super) fn write(f: &mut StableFingerprint64, state: &InterfaceState) {
         f.write_u8(key.tag());
         f.write_u8(u8::from(*value));
     }
-    // Optional section: no stored preferences encode as nothing so earlier anchors stay valid.
+    // Key dispatch scope is part of the interface semantics.
+    match state.key_scope() {
+        rustclient_model::WidgetKeyScope::All => f.write_u8(0),
+        rustclient_model::WidgetKeyScope::None => f.write_u8(1),
+        rustclient_model::WidgetKeyScope::Interface(id) => {
+            f.write_u8(2);
+            f.write_u32(id.get());
+        }
+        rustclient_model::WidgetKeyScope::Widget(id) => {
+            f.write_u8(3);
+            widget(f, id);
+        }
+    }
     if !state.device_preferences().is_empty() {
         f.write_u8(DEVICE_PREFERENCES_SECTION);
         f.write_u64(state.device_preferences().len() as u64);
@@ -81,7 +93,7 @@ pub(super) fn write(f: &mut StableFingerprint64, state: &InterfaceState) {
     for (address, value) in state.runtime() {
         widget(f, address.widget);
         option(f, value.secondary_sprite, |f, id| f.write_u32(id.get()));
-        option(f, value.target_priority, |f, op| f.write_u8(op.index()));
+        option(f, value.target_priority, |f, op| f.write_u8(op.tag()));
         option(f, value.text.as_deref(), string);
         option(f, value.parent_child, StableFingerprint64::write_u32);
         option(f, address.child, super::StableFingerprint64::write_u32);

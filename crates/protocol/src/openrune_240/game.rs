@@ -412,6 +412,7 @@ pub enum ServerUpdate {
     MapFlag(Option<rustclient_model::MapDestination>),
     ResetActorAnimations,
     LocationAnim(LocAnimUpdate),
+    Location(super::zone::LocationUpdate),
     LocationZoneReset(super::zone::ZoneOrigin),
     Tick,
     LoggedOut,
@@ -584,6 +585,10 @@ impl SessionCodec {
         Ok(())
     }
 
+    #[expect(
+        clippy::too_many_lines,
+        reason = "selected server dispatch stays ordered in one profile adapter"
+    )]
     fn decode_packet(
         &mut self,
         packet: &GamePacket,
@@ -657,11 +662,22 @@ impl SessionCodec {
                 }
             }
             49 => {
-                for animation in self.zones.enclosed(&packet.payload)? {
-                    emit(ServerUpdate::LocationAnim(animation));
+                for update in self.zones.enclosed(&packet.payload)? {
+                    emit(match update {
+                        super::zone::ZoneUpdate::Animation(animation) => {
+                            ServerUpdate::LocationAnim(animation)
+                        }
+                        super::zone::ZoneUpdate::Location(location) => {
+                            ServerUpdate::Location(location)
+                        }
+                    });
                 }
                 ServerUpdate::Deferred
             }
+            38 | 41 => self
+                .zones
+                .location(&packet.payload, packet.opcode == 38)?
+                .map_or(ServerUpdate::Deferred, ServerUpdate::Location),
             123 => self
                 .zones
                 .animation(&packet.payload)?

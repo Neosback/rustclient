@@ -27,7 +27,7 @@ revision is evidence, not a compatibility declaration.
 | rsprox | `references/rsprox-master/` | **Both client and server packet tables/codecs**, byte transforms, framing and proxy diagnostics. The current vendored tree includes OSRS-240 codecs; selected OpenRune RSProt remains exact target authority. `incoming` means client-to-server; `outgoing` means server-to-client. |
 | OpenRune development server | `/Users/tylercovalt/Desktop/OpenRune Project/OpenRune-Server` | Actual server behavior and cache for the target. Pins `net.rsprot:osrs-240-*` `1.0.0-ALPHA-20260825`; those source JARs provide exact 240 wire evidence. See existing protocol fixture provenance. |
 | OpenRune FileStore | `/Users/tylercovalt/Documents/OpenRune-FileStore-main` | Cache definition/opcode, container and model decoder research. Verify individual 240 layouts against actual cache and deob; presence of a codec does not prove every 240 format is supported. External local source, not yet vendored. |
-| TSPS client | `/Users/tylercovalt/Documents/tsps-main/client` | Additional widget press/drag/release, chat focus and player/NPC lifecycle evidence. Selected files are hashed in the source manifest. Verify packet layouts against the selected rsprot 240 adapter; do not copy a parallel client state architecture. |
+| TSPS client | `/Users/tylercovalt/Documents/tsps-main/client` | Supporting implementation research; the supplied snapshot targets cache 241 (`2026-10-20`), not verified stock 241 wire compatibility. See the [2026-10-29 review](TSPS-241-REVIEW-2026-10-29.md) and its separate source pins for useful rendering/UI/audit mechanisms and explicit exclusions (decoration corrections, priority depth bias, neutral opcode stubs and mutable engine plugin access). Older source-manifest and TSPS-237 pins retain their historical scope. Verify semantics against exact 240 and wire layouts against the selected RSProt adapter; preserve RustClient owners. |
 | 235 → 240 change inventory | [`REVISION-235-TO-240.md`](REVISION-235-TO-240.md) | What carries over from the readable 235 tree and what changed (packets, cache decoders, XTEA, world map, CS2 long type, camera, GPU plugin, sailing), with per-packet and per-commit data. Start here before porting from 235. |
 | RustOSRS | `references/rustosrs/` | Pinned Rust cache/scene/rendering research, coordinate conventions, model offsets, transforms, neighboring normal merges and Reference GPU oracle. Port semantic rules into RustClient; do not adopt editor enhancements as OSRS behavior. |
 
@@ -41,6 +41,12 @@ Selected source SHA-256 values and local source roots are recorded in
 [source-manifest.json](source-manifest.json). This is research provenance, not
 runtime configuration. External source entries pin only the named files, not an
 entire server/FileStore checkout. Work remains independent of those local paths.
+
+The [TSPS Git shortlist](TSPS-GIT-SHORTLIST-2026-10-29.md) ranks practical transfers
+from pinned client history against current Rust owners and exact-240 behavior.
+It separates missing features, existing coverage, conditional optimizations and
+rejected shortcuts; its [Git evidence](TSPS-GIT-EVIDENCE-2026-10-29.json) does not
+advance the older source pins or declare any behavior implemented.
 
 The original supplied copies remain available at:
 
@@ -113,3 +119,7 @@ Before implementing a nontrivial OSRS-style behavior:
 RustClient's first implemented compatibility target is revision `240`. Multi-revision selection is part of the architecture from the start, but only supported revisions appear in the runtime registry. See `docs/specs/SPEC-0005-protocol-revisions.md`.
 
 The current NPC/object animation correction audit is [NPC-ANIMATION-240.md](../plan/NPC-ANIMATION-240.md); source pins distinguish stock framing from unimplemented actor scheduling/effects.
+
+Scoped implementation results: [TSPS shortlist checkpoint, 2026-10-29](../plan/TSPS-ADOPTION-2026-10-29.md).
+
+IF1 continuations: [CS1 evaluation and source-backed audit fixes](../plan/CS1-240-2026-10-29.md), [authored button dispatch](../plan/IF1-BUTTONS-240-2026-10-29.md).

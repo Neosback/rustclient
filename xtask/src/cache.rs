@@ -2,9 +2,13 @@ use rustclient_cache::{Cache, CacheProfile};
 use rustclient_platform_native::DirectoryBlobs;
 
 pub(super) fn run(args: Vec<String>) -> Result<(), String> {
+    let audit = args.first().map(String::as_str) == Some("audit");
     let world = args.first().map(String::as_str) == Some("inspect-world");
-    if !world && args.first().map(String::as_str) != Some("inspect") {
-        return Err("use cache inspect --cache-dir PATH --cache-profile osrs-240".into());
+    if !audit && !world && args.first().map(String::as_str) != Some("inspect") {
+        return Err(
+            "use cache inspect|inspect-world|audit --cache-dir PATH --cache-profile osrs-240"
+                .into(),
+        );
     }
     let mut args = args.into_iter().skip(1);
     let mut path = None;
@@ -32,6 +36,10 @@ pub(super) fn run(args: Vec<String>) -> Result<(), String> {
         "reference-metadata-sha256: {}",
         cache.metadata_fingerprint()
     );
+    if audit {
+        print_audit(profile, &cache);
+        return Ok(());
+    }
     for (index, table) in cache.tables() {
         println!(
             "index {}: protocol {}, table revision {:?}, flags {}, {} groups",
@@ -93,4 +101,38 @@ pub(super) fn run(args: Vec<String>) -> Result<(), String> {
     );
     println!("Title assets validated; other definitions and payloads have not been validated.");
     Ok(())
+}
+
+fn print_audit(profile: CacheProfile, cache: &Cache<DirectoryBlobs>) {
+    let report = profile.audit_cache(cache);
+    let mut counts = [0_usize; 4];
+    println!("index\tgroup\tfile\tstatus\tdetail");
+    for entry in &report.entries {
+        use rustclient_cache::osrs240::audit::AuditStatus;
+        counts[match entry.status {
+            AuditStatus::Decoded => 0,
+            AuditStatus::Unsupported => 1,
+            AuditStatus::Failed => 2,
+            AuditStatus::Unchecked => 3,
+        }] += 1;
+        println!(
+            "{}\t{}\t{}\t{:?}\t{}",
+            entry.source.index.0,
+            entry.source.group.map_or(0, |v| v.0),
+            entry.source.file.map_or(0, |v| v.0),
+            entry.status,
+            entry.detail.replace(['\n', '\r', '\t'], " ")
+        );
+    }
+    for warning in &report.warnings {
+        eprintln!("audit warning: {warning}");
+    }
+    eprintln!(
+        "audit: declared={} decoded={} unsupported={} failed={} unchecked={}; decode-only, stack boundaries are explicit; no execution/visual parity claim",
+        report.entries.len(),
+        counts[0],
+        counts[1],
+        counts[2],
+        counts[3]
+    );
 }

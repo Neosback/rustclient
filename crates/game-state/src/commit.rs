@@ -32,6 +32,9 @@ pub enum SemanticEvent {
         previous: i32,
         current: i32,
     },
+    LocationOptionsChanged {
+        key: rustclient_model::LocationKey,
+    },
     LocationChanged {
         key: rustclient_model::LocationKey,
         previous: crate::LocationOverride,

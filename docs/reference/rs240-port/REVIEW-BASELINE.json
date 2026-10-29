@@ -558,5 +558,674 @@
       "crates/scene/src/picking/model_tests.rs"
     ],
     "validation": "See checkpoint for completed commands, ignored tests, interrupted repetition and NOT-RUN live/visual gates."
+  },
+  "tsps_adoption_slice": {
+    "base_commit": "dde7fd2ffaf3021d1dcea37701e8c26d771a5ba7",
+    "checkpoint": "docs/plan/TSPS-ADOPTION-2026-10-29.md",
+    "evidence": "docs/reference/TSPS-ADOPTION-EVIDENCE-2026-10-29.json",
+    "scope": "Uncommitted scoped implementation. Original review hashes and other slices above retain their historical scope; no full phase acceptance inferred.",
+    "files": [
+      {
+        "path": "crates/cache/src/osrs240/item_search.rs",
+        "sha256": "262ed71e3d090a0ce1e8968b221f09945dfcd3dfb650f204df81009123ac7bfe"
+      },
+      {
+        "path": "crates/cache/src/osrs240/definitions.rs",
+        "sha256": "9ca7e1c362f124a2ade7ad8cf56bff7048f265b55efe6f810460be3bb123cb69"
+      },
+      {
+        "path": "crates/cache/src/world.rs",
+        "sha256": "6a283d10ae65aeb0034705864a0a080030e018003f6395a531d39069f4738e6d"
+      },
+      {
+        "path": "crates/cache/src/osrs240/audit.rs",
+        "sha256": "199fee9b74d817f481327a5713707183d573c0664debb8f11012467d22527228"
+      },
+      {
+        "path": "crates/cache/src/osrs240/audit/stacks.rs",
+        "sha256": "ab5a05e7a6161cadb72e7621beb31f2082eb706dfededb2b61c0ebfcaed60ee3"
+      },
+      {
+        "path": "crates/cache/src/osrs240/widgets.rs",
+        "sha256": "0048c2735624e16eb39cbb2b8ffbe80cc8294a12c318d7b19b5bdaeb8b071473"
+      },
+      {
+        "path": "crates/cache/src/osrs240/widgets/legacy.rs",
+        "sha256": "a114d1bc6d3c4b2cd96ffd05c3a9961300fa0a39bb186ea34bc765d5eed6ab14"
+      },
+      {
+        "path": "crates/cache/src/widget.rs",
+        "sha256": "9188b0c0a90c519d0142d413ec74aae0fd0bf76ec75634784118cc6725f83a15"
+      },
+      {
+        "path": "crates/cache/src/osrs240/mod.rs",
+        "sha256": "e97a7ddc6356bf0dc75e8d939e2594c373e20fa65c85f64bff56528ed0423b36"
+      },
+      {
+        "path": "crates/application/src/scripts/mod.rs",
+        "sha256": "71b2b386aa32e76535fc1b87f9841bbd48ec70204121494b8bd90cc8f9304994"
+      },
+      {
+        "path": "crates/application/src/scripts/item_search.rs",
+        "sha256": "fb467db7f803febbe67ca2f44935fabd1319cc47bc0dee6c8997858b722b95ed"
+      },
+      {
+        "path": "crates/application/src/scripts/widgets.rs",
+        "sha256": "d1343b6a1a2cb4d7cfba57d0b708cb715ea1aa38c3d8cb1416b6dcbe2188ff7e"
+      },
+      {
+        "path": "crates/application/src/scripts/widget_callbacks_tests.rs",
+        "sha256": "a75a0b6552eee42d0edf0d5df2e818418407e94afdb7e815fbdabac83f04e160"
+      },
+      {
+        "path": "crates/cache/tests/item_search.rs",
+        "sha256": "a4b99a0b6cb8017947ff3bf34c5ca927af1d4688bd94c7a622fbfcf592249c50"
+      },
+      {
+        "path": "crates/cache/tests/legacy_widgets.rs",
+        "sha256": "bc187218c4f851163ff616501bb482d243ecfbab5d2ffc41c877c4eed76f3edb"
+      },
+      {
+        "path": "crates/cache/tests/fixtures/widgets/generate.py",
+        "sha256": "61a06800e28e60dec97fd550b802dfd6b8668b88fe9c90391143f250129420b3"
+      },
+      {
+        "path": "crates/scene/src/entity_mesh.rs",
+        "sha256": "588b1fd967b62873aa96396dd5026186bc3e559e71d3b3bf619b30bf9c86393c"
+      },
+      {
+        "path": "crates/scene/src/entity_mesh/actor_animation.rs",
+        "sha256": "47807356bb06e878cf61878c045851b9dccca7d02ed1c62c5417992a7e467254"
+      },
+      {
+        "path": "crates/scene/src/entity_mesh/pose_cache.rs",
+        "sha256": "a10e0324344e36f9f893537225c0c0f05e7c632bdb2b7f2fdc1e0ded4a52dbd1"
+      },
+      {
+        "path": "crates/scene/src/tests.rs",
+        "sha256": "df0f772dc94130fd8f4615fa676a6012c9eb2cde0c6976eec5124734d469aeca"
+      },
+      {
+        "path": "apps/native/src/main.rs",
+        "sha256": "7eb1906a5ff4e7b26e1192b91b6d8d418fbf4f77a534535fd62894622480d95d"
+      },
+      {
+        "path": "apps/native/src/bin/entity_probe.rs",
+        "sha256": "a9344ed488015d1bdfc4bde06b0cc895a6a870b4657844237987fcb553a603d2"
+      },
+      {
+        "path": "xtask/src/cache.rs",
+        "sha256": "08ee5262f0cdc32492d827d11385e439236f41e0db8f36cb0606575c60f2187a"
+      },
+      {
+        "path": "xtask/src/main.rs",
+        "sha256": "30774f97fc078053673ec13a9883bffcb8c4d521ef0252ab3873ec96a6dc85e0"
+      },
+      {
+        "path": "crates/first-party-plugins/src/lib.rs",
+        "sha256": "172c57c8c31139d051209601ba1a97fb2ce857223725b36380454ed9a379903e"
+      },
+      {
+        "path": "crates/first-party-plugins/src/xptracker.rs",
+        "sha256": "541781981a8d864f52d1e661b6c7626aa7a959705662fc6e67ed577f13c4803f"
+      },
+      {
+        "path": "crates/first-party-plugins/src/xptracker/state.rs",
+        "sha256": "392b72509bc1a9381c57ce9c2faa0ed23378b0e6667de78e2d880281be21593d"
+      },
+      {
+        "path": "crates/first-party-plugins/src/xptracker/tests.rs",
+        "sha256": "0c4647bb2ba0f05bbc9491ca0d30ea3b0128e3fda414adc8b55c3a922b693e1b"
+      },
+      {
+        "path": "crates/first-party-plugins/NOTICE",
+        "sha256": "ed204f25700d4418c8495a2da010c3438678947bca59b2daa27a572710bd7e85"
+      },
+      {
+        "path": "crates/plugin-host/src/first-party-schemas.json",
+        "sha256": "dcd9cde0cb92f01956152ec9e0a85fa650464826168111d441bbe527659dc523"
+      },
+      {
+        "path": "tools/builtin-plugins/first_party_schemas.py",
+        "sha256": "bd4942608def1fdff3fbb0cea34aa8d0d933449e09dcec02e09b611b417f48b0"
+      },
+      {
+        "path": "crates/cache/tests/fixtures/widgets/if1-0.bin",
+        "sha256": "c44d575afdd4c06bb89dac925a9fd5e095cac76e32338eea75c2147fe9719d91"
+      },
+      {
+        "path": "crates/cache/tests/fixtures/widgets/if1-1.bin",
+        "sha256": "7803eca47c0978436cefc7722bca072757e9ff0479ba85357a6dbff59297bb94"
+      },
+      {
+        "path": "crates/cache/tests/fixtures/widgets/if1-2.bin",
+        "sha256": "484fc81560ac89b00f5e6a30ebd73bde610ad2789f06708b1c8d7f0890a9b92b"
+      },
+      {
+        "path": "crates/cache/tests/fixtures/widgets/if1-3.bin",
+        "sha256": "a7a1348dd04c571fc6434e5d0a311e31ca34b1b35b94dcd32b598936770d576f"
+      },
+      {
+        "path": "crates/cache/tests/fixtures/widgets/if1-4.bin",
+        "sha256": "9af5a2a9f98694df73a3124354cd349608da76be57f54b0b1ff4fce1e1bbc378"
+      },
+      {
+        "path": "crates/cache/tests/fixtures/widgets/if1-5.bin",
+        "sha256": "b469700d0bd49ebc8e63b0c6c7367d9e7fe447ec1fb19a269f5bcf47b39874d4"
+      },
+      {
+        "path": "crates/cache/tests/fixtures/widgets/if1-6.bin",
+        "sha256": "76ae7a5883cf0a9cff16f764917731ee619093e0e07dde333d84f3a883bbff46"
+      },
+      {
+        "path": "crates/cache/tests/fixtures/widgets/if1-7.bin",
+        "sha256": "1a1b5324ea43839bb0bec9c1781ea23f76ff9c94e6e24f1ad0e846b2ba71ac93"
+      },
+      {
+        "path": "crates/cache/tests/fixtures/widgets/if1-8.bin",
+        "sha256": "359ef9c3b342b96a2a2551f0d6f02722af5a15e95f1d643581caca733ecb58ce"
+      }
+    ],
+    "validation": [
+      {
+        "job": "contracts",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "rustclient-cache",
+          "-p",
+          "rustclient-application",
+          "-p",
+          "rustclient-first-party-plugins",
+          "--lib"
+        ],
+        "exit_code": 0
+      },
+      {
+        "job": "legacy",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "rustclient-cache",
+          "--test",
+          "legacy_widgets"
+        ],
+        "exit_code": 0
+      },
+      {
+        "job": "xp-followup",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "rustclient-first-party-plugins",
+          "xptracker"
+        ],
+        "exit_code": 0
+      },
+      {
+        "job": "workspace",
+        "command": [
+          "cargo",
+          "check",
+          "--workspace",
+          "--all-targets"
+        ],
+        "exit_code": 0
+      },
+      {
+        "job": "clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "--workspace",
+          "--all-targets",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "exit_code": 0
+      },
+      {
+        "job": "wasm",
+        "command": [
+          "cargo",
+          "check",
+          "-p",
+          "rustclient-web",
+          "-p",
+          "rustclient-application",
+          "-p",
+          "rustclient-first-party-plugins",
+          "--target",
+          "wasm32-unknown-unknown"
+        ],
+        "exit_code": 0
+      },
+      {
+        "job": "audit",
+        "command": [
+          "cargo",
+          "xtask",
+          "cache",
+          "audit",
+          "--cache-dir",
+          "/Users/tylercovalt/Desktop/OpenRune Project/OpenRune-Server/.data/cache/LIVE",
+          "--cache-profile",
+          "openrune-240"
+        ],
+        "exit_code": 0
+      },
+      {
+        "job": "fmt",
+        "command": [
+          "cargo",
+          "fmt",
+          "--all",
+          "--check"
+        ],
+        "exit_code": 0
+      }
+    ]
+  },
+  "cs1_continuation": {
+    "base_commit": "dde7fd2ffaf3021d1dcea37701e8c26d771a5ba7",
+    "checkpoint": "docs/plan/CS1-240-2026-10-29.md",
+    "evidence": "docs/reference/CS1-240-EVIDENCE-2026-10-29.json",
+    "scope": "Scoped CS1 arithmetic/conditions/substitution, shared presentation/level semantics and authored zero-scale acceptance. Not complete IF1 or full-client parity.",
+    "files": [
+      {
+        "path": "crates/cache/src/osrs240/cs1.rs",
+        "sha256": "edac2c1daf8f556e096fb9e042404b0f57077dee26867a35a749b6b573f839b8"
+      },
+      {
+        "path": "crates/cache/src/osrs240/skills.rs",
+        "sha256": "35fd30bdb116ebce5416359412efb27ff16ec15aaee02c0c106c3f67b1db0a50"
+      },
+      {
+        "path": "crates/cache/src/osrs240/mod.rs",
+        "sha256": "d8edbc80e06c2d8340a962d59e58e0e47bc4a8b6f66e93d5b9f3b905731910db"
+      },
+      {
+        "path": "crates/cache/src/osrs240/definitions.rs",
+        "sha256": "0237a995fcfca293fdcf5ddc36b41ece6e2dfdb268d4533138aafb3eb705a563"
+      },
+      {
+        "path": "crates/cache/src/osrs240/widgets.rs",
+        "sha256": "03cb2f49537b5a3bfc85b91d9baf541e2f70a9bd49a653e5bf8f3cb9718fc9c3"
+      },
+      {
+        "path": "crates/cache/src/widget.rs",
+        "sha256": "f413c30c780359ec43c65ab37c2f184747d14ecd122ea442514185db6ba5853b"
+      },
+      {
+        "path": "crates/cache/tests/cs1.rs",
+        "sha256": "157ab62509c5851528961bd21eedfa41ab1093935c9afdfa29e6b86735976c76"
+      },
+      {
+        "path": "crates/cache/tests/decoders.rs",
+        "sha256": "146fb2c0d5ba3b6eca242859829841765be95745dfb17400197ce49cd8be3817"
+      },
+      {
+        "path": "crates/application/src/scripts/mod.rs",
+        "sha256": "416ed84d4ba9f3953f5a6483b20b8b82e864030b5b01ea11b55d67a577e74c49"
+      },
+      {
+        "path": "crates/application/src/scripts/queries.rs",
+        "sha256": "cec3a68b0b4af07ab240df37ef8ec00b103eb998cd0d5361c24dc8eb8519b874"
+      },
+      {
+        "path": "crates/application/src/scripts/legacy.rs",
+        "sha256": "3a44ce93296f926ca18931660a2d4716f02f291c3619a842bf4549ae9387c9cb"
+      },
+      {
+        "path": "crates/application/src/scripts/legacy/tests.rs",
+        "sha256": "9debdd65fe9cf30b191b9bfb9ac08284512edee21e29d949daf7b3e4a0c27fe1"
+      },
+      {
+        "path": "crates/application/src/scripts/visuals.rs",
+        "sha256": "ff79dcf295eecaa4af8aed78a502794511fbf2d363127554f12afd5f2dfcc547"
+      },
+      {
+        "path": "crates/game-ui/src/widget_visuals.rs",
+        "sha256": "17b6f8ceaa606dc65c4b2d61b4f9c1ff104d7b8dd183adba12fa151cff279ebf"
+      },
+      {
+        "path": "crates/plugin-bridge/src/project.rs",
+        "sha256": "c5344469d7542fea1a8b4839c15e6e1c291b6257df2bbc853c56c790b829fea1"
+      },
+      {
+        "path": "crates/scene/src/tests.rs",
+        "sha256": "37337270a94a354a438a0d33d0be715de18cf81f5162c2875e4b443fdef30dc9"
+      },
+      {
+        "path": "apps/native/src/main.rs",
+        "sha256": "f0a935ea385a5855231fce26090992a7c23f56cbd3e23c7311a56425f4a88308"
+      },
+      {
+        "path": "apps/native/src/bin/interface_probe.rs",
+        "sha256": "55a141d12a9d1017daa8b6ee3b6954514c366453be95627efdfd561404a11ee5"
+      },
+      {
+        "path": "docs/specs/SPEC-0025-interface-script-host.md",
+        "sha256": "cc5eb19138523a76e89e7d0b312e9e2c9b31dd053bdc0bc0d5559a40136c8504"
+      },
+      {
+        "path": "docs/specs/SPEC-0006-cache-assets.md",
+        "sha256": "ca8684d3be4748e05abeea7213b9cceba3762a4cc37b8a2a51fd341effa271b2"
+      }
+    ],
+    "validation": [
+      {
+        "job": "contracts",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "rustclient-application",
+          "-p",
+          "rustclient-cache",
+          "-p",
+          "rustclient-game-ui",
+          "-p",
+          "rustclient-plugin-bridge",
+          "-p",
+          "rustclient-scene",
+          "--lib"
+        ],
+        "exit_code": 0
+      },
+      {
+        "job": "fixtures",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "rustclient-cache",
+          "--test",
+          "cs1",
+          "--test",
+          "decoders",
+          "--test",
+          "legacy_widgets"
+        ],
+        "exit_code": 0
+      },
+      {
+        "job": "host-followup",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "rustclient-application",
+          "legacy",
+          "--lib"
+        ],
+        "exit_code": 0
+      },
+      {
+        "job": "audit",
+        "command": [
+          "cargo",
+          "xtask",
+          "cache",
+          "audit",
+          "--cache-dir",
+          "/Users/tylercovalt/Desktop/OpenRune Project/OpenRune-Server/.data/cache/LIVE",
+          "--cache-profile",
+          "openrune-240"
+        ],
+        "exit_code": 0
+      },
+      {
+        "job": "presence-followup",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "rustclient-cache",
+          "--test",
+          "cs1"
+        ],
+        "exit_code": 0
+      },
+      {
+        "job": "workspace",
+        "command": [
+          "cargo",
+          "check",
+          "--workspace",
+          "--all-targets"
+        ],
+        "exit_code": 0
+      },
+      {
+        "job": "clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "--workspace",
+          "--all-targets",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "exit_code": 0
+      },
+      {
+        "job": "wasm",
+        "command": [
+          "cargo",
+          "check",
+          "-p",
+          "rustclient-web",
+          "-p",
+          "rustclient-application",
+          "-p",
+          "rustclient-plugin-bridge",
+          "--target",
+          "wasm32-unknown-unknown"
+        ],
+        "exit_code": 0
+      },
+      {
+        "job": "probe",
+        "command": [
+          "cargo",
+          "run",
+          "-p",
+          "rustclient-native",
+          "--bin",
+          "interface_probe",
+          "--",
+          "/Users/tylercovalt/Desktop/OpenRune Project/OpenRune-Server/.data/cache/LIVE",
+          "--cs1",
+          "8",
+          "51",
+          "286",
+          "391",
+          "535"
+        ],
+        "exit_code": 0
+      },
+      {
+        "job": "fmt",
+        "command": [
+          "cargo",
+          "fmt",
+          "--all",
+          "--check"
+        ],
+        "exit_code": 0
+      }
+    ]
+  },
+  "if1_button_continuation": {
+    "date": "2026-10-29",
+    "checkpoint": "docs/plan/IF1-BUTTONS-240-2026-10-29.md",
+    "evidence": "docs/reference/IF1-BUTTONS-240-EVIDENCE-2026-10-29.json",
+    "scope": "Authored IF1 click/toggle/select dispatch and direct local varp assignment. Partial legacy actions; content and option effects, targeting/close/continue lifecycle and live acceptance remain open.",
+    "implementation_status": "partial",
+    "tests_passed": 261,
+    "existing_ignored": 1,
+    "validation": [
+      {
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "rustclient-application",
+          "-p",
+          "rustclient-cache",
+          "-p",
+          "rustclient-game-state",
+          "-p",
+          "rustclient-model",
+          "-p",
+          "rustclient-protocol",
+          "--lib"
+        ],
+        "exit_code": 0,
+        "passed": 248,
+        "ignored": 1,
+        "log": "target/if1-buttons-240/contracts.log"
+      },
+      {
+        "job": "fixtures",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "rustclient-cache",
+          "--test",
+          "cs1",
+          "--test",
+          "legacy_widgets"
+        ],
+        "exit_code": 0
+      },
+      {
+        "job": "actions",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "rustclient-application",
+          "--test",
+          "widget_actions"
+        ],
+        "exit_code": 0
+      },
+      {
+        "job": "state",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "rustclient-game-state",
+          "--test",
+          "widgets"
+        ],
+        "exit_code": 0
+      },
+      {
+        "job": "wasm",
+        "command": [
+          "cargo",
+          "check",
+          "-p",
+          "rustclient-web",
+          "-p",
+          "rustclient-application",
+          "--target",
+          "wasm32-unknown-unknown"
+        ],
+        "exit_code": 0
+      },
+      {
+        "job": "fmt-followup",
+        "command": [
+          "cargo",
+          "fmt",
+          "--all",
+          "--check"
+        ],
+        "exit_code": 0
+      },
+      {
+        "job": "buttons-followup",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "rustclient-application",
+          "--lib",
+          "scripts::legacy::button_tests"
+        ],
+        "exit_code": 0
+      },
+      {
+        "job": "clippy-followup",
+        "command": [
+          "cargo",
+          "clippy",
+          "--workspace",
+          "--all-targets",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "exit_code": 0
+      },
+      {
+        "job": "workspace-followup",
+        "command": [
+          "cargo",
+          "check",
+          "--workspace",
+          "--all-targets"
+        ],
+        "exit_code": 0
+      },
+      {
+        "job": "docs",
+        "command": [
+          "python3",
+          "tools/docs_index.py",
+          "--check"
+        ],
+        "exit_code": 0
+      },
+      {
+        "job": "matrix",
+        "command": [
+          "python3",
+          "tools/port_matrix.py",
+          "--check"
+        ],
+        "exit_code": 0
+      },
+      {
+        "job": "source-ledger",
+        "command": [
+          "python3",
+          "tools/port_audit.py",
+          "--check"
+        ],
+        "exit_code": 0
+      },
+      {
+        "job": "inventories",
+        "command": [
+          "python3",
+          "tools/parity_inventory.py",
+          "--check"
+        ],
+        "exit_code": 0
+      }
+    ],
+    "note": "Final scoped checks passed; earlier evidence hashes remain historical. No full legacy actions, native/browser gameplay or visual parity claim."
   }
 }

@@ -43,6 +43,13 @@ research can run alongside any phase.
 ### Phase 0: evidence denominators (ongoing)
 
 - **Spec:** SPEC-0019 (no new spec).
+- **Supporting research:** [TSPS cache-241 review, 2026-10-29](../reference/TSPS-241-REVIEW-2026-10-29.md)
+  maps cache/script sweeps, projection scheduling and UI invalidation ideas to the
+  phases below. It records existing Rust coverage and rendering exclusions; it
+  does not establish a new target revision, phase order or completed behavior.
+  The [Git-history shortlist](../reference/TSPS-GIT-SHORTLIST-2026-10-29.md) adds
+  ranked feature/tooling slices and exact-240 checks, including item search, IF1,
+  interface ordering and measured projection optimizations.
 - **Work:** finish the inventories: RuneLite hooks/`Client` API disposition, per-payload stock
   mask branch tables, cache layout variants with actual-cache vectors, and an inventory of
   source tests and cases. Promote the S anchors in CLIENT-LOGIC-MAP through a
@@ -165,8 +172,11 @@ research can run alongside any phase.
 
 ### Phase 7: interfaces and client-script host
 
-- **Spec:** new SPEC-0025 "Interface and client-script host" (planned; consolidates the
-  SPEC-0018 widget and script continuations).
+Scoped follow-up: [2026-10-29 implementation evidence](TSPS-ADOPTION-2026-10-29.md) covers item search, IF1 decoding, deferred operations, audits, measured CPU reuse and the local XP subset; it does not complete this phase.
+
+- **Spec:** [SPEC-0025](../specs/SPEC-0025-interface-script-host.md), accepted for the
+  user-authorized item-search, IF1 and audit slices; remaining phase acceptance is open.
+- **Continuations:** [CS1 conditions/presentation and zero-scale cache fix](CS1-240-2026-10-29.md), [IF1 click/toggle/select dispatch](IF1-BUTTONS-240-2026-10-29.md); content/option effects, target/close lifecycle and complete legacy UI remain open.
 - **Work:** server IF_* mutations; model, NPC-head and player-head widgets; the 185
   named-unhandled and 318 unnamed CS2 opcodes (CS2-HOST-COVERAGE); stock script event queues
   and their order (SPEC-0020 S11); DB long branches; close/reset/unload order; varc

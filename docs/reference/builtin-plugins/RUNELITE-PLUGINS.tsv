@@ -127,6 +127,6 @@ worldhopper	World Hopper	true		20	3609	no	not-started	client-feature	login|plugi
 worldmap	World Map	true		18	3868	no	not-started	client-feature	world-map|plugin-api	proposed-applicable	
 xpdrop	XP Drop	true		2	391	no	not-started	client-feature	widgets|scripts|plugin-api	proposed-applicable	
 xpglobes	XP Globes	false		4	815	no	not-started	client-feature	plugin-api	proposed-applicable	
-xptracker	XP Tracker	true		19	3284	yes	not-started	external-service	plugin-api	needs-decision	local tracker plus network wise-old-man style sync
+xptracker	XP Tracker	true		19	3284	yes	partial-module	external-service	plugin-api	needs-decision	Local core and session overlay implemented with source arithmetic/login gate; panel/menu, stable account persistence, real-time clock and external sync remain open; see FIRST-PARTY-LEDGER.
 xpupdater	XP Updater	false		2	312	yes	not-started	external-service	plugin-api	needs-decision	external tracker updates
 zalcano	Zalcano	false		3	454	no	not-started	content-helper	world-effects|plugin-api	proposed-applicable	

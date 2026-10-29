@@ -49,6 +49,7 @@ fn print_help() {
            references status  verify pinned submodule and vendored reference trees\n\
            references sync    initialize/update pinned reference checkout\n\n\
            cache inspect --cache-dir PATH --cache-profile osrs-240  validate title assets\n\n\
+           cache audit --cache-dir PATH --cache-profile osrs-240  declared-file/stack audit\n\n\
          Planned commands: architecture, check, plugin, fixtures"
     );
 }

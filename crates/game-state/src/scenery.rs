@@ -5,8 +5,16 @@ use crate::{
 use core::fmt;
 use rustclient_model::{AnimationStart, ClientCycle, LocationChange, LocationKey, VarpId};
 use std::collections::BTreeMap;
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SceneryOperation {
+    /// Server placement, relative to the current map anchor. Replaces both geometry and actions.
+    UpdateLocation {
+        offset: rustclient_model::TileOffset,
+        plane: rustclient_model::Plane,
+        placement: rustclient_model::LocationAnimationPlacement,
+        object: Option<rustclient_model::ObjectDefinitionId>,
+        options: rustclient_model::LocationOptions,
+    },
     /// Trigger at the current cycle, relative to the active map anchor and local plane.
     ResetLocationArea {
         offset: rustclient_model::TileOffset,
@@ -80,6 +88,7 @@ pub struct SceneryState {
     variables: BTreeMap<VarpId, i32>,
     server_variables: BTreeMap<VarpId, i32>,
     locations: BTreeMap<LocationKey, LocationOverride>,
+    options: BTreeMap<LocationKey, rustclient_model::LocationOptions>,
     /// Invalidation token derived from committed structural updates. Not semantic
     /// identity: fingerprints encode the values themselves, not mutation history.
     generation: u64,
@@ -87,6 +96,7 @@ pub struct SceneryState {
 impl SceneryState {
     pub(crate) fn clear_map_locations(&mut self) {
         self.locations.clear();
+        self.options.clear();
         self.generation = self.generation.wrapping_add(1);
     }
     #[must_use]
@@ -110,6 +120,12 @@ impl SceneryState {
         &self.variables
     }
     #[must_use]
+    pub const fn location_options(
+        &self,
+    ) -> &BTreeMap<LocationKey, rustclient_model::LocationOptions> {
+        &self.options
+    }
+    #[must_use]
     pub const fn locations(&self) -> &BTreeMap<LocationKey, LocationOverride> {
         &self.locations
     }
@@ -125,9 +141,23 @@ impl GameState {
     ) -> Result<OperationCommit, OperationError> {
         self.change_scenery(op).map_err(OperationError::Scenery)
     }
+    #[expect(
+        clippy::too_many_lines,
+        reason = "one mutation gateway validates relative placement before scenery changes"
+    )]
     fn change_scenery(&mut self, op: SceneryOperation) -> Result<OperationCommit, SceneryError> {
         if self.lifecycle() != SessionLifecycle::Active {
             return Err(SceneryError::InactiveSession);
+        }
+        if let SceneryOperation::UpdateLocation {
+            offset,
+            plane,
+            placement,
+            object,
+            options,
+        } = op
+        {
+            return self.update_location(offset, plane, placement, object, options);
         }
         if let SceneryOperation::TriggerLocationAnimation {
             offset,
@@ -148,7 +178,8 @@ impl GameState {
         }
         let scene = &mut self.scenery;
         let event = match op {
-            SceneryOperation::TriggerLocationAnimation { .. }
+            SceneryOperation::UpdateLocation { .. }
+            | SceneryOperation::TriggerLocationAnimation { .. }
             | SceneryOperation::ResetLocationArea { .. } => unreachable!("normalized above"),
             SceneryOperation::AdvanceCycles(cycles) => {
                 return self.advance_scenery_cycles(cycles);
@@ -196,7 +227,23 @@ impl GameState {
                 }
                 let previous = scene.locations.get(&key).copied().unwrap_or_default();
                 let current = LocationOverride { change, ..previous };
-                change_location(scene, key, previous, current)?
+                let options_changed = scene.options.contains_key(&key);
+                if options_changed && previous == current {
+                    scene
+                        .generation
+                        .checked_add(1)
+                        .ok_or(SceneryError::Overflow)?;
+                }
+                let event = change_location(scene, key, previous, current)?;
+                if options_changed {
+                    if event.is_none() {
+                        scene.generation += 1;
+                    }
+                    scene.options.remove(&key);
+                }
+                event.or_else(|| {
+                    options_changed.then_some(SemanticEvent::LocationOptionsChanged { key })
+                })
             }
             SceneryOperation::AnimateLocation { key, start } => {
                 validate_key(key)?;
@@ -247,6 +294,82 @@ impl GameState {
         ))
     }
 
+    fn update_location(
+        &mut self,
+        offset: rustclient_model::TileOffset,
+        plane: rustclient_model::Plane,
+        placement: rustclient_model::LocationAnimationPlacement,
+        object: Option<rustclient_model::ObjectDefinitionId>,
+        options: rustclient_model::LocationOptions,
+    ) -> Result<OperationCommit, SceneryError> {
+        let anchor = self
+            .initial_placement()
+            .ok_or(SceneryError::InvalidLocation)?
+            .map_anchor;
+        let tile = rustclient_model::WorldTile::new(
+            anchor
+                .x
+                .checked_add(offset.x)
+                .ok_or(SceneryError::Overflow)?,
+            anchor
+                .y
+                .checked_add(offset.y)
+                .ok_or(SceneryError::Overflow)?,
+            plane,
+        );
+        let key = LocationKey::new(
+            tile,
+            rustclient_model::LocationLayer::from_shape(placement.shape),
+        );
+        validate_key(key)?;
+        if placement.shape > 22 || options.labels.iter().flatten().any(|s| s.len() > 1024) {
+            return Err(SceneryError::InvalidLocation);
+        }
+        let change = object.map_or(LocationChange::Remove, |object| {
+            LocationChange::Replace(rustclient_model::LocationDefinition {
+                object,
+                shape: placement.shape,
+                orientation: placement.orientation,
+            })
+        });
+        // Replacement clears the previous renderable's animation, including on index reuse.
+        let current = LocationOverride {
+            change,
+            animation: None,
+        };
+        let previous = self
+            .scenery
+            .locations
+            .get(&key)
+            .copied()
+            .unwrap_or_default();
+        let options = object.and_then(|_| {
+            (options != rustclient_model::LocationOptions::default()).then_some(options)
+        });
+        let options_changed = self.scenery.options.get(&key) != options.as_ref();
+        let mut event = change_location(&mut self.scenery, key, previous, current)?;
+        if options_changed {
+            if event.is_none() {
+                self.scenery.generation = self
+                    .scenery
+                    .generation
+                    .checked_add(1)
+                    .ok_or(SceneryError::Overflow)?;
+                event = Some(SemanticEvent::LocationOptionsChanged { key });
+            }
+            if let Some(options) = options {
+                self.scenery.options.insert(key, options);
+            } else {
+                self.scenery.options.remove(&key);
+            }
+        }
+        let delta = if event.is_some() {
+            StateDelta::SCENERY
+        } else {
+            StateDelta::default()
+        };
+        Ok(OperationCommit::new(event, delta))
+    }
     fn trigger_location_animation(
         &mut self,
         offset: rustclient_model::TileOffset,
@@ -329,6 +452,7 @@ impl GameState {
             .checked_add(1)
             .ok_or(SceneryError::Overflow)?;
         self.scenery.locations.retain(|key, _| !inside(key));
+        self.scenery.options.retain(|key, _| !inside(key));
         self.scenery.generation = generation;
         Ok(OperationCommit::new(
             Some(SemanticEvent::LocationAreaReset { origin, size }),

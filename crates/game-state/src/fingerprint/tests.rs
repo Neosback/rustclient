@@ -19,11 +19,11 @@ fn run_operations(operations: &[SemanticOperation]) -> (GameState, CommitStreamF
 }
 
 #[test]
-fn state_fingerprint_v28_has_exact_regression_vectors() {
+fn state_fingerprint_v29_has_exact_regression_vectors() {
     let mut state = GameState::new();
     assert_eq!(
         state.semantic_fingerprint().get(),
-        16_047_970_197_847_965_105
+        11_238_732_911_601_325_660
     );
 
     state
@@ -33,7 +33,10 @@ fn state_fingerprint_v28_has_exact_regression_vectors() {
         .apply_operation(SemanticOperation::AdvanceTick(TickSpan::new(5)))
         .expect("small tick advance cannot overflow");
 
-    assert_eq!(state.semantic_fingerprint().get(), 262_747_495_747_773_555);
+    assert_eq!(
+        state.semantic_fingerprint().get(),
+        18_013_236_414_894_162_980
+    );
 }
 
 #[test]
@@ -87,7 +90,7 @@ fn state_fingerprint_distinguishes_revision_identity() {
     );
     assert_eq!(
         subrevision.semantic_fingerprint().get(),
-        6_494_532_345_383_939_362
+        4_726_832_712_926_433_191
     );
 }
 
@@ -261,7 +264,7 @@ fn equivalent_observable_state_has_equivalent_fingerprint() {
 }
 
 #[test]
-fn commit_stream_fingerprint_v28_has_exact_regression_vector() {
+fn commit_stream_fingerprint_v29_has_exact_regression_vector() {
     let operations = [
         BEGIN_240,
         SemanticOperation::AdvanceTick(TickSpan::new(2)),
@@ -270,10 +273,10 @@ fn commit_stream_fingerprint_v28_has_exact_regression_vector() {
     ];
     let (_, fingerprint) = run_operations(&operations);
 
-    assert_eq!(fingerprint.get(), 12_266_812_576_389_399_527);
+    assert_eq!(fingerprint.get(), 12_387_194_914_640_535_716);
     assert_eq!(
         CommitStreamFingerprintBuilder::new().finish().get(),
-        18_056_086_669_613_358_074
+        233_507_859_283_860_133
     );
 }
 

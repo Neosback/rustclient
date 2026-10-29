@@ -126,6 +126,27 @@ fn widget_actions_reject_reused_children_changed_items_and_revoked_permissions()
         }),
     );
     assert!(validate_widget_action(&state, &assets, selected).is_err());
+    apply(
+        &mut state,
+        InterfaceUpdate::SetEvents(WidgetEventRange {
+            widget,
+            first: 0,
+            last: 0,
+            permissions: WidgetPermissions {
+                continue_enabled: true,
+                ..Default::default()
+            },
+        }),
+    );
+    let actions = widget_actions(&state, &assets, address).unwrap();
+    assert_eq!(actions.len(), 1);
+    let selected = actions[0].1;
+    assert!(selected.operation.is_continue());
+    assert!(
+        validate_widget_action(&state, &assets, selected)
+            .unwrap()
+            .is_some()
+    );
     apply(&mut state, InterfaceUpdate::SetRoot(None));
     apply(&mut state, InterfaceUpdate::SetRoot(Some(group)));
     assert!(validate_widget_action(&state, &assets, selected).is_err());

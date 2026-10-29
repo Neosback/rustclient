@@ -116,7 +116,7 @@ fn npc_batch_identity_permissions_delay_and_replay_reject_stale_actions_atomical
     };
     let actions = world_actions(&state, &asset, &catalog, asset.descriptor(), target).unwrap();
     assert_eq!(actions.len(), 1);
-    assert_eq!(actions[0].0, "Bank Banker");
+    assert_eq!(actions[0].0, "Bank <col=ffff00>Banker");
     let selected = actions[0].1;
     assert!(
         matches!(validate_world_action(&state,&asset,&catalog,selected,false).unwrap(),ClientIntent::NpcAction {index,slot,..} if index==NpcIndex::new(42) && slot==ActionSlot::new(2).unwrap())
@@ -314,5 +314,5 @@ fn plane_transitions_reuse_scene_asset_and_validate_walk_and_actions_on_upper_pl
     let actions = world_actions(&state, &asset, &catalog, active_scene, target)
         .expect("NPC action on upper plane validates against shared SceneAsset");
     assert_eq!(actions.len(), 1);
-    assert_eq!(actions[0].0, "Attack Guard");
+    assert_eq!(actions[0].0, "Attack <col=ffff00>Guard");
 }

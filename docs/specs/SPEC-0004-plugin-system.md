@@ -152,3 +152,23 @@ Public plugin interfaces use explicit semantic versioning. Additive evolution is
 ## Acceptance criteria for first vertical slice
 
 A sample plugin must run from the same source on native and browser targets, receive one event type, query one state value, persist plugin-local config/storage, and render an overlay command without accessing internal client structs.
+
+## Local XP Tracker core and overlay (authorized 2026-10-29)
+
+The first-party XP tracker observes existing immutable skill snapshots/events. Its
+local state is derived plugin state, never authoritative XP. The core accepts
+explicit elapsed milliseconds, pause/logout policy, goals and an explicit account
+key for saved-state envelopes. It preserves the RuneLite ten-action history,
+60-second minimum rate denominator, XP-loss reinitialization and rate-only reset.
+The live adapter uses snapshot client cycles and suppresses the first two game
+ticks of login synchronization. An account change resets its local baseline.
+
+Only effective settings appear for this initial canvas overlay: hide-maxed,
+idle pause, idle rate reset and recent-skill ordering. Logout uses the source
+default (paused); its toggle awaits a real elapsed-time service. The overlay
+shows session XP, XP/hour and action count. Core goal/save/manual-pause contracts
+are independently testable; no panel/menu/persistence control is exposed until
+stable account identity, elapsed real time and those services reach the plugin
+boundary. Display names are not silently promoted to persistent account IDs.
+The complete RuneLite tracker, external sync and native/browser visual acceptance
+remain separate obligations in the canonical plugin ledger.

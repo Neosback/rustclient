@@ -32,6 +32,13 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
     let active = usize::from(n == 1);
     let (op, explicit) = op.widget();
     match op {
+        Opcode::SetkeyscopeActive => {
+            let address = c.active[active].ok_or("no active widget")?;
+            h.apply(InterfaceUpdate::KeyScope(
+                rustclient_model::WidgetKeyScope::Widget(address.widget),
+            ))?;
+            return Ok(true);
+        }
         Opcode::CcFindByParameters => {
             let second_type = s.int()?;
             let first_type = s.int()?;
@@ -182,21 +189,40 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
                 let addr = c.active[active].ok_or("no active widget")?;
                 (addr, op_num)
             };
-            if let Some(operation) = u8::try_from(op_number.saturating_sub(1))
-                .ok()
-                .and_then(rustclient_model::WidgetOperation::new)
-                && let Ok((intents, _)) = h.resources.perform_action(
-                    h.state,
-                    rustclient_model::WidgetAction {
-                        address,
-                        operation,
-                        item: None,
-                        interface_epoch: h.state.interfaces().epoch(),
-                    },
-                )
-            {
-                h.resources.effects.extend(intents);
+            if !(1..=10).contains(&op_number) {
+                return Err("widget operation must be 1..=10".into());
             }
+            let operation = u8::try_from(
+                op_number
+                    .checked_sub(1)
+                    .ok_or("widget operation must be 1..=10")?,
+            )
+            .ok()
+            .and_then(rustclient_model::WidgetOperation::new)
+            .ok_or("widget operation must be 1..=10")?;
+            rustclient_game_ui::widgets::resolve_widget(
+                h.state.interfaces(),
+                &h.resources.interfaces,
+                address,
+            )
+            .map_err(|e| e.to_string())?;
+            if h.resources.deferred_operations.len() >= 4096 {
+                return Err("deferred widget operation queue limit".into());
+            }
+            h.resources
+                .deferred_operations
+                .push_back(rustclient_model::WidgetAction {
+                    address,
+                    operation,
+                    item: h
+                        .state
+                        .interfaces()
+                        .runtime()
+                        .get(&address)
+                        .and_then(|r| r.item)
+                        .map(|(id, _)| id),
+                    interface_epoch: h.state.interfaces().epoch(),
+                });
             return Ok(true);
         }
         _ => {}
@@ -238,6 +264,40 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
         address,
     )
     .map_err(|e| e.to_string())?;
+    if op == Opcode::CcCallonresize {
+        if c.resize_depth >= 10 {
+            return Err("resize callback depth limit".into());
+        }
+        if let Some(arguments) = widget.listeners.get(&WidgetListener::Resize)
+            && let Some(request) = super::request(arguments.clone())?
+        {
+            h.resources
+                .enqueue_at_depth(request, Some(address), c.resize_depth + 1)?;
+        } else {
+            c.flow = rustclient_client_script::EventFlow::Finish;
+        }
+        return Ok(true);
+    }
+    if op == Opcode::CcResumePausebutton {
+        let item = h
+            .state
+            .interfaces()
+            .runtime()
+            .get(&address)
+            .and_then(|r| r.item)
+            .map(|(id, _)| id);
+        h.resources
+            .effects
+            .push(rustclient_protocol::ClientIntent::WidgetAction(
+                rustclient_model::WidgetAction {
+                    address,
+                    operation: WidgetOperation::CONTINUE,
+                    item,
+                    interface_epoch: h.state.interfaces().epoch(),
+                },
+            ));
+        return Ok(true);
+    }
     let mut runtime = h
         .state
         .interfaces()
@@ -395,6 +455,20 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
                 }
                 runtime.body = Some(body);
             }
+            Opcode::CcSetlinewid => {
+                let value = s.int()?;
+                if let WidgetBody::Line { width, .. } = &mut body {
+                    *width = u8::try_from(value).map_err(|_| "line width")?;
+                }
+                runtime.body = Some(body);
+            }
+            Opcode::CcSetlinedirection => {
+                let value = s.int()? == 1;
+                if let WidgetBody::Line { reversed, .. } = &mut body {
+                    *reversed = value;
+                }
+                runtime.body = Some(body);
+            }
             CcSetfill => {
                 let value = s.int()?;
                 if let WidgetBody::Rectangle { filled, .. } = &mut body {
@@ -448,6 +522,49 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
                 runtime.body = Some(body);
             }
             Opcode::CcSetnoscrollthrough => runtime.no_scroll_through = Some(s.int()? == 1),
+            Opcode::CcSetmodel => {
+                let id = s.int()?;
+                if let WidgetBody::Model { model, .. } = &mut body {
+                    *model = u32::try_from(id).ok().map(rustclient_model::ModelId::new);
+                }
+                runtime.item = None;
+                runtime.body = Some(body);
+            }
+            Opcode::CcSetmodelangle => {
+                let [x, y, angle_x, angle_y, angle_z, scale] = s.ints()?;
+                if let WidgetBody::Model {
+                    offset,
+                    angles,
+                    zoom,
+                    ..
+                } = &mut body
+                {
+                    *offset = [x, y];
+                    *angles = [
+                        model_scalar(angle_x)?,
+                        model_scalar(angle_y)?,
+                        model_scalar(angle_z)?,
+                    ];
+                    *zoom = model_scalar(scale)?;
+                }
+                runtime.body = Some(body);
+            }
+            Opcode::CcSetmodelanim => {
+                let id = s.int()?;
+                if let WidgetBody::Model { sequence, .. } = &mut body {
+                    *sequence = u32::try_from(id)
+                        .ok()
+                        .map(rustclient_model::SequenceId::new);
+                }
+                runtime.body = Some(body);
+            }
+            Opcode::CcSetmodelorthog => {
+                let enabled = s.int()? == 1;
+                if let WidgetBody::Model { orthographic, .. } = &mut body {
+                    *orthographic = enabled;
+                }
+                runtime.body = Some(body);
+            }
             CcSetobject | CcSetobjectNonum | CcSetobjectAlwaysNum => {
                 let [id, count] = s.ints()?;
                 runtime.item = u32::try_from(id)
@@ -732,6 +849,10 @@ pub(super) fn pop_value(
         None => None,
     })
 }
+fn model_scalar(value: i32) -> Result<u16> {
+    u16::try_from(value).map_err(|_| "widget model scalar outside retained range".into())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -776,8 +897,10 @@ mod tests {
             0,
             &mut s,
             &mut c,
-        )
-        .unwrap();
-        assert!(handled);
+        );
+        assert!(
+            handled.is_err(),
+            "unresolved widget triggers must fail explicitly"
+        );
     }
 }
