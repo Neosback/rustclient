@@ -185,10 +185,5 @@ fn model_bytes(model: &StaticModel) -> usize {
         + model.vertex_skins.capacity() * size_of::<Option<u8>>()
         + model.texture_triangles.capacity() * size_of::<[u32; 3]>()
         + model.texture_types.capacity()
-        + model.skeletal_weights.capacity() * size_of::<Vec<(u8, u8)>>()
-        + model
-            .skeletal_weights
-            .iter()
-            .map(|w| w.capacity() * size_of::<(u8, u8)>())
-            .sum::<usize>()
+        + model.skeletal_weights.heap_bytes()
 }

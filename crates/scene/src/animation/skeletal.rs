@@ -193,13 +193,13 @@ pub(crate) fn pose(
     frame: i32,
     vertices: &mut [ModelPoint],
     faces: &mut [ModelFace],
-    weights: &[Vec<(u8, u8)>],
+    weights: &rustclient_cache::world::VertexWeights,
 ) -> Result<()> {
     if weights.len() != vertices.len() {
         return Err(SceneError("vertex weight count mismatch".into()));
     }
     let skin = animation.skin_matrices(frame);
-    for (vertex, influences) in vertices.iter_mut().zip(weights) {
+    for (vertex, influences) in vertices.iter_mut().zip(weights.iter()) {
         if influences.is_empty() {
             continue;
         }

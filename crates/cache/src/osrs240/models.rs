@@ -3,7 +3,7 @@ use crate::{
     Source,
     error::Result,
     reader::Reader,
-    world::{ModelFace, StaticModel},
+    world::{ModelFace, StaticModel, VertexWeights},
 };
 use rustclient_model::{ModelPoint, TextureId};
 use std::ops::Range;
@@ -283,7 +283,7 @@ fn sections(bytes: &[u8], source: Source, header: &Header) -> Result<Sections> {
         biases,
     })
 }
-type VertexData = (Vec<ModelPoint>, Vec<Option<u8>>, Vec<Vec<(u8, u8)>>);
+type VertexData = (Vec<ModelPoint>, Vec<Option<u8>>, VertexWeights);
 fn vertices(
     bytes: &[u8],
     source: Source,
@@ -304,7 +304,7 @@ fn vertices(
     let mut meta = reader(&sections.metadata);
     let mut points = Vec::with_capacity(vertices);
     let mut skins = Vec::with_capacity(vertices);
-    let mut weights = vec![Vec::new(); vertices];
+    let mut weights = VertexWeights::empty(0);
     let mut previous = [0_i32; 3];
     for _ in 0..vertices {
         let bits = flags.u8()?;
@@ -323,12 +323,17 @@ fn vertices(
         skins.push(if vertex_skins { Some(meta.u8()?) } else { None });
     }
     if skeletal {
-        for bone in &mut weights {
+        let mut vertex = Vec::new();
+        for _ in 0..vertices {
+            vertex.clear();
             let count = usize::from(meta.u8()?);
             for _ in 0..count {
-                bone.push((meta.u8()?, meta.u8()?));
+                vertex.push((meta.u8()?, meta.u8()?));
             }
+            weights.push(&vertex);
         }
+    } else {
+        weights = VertexWeights::empty(vertices);
     }
     flags.finish()?;
     xr.finish()?;
@@ -506,7 +511,7 @@ pub fn combine_models(models: &[&StaticModel]) -> StaticModel {
     let mut vertices = Vec::with_capacity(total_vertices);
     let mut faces = Vec::with_capacity(total_faces);
     let mut vertex_skins = Vec::with_capacity(total_vertices);
-    let mut skeletal_weights = Vec::with_capacity(total_vertices);
+    let mut skeletal_weights = VertexWeights::empty(0);
     let mut texture_triangles = Vec::new();
     let mut texture_types = Vec::new();
 
@@ -514,7 +519,7 @@ pub fn combine_models(models: &[&StaticModel]) -> StaticModel {
     for model in models {
         vertices.extend_from_slice(&model.vertices);
         vertex_skins.extend_from_slice(&model.vertex_skins);
-        skeletal_weights.extend_from_slice(&model.skeletal_weights);
+        skeletal_weights.extend_from(&model.skeletal_weights);
         for face in &model.faces {
             let mut f = *face;
             f.vertices[0] += vertex_base;

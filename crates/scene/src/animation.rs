@@ -219,7 +219,7 @@ pub(crate) fn pose_skeletal_oriented(
     frame: i32,
     vertices: &mut [ModelPoint],
     faces: &mut [ModelFace],
-    weights: &[Vec<(u8, u8)>],
+    weights: &rustclient_cache::world::VertexWeights,
     orientation: u8,
 ) -> Result<()> {
     for p in &mut *vertices {

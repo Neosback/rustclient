@@ -17,11 +17,16 @@ const MAX_QUADS: usize = 32768;
 const MAX_DYNAMIC_SIDE: u32 = 2048;
 
 /// CPU pixels for a script-sized dynamic widget image; empty pixels keep the previous upload.
+///
+/// A nonzero `revision` names the pixel content: while the revision and size match what this
+/// texture last received the upload is skipped. Zero always uploads. A recreated texture has
+/// received nothing, so it uploads on its first frame whatever the revision.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct DynamicImage<'a> {
     pub pixels: &'a [u8],
     pub width: u32,
     pub height: u32,
+    pub revision: u64,
 }
 /// Script-sized widget images supplied for one frame.
 #[derive(Clone, Copy, Debug, Default)]
@@ -46,6 +51,8 @@ struct DynamicTexture {
     texture: wgpu::Texture,
     bind: wgpu::BindGroup,
     size: [u32; 2],
+    /// Revision of the pixels last uploaded; zero when none carried a revision.
+    revision: u64,
     label: &'static str,
 }
 impl DynamicTexture {
@@ -61,6 +68,7 @@ impl DynamicTexture {
             texture,
             bind,
             size: [1, 1],
+            revision: 0,
             label,
         }
     }
@@ -79,7 +87,11 @@ impl DynamicTexture {
             self.texture = texture(device, image.width, image.height, self.label);
             self.bind = bind(device, layout, sampler, &self.texture);
             self.size = [image.width, image.height];
+            self.revision = 0;
+        } else if image.revision != 0 && self.revision == image.revision {
+            return 0;
         }
+        self.revision = image.revision;
         upload(
             queue,
             &self.texture,

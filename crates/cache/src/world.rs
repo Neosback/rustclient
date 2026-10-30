@@ -225,9 +225,86 @@ pub struct StaticModel {
     pub vertices: Vec<ModelPoint>,
     pub faces: Vec<ModelFace>,
     pub vertex_skins: Vec<Option<u8>>,
-    pub skeletal_weights: Vec<Vec<(u8, u8)>>,
+    pub skeletal_weights: VertexWeights,
     pub texture_triangles: Vec<[u32; 3]>,
     pub texture_types: Vec<u8>,
+}
+/// Skeletal `(bone, weight)` influences for every vertex of one model in a single allocation.
+///
+/// Most models carry no influences at all; those store nothing per vertex. Once any vertex has
+/// an influence each vertex costs four bytes plus its own pairs, instead of a heap header and
+/// allocation each.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct VertexWeights {
+    len: usize,
+    /// Exclusive end of each vertex's influences in `influences`; empty while none has any.
+    ends: Vec<u32>,
+    influences: Vec<(u8, u8)>,
+}
+impl VertexWeights {
+    /// `len` vertices, none with an influence.
+    #[must_use]
+    pub fn empty(len: usize) -> Self {
+        Self {
+            len,
+            ends: Vec::new(),
+            influences: Vec::new(),
+        }
+    }
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.len
+    }
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.len == 0
+    }
+    /// The influences of `vertex`; empty for an unweighted or out-of-range vertex.
+    #[must_use]
+    pub fn get(&self, vertex: usize) -> &[(u8, u8)] {
+        if self.ends.is_empty() || vertex >= self.len {
+            return &[];
+        }
+        let start = vertex
+            .checked_sub(1)
+            .map_or(0, |previous| self.ends[previous] as usize);
+        &self.influences[start..self.ends[vertex] as usize]
+    }
+    /// Per-vertex influences in vertex order.
+    pub fn iter(&self) -> impl Iterator<Item = &[(u8, u8)]> + '_ {
+        (0..self.len).map(|vertex| self.get(vertex))
+    }
+    /// Append one vertex.
+    ///
+    /// # Panics
+    ///
+    /// When the model holds more than `u32::MAX` influences, which the model format
+    /// (at most 255 per vertex) cannot reach for a decodable model.
+    pub fn push(&mut self, influences: &[(u8, u8)]) {
+        if influences.is_empty() && self.ends.is_empty() {
+            self.len += 1;
+            return;
+        }
+        if self.ends.is_empty() {
+            self.ends = vec![0; self.len];
+        }
+        self.influences.extend_from_slice(influences);
+        self.ends.push(
+            u32::try_from(self.influences.len()).expect("model influences fit a 32-bit offset"),
+        );
+        self.len += 1;
+    }
+    /// Append every vertex of `other`.
+    pub fn extend_from(&mut self, other: &Self) {
+        for influences in other.iter() {
+            self.push(influences);
+        }
+    }
+    /// Heap bytes reserved by the store.
+    #[must_use]
+    pub fn heap_bytes(&self) -> usize {
+        self.ends.capacity() * size_of::<u32>() + self.influences.capacity() * size_of::<(u8, u8)>()
+    }
 }
 /// Complete immutable inputs for a normal map window. Kept behind the scene asset's private owner.
 #[derive(Debug, Clone)]
@@ -408,5 +485,43 @@ impl TerrainTile {
     #[must_use]
     pub const fn blocked(self) -> bool {
         self.settings & 1 != 0
+    }
+}
+#[cfg(test)]
+mod vertex_weight_tests {
+    use super::VertexWeights;
+    #[test]
+    fn matches_a_vector_of_vectors_and_stays_empty_without_influences() {
+        let lists: [&[(u8, u8)]; 5] = [&[], &[(1, 255)], &[], &[(2, 128), (3, 127)], &[]];
+        let mut unweighted = VertexWeights::empty(0);
+        let mut weighted = VertexWeights::empty(2);
+        for list in [&[][..]; 3] {
+            unweighted.push(list);
+        }
+        assert_eq!(unweighted.len(), 3);
+        assert_eq!(unweighted.heap_bytes(), 0);
+        assert!(unweighted.iter().all(<[_]>::is_empty));
+        for list in lists {
+            weighted.push(list);
+        }
+        // Two leading unweighted vertices exist before the pushed ones.
+        assert_eq!(weighted.len(), 7);
+        assert!(weighted.get(0).is_empty() && weighted.get(1).is_empty());
+        for (index, list) in lists.iter().enumerate() {
+            assert_eq!(weighted.get(index + 2), *list);
+        }
+        assert!(weighted.get(7).is_empty(), "out of range is empty");
+        let mut combined = VertexWeights::empty(0);
+        combined.extend_from(&unweighted);
+        combined.extend_from(&weighted);
+        assert_eq!(combined.len(), 10);
+        assert!(combined.get(2).is_empty());
+        assert_eq!(combined.get(3 + 3), &[(1, 255)]);
+        assert_eq!(combined.get(3 + 5), &[(2, 128), (3, 127)]);
+        assert_eq!(
+            combined.iter().map(<[_]>::len).sum::<usize>(),
+            3,
+            "influences are not duplicated or lost"
+        );
     }
 }

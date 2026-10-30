@@ -100,7 +100,7 @@ fn with_model() -> WorldAssets {
                 ModelPoint::new(0, -128, 64),
             ],
             vertex_skins: vec![None; 3],
-            skeletal_weights: vec![Vec::new(); 3],
+            skeletal_weights: rustclient_cache::world::VertexWeights::empty(3),
             texture_triangles: vec![],
             texture_types: vec![],
             faces: vec![ModelFace {
@@ -246,7 +246,7 @@ fn triangle(points: [(i32, i32, i32); 3]) -> StaticModel {
     StaticModel {
         vertices: points.map(|(x, y, z)| ModelPoint::new(x, y, z)).to_vec(),
         vertex_skins: vec![None; 3],
-        skeletal_weights: vec![Vec::new(); 3],
+        skeletal_weights: rustclient_cache::world::VertexWeights::empty(3),
         texture_triangles: vec![],
         texture_types: vec![],
         faces: vec![ModelFace {

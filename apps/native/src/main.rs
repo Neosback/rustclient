@@ -39,6 +39,7 @@ use rustclient_scene::{
 };
 use std::{
     collections::BTreeMap,
+    hash::{DefaultHasher, Hash, Hasher},
     process::ExitCode,
     sync::Arc,
     time::{Duration, Instant},
@@ -128,6 +129,13 @@ struct NativeApp {
     minimap_plane: Option<rustclient_model::Plane>,
     minimap_pixels: Vec<u8>,
     compass_pixels: Vec<u8>,
+    /// Hash of every input the composed minimap/compass pixels depend on, and the revision handed
+    /// to the renderer; a frame with an unchanged key neither recomposes nor re-uploads.
+    minimap_key: u64,
+    minimap_revision: u64,
+    minimap_generation: u64,
+    compass_key: u64,
+    compass_revision: u64,
     map_view: worldmap::MapView,
     world_map_pixels: Vec<u8>,
     world_map_size: [u32; 2],
@@ -285,6 +293,8 @@ impl NativeApp {
         }
         self.minimap_mask = None;
         self.compass_mask = None;
+        self.minimap_key = 0;
+        self.compass_key = 0;
     }
     /// Follow the camera preferences plugins ask for; no request means the unmodified client.
     fn sync_camera_tuning(&mut self) {
@@ -471,6 +481,11 @@ impl NativeApp {
             minimap_plane: None,
             minimap_pixels: Vec::new(),
             compass_pixels: Vec::new(),
+            minimap_key: 0,
+            minimap_revision: 0,
+            minimap_generation: 0,
+            compass_key: 0,
+            compass_revision: 0,
             map_view: worldmap::MapView::default(),
             world_map_pixels: Vec::new(),
             world_map_size: [0, 0],
@@ -1096,6 +1111,7 @@ impl NativeApp {
                 {
                     self.minimap = Some(build_scene_minimap(&loaded.asset, player.tile.plane));
                     self.minimap_plane = Some(player.tile.plane);
+                    self.minimap_generation += 1;
                 }
                 if let (Some(gameframe), Some(minimap), Some(camera)) =
                     (&assets.gameframe, &self.minimap, self.scene.camera)
@@ -1124,57 +1140,87 @@ impl NativeApp {
                         &self.widget_assets,
                         self.frame.minimap_sprite,
                     ) {
-                        self.minimap_pixels = compose_minimap(
-                            &mask.pixels,
-                            mask.size[0] as usize,
-                            mask.size[1] as usize,
-                            minimap,
-                            camera_focus_tile,
-                            angle,
-                        );
-                        if let Some(loaded) = &self.scene.loaded {
-                            let relative = (
-                                camera_focus_tile.0 - f64::from(origin.x),
-                                camera_focus_tile.1 - f64::from(origin.y),
-                            );
-                            rustclient_scene::minimap::draw_dots(
-                                &mut self.minimap_pixels,
-                                &mask.pixels,
-                                [mask.size[0] as usize, mask.size[1] as usize],
-                                &loaded.asset.sources().map_dots,
-                                &dots,
-                                relative,
-                                angle,
-                            );
+                        let destination =
+                            self.state.destination().filter(|value| value.x != origin.x);
+                        let local_visible =
+                            self.state.entities().local_player().is_some_and(|player| {
+                                player
+                                    .appearance
+                                    .as_ref()
+                                    .is_none_or(|appearance| !appearance.hidden)
+                            });
+                        let mut hasher = DefaultHasher::new();
+                        self.minimap_generation.hash(&mut hasher);
+                        self.frame
+                            .minimap_sprite
+                            .map(SpriteId::get)
+                            .hash(&mut hasher);
+                        mask.size.hash(&mut hasher);
+                        camera_focus_tile.0.to_bits().hash(&mut hasher);
+                        camera_focus_tile.1.to_bits().hash(&mut hasher);
+                        angle.hash(&mut hasher);
+                        (origin.x, origin.y).hash(&mut hasher);
+                        self.scene.loaded.is_some().hash(&mut hasher);
+                        destination.map(|tile| (tile.x, tile.y)).hash(&mut hasher);
+                        self.widget_assets
+                            .destination_flag
+                            .is_some()
+                            .hash(&mut hasher);
+                        local_visible.hash(&mut hasher);
+                        for dot in &dots {
+                            (dot.tile.0.to_bits(), dot.tile.1.to_bits(), dot.frame)
+                                .hash(&mut hasher);
                         }
-                        if let (Some(destination), Some(sprite)) = (
-                            self.state.destination().filter(|value| value.x != origin.x),
-                            self.widget_assets.destination_flag.as_ref(),
-                        ) {
-                            rustclient_scene::minimap::draw_marker(
-                                &mut self.minimap_pixels,
+                        let key = hasher.finish();
+                        if key != self.minimap_key || self.minimap_pixels.is_empty() {
+                            self.minimap_key = key;
+                            self.minimap_revision += 1;
+                            self.minimap_pixels = compose_minimap(
                                 &mask.pixels,
-                                [mask.size[0] as usize, mask.size[1] as usize],
-                                sprite,
-                                (
-                                    f64::from(destination.x) + 0.5,
-                                    f64::from(destination.y) + 0.5,
-                                ),
+                                mask.size[0] as usize,
+                                mask.size[1] as usize,
+                                minimap,
                                 camera_focus_tile,
                                 angle,
                             );
-                        }
-                        if self.state.entities().local_player().is_some_and(|player| {
-                            player
-                                .appearance
-                                .as_ref()
-                                .is_none_or(|appearance| !appearance.hidden)
-                        }) {
-                            rustclient_scene::minimap::draw_local_player(
-                                &mut self.minimap_pixels,
-                                &mask.pixels,
-                                [mask.size[0] as usize, mask.size[1] as usize],
-                            );
+                            if let Some(loaded) = &self.scene.loaded {
+                                let relative = (
+                                    camera_focus_tile.0 - f64::from(origin.x),
+                                    camera_focus_tile.1 - f64::from(origin.y),
+                                );
+                                rustclient_scene::minimap::draw_dots(
+                                    &mut self.minimap_pixels,
+                                    &mask.pixels,
+                                    [mask.size[0] as usize, mask.size[1] as usize],
+                                    &loaded.asset.sources().map_dots,
+                                    &dots,
+                                    relative,
+                                    angle,
+                                );
+                            }
+                            if let (Some(destination), Some(sprite)) =
+                                (destination, self.widget_assets.destination_flag.as_ref())
+                            {
+                                rustclient_scene::minimap::draw_marker(
+                                    &mut self.minimap_pixels,
+                                    &mask.pixels,
+                                    [mask.size[0] as usize, mask.size[1] as usize],
+                                    sprite,
+                                    (
+                                        f64::from(destination.x) + 0.5,
+                                        f64::from(destination.y) + 0.5,
+                                    ),
+                                    camera_focus_tile,
+                                    angle,
+                                );
+                            }
+                            if local_visible {
+                                rustclient_scene::minimap::draw_local_player(
+                                    &mut self.minimap_pixels,
+                                    &mask.pixels,
+                                    [mask.size[0] as usize, mask.size[1] as usize],
+                                );
+                            }
                         }
                     }
                     if let Some(mask) = cached_mask(
@@ -1182,15 +1228,31 @@ impl NativeApp {
                         &self.widget_assets,
                         self.frame.compass_sprite,
                     ) {
-                        self.compass_pixels = compose_compass(
-                            gameframe.compass.image.pixels(),
-                            gameframe.compass.image.width() as usize,
-                            gameframe.compass.image.height() as usize,
-                            &mask.pixels,
-                            mask.size[0] as usize,
-                            mask.size[1] as usize,
-                            angle,
-                        );
+                        let key = {
+                            let mut hasher = DefaultHasher::new();
+                            (
+                                self.frame.compass_sprite.map(SpriteId::get),
+                                mask.size,
+                                gameframe.compass.image.width(),
+                                gameframe.compass.image.height(),
+                                angle & 2047,
+                            )
+                                .hash(&mut hasher);
+                            hasher.finish()
+                        };
+                        if key != self.compass_key || self.compass_pixels.is_empty() {
+                            self.compass_key = key;
+                            self.compass_revision += 1;
+                            self.compass_pixels = compose_compass(
+                                gameframe.compass.image.pixels(),
+                                gameframe.compass.image.width() as usize,
+                                gameframe.compass.image.height() as usize,
+                                &mask.pixels,
+                                mask.size[0] as usize,
+                                mask.size[1] as usize,
+                                angle,
+                            );
+                        }
                     }
                     if let Some(quad) = self
                         .frame
@@ -1315,20 +1377,24 @@ impl NativeApp {
                             minimap: dynamic_image(
                                 &self.minimap_pixels,
                                 self.minimap_mask.as_ref(),
+                                self.minimap_revision,
                             ),
                             compass: dynamic_image(
                                 &self.compass_pixels,
                                 self.compass_mask.as_ref(),
+                                self.compass_revision,
                             ),
                             world_map: rustclient_renderer::DynamicImage {
                                 pixels: &self.world_map_pixels,
                                 width: self.world_map_size[0],
                                 height: self.world_map_size[1],
+                                revision: 0,
                             },
                             world_map_overview: rustclient_renderer::DynamicImage {
                                 pixels: &self.world_map_overview_pixels,
                                 width: self.world_map_overview_size[0],
                                 height: self.world_map_overview_size[1],
+                                revision: 0,
                             },
                         },
                         window.scale_factor(),
@@ -1401,6 +1467,7 @@ fn cached_mask<'a>(
 fn dynamic_image<'a>(
     pixels: &'a [u8],
     mask: Option<&(SpriteId, CanvasImage)>,
+    revision: u64,
 ) -> rustclient_renderer::DynamicImage<'a> {
     mask.filter(|(_, mask)| {
         u64::from(mask.size[0]) * u64::from(mask.size[1]) * 4 == pixels.len() as u64
@@ -1410,6 +1477,7 @@ fn dynamic_image<'a>(
             pixels,
             width: mask.size[0],
             height: mask.size[1],
+            revision,
         }
     })
 }
@@ -1543,6 +1611,7 @@ impl NativeApp {
                     self.minimap =
                         Some(build_scene_minimap(&scene.asset, placement.position.plane));
                     self.minimap_plane = Some(placement.position.plane);
+                    self.minimap_generation += 1;
                     self.performance
                         .stage(performance::Stage::MinimapBuild, started);
                 }
@@ -1698,6 +1767,8 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                     }
                     self.minimap_mask = None;
                     self.compass_mask = None;
+                    self.minimap_key = 0;
+                    self.compass_key = 0;
                     self.widget_requested.absorb(&request);
                     self.request_widget_assets();
                     if let Some(window) = &self.window {

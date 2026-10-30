@@ -169,7 +169,7 @@ pub(crate) struct InstanceModel {
     pub faces: Vec<rustclient_cache::world::ModelFace>,
     textures: Vec<[u32; 3]>,
     skins: Vec<Option<u8>>,
-    weights: Vec<Vec<(u8, u8)>>,
+    weights: rustclient_cache::world::VertexWeights,
 }
 pub(crate) fn construct(
     asset: &SceneAsset,
@@ -182,7 +182,7 @@ pub(crate) fn construct(
         faces: Vec::new(),
         textures: Vec::new(),
         skins: Vec::new(),
-        weights: Vec::new(),
+        weights: rustclient_cache::world::VertexWeights::default(),
     };
     let mut shared = BTreeMap::new();
     let mirror = def.mirrored ^ (orientation > 3);
@@ -209,7 +209,7 @@ pub(crate) fn construct(
                     u32::try_from(model.vertices.len()).expect("bounded source combination");
                 model.vertices.push(point);
                 model.skins.push(source.vertex_skins[vertex]);
-                model.weights.push(source.skeletal_weights[vertex].clone());
+                model.weights.push(source.skeletal_weights.get(vertex));
                 index
             });
             mapping.push(index);
