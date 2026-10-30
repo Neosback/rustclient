@@ -43,8 +43,16 @@ pub use camera::{
 };
 
 mod world_capture;
+mod world_upload;
+#[cfg(not(target_arch = "wasm32"))]
+pub use surface::{WorldStagingTiming, measure_world_staging};
+#[cfg(not(target_arch = "wasm32"))]
+pub use world_capture::measure_world_replacements;
+#[cfg(not(target_arch = "wasm32"))]
+pub use world_capture::{WorldUpdateTiming, measure_prepared_world_updates};
 pub use world_capture::{
     capture_world, capture_world_at, capture_world_resources, capture_world_with,
 };
+pub use world_upload::{PreparedWorldMesh, WorldUpdate};
 
 pub use world::WorldGeometryStats;

@@ -1,4 +1,4 @@
-# Classic GPU audit — updated 2026-10-29
+# Classic GPU audit — updated 2026-10-30
 
 **Partial implementation. Not ready to declare the classic plugin complete or begin a parity claim for
 117HD.** The [frozen ledger](gpu-audit.json) covers all 16 source settings and 83 Java/resource/test/
@@ -85,6 +85,18 @@ encoded world/UI composition boundary. Keep one scene and actor representation a
 render-policy services; external plugins do not receive GPU handles.
 
 ## Remaining gates
+
+[The prepared-update checkpoint](../UPDATE-OPTIMIZATION-2026-10-30.md) moves packing, texture
+identity and draw-metadata construction onto the native scene worker and reuses GPU buffer
+capacity. Identical actor/scenery poses retain their uploads. Incremental dirty zones, hard
+upload-byte budgets, meaningful `numThreads` and live pacing acceptance remain open; this
+does not close the classic upload-scheduling gate.
+
+[The update review](../UPDATE-SYSTEM-2026-10-30.md) identifies full-scene rebuilding, event-thread
+compaction/metadata/upload and missing dirty-zone residency as door-update latency causes.
+Post-cycle coalescing, obsolete-result rejection and same-scene actor retention are implemented;
+these do not complete upload scheduling/`numThreads`. Live door pacing and native/browser
+acceptance remain open. No software renderer is introduced.
 
 The ledger retains 9 classic acceptance obligations. The historical hd-budget obligation is now
 `futureHdGates`, outside the classic completion denominator. Normal-map filtering and actual 240 zone admission are

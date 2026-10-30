@@ -336,7 +336,7 @@ impl LoadedPlugin {
         self.enabled && (self.required || self.status() != LifecycleStatus::Faulted)
     }
 
-    /// Consecutive faults recorded for this plugin.
+    /// Largest consecutive failure streak across the separate callback phases.
     #[must_use]
     pub fn faults(&self) -> u32 {
         self.lifecycle.streaks.iter().copied().max().unwrap_or(0)
@@ -345,6 +345,7 @@ impl LoadedPlugin {
 
 /// A registered set of plugins with mediation and fault isolation.
 pub struct PluginSet {
+    registration_sequence: u64,
     plugins: Vec<LoadedPlugin>,
     fault_limit: u32,
 }
@@ -361,6 +362,7 @@ impl PluginSet {
     pub fn new() -> Self {
         Self {
             plugins: Vec::new(),
+            registration_sequence: 0,
             fault_limit: 3,
         }
     }
@@ -370,6 +372,7 @@ impl PluginSet {
     pub fn with_fault_limit(fault_limit: u32) -> Self {
         Self {
             plugins: Vec::new(),
+            registration_sequence: 0,
             fault_limit,
         }
     }
@@ -396,10 +399,23 @@ impl PluginSet {
         manifest
             .check_api(PluginApiVersion::current())
             .map_err(|error| PluginFault::new(FaultKind::Contract, error.to_string()))?;
+        let registration = self.registration_sequence.checked_add(1).ok_or_else(|| {
+            PluginFault::new(
+                FaultKind::Contract,
+                "plugin registration identity exhausted",
+            )
+        })?;
+        self.registration_sequence = registration;
         self.plugins.push(LoadedPlugin {
             manifest,
             instance,
-            lifecycle: lifecycle::Lifecycle::default(),
+            lifecycle: lifecycle::Lifecycle {
+                activation: ActivationId {
+                    registration,
+                    generation: 0,
+                },
+                ..Default::default()
+            },
             enabled: true,
             required: false,
             config: PluginConfig::default(),

@@ -9,7 +9,9 @@ impl SidebarMetrics {
     pub const OPEN: u32 = Self::PANEL + Self::RAIL;
     pub const TAB_HEIGHT: f32 = 26.;
     pub const ICON: f32 = 16.;
-    pub const PADDING: f32 = 6.;
+    pub const PADDING: f32 = 10.;
+    pub const HEADER_TAB_HEIGHT: f32 = 34.;
+    pub const HEADER_GAP: f32 = 7.;
     pub const FONT: f32 = 16.;
     /// Round each logical extent once; callers use this split for clipping and pointer origins.
     #[must_use]

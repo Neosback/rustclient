@@ -105,7 +105,49 @@ Cache and projection work stay off the event thread. Apply source-neutral decode
 updates through the existing GameState gateway; failed operations remain atomic.
 Discard stale async results and keep disconnect available on scene failures.
 
+## Update publication continuation (2026-10-30)
+
+Coalesce projection requests after committed client-cycle work, including complete packet groups
+and script effects. Unrelated variables/cycles must not trigger scene rebuilding. Reject obsolete
+completions before GPU, picking or minimap publication. Distinguish scenery-worker activations;
+old completions cannot release a newer worker's in-flight slot. Preserve compatible newer poses
+and same-asset actor geometry/pending actor uploads during structural scenery installation.
+This retention requires an explicit refresh inside the same live scene. A new scene/session
+installation clears actors even when it reuses identical cache asset IDs.
+
+Full-scene rebuilding and event-thread compaction/upload remain performance debts. The immutable
+minimap has no live-location input: retain output for the same asset/plane, while keeping live
+minimap/collision invalidation incomplete. Incremental work must preserve initial-bake versus live
+replacement behavior, crossing footprints, neighboring normals, decorations, roof/bridge tags,
+picking and global ordering. See [the update review](../reference/UPDATE-SYSTEM-2026-10-30.md).
+
 ## Acceptance
+
+### Prepared update contract (2026-10-30)
+
+Renderer owns a portable, CPU-only prepared mesh that owns its original immutable mesh together
+with lossless packing, validated draw metadata and texture identity. It exposes read-only mesh
+inspection; consuming publication returns the original CPU mesh for picking/device recovery.
+Application may carry a generic mesh payload through `LoadedScene`, without depending on renderer.
+Native prepares on the scene worker and rejects obsolete results before GPU writes. Web uses the
+same preparation/publication contract without requiring native threads or GPU handles in snapshots.
+
+Publication checks current device limits before changing resources, reuses sufficient buffer
+capacity and preserves explicit scene-versus-scenery actor lifetimes. Reconstructing the device
+cannot invalidate the CPU prepared payload. Newer compatible dynamic poses must not be rewound.
+Preparation and publication costs, buffer capacity and correctness are measured separately; moving
+work off the event thread does not count as reduced total work or incremental zone parity.
+
+Point location queries use immutable catalog addresses and committed overrides without allocating
+an entire effective scene. Batch extraction preserves original source order, duplicate location
+keys, appended replacement order, morph selectors and existing malformed-input behavior. Derived
+indices are disposable catalog lookup aids, never another mutable semantic scene.
+
+Actor/scenery staging may skip identical GPU inputs, including model spans, depth policy and full
+sorted-model admission metadata. It must not skip semantic commits, picking/label updates, shader
+clock uniforms or camera-dependent ordering. An unknown/reconstructed GPU lifetime still receives
+its first payload even when empty. Failed uploads remain pending for retry; duplicate pending
+inputs cannot erase dirty work. Changed poses retain the existing latest-wins staging behavior.
 
 Independent structural goldens for textures, terrain colors, models/normal merges,
 lighting, UV/alpha/bias, morphs, animation, roofs and draw order. Camera traces must

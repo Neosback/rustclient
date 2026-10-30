@@ -42,7 +42,7 @@ fn retained_ordering_trace() {
         let before = gpu.stats();
         for index in 0..600 {
             if force {
-                gpu.last_sort = None;
+                gpu.data.last_sort = None;
             }
             let started = Instant::now();
             gpu.sort(&queue, view);
@@ -61,9 +61,9 @@ fn retained_ordering_trace() {
             gpu.stats().ordering_reuses - before.ordering_reuses
         );
         if let Some(expected) = &expected {
-            assert_eq!(&gpu.order, expected);
+            assert_eq!(&gpu.data.order, expected);
         } else {
-            expected = Some(gpu.order.clone());
+            expected = Some(gpu.data.order.clone());
         }
     }
     // Geometry updates with the same eye invalidate cached ordering.

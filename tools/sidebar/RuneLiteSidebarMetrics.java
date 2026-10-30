@@ -8,6 +8,9 @@ import net.runelite.client.ui.laf.RuneLiteLAF;
 import net.runelite.client.util.ImageUtil;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.components.ToggleButton;
+import net.runelite.client.ui.components.materialtabs.MaterialTab;
+import net.runelite.client.ui.components.materialtabs.MaterialTabGroup;
+import javax.swing.border.EmptyBorder;
 
 /** Diagnostic against the pinned shell classes, never the gamepack or live account. */
 public final class RuneLiteSidebarMetrics {
@@ -29,12 +32,22 @@ public final class RuneLiteSidebarMetrics {
                 tabs.setSize(opened.width, 503);
                 tabs.doLayout();
                 Rectangle tab = tabs.getBoundsAt(0);
+                MaterialTabGroup header = new MaterialTabGroup();
+                header.setLayout(new GridLayout(1,0,7,7));
+                header.setBorder(new EmptyBorder(10,10,0,10));
+                MaterialTab first = null;
+                for(String icon : new String[]{"config_icon_lg.png", "profile_icon.png", "plugin_hub_icon.png"}) {
+                    MaterialTab item = new MaterialTab(new ImageIcon(ImageIO.read(RuneLiteSidebarMetrics.class.getClassLoader().getResource("net/runelite/client/plugins/config/"+icon))),header,null);
+                    header.addTab(item); if(first==null) first=item;
+                }
+                header.select(first); header.setSize(242,header.getPreferredSize().height); header.doLayout();
+                Rectangle headerTab = first.getBounds();
                 Font font = UIManager.getFont("Label.font");
                 FontMetrics fm = tabs.getFontMetrics(font);
                 System.out.printf(java.util.Locale.ROOT,
-                    "{\"rail\":%d,\"open\":%d,\"panel\":%d,\"innerPanel\":%d,\"scrollAllowance\":%d,\"scrollbar\":%s,\"tab\":[%d,%d,%d,%d],\"font\":\"%s\",\"fontSize\":%d,\"fontHeight\":%d,\"configurationWidth\":%d}%n",
+                    "{\"rail\":%d,\"open\":%d,\"panel\":%d,\"innerPanel\":%d,\"scrollAllowance\":%d,\"scrollbar\":%s,\"tab\":[%d,%d,%d,%d],\"font\":\"%s\",\"fontSize\":%d,\"fontHeight\":%d,\"configurationWidth\":%d,\"header\":[%d,%d,%d,%d]}%n",
                     closed.width, opened.width, opened.width-closed.width, PluginPanel.PANEL_WIDTH, PluginPanel.SCROLLBAR_WIDTH,
-                    UIManager.get("ScrollBar.width"), tab.x,tab.y,tab.width,tab.height,font.getFamily(),font.getSize(),fm.getHeight(),fm.stringWidth("Configuration"));
+                    UIManager.get("ScrollBar.width"), tab.x,tab.y,tab.width,tab.height,font.getFamily(),font.getSize(),fm.getHeight(),fm.stringWidth("Configuration"),headerTab.x,headerTab.y,headerTab.width,headerTab.height);
                 if (args.length > 0) {
                     content.getWrappedPanel().setSize(242,503);
                     layout(content.getWrappedPanel());

@@ -21,6 +21,8 @@ pub struct PluginPanel {
     pub required: bool,
     /// Whether an optional plugin is switched on; always true for required services.
     pub enabled: bool,
+    /// Why this catalog entry cannot activate in the current composition.
+    pub enablement_unavailable: Option<String>,
     /// Every setting except the plugin's own on/off switch.
     pub settings: Vec<SettingView>,
 }
@@ -37,6 +39,7 @@ impl PluginPanel {
             tags: schema.tags.clone(),
             required: schema.required,
             enabled: configuration.enabled(),
+            enablement_unavailable: availability(ENABLED_KEY),
             settings: schema
                 .settings
                 .iter()

@@ -78,13 +78,10 @@ enum LoadEvent {
     DynamicReady(
         u64,
         u64,
-        rustclient_model::ClientCycle,
+        Box<rustclient_scene::SceneryInputs>,
         Box<Result<rustclient_scene::SceneGeometry, String>>,
     ),
-    SceneLoaded(
-        u64,
-        Box<Result<rustclient_application::LoadedScene, String>>,
-    ),
+    SceneLoaded(u64, Box<Result<scene::PreparedScene, String>>),
 }
 
 #[expect(
@@ -358,13 +355,27 @@ impl NativeApp {
         if wanted != self.scene.roof_areas {
             self.scene.roof_areas = wanted;
         }
+    }
+    /// Publish rendering work after committed client-cycle work, never from an intermediate
+    /// packet in a group. Semantic operations and script listeners still run in wire order.
+    fn schedule_scene_projection(&mut self) {
         if self.scene.loading {
             return;
         }
-        let Some(loaded) = &self.scene.loaded else {
+        let Some(loaded) = &mut self.scene.loaded else {
             return;
         };
-        if loaded.projection_inputs.roof_areas == self.scene.roof_areas {
+        let scenery = self.state.scenery();
+        if loaded.projection_generation != scenery.generation()
+            && loaded
+                .projection_inputs
+                .matches_state(scenery, &loaded.asset)
+        {
+            loaded.projection_generation = scenery.generation();
+        }
+        if loaded.projection_generation == scenery.generation()
+            && loaded.projection_inputs.roof_areas == self.scene.roof_areas
+        {
             return;
         }
         let (Some(placement), asset) = (self.state.initial_placement(), loaded.asset.clone())
@@ -378,7 +389,7 @@ impl NativeApp {
             self.scene.generation,
             self.proxy.clone(),
         ) {
-            eprintln!("roof projection: {error}");
+            eprintln!("scenery projection: {error}");
         }
     }
     #[expect(
@@ -693,7 +704,6 @@ impl NativeApp {
                 self.scene
                     .motion
                     .observe(self.state.entities(), self.state.scenery().cycle());
-                self.request_widget_assets();
                 // SPEC-0021 lifetime: a scene change or the loss of the interface root ends any menu.
                 if previous_scene != self.state.loaded_scene()
                     || self.state.interfaces().root().is_none()
@@ -706,29 +716,6 @@ impl NativeApp {
                     self.minimap = None;
                 } else if rebuild && self.state.loaded_scene().is_some() {
                     self.acknowledge_map();
-                }
-                if let Some(loaded) = &mut self.scene.loaded {
-                    let mut current: rustclient_scene::SceneryInputs = self.state.scenery().into();
-                    current.retain_scene_dependencies(&loaded.asset);
-                    if loaded.projection_inputs.same_geometry(&current) {
-                        loaded.projection_generation = current.generation;
-                    }
-                }
-                if !self.scene.loading
-                    && let Some(loaded) = &self.scene.loaded
-                    && loaded.projection_generation != self.state.scenery().generation()
-                    && let Some(placement) = self.state.initial_placement()
-                {
-                    let asset = loaded.asset.clone();
-                    if let Err(e) = self.scene.reproject(
-                        asset,
-                        placement,
-                        self.scene.scenery_inputs(self.state.scenery()),
-                        self.scene.generation,
-                        self.proxy.clone(),
-                    ) {
-                        eprintln!("scenery projection: {e}");
-                    }
                 }
                 if self.state.initial_placement().is_some()
                     && let Some(window) = &self.window
@@ -1039,6 +1026,7 @@ impl NativeApp {
 
                     if let Some(scripts) = &self.scripts {
                         let dragged = self.dragged_widget();
+                        let started = Instant::now();
                         match scripts.project_widgets(
                             &self.state,
                             &self.widget_assets,
@@ -1060,6 +1048,8 @@ impl NativeApp {
                                 self.widget_tree.nodes.clear();
                             }
                         }
+                        self.performance
+                            .stage(performance::Stage::WidgetProjection, started);
                     }
                 }
                 let visibility = self.scene_visibility(&window);
@@ -1424,30 +1414,81 @@ fn dynamic_image<'a>(
     })
 }
 impl NativeApp {
+    /// Reject obsolete worker output before any GPU, picking or minimap publication.
+    fn discard_obsolete_scene<M>(
+        &mut self,
+        scene: &rustclient_application::LoadedScene<M>,
+    ) -> bool {
+        if scene
+            .projection_inputs
+            .matches_state(self.state.scenery(), &scene.asset)
+            && scene.projection_inputs.roof_areas == self.scene.roof_areas
+        {
+            return false;
+        }
+        self.performance
+            .event(|| "discarded obsolete scenery projection".into());
+        if let Some(loaded) = &mut self.scene.loaded
+            && loaded
+                .projection_inputs
+                .matches_state(self.state.scenery(), &loaded.asset)
+            && loaded.projection_inputs.roof_areas == self.scene.roof_areas
+        {
+            // A -> B -> A while B was building needs no replacement of A.
+            loaded.projection_generation = self.state.scenery().generation();
+            return true;
+        }
+        if let Some(placement) = self.state.initial_placement()
+            && let Err(error) = self.scene.reproject(
+                scene.asset.clone(),
+                placement,
+                self.scene.scenery_inputs(self.state.scenery()),
+                self.scene.generation,
+                self.proxy.clone(),
+            )
+        {
+            eprintln!("scenery projection: {error}");
+        }
+        true
+    }
+    /// Keep compatible newer poses without exposing mutable static prepared geometry.
+    fn preserve_scene_pose(
+        &mut self,
+        scene: &mut rustclient_application::LoadedScene,
+    ) -> Result<(), rustclient_renderer::RenderError> {
+        if let Some(old) = &mut self.scene.loaded
+            && old
+                .projection_inputs
+                .same_geometry(&scene.projection_inputs)
+            && old.projection_inputs.roof_areas == scene.projection_inputs.roof_areas
+            && old.projection_inputs.interpolation == scene.projection_inputs.interpolation
+            && self.scene.dynamic_cycle > scene.projection_inputs.cycle
+        {
+            std::mem::swap(&mut old.mesh.dynamic, &mut scene.mesh.dynamic);
+            scene.projection_inputs.cycle = self.scene.dynamic_cycle;
+            if let Some(renderer) = &mut self.renderer {
+                renderer.set_world_dynamic(scene.mesh.asset, &scene.mesh.dynamic)?;
+            }
+        }
+        Ok(())
+    }
     fn finish_scene(
         &mut self,
         event_loop: &ActiveEventLoop,
-        result: Result<rustclient_application::LoadedScene, String>,
+        result: Result<scene::PreparedScene, String>,
     ) {
         self.scene.loading = false;
         match result {
             Ok(mut scene) => {
-                let mut current: rustclient_scene::SceneryInputs = self.state.scenery().into();
-                current.retain_scene_dependencies(&scene.asset);
-                if scene.projection_inputs.same_geometry(&current) {
-                    scene.projection_generation = current.generation;
+                if self.discard_obsolete_scene(&scene) {
+                    return;
                 }
-                let stale = scene.projection_generation != self.state.scenery().generation();
-                if stale {
-                    // Install the already-built projection immediately; reprojecting
-                    // with newer scenery inputs continues in the background.
-                    eprintln!("scenery projection is stale; installing and reprojecting");
-                }
+                scene.projection_generation = self.state.scenery().generation();
                 let first = self.state.loaded_scene().is_none();
                 eprintln!(
                     "Spawn scene: {:?}; {} vertices; {} auxiliary map files",
-                    scene.mesh.stats,
-                    scene.mesh.vertex_count(),
+                    scene.mesh.mesh().stats,
+                    scene.mesh.mesh().vertex_count(),
                     scene.asset.sources().auxiliary_map_files
                 );
                 for warning in &scene.asset.sources().size_hint_warnings {
@@ -1461,53 +1502,56 @@ impl NativeApp {
                     eprintln!("scene commit: {error}");
                     return;
                 }
-                if let Some(renderer) = &mut self.renderer
-                    && let Err(error) = renderer.set_world(&scene.mesh)
-                {
-                    self.fail(event_loop, &error.to_string());
-                    return;
-                }
                 let resources_changed = self
                     .scene
                     .loaded
                     .as_ref()
                     .is_none_or(|old| !std::sync::Arc::ptr_eq(&old.asset, &scene.asset));
+                let upload_started = Instant::now();
+                // Extending the cache catalog inside a live scene restarts resource workers,
+                // but does not start a new map/session or erase its actors.
+                let update = if first || self.scene.loaded.is_none() {
+                    rustclient_renderer::WorldUpdate::Scene
+                } else {
+                    rustclient_renderer::WorldUpdate::Scenery
+                };
+                let mut scene = match scene.try_map_mesh(|prepared| match &mut self.renderer {
+                    Some(renderer) => renderer.set_prepared_world(prepared, update),
+                    None => Ok(prepared.into_mesh()),
+                }) {
+                    Ok(scene) => scene,
+                    Err(error) => {
+                        self.fail(event_loop, &error.to_string());
+                        return;
+                    }
+                };
+                if let Err(error) = self.preserve_scene_pose(&mut scene) {
+                    self.fail(event_loop, &error.to_string());
+                    return;
+                }
+                self.performance
+                    .stage(performance::Stage::SceneUpload, upload_started);
                 self.scene.ensure_workers(
                     scene.asset.clone(),
                     resources_changed,
                     self.proxy.clone(),
                 );
-                if let Some(placement) = self.state.initial_placement() {
+                if let Some(placement) = self.state.initial_placement()
+                    && (resources_changed || self.minimap_plane != Some(placement.position.plane))
+                {
+                    let started = Instant::now();
                     self.minimap =
                         Some(build_scene_minimap(&scene.asset, placement.position.plane));
                     self.minimap_plane = Some(placement.position.plane);
+                    self.performance
+                        .stage(performance::Stage::MinimapBuild, started);
                 }
+                self.scene.dynamic_cycle = scene.projection_inputs.cycle;
                 self.scene.loaded = Some(scene);
                 if first {
                     self.acknowledge_map();
                     self.scene.reset_camera();
                     self.next_step = Instant::now() + STEP;
-                }
-                if stale {
-                    let asset = self
-                        .scene
-                        .loaded
-                        .as_ref()
-                        .map(|loaded| loaded.asset.clone());
-                    if let (Some(placement), Some(asset)) = (self.state.initial_placement(), asset)
-                    {
-                        let inputs = self.scene.scenery_inputs(self.state.scenery());
-                        let generation = self.scene.generation;
-                        if let Err(e) = self.scene.reproject(
-                            asset,
-                            placement,
-                            inputs,
-                            generation,
-                            self.proxy.clone(),
-                        ) {
-                            eprintln!("scenery projection: {e}");
-                        }
-                    }
                 }
                 if let Some(window) = &self.window {
                     window.set_title("RustClient - OpenRune spawn scene");
@@ -1686,14 +1730,22 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                     self.enqueue_network_event(event);
                 }
             }
-            LoadEvent::DynamicReady(session, generation, cycle, result) => {
-                if session == self.scene.generation {
+            LoadEvent::DynamicReady(session, worker, inputs, result) => {
+                let cycle = inputs.cycle;
+                if session == self.scene.generation
+                    && worker == self.scene.animator_generation
+                    && self.scene.animator_in_flight == Some(cycle)
+                {
                     self.scene.animator_in_flight = None;
                 }
                 if session == self.scene.generation
-                    && generation == self.state.scenery().generation()
+                    && worker == self.scene.animator_generation
                     && cycle >= self.scene.dynamic_cycle
-                    && !self.scene.loading
+                    && let Some(loaded) = &self.scene.loaded
+                    && inputs.matches_state(self.state.scenery(), &loaded.asset)
+                    && loaded.projection_inputs.same_geometry(&inputs)
+                    && inputs.roof_areas == loaded.projection_inputs.roof_areas
+                    && inputs.interpolation == self.scene.interpolation
                 {
                     match *result {
                         Ok(geometry) => {
@@ -1708,6 +1760,9 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                                     return;
                                 }
                                 loaded.mesh.dynamic = geometry;
+                                loaded.projection_inputs.cycle = cycle;
+                                loaded.projection_inputs.interpolation =
+                                    inputs.interpolation.clone();
                                 self.scene.dynamic_cycle = cycle;
                                 if let Some(window) = &self.window {
                                     window.request_redraw();
@@ -2319,6 +2374,13 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                 self.sync_camera_tuning();
                 self.sync_sprite_overrides();
                 self.sync_hidden_actors();
+                self.schedule_scene_projection();
+                // Collect the final widget dependencies once for this cycle batch, rather
+                // than walking the same widget tree after each unrelated inbound packet.
+                let started = Instant::now();
+                self.request_widget_assets();
+                self.performance
+                    .stage(performance::Stage::WidgetAssets, started);
             }
             // A hidden window presents nothing: posing scenery and entities for it is wasted
             // work, and the next visible cycle rebuilds both from authoritative state.

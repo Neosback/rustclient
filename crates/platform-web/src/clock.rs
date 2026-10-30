@@ -11,6 +11,8 @@ pub struct BrowserClock {
 
 impl BrowserClock {
     /// Acquire browser clock capabilities from the active window.
+    /// # Errors
+    /// Reports an unavailable browser window or Performance clock.
     pub fn new() -> Result<Self, BrowserClockError> {
         let window = web_sys::window().ok_or(BrowserClockError::WindowUnavailable)?;
         let performance = window

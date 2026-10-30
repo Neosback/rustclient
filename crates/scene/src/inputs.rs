@@ -33,18 +33,19 @@ impl SceneryInputs {
     /// Restrict variable dependencies to this immutable scene's morph selectors.
     /// Unrelated server timers must not invalidate a background terrain build.
     pub fn retain_scene_dependencies(&mut self, asset: &crate::SceneAsset) {
-        let mut wanted = std::collections::BTreeSet::new();
-        for def in asset.sources().objects.values() {
-            if let Some(morph) = &def.morphs {
-                if let Some(varp) = morph.varp {
-                    wanted.insert(varp);
-                }
-                if let Some(bit) = morph.varbit.and_then(|id| asset.sources().varbits.get(&id)) {
-                    wanted.insert(bit.varp);
-                }
-            }
-        }
-        self.variables.retain(|id, _| wanted.contains(id));
+        self.variables
+            .retain(|id, _| asset.scenery_varps.contains(id));
+    }
+    /// Check committed geometry dependencies without allocating a second state snapshot.
+    /// Cycle and unrelated variables do not change geometry; absent and explicit zero values
+    /// remain distinct, matching [`Self::same_geometry`] after dependency filtering.
+    #[must_use]
+    pub fn matches_state(&self, state: &SceneryState, asset: &crate::SceneAsset) -> bool {
+        self.locations == *state.locations()
+            && asset
+                .scenery_varps
+                .iter()
+                .all(|id| self.variables.get(id) == state.variables().get(id))
     }
     /// Whether both inputs place the same scenery; roof areas retag geometry and are compared
     /// separately.

@@ -66,3 +66,34 @@ impl GpuSettings {
         settings
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn shared_adapter_preserves_source_defaults_and_typed_preferences() {
+        assert_eq!(
+            GpuSettings::from_preferences(|_| None),
+            GpuSettings::default()
+        );
+        let settings = GpuSettings::from_preferences(|key| match key {
+            "drawDistance" => Some(GpuPreference::Integer(64)),
+            "antiAliasingMode" => Some(GpuPreference::Choice("MSAA_8")),
+            "unlockFps" => Some(GpuPreference::Boolean(false)),
+            "fogDepth" => Some(GpuPreference::Choice("mistyped")),
+            _ => None,
+        });
+        assert_eq!(settings.draw_distance, 64);
+        assert_eq!(settings.anti_aliasing, AntiAliasing::Msaa8);
+        assert!(!settings.unlock_fps);
+        assert_eq!(settings.fog_depth, GpuSettings::default().fog_depth);
+        let effective = settings.resolve(&super::super::GpuCapabilities::default());
+        assert_eq!(effective.frame_cap, 50);
+        assert!(
+            effective
+                .deviations
+                .iter()
+                .any(|d| d.key == "antiAliasingMode")
+        );
+    }
+}

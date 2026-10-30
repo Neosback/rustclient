@@ -368,3 +368,48 @@ fn no_subscriber_advances_history_without_replaying_events_when_one_appears() {
         "subscribing replayed an already committed change: {events:?}"
     );
 }
+
+#[test]
+fn observing_with_no_grants_prevents_a_synthetic_login_when_a_plugin_enables_later() {
+    let state = session();
+    let mut projector = Projector::new();
+    let frame = Frame::default();
+    let sources = Sources::default();
+    let _ =
+        projector.project_with_events(&state, &frame, &sources, &CapabilitySet::default(), false);
+    let wanted = [Capability::GameReadClient].into_iter().collect();
+    let bootstrap = projector.snapshot(&state, &frame, &sources, &wanted);
+    assert_ne!(bootstrap.client.state, GameStateKind::LoginScreen);
+    let (_, events) = projector.project_with_events(&state, &frame, &sources, &wanted, true);
+    assert!(
+        events.is_empty(),
+        "enabling a plugin manufactured a session transition: {events:?}"
+    );
+}
+
+#[test]
+fn query_only_categories_keep_current_snapshots_without_events_or_replay_on_subscription() {
+    let mut state = session();
+    let mut projector = Projector::new();
+    let frame = Frame::default();
+    let sources = Sources::default();
+    let query = everything();
+    let interest = [Capability::GameReadClient].into_iter().collect();
+    let _ = projector.project_interested(&state, &frame, &sources, &query, Some(&interest));
+    apply(
+        &mut state,
+        SemanticOperation::Scenery(SceneryOperation::SetVariable {
+            id: VarpId::new(42),
+            value: 7,
+        }),
+    );
+    let (snapshot, events) =
+        projector.project_interested(&state, &frame, &sources, &query, Some(&interest));
+    assert_eq!(snapshot.vars.varp(42), 7);
+    assert!(events.is_empty());
+    let (_, events) = projector.project_interested(&state, &frame, &sources, &query, Some(&query));
+    assert!(
+        events.is_empty(),
+        "subscribing replayed query-only history: {events:?}"
+    );
+}

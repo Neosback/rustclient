@@ -2,6 +2,18 @@
 pub const OPEN_RS_PNG: &[u8] = include_bytes!("../assets/runelite/open_rs.png");
 pub(crate) const ICONS: &[(&str, &[u8])] = &[
     (
+        "config_icon_lg",
+        include_bytes!("../assets/runelite/config_icon_lg.png"),
+    ),
+    (
+        "profile_icon",
+        include_bytes!("../assets/runelite/profile_icon.png"),
+    ),
+    (
+        "plugin_hub_icon",
+        include_bytes!("../assets/runelite/plugin_hub_icon.png"),
+    ),
+    (
         "config_icon",
         include_bytes!("../assets/runelite/config_icon.png"),
     ),

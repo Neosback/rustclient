@@ -11,34 +11,35 @@ impl GeometryGpu {
         reason = "bounded fine-coordinate projection and reference truncation toward zero"
     )]
     pub fn sort(&mut self, queue: &wgpu::Queue, view: ModelView) -> bool {
-        if self.last_sort == Some(view) {
-            self.ordering_reuses += 1;
+        let data = &mut self.data;
+        if data.last_sort == Some(view) {
+            data.ordering_reuses += 1;
             return false;
         }
-        self.ordering_runs += 1;
+        data.ordering_runs += 1;
         let eye = Vec3::from_array(view.eye().map(|v| v as f32));
         let [ys, yc, ps, pc] = view.coefficients();
         let direction = Vec3::new(-ys * pc, ps, yc * pc);
-        self.model_order.clear();
-        self.model_order.extend(
-            self.models
+        data.model_order.clear();
+        data.model_order.extend(
+            data.models
                 .iter()
                 .enumerate()
                 .filter(|(_, m)| !m.faces.is_empty())
                 .map(|(i, _)| i),
         );
-        self.model_order.sort_unstable_by(|&a, &b| {
-            self.models[b]
+        data.model_order.sort_unstable_by(|&a, &b| {
+            data.models[b]
                 .center
                 .distance_squared(eye)
-                .total_cmp(&self.models[a].center.distance_squared(eye))
+                .total_cmp(&data.models[a].center.distance_squared(eye))
                 .then(a.cmp(&b))
         });
-        self.sorted.clear();
-        for &model in &self.model_order {
-            let model = &self.models[model];
+        data.sorted.clear();
+        for &model in &data.model_order {
+            let model = &data.models[model];
             if let Some(span) = &model.opaque_span {
-                self.opaque_order[span.clone()].fill(0);
+                data.opaque_order[span.clone()].fill(0);
             }
             if model
                 .source
@@ -47,7 +48,7 @@ impl GeometryGpu {
             {
                 continue;
             }
-            self.face_depths.clear();
+            data.face_depths.clear();
             for (index, face) in model.faces.iter().enumerate() {
                 let depth = if let Some(source) = &model.source {
                     let points = face
@@ -60,47 +61,47 @@ impl GeometryGpu {
                 } else {
                     (face.center - eye).dot(direction) as i32
                 };
-                self.face_depths.push(FaceDepth {
+                data.face_depths.push(FaceDepth {
                     index,
                     priority: face.priority,
                     depth,
                 });
             }
             if model.source.is_some() && model.depth_policy == ModelDepthPolicy::DepthWrite {
-                self.face_depths
+                data.face_depths
                     .sort_unstable_by(|a, b| b.depth.cmp(&a.depth).then(a.index.cmp(&b.index)));
-                self.face_order.clear();
-                self.face_order
-                    .extend(self.face_depths.iter().map(|face| face.index));
+                data.face_order.clear();
+                data.face_order
+                    .extend(data.face_depths.iter().map(|face| face.index));
             } else {
-                face_priority::order(&mut self.face_depths, &mut self.face_order);
+                face_priority::order(&mut data.face_depths, &mut data.face_order);
             }
             let mut opaque_cursor = model.opaque_span.as_ref().map_or(0, |span| span.start);
-            for &index in &self.face_order {
+            for &index in &data.face_order {
                 let face = model.faces[index];
                 if face.alpha {
-                    self.sorted.push(TransparentTriangle {
+                    data.sorted.push(TransparentTriangle {
                         center: model.center,
                         ..face
                     });
                 } else if model.opaque_span.is_some() {
-                    self.opaque_order[opaque_cursor..opaque_cursor + 3]
+                    data.opaque_order[opaque_cursor..opaque_cursor + 3]
                         .copy_from_slice(&face.indices);
                     opaque_cursor += 3;
                 }
             }
         }
-        self.order.clear();
-        for face in &self.sorted {
-            self.order.extend_from_slice(&face.indices);
+        data.order.clear();
+        for face in &data.sorted {
+            data.order.extend_from_slice(&face.indices);
         }
-        if !self.order.is_empty() {
-            queue.write_buffer(&self.transparent, 0, bytemuck::cast_slice(&self.order));
+        if !data.order.is_empty() {
+            queue.write_buffer(&self.transparent, 0, bytemuck::cast_slice(&data.order));
         }
-        if !self.opaque_order.is_empty() {
-            queue.write_buffer(&self.opaque, 0, bytemuck::cast_slice(&self.opaque_order));
+        if !data.opaque_order.is_empty() {
+            queue.write_buffer(&self.opaque, 0, bytemuck::cast_slice(&data.opaque_order));
         }
-        self.last_sort = Some(view);
+        data.last_sort = Some(view);
         true
     }
 }

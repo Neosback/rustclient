@@ -59,6 +59,9 @@ struct ApplicationService {
     session_active: bool,
 }
 impl PluginInstance for ApplicationService {
+    fn subscribes_game_events(&self) -> bool {
+        false
+    }
     fn init(&mut self, call: &mut PluginCall<'_>) -> Result<(), PluginFault> {
         if !self.initialized {
             call.logs.log(

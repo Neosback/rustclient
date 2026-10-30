@@ -15,7 +15,16 @@ and shell presentation. TSPS commit `268bf5d1f7e2092b8e6579a0394e06c84660c474` s
 individually hashed supporting files: EventBus, PluginManager, Plugin, RuneLite, narrow Client API,
 Sidebar.css and widget-hover-lifecycle.md. This is a selected-source freeze, not an assertion that
 all of TSPS was audited or is compatible with revision 240. Earlier TSPS pins remain historical.
-No reference tree was changed; runtime assets are owned copies with notices.
+The RuneLite Client/Model/DrawCallbacks API, configuration controls, LAF and all event-definition
+files are individually pinned alongside existing evidence; the construction inventory does not
+assert all definitions are implemented or independently tested. No reference tree was changed;
+runtime assets are owned copies with notices.
+The font name tables have their own licenses: plain/small are CC BY-NC-SA 3.0 and bold is CC BY-SA 3.0.
+These are not BSD font grants. [FONT-LICENSES](../../crates/shell-ui/assets/runelite/FONT-LICENSES)
+retains attribution and license links, including the noncommercial restriction. The plain font's
+[original creator page](https://fontstruct.com/fontstructions/show/855573/runescape_chat_07) confirms
+the 3.0 [license](https://creativecommons.org/licenses/by-nc-sa/3.0/); small/bold embed their license URIs.
+
 
 `tools/sidebar/RuneLiteSidebarMetrics.java` loads the pinned compiled shell classes and resolved
 RuneLiteLAF on JDK 11.0.31, headless, `flatlaf.uiScale=1x`. It does not invoke a gamepack.
@@ -29,6 +38,8 @@ The compiled source-manifest hashes were checked against the pinned source files
 | Scrollbar width | 7 |
 | Navigation icon / plain font | 16 / RuneScape 16 |
 | Plain font line height / “Configuration” advance | 16 / 78 |
+| First configuration header tab (x/y/width/height) | 10 / 10 / 69 / 34 |
+| Header tab gap / panel padding | 7 / 10 |
 
 The 31-pixel rail includes a 30-pixel FlatLaf tab and one separator. Icon width plus declared tab
 insets alone would incorrectly suggest 26. The old native 36 reservation and egui 32 rail are
@@ -36,14 +47,16 @@ replaced by `SidebarMetrics`; native canvas resizing and browser clipping/input 
 rounding. TSPS's additional Retina-only 1.5 rail zoom is excluded. List row source preference is
 20 high with a 5 gap; star control is 21 wide, edit/toggle slots 25 wide. The panel uses owned
 RuneScape plain/bold/small fonts and source-derived favorite/toggle images, source colors, square
-frames, tooltips and egui focus. Text shaping/rasterization and complex settings controls still
+frames, tooltips and egui focus. The shared top-level configuration header uses source intrinsic
+24×24, 26×23 and 21×21 icons in 34-high tabs with a 7 gap; Profiles and Plugin Hub
+remain unavailable with explicit tooltips until their application support exists. Text shaping/rasterization and complex settings controls still
 require visual acceptance; using the same TTF does not establish identical text pixels.
 
 ## Implemented ownership
 
 There is one egui component in `crates/shell-ui`, used by native and the browser harness. The parallel
 Dioxus/Blitz sidebar, feature, dependencies and its feature-only tests are retired. Vendor archives
-remain historical. Search includes descriptions/tags, favorites retain stable plugin IDs, settings
+remain historical. Search includes descriptions/tags, favorites retain stable plugin IDs and explicit egui row identities across reordering, settings
 scroll areas retain per-plugin identity, and hiding clears focus/drafts without clearing navigation.
 The existing prepare → persist → commit configuration path remains authoritative. GPU's unchanged
 `dev.rustclient.gpu` ID has an Always on badge in both list and settings header and a configuration
@@ -59,7 +72,8 @@ execution and playable cache/transport/session composition remain deferred.
 ## Lifecycle and event ordering
 
 `PluginSet` owns configured intent independently of Stopped/Starting/Running/Stopping/Faulted status.
-Startup obtains a new activation identity, initializes before subscription, and rolls back with
+Startup obtains a new activation identity (including a registration incarnation so unload/reload of
+the same ID cannot reuse a token), initializes before subscription, and rolls back with
 shutdown on failure. Failure leaves configured intent intact but prevents scheduling. Disable and
 fault isolation revoke cached output and subscriptions before shutdown; shutdown failure remains
 visible and cannot reactivate an instance. Unregister requires a stopped optional instance. Required
@@ -82,7 +96,10 @@ NPCs, variables, skills, containers, widgets, chat. This is a committed projecti
 that every RuneLite hook has the source's injection timing. Authoritative commits/replay are never
 skipped. Query-only first-party plugins declare no event subscription; when no running subscriber
 exists the bridge skips event derivation and per-plugin event allocation while advancing history.
-Needed snapshots still build for output queries. Per-event grants filter delivery. ABI 0.1 components
+Event category interest intersects grants from running subscribers, excluding query-only consumers.
+Needed snapshots still build for output queries. Client timing/lifecycle history advances even
+with zero read grants, so late enablement cannot manufacture a login transition. Immutable varbit
+reverse indexes are shared rather than deeply cloned per snapshot. Per-event grants filter delivery. ABI 0.1 components
 keep conservative subscription defaults; executable external ABI 0.2 remains deferred.
 
 ## Hooks and API disposition
@@ -112,7 +129,8 @@ contracts cover 1, 1.25, 1.5, 1.75 and 2. Native canvas contracts cover rounding
 clamped resizes and monitor scale changes. These are semantic tests, not screenshot goldens.
 Search/favorites/navigation, typed actions, slider release/cancel, focus, IME and retained idle/hidden
 work have shared component contracts. The GPU probe renders list/settings and reconstructs textures
-on a fresh device; its idle workload checks no repeated panel passes/tessellation/uploads.
+on a fresh device; its idle workload checks no repeated panel passes/tessellation/uploads. Cached shell textures still composite
+on presented world frames; this is separate from painting the panel again.
 
 A bounded CUA inspection observed a RuneLite login-screen sidebar at 2× and compared owned GPU panel
 captures. It exposed row alignment/spacing differences corrected in this pass. The live bridge's
@@ -125,3 +143,21 @@ No login or credentials were used. The resolved pinned shell oracle is independe
 No speedup is claimed: the current cross-row workload is measured, but a comparable old-panel run at
 the same source/font/workload was not executed. Historic DOM timings are not comparable to this pass.
 A Rust software renderer is not planned; existing backend boundaries remain intact.
+
+
+## Final validation — 2026-10-30
+
+133 focused tests pass: 110 host/bridge/first-party contracts, 11 latest shared-panel contracts,
+7 renderer setting contracts, 4 native canvas sizing contracts and one application persistence/
+rollback contract. The latest shell run supersedes the earlier 10-test shell subset. Formatting,
+workspace/all-target checking, strict workspace Clippy, Wasm build/check and strict Wasm Clippy pass.
+This is not a full workspace test run or source differential parity. Exact commands, logs and
+source/asset hashes are in the evidence JSON. Ledger, source-inventory and GPU coverage checks pass;
+the GPU require-complete gate remains intentionally unsatisfied.
+
+The final browser smoke visibly verifies typed GPU search, favorite persistence across reload
+(restored to its initial value afterward), settings navigation, Always on labeling and effective
+2× → 4× MSAA reporting, with no warning/error console entries. Bounded observations of an idle panel
+and a hidden panel show unchanged layout/paint/upload counters. The visible panel/rail/hidden
+extents are 273/31/0. This does not close real OS input, monitor/window modes, gameplay or device-loss
+acceptance. Focused text caret blinking is a change and legitimately requests repaints.

@@ -1227,5 +1227,23 @@
       }
     ],
     "note": "Final scoped checks passed; earlier evidence hashes remain historical. No full legacy actions, native/browser gameplay or visual parity claim."
+  },
+  "sidebar_lifecycle_continuation": {
+    "date": "2026-10-29",
+    "initial_rust_commit": "37ef536cfb917cd4a469aa62838afbb46a66f55",
+    "report": "docs/reference/SIDEBAR-LIFECYCLE-2026-10-29.md",
+    "evidence": "docs/reference/SIDEBAR-LIFECYCLE-EVIDENCE-2026-10-29.json",
+    "status": "Implemented shared sidebar/current lifecycle slice; full plugin/GPU/browser/visual acceptance remains partial",
+    "source_authority": "Stock 240 gameplay; pinned RuneLite plugin effects/chrome; selected TSPS241 files supporting research only.",
+    "validated_on": "2026-10-30",
+    "validation_head": "b85c8a51cd7075b064c62177b5846acf4fb8c571",
+    "focused_tests": 133,
+    "visual_acceptance": "Open; bounded source metrics and shell smoke only",
+    "font_license_notice": "crates/shell-ui/assets/runelite/FONT-LICENSES"
+  },
+  "updateOptimizationReview": {
+    "date": "2026-10-30",
+    "scope": "Selective derived-update optimization; does not re-date the original full-domain audit.",
+    "evidence": "docs/reference/UPDATE-OPTIMIZATION-EVIDENCE-2026-10-30.json"
   }
 }

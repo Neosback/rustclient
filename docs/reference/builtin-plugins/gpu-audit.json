@@ -984,7 +984,7 @@
     },
     {
       "id": "workers",
-      "requirement": "Implement measurable upload scheduling/render worker policy; numThreads is currently inert and disabled in UI."
+      "requirement": "CPU packing, draw metadata and texture identity now prepare on the native scene worker; GPU buffer capacity and identical-pose uploads are retained. Complete incremental zone/resource publication, hard upload-byte budgets and measurable parallel-worker/numThreads behavior; numThreads remains inert/disabled. See UPDATE-OPTIMIZATION-2026-10-30.md. Live frame-pacing acceptance remains open."
     },
     {
       "id": "entity-tint",
@@ -1120,5 +1120,18 @@
       "acceptance": "Bounded ADR-0004 reference/actual/difference results and per-source-test disposition: ShaderTest compilation intent adapted, no Java MATCH; RegionsTest assertions ported but no Java execution; TemplateTest static-bundle adaptation, no lossless-case claim. xBR f4 correction prevents undefined-source bit parity.",
       "status": "open"
     }
-  ]
+  ],
+  "updateReview": {
+    "date": "2026-10-30",
+    "document": "docs/reference/UPDATE-SYSTEM-2026-10-30.md",
+    "evidence": "docs/reference/UPDATE-SYSTEM-EVIDENCE-2026-10-30.json",
+    "status": "partial; live door/frame-pacing and browser gameplay NOT-RUN",
+    "classicGateCountUnchanged": true
+  },
+  "updateOptimization": {
+    "date": "2026-10-30",
+    "document": "docs/reference/UPDATE-OPTIMIZATION-2026-10-30.md",
+    "evidence": "docs/reference/UPDATE-OPTIMIZATION-EVIDENCE-2026-10-30.json",
+    "status": "partial; live pacing and browser gameplay NOT-RUN"
+  }
 }

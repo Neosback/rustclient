@@ -94,6 +94,9 @@ impl Assets {
         }
         Ok(Self { images })
     }
+    pub fn size(&self, name: &str) -> Vec2 {
+        self.images[name].size_vec2()
+    }
     pub fn image(&self, name: &str, size: Vec2) -> egui::Image<'static> {
         egui::Image::new((self.images[name].id(), size))
     }
@@ -104,11 +107,16 @@ impl Assets {
             _ => Vec2::splat(SidebarMetrics::ICON),
         };
         let width = if name.starts_with("star_") { 21. } else { 25. };
-        ui.add_sized(
-            [width, 20.],
-            egui::Button::new(self.image(name, size)).frame(false),
-        )
-        .on_hover_text(label)
+        let response = ui
+            .add_sized(
+                [width, 20.],
+                egui::Button::new(self.image(name, size)).frame(false),
+            )
+            .on_hover_text(label);
+        if response.clicked() {
+            response.request_focus();
+        }
+        response
     }
     pub fn toggle(&self, ui: &mut egui::Ui, value: &mut bool) -> egui::Response {
         let mut response = ui.add_sized(
@@ -120,6 +128,7 @@ impl Assets {
             .frame(false),
         );
         if response.clicked() {
+            response.request_focus();
             *value = !*value;
             response.mark_changed();
         }

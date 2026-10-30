@@ -173,11 +173,22 @@ pub struct SurfaceRenderer {
 struct StagedStream {
     geometry: rustclient_scene::SceneGeometry,
     pending: bool,
+    known: bool,
 }
 
 impl StagedStream {
     /// Copy the GPU-visible parts, reusing the previous staging allocation.
-    fn stage(&mut self, geometry: &rustclient_scene::SceneGeometry) {
+    fn stage(&mut self, geometry: &rustclient_scene::SceneGeometry) -> bool {
+        if self.known
+            // SceneVertex is integer POD with no padding; byte comparison has identical
+            // equality semantics and lets the platform use its optimized slice comparison.
+            && bytemuck::cast_slice::<_, u8>(&self.geometry.vertices) == bytemuck::cast_slice::<_, u8>(&geometry.vertices)
+            && self.geometry.opaque == geometry.opaque
+            && self.geometry.transparent == geometry.transparent
+            && self.geometry.models == geometry.models
+        {
+            return false;
+        }
         let staged = &mut self.geometry;
         staged.vertices.clear();
         staged.vertices.extend_from_slice(&geometry.vertices);
@@ -188,11 +199,20 @@ impl StagedStream {
         staged.models.clear();
         staged.models.extend_from_slice(&geometry.models);
         self.pending = true;
+        self.known = true;
+        true
     }
 
     /// The staged geometry exactly once per staging.
-    fn take_pending(&mut self) -> Option<&rustclient_scene::SceneGeometry> {
-        std::mem::take(&mut self.pending).then_some(&self.geometry)
+    fn apply_pending<E>(
+        &mut self,
+        apply: impl FnOnce(&rustclient_scene::SceneGeometry) -> Result<(), E>,
+    ) -> Result<(), E> {
+        if self.pending {
+            apply(&self.geometry)?;
+            self.pending = false;
+        }
+        Ok(())
     }
 }
 
@@ -201,6 +221,43 @@ impl StagedStream {
 struct StagedGeometry {
     dynamic: StagedStream,
     entities: StagedStream,
+}
+
+/// Explicit CPU staging diagnostic; counts requested uploads rather than submitted GPU work.
+#[cfg(not(target_arch = "wasm32"))]
+#[derive(Debug, Clone, Copy)]
+pub struct WorldStagingTiming {
+    pub retained: bool,
+    pub cpu: std::time::Duration,
+    pub upload_requests: u32,
+}
+/// Compare the previous copy-every-update policy with identical-payload retention.
+/// Uses 256 repetitions of the supplied real geometry; no surface or GPU time is measured.
+#[cfg(not(target_arch = "wasm32"))]
+#[must_use]
+pub fn measure_world_staging(
+    geometry: &rustclient_scene::SceneGeometry,
+) -> [WorldStagingTiming; 2] {
+    [false, true].map(|retained| {
+        let mut stream = StagedStream::default();
+        let mut upload_requests = 0;
+        let started = std::time::Instant::now();
+        for _ in 0..256 {
+            if !retained {
+                stream.known = false;
+            }
+            stream.stage(geometry);
+            if stream.pending {
+                upload_requests += 1;
+                stream.pending = false;
+            }
+        }
+        WorldStagingTiming {
+            retained,
+            cpu: started.elapsed(),
+            upload_requests,
+        }
+    })
 }
 
 impl SurfaceRenderer {
@@ -439,8 +496,76 @@ impl SurfaceRenderer {
     /// # Errors
     /// Returns bounded mesh/device allocation failures.
     pub fn set_world(&mut self, mesh: &rustclient_scene::WorldMesh) -> Result<(), RenderError> {
+        self.upload_world(mesh, false)
+    }
+    /// Refresh scenery inside the current live scene, retaining its independent actor stream.
+    /// A new map/session must use [`Self::set_world`], even if cache asset identity repeats.
+    /// # Errors
+    /// Returns bounded mesh/device allocation failures.
+    pub fn set_world_scenery(
+        &mut self,
+        mesh: &rustclient_scene::WorldMesh,
+    ) -> Result<(), RenderError> {
+        self.upload_world(mesh, true)
+    }
+    /// Publish an owned CPU-prepared projection, returning its source mesh for recovery/picking.
+    /// # Errors
+    /// Rejects device limits before queued writes; malformed inputs fail during preparation.
+    pub fn set_prepared_world(
+        &mut self,
+        prepared: crate::PreparedWorldMesh,
+        update: crate::WorldUpdate,
+    ) -> Result<rustclient_scene::WorldMesh, RenderError> {
+        let (mesh, upload) = prepared.into_parts();
+        let retain_actors = update == crate::WorldUpdate::Scenery
+            && self
+                .world
+                .as_ref()
+                .is_some_and(|world| world.asset == mesh.asset);
         if let Some(world) = &mut self.world {
-            world.replace_mesh(&self.device, &self.queue, mesh)?;
+            world.replace_prepared(&self.device, &self.queue, &mesh, upload, update)?;
+        } else {
+            let mut world = WorldGpu::new_prepared(
+                &self.device,
+                &self.queue,
+                self.view_format,
+                SurfaceSize::new(self.config.width, self.config.height),
+                &mesh,
+                self.effective.samples,
+                upload,
+            )?;
+            world.set_filtering(
+                &self.device,
+                self.effective.anisotropy,
+                self.effective.mipmaps,
+            );
+            self.world = Some(world);
+        }
+        if let Some(canvas) = &mut self.ui_canvas {
+            canvas.invalidate_world();
+        }
+        self.staged.dynamic = StagedStream::default();
+        if !retain_actors {
+            self.staged.entities = StagedStream::default();
+        }
+        Ok(mesh)
+    }
+    fn upload_world(
+        &mut self,
+        mesh: &rustclient_scene::WorldMesh,
+        retain_actors: bool,
+    ) -> Result<(), RenderError> {
+        let same_asset = retain_actors
+            && self
+                .world
+                .as_ref()
+                .is_some_and(|world| world.asset == mesh.asset);
+        if let Some(world) = &mut self.world {
+            if same_asset {
+                world.replace_scenery(&self.device, &self.queue, mesh)?;
+            } else {
+                world.replace_mesh(&self.device, &self.queue, mesh)?;
+            }
         } else {
             let mut world = WorldGpu::new(
                 &self.device,
@@ -460,7 +585,11 @@ impl SurfaceRenderer {
         if let Some(canvas) = &mut self.ui_canvas {
             canvas.invalidate_world();
         }
-        self.staged = StagedGeometry::default();
+        // A same-scene door change must not erase actors (or an actor update awaiting present).
+        self.staged.dynamic = StagedStream::default();
+        if !same_asset {
+            self.staged.entities = StagedStream::default();
+        }
         Ok(())
     }
     /// Update posed geometry while retaining static vertices, textures and pipelines.
@@ -546,12 +675,12 @@ impl SurfaceRenderer {
             .world
             .as_mut()
             .ok_or(RenderError::World("scene is not uploaded"))?;
-        if let Some(geometry) = self.staged.dynamic.take_pending() {
-            world.update_dynamic(&self.device, &self.queue, geometry)?;
-        }
-        if let Some(geometry) = self.staged.entities.take_pending() {
-            world.update_entities(&self.device, &self.queue, geometry)?;
-        }
+        self.staged
+            .dynamic
+            .apply_pending(|geometry| world.update_dynamic(&self.device, &self.queue, geometry))?;
+        self.staged
+            .entities
+            .apply_pending(|geometry| world.update_entities(&self.device, &self.queue, geometry))?;
         let bounds = frame.world_viewport;
         world.prepare_viewport(
             &self.queue,
@@ -832,6 +961,48 @@ fn validate_size(size: SurfaceSize, maximum: u32) -> Result<(), RenderError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn unchanged_streams_coalesce_but_metadata_changes_and_failed_uploads_remain_pending() {
+        use rustclient_scene::{ModelSortSource, SceneGeometry, SceneModel};
+        let mut stream = StagedStream::default();
+        let mut geometry = SceneGeometry::default();
+        assert!(stream.stage(&geometry)); // Even empty input must clear an unknown GPU lifetime.
+        stream.apply_pending(|_| Ok::<_, ()>(())).unwrap();
+        assert!(!stream.stage(&geometry));
+        geometry.vertices = vec![
+            rustclient_scene::SceneVertex {
+                position: [0; 4],
+                abhsl: 0,
+                texture_uv: [0; 4],
+                draw_tile: rustclient_scene::DrawTile::default()
+            };
+            3
+        ];
+        geometry.opaque = vec![0, 1, 2];
+        geometry.models.push(SceneModel {
+            vertices: 0..3,
+            depth_policy: rustclient_model::ModelDepthPolicy::DepthWrite,
+            sort_source: None,
+        });
+        assert!(stream.stage(&geometry));
+        assert!(!stream.stage(&geometry));
+        assert!(stream.apply_pending(|_| Err(())).is_err());
+        assert!(stream.pending);
+        assert!(!stream.stage(&geometry));
+        stream.apply_pending(|_| Ok::<_, ()>(())).unwrap();
+        assert!(!stream.pending);
+        geometry.vertices[1].abhsl = 123;
+        assert!(stream.stage(&geometry));
+        stream.apply_pending(|_| Ok::<_, ()>(())).unwrap();
+        geometry.models[0].sort_source = Some(Arc::new(ModelSortSource {
+            origin: rustclient_model::ModelPoint::new(1, 2, 3),
+            vertices: Arc::from([rustclient_model::ModelPoint::new(1, 2, 3)]),
+            radius: 0,
+            diameter: 0,
+        }));
+        assert!(stream.stage(&geometry)); // Admission metadata matters even with unchanged vertices.
+    }
 
     #[test]
     fn physical_targets_respect_the_negotiated_limit_before_creation() {

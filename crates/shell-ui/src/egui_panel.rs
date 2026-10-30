@@ -213,7 +213,7 @@ impl EguiPanel {
     }
     #[must_use]
     pub fn wants_keyboard_input(&self) -> bool {
-        self.visible && self.ctx.egui_wants_keyboard_input()
+        self.visible && self.input.focused && self.ctx.egui_wants_keyboard_input()
     }
     pub fn paste(&mut self, text: String) {
         if self.visible {

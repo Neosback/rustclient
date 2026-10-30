@@ -464,6 +464,23 @@ impl PluginSet {
             .any(|plugin| plugin.running() && plugin.wants_game_events())
     }
 
+    /// Read grants of running gameplay subscribers, distinct from query-only consumers.
+    /// `Some(empty)` still requests ungated lifecycle/timing events; `None` skips derivation.
+    #[must_use]
+    pub fn game_event_interest(&self) -> Option<CapabilitySet> {
+        let mut subscribers = self
+            .plugins
+            .iter()
+            .filter(|p| p.running() && p.wants_game_events())
+            .peekable();
+        subscribers.peek()?;
+        Some(
+            subscribers
+                .flat_map(|p| p.manifest.capabilities.iter())
+                .collect(),
+        )
+    }
+
     /// Union of the grants of every running plugin: what the projector must build.
     #[must_use]
     pub fn granted(&self) -> CapabilitySet {

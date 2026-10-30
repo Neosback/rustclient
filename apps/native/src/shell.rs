@@ -266,7 +266,7 @@ impl Shell {
     /// Physical window coordinates use the exact same split as surface composition and game picking.
     #[expect(
         clippy::cast_possible_truncation,
-        reason = "physical coordinates converted to bounded logical DOM coordinates"
+        reason = "physical coordinates converted to bounded logical shell coordinates"
     )]
     pub fn point(&self, window: &Window, x: f64, y: f64) -> Option<[f32; 2]> {
         if self.sidebar() == SidebarState::Hidden {
@@ -285,7 +285,6 @@ impl Shell {
     /// Process input before accepted actions are drained; world frames do not invalidate the UI.
     #[expect(
         clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
         reason = "validated bounded panel dimensions and native DPI"
     )]
     pub fn update_panel(&mut self, window: &Window) -> Result<(), String> {
@@ -296,7 +295,7 @@ impl Shell {
         }
         let scale = window.scale_factor();
         let size = [
-            (f64::from(self.width()) * scale).round() as u32,
+            rustclient_shell_ui::SidebarMetrics::physical(f64::from(self.width()), scale),
             window.inner_size().height,
         ];
         if size.contains(&0) {
@@ -317,7 +316,6 @@ impl Shell {
     }
     #[expect(
         clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
         reason = "validated bounded shell extent and platform scale"
     )]
     pub fn stage(&mut self, window: &Window, renderer: &mut SurfaceRenderer) -> Result<(), String> {
@@ -332,7 +330,7 @@ impl Shell {
                 .map_err(|error| error.to_string());
         }
         let scale = window.scale_factor();
-        let sidebar = (f64::from(self.width()) * scale).round() as u32;
+        let sidebar = rustclient_shell_ui::SidebarMetrics::physical(f64::from(self.width()), scale);
         let size = [sidebar.max(1), window.inner_size().height];
         if size[1] == 0 {
             return Ok(());

@@ -1,4 +1,5 @@
 mod sorted_models;
+mod updates;
 use super::*;
 use rustclient_cache::world::*;
 use rustclient_model::{

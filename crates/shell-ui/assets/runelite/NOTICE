@@ -1,12 +1,13 @@
 These icons come from the Open RuneLite client source (runelite-client resources) and keep
 its BSD 2-Clause license, reproduced in LICENSE next to this file:
-config_icon, config_icon_lg, config_back_icon, config_edit_icon, refresh, star_on, profile_icon
+config_icon, config_icon_lg, config_back_icon, config_edit_icon, refresh, star_on, profile_icon, plugin_hub_icon
 (plugins/config); runelite_16, runelite_128, open, open_rs (ui); search, error (ui/components);
 devtools_icon (plugins/devtools); collapsed, expanded (plugins/loottracker).
 
 2026-10-29 shared egui continuation: runescape.ttf, runescape_bold.ttf and
 runescape_small.ttf are copied unchanged from the pinned client's ui resources,
-under the same repository BSD 2-Clause LICENSE reproduced here. No reference
+with their original Creative Commons licenses and attribution recorded separately
+in FONT-LICENSES. They are not relicensed by the adjacent BSD LICENSE. No reference
 checkout is loaded by the application. star_on.png is recolored with source
 ColorScheme.GREEN. star_off.png uses source grayscale/luminance 0.77.
 switch_on.png and switch_off.png derive from ui/components/switcher_on.png using

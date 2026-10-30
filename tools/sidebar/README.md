@@ -14,9 +14,8 @@ The PNG is a metric fixture, not the complete production configuration panel.
 GPU shell with bounded list/settings, unchanged/hidden and reconstruction workloads. It writes under
 target/gpu-shell-probe. No golden image comparison is installed in CI (ADR-0004).
 
-Browser harness: build `cargo build -p rustclient-web --target wasm32-unknown-unknown`, run
-`wasm-bindgen --target web --out-dir target/sidebar-lifecycle/web/pkg
- target/wasm32-unknown-unknown/debug/rustclient_web.wasm`, copy `apps/web/index.html` alongside pkg,
-and serve that target directory on loopback. Open `/?shell-harness`; F9 switches panel/rail and F10
+Browser harness: run `python3 tools/sidebar/build_web.py` (requires wasm-bindgen CLI)
+and serve its printed target directory on loopback. The packager stamps JS/Wasm URLs by content hash
+so reloading cannot retain a previous binary. Use `--skip-build` only to package existing Cargo output. Open `/?shell-harness`; F9 switches panel/rail and F10
 shows/hides. A browser with WebGPU is required. `data-shell-passes` and `data-shell-width` on the canvas
 are diagnostic observations, not gameplay metrics. This shell harness is not a playable browser client.

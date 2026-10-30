@@ -34,7 +34,7 @@ struct VarbitCache {
     address: usize,
     len: usize,
     table: Arc<BTreeMap<u32, VarbitDef>>,
-    index: VarbitIndex,
+    index: Arc<VarbitIndex>,
 }
 
 /// Widget snapshots keyed by interface revision and canvas size.
@@ -59,22 +59,22 @@ impl Projector {
     fn varbit_table(
         &mut self,
         sources: &Sources<'_>,
-    ) -> (Arc<BTreeMap<u32, VarbitDef>>, VarbitIndex) {
+    ) -> (Arc<BTreeMap<u32, VarbitDef>>, Arc<VarbitIndex>) {
         let key = sources.varbits.map_or((0, 0), |table| {
             (std::ptr::from_ref(table) as usize, table.len())
         });
         if let Some(cache) = &self.varbits
             && (cache.address, cache.len) == key
         {
-            return (Arc::clone(&cache.table), cache.index.clone());
+            return (Arc::clone(&cache.table), Arc::clone(&cache.index));
         }
         let table = project::varbit_table(sources.varbits);
-        let index = VarbitIndex::new(&table);
+        let index = Arc::new(VarbitIndex::new(&table));
         self.varbits = Some(VarbitCache {
             address: key.0,
             len: key.1,
             table: Arc::clone(&table),
-            index: index.clone(),
+            index: Arc::clone(&index),
         });
         (table, index)
     }
@@ -88,7 +88,6 @@ impl Projector {
         sources: &Sources<'_>,
         wanted: &CapabilitySet,
     ) -> GameSnapshot {
-        let (table, _) = self.varbit_table(sources);
         let client = project::client(state, frame);
         let mut snapshot = GameSnapshot {
             client,
@@ -124,6 +123,7 @@ impl Projector {
             snapshot.skills = project::skills(state);
         }
         if project::wants(wanted, Capability::GameReadVars) {
+            let (table, _) = self.varbit_table(sources);
             snapshot.vars = project::vars(state, &table);
         }
         if project::wants(wanted, Capability::GameReadInventory) {
@@ -164,8 +164,26 @@ impl Projector {
         wanted: &CapabilitySet,
         emit_events: bool,
     ) -> (GameSnapshot, Vec<GameEvent>) {
+        self.project_interested(state, frame, sources, wanted, emit_events.then_some(wanted))
+    }
+
+    /// Keep query snapshots complete while deriving only categories a running subscriber can read.
+    /// `None` skips derivation; `Some(empty)` retains ungated timing/lifecycle events.
+    pub fn project_interested(
+        &mut self,
+        state: &GameState,
+        frame: &Frame,
+        sources: &Sources<'_>,
+        wanted: &CapabilitySet,
+        interest: Option<&CapabilitySet>,
+    ) -> (GameSnapshot, Vec<GameEvent>) {
         let snapshot = self.snapshot(state, frame, sources, wanted);
-        let (_, index) = self.varbit_table(sources);
+        let index = (interest
+            .is_some_and(|grants| project::wants(grants, Capability::GameReadVars))
+            && project::wants(wanted, Capability::GameReadVars))
+        .then(|| self.varbit_table(sources).1);
+        let empty_index = VarbitIndex::default();
+        let index = index.as_deref().unwrap_or(&empty_index);
         let timing = Timing {
             client_ticks: self.last_cycle.map_or(0, |last| {
                 u32::try_from(snapshot.client.cycle.saturating_sub(last)).unwrap_or(u32::MAX)
@@ -175,10 +193,10 @@ impl Projector {
         };
         self.last_cycle = Some(snapshot.client.cycle);
         self.last_tick = Some(snapshot.client.tick);
-        let events = if !emit_events {
+        let events = if interest.is_none() {
             Vec::new()
         } else if let Some(previous) = &self.previous {
-            derive(previous, &snapshot, &index, timing)
+            diff::derive_interested(previous, &snapshot, index, timing, interest)
         } else {
             // First projection: actors present are new and the lifecycle moved out of the
             // login screen, but values and history are not replayed as changes.
@@ -192,7 +210,7 @@ impl Projector {
                 },
                 ..snapshot.clone()
             };
-            derive(&baseline, &snapshot, &index, Timing::default())
+            diff::derive_interested(&baseline, &snapshot, index, Timing::default(), interest)
         };
         self.previous = Some(snapshot.clone());
         (snapshot, events)

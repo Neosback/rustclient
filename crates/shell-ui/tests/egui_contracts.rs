@@ -14,6 +14,7 @@ fn fixture(control: Control, value: ConfigValue) -> (EguiPanel, ShellChannel) {
         tags: vec![],
         required: true,
         enabled: true,
+        enablement_unavailable: None,
         settings: vec![SettingView {
             descriptor: Setting {
                 key: "value".into(),
@@ -190,4 +191,30 @@ fn desktop_panel_ships_fonts_for_plugin_labels_and_controls() {
             && y + height <= 503.,
         "control rect {x},{y},{width},{height}"
     );
+}
+
+#[test]
+fn clipboard_selection_and_unicode_paste_follow_the_focused_shared_editor() {
+    let (mut panel, channel) = fixture(
+        Control::Text { max_len: 64 },
+        ConfigValue::Text("original".into()),
+    );
+    open(&mut panel);
+    click(&mut panel, "setting:dev.test:value", 2.);
+    key(
+        &mut panel,
+        Key::Character("a".into()),
+        Modifiers::META,
+        None,
+        2.1,
+    );
+    panel.clipboard_event(false);
+    panel.render(2.2).unwrap();
+    assert_eq!(panel.take_copied_text().as_deref(), Some("original"));
+    panel.paste("é好".into());
+    panel.render(2.3).unwrap();
+    key(&mut panel, Key::Enter, Modifiers::empty(), None, 2.4);
+    assert!(channel.drain().iter().any(|action| matches!(action, ShellAction::Configure { value: ConfigValue::Text(value), .. } if value == "é好")));
+    panel.clear_focus();
+    assert!(!panel.wants_keyboard_input());
 }

@@ -58,7 +58,7 @@ pub struct SceneGeometry {
     pub actor_labels: Vec<ActorLabelAnchor>,
 }
 /// One whole emitted model, retaining its source raster policy alongside its existing vertex span.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SceneModel {
     pub vertices: std::ops::Range<usize>,
     pub depth_policy: rustclient_model::ModelDepthPolicy,

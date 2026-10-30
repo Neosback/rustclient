@@ -6,7 +6,7 @@ use std::sync::Arc;
 /// Source near boundary in fine units, shared by projection and whole-model admission.
 pub const SORT_NEAR: f32 = 50.;
 /// Inputs discarded by triangle extraction but required by the reference sorted uploader.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ModelSortSource {
     pub origin: ModelPoint,
     /// Every placed posed vertex, including unused/hidden-face vertices.

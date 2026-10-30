@@ -1,5 +1,7 @@
 #[path = "scene_probe/performance.rs"]
 mod performance;
+#[path = "scene_probe/updates.rs"]
+mod updates;
 use rustclient_cache::{Cache, CacheProfile};
 use rustclient_game_state::{AuthenticatedPlayer, GameState, InitialPlacement, SemanticOperation};
 use rustclient_model::{Plane, WorldTile};
@@ -79,6 +81,52 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         mesh.vertex_count(),
         mesh.vertex_count() * std::mem::size_of::<rustclient_scene::SceneVertex>()
     );
+    if std::env::args().nth(2).as_deref() == Some("--updates-staging") {
+        for sample in rustclient_renderer::measure_world_staging(&mesh.dynamic) {
+            println!(
+                "staging retained={} repeats=256 vertices={} cpu_ms={:.4} upload_requests={}",
+                sample.retained,
+                mesh.dynamic.vertices.len(),
+                sample.cpu.as_secs_f64() * 1000.,
+                sample.upload_requests
+            );
+        }
+        return Ok(());
+    }
+    if std::env::args().nth(2).as_deref() == Some("--updates-prepared") {
+        for (index, sample) in
+            pollster::block_on(rustclient_renderer::measure_prepared_world_updates(&mesh))?
+                .into_iter()
+                .enumerate()
+        {
+            println!(
+                "prepared sample={index} inline_enqueue_ms={:.4} prepare_ms={:.4} enqueue_ms={:.4} geometry_buffer_bytes={}",
+                sample.inline_enqueue.as_secs_f64() * 1000.,
+                sample.prepare.as_secs_f64() * 1000.,
+                sample.enqueue.as_secs_f64() * 1000.,
+                sample.geometry_buffer_bytes
+            );
+        }
+        return Ok(());
+    }
+    if std::env::args().nth(2).as_deref() == Some("--updates-gpu") {
+        let samples = pollster::block_on(rustclient_renderer::measure_world_replacements(&mesh))?;
+        for (index, elapsed) in samples.into_iter().enumerate() {
+            println!(
+                "GPU install sample={index} cpu_enqueue_ms={:.4}",
+                elapsed.as_secs_f64() * 1000.
+            );
+        }
+        return Ok(());
+    }
+    if std::env::args().nth(2).as_deref() == Some("--updates") {
+        updates::run(
+            &scene,
+            state.loaded_scene().ok_or("scene commit missing")?,
+            &state,
+        )?;
+        return Ok(());
+    }
     if std::env::args().nth(2).as_deref() == Some("--performance") {
         performance::run(&mesh)?;
         return Ok(());

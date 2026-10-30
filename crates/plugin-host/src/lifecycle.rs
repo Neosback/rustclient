@@ -13,12 +13,9 @@ pub enum LifecycleStatus {
 }
 /// Host-local incarnation, never a guest ABI or game-state identity.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct ActivationId(pub(crate) u64);
-impl ActivationId {
-    #[must_use]
-    pub const fn get(self) -> u64 {
-        self.0
-    }
+pub struct ActivationId {
+    pub(crate) registration: u64,
+    pub(crate) generation: u64,
 }
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum Phase {
@@ -110,12 +107,12 @@ pub(crate) fn start(
     let next = plugin
         .lifecycle
         .activation
-        .0
+        .generation
         .checked_add(1)
         .ok_or_else(|| {
             PluginFault::new(FaultKind::Contract, "plugin activation identity exhausted")
         })?;
-    plugin.lifecycle.activation = ActivationId(next);
+    plugin.lifecycle.activation.generation = next;
     plugin.lifecycle.status = LifecycleStatus::Starting;
     plugin.lifecycle.streaks = [0; 4];
     plugin.lifecycle.output = None;

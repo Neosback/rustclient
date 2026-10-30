@@ -1,0 +1,47 @@
+Font attribution and licenses
+=============================
+
+The three TTF files are copied byte-for-byte from the pinned Open RuneLite UI
+resources. Their embedded font notices remain intact. They have separate Creative
+Commons licenses; the adjacent BSD LICENSE does NOT relicense these fonts.
+No font design changes were made by RustClient.
+
+runescape.ttf
+-------------
+Design: WolfieMario, Copyright WolfieMario 2013.
+Original title: RuneScape Chat '07, based on RuneScape Chat by WolfieMario.
+Source: https://fontstruct.com/fontstructions/show/855573/runescape_chat_07
+Creator: https://fontstruct.com/fontstructors/166457/wolfiemario
+License: Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported
+https://creativecommons.org/licenses/by-nc-sa/3.0/
+https://creativecommons.org/licenses/by-nc-sa/3.0/legalcode
+The font's name table identifies the BY-NC-SA family; the original creator page
+links to this 3.0 license (checked 2026-10-30).
+
+runescape_small.ttf
+-------------------
+Design: WolfieMario (as identified in the embedded name table).
+License: Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported
+https://creativecommons.org/licenses/by-nc-sa/3.0/
+https://creativecommons.org/licenses/by-nc-sa/3.0/legalcode
+The embedded name table supplies this exact license URI.
+
+runescape_bold.ttf
+------------------
+Design: Bucket, Copyright Bucket 2010.
+Original title: RuneScape Bold Font, based on RuneScape Chat Bold 2 by WolfieMario,
+which is based on RuneScape Chat Bold by WolfieMario, which is based on RuneScape
+Chat by WolfieMario. Creator URL retained in the embedded font:
+http://fontstruct.fontshop.com/fontstructors/wolfiemario
+License: Creative Commons Attribution-ShareAlike 3.0 Unported
+https://creativecommons.org/licenses/by-sa/3.0/
+https://creativecommons.org/licenses/by-sa/3.0/legalcode
+The embedded name table supplies this exact license URI.
+
+The plain/small font licenses include a NonCommercial term. Do not assume they
+permit commercial distribution of a build that embeds them. Attribution and
+ShareAlike terms also apply as specified by the individual licenses. This asset
+notice does not change the license of RustClient source code.
+
+Owned and pinned input hashes, including these unchanged fonts, are recorded in:
+docs/reference/SIDEBAR-LIFECYCLE-EVIDENCE-2026-10-29.json

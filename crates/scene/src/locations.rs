@@ -3,6 +3,8 @@ use rustclient_cache::world::{ObjectDefinition, StaticLocation};
 use rustclient_model::{ModelPoint, Plane};
 use std::collections::BTreeMap;
 use std::hash::{Hash, Hasher};
+mod index;
+pub(crate) use index::{LocationIndex, effective_locations};
 pub(crate) fn build(
     asset: &SceneAsset,
     mesh: &mut WorldMesh,
@@ -799,10 +801,7 @@ pub fn location_key(loc: &StaticLocation) -> rustclient_model::LocationKey {
         layer,
     }
 }
-pub(crate) fn effective_locations(
-    asset: &SceneAsset,
-    inputs: &crate::SceneryInputs,
-) -> Vec<StaticLocation> {
+fn legacy_locations(asset: &SceneAsset, inputs: &crate::SceneryInputs) -> Vec<StaticLocation> {
     let mut locations: Vec<_> = asset
         .assets
         .squares

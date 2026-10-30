@@ -14,6 +14,12 @@ use std::{
 };
 use winit::event_loop::EventLoopProxy;
 pub type SharedCacheSlot = Arc<OnceLock<Result<Arc<Cache<DirectoryBlobs>>, String>>>;
+pub type PreparedScene = LoadedScene<rustclient_renderer::PreparedWorldMesh>;
+fn prepare_scene(scene: LoadedScene) -> Result<PreparedScene, String> {
+    scene
+        .try_map_mesh(rustclient_renderer::PreparedWorldMesh::new)
+        .map_err(|e| format!("scene upload preparation: {e}"))
+}
 pub struct SceneView {
     pub generation: u64,
     /// Reused every client cycle; never aliases the animated-scenery geometry.
@@ -21,6 +27,8 @@ pub struct SceneView {
     pub motion: rustclient_scene::ActorMotion,
     /// At most one scenery pose request is outstanding, bounding queued geometry.
     pub animator_in_flight: Option<rustclient_model::ClientCycle>,
+    /// Distinguishes worker lifetimes even when decoded assets change inside one session.
+    pub animator_generation: u64,
     pub cache_dir: PathBuf,
     pub profile: CacheProfile,
     pub shared_cache: SharedCacheSlot,
@@ -49,6 +57,7 @@ impl SceneView {
             entity_geometry: rustclient_scene::SceneGeometry::default(),
             motion: rustclient_scene::ActorMotion::default(),
             animator_in_flight: None,
+            animator_generation: 0,
             cache_dir: options.cache_dir.clone(),
             profile: options.profile,
             shared_cache: Arc::new(OnceLock::new()),
@@ -137,6 +146,7 @@ impl SceneView {
                             .send_event(LoadEvent::SceneProgress(generation, message.to_owned()));
                     })
                 });
+                let result = result.and_then(prepare_scene);
                 let _ = proxy.send_event(LoadEvent::SceneLoaded(generation, Box::new(result)));
             })
             .map_err(|e| format!("scene worker: {e}"))?;
@@ -163,6 +173,7 @@ impl SceneView {
                         &cache, profile, asset, placement, &inputs,
                     )
                 });
+                let result = result.and_then(prepare_scene);
                 let _ = proxy.send_event(LoadEvent::SceneLoaded(generation, Box::new(result)));
             })
             .map_err(|e| e.to_string())?;
@@ -196,6 +207,7 @@ impl SceneView {
     ) -> Result<(), String> {
         let (sender, receiver) =
             std::sync::mpsc::sync_channel::<rustclient_scene::SceneryInputs>(2);
+        let worker = self.animator_generation.wrapping_add(1);
         std::thread::Builder::new()
             .name("scenery-animation".into())
             .spawn(move || {
@@ -203,13 +215,14 @@ impl SceneView {
                     while let Ok(next) = receiver.try_recv() {
                         inputs = next;
                     }
+                    inputs.retain_scene_dependencies(&asset);
                     let result =
                         rustclient_scene::build_dynamic(&asset, &inputs).map_err(|e| e.to_string());
                     if proxy
                         .send_event(LoadEvent::DynamicReady(
                             session,
-                            inputs.generation,
-                            inputs.cycle,
+                            worker,
+                            Box::new(inputs),
                             Box::new(result),
                         ))
                         .is_err()
@@ -220,6 +233,8 @@ impl SceneView {
             })
             .map_err(|e| e.to_string())?;
         self.animator = Some(sender);
+        self.animator_generation = worker;
+        self.animator_in_flight = None;
         Ok(())
     }
     /// Start the worker that decodes NPC, worn-item and animation dependencies on demand.

@@ -1,0 +1,1565 @@
+{
+  "schema": 1,
+  "reviewed_on": "2026-10-29",
+  "initial_rust_commit": "37ef536cfb917cd4a469aa62838afbb46a66f55",
+  "working_tree_note": "Started clean. Shared-workspace changes were subsequently committed externally (1c5d2b50 and later input/wall-decoration commits); this agent created no commits. Final checks apply only to the recorded current tree, not earlier checkpoints.",
+  "report": "docs/reference/SIDEBAR-LIFECYCLE-2026-10-29.md",
+  "authority": "Stock 240 gameplay; pinned RuneLite plugin effects/chrome; selected TSPS241 files supporting research only.",
+  "tsps": {
+    "repository": "https://github.com/RSPSApp/tsps",
+    "commit": "268bf5d1f7e2092b8e6579a0394e06c84660c474",
+    "files": [
+      {
+        "path": "client/game/sidebar/Sidebar.css",
+        "sha256": "93b3a61e0ffd0081ad71b116e5e97816645e01e484c910ffa8a852485e2c93ff",
+        "url": "https://raw.githubusercontent.com/RSPSApp/tsps/268bf5d1f7e2092b8e6579a0394e06c84660c474/client/game/sidebar/Sidebar.css"
+      },
+      {
+        "path": "client/runelite/api/Client.ts",
+        "sha256": "1b4a0318245336e8491fc927ff88c6bc2175b6cc1e31d9838c85969ea5d26ddf",
+        "url": "https://raw.githubusercontent.com/RSPSApp/tsps/268bf5d1f7e2092b8e6579a0394e06c84660c474/client/runelite/api/Client.ts"
+      },
+      {
+        "path": "client/runelite/client/eventbus/EventBus.ts",
+        "sha256": "cab227bcd533ef7f527222e061869641a194a94d1b06df0ff40041774b32ffd8",
+        "url": "https://raw.githubusercontent.com/RSPSApp/tsps/268bf5d1f7e2092b8e6579a0394e06c84660c474/client/runelite/client/eventbus/EventBus.ts"
+      },
+      {
+        "path": "client/runelite/client/plugins/Plugin.ts",
+        "sha256": "eb8337ffce3626da4c891725923646a9fce67d2d5094d944d24d1055054e03f2",
+        "url": "https://raw.githubusercontent.com/RSPSApp/tsps/268bf5d1f7e2092b8e6579a0394e06c84660c474/client/runelite/client/plugins/Plugin.ts"
+      },
+      {
+        "path": "client/runelite/client/plugins/PluginManager.ts",
+        "sha256": "79d1a773ca18c683aa2c826ca26717fb5d20f643abfd185a073f1ddd45ea8277",
+        "url": "https://raw.githubusercontent.com/RSPSApp/tsps/268bf5d1f7e2092b8e6579a0394e06c84660c474/client/runelite/client/plugins/PluginManager.ts"
+      },
+      {
+        "path": "client/runelite/client/RuneLite.ts",
+        "sha256": "7ecad936b823b84fa2e18f6d1a505be3dd68d3fb1339419f51443a0c226b4c51",
+        "url": "https://raw.githubusercontent.com/RSPSApp/tsps/268bf5d1f7e2092b8e6579a0394e06c84660c474/client/runelite/client/RuneLite.ts"
+      },
+      {
+        "path": "docs/widget-hover-lifecycle.md",
+        "sha256": "3601051437aa72e06311c5ed2807400fc54791da68a1f76ce721506e1266b942",
+        "url": "https://raw.githubusercontent.com/RSPSApp/tsps/268bf5d1f7e2092b8e6579a0394e06c84660c474/docs/widget-hover-lifecycle.md"
+      }
+    ]
+  },
+  "runelite_selected_inputs": [
+    {
+      "path": "references/open-runelite-rev-240/args.txt",
+      "sha256": "313f1d375986cc628c4ac1f22309bcb0ebd0e51f79bf79e587c48bd3428dd011",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/gradle.properties",
+      "sha256": "772d0ce92b584fe8505701639f9c5b70ad5618d59db9dbf1c73a61a971280a77",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/coords/WorldPoint.java",
+      "sha256": "5dbf07459a5be64f52f2b4802c96d1b557d23eb846436401e5664c9d1bdca5f9",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/coords/LocalPoint.java",
+      "sha256": "78886d16cfd293e07ee00533636182d9b7670633f575aadafe5b224023ff0850",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPlugin.java",
+      "sha256": "9508b008327ed496d320e5f315706d8a1462e9181a6e8a91e9d6940a214849d9",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/SceneUploader.java",
+      "sha256": "a8ee331ba88e72448285c63e73f2fe9f052e969e8ce9099414b603518e5b191a",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/resources/net/runelite/client/plugins/gpu/vert.glsl",
+      "sha256": "847dd6c2ad7330eda248d94b48bbe834574a1182ebc7773d4a2737f0f704fce3",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/resources/net/runelite/client/plugins/gpu/frag.glsl",
+      "sha256": "ea6b6f1160d2b0fb82cc72040a55467e5640255d865ae35bc702ce3fd57e1066",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/RegionManager.java",
+      "sha256": "257cbeb7b2e99c224697c703a0bf68cf5d2e94cfa7c4ca173fb97466a2de5803",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/regions/Regions.java",
+      "sha256": "0befa4012fec63c9da1fa8ef9dcf35f5cd35c50f83cd467a8fcbc31927abefe6",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/regions/Region.java",
+      "sha256": "92898dbdd584694158c5b72f48dfc07404b0fa5c635a1612b8469086452b68ea",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/resources/net/runelite/client/plugins/gpu/regions/regions.txt",
+      "sha256": "a79d0f4ad54e80e4aa9fb179d1b919c46c60490b72d18b26c442090ea838e0e1",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/test/java/net/runelite/client/plugins/gpu/regions/RegionsTest.java",
+      "sha256": "4aed86f14b434a3539089b9df52b741329fe64149b34a99f4eabdcdb9d3ac811",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/VAO.java",
+      "sha256": "e2b7f36e29431b9c1396783800594b587c14ffcb71c315627a62f1becbacc445",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/ModelUploader.java",
+      "sha256": "79a3b1f9f6bd6aafcff7f2b5d21677c695828bdcb730d45f49b7dac35bd71047",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/ui/PluginPanel.java",
+      "sha256": "500099ed49b814b4125809a1a76a73cf341350ebc406259b5064dc2355adfd7f",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/ui/ClientUI.java",
+      "sha256": "427fdd13f2ddebb5e3334b65015338ae577e3814648fc2e6b61a4d5cdc38f82e",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/ui/FontManager.java",
+      "sha256": "dc09c5141a306b73f11a7e6da7c9609ed9bb19226219aa1768afbdfd5cbfe2f3",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/ui/ColorScheme.java",
+      "sha256": "7c73b9aea7d12c1c426830f7ecefac84b2bebcf0b06367f5aa80e97e63478c2f",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/ui/laf/RuneLiteLAF.java",
+      "sha256": "61d94c3434c0a7e1e475ab6cd13466615ed016eb22d7e175a7d3b55214781b60",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/ui/components/ToggleButton.java",
+      "sha256": "039f6b23e55dedc43e66ba6454727a6c12b6adef01b28370fc56cec36b694cab",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/config/PluginListItem.java",
+      "sha256": "7b328cdee3868f92cc7a590eba91bbacd5812872d988def6a5548c852f7e2fdd",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/config/PluginListPanel.java",
+      "sha256": "0faea3de9b06e5626a0abf5b55633d9f8a6e31bd48588573da05d79efa386958",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/PluginManager.java",
+      "sha256": "972d23b17c8d8070352580de57d2c8d0c4a09cfdae3fee5f9a3f29c8160e9b21",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/eventbus/EventBus.java",
+      "sha256": "db6bfde895259c958f83e768e67078be5f1176d4bd4aab5aa73bb713db70734a",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/resources/net/runelite/client/ui/runescape.ttf",
+      "sha256": "7477bbfd998b8e16e8a1e898fd49fb736a6fdfa00e7eb364d4d441f10290f03a",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/resources/net/runelite/client/ui/runescape_bold.ttf",
+      "sha256": "c8b9afefe105a78717fde9692deafbf2361b54bcf9c8019b6d817de94f1c6168",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/resources/net/runelite/client/ui/runescape_small.ttf",
+      "sha256": "fe43104752ad819d5b037bb544a194f7dc8fdf1c2dfe7f4cdf20a4f98896ed8a",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/resources/net/runelite/client/ui/components/switcher_on.png",
+      "sha256": "0e171b72f70b48ddd9b72808a7c787340dcd840277a108bbdfbb5437bbf1f10e",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/resources/net/runelite/client/plugins/config/star_on.png",
+      "sha256": "7711d061be66cf03367834448fc1a606fe5a940323cff66ea162d3555fd38923",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/Client.java",
+      "sha256": "b30b78f187aeb410f1e839ba2137602ea33aa41cec4dfb60a905543bc74b29a0",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/Model.java",
+      "sha256": "2cb1c4057a05c8107d4a7298b0f44157e4a88141dc2ddd626afd7bb61dd6b623",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/hooks/DrawCallbacks.java",
+      "sha256": "61c921bd235189222b17ab1f7abd86ced55b397a78fbb300cddae76a72aad581",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/config/ConfigPanel.java",
+      "sha256": "cec7f1a87e1773b5eb8bd46ab9fa753c65cceec38463188b927e345c97c525f9",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/resources/net/runelite/client/ui/laf/RuneLiteLAF.properties",
+      "sha256": "ab4df28a2fc105418d8abe0e05db73566e9de76a772c752703c3026f5106c9bc",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/GrandExchangeOfferChanged.java",
+      "sha256": "39ba78f58ee6fe267a87ab5c104bc37d9b611f37a5e6c4d85400accd2556be3d",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/FriendsChatMemberJoined.java",
+      "sha256": "9727856d10f4bcf33ae34df802f855bdee19181402583ec83a08c9a67a07eee7",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/GameObjectDespawned.java",
+      "sha256": "6e0210275278e50eb573fe03c201a063b198489da139fb6120e30eb8de1e95f1",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/PlayerDespawned.java",
+      "sha256": "b604ca1a01aebabc9751e879d4d9858c32a5397e28d7a5fa55a5dc8c6fb68418",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/PlayerSpawned.java",
+      "sha256": "9a6c937857a52c2e674709a8118492a78249efa324791bfeceb4ab53db058ff6",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/VolumeChanged.java",
+      "sha256": "6bbb7f79025841c28a1c8fb64c6baf0585aaed04ac897d61c8d779d455aca9e2",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/WallObjectSpawned.java",
+      "sha256": "e6a5944c4b87ff480ad26f44d3e29f66f2131bf09fced26da5ff3f7738e92e49",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/WidgetDrag.java",
+      "sha256": "0b8b149e41a3e3cb498ec1291a902d82b9ae7e8bcf3fbc48fab7ecc4f29d75b0",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/BeforeMenuRender.java",
+      "sha256": "1f5a0f953ec82f74f503eb8e67fa77a492d484d5521a0d4d9427ef576ef3ece3",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/GraphicChanged.java",
+      "sha256": "c5d2ec4dfc5c375758630075328aa77566cf224abf452923f1d3f0e3546df890",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/VarbitChanged.java",
+      "sha256": "64d37f7767d7d1d071a19eda45aa8d13fe422976dcf7f5deb610df30691ef559",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/UsernameChanged.java",
+      "sha256": "6ef40fd08311885292879df8fd2248cc1de28e6614c2a0d51e9be31d6bd5c8d9",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/AccountHashChanged.java",
+      "sha256": "02c41e93753c0eb9bbecdee6aa48d06bb8a7ffc1307bc2a85c5f7e3038f69d65",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/AmbientSoundEffectCreated.java",
+      "sha256": "6fecbfe49ab7b74ad35e6248be88dfbada7d035b99969fab933b9ee65e71f693",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/HitsplatApplied.java",
+      "sha256": "b9610ba7906579ec06666333def55f54b2e2ba804817043d0d4fc9bce0ebc333",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/MenuOpened.java",
+      "sha256": "f6a9d97c3c0127d75c7fa7a45c56287dc32ee5de0a811a520ecceab962368a0e",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/NpcSpawned.java",
+      "sha256": "39289560784676d3e65f7b1eac91e36c3b402dd55f9f4993f44718deb3dfe3f7",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/PostStructComposition.java",
+      "sha256": "d4571c5de765138addf5a0f4ed802ea5d6907cd2fb6f61834ad58649369bae26",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/ClanChannelChanged.java",
+      "sha256": "840efae0238e5ec50b387cb9586ce6990fce11cef075c5d8d4a5fb68c2274849",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/CanvasSizeChanged.java",
+      "sha256": "d70cbf6d96efdbb3206471040ef50f6cc6b84313cc2d4156ac03fcdc7108b84d",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/ItemDespawned.java",
+      "sha256": "ae0294512fa7e3da9ef957e0687ddf8cda3fae4d9dd2dbeceb22154011321186",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/WorldChanged.java",
+      "sha256": "b2eb48fa5b72069d045a45602fc0360940e5877388bc77428beb4ae85288e4a2",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/AreaSoundEffectPlayed.java",
+      "sha256": "a5390fc1726fb071284e5cb250ab8a8b5b7fedf1c5e57dc6e2a11dc16ceb99fe",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/ItemSpawned.java",
+      "sha256": "507f9adc2a008923ede7c7537439dd0385777f7de295428290d22d232b0477d7",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/ScriptPostFired.java",
+      "sha256": "23db71522736c84d0db25994931f5e795acaab6865625f05cbfc2a643fd6d581",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/ItemQuantityChanged.java",
+      "sha256": "39bb584832d00ae4bd4f80c00af8979ebc2ef4d6b5415d9de3e22c82e74843fb",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/WidgetClosed.java",
+      "sha256": "e9e8603d9fe581254f89b1c38a7e788de91861397ec0854a8e1d4bfc5f3e0934",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/WidgetLoaded.java",
+      "sha256": "a157bf480f7fd99a48a14bb3877b9a43956d232c01bb27ced9376b2d6e2afeee",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/PostMenuSort.java",
+      "sha256": "9e3407ebdb3de2969a1edf8981ca65abeadf7f1d6a46a2f9596057f9f4851071",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/FocusChanged.java",
+      "sha256": "2120e8792b0c03d2795c3ff6d2c34604fab7fe82e8f05b6147e74e285db7b6b5",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/ItemContainerChanged.java",
+      "sha256": "f2d4acb1c17ae0812d65e522f90ca2b4cde589d3e77bbd9509f42ce78409dfef",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/InteractingChanged.java",
+      "sha256": "5389fd9fcab5477413f790ceea7d8be4ab581cc421fda47cf0706c20d595a9f2",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/OverheadTextChanged.java",
+      "sha256": "3a3d30d06d0c36498342bd26889c0f11364d323b81d068c53aacd5d339b19304",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/FriendsChatChanged.java",
+      "sha256": "9e08965611643ecd98c6790884e4afb703bf27e6d750a6aab487404aeb2f461f",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/SoundEffectPlayed.java",
+      "sha256": "c15d25a783da64889c91d9ad63e7f11784784bd634dffd024807775e75f24efe",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/GameStateChanged.java",
+      "sha256": "e58fccd2885809d9ccc9284f5f84ce1bd5ee062089278c856780863191368de6",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/FriendsChatMemberLeft.java",
+      "sha256": "b1f183164383069ff1ead9adf7a4d103e0f17d6fc610eb1900f93dddabe1ef4c",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/CommandExecuted.java",
+      "sha256": "1db2f7112cecb6bfddd6d3d8b1c4d4b72a49aecd8c97958acdcaa5227d62ca17",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/RemovedFriend.java",
+      "sha256": "4ca0c81282ad249ef0405f7c61b270ccdb70c7ad2c7fd335f07cd97973052c4a",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/PreMapLoad.java",
+      "sha256": "49b5f0fed177f1e5f59af5d208caa36c9225914ba6bfdf5194236819a50cfaf8",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/WorldEntityDespawned.java",
+      "sha256": "9016208c3e32de64299e612ca6c44a5a57f5a479e4e76baa786ec8f12608c190",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/GameObjectSpawned.java",
+      "sha256": "5d6185530483860c80e489988c8ffe646f916b203d31e55c3e94c936de57c191",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/WorldListLoad.java",
+      "sha256": "7847120e5614372b65bcf71a5cd132a777b6c6b562bcac9cee68f6e2d355486f",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/DecorativeObjectSpawned.java",
+      "sha256": "de47c6368a67afce4c37f906457ccf6ddf63ac822032a185ca661ee30647d0fb",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/ProjectileMoved.java",
+      "sha256": "9ec4be2729cfa2eb6949ea8e1f4a1f1f41c59fc819c477d95776f0a57cdfefbb",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/GroundObjectDespawned.java",
+      "sha256": "d7aeba187c11461c44caf03ae8d7defb33e999f383b6d39a95d75d4fa87e2e92",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/PostClientTick.java",
+      "sha256": "526c5630290f6d6f2bfecacae1e0e8c57e7a41b34e140b5e43b7f9d50c7b6f48",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/FakeXpDrop.java",
+      "sha256": "645f5d6fecd349f5646acbccebf1d12cfefe0c47bf35da70a334cb7ead67ffc7",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/DecorativeObjectDespawned.java",
+      "sha256": "037ada4096e9b101e91abfe697aa75f7f4db7146a94c492c6ad20bac5bd1e290",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/MenuOptionClicked.java",
+      "sha256": "00f49e7e308cd93cca14444658985beeae64d67c1ce65db3eb4db92ced4dbd39",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/NpcDespawned.java",
+      "sha256": "833985ca2f2ca4de82e38823456cf0a71b04ff8bc99e36274297e75fc66c9c2e",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/WorldViewUnloaded.java",
+      "sha256": "2d5f6ff600ee7c1763bc1b19467a70e5c8e1f1c5d82bed3a01f9ea2efb0b86dc",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/GroundObjectSpawned.java",
+      "sha256": "64542ee8f46ea3415e3bd650cc2d92f24dcfc5c1588605f076ab525571091572",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/GrandExchangeSearched.java",
+      "sha256": "40f7d5e9c970c61edec7bdbfcf70065af545c24c70d3ab01c32cfa9f467a982c",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/WallObjectDespawned.java",
+      "sha256": "9ce3abf9b7b9d3596742721dcd415e8de29f0c871d97fc28649b08921d0d908f",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/ScriptPreFired.java",
+      "sha256": "ec1af66360fdeda9c63a7dba7ca656692c3899df67200b245135a741e9b3ba70",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/NameableNameChanged.java",
+      "sha256": "cc31c7db53c2c59688b6cf5e315e3364ea23171c201c4a3fc4e23cf3cf9862bb",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/WorldViewLoaded.java",
+      "sha256": "8f374b14f2143c8f8e242b9e0f92f532c830b6cbe4ae9bf70922059f766da520",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/ActorDeath.java",
+      "sha256": "b1a05c7487c41454ba26eff226904c6e88576be2d73dbc8468c4770e541bcb5b",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/ClientTick.java",
+      "sha256": "b19d950e8bd3452553647630857c124414d5046bd963e6f04bfd5b7d8d9ca80c",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/GameTick.java",
+      "sha256": "f849a6c303e57d2ebb93ff29b7cec1c1fca31b5cb06fa130043b714b971595c5",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/ScriptCallbackEvent.java",
+      "sha256": "82f847bd1ed9e18969eb276d0d72c58a00ba3d16b7d507d4556cfa81aaf12f33",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/VarClientStrChanged.java",
+      "sha256": "2ee1667bbee3e47739fd90d43adf6bbd13c89d38a837344202b30efcf3ba74e4",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/PostHealthBarConfig.java",
+      "sha256": "5f75e645333d9e37c7254137930daff8fabfd8170492fa49583a161b4633533d",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/GraphicsObjectCreated.java",
+      "sha256": "4b6ff5b3b26137cf1fd7fe872953171b8bd1cd902629c2020bb6a975525a1d88",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/BeforeRender.java",
+      "sha256": "3abb38b08704a5725b57bb570c1befe8e11a19cb92a2317b996618f93ed81517",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/NpcChanged.java",
+      "sha256": "51bef3a49ced6293ee9f43b604af6c17c1e2074aea95f7bdc242e06850c226fc",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/ClanMemberJoined.java",
+      "sha256": "1128bcdb9496674d6f9db4bd1b4d92052cde746e775c18b4c7ff8cccc035cd15",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/MenuEntryAdded.java",
+      "sha256": "4970e834b21689c0d2accb846946f41587f6b7d90248b53b10e8e31505ffb722",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/MenuShouldLeftClick.java",
+      "sha256": "79efc6c4f1b35a468483181a4feca375c29c0158645fec2979bd9a8f49c4739d",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/ResizeableChanged.java",
+      "sha256": "b570491bdb81a5f9270eb6baf0392cc8f45377570ae0cc2fa540b6b85197ed0f",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/ConfigButtonClicked.java",
+      "sha256": "bd8b638e12a607a3ab0d373e7208a77c04d25368796e6228518509d34b713f11",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/WorldEntitySpawned.java",
+      "sha256": "a63b14653449d34cf0b97f5a405752864187e5ea61201fdf7d23e88ee1b655b5",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/ChatMessage.java",
+      "sha256": "92d0bec3ecb7212d27665f2e1812b47a6245087f92c013ee3928de49fba5a71f",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/PlayerMenuOptionsChanged.java",
+      "sha256": "3fc559c0dc5971488bfe3f98961c184644d8a797fc727805f196ae90168735d0",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/StatChanged.java",
+      "sha256": "ef26a969450fc9648053aab3e9d13c4bb19ff1efa5cdff204ce7299a660abaf1",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/PostItemComposition.java",
+      "sha256": "294ccefd5224bea1469e1157f4350e1df5e7cd57a3512ca754aa8ec9406ed29e",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/AnimationChanged.java",
+      "sha256": "0a70999775ff46c947e4d3137ad6687dd2a725fabeb70bf68758d58df7998002",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/ClanMemberLeft.java",
+      "sha256": "ad8fcb11f5114dca3470e0537dfcd36d2d9ea986331320f65f9440e1aabf9a39",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/PostAnimation.java",
+      "sha256": "771c6a0b835d6da85bc2bd68b197b4840f07f71199780a7d4ee91aad95f7b514",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/PostObjectComposition.java",
+      "sha256": "dde4b0d08b3ac6106f0001ba2a2f9815c0a9f538ebd6bb0914b757f40f045b6f",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/VarClientIntChanged.java",
+      "sha256": "a76371f1e7576420ae6742c0a64dbb9053b574edb76841f766e1e748ab5b66be",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-api/src/main/java/net/runelite/api/events/PlayerChanged.java",
+      "sha256": "14f3dd7e37bcc5e9f0985984932fe73f10b0913e61e18b6d8f029cbcc6961daa",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/config/TopLevelConfigPanel.java",
+      "sha256": "d6a50c36813d815e9bdd1cff098cd95b3137a4a26397eb0a161a534e9bd6cbc9",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/ui/components/materialtabs/MaterialTab.java",
+      "sha256": "21fa1045821a83423cf0ca92d5456fba1af20f0b10e273c95859120fb1645aa1",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/ui/components/materialtabs/MaterialTabGroup.java",
+      "sha256": "e8ad42c820a634eba4f80acf24ec3788a7556e0943711f15a5cc125895e2634c",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/resources/net/runelite/client/plugins/config/config_icon_lg.png",
+      "sha256": "48aba460488269ee59746d3c7be93f10408e9f8568e68192d395fd2023c26276",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/resources/net/runelite/client/plugins/config/profile_icon.png",
+      "sha256": "cc41e7fe26d1419d18051832e2e5355614e4b1ff677966ff767277f38e570e39",
+      "compiled_source_match": true
+    },
+    {
+      "path": "references/open-runelite-rev-240/runelite-client/src/main/resources/net/runelite/client/plugins/config/plugin_hub_icon.png",
+      "sha256": "c858ae8b55aefc2e560e9c73b9e0cb3c260fa336f406379a584f10e922171545",
+      "compiled_source_match": true
+    }
+  ],
+  "owned_assets": [
+    {
+      "path": "crates/shell-ui/assets/runelite/FONT-LICENSES",
+      "sha256": "8a82a5355f235d2183061bbb781f3a74da837e893380600ac5706eeeb0770bf2"
+    },
+    {
+      "path": "crates/shell-ui/assets/runelite/LICENSE",
+      "sha256": "dd35829a586785621651857262168bd91374a84669592d2db28520648b55a519"
+    },
+    {
+      "path": "crates/shell-ui/assets/runelite/NOTICE",
+      "sha256": "bbc37a67f6085afb6e7ade64dfbb6e7b50ebfcbcb0f9e80bf5c55f78a014be31"
+    },
+    {
+      "path": "crates/shell-ui/assets/runelite/collapsed.png",
+      "sha256": "bb805a21541e2774efcfa9dde43b4344b04ad465329128af3e86972ab4b3a73a"
+    },
+    {
+      "path": "crates/shell-ui/assets/runelite/config_back_icon.png",
+      "sha256": "24a4204e8d96e513beae59abdb05a8563164bef5e6414211a916ab1593e64d53"
+    },
+    {
+      "path": "crates/shell-ui/assets/runelite/config_edit_icon.png",
+      "sha256": "a5409115db4aca6c37689f11fd3e25da2ead7368f7c4b58d9c320fba5cc15bab"
+    },
+    {
+      "path": "crates/shell-ui/assets/runelite/config_icon.png",
+      "sha256": "d5554d946c0d3bb885b2f14b42134d8b5c5a486d2f52cf9eeeb3df94bc4f1ceb"
+    },
+    {
+      "path": "crates/shell-ui/assets/runelite/config_icon_lg.png",
+      "sha256": "48aba460488269ee59746d3c7be93f10408e9f8568e68192d395fd2023c26276"
+    },
+    {
+      "path": "crates/shell-ui/assets/runelite/devtools_icon.png",
+      "sha256": "0986a9c585137fdec192addb1bd80b101ba6a0de0f0e1cbaf719809f09bab0f0"
+    },
+    {
+      "path": "crates/shell-ui/assets/runelite/error.png",
+      "sha256": "a293cb7f0bd4b416de3106d7a7548465c73a6b32070de5b70d9e1e210ed8e698"
+    },
+    {
+      "path": "crates/shell-ui/assets/runelite/expanded.png",
+      "sha256": "bfe23b85a3c48b4eb8b3941abed67e065062686b43efc95a51f68ca137967a90"
+    },
+    {
+      "path": "crates/shell-ui/assets/runelite/open.png",
+      "sha256": "a49def921fb48af26bdb79f00f92dd5dad188cc1b608f9bf0a41aad13e7e6e2b"
+    },
+    {
+      "path": "crates/shell-ui/assets/runelite/open_rs.png",
+      "sha256": "81fdd2a30acc2cb2491aa9a320c3721628419567dc660ef23b748427ab09e3f9"
+    },
+    {
+      "path": "crates/shell-ui/assets/runelite/plugin_hub_icon.png",
+      "sha256": "c858ae8b55aefc2e560e9c73b9e0cb3c260fa336f406379a584f10e922171545"
+    },
+    {
+      "path": "crates/shell-ui/assets/runelite/profile_icon.png",
+      "sha256": "cc41e7fe26d1419d18051832e2e5355614e4b1ff677966ff767277f38e570e39"
+    },
+    {
+      "path": "crates/shell-ui/assets/runelite/refresh.png",
+      "sha256": "af02ded985625ed87ba5a9b809b19078ade25976cdb3c2e7e0848952b9f00617"
+    },
+    {
+      "path": "crates/shell-ui/assets/runelite/runelite_128.png",
+      "sha256": "829009fd4c1eb981fb28f6e6015f57df0f395b776f684f4642a2df8beac3a21e"
+    },
+    {
+      "path": "crates/shell-ui/assets/runelite/runelite_16.png",
+      "sha256": "610177b7352f0e64f986d8ada6e1e693775f40c1c631edd3bf8aa76123913802"
+    },
+    {
+      "path": "crates/shell-ui/assets/runelite/runescape.ttf",
+      "sha256": "7477bbfd998b8e16e8a1e898fd49fb736a6fdfa00e7eb364d4d441f10290f03a"
+    },
+    {
+      "path": "crates/shell-ui/assets/runelite/runescape_bold.ttf",
+      "sha256": "c8b9afefe105a78717fde9692deafbf2361b54bcf9c8019b6d817de94f1c6168"
+    },
+    {
+      "path": "crates/shell-ui/assets/runelite/runescape_small.ttf",
+      "sha256": "fe43104752ad819d5b037bb544a194f7dc8fdf1c2dfe7f4cdf20a4f98896ed8a"
+    },
+    {
+      "path": "crates/shell-ui/assets/runelite/search.png",
+      "sha256": "361243d3b7a8b6158aae52add0389ad3ebbfd6e54d0a906ce31550ac34c66cf5"
+    },
+    {
+      "path": "crates/shell-ui/assets/runelite/star_off.png",
+      "sha256": "44c7178a211b03cc9a00160af3fd398e5853167dc717d3e6a951c5519f3433d9"
+    },
+    {
+      "path": "crates/shell-ui/assets/runelite/star_on.png",
+      "sha256": "de9ca4e1cc993a137b9321924f8544233fc6ff5e550f3350cff2f38138c3dd44"
+    },
+    {
+      "path": "crates/shell-ui/assets/runelite/switch_off.png",
+      "sha256": "ae98460b874514388bea1a3718c8b69bccc09d0a33e9e3348830a5288537dce7"
+    },
+    {
+      "path": "crates/shell-ui/assets/runelite/switch_on.png",
+      "sha256": "e8a8d4a9d42801b91ca1ed70fa1d53b8dcfffc68b4bfc13242be9eb830a83bdc"
+    }
+  ],
+  "metric_oracle": {
+    "source": "tools/sidebar/RuneLiteSidebarMetrics.java",
+    "jdk": "OpenJDK 11.0.31",
+    "laf_scale": "1x",
+    "headless": true,
+    "isolated_home": true,
+    "result": {
+      "rail": 31,
+      "open": 273,
+      "panel": 242,
+      "innerPanel": 225,
+      "scrollAllowance": 17,
+      "scrollbar": 7,
+      "tab": [
+        243,
+        0,
+        30,
+        26
+      ],
+      "font": "RuneScape",
+      "fontSize": 16,
+      "fontHeight": 16,
+      "configurationWidth": 78,
+      "header": [
+        10,
+        10,
+        69,
+        34
+      ]
+    },
+    "scope": "Resolved shell classes only, no gamepack invocation; metric PNG is synthetic not complete production panel",
+    "source_sha256": "76b5bdcfc1c41c650a1f458fe7dbe9b02db6c79d520c1997611bf61f24d3700d"
+  },
+  "manual_reference": {
+    "status": "PARTIAL/OPEN",
+    "method": "Bounded CUA inspection of RuneLite login sidebar at 2x; shared GPU captures inspected. No credentials or login.",
+    "limits": [
+      "Bridge status returned Java NullPointerException; live window not promoted to exact attributed 240 comparison",
+      "AX search click/type produced no UI change; setValue rejected non-settable field",
+      "Exact text/control pixel comparison and reference/actual/difference artifacts remain NOT-RUN",
+      "Monitor/fullscreen/maximized-window and logged-in lifecycle acceptance NOT-RUN"
+    ]
+  },
+  "validation": [
+    {
+      "name": "core-contracts",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "rustclient-plugin-host",
+        "-p",
+        "rustclient-plugin-bridge",
+        "-p",
+        "rustclient-first-party-plugins",
+        "-p",
+        "rustclient-shell-ui"
+      ],
+      "exit_code": 0,
+      "log": "target/sidebar-lifecycle/contracts-final.log",
+      "note": "120 tests at this run. Latest shell run replaces its 10 shell tests with 11, including stable focus after favorite reorder."
+    },
+    {
+      "name": "renderer-settings",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "rustclient-renderer",
+        "--lib",
+        "settings::"
+      ],
+      "exit_code": 0,
+      "log": "target/sidebar-lifecycle/renderer-settings.log"
+    },
+    {
+      "name": "native-layout-tests",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "rustclient-native",
+        "--bin",
+        "rustclient-native",
+        "shell::layout::tests"
+      ],
+      "exit_code": 0,
+      "log": "target/sidebar-lifecycle/native-layout-tests.log"
+    },
+    {
+      "name": "configuration-rollback",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "rustclient-application",
+        "--test",
+        "builtin_configuration"
+      ],
+      "exit_code": 0,
+      "log": "target/sidebar-lifecycle/application-config-tests.log"
+    },
+    {
+      "name": "panel-probe",
+      "command": [
+        "cargo",
+        "run",
+        "-p",
+        "rustclient-native",
+        "--bin",
+        "gpu_shell_probe"
+      ],
+      "exit_code": 0,
+      "log": "target/sidebar-lifecycle/panel-probe.log"
+    },
+    {
+      "name": "shell-final",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "rustclient-shell-ui"
+      ],
+      "exit_code": 0,
+      "log": "target/sidebar-lifecycle/shell-final.log"
+    },
+    {
+      "name": "fmt",
+      "command": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--check"
+      ],
+      "exit_code": 0,
+      "log": "target/sidebar-lifecycle/fmt.log"
+    },
+    {
+      "name": "workspace-check",
+      "command": [
+        "cargo",
+        "check",
+        "--workspace",
+        "--all-targets"
+      ],
+      "exit_code": 0,
+      "log": "target/sidebar-lifecycle/workspace-check.log"
+    },
+    {
+      "name": "clippy",
+      "command": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "log": "target/sidebar-lifecycle/clippy.log"
+    },
+    {
+      "name": "wasm-build",
+      "command": [
+        "cargo",
+        "build",
+        "-p",
+        "rustclient-web",
+        "--target",
+        "wasm32-unknown-unknown",
+        "--target-dir",
+        "/tmp/rustclient-sidebar-validation-20261029"
+      ],
+      "exit_code": 0,
+      "log": "target/sidebar-lifecycle/wasm-build.log"
+    },
+    {
+      "name": "wasm-current",
+      "command": [
+        "cargo",
+        "check",
+        "-p",
+        "rustclient-web",
+        "--target",
+        "wasm32-unknown-unknown",
+        "--target-dir",
+        "/tmp/rustclient-sidebar-validation-20261029"
+      ],
+      "exit_code": 0,
+      "log": "target/sidebar-lifecycle/wasm-current.log"
+    },
+    {
+      "name": "wasm-clippy",
+      "command": [
+        "cargo",
+        "clippy",
+        "-p",
+        "rustclient-web",
+        "--target",
+        "wasm32-unknown-unknown",
+        "--target-dir",
+        "/tmp/rustclient-sidebar-validation-20261029",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "log": "target/sidebar-lifecycle/wasm-clippy.log"
+    },
+    {
+      "name": "matrix",
+      "command": [
+        "python3",
+        "tools/port_matrix.py",
+        "--check"
+      ],
+      "exit_code": 0,
+      "expected_exit_code": 0,
+      "log": "target/sidebar-lifecycle/matrix.log"
+    },
+    {
+      "name": "docs-index",
+      "command": [
+        "python3",
+        "tools/docs_index.py",
+        "--check"
+      ],
+      "exit_code": 0,
+      "expected_exit_code": 0,
+      "log": "target/sidebar-lifecycle/docs-index.log"
+    },
+    {
+      "name": "port-audit",
+      "command": [
+        "python3",
+        "tools/port_audit.py",
+        "--check"
+      ],
+      "exit_code": 0,
+      "expected_exit_code": 0,
+      "log": "target/sidebar-lifecycle/port-audit.log"
+    },
+    {
+      "name": "inventory",
+      "command": [
+        "python3",
+        "tools/parity_inventory.py",
+        "--check"
+      ],
+      "exit_code": 0,
+      "expected_exit_code": 0,
+      "log": "target/sidebar-lifecycle/inventory.log"
+    },
+    {
+      "name": "gpu-audit",
+      "command": [
+        "python3",
+        "tools/gpu/audit.py",
+        "--check"
+      ],
+      "exit_code": 0,
+      "expected_exit_code": 0,
+      "log": "target/sidebar-lifecycle/gpu-audit.log"
+    },
+    {
+      "name": "gpu-incomplete-gate",
+      "command": [
+        "python3",
+        "tools/gpu/audit.py",
+        "--require-complete"
+      ],
+      "exit_code": 2,
+      "expected_exit_code": 2,
+      "log": "target/sidebar-lifecycle/gpu-incomplete-gate.log"
+    },
+    {
+      "name": "source-and-asset-integrity",
+      "result": "PASS",
+      "note": "Every final owner/owned-asset SHA-256 matches; every selected pinned RuneLite source hash matches. Reference trees are not source owners."
+    }
+  ],
+  "performance": {
+    "claim": "Current panel workload only; no comparable pre-change same-font/layout run, so no speedup claim.",
+    "log": "target/sidebar-lifecycle/panel-probe.log",
+    "comparability": "Historical Dioxus/CPU timings are not comparable to current shared egui source/font workload.",
+    "current_workload_results": [
+      "plugins-1x: EguiShellStats { paints: 1, geometry_uploads: 1, texture_uploads: 15, texture_bytes: 543828 }; fresh reconstruction identical",
+      "1x cross-row CPU: p50=0.1349ms p95=0.1599ms; EguiPanelStats { passes: 123, tessellations: 2, reused_inputs: 0 }",
+      "gpu-1x: EguiShellStats { paints: 1, geometry_uploads: 1, texture_uploads: 15, texture_bytes: 543828 }; fresh reconstruction identical",
+      "plugins-2x: EguiShellStats { paints: 1, geometry_uploads: 1, texture_uploads: 15, texture_bytes: 543828 }; fresh reconstruction identical",
+      "2x cross-row CPU: p50=0.1346ms p95=0.1588ms; EguiPanelStats { passes: 123, tessellations: 2, reused_inputs: 0 }",
+      "gpu-2x: EguiShellStats { paints: 1, geometry_uploads: 1, texture_uploads: 15, texture_bytes: 543828 }; fresh reconstruction identical"
+    ]
+  },
+  "deferred": [
+    "External executable ABI 0.2",
+    "Playable browser gameplay and device loss acceptance",
+    "Source actor facts and exact menu/script hook boundaries",
+    "Widget-incarnation callback liveness guard",
+    "9 classic GPU acceptance gates; 117HD separate",
+    "Rust software rasterizer is not planned"
+  ],
+  "validated_on": "2026-10-30",
+  "final_git_head": "b85c8a51cd7075b064c62177b5846acf4fb8c571",
+  "font_licenses": {
+    "notice": "crates/shell-ui/assets/runelite/FONT-LICENSES",
+    "plain_small": "CC-BY-NC-SA-3.0",
+    "bold": "CC-BY-SA-3.0",
+    "plain_version_verification": {
+      "creator_page": "https://fontstruct.com/fontstructions/show/855573/runescape_chat_07",
+      "linked_license": "https://creativecommons.org/licenses/by-nc-sa/3.0/",
+      "checked_on": "2026-10-30"
+    },
+    "not_bsd_fonts": true,
+    "metadata": [
+      {
+        "path": "crates/shell-ui/assets/runelite/runescape.ttf",
+        "sha256": "7477bbfd998b8e16e8a1e898fd49fb736a6fdfa00e7eb364d4d441f10290f03a",
+        "embedded_name_records": [
+          {
+            "platform": 1,
+            "language": 0,
+            "name_id": 0,
+            "text": "Copyright WolfieMario 2013\n\u201a\u00c4\u00faRuneScape Chat '07\u201a\u00c4\u00f9 is based on \u201a\u00c4\u00faRuneScape Chat\u201a\u00c4\u00f9 by \u201a\u00c4\u00faWolfieMario\u201a\u00c4\u00f9 (http://fontstruct.com/fontstructors/wolfiemario)"
+          },
+          {
+            "platform": 1,
+            "language": 0,
+            "name_id": 9,
+            "text": "WolfieMario"
+          },
+          {
+            "platform": 1,
+            "language": 0,
+            "name_id": 13,
+            "text": "Creative Commons Attribution Non-commercial Share Alike"
+          },
+          {
+            "platform": 3,
+            "language": 1033,
+            "name_id": 0,
+            "text": "Copyright WolfieMario 2013\n\u201a\u00c4\u00faRuneScape Chat '07\u201a\u00c4\u00f9 is based on \u201a\u00c4\u00faRuneScape Chat\u201a\u00c4\u00f9 by \u201a\u00c4\u00faWolfieMario\u201a\u00c4\u00f9 (http://fontstruct.com/fontstructors/wolfiemario)"
+          },
+          {
+            "platform": 3,
+            "language": 1033,
+            "name_id": 9,
+            "text": "WolfieMario"
+          },
+          {
+            "platform": 3,
+            "language": 1033,
+            "name_id": 13,
+            "text": "Creative Commons Attribution Non-commercial Share Alike"
+          }
+        ]
+      },
+      {
+        "path": "crates/shell-ui/assets/runelite/runescape_bold.ttf",
+        "sha256": "c8b9afefe105a78717fde9692deafbf2361b54bcf9c8019b6d817de94f1c6168",
+        "embedded_name_records": [
+          {
+            "platform": 1,
+            "language": 0,
+            "name_id": 0,
+            "text": "Copyright Bucket 2010\n\u201cRuneScape Bold Font\u201d is based on \u201cRuneScape Chat Bold 2\u201d by \u201cWolfieMario\u201d (http://fontstruct.fontshop.com/fontstructors/wolfiemario), which is based on \u201cRuneScape Chat Bold\u201d by \u201cWolfieMario\u201d (http://fontstruct.fontshop.com/fontstructors/wolfiemario), which is based on \u201cRuneScape Chat\u201d by \u201cWolfieMario\u201d (http://fontstruct.fontshop.com/fontstructors/wolfiemario)"
+          },
+          {
+            "platform": 1,
+            "language": 0,
+            "name_id": 9,
+            "text": "Bucket"
+          },
+          {
+            "platform": 1,
+            "language": 0,
+            "name_id": 13,
+            "text": "Creative Commons Attribution Share Alike"
+          },
+          {
+            "platform": 1,
+            "language": 0,
+            "name_id": 14,
+            "text": "http://creativecommons.org/licenses/by-sa/3.0/"
+          },
+          {
+            "platform": 3,
+            "language": 1033,
+            "name_id": 0,
+            "text": "Copyright Bucket 2010\n\u201cRuneScape Bold Font\u201d is based on \u201cRuneScape Chat Bold 2\u201d by \u201cWolfieMario\u201d (http://fontstruct.fontshop.com/fontstructors/wolfiemario), which is based on \u201cRuneScape Chat Bold\u201d by \u201cWolfieMario\u201d (http://fontstruct.fontshop.com/fontstructors/wolfiemario), which is based on \u201cRuneScape Chat\u201d by \u201cWolfieMario\u201d (http://fontstruct.fontshop.com/fontstructors/wolfiemario)"
+          },
+          {
+            "platform": 3,
+            "language": 1033,
+            "name_id": 9,
+            "text": "Bucket"
+          },
+          {
+            "platform": 3,
+            "language": 1033,
+            "name_id": 13,
+            "text": "Creative Commons Attribution Share Alike"
+          },
+          {
+            "platform": 3,
+            "language": 1033,
+            "name_id": 14,
+            "text": "http://creativecommons.org/licenses/by-sa/3.0/"
+          }
+        ]
+      },
+      {
+        "path": "crates/shell-ui/assets/runelite/runescape_small.ttf",
+        "sha256": "fe43104752ad819d5b037bb544a194f7dc8fdf1c2dfe7f4cdf20a4f98896ed8a",
+        "embedded_name_records": [
+          {
+            "platform": 1,
+            "language": 0,
+            "name_id": 0,
+            "text": ""
+          },
+          {
+            "platform": 1,
+            "language": 0,
+            "name_id": 9,
+            "text": "WolfieMario"
+          },
+          {
+            "platform": 1,
+            "language": 0,
+            "name_id": 13,
+            "text": "Creative Commons Attribution Non-commercial Share Alike"
+          },
+          {
+            "platform": 1,
+            "language": 0,
+            "name_id": 14,
+            "text": "http://creativecommons.org/licenses/by-nc-sa/3.0/"
+          },
+          {
+            "platform": 3,
+            "language": 1033,
+            "name_id": 0,
+            "text": ""
+          },
+          {
+            "platform": 3,
+            "language": 1033,
+            "name_id": 9,
+            "text": "WolfieMario"
+          },
+          {
+            "platform": 3,
+            "language": 1033,
+            "name_id": 13,
+            "text": "Creative Commons Attribution Non-commercial Share Alike"
+          },
+          {
+            "platform": 3,
+            "language": 1033,
+            "name_id": 14,
+            "text": "http://creativecommons.org/licenses/by-nc-sa/3.0/"
+          }
+        ]
+      }
+    ]
+  },
+  "final_owner_file_hashes": [
+    {
+      "path": "Cargo.lock",
+      "sha256": "9bd238c1be35f7a5d3415125405b3802604f18905c81e252b9db54b9a4a5a130"
+    },
+    {
+      "path": "Cargo.toml",
+      "sha256": "f70c4b1e6c5e76182f84a5645f78f160e16bde90d47a740801ea68e1f53d12d6"
+    },
+    {
+      "path": "apps/native/src/bin/gpu_shell_probe.rs",
+      "sha256": "a6093b60e611231006b8d2034ed04a946e9f004e7cec45b2f11ce931958da45c"
+    },
+    {
+      "path": "apps/native/src/main.rs",
+      "sha256": "5a768ce555fb6cc50f767b476c48f5788117d8a46d0308bc8004cf52b825ccbb"
+    },
+    {
+      "path": "apps/native/src/plugins.rs",
+      "sha256": "7ad33ab793a1cf5398c80edcb7cd79b9db71f86f3ca6b396b31e583c5b69ff44"
+    },
+    {
+      "path": "apps/native/src/shell/layout.rs",
+      "sha256": "e4229403222d267ff5987f8c12477491bdeafc8e70461d55517a42d934b6cdf6"
+    },
+    {
+      "path": "apps/native/src/shell/settings.rs",
+      "sha256": "88d426509aaf73f1e291894f100a9c368cd38a18e1a07568e14899fd50e6a80d"
+    },
+    {
+      "path": "apps/native/src/shell.rs",
+      "sha256": "3cfc80c7a6a9914b606a28e7deabfe12612ce5d6538f6dc7d544efa3d5ae4c4f"
+    },
+    {
+      "path": "apps/web/Cargo.toml",
+      "sha256": "c5827c2a021df6278d530e5030b4691919f02d22f806366e7e20598eb95816ab"
+    },
+    {
+      "path": "apps/web/index.html",
+      "sha256": "f0b5db4478f032933a3342cee58a3b2caf341e7dfe5c5dc2cbf8a9e3d51e4410"
+    },
+    {
+      "path": "apps/web/src/lib.rs",
+      "sha256": "6e93a0193b5649200a513456b669f597a6b4c5bd34e042a6c941052d3dc2036d"
+    },
+    {
+      "path": "apps/web/src/shell.rs",
+      "sha256": "5a44346850fdf394cffd26dba2c5753a03308330b8f807d45bd4527f626d260a"
+    },
+    {
+      "path": "crates/application/src/builtin_config/availability.rs",
+      "sha256": "a1204daaebd75f9bccbbf5580d8066612b7e4251abd93ccb3b609f0ac9a55194"
+    },
+    {
+      "path": "crates/application/src/builtin_config.rs",
+      "sha256": "cd4d8df05aeaf7248e992a79fbab59fc36a3912b82df7e5a390ce96632ba791f"
+    },
+    {
+      "path": "crates/first-party-plugins/src/animsmoothing.rs",
+      "sha256": "fa71a2fb846deb9d38cb932cac8648cbc9982331700b2f384f3f6f60d306be91"
+    },
+    {
+      "path": "crates/first-party-plugins/src/camera.rs",
+      "sha256": "5411e4f4912554e7555e3a1dbf59c7e896ce2f725a29a02b777d25e150cc2b70"
+    },
+    {
+      "path": "crates/first-party-plugins/src/entityhider.rs",
+      "sha256": "bd83d9765bc30c7cb74c279a29f647d6b550ec6bb3e1ca4e874eaf28f582d149"
+    },
+    {
+      "path": "crates/first-party-plugins/src/fps.rs",
+      "sha256": "adcda427e1838b92f09f7885a2acfc5505d636add31054713a5bc53dfb129fa4"
+    },
+    {
+      "path": "crates/first-party-plugins/src/idlenotifier.rs",
+      "sha256": "9c62f16ebc62550dab667dde0f8d2db22d73e1d2491431b91fdb6ac30458d772"
+    },
+    {
+      "path": "crates/first-party-plugins/src/idlenotifier_animations.rs",
+      "sha256": "37d8cde53220546b908840d7918d1522749ef28c497ddb5876e8df0d4690d1fa"
+    },
+    {
+      "path": "crates/first-party-plugins/src/interfacestyles.rs",
+      "sha256": "f8e5df94c7a4a0f486528f2aa923eb7e806af6c53a7cf71886bc410a1b0f700f"
+    },
+    {
+      "path": "crates/first-party-plugins/src/interfacestyles_sprites.rs",
+      "sha256": "5043ad71f50ad5a33a821d297d568ac7d00a009f65acf9602c7c2ceb3cd2b8d0"
+    },
+    {
+      "path": "crates/first-party-plugins/src/lib.rs",
+      "sha256": "cf85e30fd436a3f398f5fddd8eb4fc0db765f5c614e45b785297c03984ce377c"
+    },
+    {
+      "path": "crates/first-party-plugins/src/npchighlight.rs",
+      "sha256": "bad6d97e848a03ab0c5d20915dacd74beb3a3be6783145903eeceeadc4c4f4ba"
+    },
+    {
+      "path": "crates/first-party-plugins/src/playerindicators.rs",
+      "sha256": "eeec00036f718491f7ec9d79da00675c1ef040e238667ed11cc7a44cc051e554"
+    },
+    {
+      "path": "crates/first-party-plugins/src/roofremoval.rs",
+      "sha256": "fe8c678ba8b693fc7997010edb154649b1e2a16f3896398da21cdb5fc071017e"
+    },
+    {
+      "path": "crates/first-party-plugins/src/statusbars.rs",
+      "sha256": "a8c2cdd40c10d3d0ad431fb413588f4787b4f8cd408a18dc784145002d21c4e8"
+    },
+    {
+      "path": "crates/first-party-plugins/src/stretchedmode.rs",
+      "sha256": "930b5170c77ec11429712659bbf2ad55d00184e417048f9d05b768b078c48b93"
+    },
+    {
+      "path": "crates/first-party-plugins/src/tests.rs",
+      "sha256": "ea64924f3f64948e02067e79cc4d58641ad8c946cec6d70dbf59feba78369ad1"
+    },
+    {
+      "path": "crates/first-party-plugins/src/text.rs",
+      "sha256": "a4d52457ee7fe1d80fa1bf06b3dc0c1b5197b67f9ab7158cc0d165056df69324"
+    },
+    {
+      "path": "crates/first-party-plugins/src/xptracker/state.rs",
+      "sha256": "392b72509bc1a9381c57ce9c2faa0ed23378b0e6667de78e2d880281be21593d"
+    },
+    {
+      "path": "crates/first-party-plugins/src/xptracker/tests.rs",
+      "sha256": "0c4647bb2ba0f05bbc9491ca0d30ea3b0128e3fda414adc8b55c3a922b693e1b"
+    },
+    {
+      "path": "crates/first-party-plugins/src/xptracker.rs",
+      "sha256": "35c2de49323c35c1361dd8161d22bbfb05a593c34a87e58f4448ae454ffe793a"
+    },
+    {
+      "path": "crates/platform-web/src/clock.rs",
+      "sha256": "027b61f1355371ae4582bc06fe69aa751ec086b8fb0e820fdd9502f29a1c4f2d"
+    },
+    {
+      "path": "crates/platform-web/src/lib.rs",
+      "sha256": "5125f7a8b2e41838056e742b5c4de6ab389eaecc0bbd46b890a465d7eb8edd68"
+    },
+    {
+      "path": "crates/platform-web/src/storage.rs",
+      "sha256": "8f2e5712e6e0e402c9be4a8f7f0fc5033730cd3df2a92cc662f20d7cfb6b0d31"
+    },
+    {
+      "path": "crates/plugin-bridge/src/diff.rs",
+      "sha256": "24669a4a55585b73ddcb3881e96fd71707311ce086766d7a80077871f3583e8f"
+    },
+    {
+      "path": "crates/plugin-bridge/src/lib.rs",
+      "sha256": "82b648ee2693141887c1427fbdbe17a31bf625d6badb6219ef40c86db9d2c4c4"
+    },
+    {
+      "path": "crates/plugin-bridge/src/project.rs",
+      "sha256": "c5344469d7542fea1a8b4839c15e6e1c291b6257df2bbc853c56c790b829fea1"
+    },
+    {
+      "path": "crates/plugin-bridge/tests/projection.rs",
+      "sha256": "e4860ab6bf64a2257ba72a78b80f3b97cd433dbbb3a517e5b608d3bf78100064"
+    },
+    {
+      "path": "crates/plugin-host/src/configuration.rs",
+      "sha256": "23c369330bf10a5af394355f441d531183aa1db5c14d6ef9723cd470714f473d"
+    },
+    {
+      "path": "crates/plugin-host/src/lib.rs",
+      "sha256": "1e81331b0779453924010ebdcfea3303145ae056c0aa7a7f2af3b0096b9cc055"
+    },
+    {
+      "path": "crates/plugin-host/src/lifecycle.rs",
+      "sha256": "13ade0175ffd4deb7b014fc25875451a0a80cf3d1b0c4234ae45e224e773629c"
+    },
+    {
+      "path": "crates/plugin-host/src/required.rs",
+      "sha256": "25e4aa998cc127776edb55ffd5c751775bd8b07c8936fba18008d6cd2819000e"
+    },
+    {
+      "path": "crates/plugin-host/src/v2.rs",
+      "sha256": "56842a7a899e066158f7b089fc2a9d1afec7b65f1892d359ffcd899201b0650b"
+    },
+    {
+      "path": "crates/plugin-host/tests/api_v2.rs",
+      "sha256": "d19e0018d45300a16bfae36ccda4bb4d17ab8533a1d1ab8ebfb9ff22749105a0"
+    },
+    {
+      "path": "crates/plugin-host/tests/first_party_schemas.rs",
+      "sha256": "95e61ace568cc86bf7100c7194865a1f2706d8a901830f02de15a78421efaef5"
+    },
+    {
+      "path": "crates/plugin-host/tests/lifecycle.rs",
+      "sha256": "144628b92402beb9ed0bea17d85a0b7ff6c884de0b98d9d184a1ae49e845b1f1"
+    },
+    {
+      "path": "crates/plugin-host/tests/required_configuration.rs",
+      "sha256": "e5fe5b7027839fdfdd2b1642dc2a58da6047f682fc9d4946f887e7792bfa41d0"
+    },
+    {
+      "path": "crates/renderer/src/lib.rs",
+      "sha256": "f6dc0ef4108f44ce46fd06f43a1e986085cde409d8140e4815d4996be000a843"
+    },
+    {
+      "path": "crates/renderer/src/settings/preferences.rs",
+      "sha256": "37d0ad5d479f2b967bcd0e4f4ac6afc788888fec8dd922e2a4e56f9185a87468"
+    },
+    {
+      "path": "crates/renderer/src/settings.rs",
+      "sha256": "386767da9325664193483ce0d64df4a851d74b67e02e84696f72556366d6be8a"
+    },
+    {
+      "path": "crates/shell-ui/Cargo.toml",
+      "sha256": "40b7e382cc7ad0b356aeee2aaad5e48fd9eb5e9f42ad56bbdb36783151238650"
+    },
+    {
+      "path": "crates/shell-ui/src/assets.rs",
+      "sha256": "148a987aa5e7aebda8ed20f208d4522e2e617c177a0fd2528322841aee4f782e"
+    },
+    {
+      "path": "crates/shell-ui/src/egui_panel/controls.rs",
+      "sha256": "d8d832dff773957d2513fae32818603717db43c6f4d267c5b12df19cf4c41352"
+    },
+    {
+      "path": "crates/shell-ui/src/egui_panel/input.rs",
+      "sha256": "aacb745ceeb4e53b693fff6bd5eee4d43623cf1949d907aa6e475d9f8c7eb834"
+    },
+    {
+      "path": "crates/shell-ui/src/egui_panel/layout.rs",
+      "sha256": "def029267b9ed682b953e2e876eef81e5986bd5a948ea0c673caf4cdf7738a86"
+    },
+    {
+      "path": "crates/shell-ui/src/egui_panel/theme.rs",
+      "sha256": "cc590d617303206bb0de20a82ecdd4b71b9aa983f87d5e0f4b88dcf761aa150f"
+    },
+    {
+      "path": "crates/shell-ui/src/egui_panel.rs",
+      "sha256": "7dcf871620f2d1bc0659ae89865818224fa8400b9687f58c8a7979fe6db9a453"
+    },
+    {
+      "path": "crates/shell-ui/src/lib.rs",
+      "sha256": "1fa116ffd2ae1624a768139cf9c73a4471509d2090237737de6d628a03234316"
+    },
+    {
+      "path": "crates/shell-ui/src/metrics.rs",
+      "sha256": "d8f0028ca1d5fe674b4bc019f1f283c3e0844e58a6863c16f04b4a32d364d104"
+    },
+    {
+      "path": "crates/shell-ui/src/model.rs",
+      "sha256": "99f12c6f96b3b8101f7fcea3d811ec5e29403789c7c3e3c48d74df233ac44990"
+    },
+    {
+      "path": "crates/shell-ui/tests/egui_contracts.rs",
+      "sha256": "f71d75523d82e93f3b0a0f8261aea0a80b653edf8e6d132745e061f8dc79a522"
+    },
+    {
+      "path": "crates/shell-ui/tests/sidebar_contracts.rs",
+      "sha256": "2a589cd1c3ef92d188ab80f38d33e51101880113259060019f12cc2d9aebb976"
+    },
+    {
+      "path": "tools/gpu/audit.py",
+      "sha256": "a4c6a2ffa24ae3da08b27fb284b9bde3ba879ddaba670b6210bca9efe2828810"
+    },
+    {
+      "path": "tools/sidebar/build_web.py",
+      "sha256": "fbe840d9319b8c3146f087881e352dd159535b931723756d2a17677c30ac39c4"
+    }
+  ],
+  "test_counts": {
+    "non_shell_core_contracts": 110,
+    "latest_shared_shell_contracts": 11,
+    "renderer_settings": 7,
+    "native_canvas_layout": 4,
+    "configuration_rollback": 1,
+    "total_unique_focused_tests": 133,
+    "full_workspace_tests_run": false
+  },
+  "browser_smoke": {
+    "observed_build_sha256": "27112780a188fe9f8ef20159a3c09fcf5e6c08524a212673fe8ad08ab3265b16",
+    "later_final_build_sha256": "7401e01a29a63da43ff19d8be66fc52c32b70757dd5879a387cb215c8f6d5a7a",
+    "initial_observation": {
+      "canvas_physical": [
+        2560,
+        1356
+      ],
+      "chrome_logical": 273,
+      "passes": 3,
+      "paints": 1,
+      "geometry_plus_texture_uploads": 16,
+      "outcome": "Presented"
+    },
+    "idle_second_observation": {
+      "passes": 3,
+      "paints": 1,
+      "geometry_plus_texture_uploads": 16
+    },
+    "transitions_observed": [
+      273,
+      31,
+      0
+    ],
+    "hidden_first_and_second_observations": {
+      "passes": 4,
+      "paints": 2,
+      "geometry_plus_texture_uploads": 17
+    },
+    "final_build_behavior_observed": [
+      "typed GPU search",
+      "favorite GPU then reload: GPU remains first with green star",
+      "restored initial unpinned preference",
+      "GPU settings header Always on badge",
+      "disabled expanded loading setting with reason",
+      "MSAA 2x request displayed as effective 4x",
+      "no warning/error console entries"
+    ],
+    "limits": "Browser shell harness only. No browser gameplay, device loss, real OS IME/clipboard or all-scale live visual acceptance claimed."
+  },
+  "attempt_notes": [
+    "Superseded builds/checks were interrupted during source fixes and shared build-lock contention; only final gate records count.",
+    "An initial configuration test filter selected zero cases; corrected to --test builtin_configuration, which ran and passed one rollback contract.",
+    "An experimental task-created build cache was moved to Trash for recoverable cleanup; the final browser cache is separate under /tmp."
+  ]
+}

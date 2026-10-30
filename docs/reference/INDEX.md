@@ -1,5 +1,11 @@
 # Reference Index
 
+Update optimization: [prepared scene updates, indexed queries and retained poses](UPDATE-OPTIMIZATION-2026-10-30.md),
+[measurements and validation](UPDATE-OPTIMIZATION-EVIDENCE-2026-10-30.json).
+
+Update latency: [2026-10-30 scene/actor/widget/cycle review](UPDATE-SYSTEM-2026-10-30.md),
+[frozen sources and measurements](UPDATE-SYSTEM-EVIDENCE-2026-10-30.json).
+
 This index maps pinned behavioral evidence to RustClient owners.
 [SPEC-0019](../specs/SPEC-0019-port-parity.md) defines the nearly 1:1 contract;
 [the roadmap](../plan/PORTING-ROADMAP.md) orders implementation. Reference source
@@ -123,3 +129,7 @@ The current NPC/object animation correction audit is [NPC-ANIMATION-240.md](../p
 Scoped implementation results: [TSPS shortlist checkpoint, 2026-10-29](../plan/TSPS-ADOPTION-2026-10-29.md).
 
 IF1 continuations: [CS1 evaluation and source-backed audit fixes](../plan/CS1-240-2026-10-29.md), [authored button dispatch](../plan/IF1-BUTTONS-240-2026-10-29.md).
+
+Shared sidebar and lifecycle: [2026-10-29 implementation checkpoint](SIDEBAR-LIFECYCLE-2026-10-29.md),
+[hook/API ownership](builtin-plugins/HOOK-API-OWNERS.tsv) and
+[classic GPU completion order](builtin-plugins/GPU-AUDIT.md). Exact visual/gameplay acceptance remains open.

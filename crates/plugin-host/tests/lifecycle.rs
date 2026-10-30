@@ -3,8 +3,8 @@ use rustclient_plugin_api::{
     PluginId, PluginManifest, PluginOutput,
 };
 use rustclient_plugin_host::{
-    FaultKind, LifecycleStatus, MemoryLogSink, MemoryStorage, PluginCall, PluginFault,
-    PluginInstance, PluginSet, SnapshotView,
+    FaultKind, LifecycleStatus, MemoryLogSink, MemoryStorage, PluginCall, PluginConfig,
+    PluginFault, PluginInstance, PluginSet, SnapshotView,
 };
 use std::{cell::RefCell, rc::Rc};
 #[derive(Default)]
@@ -124,7 +124,7 @@ fn startup_rollback_retry_cleanup_and_activation_identity_are_independent_of_des
     assert!(
         set.configure(
             &id,
-            Default::default(),
+            PluginConfig::default(),
             true,
             &view,
             &mut storage,
@@ -144,7 +144,7 @@ fn startup_rollback_retry_cleanup_and_activation_identity_are_independent_of_des
     seen.borrow_mut().fail_start = false;
     set.configure(
         &id,
-        Default::default(),
+        PluginConfig::default(),
         true,
         &view,
         &mut storage,
@@ -165,7 +165,7 @@ fn startup_rollback_retry_cleanup_and_activation_identity_are_independent_of_des
     assert!(
         set.configure(
             &id,
-            Default::default(),
+            PluginConfig::default(),
             false,
             &view,
             &mut storage,
@@ -234,7 +234,7 @@ fn session_end_revokes_cached_output_without_stopping_the_activation() {
         let id = set.iter().next().unwrap().manifest.id.clone();
         set.configure(
             &id,
-            Default::default(),
+            PluginConfig::default(),
             false,
             &view,
             &mut storage,
@@ -243,7 +243,7 @@ fn session_end_revokes_cached_output_without_stopping_the_activation() {
         .unwrap();
         set.configure(
             &id,
-            Default::default(),
+            PluginConfig::default(),
             true,
             &view,
             &mut storage,
@@ -253,4 +253,62 @@ fn session_end_revokes_cached_output_without_stopping_the_activation() {
     }
     assert_eq!((seen.borrow().starts, seen.borrow().stops), (4, 3));
     assert!(!set.iter().next().unwrap().accepts_activation(activation));
+}
+
+#[test]
+fn unloading_and_reloading_the_same_id_never_reuses_an_activation_identity() {
+    let mut set = PluginSet::new();
+    let seen = Rc::new(RefCell::new(Seen::default()));
+    let id = register(&mut set, "test.reload", &seen, true);
+    let game = GameSnapshot::default();
+    let view = SnapshotView(&game);
+    let mut storage = MemoryStorage::new();
+    let mut logs = MemoryLogSink::default();
+    set.init(&view, &mut storage, &mut logs);
+    let stale = set.iter().next().unwrap().activation();
+    set.configure(
+        &id,
+        PluginConfig::default(),
+        false,
+        &view,
+        &mut storage,
+        &mut logs,
+    )
+    .unwrap();
+    set.unregister(&id).unwrap();
+    register(&mut set, "test.reload", &seen, true);
+    set.init(&view, &mut storage, &mut logs);
+    assert!(!set.iter().next().unwrap().accepts_activation(stale));
+}
+
+#[test]
+fn required_services_keep_activation_across_sessions_without_requesting_game_events() {
+    let mut set = PluginSet::new();
+    for service in rustclient_plugin_host::required::Builtin::ALL {
+        set.register_required(service).unwrap();
+    }
+    let game = GameSnapshot::default();
+    let view = SnapshotView(&game);
+    let mut storage = MemoryStorage::new();
+    let mut logs = MemoryLogSink::default();
+    set.init(&view, &mut storage, &mut logs);
+    assert!(!set.has_game_subscribers());
+    let activations: Vec<_> = set
+        .iter()
+        .map(rustclient_plugin_host::LoadedPlugin::activation)
+        .collect();
+    for event in [
+        PluginEvent::Started,
+        PluginEvent::Stopped,
+        PluginEvent::Started,
+    ] {
+        set.dispatch(&[event], &view, &mut storage, &mut logs);
+        assert!(set.iter().all(|p| p.running() && p.required()));
+        assert_eq!(
+            set.iter()
+                .map(rustclient_plugin_host::LoadedPlugin::activation)
+                .collect::<Vec<_>>(),
+            activations
+        );
+    }
 }

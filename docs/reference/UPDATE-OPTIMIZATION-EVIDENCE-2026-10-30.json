@@ -1,0 +1,545 @@
+{
+  "date": "2026-10-30",
+  "scope": "Portable CPU-prepared scenery publication, persistent GPU buffers, indexed location queries and retained actor/scenery staging. No live frame-time, Java visual or complete GPU parity claim.",
+  "sources": [
+    {
+      "id": "rl-suite-240",
+      "root": "references/rl-suite-240",
+      "files": [
+        {
+          "path": "sources-semantic/classDS.java",
+          "sha256": "ded1348b7ab3b5390f80d623521679bd8d17b85c9aaedfe24530cb0b9cc9dd33"
+        },
+        {
+          "path": "sources-semantic/classMI.java",
+          "sha256": "8d73379455ef980eaa99fdd9e0c2192e1310e10eb2114ada9eacb687be74687e"
+        },
+        {
+          "path": "sources-semantic/classFK.java",
+          "sha256": "d9cc5fb9aa9dec0dc73915bf2e998fdea708804862c0d87812af631e18291533"
+        },
+        {
+          "path": "sources-semantic/Scene.java",
+          "sha256": "3ecf8221c7cade02cdcf8cff00774319cb626c40db07937a9c190ff96b23757e"
+        },
+        {
+          "path": "sources-semantic/DynamicObject.java",
+          "sha256": "41038073a4702708e4e02c8ff00c697d51c37fc5001242404cb20368f2b82e24"
+        }
+      ]
+    },
+    {
+      "id": "open-runelite-240",
+      "root": "references/open-runelite-rev-240",
+      "files": [
+        {
+          "path": "runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPlugin.java",
+          "sha256": "9508b008327ed496d320e5f315706d8a1462e9181a6e8a91e9d6940a214849d9"
+        }
+      ]
+    },
+    {
+      "id": "tsps-client-input-sync",
+      "root": "/Users/tylercovalt/Documents/tsps-main",
+      "files": [
+        {
+          "path": "client/render/webgpu/locUpdates.ts",
+          "sha256": "19fdea8849154b300f1936782a022da787a0ec0981ab1133ff5530ec2dddf0a0"
+        },
+        {
+          "path": "client/render/webgpu/WebGPURenderer.ts",
+          "sha256": "39e41ba4b3a2f5288743fa49f46821df59530f3ad1a8738c15790fd453992c02"
+        }
+      ]
+    }
+  ],
+  "environment": {
+    "platform": "macOS-26.5.1-arm64-arm-64bit",
+    "machine": "arm64",
+    "rustc": "rustc 1.96.0 (ac68faa20 2026-05-25)\nbinary: rustc\ncommit-hash: ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96\ncommit-date: 2026-05-25\nhost: aarch64-apple-darwin\nrelease: 1.96.0\nLLVM version: 22.1.2",
+    "isolated": false,
+    "note": "Other native clients active; dev package opt-level=2 and release are separate observations, not before/after optimization comparisons.",
+    "cpu": "Apple M2",
+    "physical_memory_bytes": 8589934592,
+    "profile": "release; no whole-client FPS comparison"
+  },
+  "reference_runtime": {
+    "status": "unavailable",
+    "diagnostic": "reference_status: connection refused during this run"
+  },
+  "validation": {
+    "status": "PASS for listed checks; live acceptance NOT-RUN",
+    "native_delivery": [
+      {
+        "name": "fmt",
+        "command": [
+          "cargo",
+          "fmt",
+          "--all",
+          "--check"
+        ],
+        "exit_code": 0,
+        "seconds": 1.218,
+        "log": "target/update-optimization-delivery-fmt.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "status": "PASS"
+      },
+      {
+        "name": "check",
+        "command": [
+          "cargo",
+          "check",
+          "--workspace",
+          "--all-targets"
+        ],
+        "exit_code": 0,
+        "seconds": 65.416,
+        "log": "target/update-optimization-delivery-check.log",
+        "sha256": "e1ba510e3b135de49fa02600e2122fa6d11a12d29bcfe404955178a80e118e94",
+        "status": "PASS"
+      },
+      {
+        "name": "clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "--workspace",
+          "--all-targets",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "exit_code": 0,
+        "seconds": 10.945,
+        "log": "target/update-optimization-delivery-clippy.log",
+        "sha256": "4b05f38b46ef1aa7880e670d349f3c4f09afd5f43f2633d3557d932388783647",
+        "status": "PASS"
+      },
+      {
+        "name": "native-tests",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "rustclient-native"
+        ],
+        "exit_code": 0,
+        "seconds": 155.118,
+        "log": "target/update-optimization-delivery-native-tests.log",
+        "sha256": "28c5801d7e290e96a97c55fb587f70239af82da8cb8fa3bd99f8f2a79deb01b6",
+        "status": "PASS"
+      },
+      {
+        "name": "native-build",
+        "command": [
+          "cargo",
+          "build",
+          "-p",
+          "rustclient-native",
+          "--bin",
+          "rustclient-native"
+        ],
+        "exit_code": 0,
+        "seconds": 24.787,
+        "log": "target/update-optimization-delivery-native-build.log",
+        "sha256": "f4fd1be470883946ad7d6247209fc39f97abbbff91141a0045608ef297713f43",
+        "status": "PASS"
+      }
+    ],
+    "wasm": [
+      {
+        "name": "check",
+        "command": [
+          "cargo",
+          "check",
+          "-p",
+          "rustclient-web",
+          "--target",
+          "wasm32-unknown-unknown"
+        ],
+        "exit_code": 0,
+        "log": "target/update-optimization-confirm-wasm-check.log",
+        "sha256": "58525d7ae5287e54a046030af68a5a02d6f6db64600dab790504eaf11bc51655",
+        "status": "PASS"
+      },
+      {
+        "name": "clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "rustclient-web",
+          "--target",
+          "wasm32-unknown-unknown",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "exit_code": 0,
+        "log": "target/update-optimization-confirm-wasm-clippy.log",
+        "sha256": "41c13d714651593d97eb3866b8d7657bbb8bf29d162e04c9e96e51112a385ede",
+        "status": "PASS"
+      }
+    ],
+    "relevant_tests": {
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "rustclient-scene",
+        "-p",
+        "rustclient-renderer",
+        "-p",
+        "rustclient-application",
+        "-p",
+        "rustclient-native"
+      ],
+      "log": {
+        "path": "target/update-optimization-tests.log",
+        "sha256": "8b028ae19bd04e65b1e683bcbb2ea780d3f0b771c779ede34f71153f3ca700ba"
+      },
+      "automated_unique_passed": 223,
+      "default_ignored": 6,
+      "manual_gpu_unique_passed": 2,
+      "remaining_ignored_unrun": 4,
+      "scope": "Not cargo test --workspace. Renderer tests (30) repeated after byte-comparison change; native tests (20) repeated after catalog/lifetime correction; repetitions are not counted as additional tests."
+    },
+    "renderer_final_tests": {
+      "path": "target/update-optimization-renderer-final-tests.log",
+      "sha256": "8bb64e8b34f58dcdd5c7d231378f0b8744052634e9be3eea911fa17179bc4fef"
+    },
+    "prepared_scene_lifetime": {
+      "status": "PASS",
+      "path": "target/update-optimization-final-prepared-lifetime.log",
+      "sha256": "e9fa568eeea9c516d391298e00fbf655b2ca702e1bdd7d4df42da1c56d4a7e28"
+    },
+    "persistent_buffers": {
+      "status": "PASS",
+      "path": "target/update-optimization-final-gpu-reuse.log",
+      "sha256": "1cf9a12636d4085af8af93dad8392cdc41637bee926d4e92ec83adedfeff575e"
+    },
+    "port-ledger": {
+      "command": [
+        "python3",
+        "tools/port_audit.py",
+        "--check"
+      ],
+      "status": "PASS",
+      "path": "target/update-optimization-final-port-ledger.log",
+      "sha256": "14f3b8b91639aea9d13dc18d531cf5112a7a1a6b582142b54bcd43b1beafa633"
+    },
+    "domain-matrix": {
+      "command": [
+        "python3",
+        "tools/port_matrix.py",
+        "--check"
+      ],
+      "status": "PASS",
+      "path": "target/update-optimization-final-domain-matrix.log",
+      "sha256": "4551cd478556812615a2e24a4a70029c4b6b149add798d9d4909316e30763d80"
+    },
+    "gpu-audit": {
+      "command": [
+        "python3",
+        "tools/gpu/audit.py",
+        "--check"
+      ],
+      "status": "PASS",
+      "path": "target/update-optimization-final-gpu-audit.log",
+      "sha256": "45297b5947557d696556fab8269f6dd3f6213c1200558275a443d9f380e7c736"
+    }
+  },
+  "acceptance": {
+    "live_door_pacing": "NOT_RUN",
+    "java_visual_comparison": "NOT_RUN",
+    "browser_gameplay": "NOT_RUN",
+    "dirty_zone_projection": "OPEN",
+    "hard_upload_byte_budget": "OPEN"
+  },
+  "exploratory_logs": [
+    {
+      "path": "target/update-optimization-inline.log",
+      "sha256": "08fabd1d3d6e6bc29772a9e7f13e8a4b425afd20e4f6b3dbe9e1a8146dbd2a1d"
+    },
+    {
+      "path": "target/update-optimization-prepared.log",
+      "sha256": "daa93d1eac106f8de2b1fabf510162342a0d91b3946cfa7c41122d694c36ed1e"
+    },
+    {
+      "path": "target/update-optimization-queries-before.log",
+      "sha256": "b61630bd70f6d81a513c143a87e614fe5029d66d4c6ad0d7fc387001f8fdb5a7"
+    },
+    {
+      "path": "target/update-optimization-profile.log",
+      "sha256": "51b83b264bbf83f8b1e3eb7233df6d40f48003aae49f0a58f1268f557638207e"
+    },
+    {
+      "path": "target/update-optimization-final-staging.log",
+      "sha256": "90bb733a65c35398ab9bd15e3d52d3679102b095498b6bdecc63ca6d8d8930b1"
+    },
+    {
+      "path": "target/update-optimization-final-prepared-final.log",
+      "sha256": "a160640c27d65a4373d7bc0263a4a3104a559ede19666eef4b6dad2c0731c473"
+    },
+    {
+      "path": "target/update-optimization-preparation-stack.txt",
+      "sha256": "724f04fe341fea6437c73cf73575ba9e01701df7b0d2e18e619a8cb0ab2f15fc"
+    }
+  ],
+  "measurements": {
+    "paired_publication": {
+      "path": "target/update-optimization-confirm-prepared.log",
+      "sha256": "5c20abc1e7dbc934016f9a7ad22a7310f7bb496187aede31a06d3e448493f248",
+      "inline_enqueue_ms": {
+        "raw": [
+          203.9136,
+          156.8511,
+          151.3331,
+          145.0559,
+          146.6906,
+          191.7838,
+          151.3172,
+          141.4324,
+          146.6006,
+          145.7776,
+          150.8761,
+          147.1385,
+          174.6308,
+          142.1678,
+          150.055,
+          144.8153
+        ],
+        "p50": 148.59675,
+        "p95_nearest_rank": 203.9136,
+        "max": 203.9136
+      },
+      "prepare_ms": {
+        "raw": [
+          151.564,
+          136.3622,
+          143.1946,
+          135.712,
+          140.7034,
+          145.8015,
+          136.3186,
+          143.5327,
+          140.3281,
+          136.9014,
+          158.3867,
+          137.7997,
+          140.4708,
+          138.2247,
+          136.4788,
+          137.9044
+        ],
+        "p50": 139.27640000000002,
+        "p95_nearest_rank": 158.3867,
+        "max": 158.3867
+      },
+      "enqueue_ms": {
+        "raw": [
+          7.3757,
+          7.6099,
+          5.9073,
+          5.7198,
+          7.6983,
+          6.971,
+          6.1728,
+          6.3852,
+          5.4983,
+          6.4558,
+          5.4253,
+          6.9791,
+          6.0968,
+          5.3487,
+          6.6399,
+          5.8062
+        ],
+        "p50": 6.279,
+        "p95_nearest_rank": 7.6983,
+        "max": 7.6983
+      },
+      "geometry_buffer_bytes": {
+        "raw": [
+          25205172.0,
+          25205172.0,
+          25205172.0,
+          25205172.0,
+          25205172.0,
+          25205172.0,
+          25205172.0,
+          25205172.0,
+          25205172.0,
+          25205172.0,
+          25205172.0,
+          25205172.0,
+          25205172.0,
+          25205172.0,
+          25205172.0,
+          25205172.0
+        ],
+        "p50": 25205172.0,
+        "p95_nearest_rank": 25205172.0,
+        "max": 25205172.0
+      }
+    },
+    "location_before": {
+      "path": "target/update-optimization-queries-before.log",
+      "sha256": "b61630bd70f6d81a513c143a87e614fe5029d66d4c6ad0d7fc387001f8fdb5a7",
+      "samples": [
+        {
+          "overrides": 0,
+          "queries": 64,
+          "total_ms": 2.543
+        },
+        {
+          "overrides": 32,
+          "queries": 64,
+          "total_ms": 44.9351
+        }
+      ]
+    },
+    "location_after": {
+      "path": "target/update-optimization-confirm-queries.log",
+      "sha256": "1e453fc21ccb6f57c1d77a858d8111b896ed0025db4f5841b935f1844dfebbd3",
+      "samples": [
+        {
+          "overrides": 0,
+          "queries": 64,
+          "total_ms": 0.0041
+        },
+        {
+          "overrides": 32,
+          "queries": 64,
+          "total_ms": 0.0053
+        }
+      ]
+    },
+    "staging": {
+      "path": "target/update-optimization-confirm-staging.log",
+      "sha256": "8610705a45e0058170db01be82225e6ed3499bd0b5e49e39ae8940dfe6e8302f",
+      "samples": [
+        {
+          "retained": false,
+          "repetitions": 256,
+          "vertices": 89445,
+          "cpu_ms": 13.4853,
+          "upload_requests": 256
+        },
+        {
+          "retained": true,
+          "repetitions": 256,
+          "vertices": 89445,
+          "cpu_ms": 15.6087,
+          "upload_requests": 1
+        }
+      ],
+      "note": "Final integer POD byte comparison. Earlier derived field comparison took 29.4020 ms for 256 identical payloads; retained in exploratory logs. Requests are counted at staging acknowledgement, not actual GPU submissions."
+    }
+  },
+  "measurement_scope": "Optimized cache probe. Paired publication alternates control/prepared on the same temporary device; complete waits are outside timed CPU intervals. Sixteen pairs are not a stable p95 SLO. Staging CPU is 15.6087 ms versus 13.4853 ms over 256 identical inputs, trading 2.1234 ms total extra comparison work for 255 fewer upload requests. No whole-client FPS claim.",
+  "selected_reference_hashes_verified": true,
+  "reference_trees_modified_by_this_work": false,
+  "worktree_head": "b85c8a51cd7075b064c62177b5846acf4fb8c571",
+  "worktree_note": "No commits created. Pre-existing sidebar/lifecycle work and the preceding update-review changes were preserved.",
+  "implementation": [
+    {
+      "path": "apps/native/src/main.rs",
+      "sha256": "3cf2876b3cee2242e76d7dbe6f40fa3e77a9c25d225973f1cbc9a19bba077fa1"
+    },
+    {
+      "path": "apps/native/src/scene.rs",
+      "sha256": "8673144d74260bc072f01df572ae94ce22c5a576937c85ae68341a0afe97331e"
+    },
+    {
+      "path": "apps/native/src/bin/scene_probe.rs",
+      "sha256": "551bb2e21f298970030d0299c401b23cfa10289fa0ea6a73bca301d55c7ad35a"
+    },
+    {
+      "path": "apps/native/src/bin/scene_probe/updates.rs",
+      "sha256": "eea52243ae39fc831ec1a7e1c067c8dc3107e66da97c112f1d6740aad6a0ad33"
+    },
+    {
+      "path": "crates/application/src/scene.rs",
+      "sha256": "360462649fa119dcf459f3e780e4f87767c90e95efde81f56545b7c4ab6f7cf2"
+    },
+    {
+      "path": "crates/scene/src/lib.rs",
+      "sha256": "989787a7d4cf507304dca19d9fbb2c8569c510b35654fcf4b99ea6eda2773d29"
+    },
+    {
+      "path": "crates/scene/src/locations.rs",
+      "sha256": "5a532257a0cadee2577f98ebc9fb69f87561ca499f5fac09b241eaf1d8519dd8"
+    },
+    {
+      "path": "crates/scene/src/locations/index.rs",
+      "sha256": "13e5724a2eda616497cd11ec6649e4be83b681b9e021eb25a7234d8a88e284f7"
+    },
+    {
+      "path": "crates/scene/src/mesh.rs",
+      "sha256": "2613e502976c9c00abc09d60e6cccfcc054f539719f1bea598d80ee4756f2673"
+    },
+    {
+      "path": "crates/scene/src/model_sort.rs",
+      "sha256": "f5df467557f40367e277348f82e1c9ec64cf5d08472760d8125a439eb2f91046"
+    },
+    {
+      "path": "crates/scene/src/tests/updates.rs",
+      "sha256": "cc861436005f303e1fad21138bb5f5fe2cfbde2a1b20b1bb16b7e49e2d02bf8d"
+    },
+    {
+      "path": "crates/renderer/src/lib.rs",
+      "sha256": "b8c1f4c8795adfcae48eb129ad7ceb326ca2ead681af3977e07eca5a3ad9d222"
+    },
+    {
+      "path": "crates/renderer/src/world.rs",
+      "sha256": "d466fe102cd2c41af831d0a08fb53bca2acfa4d6328a2a85981a6c375152ade2"
+    },
+    {
+      "path": "crates/renderer/src/world_upload.rs",
+      "sha256": "a05dac953bd8eebb3e9c2823f1414cf9c434b1d3d0b8b649d6ac09c085dbdc39"
+    },
+    {
+      "path": "crates/renderer/src/world_geometry.rs",
+      "sha256": "eb398f8c9e9a0f260396c953d8c614c3af2116c4971c5cbb0270f8a97cd63138"
+    },
+    {
+      "path": "crates/renderer/src/world_geometry/metadata.rs",
+      "sha256": "b6b3f94d52bd00953e75c4d6e1693f91ad44db7a8c3b13f89eb672e586278f2e"
+    },
+    {
+      "path": "crates/renderer/src/world_geometry/prepared.rs",
+      "sha256": "3ef2af1b15087e7eb0395f26b2b874fd3dd60a86e6ebd1257c015db35cc6e1ff"
+    },
+    {
+      "path": "crates/renderer/src/world_geometry/sort.rs",
+      "sha256": "7a7b5d0c05ddd3bfc161b25ae32d2dce79650bbe16aae7a5d17e3f4bbd9bc760"
+    },
+    {
+      "path": "crates/renderer/src/world_geometry/trace.rs",
+      "sha256": "693f3704f38118c0f047aef1773dcd552e958578301944223072e6d585d97bd6"
+    },
+    {
+      "path": "crates/renderer/src/world_capture.rs",
+      "sha256": "c943b3f025ce23912d5a9ca83961725a98731f997d38ede9e6128aedc63270ba"
+    },
+    {
+      "path": "crates/renderer/src/world/update_tests.rs",
+      "sha256": "ddb1ddb75a22cd663cf38548e2ee909b510706ac60b2ef9814c356e76c43c42a"
+    },
+    {
+      "path": "crates/renderer/src/surface.rs",
+      "sha256": "d4891c9c10a217cdd25957682a84efa5ad25d8cb0a7fb824048144494ba8785b"
+    }
+  ],
+  "binaries": [
+    {
+      "path": "target/release/scene_probe",
+      "sha256": "16009d595148f4f28f4f21909e9d944431350980b67f2e4c7e3203aa4a9ea5f4"
+    },
+    {
+      "path": "target/debug/rustclient-native",
+      "sha256": "3bd97e5695446c1e727018d55fe62da5f6fa2f200abffc41d6e72b9be6466a87"
+    }
+  ]
+}

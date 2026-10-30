@@ -57,6 +57,14 @@ fn source_metrics_and_hidpi_targets_share_one_extent_without_hidden_work() {
     );
     for scale in [1., 1.25, 1.5, 1.75, 2.] {
         let (mut panel, channel) = fixture(scale);
+        let header = panel.target_bounds("header:config_icon_lg").unwrap();
+        assert!((header[0] - 10.).abs() < 0.01 && (header[1] - 10.).abs() < 0.01);
+        assert!((header[2] - 69.).abs() <= 1. && (header[3] - 34.).abs() < 0.01);
+        click(&mut panel, "header:profile_icon", 0.5);
+        assert!(
+            channel.drain().is_empty(),
+            "unavailable header fabricated navigation"
+        );
         let [x, _, w, h] = panel.target_bounds("toggle-panel").unwrap();
         assert!(
             x >= 242. && x + w <= 274. && (h - 26.).abs() < 0.01,
@@ -126,4 +134,44 @@ fn required_badges_configuration_search_favorites_and_back_keep_their_owners() {
             .is_some()
     );
     assert!(channel.drain().is_empty());
+}
+
+#[test]
+fn unavailable_activation_cannot_emit_an_effective_looking_enable_action() {
+    let (mut panel, channel) = fixture(1.);
+    let id = "dev.rustclient.animsmoothing";
+    channel
+        .model
+        .borrow_mut()
+        .plugins
+        .iter_mut()
+        .find(|p| p.id == id)
+        .unwrap()
+        .enablement_unavailable = Some("No gameplay composition in this harness".into());
+    panel.invalidate();
+    panel.render(0.5).unwrap();
+    click(&mut panel, &format!("enabled:{id}"), 1.);
+    assert!(channel.drain().is_empty());
+    click(&mut panel, &format!("configure:{id}"), 2.);
+    assert!(panel.target_bounds("back").is_some());
+}
+
+#[test]
+fn favorite_reordering_keeps_keyboard_focus_on_the_same_plugin_identity() {
+    let (mut panel, channel) = fixture(1.);
+    let id = "dev.rustclient.gpu";
+    click(&mut panel, &format!("favorite:{id}"), 1.);
+    assert_eq!(
+        channel.drain(),
+        [ShellAction::ToggleFavorite { plugin: id.into() }]
+    );
+    channel.model.borrow_mut().pinned.insert(id.into());
+    panel.invalidate();
+    panel.render(1.5).unwrap();
+    panel.key(Key::Enter, Code::Enter, Modifiers::empty(), true, None);
+    panel.render(2.).unwrap();
+    assert_eq!(
+        channel.drain(),
+        [ShellAction::ToggleFavorite { plugin: id.into() }]
+    );
 }

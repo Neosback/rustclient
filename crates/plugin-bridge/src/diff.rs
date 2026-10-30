@@ -4,7 +4,8 @@
 //! then per-actor changes), NPCs likewise, variables, stats, containers, widgets, chat.
 
 use rustclient_plugin_api::{
-    ActorRef, ActorState, GameEvent, GameSnapshot, NpcSnapshot, PlayerSnapshot, VarKind, VarbitDef,
+    ActorRef, ActorState, Capability, CapabilitySet, GameEvent, GameSnapshot, NpcSnapshot,
+    PlayerSnapshot, VarKind, VarbitDef,
 };
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -45,14 +46,25 @@ pub fn derive(
     varbits: &VarbitIndex,
     timing: Timing,
 ) -> Vec<GameEvent> {
+    derive_interested(prev, next, varbits, timing, None)
+}
+
+pub(crate) fn derive_interested(
+    prev: &GameSnapshot,
+    next: &GameSnapshot,
+    varbits: &VarbitIndex,
+    timing: Timing,
+    interest: Option<&CapabilitySet>,
+) -> Vec<GameEvent> {
+    let wants = |capability| interest.is_none_or(|grants| grants.contains(capability));
     let mut events = Vec::new();
     if prev.client.state != next.client.state {
         events.push(GameEvent::GameStateChanged(next.client.state));
     }
-    if prev.client.resizable != next.client.resizable {
+    if wants(Capability::GameReadClient) && prev.client.resizable != next.client.resizable {
         events.push(GameEvent::ResizeableChanged(next.client.resizable));
     }
-    if prev.client.focused != next.client.focused {
+    if wants(Capability::GameReadClient) && prev.client.focused != next.client.focused {
         events.push(GameEvent::FocusChanged(next.client.focused));
     }
     if prev.client.scene_base != next.client.scene_base {
@@ -64,13 +76,27 @@ pub fn derive(
     if let Some(tick) = timing.game_tick {
         events.push(GameEvent::GameTick(tick));
     }
-    players(prev, next, &mut events);
-    npcs(prev, next, &mut events);
-    variables(prev, next, varbits, &mut events);
-    stats(prev, next, &mut events);
-    containers(prev, next, &mut events);
-    widgets(prev, next, &mut events);
-    chat(prev, next, &mut events);
+    if wants(Capability::GameReadPlayers) {
+        players(prev, next, &mut events);
+    }
+    if wants(Capability::GameReadNpcs) {
+        npcs(prev, next, &mut events);
+    }
+    if wants(Capability::GameReadVars) {
+        variables(prev, next, varbits, &mut events);
+    }
+    if wants(Capability::GameReadSkills) {
+        stats(prev, next, &mut events);
+    }
+    if wants(Capability::GameReadInventory) {
+        containers(prev, next, &mut events);
+    }
+    if wants(Capability::GameReadWidgets) {
+        widgets(prev, next, &mut events);
+    }
+    if wants(Capability::GameReadChat) {
+        chat(prev, next, &mut events);
+    }
     events
 }
 

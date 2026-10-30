@@ -67,6 +67,10 @@ type Result<T> = std::result::Result<T, SceneError>;
 pub struct SceneAsset {
     descriptor: SceneDescriptor,
     assets: WorldAssets,
+    /// Immutable morph dependencies, indexed once instead of scanning object definitions per packet.
+    scenery_varps: std::collections::BTreeSet<rustclient_model::VarpId>,
+    /// Addresses into the immutable catalog, shared by hover/menu definition queries.
+    location_index: locations::LocationIndex,
     /// Normal world-map chunk groups; no semantic/collision data is removed.
     related_maps: RelatedMaps,
     /// `ObjectComposition.floor_lift` of each tile's floor decoration, keyed by the plane the
@@ -117,6 +121,22 @@ impl SceneAsset {
         .ok_or_else(|| SceneError("invalid scene footprint".into()))?;
         let mut this = Self {
             descriptor,
+            location_index: locations::LocationIndex::new(&assets),
+            scenery_varps: assets
+                .objects
+                .values()
+                .filter_map(|def| def.morphs.as_ref())
+                .flat_map(|morph| {
+                    [
+                        morph.varp,
+                        morph
+                            .varbit
+                            .and_then(|id| assets.varbits.get(&id))
+                            .map(|bit| bit.varp),
+                    ]
+                })
+                .flatten()
+                .collect(),
             related_maps: RelatedMaps::for_world_map([origin.x, origin.y], [width, height])?,
             assets,
             floor_lifts: std::collections::HashMap::new(),
@@ -258,9 +278,7 @@ impl SceneAsset {
         base: rustclient_model::ObjectDefinitionId,
         inputs: &SceneryInputs,
     ) -> Result<Option<&rustclient_cache::world::ObjectDefinition>> {
-        let present = locations::effective_locations(self, inputs)
-            .iter()
-            .any(|loc| locations::location_key(loc) == key && loc.object == base);
+        let present = self.location_index.present(&self.assets, inputs, key, base);
         if !present {
             return Ok(None);
         }

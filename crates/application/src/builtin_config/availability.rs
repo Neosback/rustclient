@@ -2,7 +2,11 @@
 #[must_use]
 pub fn availability(plugin: &str, key: &str) -> Option<String> {
     if key == rustclient_plugin_host::configuration::ENABLED_KEY {
-        return None;
+        return matches!(
+            plugin,
+            "dev.rustclient.menuentryswapper" | "dev.rustclient.devtools"
+        )
+        .then(|| pending_reason(plugin, key));
     }
     let implemented = match plugin {
         "dev.rustclient.roofremoval" => matches!(

@@ -36,6 +36,10 @@ pub(super) enum Stage {
     Hover,
     EntityBuild,
     EntityUpload,
+    SceneUpload,
+    MinimapBuild,
+    WidgetProjection,
+    WidgetAssets,
 }
 
 pub(super) struct Performance {
@@ -53,7 +57,7 @@ pub(super) struct Performance {
     frame_samples: Samples,
     tick_samples: Samples,
     gaps: Samples,
-    stages: [Samples; 3],
+    stages: [Samples; 7],
     previous_present: Option<Instant>,
     cycle_debt: Duration,
 }
@@ -166,10 +170,16 @@ impl Performance {
             let (gap_p95, gap_max) = self.gaps.finish();
             let stages = self.stages.each_mut().map(Samples::finish);
             eprintln!(
-                "latency ms: frame p95={frame_p95:.2} max={frame_max:.2}; tick p95={tick_p95:.2} max={tick_max:.2}; present gap p95={gap_p95:.2} max={gap_max:.2}; hover p95={:.2}; entity build p95={:.2}; entity upload p95={:.2}; discarded wall-clock debt={:.2}",
+                "latency ms: frame p95={frame_p95:.2} max={frame_max:.2}; tick p95={tick_p95:.2} max={tick_max:.2}; present gap p95={gap_p95:.2} max={gap_max:.2}; hover p95={:.2}; entity build p95={:.2}; entity upload p95={:.2}; scene upload p95={:.2} max={:.2}; minimap build p95={:.2} max={:.2}; widget projection p95={:.2}; widget assets p95={:.2}; discarded wall-clock debt={:.2}",
                 stages[0].0,
                 stages[1].0,
                 stages[2].0,
+                stages[3].0,
+                stages[3].1,
+                stages[4].0,
+                stages[4].1,
+                stages[5].0,
+                stages[6].0,
                 self.cycle_debt.as_secs_f64() * 1000.
             );
             self.cycle_debt = Duration::ZERO;

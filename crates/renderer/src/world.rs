@@ -83,10 +83,6 @@ impl WorldGpu {
         }
         sum
     }
-    #[expect(
-        clippy::cast_precision_loss,
-        reason = "physical viewport dimensions bounded by texture limits"
-    )]
     pub fn new(
         device: &wgpu::Device,
         queue: &wgpu::Queue,
@@ -95,51 +91,40 @@ impl WorldGpu {
         mesh: &WorldMesh,
         samples: u32,
     ) -> Result<Self, RenderError> {
+        Self::new_inner(device, queue, format, size, mesh, samples, None)
+    }
+    pub(crate) fn new_prepared(
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        format: wgpu::TextureFormat,
+        size: SurfaceSize,
+        mesh: &WorldMesh,
+        samples: u32,
+        prepared: crate::world_upload::WorldUpload,
+    ) -> Result<Self, RenderError> {
+        Self::new_inner(device, queue, format, size, mesh, samples, Some(prepared))
+    }
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "physical viewport dimensions bounded by texture limits"
+    )]
+    fn new_inner(
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        format: wgpu::TextureFormat,
+        size: SurfaceSize,
+        mesh: &WorldMesh,
+        samples: u32,
+        prepared: Option<crate::world_upload::WorldUpload>,
+    ) -> Result<Self, RenderError> {
         let data: &[u8] = bytemuck::cast_slice(&mesh.geometry.vertices);
         if data.len() as u64 > device.limits().max_buffer_size {
             return Err(RenderError::World("mesh exceeds device buffer limit"));
         }
-        let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("world camera layout"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: wgpu::BufferSize::new(CAMERA_BYTES),
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Texture {
-                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                        view_dimension: wgpu::TextureViewDimension::D2Array,
-                        multisampled: false,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 3,
-                    visibility: wgpu::ShaderStages::VERTEX,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: wgpu::BufferSize::new(4096),
-                    },
-                    count: None,
-                },
-            ],
-        });
+        if let Some(prepared) = &prepared {
+            prepared.validate_for(mesh, &device.limits())?;
+        }
+        let layout = world_bind_layout(device);
         let camera = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("world camera"),
             size: CAMERA_BYTES,
@@ -147,7 +132,10 @@ impl WorldGpu {
             mapped_at_creation: false,
         });
         let (textures, animations) = crate::world_textures::upload(device, queue, mesh)?;
-        let textures_fingerprint = crate::world_textures::fingerprint(&mesh.textures);
+        let textures_fingerprint = prepared.as_ref().map_or_else(
+            || crate::world_textures::fingerprint(&mesh.textures),
+            |p| p.textures_fingerprint,
+        );
         let bind = bind_group(device, &layout, &camera, &textures, 1, true, &animations);
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("world pipeline layout"),
@@ -160,8 +148,17 @@ impl WorldGpu {
         });
         let pipelines =
             super::world_pipeline::WorldPipelines::new(device, &pipeline_layout, &shader, samples);
-        let geometry = super::world_geometry::GeometryGpu::new_static(device, &mesh.geometry)?;
-        let dynamic = super::world_geometry::GeometryGpu::new(device, &mesh.dynamic)?;
+        let (geometry, dynamic) = if let Some(prepared) = prepared {
+            (
+                prepared.geometry.upload(device, &mesh.geometry)?,
+                prepared.dynamic.upload(device, &mesh.dynamic)?,
+            )
+        } else {
+            (
+                super::world_geometry::GeometryGpu::new_static(device, &mesh.geometry)?,
+                super::world_geometry::GeometryGpu::new(device, &mesh.dynamic)?,
+            )
+        };
         let entities = super::world_geometry::GeometryGpu::new(
             device,
             &rustclient_scene::SceneGeometry::default(),
@@ -200,23 +197,53 @@ impl WorldGpu {
         queue: &wgpu::Queue,
         mesh: &WorldMesh,
     ) -> Result<(), RenderError> {
-        let data: &[u8] = bytemuck::cast_slice(&mesh.geometry.vertices);
-        if data.len() as u64 > device.limits().max_buffer_size {
-            return Err(RenderError::World("mesh exceeds device buffer limit"));
-        }
-        crate::world_textures::validate(mesh, &device.limits())?;
-        let next_textures_fingerprint = crate::world_textures::fingerprint(&mesh.textures);
-        let uploaded_textures = if next_textures_fingerprint == self.textures_fingerprint {
+        self.replace_scenery(device, queue, mesh)?;
+        // Cache identity can repeat after reconnect or a scene-lifetime reset.
+        self.entities
+            .update(device, queue, &rustclient_scene::SceneGeometry::default())
+    }
+    /// Refresh scenery inside the same live scene; retain its independent actor stream.
+    pub fn replace_scenery(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        mesh: &WorldMesh,
+    ) -> Result<(), RenderError> {
+        self.replace_prepared(
+            device,
+            queue,
+            mesh,
+            crate::world_upload::WorldUpload::prepare(mesh)?,
+            crate::WorldUpdate::Scenery,
+        )
+    }
+    pub(crate) fn replace_prepared(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        mesh: &WorldMesh,
+        prepared: crate::world_upload::WorldUpload,
+        update: crate::WorldUpdate,
+    ) -> Result<(), RenderError> {
+        prepared.validate_for(mesh, &device.limits())?;
+        let next_fingerprint = prepared.textures_fingerprint;
+        let uploaded_textures = if next_fingerprint == self.textures_fingerprint {
             None
         } else {
             Some(crate::world_textures::upload(device, queue, mesh)?)
         };
-        let geometry = super::world_geometry::GeometryGpu::new_static(device, &mesh.geometry)?;
-        let dynamic = super::world_geometry::GeometryGpu::new(device, &mesh.dynamic)?;
-        let entities = super::world_geometry::GeometryGpu::new(
-            device,
-            &rustclient_scene::SceneGeometry::default(),
-        )?;
+        // Validate both streams and textures before the first queued write. Reuse capacity;
+        // all camera-independent packing/metadata has already been prepared on the worker.
+        prepared
+            .geometry
+            .replace(&mut self.geometry, device, queue, &mesh.geometry)?;
+        prepared
+            .dynamic
+            .replace(&mut self.dynamic, device, queue, &mesh.dynamic)?;
+        if self.asset != mesh.asset || update == crate::WorldUpdate::Scene {
+            self.entities
+                .update(device, queue, &rustclient_scene::SceneGeometry::default())?;
+        }
         if let Some((textures, animations)) = uploaded_textures {
             self.bind = bind_group(
                 device,
@@ -229,11 +256,8 @@ impl WorldGpu {
             );
             self.textures = textures;
             self.animations = animations;
-            self.textures_fingerprint = next_textures_fingerprint;
+            self.textures_fingerprint = next_fingerprint;
         }
-        self.geometry = geometry;
-        self.dynamic = dynamic;
-        self.entities = entities;
         self.asset = mesh.asset;
         self.last_camera = None;
         self.transparent_runs.clear();
@@ -495,6 +519,50 @@ impl WorldGpu {
         }
     }
 }
+fn world_bind_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
+    device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        label: Some("world camera layout"),
+        entries: &[
+            wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: wgpu::BufferSize::new(CAMERA_BYTES),
+                },
+                count: None,
+            },
+            wgpu::BindGroupLayoutEntry {
+                binding: 1,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Texture {
+                    sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                    view_dimension: wgpu::TextureViewDimension::D2Array,
+                    multisampled: false,
+                },
+                count: None,
+            },
+            wgpu::BindGroupLayoutEntry {
+                binding: 2,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                count: None,
+            },
+            wgpu::BindGroupLayoutEntry {
+                binding: 3,
+                visibility: wgpu::ShaderStages::VERTEX,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: wgpu::BufferSize::new(4096),
+                },
+                count: None,
+            },
+        ],
+    })
+}
+
 fn bind_group(
     device: &wgpu::Device,
     layout: &wgpu::BindGroupLayout,
@@ -529,6 +597,9 @@ fn bind_group(
     })
 }
 
+#[cfg(test)]
+#[path = "world/update_tests.rs"]
+mod update_tests;
 #[cfg(test)]
 mod tests {
     use super::{CAMERA_BYTES, CameraUniform};

@@ -492,6 +492,10 @@
         {
           "path": "sources-semantic/classOY.java",
           "sha256": "59c43980e935ff2cb31b4e014791ef5346f4c02442a741a4bc866b35d67ac092"
+        },
+        {
+          "path": "sources-semantic/classMI.java",
+          "sha256": "8d73379455ef980eaa99fdd9e0c2192e1310e10eb2114ada9eacb687be74687e"
         }
       ]
     },
@@ -618,6 +622,382 @@
         {
           "path": "runelite-client/src/main/resources/net/runelite/client/plugins/config/star_on.png",
           "sha256": "7711d061be66cf03367834448fc1a606fe5a940323cff66ea162d3555fd38923"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/Client.java",
+          "sha256": "b30b78f187aeb410f1e839ba2137602ea33aa41cec4dfb60a905543bc74b29a0"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/Model.java",
+          "sha256": "2cb1c4057a05c8107d4a7298b0f44157e4a88141dc2ddd626afd7bb61dd6b623"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/hooks/DrawCallbacks.java",
+          "sha256": "61c921bd235189222b17ab1f7abd86ced55b397a78fbb300cddae76a72aad581"
+        },
+        {
+          "path": "runelite-client/src/main/java/net/runelite/client/plugins/config/ConfigPanel.java",
+          "sha256": "cec7f1a87e1773b5eb8bd46ab9fa753c65cceec38463188b927e345c97c525f9"
+        },
+        {
+          "path": "runelite-client/src/main/resources/net/runelite/client/ui/laf/RuneLiteLAF.properties",
+          "sha256": "ab4df28a2fc105418d8abe0e05db73566e9de76a772c752703c3026f5106c9bc"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/GrandExchangeOfferChanged.java",
+          "sha256": "39ba78f58ee6fe267a87ab5c104bc37d9b611f37a5e6c4d85400accd2556be3d"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/FriendsChatMemberJoined.java",
+          "sha256": "9727856d10f4bcf33ae34df802f855bdee19181402583ec83a08c9a67a07eee7"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/GameObjectDespawned.java",
+          "sha256": "6e0210275278e50eb573fe03c201a063b198489da139fb6120e30eb8de1e95f1"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/PlayerDespawned.java",
+          "sha256": "b604ca1a01aebabc9751e879d4d9858c32a5397e28d7a5fa55a5dc8c6fb68418"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/PlayerSpawned.java",
+          "sha256": "9a6c937857a52c2e674709a8118492a78249efa324791bfeceb4ab53db058ff6"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/VolumeChanged.java",
+          "sha256": "6bbb7f79025841c28a1c8fb64c6baf0585aaed04ac897d61c8d779d455aca9e2"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/WallObjectSpawned.java",
+          "sha256": "e6a5944c4b87ff480ad26f44d3e29f66f2131bf09fced26da5ff3f7738e92e49"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/WidgetDrag.java",
+          "sha256": "0b8b149e41a3e3cb498ec1291a902d82b9ae7e8bcf3fbc48fab7ecc4f29d75b0"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/BeforeMenuRender.java",
+          "sha256": "1f5a0f953ec82f74f503eb8e67fa77a492d484d5521a0d4d9427ef576ef3ece3"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/GraphicChanged.java",
+          "sha256": "c5d2ec4dfc5c375758630075328aa77566cf224abf452923f1d3f0e3546df890"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/VarbitChanged.java",
+          "sha256": "64d37f7767d7d1d071a19eda45aa8d13fe422976dcf7f5deb610df30691ef559"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/UsernameChanged.java",
+          "sha256": "6ef40fd08311885292879df8fd2248cc1de28e6614c2a0d51e9be31d6bd5c8d9"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/AccountHashChanged.java",
+          "sha256": "02c41e93753c0eb9bbecdee6aa48d06bb8a7ffc1307bc2a85c5f7e3038f69d65"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/AmbientSoundEffectCreated.java",
+          "sha256": "6fecbfe49ab7b74ad35e6248be88dfbada7d035b99969fab933b9ee65e71f693"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/HitsplatApplied.java",
+          "sha256": "b9610ba7906579ec06666333def55f54b2e2ba804817043d0d4fc9bce0ebc333"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/MenuOpened.java",
+          "sha256": "f6a9d97c3c0127d75c7fa7a45c56287dc32ee5de0a811a520ecceab962368a0e"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/NpcSpawned.java",
+          "sha256": "39289560784676d3e65f7b1eac91e36c3b402dd55f9f4993f44718deb3dfe3f7"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/PostStructComposition.java",
+          "sha256": "d4571c5de765138addf5a0f4ed802ea5d6907cd2fb6f61834ad58649369bae26"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/ClanChannelChanged.java",
+          "sha256": "840efae0238e5ec50b387cb9586ce6990fce11cef075c5d8d4a5fb68c2274849"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/CanvasSizeChanged.java",
+          "sha256": "d70cbf6d96efdbb3206471040ef50f6cc6b84313cc2d4156ac03fcdc7108b84d"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/ItemDespawned.java",
+          "sha256": "ae0294512fa7e3da9ef957e0687ddf8cda3fae4d9dd2dbeceb22154011321186"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/WorldChanged.java",
+          "sha256": "b2eb48fa5b72069d045a45602fc0360940e5877388bc77428beb4ae85288e4a2"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/AreaSoundEffectPlayed.java",
+          "sha256": "a5390fc1726fb071284e5cb250ab8a8b5b7fedf1c5e57dc6e2a11dc16ceb99fe"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/ItemSpawned.java",
+          "sha256": "507f9adc2a008923ede7c7537439dd0385777f7de295428290d22d232b0477d7"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/ScriptPostFired.java",
+          "sha256": "23db71522736c84d0db25994931f5e795acaab6865625f05cbfc2a643fd6d581"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/ItemQuantityChanged.java",
+          "sha256": "39bb584832d00ae4bd4f80c00af8979ebc2ef4d6b5415d9de3e22c82e74843fb"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/WidgetClosed.java",
+          "sha256": "e9e8603d9fe581254f89b1c38a7e788de91861397ec0854a8e1d4bfc5f3e0934"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/WidgetLoaded.java",
+          "sha256": "a157bf480f7fd99a48a14bb3877b9a43956d232c01bb27ced9376b2d6e2afeee"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/PostMenuSort.java",
+          "sha256": "9e3407ebdb3de2969a1edf8981ca65abeadf7f1d6a46a2f9596057f9f4851071"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/FocusChanged.java",
+          "sha256": "2120e8792b0c03d2795c3ff6d2c34604fab7fe82e8f05b6147e74e285db7b6b5"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/ItemContainerChanged.java",
+          "sha256": "f2d4acb1c17ae0812d65e522f90ca2b4cde589d3e77bbd9509f42ce78409dfef"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/InteractingChanged.java",
+          "sha256": "5389fd9fcab5477413f790ceea7d8be4ab581cc421fda47cf0706c20d595a9f2"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/OverheadTextChanged.java",
+          "sha256": "3a3d30d06d0c36498342bd26889c0f11364d323b81d068c53aacd5d339b19304"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/FriendsChatChanged.java",
+          "sha256": "9e08965611643ecd98c6790884e4afb703bf27e6d750a6aab487404aeb2f461f"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/SoundEffectPlayed.java",
+          "sha256": "c15d25a783da64889c91d9ad63e7f11784784bd634dffd024807775e75f24efe"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/GameStateChanged.java",
+          "sha256": "e58fccd2885809d9ccc9284f5f84ce1bd5ee062089278c856780863191368de6"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/FriendsChatMemberLeft.java",
+          "sha256": "b1f183164383069ff1ead9adf7a4d103e0f17d6fc610eb1900f93dddabe1ef4c"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/CommandExecuted.java",
+          "sha256": "1db2f7112cecb6bfddd6d3d8b1c4d4b72a49aecd8c97958acdcaa5227d62ca17"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/RemovedFriend.java",
+          "sha256": "4ca0c81282ad249ef0405f7c61b270ccdb70c7ad2c7fd335f07cd97973052c4a"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/PreMapLoad.java",
+          "sha256": "49b5f0fed177f1e5f59af5d208caa36c9225914ba6bfdf5194236819a50cfaf8"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/WorldEntityDespawned.java",
+          "sha256": "9016208c3e32de64299e612ca6c44a5a57f5a479e4e76baa786ec8f12608c190"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/GameObjectSpawned.java",
+          "sha256": "5d6185530483860c80e489988c8ffe646f916b203d31e55c3e94c936de57c191"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/WorldListLoad.java",
+          "sha256": "7847120e5614372b65bcf71a5cd132a777b6c6b562bcac9cee68f6e2d355486f"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/DecorativeObjectSpawned.java",
+          "sha256": "de47c6368a67afce4c37f906457ccf6ddf63ac822032a185ca661ee30647d0fb"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/ProjectileMoved.java",
+          "sha256": "9ec4be2729cfa2eb6949ea8e1f4a1f1f41c59fc819c477d95776f0a57cdfefbb"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/GroundObjectDespawned.java",
+          "sha256": "d7aeba187c11461c44caf03ae8d7defb33e999f383b6d39a95d75d4fa87e2e92"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/PostClientTick.java",
+          "sha256": "526c5630290f6d6f2bfecacae1e0e8c57e7a41b34e140b5e43b7f9d50c7b6f48"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/FakeXpDrop.java",
+          "sha256": "645f5d6fecd349f5646acbccebf1d12cfefe0c47bf35da70a334cb7ead67ffc7"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/DecorativeObjectDespawned.java",
+          "sha256": "037ada4096e9b101e91abfe697aa75f7f4db7146a94c492c6ad20bac5bd1e290"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/MenuOptionClicked.java",
+          "sha256": "00f49e7e308cd93cca14444658985beeae64d67c1ce65db3eb4db92ced4dbd39"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/NpcDespawned.java",
+          "sha256": "833985ca2f2ca4de82e38823456cf0a71b04ff8bc99e36274297e75fc66c9c2e"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/WorldViewUnloaded.java",
+          "sha256": "2d5f6ff600ee7c1763bc1b19467a70e5c8e1f1c5d82bed3a01f9ea2efb0b86dc"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/GroundObjectSpawned.java",
+          "sha256": "64542ee8f46ea3415e3bd650cc2d92f24dcfc5c1588605f076ab525571091572"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/GrandExchangeSearched.java",
+          "sha256": "40f7d5e9c970c61edec7bdbfcf70065af545c24c70d3ab01c32cfa9f467a982c"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/WallObjectDespawned.java",
+          "sha256": "9ce3abf9b7b9d3596742721dcd415e8de29f0c871d97fc28649b08921d0d908f"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/ScriptPreFired.java",
+          "sha256": "ec1af66360fdeda9c63a7dba7ca656692c3899df67200b245135a741e9b3ba70"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/NameableNameChanged.java",
+          "sha256": "cc31c7db53c2c59688b6cf5e315e3364ea23171c201c4a3fc4e23cf3cf9862bb"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/WorldViewLoaded.java",
+          "sha256": "8f374b14f2143c8f8e242b9e0f92f532c830b6cbe4ae9bf70922059f766da520"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/ActorDeath.java",
+          "sha256": "b1a05c7487c41454ba26eff226904c6e88576be2d73dbc8468c4770e541bcb5b"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/ClientTick.java",
+          "sha256": "b19d950e8bd3452553647630857c124414d5046bd963e6f04bfd5b7d8d9ca80c"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/GameTick.java",
+          "sha256": "f849a6c303e57d2ebb93ff29b7cec1c1fca31b5cb06fa130043b714b971595c5"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/ScriptCallbackEvent.java",
+          "sha256": "82f847bd1ed9e18969eb276d0d72c58a00ba3d16b7d507d4556cfa81aaf12f33"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/VarClientStrChanged.java",
+          "sha256": "2ee1667bbee3e47739fd90d43adf6bbd13c89d38a837344202b30efcf3ba74e4"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/PostHealthBarConfig.java",
+          "sha256": "5f75e645333d9e37c7254137930daff8fabfd8170492fa49583a161b4633533d"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/GraphicsObjectCreated.java",
+          "sha256": "4b6ff5b3b26137cf1fd7fe872953171b8bd1cd902629c2020bb6a975525a1d88"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/BeforeRender.java",
+          "sha256": "3abb38b08704a5725b57bb570c1befe8e11a19cb92a2317b996618f93ed81517"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/NpcChanged.java",
+          "sha256": "51bef3a49ced6293ee9f43b604af6c17c1e2074aea95f7bdc242e06850c226fc"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/ClanMemberJoined.java",
+          "sha256": "1128bcdb9496674d6f9db4bd1b4d92052cde746e775c18b4c7ff8cccc035cd15"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/MenuEntryAdded.java",
+          "sha256": "4970e834b21689c0d2accb846946f41587f6b7d90248b53b10e8e31505ffb722"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/MenuShouldLeftClick.java",
+          "sha256": "79efc6c4f1b35a468483181a4feca375c29c0158645fec2979bd9a8f49c4739d"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/ResizeableChanged.java",
+          "sha256": "b570491bdb81a5f9270eb6baf0392cc8f45377570ae0cc2fa540b6b85197ed0f"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/ConfigButtonClicked.java",
+          "sha256": "bd8b638e12a607a3ab0d373e7208a77c04d25368796e6228518509d34b713f11"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/WorldEntitySpawned.java",
+          "sha256": "a63b14653449d34cf0b97f5a405752864187e5ea61201fdf7d23e88ee1b655b5"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/ChatMessage.java",
+          "sha256": "92d0bec3ecb7212d27665f2e1812b47a6245087f92c013ee3928de49fba5a71f"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/PlayerMenuOptionsChanged.java",
+          "sha256": "3fc559c0dc5971488bfe3f98961c184644d8a797fc727805f196ae90168735d0"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/StatChanged.java",
+          "sha256": "ef26a969450fc9648053aab3e9d13c4bb19ff1efa5cdff204ce7299a660abaf1"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/PostItemComposition.java",
+          "sha256": "294ccefd5224bea1469e1157f4350e1df5e7cd57a3512ca754aa8ec9406ed29e"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/AnimationChanged.java",
+          "sha256": "0a70999775ff46c947e4d3137ad6687dd2a725fabeb70bf68758d58df7998002"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/ClanMemberLeft.java",
+          "sha256": "ad8fcb11f5114dca3470e0537dfcd36d2d9ea986331320f65f9440e1aabf9a39"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/PostAnimation.java",
+          "sha256": "771c6a0b835d6da85bc2bd68b197b4840f07f71199780a7d4ee91aad95f7b514"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/PostObjectComposition.java",
+          "sha256": "dde4b0d08b3ac6106f0001ba2a2f9815c0a9f538ebd6bb0914b757f40f045b6f"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/VarClientIntChanged.java",
+          "sha256": "a76371f1e7576420ae6742c0a64dbb9053b574edb76841f766e1e748ab5b66be"
+        },
+        {
+          "path": "runelite-api/src/main/java/net/runelite/api/events/PlayerChanged.java",
+          "sha256": "14f3dd7e37bcc5e9f0985984932fe73f10b0913e61e18b6d8f029cbcc6961daa"
+        },
+        {
+          "path": "runelite-client/src/main/java/net/runelite/client/plugins/config/TopLevelConfigPanel.java",
+          "sha256": "d6a50c36813d815e9bdd1cff098cd95b3137a4a26397eb0a161a534e9bd6cbc9"
+        },
+        {
+          "path": "runelite-client/src/main/java/net/runelite/client/ui/components/materialtabs/MaterialTab.java",
+          "sha256": "21fa1045821a83423cf0ca92d5456fba1af20f0b10e273c95859120fb1645aa1"
+        },
+        {
+          "path": "runelite-client/src/main/java/net/runelite/client/ui/components/materialtabs/MaterialTabGroup.java",
+          "sha256": "e8ad42c820a634eba4f80acf24ec3788a7556e0943711f15a5cc125895e2634c"
+        },
+        {
+          "path": "runelite-client/src/main/resources/net/runelite/client/plugins/config/config_icon_lg.png",
+          "sha256": "48aba460488269ee59746d3c7be93f10408e9f8568e68192d395fd2023c26276"
+        },
+        {
+          "path": "runelite-client/src/main/resources/net/runelite/client/plugins/config/profile_icon.png",
+          "sha256": "cc41e7fe26d1419d18051832e2e5355614e4b1ff677966ff767277f38e570e39"
+        },
+        {
+          "path": "runelite-client/src/main/resources/net/runelite/client/plugins/config/plugin_hub_icon.png",
+          "sha256": "c858ae8b55aefc2e560e9c73b9e0cb3c260fa336f406379a584f10e922171545"
         }
       ]
     },
@@ -719,6 +1099,14 @@
         {
           "path": "client/game/PlayerAnimController.ts",
           "sha256": "a31041f0fe2eedb5d337b21222d16165e54f7e89f0c629ae8f041a204ed193cb"
+        },
+        {
+          "path": "client/render/webgpu/locUpdates.ts",
+          "sha256": "19fdea8849154b300f1936782a022da787a0ec0981ab1133ff5530ec2dddf0a0"
+        },
+        {
+          "path": "client/render/webgpu/WebGPURenderer.ts",
+          "sha256": "39e41ba4b3a2f5288743fa49f46821df59530f3ad1a8738c15790fd453992c02"
         }
       ]
     },

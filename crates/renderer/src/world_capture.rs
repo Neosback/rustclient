@@ -137,3 +137,92 @@ pub async fn capture_world_resources(
     )?;
     Ok(world.geometry_stats())
 }
+
+/// Bounded, explicit desktop diagnostic for the CPU cost of installing same-asset scenery.
+/// Device/pipeline creation and GPU completion are outside the returned enqueue timings.
+/// No pixels are read and this never runs on the live presentation device.
+/// # Errors
+/// Returns adapter, texture, geometry, or device-poll failures.
+#[cfg(not(target_arch = "wasm32"))]
+pub async fn measure_world_replacements(
+    mesh: &rustclient_scene::WorldMesh,
+) -> Result<[std::time::Duration; 8], RenderError> {
+    let (device, queue, _) = crate::capture::capture_device().await?;
+    let mut world = WorldGpu::new(
+        &device,
+        &queue,
+        super::world_target::FORMAT,
+        SurfaceSize::new(1, 1),
+        mesh,
+        1,
+    )?;
+    let mut samples = [std::time::Duration::ZERO; 8];
+    for sample in &mut samples {
+        let started = std::time::Instant::now();
+        world.replace_scenery(&device, &queue, mesh)?;
+        queue.submit([]);
+        *sample = started.elapsed();
+        device
+            .poll(wgpu::PollType::wait_indefinitely())
+            .map_err(|_| RenderError::World("scene diagnostic device polling failed"))?;
+    }
+    Ok(samples)
+}
+
+/// CPU preparation and event-thread publication measured separately on one temporary device.
+#[cfg(not(target_arch = "wasm32"))]
+#[derive(Debug, Clone, Copy)]
+pub struct WorldUpdateTiming {
+    pub inline_enqueue: std::time::Duration,
+    pub prepare: std::time::Duration,
+    pub enqueue: std::time::Duration,
+    pub geometry_buffer_bytes: u64,
+}
+/// Alternate sixteen inline/prepared updates after draining device work. No frame-time claim.
+/// # Errors
+/// Returns resource validation, device or diagnostic polling errors.
+#[cfg(not(target_arch = "wasm32"))]
+pub async fn measure_prepared_world_updates(
+    mesh: &rustclient_scene::WorldMesh,
+) -> Result<Vec<WorldUpdateTiming>, RenderError> {
+    let (device, queue, _) = crate::capture::capture_device().await?;
+    let mut world = WorldGpu::new(
+        &device,
+        &queue,
+        super::world_target::FORMAT,
+        SurfaceSize::new(1, 1),
+        mesh,
+        1,
+    )?;
+    queue.submit([]);
+    device
+        .poll(wgpu::PollType::wait_indefinitely())
+        .map_err(|_| RenderError::World("scene diagnostic device polling failed"))?;
+    let mut samples = Vec::with_capacity(16);
+    for _ in 0..16 {
+        let started = std::time::Instant::now();
+        world.replace_scenery(&device, &queue, mesh)?;
+        queue.submit([]);
+        let inline_enqueue = started.elapsed();
+        device
+            .poll(wgpu::PollType::wait_indefinitely())
+            .map_err(|_| RenderError::World("scene diagnostic device polling failed"))?;
+        let started = std::time::Instant::now();
+        let prepared = crate::world_upload::WorldUpload::prepare(mesh)?;
+        let prepare = started.elapsed();
+        let started = std::time::Instant::now();
+        world.replace_prepared(&device, &queue, mesh, prepared, crate::WorldUpdate::Scenery)?;
+        queue.submit([]);
+        let enqueue = started.elapsed();
+        samples.push(WorldUpdateTiming {
+            inline_enqueue,
+            prepare,
+            enqueue,
+            geometry_buffer_bytes: world.geometry_stats().gpu_buffer_bytes,
+        });
+        device
+            .poll(wgpu::PollType::wait_indefinitely())
+            .map_err(|_| RenderError::World("scene diagnostic device polling failed"))?;
+    }
+    Ok(samples)
+}

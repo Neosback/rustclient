@@ -27,18 +27,33 @@ mod browser {
         window::{Window, WindowId},
     };
 
+    type ClipboardCallback = Closure<dyn FnMut(web_sys::ClipboardEvent)>;
+
     #[derive(Default)]
     struct SharedState {
         window: Option<Arc<Window>>,
         renderer: Option<SurfaceRenderer>,
         initializing_renderer: bool,
         shell: Option<super::shell::Shell>,
-        clipboard: Vec<(String, Closure<dyn FnMut(web_sys::ClipboardEvent)>)>,
+        clipboard: Vec<(String, ClipboardCallback)>,
     }
 
     #[derive(Default)]
     struct WebApp {
         shared: Rc<RefCell<SharedState>>,
+    }
+
+    // Winit observes CSS size; WebGPU also needs the backing bitmap in physical pixels.
+    // Guard writes: assigning either attribute clears the canvas, even if unchanged.
+    fn sync_canvas(window: &Window, size: winit::dpi::PhysicalSize<u32>) {
+        if let Some(canvas) = winit::platform::web::WindowExtWebSys::canvas(window) {
+            if canvas.width() != size.width {
+                canvas.set_width(size.width);
+            }
+            if canvas.height() != size.height {
+                canvas.set_height(size.height);
+            }
+        }
     }
 
     impl WebApp {
@@ -55,6 +70,7 @@ mod browser {
                 window
             };
             let size = window.inner_size();
+            sync_canvas(&window, size);
             let shared = Rc::clone(&self.shared);
 
             spawn_local(async move {
@@ -67,11 +83,21 @@ mod browser {
                     state.initializing_renderer = false;
                     match result {
                         Ok(mut renderer) => {
-                            if let Some(shell) = state.shell.as_mut() {
-                                shell.apply_gpu(&mut renderer);
+                            // CSS/monitor resize can arrive while adapter/device creation awaits.
+                            let latest = window.inner_size();
+                            sync_canvas(&window, latest);
+                            if let Err(error) =
+                                renderer.resize(SurfaceSize::new(latest.width, latest.height))
+                            {
+                                log_error(&format!("initial canvas resize: {error}"));
+                                false
+                            } else {
+                                if let Some(shell) = state.shell.as_mut() {
+                                    shell.apply_gpu(&mut renderer);
+                                }
+                                state.renderer = Some(renderer);
+                                true
                             }
-                            state.renderer = Some(renderer);
-                            true
                         }
                         Err(error) => {
                             log_error(&format!("failed to initialize browser renderer: {error}"));
@@ -168,6 +194,10 @@ mod browser {
             self.begin_renderer_init();
         }
 
+        #[expect(
+            clippy::too_many_lines,
+            reason = "one winit dispatch keeps resize, presentation and recovery ordering reviewable"
+        )]
         fn window_event(
             &mut self,
             event_loop: &ActiveEventLoop,
@@ -187,6 +217,7 @@ mod browser {
             match event {
                 WindowEvent::CloseRequested => event_loop.exit(),
                 WindowEvent::Resized(size) => {
+                    sync_canvas(&window, size);
                     if let Some(renderer) = self.shared.borrow_mut().renderer.as_mut() {
                         if let Err(error) =
                             renderer.resize(SurfaceSize::new(size.width, size.height))
@@ -211,9 +242,13 @@ mod browser {
                                 }
                                 if let Some(rect) = shell.panel.ime_cursor() {
                                     let scale = window.scale_factor();
-                                    let chrome = (f64::from(shell.width()) * scale)
-                                        .round()
-                                        .min(f64::from(window.inner_size().width));
+                                    let chrome = f64::from(
+                                        rustclient_shell_ui::SidebarMetrics::physical(
+                                            f64::from(shell.width()),
+                                            scale,
+                                        )
+                                        .min(window.inner_size().width),
+                                    );
                                     let x = f64::from(window.inner_size().width) - chrome
                                         + f64::from(rect[0]) * scale;
                                     window.set_ime_cursor_area(
@@ -234,6 +269,17 @@ mod browser {
                                         "data-shell-passes",
                                         &shell.panel.stats().passes.to_string(),
                                     );
+                                    let paint_stats = renderer.egui_shell_stats();
+                                    let _ = canvas.set_attribute(
+                                        "data-shell-paints",
+                                        &paint_stats.paints.to_string(),
+                                    );
+                                    let _ = canvas.set_attribute(
+                                        "data-shell-uploads",
+                                        &(paint_stats.geometry_uploads
+                                            + paint_stats.texture_uploads)
+                                            .to_string(),
+                                    );
                                     let _ = canvas.set_attribute(
                                         "data-shell-width",
                                         &shell.width().to_string(),
@@ -245,6 +291,11 @@ mod browser {
                         })
                     };
 
+                    if let Some(canvas) =
+                        winit::platform::web::WindowExtWebSys::canvas(window.as_ref())
+                    {
+                        let _ = canvas.set_attribute("data-frame-outcome", &format!("{result:?}"));
+                    }
                     match result {
                         Some(Ok(FrameOutcome::Reconfigured)) => window.request_redraw(),
                         Some(Ok(FrameOutcome::RecreateRequired)) => {
@@ -301,6 +352,9 @@ mod browser {
         web_sys::console::error_1(&JsValue::from_str(message));
     }
 
+    /// Start the browser window and shared sidebar adapter.
+    /// # Errors
+    /// Reports failure to construct the browser event loop.
     #[wasm_bindgen(start)]
     pub fn start() -> Result<(), JsValue> {
         let event_loop = EventLoop::new().map_err(|error| JsValue::from_str(&error.to_string()))?;

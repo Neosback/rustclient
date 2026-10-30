@@ -14,11 +14,7 @@ impl EguiPanel {
         let rail_width = SidebarMetrics::RAIL as f32;
         let rail_left = (bounds.right() - rail_width).max(bounds.left());
         if model.sidebar == SidebarState::Panel {
-            let inset = if self.selected.is_some() {
-                SidebarMetrics::PADDING
-            } else {
-                10.
-            };
+            let inset = SidebarMetrics::PADDING;
             let panel = Rect::from_min_max(
                 bounds.min + Vec2::splat(inset),
                 Pos2::new(rail_left - inset, bounds.bottom() - SidebarMetrics::PADDING),
@@ -82,6 +78,8 @@ impl EguiPanel {
         reason = "one panel pass lays out navigation and schema-generated settings"
     )]
     fn panel(&mut self, ui: &mut egui::Ui, model: &ShellModel) {
+        self.configuration_header(ui);
+        ui.add_space(10.);
         if let Some(id) = self.selected.clone()
             && let Some(plugin) = model.plugins.iter().find(|plugin| plugin.id == id)
         {
@@ -221,69 +219,82 @@ impl EguiPanel {
                         {
                             continue;
                         }
-                        ui.horizontal(|ui| {
-                            let pinned = model.pinned.contains(&plugin.id);
-                            let pin = self.assets.button(
-                                ui,
-                                if pinned { "star_on" } else { "star_off" },
-                                "Favorite plugin",
-                            );
-                            self.targets
-                                .insert(format!("favorite:{}", plugin.id), pin.rect);
-                            self.hit(&pin);
-                            if pin.clicked() {
-                                self.channel.send(ShellAction::ToggleFavorite {
-                                    plugin: plugin.id.clone(),
+                        ui.scope_builder(
+                            egui::UiBuilder::new()
+                                .scope_id(egui::Id::unique(("plugin-row", &plugin.id))),
+                            |ui| {
+                                ui.horizontal(|ui| {
+                                    let pinned = model.pinned.contains(&plugin.id);
+                                    let pin = self.assets.button(
+                                        ui,
+                                        if pinned { "star_on" } else { "star_off" },
+                                        "Favorite plugin",
+                                    );
+                                    self.targets
+                                        .insert(format!("favorite:{}", plugin.id), pin.rect);
+                                    self.hit(&pin);
+                                    if pin.clicked() {
+                                        self.channel.send(ShellAction::ToggleFavorite {
+                                            plugin: plugin.id.clone(),
+                                        });
+                                    }
+                                    let width = (ui.available_width()
+                                        - if plugin.required { 100. } else { 58. })
+                                    .max(1.);
+                                    let response = name_button(ui, &plugin.name, width, pinned)
+                                        .on_hover_text(&plugin.description);
+                                    self.hit(&response);
+                                    self.targets
+                                        .insert(format!("plugin:{}", plugin.id), response.rect);
+                                    if response.clicked() {
+                                        self.selected = Some(plugin.id.clone());
+                                    }
+                                    let edit = self.assets.button(
+                                        ui,
+                                        "config_edit_icon",
+                                        "Configure plugin",
+                                    );
+                                    self.targets
+                                        .insert(format!("configure:{}", plugin.id), edit.rect);
+                                    self.hit(&edit);
+                                    if edit.clicked() {
+                                        self.selected = Some(plugin.id.clone());
+                                    }
+                                    if plugin.required {
+                                        self.badge(ui, &plugin.id);
+                                    } else {
+                                        let mut enabled = plugin.enabled;
+                                        let response = ui
+                                            .add_enabled_ui(
+                                                plugin.enablement_unavailable.is_none(),
+                                                |ui| self.assets.toggle(ui, &mut enabled),
+                                            )
+                                            .inner;
+                                        let response =
+                                            if let Some(reason) = &plugin.enablement_unavailable {
+                                                response.on_disabled_hover_text(reason)
+                                            } else {
+                                                response
+                                            };
+                                        self.targets.insert(
+                                            format!("enabled:{}", plugin.id),
+                                            response.rect,
+                                        );
+                                        self.hit(&response);
+                                        if response.changed() {
+                                            self.channel.send(ShellAction::Configure {
+                                                plugin: plugin.id.clone(),
+                                                key: "enabled".into(),
+                                                value: ConfigValue::Boolean(enabled),
+                                            });
+                                        }
+                                    }
                                 });
-                            }
-                            let response = ui
-                                .add_sized(
-                                    [
-                                        (ui.available_width()
-                                            - if plugin.required { 100. } else { 58. })
-                                        .max(1.),
-                                        20.,
-                                    ],
-                                    egui::Label::new(&plugin.name)
-                                        .halign(egui::Align::Min)
-                                        .truncate()
-                                        .sense(egui::Sense::click()),
-                                )
-                                .on_hover_text(&plugin.description);
-                            self.hit(&response);
-                            self.targets
-                                .insert(format!("plugin:{}", plugin.id), response.rect);
-                            if response.clicked() {
-                                self.selected = Some(plugin.id.clone());
-                            }
-                            let edit =
-                                self.assets
-                                    .button(ui, "config_edit_icon", "Configure plugin");
-                            self.targets
-                                .insert(format!("configure:{}", plugin.id), edit.rect);
-                            self.hit(&edit);
-                            if edit.clicked() {
-                                self.selected = Some(plugin.id.clone());
-                            }
-                            if plugin.required {
-                                self.badge(ui, &plugin.id);
-                            } else {
-                                let mut enabled = plugin.enabled;
-                                let response = self.assets.toggle(ui, &mut enabled);
-                                self.targets
-                                    .insert(format!("enabled:{}", plugin.id), response.rect);
-                                self.hit(&response);
-                                if response.changed() {
-                                    self.channel.send(ShellAction::Configure {
-                                        plugin: plugin.id.clone(),
-                                        key: "enabled".into(),
-                                        value: ConfigValue::Boolean(enabled),
-                                    });
-                                }
-                            }
-                        });
+                            },
+                        );
                         if let Some((status, error)) = model.runtime.get(&plugin.id)
-                            && (*status != rustclient_plugin_host::LifecycleStatus::Running
+                            && ((plugin.enabled
+                                && *status != rustclient_plugin_host::LifecycleStatus::Running)
                                 || error.is_some())
                         {
                             ui.small(format!(
@@ -298,6 +309,53 @@ impl EguiPanel {
             ui.colored_label(Color32::LIGHT_RED, error);
         }
     }
+    fn configuration_header(&mut self, ui: &mut egui::Ui) {
+        ui.horizontal(|ui| {
+            ui.spacing_mut().item_spacing.x = SidebarMetrics::HEADER_GAP;
+            let width = ((ui.available_width() - 2. * SidebarMetrics::HEADER_GAP) / 3.)
+                .floor()
+                .max(1.);
+            for (icon, label, active) in [
+                ("config_icon_lg", "Configuration", true),
+                (
+                    "profile_icon",
+                    "Profiles — application profile support is not implemented",
+                    false,
+                ),
+                (
+                    "plugin_hub_icon",
+                    "Plugin Hub — package browsing/install support is not implemented",
+                    false,
+                ),
+            ] {
+                let (rect, response) = ui.allocate_exact_size(
+                    Vec2::new(width, SidebarMetrics::HEADER_TAB_HEIGHT),
+                    egui::Sense::hover(),
+                );
+                ui.painter().rect_filled(rect, 0., theme::RAIL);
+                let icon_size = self.assets.size(icon);
+                self.assets
+                    .image(icon, icon_size)
+                    .tint(if active {
+                        Color32::WHITE
+                    } else {
+                        Color32::from_white_alpha(120)
+                    })
+                    .paint_at(ui, Rect::from_center_size(rect.center(), icon_size));
+                if active {
+                    ui.painter().hline(
+                        rect.x_range(),
+                        rect.bottom() - 0.5,
+                        egui::Stroke::new(1., theme::ORANGE),
+                    );
+                }
+                self.targets.insert(format!("header:{icon}"), rect);
+                self.hit(&response);
+                response.on_hover_text(label);
+            }
+        });
+    }
+
     /// Logical control bounds for accessibility/diagnostics; never semantic geometry.
     #[must_use]
     pub fn target_bounds(&self, target: &str) -> Option<[f32; 4]> {
@@ -337,4 +395,38 @@ fn section_title(section: &str) -> String {
         }
     }
     title
+}
+
+// Fixed slot and left-aligned label: add_sized centers short labels inside the slot.
+fn name_button(ui: &mut egui::Ui, name: &str, width: f32, pinned: bool) -> egui::Response {
+    let (rect, response) = ui.allocate_exact_size(Vec2::new(width, 20.), egui::Sense::click());
+    let color = if pinned {
+        Color32::from_rgba_unmultiplied(0, 255, 13, 120)
+    } else {
+        Color32::WHITE
+    };
+    let text = egui::WidgetText::from(egui::RichText::new(name).color(color));
+    let galley = text.into_galley(
+        ui,
+        Some(egui::TextWrapMode::Truncate),
+        width,
+        egui::TextStyle::Body,
+    );
+    let position = Pos2::new(rect.left(), rect.center().y - galley.size().y / 2.);
+    ui.painter()
+        .with_clip_rect(rect.intersect(ui.clip_rect()))
+        .galley(position, galley, color);
+    if response.has_focus() {
+        ui.painter().rect_stroke(
+            rect,
+            0.,
+            ui.visuals().selection.stroke,
+            egui::StrokeKind::Inside,
+        );
+    }
+    if response.clicked() {
+        response.request_focus();
+    }
+    response.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, ui.is_enabled(), name));
+    response
 }

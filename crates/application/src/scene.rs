@@ -4,12 +4,29 @@ use rustclient_game_state::InitialPlacement;
 use rustclient_platform::ReadOnlyBlobs;
 use rustclient_scene::{SceneAsset, WorldMesh};
 /// CPU resources retained across GPU recreation. `GameState` selects their descriptor.
-pub struct LoadedScene {
+pub struct LoadedScene<M = WorldMesh> {
     pub asset: std::sync::Arc<SceneAsset>,
     pub projection_generation: u64,
     pub projection_inputs: rustclient_scene::SceneryInputs,
-    pub mesh: WorldMesh,
+    pub mesh: M,
     pub picking: rustclient_scene::ScenePickIndex,
+}
+impl<M> LoadedScene<M> {
+    /// Transfer the owned projection payload without copying scene resources or picking data.
+    /// # Errors
+    /// Propagates a preparation/publication error while preserving semantic-state ownership.
+    pub fn try_map_mesh<N, E>(
+        self,
+        map: impl FnOnce(M) -> Result<N, E>,
+    ) -> Result<LoadedScene<N>, E> {
+        Ok(LoadedScene {
+            asset: self.asset,
+            projection_generation: self.projection_generation,
+            projection_inputs: self.projection_inputs,
+            mesh: map(self.mesh)?,
+            picking: self.picking,
+        })
+    }
 }
 /// Load the normal spawn window using the explicit revision adapter.
 /// # Errors

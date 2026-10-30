@@ -15,6 +15,8 @@ pub struct LocalStorage {
 
 impl LocalStorage {
     /// Acquire the active window's local storage capability.
+    /// # Errors
+    /// Reports unavailable window/storage or a browser denial of storage access.
     pub fn new() -> Result<Self, StorageError> {
         let window = web_sys::window().ok_or_else(|| {
             StorageError::new(
@@ -71,6 +73,10 @@ impl BlobStorage for LocalStorage {
     }
 }
 
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "map_err consumes the owned JsValue returned by browser APIs"
+)]
 fn map_js_error(value: wasm_bindgen::JsValue) -> StorageError {
     let message = value
         .as_string()

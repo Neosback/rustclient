@@ -1,0 +1,430 @@
+{
+  "date": "2026-10-30",
+  "runtime_revision": 240,
+  "initial_head": "b85c8a51cd7075b064c62177b5846acf4fb8c571",
+  "worktree_note": "Pre-existing sidebar/lifecycle changes preserved. This review makes no commits or reference-tree mutations.",
+  "reference_runtime": {
+    "status": "unavailable",
+    "diagnostic": "Connection refused from reference_status; no live source/runtime acceptance."
+  },
+  "sources": [
+    {
+      "id": "rl-suite-240",
+      "root": "references/rl-suite-240",
+      "files": [
+        {
+          "path": "sources-semantic/classDS.java",
+          "sha256": "ded1348b7ab3b5390f80d623521679bd8d17b85c9aaedfe24530cb0b9cc9dd33"
+        },
+        {
+          "path": "sources-semantic/classMI.java",
+          "sha256": "8d73379455ef980eaa99fdd9e0c2192e1310e10eb2114ada9eacb687be74687e"
+        },
+        {
+          "path": "sources-semantic/classFK.java",
+          "sha256": "d9cc5fb9aa9dec0dc73915bf2e998fdea708804862c0d87812af631e18291533"
+        },
+        {
+          "path": "sources-semantic/Scene.java",
+          "sha256": "3ecf8221c7cade02cdcf8cff00774319cb626c40db07937a9c190ff96b23757e"
+        },
+        {
+          "path": "sources-semantic/DynamicObject.java",
+          "sha256": "41038073a4702708e4e02c8ff00c697d51c37fc5001242404cb20368f2b82e24"
+        }
+      ]
+    },
+    {
+      "id": "open-runelite-240",
+      "root": "references/open-runelite-rev-240",
+      "files": [
+        {
+          "path": "runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPlugin.java",
+          "sha256": "9508b008327ed496d320e5f315706d8a1462e9181a6e8a91e9d6940a214849d9"
+        }
+      ]
+    },
+    {
+      "id": "tsps-client-input-sync",
+      "root": "/Users/tylercovalt/Documents/tsps-main",
+      "files": [
+        {
+          "path": "client/render/webgpu/locUpdates.ts",
+          "sha256": "19fdea8849154b300f1936782a022da787a0ec0981ab1133ff5530ec2dddf0a0"
+        },
+        {
+          "path": "client/render/webgpu/WebGPURenderer.ts",
+          "sha256": "39e41ba4b3a2f5288743fa49f46821df59530f3ad1a8738c15790fd453992c02"
+        }
+      ]
+    }
+  ],
+  "measurements": {
+    "baseline": {
+      "path": "target/update-review-baseline.log",
+      "sha256": "04de8fef3a5e66c4ed9e5dd1268bf5d044b6274b6901a00b92ddb521462eb43b",
+      "samples": {
+        "mesh_ms": {
+          "raw": [
+            152.7311,
+            152.542,
+            153.4672,
+            155.3339,
+            155.7011,
+            183.0527,
+            154.2046,
+            152.6564,
+            156.3995
+          ],
+          "p50": 154.2046,
+          "p95_nearest_rank": 183.0527,
+          "max": 183.0527
+        },
+        "picking_ms": {
+          "raw": [
+            7.996,
+            7.9303,
+            10.8393,
+            8.05,
+            9.4283,
+            6.8822,
+            6.5256,
+            6.2066,
+            10.9113
+          ],
+          "p50": 7.996,
+          "p95_nearest_rank": 10.9113,
+          "max": 10.9113
+        },
+        "minimap_ms": {
+          "raw": [
+            3.7309,
+            3.8475,
+            3.8067,
+            4.0238,
+            3.9586,
+            3.7439,
+            3.9137,
+            3.6045,
+            3.845
+          ],
+          "p50": 3.845,
+          "p95_nearest_rank": 4.0238,
+          "max": 4.0238
+        }
+      }
+    },
+    "release": {
+      "path": "target/update-review-release.log",
+      "sha256": "2c6714a5bb444ca1b820c87aaab7a22c51d2f41bb32b9c06400499f93b5492d7",
+      "samples": {
+        "mesh_ms": {
+          "raw": [
+            136.5103,
+            132.0996,
+            126.9002,
+            125.3333,
+            140.0881,
+            128.8956,
+            130.4325,
+            131.4625,
+            142.6929
+          ],
+          "p50": 131.4625,
+          "p95_nearest_rank": 142.6929,
+          "max": 142.6929
+        },
+        "picking_ms": {
+          "raw": [
+            7.5298,
+            6.5668,
+            7.664,
+            6.9467,
+            6.7595,
+            6.4783,
+            7.1259,
+            6.7001,
+            7.3475
+          ],
+          "p50": 6.9467,
+          "p95_nearest_rank": 7.664,
+          "max": 7.664
+        },
+        "minimap_ms": {
+          "raw": [
+            2.591,
+            2.4709,
+            2.5175,
+            2.6073,
+            2.608,
+            2.5568,
+            2.7531,
+            2.5735,
+            2.5879
+          ],
+          "p50": 2.5879,
+          "p95_nearest_rank": 2.7531,
+          "max": 2.7531
+        }
+      }
+    },
+    "gpu": {
+      "path": "target/update-review-gpu.log",
+      "sha256": "bd9f5913f1f380b9a810e613c1ef88c8e31840ae50ed1337ccadc8f563cfca7f",
+      "samples": {
+        "cpu_enqueue_ms": {
+          "raw": [
+            204.4806,
+            151.4255,
+            153.5977,
+            196.0924,
+            152.2392,
+            164.5508,
+            217.5966,
+            168.6945
+          ],
+          "p50": 166.62265000000002,
+          "p95_nearest_rank": 217.5966,
+          "max": 217.5966
+        }
+      },
+      "scope": "CPU enqueue characterization; sample 0 may include deferred initial queue writes, subsequent samples drain prior work outside the timed interval. No frame-time or stable benchmark claim."
+    }
+  },
+  "environment": {
+    "platform": "macOS-26.5.1-arm64-arm-64bit",
+    "machine": "arm64",
+    "rustc": "rustc 1.96.0 (ac68faa20 2026-05-25)\nbinary: rustc\ncommit-hash: ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96\ncommit-date: 2026-05-25\nhost: aarch64-apple-darwin\nrelease: 1.96.0\nLLVM version: 22.1.2",
+    "isolated": false,
+    "note": "Other native clients active; dev package opt-level=2 and release are separate observations, not before/after optimization comparisons."
+  },
+  "validation": {
+    "native": [
+      {
+        "name": "fmt",
+        "command": [
+          "cargo",
+          "fmt",
+          "--all",
+          "--check"
+        ],
+        "exit_code": 0,
+        "seconds": 1.641,
+        "log": "target/update-review-final-fmt.log",
+        "status": "PASS",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "name": "check",
+        "command": [
+          "cargo",
+          "check",
+          "--workspace",
+          "--all-targets"
+        ],
+        "exit_code": 0,
+        "seconds": 149.48,
+        "log": "target/update-review-final-check.log",
+        "status": "PASS",
+        "sha256": "8ab159c66418523cd26f49e587a49807bb4ce2370961c9b8717b5cb7b705e0cd"
+      },
+      {
+        "name": "clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "--workspace",
+          "--all-targets",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "exit_code": 0,
+        "seconds": 40.462,
+        "log": "target/update-review-final-clippy.log",
+        "status": "PASS",
+        "sha256": "d85fa468a75a89675c78d04c9b26f2794297123cc092808eef358e150ce4fc48"
+      },
+      {
+        "name": "tests",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "rustclient-scene",
+          "-p",
+          "rustclient-renderer",
+          "-p",
+          "rustclient-application",
+          "-p",
+          "rustclient-native"
+        ],
+        "exit_code": 0,
+        "seconds": 206.635,
+        "log": "target/update-review-final-tests.log",
+        "status": "PASS",
+        "sha256": "99020657383948583c213a0b66bc577605ad9f9c52a845894b8b9e099e4067b5"
+      },
+      {
+        "name": "gpu-contract",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "rustclient-renderer",
+          "world::update_tests::scenery_replacement_retains_actors_until_the_scene_asset_changes",
+          "--",
+          "--ignored",
+          "--exact"
+        ],
+        "exit_code": 0,
+        "seconds": 55.459,
+        "log": "target/update-review-final-gpu-contract.log",
+        "status": "PASS",
+        "sha256": "ba4912de3cd187f1799239b3b5df5ee633464cf134a5c950f0b92981b367f692"
+      }
+    ],
+    "relevant_test_summary": {
+      "automated_passed": 220,
+      "default_ignored": 5,
+      "manual_gpu_passed": 1,
+      "remaining_ignored_not_run": 4,
+      "scope": "scene, renderer, application and native; not cargo test --workspace"
+    },
+    "wasm": {
+      "command": [
+        "cargo",
+        "check",
+        "-p",
+        "rustclient-web",
+        "--target",
+        "wasm32-unknown-unknown"
+      ],
+      "status": "PASS",
+      "log": "target/update-review-final-wasm.log",
+      "sha256": "d6156de4bb043affc0b4f80ae977e8e6d76f9a5bc9431f6e71079ead998a5fe3",
+      "target_dir": "/tmp/rustclient-sidebar-validation-20261029"
+    },
+    "wasm-clippy": {
+      "command": [
+        "cargo",
+        "clippy",
+        "-p",
+        "rustclient-web",
+        "--target",
+        "wasm32-unknown-unknown",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "status": "PASS",
+      "log": "target/update-review-final-wasm-clippy.log",
+      "sha256": "69240ef25e87e4a1428abb528bf07162e20f2c2fc6c3dbea5d7d50d31f3a4456",
+      "target_dir": "/tmp/rustclient-sidebar-validation-20261029"
+    },
+    "port-ledger": {
+      "command": [
+        "python3",
+        "tools/port_audit.py",
+        "--check"
+      ],
+      "status": "PASS",
+      "log": "target/update-review-port-ledger.log",
+      "sha256": "14f3b8b91639aea9d13dc18d531cf5112a7a1a6b582142b54bcd43b1beafa633"
+    },
+    "gpu-ledger": {
+      "command": [
+        "python3",
+        "tools/gpu/audit.py",
+        "--check"
+      ],
+      "status": "PASS",
+      "log": "target/update-review-gpu-ledger.log",
+      "sha256": "45297b5947557d696556fab8269f6dd3f6213c1200558275a443d9f380e7c736"
+    }
+  },
+  "acceptance": {
+    "door_frame_pacing": "NOT_RUN",
+    "java_visual_comparison": "NOT_RUN",
+    "browser_gameplay": "NOT_RUN",
+    "dirty_zone_rebuild": "OPEN",
+    "gpu_plugin_parity": "OPEN"
+  },
+  "profiles": {
+    "stack": {
+      "path": "target/update-review-stack.txt",
+      "sha256": "ea20088693afb510d00c9cf797287cee7f427b411f1033b552aea95f50bfeec9",
+      "scope": "Sample of the explicit bounded CPU cache probe; no server, account or visual interaction."
+    },
+    "running-client": {
+      "path": "target/update-review-running-client.txt",
+      "sha256": "3a0c106cd04c50ff17f392a70a78440c4ec85786ea5181694c8bd069eebcd3f7",
+      "scope": "Read-only sample of a previously running client, not this patch. Too few snapshots for attribution; no door interaction or frame-time acceptance."
+    }
+  },
+  "measurementExecutable": {
+    "path": "target/release/scene_probe",
+    "sha256": "ea0ce1f47c9377262768a193e671de73ea34c968da36455456d7941605df2725",
+    "note": "Built for the recorded release diagnostic before the explicit refresh/install API split. The measured scenery replacement implementation body is unchanged; these are characterization samples, not a final-patch FPS comparison."
+  },
+  "implementation": [
+    {
+      "path": "apps/native/src/main.rs",
+      "sha256": "452d0285583253337f7ade6765115eab8b41ce61ad5c7392f09aa5667551395c"
+    },
+    {
+      "path": "apps/native/src/scene.rs",
+      "sha256": "7d0c284d44b54f6e21bf386604d6ceafa8c3ba635813b1fd462bd286f8035b50"
+    },
+    {
+      "path": "apps/native/src/performance.rs",
+      "sha256": "901fc398c73674dedfe0285224df512f8a7395183ede6813157f539b687aee4d"
+    },
+    {
+      "path": "apps/native/src/bin/scene_probe.rs",
+      "sha256": "d66e8939e5849406f0bd701a2b320e533f148f9589a6ddd82f96dfe1b4324225"
+    },
+    {
+      "path": "apps/native/src/bin/scene_probe/updates.rs",
+      "sha256": "06d245b7b12a6819d39b3402fb0481ebc3cd788d5e3e70b01c6d241d9e9e769e"
+    },
+    {
+      "path": "crates/scene/src/lib.rs",
+      "sha256": "b0417c2d668aef1e762dff14def54800500e450d8038b4de7b8d822f2e21f7df"
+    },
+    {
+      "path": "crates/scene/src/inputs.rs",
+      "sha256": "f0f81fc11210d0299157f1f0a07e6c7a8f4c8f1fdc6c3aae9dd03f46e2409517"
+    },
+    {
+      "path": "crates/scene/src/tests.rs",
+      "sha256": "aa2c49c08285d2802461577d3fc0e0141690707e46b6803f6b0cf8b617f53d51"
+    },
+    {
+      "path": "crates/scene/src/tests/updates.rs",
+      "sha256": "d7b243e814ddaa93063c7e4f3c376e8655025b74880a25d4a7ca5d87ed7d7536"
+    },
+    {
+      "path": "crates/renderer/src/lib.rs",
+      "sha256": "3ce68ac3f450a47759b4b11e890373c22597f82d8588fef359330404c13e6f14"
+    },
+    {
+      "path": "crates/renderer/src/surface.rs",
+      "sha256": "856a4b45883aa494f753617f407aefe58b6217eb3da05df06a7988a8c2e0250a"
+    },
+    {
+      "path": "crates/renderer/src/world.rs",
+      "sha256": "9a52d273ce703dfbddc762cc19354b91afeeef70e0d6b9a3d67763cf7aff43f8"
+    },
+    {
+      "path": "crates/renderer/src/world_capture.rs",
+      "sha256": "0257ca571ac4d63813ba621f745250c177596fc70fda24fe5c37c7ce41405f4d"
+    },
+    {
+      "path": "crates/renderer/src/world/update_tests.rs",
+      "sha256": "f3128fabf8a77e1601a11ccfd7cc58adb82feece6b79a521aa3524c9a9fc39d0"
+    }
+  ],
+  "reviewDidNotModifyReferences": true,
+  "selectedReferenceHashesVerified": true
+}

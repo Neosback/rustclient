@@ -1,4 +1,4 @@
-//! Native composition of wasm component plugins.
+//! Native composition of first-party and ABI 0.1 component plugins.
 //!
 //! The client hands plugins only a read-only session view and mediated storage; committed game
 //! state, renderer resources and transport never cross the component boundary.
@@ -200,8 +200,8 @@ impl Plugins {
 
     /// Project committed state, deliver typed events and collect validated plugin output.
     ///
-    /// Nothing is projected unless an enabled plugin holds a grant, so an idle plugin set costs
-    /// only the capability union.
+    /// Only granted query categories are projected. Minimal client/timing history advances even
+    /// without grants so later enablement cannot replay a synthetic session transition.
     pub(super) fn update(&mut self, state: &GameState, inputs: &Inputs<'_>) {
         self.last_frame = inputs.frame;
         for (key, (id, config, enabled)) in std::mem::take(&mut self.pending) {
@@ -227,17 +227,18 @@ impl Plugins {
             self.applied.insert(key, (config, enabled));
         }
         let wanted = self.set.granted();
-        if wanted.is_empty() {
-            self.output = HostOutput::default();
-            return;
-        }
-        let (snapshot, events) = self.projector.project_with_events(
+        let interest = self.set.game_event_interest();
+        let (snapshot, events) = self.projector.project_interested(
             state,
             &inputs.frame,
             &inputs.sources,
             &wanted,
-            self.set.has_game_subscribers(),
+            interest.as_ref(),
         );
+        if wanted.is_empty() && interest.is_none() {
+            self.output = HostOutput::default();
+            return;
+        }
         let view = SnapshotView(&snapshot);
         self.set
             .dispatch_game(&events, &view, &mut self.storage, &mut self.logs);
