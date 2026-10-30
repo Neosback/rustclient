@@ -26,10 +26,18 @@ struct AlphaModel {
     depth_policy: ModelDepthPolicy,
     opaque_span: Option<core::ops::Range<usize>>,
     source: Option<std::sync::Arc<rustclient_scene::ModelSortSource>>,
+    /// Replaced by a scenery patch: contributes no faces to either pass.
+    hidden: bool,
 }
 struct OpaqueBatch {
     indices: core::ops::Range<u32>,
     policy: ModelDepthPolicy,
+}
+/// Consecutive opaque triangles of one source model; the unit a scenery patch can hide.
+struct OpaqueRun {
+    indices: core::ops::Range<u32>,
+    policy: ModelDepthPolicy,
+    group: Option<usize>,
 }
 #[derive(Default)]
 struct GeometryData {
@@ -44,6 +52,11 @@ struct GeometryData {
     order: Vec<u32>,
     opaque_order: Vec<u32>,
     opaque_batches: Vec<OpaqueBatch>,
+    opaque_runs: Vec<OpaqueRun>,
+    /// Static geometry only: the effective location each entry of the model spans came from.
+    model_sources: Vec<u32>,
+    /// Sorted baseline location indices currently hidden by a scenery patch.
+    hidden: Vec<u32>,
     vertex_remap: Vec<u32>,
     expanded_vertex_bytes: u64,
     last_sort: Option<ModelView>,
@@ -158,6 +171,12 @@ impl GeometryGpu {
             }
         }
     }
+    /// Hide the static models emitted for the baseline locations `sources` (sorted), or show
+    /// every model again with an empty list. Buffers are untouched: hidden models leave the
+    /// opaque draw ranges and the alpha ordering. Returns whether anything changed.
+    pub fn set_hidden(&mut self, sources: &[u32]) -> bool {
+        self.data.set_hidden(sources)
+    }
     pub fn alpha_depth(&self, index: u32, eye: Vec3) -> Option<f32> {
         let triangle = self.data.sorted.get(usize::try_from(index).ok()?)?;
         Some(triangle.center.distance_squared(eye))
@@ -176,5 +195,7 @@ fn point(vertex: &SceneVertex) -> Vec3 {
     )
 }
 
+#[cfg(test)]
+mod hidden;
 #[cfg(test)]
 mod trace;

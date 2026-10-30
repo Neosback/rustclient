@@ -41,10 +41,11 @@ impl GeometryGpu {
             if let Some(span) = &model.opaque_span {
                 data.opaque_order[span.clone()].fill(0);
             }
-            if model
-                .source
-                .as_ref()
-                .is_some_and(|source| !source.admitted(view))
+            if model.hidden
+                || model
+                    .source
+                    .as_ref()
+                    .is_some_and(|source| !source.admitted(view))
             {
                 continue;
             }

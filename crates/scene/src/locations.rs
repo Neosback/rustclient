@@ -4,31 +4,54 @@ use rustclient_model::{ModelPoint, Plane};
 use std::collections::BTreeMap;
 use std::hash::{Hash, Hasher};
 mod index;
-pub(crate) use index::{LocationIndex, effective_locations};
+mod patch;
+pub(crate) use index::{LocationIndex, effective_locations, effective_locations_with};
+pub use patch::{PATCH_KEY_BUDGET, patch_supported};
+pub(crate) use patch::{Patch, plan as plan_patch};
+/// Which locations one build emits.
+#[derive(Clone, Copy)]
+pub(crate) enum Scope<'a> {
+    /// Every static-class location; records each model's source location.
+    Static,
+    /// Every posed or morphing location.
+    Dynamic,
+    /// Static-class locations of a baseline patch: prepared together, emitted only for the patch.
+    Patch(&'a Patch),
+}
 pub(crate) fn build(
     asset: &SceneAsset,
     mesh: &mut WorldMesh,
     inputs: &crate::SceneryInputs,
-    dynamic: bool,
+    scope: Scope<'_>,
 ) -> Result<()> {
+    let dynamic = matches!(scope, Scope::Dynamic);
     let d = asset.descriptor;
     let origin = d.origin();
     let locations = effective_locations(asset, inputs);
 
     // A pose-only rebuild runs every client cycle; wall thickness is only consulted
     // on tiles that hold a posed location, so index just those tiles.
-    let dynamic_tiles: Option<std::collections::BTreeSet<_>> = dynamic.then(|| {
-        locations
-            .iter()
-            .filter(|loc| is_dynamic(asset, inputs, loc))
-            .map(|loc| loc.tile)
-            .collect()
-    });
-    let plan = crate::decorations::plan(asset, inputs, &locations, dynamic_tiles.as_ref())?;
+    let restricted_tiles: Option<std::collections::BTreeSet<_>> = match scope {
+        Scope::Static => None,
+        Scope::Dynamic => Some(
+            locations
+                .iter()
+                .filter(|loc| is_dynamic(asset, inputs, loc))
+                .map(|loc| loc.tile)
+                .collect(),
+        ),
+        Scope::Patch(patch) => Some(patch.tiles.clone()),
+    };
+    let plan = crate::decorations::plan(asset, inputs, &locations, restricted_tiles.as_ref())?;
     let mut prepared = Vec::new();
     let mut prepared_vertices = 0_usize;
     {
         for (index, loc) in locations.iter().enumerate() {
+            if let Scope::Patch(patch) = scope
+                && !patch.prepare.contains(&index)
+            {
+                continue;
+            }
             // Unknown objects fall through so the explicit missing-object error stays.
             if dynamic
                 && asset.assets.objects.contains_key(&loc.object)
@@ -71,7 +94,11 @@ pub(crate) fn build(
             let requests = plan.requests(index, shape, rotation);
             let mut selected = false;
             for (shape, orientation, offset) in requests {
-                if let Some(model) = prepare(asset, loc, def, shape, orientation, offset, inputs)? {
+                if let Some(mut model) =
+                    prepare(asset, loc, def, shape, orientation, offset, inputs)?
+                {
+                    model.source = u32::try_from(index)
+                        .map_err(|_| SceneError("location index overflow".into()))?;
                     selected = true;
                     prepared_vertices += model.model.vertices.len();
                     if prepared_vertices > 3_000_000 {
@@ -86,8 +113,23 @@ pub(crate) fn build(
         }
     }
     super::seams::merge(&mut prepared)?;
+    emit_prepared(asset, mesh, prepared, scope)
+}
+/// Emit the merged models in order; a patch emits only the locations it replaces.
+fn emit_prepared(
+    asset: &SceneAsset,
+    mesh: &mut WorldMesh,
+    prepared: Vec<PreparedModel>,
+    scope: Scope<'_>,
+) -> Result<()> {
     for model in prepared {
+        if let Scope::Patch(patch) = scope
+            && !patch.emit.contains(&(model.source as usize))
+        {
+            continue;
+        }
         let first = mesh.geometry.vertices.len();
+        let source = model.source;
         let target = model.target;
         let bounds = crate::PickBounds::new(model.origin, &model.points)?;
         emit(asset, mesh, model)?;
@@ -97,6 +139,9 @@ pub(crate) fn build(
                 depth_policy: rustclient_model::ModelDepthPolicy::DepthWrite,
                 sort_source: None,
             });
+            if matches!(scope, Scope::Static) {
+                mesh.geometry.model_sources.push(source);
+            }
             mesh.geometry.picks.push(crate::PickRange {
                 bounds: Some(bounds),
                 precision: crate::PickPrecision::ProjectedFaces,
@@ -270,6 +315,8 @@ pub(crate) struct PreparedModel {
     pub contrast: i16,
     colors: Vec<Option<[i32; 3]>>,
     target: rustclient_model::WorldTarget,
+    /// Index of the effective location this model was prepared for; set by `build`.
+    pub source: u32,
 }
 #[expect(
     clippy::too_many_lines,
@@ -434,6 +481,7 @@ fn prepare(
             definition: loc.object,
             resolved: def.id,
         },
+        source: 0,
     }))
 }
 #[expect(
@@ -709,7 +757,15 @@ pub(crate) fn shadows(
         }
     }
     {
-        for loc in &effective_locations(asset, inputs) {
+        // `classDI.method3340` writes terrain shadows while the region loads and the server-added
+        // location path (`classDI.method3336`) never does, so they come from the map files alone.
+        let _ = inputs;
+        for loc in asset
+            .assets
+            .squares
+            .iter()
+            .flat_map(|square| square.locations.iter())
+        {
             let x = loc.tile.x - origin.x;
             let y = loc.tile.y - origin.y;
             if loc.tile.plane != plane
@@ -801,14 +857,17 @@ pub fn location_key(loc: &StaticLocation) -> rustclient_model::LocationKey {
         layer,
     }
 }
-fn legacy_locations(asset: &SceneAsset, inputs: &crate::SceneryInputs) -> Vec<StaticLocation> {
+fn legacy_locations(
+    asset: &SceneAsset,
+    overrides: &BTreeMap<rustclient_model::LocationKey, rustclient_game_state::LocationOverride>,
+) -> Vec<StaticLocation> {
     let mut locations: Vec<_> = asset
         .assets
         .squares
         .iter()
         .flat_map(|s| s.locations.iter().copied())
         .collect();
-    for (key, override_) in &inputs.locations {
+    for (key, override_) in overrides {
         match override_.change {
             rustclient_model::LocationChange::Inherit => {}
             rustclient_model::LocationChange::Remove => {

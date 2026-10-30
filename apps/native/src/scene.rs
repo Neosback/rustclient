@@ -87,6 +87,19 @@ impl SceneView {
         inputs.interpolation = self.interpolation.clone();
         inputs
     }
+    /// The inputs for one animation pass, carrying the baseline the static scene was baked with
+    /// so the worker can publish scenery changes as a patch over it.
+    pub fn animator_inputs(
+        &self,
+        state: &rustclient_game_state::SceneryState,
+    ) -> rustclient_scene::SceneryInputs {
+        let mut inputs = self.scenery_inputs(state);
+        inputs.base_locations = self
+            .loaded
+            .as_ref()
+            .and_then(|loaded| loaded.projection_inputs.base_locations.clone());
+        inputs
+    }
     pub fn clear(&mut self) {
         self.entity_geometry = rustclient_scene::SceneGeometry::default();
         self.motion = rustclient_scene::ActorMotion::default();

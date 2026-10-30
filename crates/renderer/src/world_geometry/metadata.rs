@@ -1,6 +1,6 @@
 //! CPU-only model/priority metadata, shared by worker preparation and live streams.
 use super::{
-    AlphaModel, GeometryData, ModelDepthPolicy, OpaqueBatch, RenderError, SceneGeometry,
+    AlphaModel, GeometryData, ModelDepthPolicy, OpaqueBatch, OpaqueRun, RenderError, SceneGeometry,
     TransparentTriangle, Vec3, point,
 };
 impl GeometryData {
@@ -21,7 +21,10 @@ impl GeometryData {
         for model in &mut self.models {
             model.faces.clear();
             model.opaque_span = None;
+            model.hidden = false;
         }
+        self.hidden.clear();
+        self.model_sources.clone_from(&geometry.model_sources);
         self.model_groups.clear();
         self.model_groups.resize(geometry.models.len(), None);
         let mut used = 0;
@@ -136,32 +139,78 @@ impl GeometryData {
                         .unwrap_or(index)
                 }));
         }
-        self.opaque_batches.clear();
+        self.opaque_runs.clear();
         for (index, triangle) in geometry.opaque.as_chunks::<3>().0.iter().enumerate() {
             let first = triangle[0] as usize;
             let group = geometry
                 .models
                 .partition_point(|model| model.vertices.end <= first);
-            let policy = geometry
+            let group = geometry
                 .models
                 .get(group)
                 .filter(|model| model.vertices.contains(&first))
-                .map_or(ModelDepthPolicy::DepthWrite, |model| model.depth_policy);
+                .map(|_| group);
+            let policy = group.map_or(ModelDepthPolicy::DepthWrite, |group| {
+                geometry.models[group].depth_policy
+            });
             let start =
                 u32::try_from(index * 3).map_err(|_| RenderError::World("opaque batch index"))?;
-            if let Some(batch) = self.opaque_batches.last_mut()
-                && batch.policy == policy
-                && batch.indices.end == start
+            if let Some(run) = self.opaque_runs.last_mut()
+                && run.group == group
+                && run.indices.end == start
             {
-                batch.indices.end += 3;
+                run.indices.end += 3;
             } else {
-                self.opaque_batches.push(OpaqueBatch {
+                self.opaque_runs.push(OpaqueRun {
                     indices: start..start + 3,
                     policy,
+                    group,
                 });
             }
         }
+        self.rebuild_batches();
         Ok(())
+    }
+    /// Draw ranges: runs coalesced by depth policy, without the hidden models' runs.
+    fn rebuild_batches(&mut self) {
+        self.opaque_batches.clear();
+        for run in &self.opaque_runs {
+            if run.group.is_some_and(|group| self.group_hidden(group)) {
+                continue;
+            }
+            if let Some(batch) = self.opaque_batches.last_mut()
+                && batch.policy == run.policy
+                && batch.indices.end == run.indices.start
+            {
+                batch.indices.end = run.indices.end;
+            } else {
+                self.opaque_batches.push(OpaqueBatch {
+                    indices: run.indices.clone(),
+                    policy: run.policy,
+                });
+            }
+        }
+    }
+    fn group_hidden(&self, group: usize) -> bool {
+        self.model_sources
+            .get(group)
+            .is_some_and(|source| self.hidden.binary_search(source).is_ok())
+    }
+    pub(super) fn set_hidden(&mut self, sources: &[u32]) -> bool {
+        if self.hidden == sources {
+            return false;
+        }
+        self.hidden.clear();
+        self.hidden.extend_from_slice(sources);
+        for group in 0..self.model_groups.len() {
+            if let Some(model) = self.model_groups[group] {
+                self.models[model].hidden = self.group_hidden(group);
+            }
+        }
+        self.rebuild_batches();
+        // Alpha and deferred models re-sort so their hidden faces leave both index buffers.
+        self.last_sort = None;
+        true
     }
     fn reserve_model(&mut self, index: usize, policy: ModelDepthPolicy) -> usize {
         if index == self.models.len() {
@@ -171,10 +220,12 @@ impl GeometryData {
                 depth_policy: policy,
                 opaque_span: None,
                 source: None,
+                hidden: false,
             });
         }
         self.models[index].depth_policy = policy;
         self.models[index].source = None;
+        self.models[index].hidden = false;
         index
     }
 }

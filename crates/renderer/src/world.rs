@@ -304,6 +304,7 @@ impl WorldGpu {
         geometry: &rustclient_scene::SceneGeometry,
     ) -> Result<(), RenderError> {
         self.dynamic.update(device, queue, geometry)?;
+        self.geometry.set_hidden(&geometry.hidden_static);
         self.last_camera = None;
         Ok(())
     }

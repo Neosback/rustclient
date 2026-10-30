@@ -115,11 +115,44 @@ and same-asset actor geometry/pending actor uploads during structural scenery in
 This retention requires an explicit refresh inside the same live scene. A new scene/session
 installation clears actors even when it reuses identical cache asset IDs.
 
-Full-scene rebuilding and event-thread compaction/upload remain performance debts. The immutable
+Full-scene rebuilding and event-thread compaction/upload remain performance debts except where the scenery patch contract below applies. The immutable
 minimap has no live-location input: retain output for the same asset/plane, while keeping live
 minimap/collision invalidation incomplete. Incremental work must preserve initial-bake versus live
 replacement behavior, crossing footprints, neighboring normals, decorations, roof/bridge tags,
 picking and global ordering. See [the update review](../reference/UPDATE-SYSTEM-2026-10-30.md).
+
+## Scenery patch publication (2026-10-30)
+
+A committed location change (door, gate, replaced or removed object) must not rebuild or
+re-upload the static scene. The static mesh is an immutable baseline built from the baseline
+overrides recorded with it (`SceneryInputs::base_locations`); structural state afterwards is the
+difference between the baseline and the current committed overrides.
+
+- **Patch set.** For each key whose override differs from the baseline, the affected set `A` is
+  the changed locations (old and new state) plus every location that can exchange neighboring
+  normals or hidden faces with them (`seams::merge` adjacency, footprint plus one tile, planes
+  +/-1). Locations that could merge with members of `A` are prepared as inputs only. `A` is
+  emitted exactly as the full build would emit it, through the same prepare, decoration-plan,
+  seam-merge and emit code, into the dynamic stream. The static models of the baseline's
+  `A` are hidden at draw and pick time (`SceneGeometry::hidden_static`), not removed.
+- **Equivalence.** The visible triangles of baseline-minus-hidden plus the patch must equal a full
+  rebuild with the current overrides, including lighting, merged normals, hidden faces,
+  decoration plates, render tags and the global draw order inputs. Tests assert this on synthetic
+  scenes (door open/close, neighbors, decorations, bridge/roof tags) before the path is used.
+- **Terrain shadows.** The 240 client writes terrain object shadows only while loading the
+  region (`classDI.method3340`); server-added locations (`classDI.method3336`) never change them.
+  Terrain shadows therefore derive from the map-file locations alone, independent of overrides.
+  This deliberately corrects the earlier full build, which re-baked shadows from live overrides.
+- **Fallback to a full rebuild** (behavior unchanged from before): a replacement object missing
+  from the loaded asset, a roof-area change, an instanced area, more changed keys than a bounded
+  patch budget, or any patch error. A full rebuild installs the then-current overrides as the new
+  baseline. The patch never silently drops a change.
+- **Picking and ordering.** Hidden static models are excluded from picking and from the GPU
+  sort/transparent/opaque lists; patch picks come from the dynamic stream. Camera sorting, shader
+  cycles, semantic commits and labels are unaffected.
+- **Not covered.** Live minimap/collision invalidation, temporary-location lifetimes and the
+  first appearance of an object definition that is not yet in the loaded asset (it still
+  extends the asset and rebuilds). Live frame pacing is NOT-RUN until observed.
 
 ## Acceptance
 

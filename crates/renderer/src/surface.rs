@@ -186,6 +186,7 @@ impl StagedStream {
             && self.geometry.opaque == geometry.opaque
             && self.geometry.transparent == geometry.transparent
             && self.geometry.models == geometry.models
+            && self.geometry.hidden_static == geometry.hidden_static
         {
             return false;
         }
@@ -198,6 +199,7 @@ impl StagedStream {
         staged.transparent.extend_from_slice(&geometry.transparent);
         staged.models.clear();
         staged.models.extend_from_slice(&geometry.models);
+        staged.hidden_static.clone_from(&geometry.hidden_static);
         self.pending = true;
         self.known = true;
         true

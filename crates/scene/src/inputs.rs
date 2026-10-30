@@ -10,6 +10,9 @@ pub struct SceneryInputs {
     pub generation: u64,
     pub variables: BTreeMap<VarpId, i32>,
     pub locations: BTreeMap<LocationKey, LocationOverride>,
+    /// The overrides the static scene was baked with. Present only for dynamic builds that patch
+    /// the baseline (see `docs/specs/SPEC-0016`, scenery patch publication); a full build ignores it.
+    pub base_locations: Option<std::sync::Arc<BTreeMap<LocationKey, LocationOverride>>>,
     /// Areas forced roofed by a plugin; presentation input, not game state.
     pub roof_areas: std::sync::Arc<[crate::RoofArea]>,
     /// Which animations are blended between frames; presentation input, not game state.
@@ -23,6 +26,7 @@ impl From<&SceneryState> for SceneryInputs {
             generation: state.generation(),
             variables: state.variables().clone(),
             locations: state.locations().clone(),
+            base_locations: None,
             roof_areas: std::sync::Arc::default(),
             interpolation: crate::AnimationInterpolation::default(),
         }

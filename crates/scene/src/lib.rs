@@ -29,7 +29,7 @@ pub mod world_map;
 pub use inputs::SceneryInputs;
 mod decorations;
 mod locations;
-pub use locations::location_key;
+pub use locations::{PATCH_KEY_BUDGET, location_key, patch_supported};
 mod mesh;
 mod model_sort;
 pub use model_sort::{ModelSortSource, ModelView, SORT_NEAR};

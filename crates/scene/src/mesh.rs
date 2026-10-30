@@ -56,6 +56,12 @@ pub struct SceneGeometry {
     pub picks: Vec<PickRange>,
     /// Disposable overhead anchors extracted from the posed actor geometry.
     pub actor_labels: Vec<ActorLabelAnchor>,
+    /// Static scenery only: the index of the effective location each entry of `models` was
+    /// emitted for. Empty for every other geometry.
+    pub model_sources: Vec<u32>,
+    /// Dynamic scenery only: sorted effective-location indices whose static models the baseline
+    /// must not draw or pick, because this geometry re-emits them (scenery patch publication).
+    pub hidden_static: Vec<u32>,
 }
 /// One whole emitted model, retaining its source raster policy alongside its existing vertex span.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -107,6 +113,8 @@ impl SceneGeometry {
         self.picks.clear();
         self.actor_labels.clear();
         self.models.clear();
+        self.model_sources.clear();
+        self.hidden_static.clear();
     }
     pub(crate) fn model_triangle(
         &mut self,
@@ -234,9 +242,14 @@ pub fn build_mesh_with_inputs(
         roofs: asset.roofs_with(&inputs.roof_areas),
     };
     super::terrain::build(asset, &mut mesh, inputs)?;
-    super::locations::build(asset, &mut mesh, inputs, false)?;
+    super::locations::build(asset, &mut mesh, inputs, super::locations::Scope::Static)?;
     let mut dynamic = empty_mesh(asset, mesh.focus, std::sync::Arc::clone(&mesh.roofs));
-    super::locations::build(asset, &mut dynamic, inputs, true)?;
+    super::locations::build(
+        asset,
+        &mut dynamic,
+        inputs,
+        super::locations::Scope::Dynamic,
+    )?;
     mesh.stats.model_triangles += dynamic.stats.model_triangles;
     mesh.stats.locations += dynamic.stats.locations;
     mesh.stats.no_model += dynamic.stats.no_model;
@@ -301,7 +314,16 @@ fn empty_mesh(
 /// Returns missing pose/model dependencies and extraction errors.
 pub fn build_dynamic(asset: &SceneAsset, inputs: &crate::SceneryInputs) -> Result<SceneGeometry> {
     let mut mesh = empty_mesh(asset, [0.; 3], asset.roofs_with(&inputs.roof_areas));
-    super::locations::build(asset, &mut mesh, inputs, true)?;
+    super::locations::build(asset, &mut mesh, inputs, super::locations::Scope::Dynamic)?;
+    if let Some(patch) = super::locations::plan_patch(asset, inputs) {
+        super::locations::build(
+            asset,
+            &mut mesh,
+            inputs,
+            super::locations::Scope::Patch(&patch),
+        )?;
+        mesh.geometry.hidden_static = patch.hidden;
+    }
     Ok(mesh.geometry)
 }
 impl WorldMesh {

@@ -71,6 +71,9 @@ pub struct ScenePickIndex {
     blocks: usize,
     nodes: Vec<Node>,
     clickboxes: super::clickbox::Clickboxes,
+    /// Sorted, disjoint vertex spans of static models a scenery patch currently replaces.
+    hidden: Vec<std::ops::Range<usize>>,
+    hidden_sources: Vec<u32>,
 }
 impl ScenePickIndex {
     /// Build a balanced index with one leaf per 32 original triangles.
@@ -105,6 +108,8 @@ impl ScenePickIndex {
             vertices: geometry.vertices.len(),
             blocks: blocks.len(),
             clickboxes: super::clickbox::Clickboxes::new(geometry),
+            hidden: Vec::new(),
+            hidden_sources: Vec::new(),
             nodes: Vec::with_capacity(blocks.len().saturating_mul(2).saturating_sub(1)),
         };
         if !blocks.is_empty() {
@@ -143,6 +148,32 @@ impl ScenePickIndex {
             self.nodes[id as usize].end = end;
         }
         id
+    }
+    /// Exclude the static models emitted for the baseline locations `sources` (the effective
+    /// location indices a scenery patch replaces; see `SceneGeometry::hidden_static`).
+    /// An empty list restores every model.
+    pub fn set_hidden(&mut self, geometry: &SceneGeometry, sources: &[u32]) {
+        if self.hidden_sources == sources {
+            return;
+        }
+        self.hidden_sources.clear();
+        self.hidden_sources.extend_from_slice(sources);
+        let mut spans: Vec<_> = geometry
+            .models
+            .iter()
+            .zip(&geometry.model_sources)
+            .filter(|(_, source)| sources.binary_search(source).is_ok())
+            .map(|(model, _)| model.vertices.clone())
+            .filter(|span| !span.is_empty())
+            .collect();
+        spans.sort_by_key(|span| span.start);
+        self.hidden = spans;
+    }
+    fn is_hidden(&self, vertex: usize) -> bool {
+        let after = self.hidden.partition_point(|span| span.end <= vertex);
+        self.hidden
+            .get(after)
+            .is_some_and(|span| span.start <= vertex)
     }
     #[must_use]
     pub fn stats(&self) -> PickIndexStats {
@@ -191,6 +222,9 @@ impl ScenePickIndex {
             }
             for vertex in (node.first as usize..(node.end as usize).min(limit)).step_by(3) {
                 let triangle = &geometry.vertices[vertex..vertex + 3];
+                if self.is_hidden(vertex) {
+                    continue;
+                }
                 if !visibility.shows_vertex(&triangle[0])
                     || (surface && triangle.iter().all(|v| v.abhsl >> 24 == 255))
                 {
@@ -219,7 +253,10 @@ impl ScenePickIndex {
         visibility: &SceneVisibility,
     ) -> Vec<super::ClickHit> {
         if self.matches(geometry, [0.; 3]) {
-            self.clickboxes.query(geometry, projection, visibility)
+            self.clickboxes
+                .query(geometry, projection, visibility, |vertex| {
+                    self.is_hidden(vertex)
+                })
         } else {
             super::pick_targets(geometry, projection, visibility)
         }

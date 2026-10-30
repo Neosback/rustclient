@@ -376,16 +376,20 @@ impl NativeApp {
             return;
         };
         let scenery = self.state.scenery();
-        if loaded.projection_generation != scenery.generation()
-            && loaded
-                .projection_inputs
-                .matches_state(scenery, &loaded.asset)
-        {
-            loaded.projection_generation = scenery.generation();
-        }
         if loaded.projection_generation == scenery.generation()
             && loaded.projection_inputs.roof_areas == self.scene.roof_areas
         {
+            return;
+        }
+        // A door or location change the baked scene can express as a patch is published by the
+        // animation worker; only a change it cannot express rebuilds the static scene.
+        if static_scene_shows(
+            loaded,
+            scenery,
+            &self.scene.roof_areas,
+            self.scene.animator.is_some(),
+        ) {
+            loaded.projection_generation = scenery.generation();
             return;
         }
         let (Some(placement), asset) = (self.state.initial_placement(), loaded.asset.clone())
@@ -1481,26 +1485,45 @@ fn dynamic_image<'a>(
         }
     })
 }
+/// Whether the static scene baked into `scene` shows the committed scenery: identical
+/// overrides, or a baseline-plus-patch the animation worker publishes (SPEC-0016). Variables
+/// never change static geometry; locations that morph on them are animated, not baked.
+fn static_scene_shows<M>(
+    scene: &rustclient_application::LoadedScene<M>,
+    scenery: &rustclient_game_state::SceneryState,
+    roof_areas: &std::sync::Arc<[rustclient_scene::RoofArea]>,
+    animated: bool,
+) -> bool {
+    let inputs = &scene.projection_inputs;
+    if inputs.roof_areas != *roof_areas {
+        return false;
+    }
+    if inputs.locations == *scenery.locations() {
+        return true;
+    }
+    animated
+        && inputs.base_locations.as_deref().is_some_and(|base| {
+            rustclient_scene::patch_supported(&scene.asset, base, scenery.locations())
+        })
+}
 impl NativeApp {
     /// Reject obsolete worker output before any GPU, picking or minimap publication.
     fn discard_obsolete_scene<M>(
         &mut self,
         scene: &rustclient_application::LoadedScene<M>,
     ) -> bool {
-        if scene
-            .projection_inputs
-            .matches_state(self.state.scenery(), &scene.asset)
-            && scene.projection_inputs.roof_areas == self.scene.roof_areas
-        {
+        if static_scene_shows(scene, self.state.scenery(), &self.scene.roof_areas, true) {
             return false;
         }
         self.performance
             .event(|| "discarded obsolete scenery projection".into());
         if let Some(loaded) = &mut self.scene.loaded
-            && loaded
-                .projection_inputs
-                .matches_state(self.state.scenery(), &loaded.asset)
-            && loaded.projection_inputs.roof_areas == self.scene.roof_areas
+            && static_scene_shows(
+                loaded,
+                self.state.scenery(),
+                &self.scene.roof_areas,
+                self.scene.animator.is_some(),
+            )
         {
             // A -> B -> A while B was building needs no replacement of A.
             loaded.projection_generation = self.state.scenery().generation();
@@ -1533,6 +1556,9 @@ impl NativeApp {
             && self.scene.dynamic_cycle > scene.projection_inputs.cycle
         {
             std::mem::swap(&mut old.mesh.dynamic, &mut scene.mesh.dynamic);
+            scene
+                .picking
+                .set_hidden(&scene.mesh.geometry, &scene.mesh.dynamic.hidden_static);
             scene.projection_inputs.cycle = self.scene.dynamic_cycle;
             if let Some(renderer) = &mut self.renderer {
                 renderer.set_world_dynamic(scene.mesh.asset, &scene.mesh.dynamic)?;
@@ -1814,7 +1840,11 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                     && cycle >= self.scene.dynamic_cycle
                     && let Some(loaded) = &self.scene.loaded
                     && inputs.matches_state(self.state.scenery(), &loaded.asset)
-                    && loaded.projection_inputs.same_geometry(&inputs)
+                    && inputs
+                        .base_locations
+                        .as_ref()
+                        .zip(loaded.projection_inputs.base_locations.as_ref())
+                        .is_some_and(|(posed, baked)| std::sync::Arc::ptr_eq(posed, baked))
                     && inputs.roof_areas == loaded.projection_inputs.roof_areas
                     && inputs.interpolation == self.scene.interpolation
                 {
@@ -1831,6 +1861,10 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                                     return;
                                 }
                                 loaded.mesh.dynamic = geometry;
+                                loaded.picking.set_hidden(
+                                    &loaded.mesh.geometry,
+                                    &loaded.mesh.dynamic.hidden_static,
+                                );
                                 loaded.projection_inputs.cycle = cycle;
                                 loaded.projection_inputs.interpolation =
                                     inputs.interpolation.clone();
@@ -2461,7 +2495,7 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                 && self.scene.animator_in_flight.is_none()
                 && let Some(animator) = &self.scene.animator
                 && animator
-                    .try_send(self.scene.scenery_inputs(self.state.scenery()))
+                    .try_send(self.scene.animator_inputs(self.state.scenery()))
                     .is_ok()
             {
                 self.scene.animator_in_flight = Some(self.state.scenery().cycle());

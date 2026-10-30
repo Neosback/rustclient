@@ -1,3 +1,4 @@
+mod patch;
 mod sorted_models;
 mod updates;
 use super::*;

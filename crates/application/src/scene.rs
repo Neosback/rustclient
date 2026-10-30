@@ -108,6 +108,9 @@ pub fn load_scene_from_cache(
         rustclient_scene::ScenePickIndex::new(&mesh.geometry).map_err(|e| e.to_string())?;
     let mut projection_inputs = inputs.clone();
     projection_inputs.retain_scene_dependencies(&asset);
+    // The overrides this static scene is baked with; later changes patch it (SPEC-0016).
+    projection_inputs.base_locations =
+        Some(std::sync::Arc::new(projection_inputs.locations.clone()));
     Ok(LoadedScene {
         asset: std::sync::Arc::new(asset),
         mesh,
@@ -182,6 +185,9 @@ pub fn reproject_scene(
         rustclient_scene::ScenePickIndex::new(&mesh.geometry).map_err(|e| e.to_string())?;
     let mut projection_inputs = inputs.clone();
     projection_inputs.retain_scene_dependencies(&asset);
+    // The overrides this static scene is baked with; later changes patch it (SPEC-0016).
+    projection_inputs.base_locations =
+        Some(std::sync::Arc::new(projection_inputs.locations.clone()));
     Ok(LoadedScene {
         asset,
         mesh,

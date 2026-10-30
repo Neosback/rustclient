@@ -61,7 +61,14 @@ pub(crate) fn effective_locations(
     asset: &SceneAsset,
     inputs: &SceneryInputs,
 ) -> Vec<StaticLocation> {
-    if inputs.locations.is_empty() {
+    effective_locations_with(asset, &inputs.locations)
+}
+/// The effective locations for one committed override map.
+pub(crate) fn effective_locations_with(
+    asset: &SceneAsset,
+    overrides: &BTreeMap<LocationKey, rustclient_game_state::LocationOverride>,
+) -> Vec<StaticLocation> {
+    if overrides.is_empty() {
         return asset
             .assets
             .squares
@@ -69,8 +76,8 @@ pub(crate) fn effective_locations(
             .flat_map(|square| square.locations.iter().copied())
             .collect();
     }
-    if inputs.locations.iter().any(|(key, value)| matches!(value.change, LocationChange::Replace(def) if LocationLayer::from_shape(def.shape) != key.layer)) {
-        return super::legacy_locations(asset, inputs);
+    if overrides.iter().any(|(key, value)| matches!(value.change, LocationChange::Replace(def) if LocationLayer::from_shape(def.shape) != key.layer)) {
+        return super::legacy_locations(asset, overrides);
     }
     // One source pass rather than one full retain pass for every changed location. Original
     // source order and the ordered appended replacements remain identical to the old path.
@@ -80,15 +87,13 @@ pub(crate) fn effective_locations(
         .iter()
         .flat_map(|s| s.locations.iter().copied())
         .filter(|loc| {
-            inputs
-                .locations
+            overrides
                 .get(&location_key(loc))
                 .is_none_or(|value| value.change == LocationChange::Inherit)
         })
         .collect();
     locations.extend(
-        inputs
-            .locations
+        overrides
             .iter()
             .filter_map(|(key, value)| match value.change {
                 LocationChange::Replace(def) => Some(StaticLocation {

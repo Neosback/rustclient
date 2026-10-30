@@ -217,6 +217,7 @@ impl Clickboxes {
         geometry: &SceneGeometry,
         projection: PickProjection,
         visibility: &SceneVisibility,
+        hidden: impl Fn(usize) -> bool,
     ) -> Vec<ClickHit> {
         let mut hits = Vec::<ClickHit>::new();
         for (range, bounds) in geometry.picks.iter().zip(&self.boxes) {
@@ -227,7 +228,7 @@ impl Clickboxes {
             else {
                 continue;
             };
-            if !visibility.shows_vertex(&vertices[0]) {
+            if hidden(range.vertices.start) || !visibility.shows_vertex(&vertices[0]) {
                 continue;
             }
             let Some(box_depth) =
@@ -274,5 +275,5 @@ pub fn pick_targets(
     projection: PickProjection,
     visibility: &SceneVisibility,
 ) -> Vec<ClickHit> {
-    Clickboxes::new(geometry).query(geometry, projection, visibility)
+    Clickboxes::new(geometry).query(geometry, projection, visibility, |_| false)
 }
