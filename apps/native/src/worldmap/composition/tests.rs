@@ -166,3 +166,28 @@ fn teardown_revokes_pending_work_and_reopening_cannot_accept_the_old_request() {
             .is_some()
     );
 }
+
+#[test]
+fn absent_images_cannot_publish_old_scratch_contents() {
+    let mut composer = MapComposer::default();
+    // The previously visible image's allocation is reused after a visibility change.
+    composer.recycle(vec![1; 64], vec![2; 64]);
+    let executor = Executor::default();
+    let (sender, receiver) = mpsc::channel();
+    composer.request(
+        &WorldMapState::new(),
+        &MapView::default(),
+        [0, 0],
+        [16, 16],
+        None,
+        1,
+        &executor,
+        move |identity, result| sender.send((identity, result)).unwrap(),
+    );
+    assert_eq!(executor.run(), JobOutcome::Completed);
+    let (_, result) = receiver.recv().unwrap();
+    let pixels = result.unwrap();
+    assert!(pixels.viewport.is_empty());
+    assert_eq!(pixels.viewport_size(), [0, 0]);
+    assert_eq!(pixels.overview.len(), 16 * 16 * 4);
+}

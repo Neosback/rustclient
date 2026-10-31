@@ -141,7 +141,9 @@ impl MapInput {
             .as_deref()
             .map(|c| &c.area)
             .or(self.fallback_area.as_ref());
-        if !self.viewport.contains(&0) {
+        if self.viewport.contains(&0) {
+            viewport.clear();
+        } else {
             rustclient_scene::world_map::compose_world_map_viewport(
                 self.viewport[0],
                 self.viewport[1],
@@ -166,7 +168,9 @@ impl MapInput {
         if cancellation.is_cancelled() {
             return Err("map composition revoked".into());
         }
-        if !self.overview.contains(&0) {
+        if self.overview.contains(&0) {
+            overview.clear();
+        } else {
             rustclient_scene::world_map::compose_world_map_overview(
                 self.overview[0],
                 self.overview[1],
@@ -228,6 +232,8 @@ impl MapComposer {
             && self.accepted.is_none()
             && self.running.is_none()
             && self.completed.is_none()
+            && self.spare.viewport.capacity() == 0
+            && self.spare.overview.capacity() == 0
         {
             return;
         }

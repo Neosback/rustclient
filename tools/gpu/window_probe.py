@@ -2,7 +2,7 @@
 """Native animated-title measurement with isolated preferences and complete traces.
 
 Build the native binary first; keep builds/profilers inactive during scored runs.
-No account entry or game-server connection. Use --seconds 300 --warmup 30 --repeats 3
+No account entry or authentication. Use --seconds 300 --warmup 30 --repeats 3
 for acceptance. The default short run is a smoke check, not performance acceptance.
 """
 import argparse
@@ -37,9 +37,28 @@ def main():
     run = Path(tempfile.mkdtemp(prefix='run-', dir=args.output))
     schema = json.loads((ROOT / 'crates/plugin-host/src/builtin-schemas.json').read_text())
     version = next(row['version'] for row in schema if row['plugin'] == 'dev.rustclient.gpu')
+    cache_files = {}
+    for file in sorted(args.cache.glob('main_file_cache.*')):
+        stat = file.stat()
+        cache_files[file.name] = dict(bytes=stat.st_size, mtime_ns=stat.st_mtime_ns)
+        if file.name != 'main_file_cache.dat2':
+            cache_files[file.name]['sha256'] = hashlib.sha256(file.read_bytes()).hexdigest()
+    environment = dict(cache_files=cache_files, cpu_count=os.cpu_count(),
+                       os=subprocess.check_output(['sw_vers'], text=True).strip(),
+                       power=subprocess.check_output(['pmset', '-g', 'batt'], text=True).strip(),
+                       preferences=184, concurrent_workload='Local OpenRune server; record other work separately')
+    (run / 'environment.json').write_text(json.dumps(environment, indent=2) + '\n')
     results = []
     digest = hashlib.sha256(args.binary.read_bytes()).hexdigest()
     for repeat in range(args.repeats):
+        inventory = subprocess.check_output(['ps', '-Ao', 'pid,ppid,pcpu,rss,comm'], text=True)
+        (run / f'processes-before-{repeat + 1}.txt').write_text(inventory)
+        names = [Path(line.strip()).name for line in subprocess.check_output(['ps', '-Ao', 'comm='], text=True).splitlines()]
+        blockers = sorted({name for name in names if name in {
+            'cargo', 'cargo-clippy', 'rustc', 'clippy-driver', 'samply', 'sample',
+            'rustclient-native', 'interface_probe', 'gpu_probe', 'scene_probe', 'script_probe'}})
+        if blockers:
+            raise SystemExit(f'Measurement requires builds/profilers/other clients inactive: {blockers}')
         folder = run / str(repeat + 1)
         preferences = folder / 'preferences'
         path = preferences / 'plugin-config/dev.rustclient.gpu/preferences-v1.json'
@@ -91,7 +110,7 @@ def main():
         (folder / 'report.json').write_text(json.dumps(report, indent=2) + '\n')
         print(f"Run {repeat + 1}: {report.get('presentation_hz')} presents/s; gates={report.get('gates')}", flush=True)
     report = dict(scope='Animated title only; no gameplay, map, scanout or visual acceptance',
-                  acceptance_duration=args.seconds >= 300 and args.warmup >= 30 and args.repeats >= 3,
+                  acceptance_duration=args.seconds >= 300 and args.warmup >= 30 and args.repeats >= 3 and args.cap == 60,
                   binary_sha256=digest, binary=str(args.binary.resolve()), cache=str(args.cache.resolve()),
                   passed=all(row['passed'] for row in results), results=results)
     (run / 'report.json').write_text(json.dumps(report, indent=2) + '\n')

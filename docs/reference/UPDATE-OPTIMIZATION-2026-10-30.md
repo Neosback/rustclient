@@ -1,5 +1,84 @@
 # Prepared scene updates and retained pose uploads — 2026-10-30
 
+## Stable presentation, listener discovery and world-map clicks (2026-10-31)
+
+This checkpoint follows the retained UI work below; it does not replace its frozen
+results. The pre-change executable and Rust sources were preserved under
+`target/stable-60-20261031/`, with source digest
+`d543e9086e9b6b48902030d21fbb7e321235cadffe3ebdc604378d822c9b0a54`
+and executable digest `b11b8075ac0624c8ad5cb8521dd40d307ce8b3c07f4145d18c7ae37c3f15c261`.
+The working tree was committed externally as `ef9b2af9` during this work; that is
+not a new independent acceptance result. Current frozen hashes and commands are in
+`stablePresentation` in the [evidence JSON](UPDATE-OPTIMIZATION-EVIDENCE-2026-10-30.json).
+
+The native frame limiter now retains absolute deadline phase after ordinary late
+wakes. Missed periods skip without catch-up bursts; cap/policy changes, occlusion
+and suspension reset scheduling. GPU and FPS-plugin policy remain the same.
+Optional diagnostics distinguish CPU stage wall time, acquire/submit/present-call
+spans and asynchronous GPU intervals. The GPU reader has three slots and never
+waits for completion on the rendering path. Unsupported GPU timing remains unknown.
+Raw timing uses an 8,192-record nonblocking writer queue; overflow, incomplete output
+or lost GPU samples invalidates the corresponding scored gate. `window_probe.py`
+now enforces the declared 60 Hz gates instead of accepting 60% of the requested cap.
+A short smoke remains explicitly separate from three five-minute measurements.
+
+Title geometry is retained by screen/input/asset identity, visible blink state and
+actual hover controls. Flame content revisions change at existing 20 ms simulation
+steps, so duplicate presentations need no flame upload. The game clock, presentation
+quality and draw distance 184 are unchanged. Exact visual comparison remains manual.
+
+`ClientScripts` builds listener candidates only when interface topology, runtime
+listener membership/triggers or the loaded definition catalog changes. It resolves
+current listener arguments/overrides before enqueueing, preserves sorted address
+order and trigger filters, and still runs required timer callbacks. Text/property
+updates do not invalidate membership. The metadata revision is internal and excluded
+from semantic fingerprints and the external ABI. This does not certify every already
+queued callback against arbitrary replacement during a different callback; complete
+source callback-identity/lifecycle coverage remains a separate audit dependency.
+
+Map viewport/overview composition now uses the existing bounded native worker pool.
+One request runs and the latest desired view coalesces; session/resource/request
+checks and full dependency comparison reject obsolete output. Immutable region,
+sprite/font and composite data are shared by `Arc`; one owned spare output pair is
+moved between worker and presentation without cloning pixels. Closing the map drops
+retained output/scratch and cancels work. The existing 32 MiB region-raster budget
+and 2,048-side dynamic-image limit remain. Valid pixels survive loading/failure;
+nonzero image revisions suppress unchanged uploads, with reconstruction/upload retry
+remaining renderer-owned. Flash clocks invalidate only when a potentially visible
+flashing element changes its visible phase. The existing visual flash period is
+preserved; full source flash lifetimes and target/zoom smoothing remain open.
+
+Normal map input belongs to shared `scripts::worldmap`: stock240
+`RenderOverview.method12459` calls coordinate resolution before drag, and
+`method12464` applies the previous-press **500 ms / 25 pixel** guard. Display
+coordinates pass through the active area's inverse section mapping. Native only
+supplies game-canvas coordinates, monotonic time and modifiers; focus loss, closure,
+resize and session replacement revoke gestures. There is no single-click bypass.
+The separate stock staff modifier shortcut remains unavailable and is not substituted
+with a normal click. The typed intent does not mutate the local player.
+
+The selected RSProt `ClickWorldMapDecoder` calls `g4Alt1`; stock240
+`classXY.method13284` agrees. **Opcode 78 is four-byte packed source coordinate,
+little-endian**, unlike the supplied TSPS packet/release-click conventions. For
+plane1/x3200/y3201 the payload is `81 0c 20 13`. The adapter validates both 14-bit
+coordinates before advancing ISAAC. The source jar/hash and extracted decoder are
+preserved in `target/stable-60-20261031/map-codec-source.json`. OpenRune's
+`WorldMapScript.kt` registers `onWorldMapClick(Rights.ADMINISTRATOR)` and its handler
+uses the current player level. The server owns authorization and teleporting.
+
+The [TSPS shortlist](TSPS-GIT-SHORTLIST-2026-10-29.md#current-reconciliation--2026-10-31)
+now ranks remaining actor preparation, widget granularity, ground/combat effects,
+map/menu/script and audio work against current Rust owners. Existing item search,
+IF1/CS1, worker admission and retained UI are removed from the current missing-work
+list. Stock240 and pinned RuneLite keep their existing authority; TSPS remains
+supporting evidence, and reference trees/shader correction dispositions are unchanged.
+
+Current executed results and performance/visual/live gates are recorded below when
+available. Full 256/1,024-actor workloads, cold resources, a 30-minute lifecycle soak,
+commit-to-visible latency, 20% transient-memory reduction, ordinary-account denial,
+scanout cadence, browser gameplay and exact offline-reference visuals are **not
+established by these implementation changes**. No global “fastest engine” claim.
+
 ## Retained UI canvas (2026-10-31, subsequent checkpoint)
 
 The renderer now reuses the existing encoded UI canvas texture when its commands

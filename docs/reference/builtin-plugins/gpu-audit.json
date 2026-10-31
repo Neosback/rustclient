@@ -1144,5 +1144,19 @@
       "evidence": "docs/reference/UPDATE-OPTIMIZATION-EVIDENCE-2026-10-30.json#uiRasterRetention",
       "scope": "Unchanged widget commands/vertices/static UI raster retention; 60 actual-GPU lifecycle/submission steps. No GPU timing, reference pixels, gameplay or classic-gate completion claim."
     }
+  },
+  "presentationDiagnostics": {
+    "date": "2026-10-31",
+    "scope": "Absolute-deadline native policy plus opt-in nonblocking three-slot GPU timestamps; no classic parity promotion",
+    "owners": [
+      "apps/native/src/frame_limit.rs",
+      "apps/native/src/performance.rs",
+      "apps/native/src/performance/trace.rs",
+      "crates/renderer/src/timing.rs",
+      "tools/gpu/window_probe.py",
+      "tools/gpu/frame_trace.py"
+    ],
+    "evidence": "docs/reference/UPDATE-OPTIMIZATION-2026-10-30.md",
+    "acceptance": "Current executed evidence and unavailable/unmet gates recorded separately in canonical update audit; present-call rate is not scanout cadence."
   }
 }

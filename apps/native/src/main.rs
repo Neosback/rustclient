@@ -1356,7 +1356,7 @@ impl NativeApp {
         };
         self.performance.note(|| {
             format!(
-                "quads {} world_viewport {:?} nodes {} root {:?} mounts {:?} entered {} loaded {} result {:?} shell {:?} geometry {:?} picking {:?} ui {:?}",
+                "quads {} world_viewport {:?} nodes {} root {:?} mounts {:?} entered {} loaded {} result {:?} shell {:?} geometry {:?} picking {:?} ui {:?} listener_rebuilds {:?} map_jobs submitted={} published={} stale={}",
                 self.frame.quads.len() + self.frame.world_quads.len(),
                 self.frame.world_viewport,
                 self.widget_tree.nodes.len(),
@@ -1374,6 +1374,10 @@ impl NativeApp {
                 self.renderer.as_ref().map(rustclient_renderer::SurfaceRenderer::world_geometry_stats),
                 self.scene.loaded.as_ref().map(|loaded| loaded.picking.stats()),
                 self.renderer.as_ref().map(rustclient_renderer::SurfaceRenderer::ui_stats),
+                self.scripts.as_ref().map(|scripts| scripts.listener_index_rebuilds()),
+                self.map_composer.submitted,
+                self.map_composer.published,
+                self.map_composer.stale,
             )
         });
         if let Some(pool) = &self.scene.jobs {

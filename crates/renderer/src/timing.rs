@@ -146,6 +146,7 @@ impl GpuTimer {
                 }
                 Err(mpsc::TryRecvError::Empty) => {}
                 Ok(Err(_)) | Err(mpsc::TryRecvError::Disconnected) => {
+                    slot.readback.unmap();
                     slot.pending = None;
                     self.dropped += 1;
                 }
