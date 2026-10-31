@@ -3,7 +3,8 @@ use rustclient_cache::{osrs240::scripts::ScriptOption, script::Opcode};
 use rustclient_client_script::Stacks;
 use rustclient_game_state::SemanticOperation;
 use rustclient_model::{
-    ClientSetting, FontId, InterfaceUpdate, InventoryId, ScriptValue, SkillId, VarpId,
+    ClientSetting, FontId, InterfaceUpdate, InventoryId, MinimapUpdate, ScriptValue, SkillId,
+    VarpId,
 };
 use rustclient_platform::ReadOnlyBlobs;
 fn script_option<S: ReadOnlyBlobs>(
@@ -312,6 +313,27 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
         Opcode::Logout => None,
         // `Renderself` only drives a debug outline of the hovered actor in the reference (also
         // reachable through `::renderself`); nothing is drawn here, so its flag is dropped.
+        Opcode::MinimapSetzoomable => {
+            let zoomable = s.int()? != 0;
+            h.apply(InterfaceUpdate::Minimap(MinimapUpdate::Zoomable(zoomable)))?;
+            None
+        }
+        Opcode::MinimapSetzoom => {
+            // Scripts pass whole zoom steps; the wheel adds quarter steps.
+            let zoom = s.int()?;
+            h.apply(InterfaceUpdate::Minimap(MinimapUpdate::ZoomQuarters(
+                zoom.saturating_mul(4),
+            )))?;
+            None
+        }
+        Opcode::MinimapGetzoom => Some(h.state.interfaces().minimap().zoom()),
+        Opcode::MinimapSeticonzoomlimit => {
+            let limit = s.int()?;
+            h.apply(InterfaceUpdate::Minimap(MinimapUpdate::IconZoomLimit(
+                limit,
+            )))?;
+            None
+        }
         Opcode::DiscardMobileFlag | Opcode::Renderself => {
             s.int()?;
             None
@@ -964,6 +986,45 @@ mod tests {
             state.interfaces().device_preferences().get(&14),
             Some(&70),
             "preferences live in the interface state owner"
+        );
+    }
+
+    #[test]
+    fn minimap_zoom_ops_follow_the_zoomable_flag() {
+        let (mut scripts, mut state) = (scripts(), state());
+        let before = state.semantic_fingerprint();
+        // Not zoomable yet: a script's zoom is ignored and the default reads back.
+        run(&mut scripts, &mut state, Opcode::MinimapSetzoom, &[7]).unwrap();
+        assert_eq!(
+            run(&mut scripts, &mut state, Opcode::MinimapGetzoom, &[]).unwrap(),
+            [4]
+        );
+        assert_eq!(state.semantic_fingerprint(), before);
+        run(&mut scripts, &mut state, Opcode::MinimapSetzoomable, &[1]).unwrap();
+        run(&mut scripts, &mut state, Opcode::MinimapSetzoom, &[7]).unwrap();
+        assert_eq!(
+            run(&mut scripts, &mut state, Opcode::MinimapGetzoom, &[]).unwrap(),
+            [7]
+        );
+        run(&mut scripts, &mut state, Opcode::MinimapSetzoom, &[99]).unwrap();
+        assert_eq!(
+            run(&mut scripts, &mut state, Opcode::MinimapGetzoom, &[]).unwrap(),
+            [8]
+        );
+        run(
+            &mut scripts,
+            &mut state,
+            Opcode::MinimapSeticonzoomlimit,
+            &[3],
+        )
+        .unwrap();
+        assert_eq!(state.interfaces().minimap().icon_zoom_limit, 3);
+        assert_ne!(state.semantic_fingerprint(), before);
+        run(&mut scripts, &mut state, Opcode::MinimapSetzoomable, &[0]).unwrap();
+        assert_eq!(
+            run(&mut scripts, &mut state, Opcode::MinimapGetzoom, &[]).unwrap(),
+            [4],
+            "toggling zoomability restores the default scale"
         );
     }
 

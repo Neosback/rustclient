@@ -8,7 +8,12 @@
 
 mod brightness;
 pub mod coords;
+mod minimap;
 pub use brightness::ScreenBrightness;
+pub use minimap::{
+    MINIMAP_ZOOM_QUARTERS_DEFAULT, MINIMAP_ZOOM_QUARTERS_MAX, MINIMAP_ZOOM_QUARTERS_MIN,
+    MinimapSettings, MinimapUpdate,
+};
 mod destination;
 pub use destination::MapDestination;
 pub mod entity;

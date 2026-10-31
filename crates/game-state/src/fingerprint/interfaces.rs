@@ -5,6 +5,7 @@ use rustclient_model::{InterfaceId, InterfaceMountKind, WidgetId, WidgetPermissi
 const OP_KEYS_SECTION: u8 = 0xA5;
 /// Tag introducing the optional device-preference section.
 const DEVICE_PREFERENCES_SECTION: u8 = 0xA6;
+const MINIMAP_SECTION: u8 = 0xA7;
 fn widget(f: &mut StableFingerprint64, id: WidgetId) {
     f.write_u32(id.interface.get());
     f.write_u32(id.component);
@@ -77,6 +78,14 @@ pub(super) fn write(f: &mut StableFingerprint64, state: &InterfaceState) {
             f.write_u8(*id);
             f.write_u32(value.cast_unsigned());
         }
+    }
+    // Written only away from the defaults, so states that never touch it keep their vectors.
+    if state.minimap() != rustclient_model::MinimapSettings::default() {
+        let minimap = state.minimap();
+        f.write_u8(MINIMAP_SECTION);
+        f.write_u8(u8::from(minimap.zoomable));
+        f.write_u32(minimap.zoom_quarters.cast_unsigned());
+        f.write_u32(minimap.icon_zoom_limit.cast_unsigned());
     }
     group(f, state.root());
     f.write_u64(u64::try_from(state.mounts().len()).expect("bounded mounts"));

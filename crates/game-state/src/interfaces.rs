@@ -32,6 +32,7 @@ pub struct InterfaceState {
     brightness: rustclient_model::ScreenBrightness,
     settings: BTreeMap<rustclient_model::ClientSetting, bool>,
     device_preferences: BTreeMap<u8, i32>,
+    minimap: rustclient_model::MinimapSettings,
     epoch: u64,
     revision: u64,
     listener_revision: u64,
@@ -122,6 +123,10 @@ impl InterfaceState {
         &self.client_variables
     }
     #[must_use]
+    pub const fn minimap(&self) -> rustclient_model::MinimapSettings {
+        self.minimap
+    }
+    #[must_use]
     pub const fn device_preferences(&self) -> &BTreeMap<u8, i32> {
         &self.device_preferences
     }
@@ -186,6 +191,7 @@ impl InterfaceState {
                 self.settings.insert(key, value);
                 Ok(changed)
             }
+            InterfaceUpdate::Minimap(update) => Ok(self.minimap.apply(update)),
             InterfaceUpdate::DevicePreference { id, value } => {
                 let changed = self.device_preferences.insert(id, value) != Some(value);
                 Ok(changed)
@@ -484,6 +490,7 @@ impl InterfaceState {
             | InterfaceUpdate::DefaultWindowMode(_)
             | InterfaceUpdate::Setting { .. }
             | InterfaceUpdate::DevicePreference { .. }
+            | InterfaceUpdate::Minimap(_)
             | InterfaceUpdate::CloneChild { .. }
             | InterfaceUpdate::CreateChild { .. }
             | InterfaceUpdate::DeleteChild(_)

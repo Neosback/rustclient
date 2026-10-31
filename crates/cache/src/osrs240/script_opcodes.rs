@@ -299,6 +299,11 @@ const OPCODES: &[(u16, Opcode)] = &[
     (3117, Opcode::Setshiftclickdrop),
     (3118, Opcode::Setshowmouseovertext),
     (3119, Opcode::Renderself),
+    // Minimap zoom ops: in the cache's scripts but not in the pinned 240 jar; see model::minimap.
+    (7250, Opcode::MinimapSetzoomable),
+    (7252, Opcode::MinimapSetzoom),
+    (7253, Opcode::MinimapGetzoom),
+    (7254, Opcode::MinimapSeticonzoomlimit),
     (3125, Opcode::Setshowmousecross),
     (3126, Opcode::Setshowloadingmessages),
     (3127, Opcode::Settaptodrop),

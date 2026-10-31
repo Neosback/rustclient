@@ -103,6 +103,8 @@ pub enum InterfaceUpdate {
         key: ClientSetting,
         value: bool,
     },
+    /// A script change to the minimap's zoom preferences.
+    Minimap(crate::MinimapUpdate),
     /// Integer device preference (`GetDeviceOption`/`SetDeviceOption` ids without a bool owner).
     DevicePreference {
         id: u8,

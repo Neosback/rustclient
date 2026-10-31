@@ -1006,10 +1006,10 @@ opcode	adapter_name	runelite_name	evidence_status	host_status	live_uses	scanned_
 7211			unknown	unnamed-cache-used	3	
 7213			unknown	unnamed-cache-used	4	
 7214			unknown	unnamed-cache-used	7	
-7250			unknown	unnamed-cache-used	3	
-7252			unknown	unnamed-cache-used	4	
-7253			unknown	unnamed-cache-used	7	
-7254			unknown	unnamed-cache-used	6	
+7250	MinimapSetzoomable		unknown	host-dispatched	3	
+7252	MinimapSetzoom		unknown	host-dispatched	4	
+7253	MinimapGetzoom		unknown	host-dispatched	7	
+7254	MinimapSeticonzoomlimit		unknown	host-dispatched	6	
 7400			unknown	unnamed-cache-used	3	
 7401			unknown	unnamed-cache-used	12	
 7404			unknown	unnamed-cache-used	3	
