@@ -71,12 +71,12 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
         Clientclock, Clienttype, Coord, Coordx, Coordy, Coordz, Enum, EnumGetoutputcount,
         EnumString, GetVarbit, GetVarcInt, GetVarcString, GetVarcStringOld, GetVarclan,
         GetVarclansetting, GetVarp, Gettaptodrop, Getwindowmode, IfClose, IfGettop, IfHassub,
-        InvGetnum, InvGetobj, InvSize, InvTotal, KeyHeld, MapMembers, MapWorld, Mousecam, OcIop,
-        OcMembers, OcName, OcParam, OcUnplaceholder, OnMobile, Paraheight, Parawidth,
-        RunenergyVisible, RunweightVisible, SetVarbit, SetVarcInt, SetVarcString, SetVarcStringOld,
-        SetVarp, Setfolloweropslowpriority, Setshiftclickdrop, Setshowloadingmessages,
-        Setshowmousecross, Setshowmouseovertext, Settaptodrop, Stat, StatBase, StatXp, StructParam,
-        ViewportGeteffectivesize,
+        InvGetnum, InvGetobj, InvSize, InvTotal, KeyHeld, MapMembers, MapWorld, Mousecam, OcCert,
+        OcIop, OcMembers, OcName, OcParam, OcStackable, OcUncert, OcUnplaceholder, OnMobile,
+        Paraheight, Parawidth, Random, Randominc, RunenergyVisible, RunweightVisible, SetVarbit,
+        SetVarcInt, SetVarcString, SetVarcStringOld, SetVarp, Setfolloweropslowpriority,
+        Setshiftclickdrop, Setshowloadingmessages, Setshowmousecross, Setshowmouseovertext,
+        Settaptodrop, Stat, StatBase, StatXp, StructParam, ViewportGeteffectivesize,
     };
     let number = match op {
         Opcode::Setbrightness => {
@@ -778,46 +778,70 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
                     .map_err(|e| e.to_string())?,
             ))
         }
+        Random | Randominc => {
+            let bound = i64::from(s.int()?) + i64::from(op == Randominc);
+            Some(match u64::try_from(bound) {
+                Ok(bound) if bound > 0 => {
+                    use crate::DeterministicRandomSource as _;
+                    i32::try_from(h.resources.random.next_sample().get() % bound).unwrap_or(0)
+                }
+                _ => 0,
+            })
+        }
         Enum | EnumString | EnumGetoutputcount => {
-            let (enum_id, key) = if op == Enum {
-                let [_input, _output, enum_id, key] = s.ints()?;
-                (id(enum_id)?, Some(key))
+            let (raw_enum, key, output) = if op == Enum {
+                let [_input, output, enum_id, key] = s.ints()?;
+                (enum_id, Some(key), output)
             } else if op == EnumString {
                 let [enum_id, key] = s.ints()?;
-                (id(enum_id)?, Some(key))
+                (enum_id, Some(key), i32::from(b's'))
             } else {
-                (id(s.int()?)?, None)
+                (s.int()?, None, 0)
             };
-            if !h.resources.enums.contains_key(&enum_id) {
-                h.resources.enums.insert(
-                    enum_id,
-                    h.resources
-                        .profile
-                        .load_script_enum(&h.resources.cache, enum_id)
-                        .map_err(|e| e.to_string())?,
-                );
-            }
-            let table = &h.resources.enums[&enum_id];
-            if let Some(key) = key {
-                let value = table.entries.get(&key).unwrap_or(&table.default).clone();
-                match value {
-                    ScriptValue::Int(v) => Some(v),
-                    other => {
-                        s.push_object(other);
-                        None
-                    }
+            // The reference client loads an enum that does not exist as an empty one whose types
+            // never match, so the lookup answers its default instead of failing the script.
+            if let Ok(enum_id) = u32::try_from(raw_enum) {
+                if !h.resources.enums.contains_key(&enum_id) {
+                    h.resources.enums.insert(
+                        enum_id,
+                        h.resources
+                            .profile
+                            .load_script_enum(&h.resources.cache, enum_id)
+                            .map_err(|e| e.to_string())?,
+                    );
                 }
+                let table = &h.resources.enums[&enum_id];
+                if let Some(key) = key {
+                    let value = table.entries.get(&key).unwrap_or(&table.default).clone();
+                    match value {
+                        ScriptValue::Int(v) => Some(v),
+                        other => {
+                            s.push_object(other);
+                            None
+                        }
+                    }
+                } else {
+                    Some(i32::try_from(table.entries.len()).map_err(|_| "enum count")?)
+                }
+            } else if output == i32::from(b's') {
+                s.push_object(ScriptValue::Text("null".into()));
+                None
             } else {
-                Some(i32::try_from(table.entries.len()).map_err(|_| "enum count")?)
+                Some(0)
             }
         }
         StructParam => {
             let [structure, param] = s.ints()?;
-            let values = h
-                .resources
-                .profile
-                .script_struct(&h.resources.cache, id(structure)?)
-                .map_err(|e| e.to_string())?;
+            // An absent struct is an empty one in the reference client, so every parameter answers
+            // its default.
+            let values = match u32::try_from(structure) {
+                Ok(structure) => h
+                    .resources
+                    .profile
+                    .script_struct(&h.resources.cache, structure)
+                    .map_err(|e| e.to_string())?,
+                Err(_) => std::collections::BTreeMap::default(),
+            };
             let value = if let Some(v) = values.get(&id(param)?) {
                 v.clone()
             } else {
@@ -834,13 +858,15 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
                 }
             }
         }
-        OcName | OcIop | OcMembers | OcParam | OcUnplaceholder => {
+        OcName | OcIop | OcMembers | OcParam | OcUnplaceholder | OcStackable | OcCert
+        | OcUncert => {
             let param = if op == OcIop || op == OcParam {
                 Some(s.int()?)
             } else {
                 None
             };
-            let item = h.resources.profile.script_item(s.int()?)?;
+            let raw_item = s.int()?;
+            let item = h.resources.profile.script_item(raw_item)?;
             let Some(item) = item else {
                 match op {
                     OcName | OcIop => s.push_object(ScriptValue::Text(if op == OcName {
@@ -849,7 +875,8 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
                         String::new()
                     })),
                     OcUnplaceholder => s.integers.push(-1),
-                    OcMembers => s.integers.push(0),
+                    OcMembers | OcStackable => s.integers.push(0),
+                    OcCert | OcUncert => s.integers.push(raw_item),
                     OcParam => {
                         let value = h
                             .resources
@@ -897,6 +924,16 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
                     None
                 }
                 OcMembers => Some(i32::from(def.members)),
+                OcStackable => Some(i32::from(def.stackable)),
+                // A noted item points at its plain form and the other way round; otherwise the id stays.
+                OcCert => Some(match (def.note_template, def.note) {
+                    (None, Some(note)) => note.get().cast_signed(),
+                    _ => raw_item,
+                }),
+                OcUncert => Some(match (def.note_template, def.note) {
+                    (Some(_), Some(note)) => note.get().cast_signed(),
+                    _ => raw_item,
+                }),
                 OcUnplaceholder => Some(def.unplaceholder().get().cast_signed()),
                 OcParam => {
                     let param = id(param.ok_or("missing parameter")?)?;
@@ -1250,6 +1287,58 @@ mod tests {
             .is_empty(),
             "field configuration consumes its operand and pushes nothing"
         );
+    }
+
+    #[test]
+    fn absent_definitions_answer_defaults_like_the_reference_client() {
+        let (mut scripts, mut state) = (scripts(), state());
+        let mut run =
+            |op, ints: &[i32]| run_with_text(&mut scripts, &mut state, op, ints, &[]).unwrap();
+        // An enum that does not exist never matches the requested types: int outputs answer 0.
+        assert_eq!(run(Opcode::Enum, &[73, 73, -1, 5]).integers, [0]);
+        let mut text = run(Opcode::Enum, &[73, i32::from(b's'), -1, 5]);
+        assert_eq!(text.text().unwrap(), "null");
+        assert_eq!(run(Opcode::EnumGetoutputcount, &[-1]).integers, [0]);
+        // An absent item keeps its id through the note ops and is not stackable.
+        assert_eq!(run(Opcode::OcCert, &[-1]).integers, [-1]);
+        assert_eq!(run(Opcode::OcUncert, &[-1]).integers, [-1]);
+        assert_eq!(run(Opcode::OcStackable, &[-1]).integers, [0]);
+    }
+
+    #[test]
+    fn random_ops_stay_inside_their_bound_and_follow_the_seed() {
+        let (mut scripts, mut state) = (scripts(), state());
+        let mut draw = |scripts: &mut ClientScripts<MemoryBlobs>, op, bound| {
+            run_with_text(scripts, &mut state, op, &[bound], &[])
+                .unwrap()
+                .integers[0]
+        };
+        let first: Vec<i32> = (0..64)
+            .map(|_| draw(&mut scripts, Opcode::Random, 6))
+            .collect();
+        assert!(first.iter().all(|n| (0..6).contains(n)));
+        assert!(
+            first
+                .iter()
+                .collect::<std::collections::BTreeSet<_>>()
+                .len()
+                > 1
+        );
+        assert!((0..16).all(|_| draw(&mut scripts, Opcode::Randominc, 2) <= 2));
+        assert_eq!(
+            draw(&mut scripts, Opcode::Random, 0),
+            0,
+            "an empty range is 0"
+        );
+        scripts.seed_random(crate::RandomSeed::new(7));
+        let seeded: Vec<i32> = (0..8)
+            .map(|_| draw(&mut scripts, Opcode::Random, 1000))
+            .collect();
+        scripts.seed_random(crate::RandomSeed::new(7));
+        let again: Vec<i32> = (0..8)
+            .map(|_| draw(&mut scripts, Opcode::Random, 1000))
+            .collect();
+        assert_eq!(seeded, again);
     }
 
     #[test]

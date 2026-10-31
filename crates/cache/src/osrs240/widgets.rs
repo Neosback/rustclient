@@ -158,7 +158,10 @@ pub fn decode(bytes: &[u8], id: WidgetId, source: Source) -> Result<WidgetDefini
     let variable_triggers = triggers(&mut r)?;
     let inventory_triggers = triggers(&mut r)?;
     let stat_triggers = triggers(&mut r)?;
-    r.finish()?;
+    // Model components with a width mode of 1 and a height mode of 0 are stored with two extra
+    // size fields (interfaces 19, 272, 415, 428). The reference client reads only one, so it
+    // sees the remaining bytes shifted and ignores the zero tail; this decoder does the same.
+    r.finish_allowing_zero_padding()?;
     Ok(WidgetDefinition {
         id,
         parent,
@@ -325,5 +328,26 @@ mod tests {
                 flip: [true, false],
             }
         );
+    }
+
+    #[test]
+    fn if3_model_with_padded_size_fields_decodes_like_the_reference_client() {
+        // Interface 19 component 19 as stored in the cache: width mode 1, height mode 0, two size fields.
+        let mut bytes: Vec<u8> = "ff 06 00 00 00 00 00 2d 00 0a 00 64 01 00 01 01 00 0e 00 00 00 8c d2 ff f6 00 78 00 00 00 00 00 00 05 44 ff ff 00 00 00 00 73 00 73"
+            .split(' ')
+            .map(|byte| u8::from_str_radix(byte, 16).unwrap())
+            .collect();
+        bytes.resize(74, 0);
+        assert_eq!(bytes.len(), 74);
+        let def = decode(
+            &bytes,
+            WidgetId::new(InterfaceId::new(19), 19),
+            Source::group(IndexId(3), GroupId(19)),
+        )
+        .unwrap();
+        assert!(matches!(
+            def.body,
+            WidgetBody::Model { model: Some(model), zoom: 1348, .. } if model.get() == 0x8cd2
+        ));
     }
 }

@@ -137,14 +137,63 @@ observation or a capture of the server packets that follow a click. The opcode-t
 only defect found on that path. Row toggles are client-side (`SetVarbit` in script 3965), and the
 rows' own operation bit is clear, so they send no packet, as in stock.
 
+## Interface audit (stage 3 follow-up)
+
+`interface_audit CACHE_DIR [--write FILE | --check FILE] [--verbose] [GROUP ...]`
+(`apps/native/src/bin/interface_audit.rs`) opens every group of index 3 as the root of a fresh
+authenticated session, runs 20 game cycles with resize listeners, then asks for the sprites, fonts
+and item icons the group draws and projects it once. It prints one TSV row per group (script errors,
+missing sprites/fonts/items, summed sprite area, quads, projection diagnostics) and `--check`
+fails when a group's counts rise or a clean group stops being clean. The whole cache takes about two
+seconds in release. Group 595 also runs the world-map open script (1749) the server would send.
+`RUSTCLIENT_SCAN_MODELS=1` and `--hex GROUP FILE` are decoder diagnostics. The baseline is
+`docs/reference/rs240-port/INTERFACE-AUDIT.tsv`. It does not know server state (varps, inventories,
+friends), so some failures are scripts that need data a live session has; those stay in the baseline
+as accepted gaps.
+
+First run (970 groups): 4 failed to load, 195 aborted a script, 1 had missing assets. Now:
+936 ok, 33 script-errors, 1 missing-assets, 0 load errors, 0 missing sprites or fonts anywhere.
+
+Fixed from the first run:
+
+- **Four interfaces did not load at all** (19, 272, 415, 428): model components with width mode 1
+  and height mode 0 carry two size fields where the reference client reads one, leaving two zero
+  bytes. The client never checks where a component ends; the decoder now tolerates zero padding
+  (non-zero trailing bytes still fail).
+- **`ENUM` with an enum id of -1** aborted the script in 122 groups. The reference client loads an
+  absent enum as an empty one whose types never match, so the lookup answers 0 or "null". Same for
+  `ENUM_STRING` and `ENUM_GETOUTPUTCOUNT`.
+- **`STRUCT_PARAM` with a struct id of -1** aborted likewise; an absent struct answers each
+  parameter's default.
+- Handled: `OC_CERT`, `OC_UNCERT`, `OC_STACKABLE` (classBB 4204-4206), `RANDOM`/`RANDOMINC` (seeded
+  `SplitMix64Random`, fixed default seed, `seed_random` for the host), `CC_GETTRANS`,
+  `CC_GETMODELZOOM`/`ANGLE{X,Y,Z}`, `CC_GETMODELTRANSPARENT`, `CC_SETMODELTRANSPARENT` (accepted,
+  not stored, so models are never drawn translucent: `MODEL-TRANSPARENCY`), and the listener
+  signature characters `W` and `X`, which the reference pops from the object stack like `s`.
+
+Findings that need other work:
+
+- **World map (595):** 165 sprites requested, none missing, 717 runtime widgets, no asset or
+  projection diagnostics. The button sprites therefore load from the cache; if they still fail
+  live, the cause is at upload (atlas) or in a state the audit cannot see. Largest sprite area of
+  any group is 768 195 px (group 100), well under the 2048x2048 atlas, so one group alone does not
+  overflow it.
+- Still aborting (33 groups, all in the baseline): ops tied to server state or features not
+  ported (`INVOTHER_*`, `STOCKMARKET_*`, `WORLDLIST_FETCH`, `CLANPROFILE_FIND`, `CLAN_GETCHATOWNERNAME`,
+  `IGNORE_COUNT`, `FROMDATE`, `MOBILE_WIFIAVAILABLE`, `CC_SETFILLCOLOUR`, `*_SETNPCHEAD`,
+  `CC_SETPLAYERHEAD_SELF`, opcodes 2310/3129/3644/4036/7601, dynamic widget type 12), plus database
+  and child-index errors that depend on the row a live server would pass.
+- Item 2360 (group 426) has no inventory model in the cache.
+
 ## Open, in order
 
 1. Load latency leftovers: parallel seam merge/emit, chunked vertex packing, minimap off the UI
    thread, cancellation between phases.
 2. Settings: observe the live reload-on-click (see "Not reproduced"); make text-input field
    widgets interactive (TEXT-FIELD-WIDGET); MES_TYPED 3102 if a cache script needs it.
-3. `interface_audit` over every cache group (mount, 20 cycles, sprites/fonts/atlas area, prompts
-   close), with a committed baseline.
+3. Interface audit: burn down the 33 script-error groups in the order of how many groups each op
+   touches; extend the harness with varp/inventory fixtures so state-dependent scripts can run;
+   fire each Variable/Operation/Click listener once and assert scroll survives and prompts close.
 4. Minimap: render at the committed zoom, wheel zoom, mapfunction icons, remaining dot frames,
    rebuild on scenery change; Tile Indicators and the Minimap plugin (plugin API additions needed).
 5. Memory and baseline FPS (see the plan: `vertex_remap`, `WorldMesh` retention, per-cycle

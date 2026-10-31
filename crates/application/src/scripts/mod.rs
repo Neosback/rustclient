@@ -70,6 +70,7 @@ pub struct ClientScripts<S> {
     effects: Vec<rustclient_protocol::ClientIntent>,
     /// Script-owned string lists (`STRINGVECTOR_*`), keyed by the script's vector number.
     string_vectors: BTreeMap<i32, Vec<String>>,
+    random: crate::SplitMix64Random,
     sound_effects: Vec<SoundEffectRequest>,
     db: database::DbState,
     item_search: item_search::ItemSearch,
@@ -84,7 +85,13 @@ pub struct ClientScripts<S> {
     widget_iteration: widget_iteration::WidgetIteration,
     listener_index: listener_index::ListenerIndex,
 }
+/// Seed used until the host supplies one; scripts that roll dice behave identically across runs.
+const DEFAULT_RANDOM_SEED: u64 = 0x2400_0001;
 impl<S: ReadOnlyBlobs> ClientScripts<S> {
+    /// Replace the seed behind the `RANDOM` and `RANDOMINC` ops; entropy stays with the caller.
+    pub fn seed_random(&mut self, seed: crate::RandomSeed) {
+        self.random = crate::SplitMix64Random::new(seed);
+    }
     #[must_use]
     pub fn new(cache: Cache<S>, profile: CacheProfile) -> Self {
         Self {
@@ -103,6 +110,7 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
             font_icons: None,
             effects: Vec::new(),
             string_vectors: BTreeMap::new(),
+            random: crate::SplitMix64Random::new(crate::RandomSeed::new(DEFAULT_RANDOM_SEED)),
             sound_effects: Vec::new(),
             db: database::DbState::default(),
             item_search: item_search::ItemSearch::default(),

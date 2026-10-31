@@ -60,6 +60,11 @@ test = false
 bench = false
 
 [[bin]]
+name = "interface_audit"
+path = "src/bin/interface_audit.rs"
+test = false
+
+[[bin]]
 name = "interface_probe"
 path = "src/bin/interface_probe.rs"
 test = false

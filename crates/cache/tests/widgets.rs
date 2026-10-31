@@ -101,8 +101,12 @@ fn if3_family_retains_revision_240_geometry_models_actions_and_typed_listeners()
             assert!(decode(&bytes[..length], id, source).is_err());
         }
         let mut extra = bytes.to_vec();
-        extra.push(0);
+        extra.push(1);
         assert!(decode(&extra, id, source).is_err());
+        // The reference client never checks where a component ends, so zero padding is tolerated.
+        extra.pop();
+        extra.push(0);
+        assert!(decode(&extra, id, source).is_ok());
         let mut wrong = bytes.to_vec();
         wrong[0] = 0;
         assert!(decode(&wrong, id, source).is_err());

@@ -22,12 +22,13 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
         CcClearops, CcClone, CcCreate, CcCreateNested, CcCreateSibling, CcDelete, CcDeleteall,
         CcFind, CcGetcolour, CcGetheight, CcGethide, CcGetid, CcGetinvcount, CcGetinvobject,
         CcGetlayer, CcGetop, CcGetopbase, CcGetparam, CcGetscrollheight, CcGetscrollwidth,
-        CcGetscrollx, CcGetscrolly, CcGettext, CcGetwidth, CcGetx, CcGety, CcSet2Dangle,
-        CcSetcolour, CcSetdragdeadtime, CcSetdragdeadzone, CcSetdraggable, CcSetdraggablebehavior,
-        CcSetfill, CcSetgraphic, CcSetgraphicshadow, CcSethide, CcSetnoclickthrough, CcSetobject,
-        CcSetobjectAlwaysNum, CcSetobjectNonum, CcSetop, CcSetopbase, CcSetoutline, CcSetparam,
-        CcSetposition, CcSetscrollpos, CcSetscrollsize, CcSetsize, CcSettargetverb, CcSettext,
-        CcSettextalign, CcSettextfont, CcSettextshadow, CcSettiling, CcSettrans, IfFind,
+        CcGetscrollx, CcGetscrolly, CcGettext, CcGettrans, CcGetwidth, CcGetx, CcGety,
+        CcSet2Dangle, CcSetcolour, CcSetdragdeadtime, CcSetdragdeadzone, CcSetdraggable,
+        CcSetdraggablebehavior, CcSetfill, CcSetgraphic, CcSetgraphicshadow, CcSethide,
+        CcSetnoclickthrough, CcSetobject, CcSetobjectAlwaysNum, CcSetobjectNonum, CcSetop,
+        CcSetopbase, CcSetoutline, CcSetparam, CcSetposition, CcSetscrollpos, CcSetscrollsize,
+        CcSetsize, CcSettargetverb, CcSettext, CcSettextalign, CcSettextfont, CcSettextshadow,
+        CcSettiling, CcSettrans, IfFind,
     };
     let active = usize::from(n == 1);
     let (op, explicit) = op.widget();
@@ -329,7 +330,8 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
         let mut args = Vec::new();
         for kind in signature.chars().rev() {
             args.push(match kind {
-                's' => ScriptValue::Text(s.text()?),
+                // The reference pops all three from the object stack.
+                's' | 'W' | 'X' => ScriptValue::Text(s.text()?),
                 'Ï' => ScriptValue::Long(s.long()?),
                 _ => ScriptValue::Int(s.int()?),
             });
@@ -744,6 +746,39 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
                         0
                     });
                 return Ok(true);
+            }
+            Opcode::CcGetmodelzoom
+            | Opcode::CcGetmodelangleX
+            | Opcode::CcGetmodelangleY
+            | Opcode::CcGetmodelangleZ => {
+                s.integers
+                    .push(if let WidgetBody::Model { angles, zoom, .. } = body {
+                        match op {
+                            Opcode::CcGetmodelzoom => i32::from(zoom),
+                            Opcode::CcGetmodelangleX => i32::from(angles[0]),
+                            Opcode::CcGetmodelangleY => i32::from(angles[1]),
+                            _ => i32::from(angles[2]),
+                        }
+                    } else {
+                        0
+                    });
+                return Ok(true);
+            }
+            CcGettrans => {
+                s.integers.push(match body {
+                    WidgetBody::Rectangle { transparency, .. }
+                    | WidgetBody::Sprite { transparency, .. } => i32::from(transparency),
+                    _ => 0,
+                });
+                return Ok(true);
+            }
+            // Model transparency is accepted and not stored; models are never drawn translucent.
+            Opcode::CcGetmodeltransparent => {
+                s.integers.push(0);
+                return Ok(true);
+            }
+            Opcode::CcSetmodeltransparent => {
+                s.int()?;
             }
             CcGetcolour => {
                 s.integers.push(match body {

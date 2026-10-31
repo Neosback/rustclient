@@ -116,6 +116,16 @@ impl<'a> Reader<'a> {
         }
         Ok(())
     }
+    /// Like `finish`, but accepts zero padding after the last field.
+    ///
+    /// The reference client never checks where a component ends, so cache writers may pad.
+    pub(crate) fn finish_allowing_zero_padding(&self) -> Result<()> {
+        if self.bytes[self.position..].iter().all(|&byte| byte == 0) {
+            Ok(())
+        } else {
+            self.finish()
+        }
+    }
     pub(crate) fn finish(&self) -> Result<()> {
         if self.position == self.bytes.len() {
             Ok(())
