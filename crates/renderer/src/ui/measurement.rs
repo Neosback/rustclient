@@ -37,9 +37,10 @@ pub fn measure_ui_preparation(
             "UI measurement needs a sealed frame and 1..100000 iterations",
         ));
     }
-    let (_, regions) = atlas(assets, images)?;
+    let packed = atlas(assets, images, u32::MAX)?;
     let layout = ImageLayout {
-        regions: &regions,
+        regions: &packed.regions,
+        atlas: [packed.side; 2],
         dynamic: [[1, 1]; 4],
     };
     validate_retention(frame, layout, viewport)?;

@@ -16,8 +16,8 @@ pub use measurement::{UiPreparationMeasurement, measure_ui_preparation};
 pub use raster_probe::{UiRasterStep, verify_ui_raster_retention};
 use std::collections::BTreeMap;
 
-const ATLAS_WIDTH: u32 = 2048;
-const ATLAS_HEIGHT: u32 = 2048;
+/// Square atlas sides tried in order: the smallest that holds every image, within the device limit.
+const ATLAS_SIDES: [u32; 2] = [2048, 4096];
 const MAX_QUADS: usize = 32768;
 
 /// Largest widget-sized dynamic image (minimap or compass or world map) accepted from the application.
@@ -176,6 +176,7 @@ pub(crate) struct UiGpu {
     world_map: DynamicTexture,
     world_map_overview: DynamicTexture,
     regions: BTreeMap<UiImageId, Region>,
+    atlas_side: u32,
     vertex_buffer: wgpu::Buffer,
     geometry: PreparedUi,
     draw_extent: [u32; 2],
@@ -264,9 +265,13 @@ impl UiGpu {
             min_filter: wgpu::FilterMode::Nearest,
             ..Default::default()
         });
-        let (pixels, regions) = atlas(assets, images)?;
-        let atlas_texture = texture(device, ATLAS_WIDTH, ATLAS_HEIGHT, "title static atlas");
-        upload(queue, &atlas_texture, ATLAS_WIDTH, ATLAS_HEIGHT, &pixels);
+        let Atlas {
+            pixels,
+            regions,
+            side: atlas_side,
+        } = atlas(assets, images, device.limits().max_texture_dimension_2d)?;
+        let atlas_texture = texture(device, atlas_side, atlas_side, "title static atlas");
+        upload(queue, &atlas_texture, atlas_side, atlas_side, &pixels);
         let flame_texture = texture(
             device,
             Flames::WIDTH,
@@ -303,6 +308,7 @@ impl UiGpu {
             world_map,
             world_map_overview,
             regions,
+            atlas_side,
             vertex_buffer,
             geometry: PreparedUi::default(),
             draw_extent: [1, 1],
@@ -319,11 +325,16 @@ impl UiGpu {
         assets: &TitleAssets,
         images: &BTreeMap<UiImageId, Image>,
     ) -> Result<(), RenderError> {
-        let (pixels, regions) = atlas(assets, images)?;
-        let atlas_texture = texture(device, ATLAS_WIDTH, ATLAS_HEIGHT, "title static atlas");
-        upload(queue, &atlas_texture, ATLAS_WIDTH, ATLAS_HEIGHT, &pixels);
+        let Atlas {
+            pixels,
+            regions,
+            side,
+        } = atlas(assets, images, device.limits().max_texture_dimension_2d)?;
+        let atlas_texture = texture(device, side, side, "title static atlas");
+        upload(queue, &atlas_texture, side, side, &pixels);
         self.atlas = bind(device, &self.layout, &self.sampler, &atlas_texture);
         self.regions = regions;
+        self.atlas_side = side;
         self.geometry.invalidate();
         Ok(())
     }
@@ -384,6 +395,7 @@ impl UiGpu {
         );
         let layout = ImageLayout {
             regions: &self.regions,
+            atlas: [self.atlas_side; 2],
             dynamic: [
                 self.minimap.size,
                 self.compass.size,
@@ -506,10 +518,17 @@ fn bind(
     })
 }
 
+/// The packed static atlas: pixels, where each image went, and the square side.
+struct Atlas {
+    pixels: Vec<u8>,
+    regions: BTreeMap<UiImageId, Region>,
+    side: u32,
+}
 fn atlas(
     assets: &TitleAssets,
     extra: &BTreeMap<UiImageId, Image>,
-) -> Result<(Vec<u8>, BTreeMap<UiImageId, Region>), RenderError> {
+    max_side: u32,
+) -> Result<Atlas, RenderError> {
     let mut images = vec![
         (UiImageId::Background, &assets.background),
         (UiImageId::Logo, &assets.logo.image),
@@ -561,9 +580,20 @@ fn atlas(
             }
         }
     }
-    let mut pixels = vec![0; usize::try_from(ATLAS_WIDTH * ATLAS_HEIGHT * 4).unwrap_or(0)];
-    pixels[..4].copy_from_slice(&[255; 4]);
     images.extend(extra.iter().map(|(id, image)| (*id, image)));
+    // Tallest first: shelf rows then waste little height, so more images fit one texture.
+    images.sort_by_key(|(_, image)| std::cmp::Reverse(image.height()));
+    for side in ATLAS_SIDES.into_iter().filter(|side| *side <= max_side) {
+        if let Some(packed) = pack(&images, side) {
+            return Ok(packed);
+        }
+    }
+    Err(RenderError::Ui("title atlas capacity exceeded"))
+}
+/// Shelf-pack `images` into a `side` square, or `None` when they do not fit.
+fn pack(images: &[(UiImageId, &Image)], side: u32) -> Option<Atlas> {
+    let mut pixels = vec![0; usize::try_from(side * side * 4).unwrap_or(0)];
+    pixels[..4].copy_from_slice(&[255; 4]);
     let mut regions = BTreeMap::from([(
         UiImageId::White,
         Region {
@@ -574,19 +604,19 @@ fn atlas(
         },
     )]);
     let (mut x, mut y, mut row_height) = (2, 0, 1);
-    for (id, image) in images {
+    for &(id, image) in images {
         if image.width() == 0 || image.height() == 0 {
             continue;
         }
-        if x + image.width() + 1 > ATLAS_WIDTH {
+        if x + image.width() + 1 > side {
             x = 0;
             y += row_height + 1;
             row_height = 0;
         }
-        if image.width() > ATLAS_WIDTH || y + image.height() > ATLAS_HEIGHT {
-            return Err(RenderError::Ui("title atlas capacity exceeded"));
+        if image.width() > side || y + image.height() > side {
+            return None;
         }
-        copy_image(&mut pixels, image, x, y);
+        copy_image(&mut pixels, side, image, x, y);
         regions.insert(
             id,
             Region {
@@ -599,14 +629,67 @@ fn atlas(
         x += image.width() + 1;
         row_height = row_height.max(image.height());
     }
-    Ok((pixels, regions))
+    Some(Atlas {
+        pixels,
+        regions,
+        side,
+    })
 }
-fn copy_image(pixels: &mut [u8], image: &Image, x: u32, y: u32) {
+fn copy_image(pixels: &mut [u8], side: u32, image: &Image, x: u32, y: u32) {
     let width = usize::try_from(image.width()).unwrap_or(0);
     for row in 0..usize::try_from(image.height()).unwrap_or(0) {
-        let dest =
-            ((usize::try_from(y).unwrap_or(0) + row) * ATLAS_WIDTH as usize + x as usize) * 4;
+        let dest = ((usize::try_from(y).unwrap_or(0) + row) * side as usize + x as usize) * 4;
         pixels[dest..dest + width * 4]
             .copy_from_slice(&image.pixels()[row * width * 4..(row + 1) * width * 4]);
+    }
+}
+
+#[cfg(test)]
+mod atlas_tests {
+    use super::*;
+    use rustclient_cache::{GroupId, IndexId, Source};
+
+    fn image(width: u32, height: u32) -> Image {
+        let source = Source::group(IndexId(0), GroupId(0));
+        Image::new(
+            width,
+            height,
+            vec![255; (width * height * 4) as usize],
+            source,
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn packing_tallest_first_fits_what_arrival_order_would_not() {
+        // Alternating tall and short images waste a full row each when packed in arrival order.
+        let tall = image(1000, 900);
+        let short = image(1000, 10);
+        let images: Vec<(UiImageId, &Image)> = (0..6u32)
+            .map(|i| {
+                (
+                    UiImageId::Sprite(i),
+                    if i % 2 == 0 { &tall } else { &short },
+                )
+            })
+            .collect();
+        let mut sorted = images.clone();
+        sorted.sort_by_key(|(_, image)| std::cmp::Reverse(image.height()));
+        assert!(pack(&images, 2048).is_none());
+        let packed = pack(&sorted, 2048).expect("tallest-first fits");
+        assert_eq!(packed.side, 2048);
+        assert_eq!(packed.regions.len(), 7, "six images plus the white pixel");
+    }
+
+    #[test]
+    fn an_overfull_set_grows_the_atlas_only_as_far_as_the_device_allows() {
+        let wide = image(2000, 600);
+        let extra: BTreeMap<UiImageId, Image> = (0..5u32)
+            .map(|i| (UiImageId::Sprite(10_000 + i), wide.clone()))
+            .collect();
+        // A bare asset set is not available here; exercise the packer directly.
+        let refs: Vec<(UiImageId, &Image)> = extra.iter().map(|(id, image)| (*id, image)).collect();
+        assert!(pack(&refs, 2048).is_none());
+        assert_eq!(pack(&refs, 4096).expect("fits 4096").side, 4096);
     }
 }

@@ -1,7 +1,7 @@
 //! Retained widget vertices and transient overlays in one bounded GPU buffer.
 use super::{
-    ATLAS_HEIGHT, ATLAS_WIDTH, DrawSource, Flames, MAX_QUADS, Region, RenderError, TitleViewport,
-    UiFrame, UiImageId, Vertex, geometry::add_quad,
+    DrawSource, Flames, MAX_QUADS, Region, RenderError, TitleViewport, UiFrame, UiImageId, Vertex,
+    geometry::add_quad,
 };
 use rustclient_game_ui::{Quad, RetainedUi};
 use std::{collections::BTreeMap, ops::Range};
@@ -15,6 +15,7 @@ pub(super) struct Draw {
 #[derive(Clone, Copy)]
 pub(super) struct ImageLayout<'a> {
     pub regions: &'a BTreeMap<UiImageId, Region>,
+    pub atlas: [u32; 2],
     pub dynamic: [[u32; 2]; 4],
 }
 impl ImageLayout<'_> {
@@ -31,7 +32,7 @@ impl ImageLayout<'_> {
                     .get(&id)
                     .copied()
                     .ok_or(RenderError::Ui("unknown UI image"))?;
-                return Ok((DrawSource::Atlas, region, [ATLAS_WIDTH, ATLAS_HEIGHT]));
+                return Ok((DrawSource::Atlas, region, self.atlas));
             }
         };
         Ok((

@@ -289,6 +289,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .map(|id| (id, state.interfaces().client_variables().get(&id)))
             );
         }
+        if std::env::args().any(|a| a == "--prompt-sim") {
+            prompt_sim(&mut runtime, &mut state)?;
+        }
+        if std::env::args().any(|a| a == "--variable-sim") {
+            variable_sim(&mut runtime, &mut state)?;
+        }
         if let Some(position) = std::env::args().position(|a| a == "--mount") {
             let group: u32 = std::env::args()
                 .nth(position + 1)
@@ -460,5 +466,226 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
     println!("{} scripts; instructions: {histogram:?}", seen.len());
+    Ok(())
+}
+
+/// Change every variable the mounted interfaces listen to, as a server update after a settings
+/// click would, and report the listener errors and how the widget tree and scroll positions react.
+fn variable_sim<S: rustclient_platform::ReadOnlyBlobs>(
+    runtime: &mut rustclient_application::scripts::ClientScripts<S>,
+    state: &mut rustclient_game_state::GameState,
+) -> Result<(), Box<dyn std::error::Error>> {
+    use rustclient_game_state::{SceneryOperation, SemanticOperation};
+    use rustclient_model::{VarpId, WidgetListener};
+    let mut triggers = BTreeSet::new();
+    for group in state.interfaces().groups() {
+        if let Some(definition) = runtime.interfaces().get(&group) {
+            for widget in definition.widgets().values() {
+                triggers.extend(widget.variable_triggers.iter().copied());
+            }
+        }
+    }
+    for widget in state.interfaces().runtime().values() {
+        if let Some(ids) = widget.triggers.get(&WidgetListener::Variable) {
+            triggers.extend(ids.iter().copied());
+        }
+    }
+    if std::env::var_os("RUSTCLIENT_SIM_ALL").is_some() {
+        triggers.extend(0..8000);
+    }
+    println!("variable triggers: {}", triggers.len());
+    // Scroll a list down first, so a rebuild that resets the position is visible.
+    let scrolled = scroll_lists(runtime, state)?;
+    println!("scrolled lists: {scrolled:?}");
+    let mut by_message: BTreeMap<String, (usize, i32)> = BTreeMap::new();
+    for id in triggers.into_iter().filter(|id| *id >= 0).take(8000) {
+        let varp = VarpId::new(u32::try_from(id)?);
+        let value = std::env::var("RUSTCLIENT_SIM_VALUE")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or_else(|| state.scenery().variable(varp).wrapping_add(1));
+        let before = state.interfaces().runtime().len();
+        let mut errors = runtime.commit(
+            state,
+            SemanticOperation::Scenery(SceneryOperation::SetVariable { id: varp, value }),
+        )?;
+        for _ in 0..2 {
+            errors.extend(runtime.commit(
+                state,
+                SemanticOperation::Scenery(SceneryOperation::AdvanceCycles(1)),
+            )?);
+            errors.extend(runtime.resize_widgets(state)?);
+        }
+        let after = state.interfaces().runtime().len();
+        let positions = list_scrolls(state, &scrolled);
+        if after != before || !errors.is_empty() {
+            println!(
+                "varp {id}: widgets {before} -> {after}, {} errors, scrolls {positions:?} (was {scrolled:?})",
+                errors.len()
+            );
+        }
+        for error in errors {
+            let key: String = error.chars().take(120).collect();
+            let entry = by_message.entry(key).or_insert((0, id));
+            entry.0 += 1;
+        }
+    }
+    for (message, (count, first)) in by_message {
+        println!("{count:>4}x (first varp {first}) {message}");
+    }
+    Ok(())
+}
+
+/// A list container and the scroll position the simulation gave it.
+type ScrolledList = (rustclient_model::WidgetAddress, [u32; 2]);
+/// Scroll every long list container a third of the way down; returns its address and position.
+fn scroll_lists<S: rustclient_platform::ReadOnlyBlobs>(
+    runtime: &mut rustclient_application::scripts::ClientScripts<S>,
+    state: &mut rustclient_game_state::GameState,
+) -> Result<Vec<ScrolledList>, Box<dyn std::error::Error>> {
+    use rustclient_game_state::SemanticOperation;
+    let tree = rustclient_game_ui::widgets::WidgetTree::attached(
+        state.interfaces(),
+        runtime.interfaces(),
+        rustclient_game_ui::widgets::WidgetBounds::canvas(state.interfaces()),
+    )?;
+    let mut out = Vec::new();
+    for node in tree.nodes {
+        let widget = rustclient_game_ui::widgets::resolve_widget(
+            state.interfaces(),
+            runtime.interfaces(),
+            node.address,
+        )?;
+        if let rustclient_model::WidgetBody::Container { scroll_size, .. } = widget.body {
+            let height = node.bounds.height.max(0).cast_unsigned();
+            if scroll_size[1] > height.saturating_mul(2) && height > 0 {
+                let position = [0, (scroll_size[1] - height) / 3];
+                let mut value = state
+                    .interfaces()
+                    .runtime()
+                    .get(&node.address)
+                    .cloned()
+                    .unwrap_or_default();
+                value.scroll = Some(position);
+                state.apply_operation(SemanticOperation::Interface(
+                    rustclient_model::InterfaceUpdate::SetProperty {
+                        widget: node.id,
+                        property: rustclient_model::WidgetProperty::Runtime {
+                            address: node.address,
+                            value: Box::new(value),
+                        },
+                    },
+                ))?;
+                out.push((node.address, position));
+            }
+        }
+    }
+    Ok(out)
+}
+fn list_scrolls(
+    state: &rustclient_game_state::GameState,
+    lists: &[ScrolledList],
+) -> Vec<Option<[u32; 2]>> {
+    lists
+        .iter()
+        .map(|(address, _)| {
+            state
+                .interfaces()
+                .runtime()
+                .get(address)
+                .and_then(|r| r.scroll)
+        })
+        .collect()
+}
+
+/// Open each chatbox prompt mode through script 677, type a number, press Enter and report what
+/// the server would receive and whether the prompt closed (varc 5 back to 0).
+fn prompt_sim<S: rustclient_platform::ReadOnlyBlobs>(
+    runtime: &mut rustclient_application::scripts::ClientScripts<S>,
+    state: &mut rustclient_game_state::GameState,
+) -> Result<(), Box<dyn std::error::Error>> {
+    use rustclient_model::WidgetKey;
+    let varc5 = |state: &rustclient_game_state::GameState| {
+        state.interfaces().client_variables().get(&5).cloned()
+    };
+    // The chatbox pane is opened as a sub-interface by the server; find 161's mount component
+    // for it by trying each and keeping the first that makes group 162 receive key events.
+    if let Some(root) = state.interfaces().root() {
+        for component in 0..200 {
+            let attempt = runtime.commit(
+                state,
+                rustclient_game_state::SemanticOperation::Interface(
+                    rustclient_model::InterfaceUpdate::Open(rustclient_model::InterfaceMount {
+                        parent: rustclient_model::WidgetId::new(root, component),
+                        interface: InterfaceId::new(162),
+                        kind: rustclient_model::InterfaceMountKind::Overlay,
+                    }),
+                ),
+            );
+            if attempt.is_ok() && state.interfaces().groups().contains(&InterfaceId::new(162)) {
+                println!("chatbox mounted at {root:?}:{component}");
+                for _ in 0..3 {
+                    runtime.resize_widgets(state)?;
+                }
+                break;
+            }
+        }
+    }
+    println!("mounted groups: {:?}", state.interfaces().groups());
+    {
+        let tree = rustclient_game_ui::widgets::WidgetTree::build(
+            state.interfaces(),
+            runtime.interfaces(),
+            rustclient_game_ui::widgets::WidgetBounds::canvas(state.interfaces()),
+        )?;
+        let mut key_nodes = Vec::new();
+        for node in &tree.nodes {
+            if let Ok(widget) = rustclient_game_ui::widgets::resolve_widget(
+                state.interfaces(),
+                runtime.interfaces(),
+                node.address,
+            ) && widget
+                .listeners
+                .contains_key(&rustclient_model::WidgetListener::Key)
+            {
+                key_nodes.push(node.address);
+            }
+        }
+        println!(
+            "nodes in tree {}, with Key listener: {key_nodes:?}",
+            tree.nodes.len()
+        );
+    }
+    for mode in 1..=20 {
+        runtime.enqueue(
+            rustclient_model::ScriptRequest {
+                id: ScriptId::new(677),
+                arguments: vec![ScriptValue::Int(mode)],
+            },
+            None,
+        )?;
+        let mut errors = runtime.drain(state);
+        let opened = varc5(state);
+        let mut intents = Vec::new();
+        for ch in ['4', '2'] {
+            let outcome = runtime.keyboard(state, None, Some(ch), true)?;
+            errors.extend(outcome.errors);
+            intents.extend(outcome.intents);
+        }
+        let outcome = runtime.keyboard(state, Some(WidgetKey::Enter), None, true)?;
+        errors.extend(outcome.errors);
+        intents.extend(outcome.intents);
+        errors.extend(runtime.drain(state));
+        println!(
+            "mode {mode}: opened {opened:?}, after Enter {:?}, text359 {:?}, text335 {:?}, intents {intents:?}, errors {errors:?}",
+            varc5(state),
+            state.interfaces().client_variables().get(&359),
+            state.interfaces().client_variables().get(&335),
+        );
+        // Whatever the mode did, Escape must leave the chatbox usable.
+        let outcome = runtime.keyboard(state, Some(WidgetKey::Escape), None, true)?;
+        let _ = outcome;
+        runtime.drain(state);
+    }
     Ok(())
 }
