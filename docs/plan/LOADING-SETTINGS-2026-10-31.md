@@ -107,12 +107,42 @@ static and dynamic passes (both are ~1 ms), chunked vertex packing, moving `buil
 the UI thread, cancellation checks between phases, prefetching, parallel seam merge/emit (the
 largest remaining serial cost, ~63 ms).
 
+## Settings pass (stage 2 follow-up)
+
+Found and fixed:
+
+- **The four minimap zoom opcodes never decoded from the cache.** The opcode table is binary
+  searched and the earlier commit put 7250-7254 between 3119 and 3125, so real cache scripts still
+  read them as `Unsupported`. Only hand-built test scripts exercised them. The entries now sit in
+  order, and a test asserts the table is strictly sorted and that every entry decodes to itself.
+  Rows built by scripts 3885/3888/3961 (zoom and dropdown rows) no longer abort.
+- `Mes` (3100), `TEXT_SWITCH` (4110), `DEVICEOPTION_GETRANGE` (3217), the `STRINGVECTOR_*` family
+  (7400-7409) and the eight text-input field configuration ops used by script 3850 (1133, 1134,
+  1137-1139, 1144-1146) are handled. After this the transitive closure of the all-settings list
+  builders (3840, 3841, 3846-3869, 3961, 3885, 3888, 4182, 7092, 7106, 7904) contains no
+  unsupported op. Deviations: `TEXT-FIELD-WIDGET` (input fields are not interactive) and
+  `DEVICE-OPTION-RANGE` (option 20 follows TSPS 241).
+
+New probe modes (`script_probe CACHE --execute 134 ...`): `--click-sim` fires the first operation of
+every offered widget with a long list scrolled (authenticates the session so operations are
+offered), and `--tab-sim` selects each tab of the strip. Result on the b240 cache: all seven tabs
+build with 0 script errors; toggles and dropdown selects keep the list position (clamped to the new
+content height); selecting a tab or Search resets it to the top, as in stock.
+
+**Not reproduced.** I could not make the all-settings list jump to the top on a toggle click in the
+probe: script 3847 re-runs the list builder with the live scroll position (`IfGetscrolly`) and the
+builder restores it. Of all varps 0..8000 only 2855 (tab selection, listened to by 3837) resets the
+list. The user's report is therefore not explained by what the probe can drive; it needs a live
+observation or a capture of the server packets that follow a click. The opcode-table bug above is the
+only defect found on that path. Row toggles are client-side (`SetVarbit` in script 3965), and the
+rows' own operation bit is clear, so they send no packet, as in stock.
+
 ## Open, in order
 
 1. Load latency leftovers: parallel seam merge/emit, chunked vertex packing, minimap off the UI
    thread, cancellation between phases.
-2. Settings: find the varp a real click changes and why script 3840 takes its empty branch;
-   `Mes`/MES_TYPED 3100/3102, CC_INPUT_*, DEVICEOPTION_GETRANGE 3217, STRINGVECTOR.
+2. Settings: observe the live reload-on-click (see "Not reproduced"); make text-input field
+   widgets interactive (TEXT-FIELD-WIDGET); MES_TYPED 3102 if a cache script needs it.
 3. `interface_audit` over every cache group (mount, 20 cycles, sprites/fonts/atlas area, prompts
    close), with a committed baseline.
 4. Minimap: render at the committed zoom, wheel zoom, mapfunction icons, remaining dot frames,

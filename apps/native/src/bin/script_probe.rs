@@ -252,9 +252,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if std::env::args().any(|a| a == "--execute") {
         let mut runtime = rustclient_application::scripts::ClientScripts::new(cache, profile);
         let mut state = rustclient_game_state::GameState::new();
-        state.apply_operation(rustclient_game_state::SemanticOperation::BeginSession {
-            revision: rustclient_model::Revision::with_subrevision(240, 2),
-        })?;
+        let revision = rustclient_model::Revision::with_subrevision(240, 2);
+        if std::env::args().any(|a| a == "--click-sim" || a == "--tab-sim") {
+            // Widget operations are offered to authenticated players only.
+            state.apply_operation(
+                rustclient_game_state::SemanticOperation::AuthenticateSession {
+                    revision,
+                    player: rustclient_game_state::AuthenticatedPlayer {
+                        profile: rustclient_model::ServerProfileId::new(1),
+                        player: rustclient_model::PlayerIndex::new(1),
+                        member: false,
+                        staff_level: 0,
+                    },
+                },
+            )?;
+        } else {
+            state.apply_operation(rustclient_game_state::SemanticOperation::BeginSession {
+                revision,
+            })?;
+        }
         for error in runtime.initialize_session(&mut state)? {
             println!("initialize: {error}");
         }
@@ -294,6 +310,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         if std::env::args().any(|a| a == "--variable-sim") {
             variable_sim(&mut runtime, &mut state)?;
+        }
+        if std::env::args().any(|a| a == "--click-sim") {
+            click_sim(&mut runtime, &mut state)?;
+        }
+        if std::env::args().any(|a| a == "--tab-sim") {
+            tab_sim(&mut runtime, &mut state)?;
         }
         if let Some(position) = std::env::args().position(|a| a == "--mount") {
             let group: u32 = std::env::args()
@@ -686,6 +708,163 @@ fn prompt_sim<S: rustclient_platform::ReadOnlyBlobs>(
         let outcome = runtime.keyboard(state, Some(WidgetKey::Escape), None, true)?;
         let _ = outcome;
         runtime.drain(state);
+    }
+    Ok(())
+}
+
+/// Fire the first operation of every widget that has one, with a long list scrolled down, and
+/// report whether the list kept its position and what the scripts reported.
+fn click_sim<S: rustclient_platform::ReadOnlyBlobs>(
+    runtime: &mut rustclient_application::scripts::ClientScripts<S>,
+    state: &mut rustclient_game_state::GameState,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let scrolled = scroll_lists(runtime, state)?;
+    println!("scrolled lists: {scrolled:?}");
+    let limit: usize = std::env::var("RUSTCLIENT_SIM_CLICKS")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(40);
+    let mut fired = 0;
+    let mut nth = 0;
+    // The layout changes with every click, so find the next clickable node afresh each time.
+    loop {
+        let tree = rustclient_game_ui::widgets::WidgetTree::attached(
+            state.interfaces(),
+            runtime.interfaces(),
+            rustclient_game_ui::widgets::WidgetBounds::canvas(state.interfaces()),
+        )?;
+        let mut found = None;
+        let mut seen = 0;
+        for node in &tree.nodes {
+            let entries =
+                rustclient_application::widget_actions(state, runtime.interfaces(), node.address)
+                    .unwrap_or_default();
+            if let Some(first) = entries.first() {
+                if seen == nth {
+                    found = Some((node.address, first.clone()));
+                    break;
+                }
+                seen += 1;
+            }
+        }
+        nth += 1;
+        let Some((address, (label, action))) = found else {
+            break;
+        };
+        if fired >= limit {
+            break;
+        }
+        fired += 1;
+        let before_widgets = state.interfaces().runtime().len();
+        let child = address.child.map_or(-1, u32::cast_signed);
+        let permissions_before = state.interfaces().permissions(address.widget, child);
+        let result = runtime.perform_action(state, action);
+        println!(
+            "    permissions before {:?} after {:?}; events for widget {}",
+            permissions_before.map(|p| p.enabled_operations),
+            state
+                .interfaces()
+                .permissions(address.widget, child)
+                .map(|p| p.enabled_operations),
+            state
+                .interfaces()
+                .event_ranges()
+                .iter()
+                .filter(|e| e.widget == address.widget)
+                .count()
+        );
+        let (intents, mut errors) = match result {
+            Ok(done) => done,
+            Err(error) => {
+                println!("{address:?} {label:?}: rejected: {error}");
+                continue;
+            }
+        };
+        for _ in 0..2 {
+            errors.extend(runtime.drain(state));
+            errors.extend(runtime.resize_widgets(state)?);
+        }
+        let positions = list_scrolls(state, &scrolled);
+        let moved = positions
+            .iter()
+            .zip(&scrolled)
+            .any(|(now, (_, was))| *now != Some(*was));
+        println!(
+            "{:?} {label:?}: widgets {before_widgets} -> {}, intents {}, errors {}, scrolls {positions:?}{}",
+            address,
+            state.interfaces().runtime().len(),
+            intents.len(),
+            errors.len(),
+            if moved { "  <== SCROLL CHANGED" } else { "" },
+        );
+        for error in errors.iter().take(2) {
+            println!("    {}", error.chars().take(160).collect::<String>());
+        }
+        // Put the lists back so every click starts from the same position.
+        for (address, position) in &scrolled {
+            if let Some(mut value) = state.interfaces().runtime().get(address).cloned() {
+                value.scroll = Some(*position);
+                state.apply_operation(rustclient_game_state::SemanticOperation::Interface(
+                    rustclient_model::InterfaceUpdate::SetProperty {
+                        widget: address.widget,
+                        property: rustclient_model::WidgetProperty::Runtime {
+                            address: *address,
+                            value: Box::new(value),
+                        },
+                    },
+                ))?;
+            }
+        }
+    }
+    println!("fired {fired} operations");
+    Ok(())
+}
+
+/// Select every tab of the all-settings tab strip in turn and report how each page built.
+fn tab_sim<S: rustclient_platform::ReadOnlyBlobs>(
+    runtime: &mut rustclient_application::scripts::ClientScripts<S>,
+    state: &mut rustclient_game_state::GameState,
+) -> Result<(), Box<dyn std::error::Error>> {
+    use rustclient_model::{InterfaceId, WidgetAddress, WidgetId};
+    let strip = WidgetId::new(InterfaceId::new(134), 24);
+    for child in 0..16 {
+        let address = WidgetAddress {
+            widget: strip,
+            child: Some(child),
+        };
+        let Some((label, action)) =
+            rustclient_application::widget_actions(state, runtime.interfaces(), address)
+                .unwrap_or_default()
+                .first()
+                .cloned()
+        else {
+            continue;
+        };
+        let (_, mut errors) = runtime.perform_action(state, action)?;
+        for _ in 0..3 {
+            errors.extend(runtime.drain(state));
+            errors.extend(runtime.resize_widgets(state)?);
+        }
+        let list = WidgetAddress::component(WidgetId::new(InterfaceId::new(134), 14));
+        let rows = state
+            .interfaces()
+            .runtime()
+            .keys()
+            .filter(|a| a.widget.component == 20 && a.child.is_some())
+            .count();
+        println!(
+            "tab {child} {label:?}: widgets {}, rows {rows}, list scroll {:?}, errors {}",
+            state.interfaces().runtime().len(),
+            state
+                .interfaces()
+                .runtime()
+                .get(&list)
+                .and_then(|r| r.scroll),
+            errors.len()
+        );
+        for error in errors.iter().take(3) {
+            println!("    {}", error.chars().take(200).collect::<String>());
+        }
     }
     Ok(())
 }

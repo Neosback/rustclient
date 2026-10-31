@@ -402,7 +402,7 @@ opcode	adapter_name	runelite_name	evidence_status	host_status	live_uses	scanned_
 2927	IfCallonresize	IF_CALLONRESIZE	adapter	host-dispatched		classBB.method838,classBB.method839,classJG.method6408
 2928	IfTriggerop	IF_TRIGGEROP	adapter	host-dispatched		classBB.method838,classBB.method839,classJG.method6408
 2929			handler-only	unnamed-cache-used	63	classBB.method837,classJG.method6408
-3100	Mes	MES	adapter	named-unhandled		classBB.method852,classBB.method853,classKU.method6609
+3100	Mes	MES	adapter	host-dispatched		classBB.method852,classBB.method853,classKU.method6609
 3101	Anim	ANIM	adapter	named-unhandled		classBB.method852,classBB.method853,classBB.method855,classKU.method6609
 3102			unknown	unnamed-cache-used	2	
 3103	IfClose	IF_CLOSE	adapter	host-dispatched		classBB.method853,classBB.method854,classBB.method855,classKU.method6609
@@ -505,7 +505,7 @@ opcode	adapter_name	runelite_name	evidence_status	host_status	live_uses	scanned_
 3214	GetDeviceOption		adapter	host-dispatched		Renderable.method3851,classBB.method858
 3215	GetGameOption		adapter	host-dispatched		Renderable.method3851,classBB.method858
 3216			handler-only	unnamed-unused		Renderable.method3851,classBB.method856,classBB.method857,classBB.method858
-3217			handler-only	unnamed-cache-used	1	Renderable.method3851,classBB.method858
+3217	DeviceoptionGetrange		handler-only	host-dispatched	1	Renderable.method3851,classBB.method858
 3218			handler-only	unnamed-unused		Renderable.method3851,classBB.method856,classBB.method857,classBB.method858
 3219			handler-only	unnamed-unused		Renderable.method3851,classBB.method856,classBB.method857,classBB.method858
 3220			handler-only	unnamed-unused		Renderable.method3851,classBB.method858
@@ -740,7 +740,7 @@ opcode	adapter_name	runelite_name	evidence_status	host_status	live_uses	scanned_
 4107	Compare	COMPARE	adapter	host-dispatched		classBB.method875,classBB.method876,classJF.method6405
 4108	Paraheight	PARAHEIGHT	adapter	host-dispatched		classBB.method874,classBB.method875,classBB.method876,classJF.method6405
 4109	Parawidth	PARAWIDTH	adapter	host-dispatched		classBB.method874,classBB.method875,classBB.method876,classJF.method6405
-4110	TextSwitch	TEXT_SWITCH	adapter	named-unhandled		classBB.method875,classBB.method876,classJF.method6405
+4110	TextSwitch	TEXT_SWITCH	adapter	host-dispatched		classBB.method875,classBB.method876,classJF.method6405
 4111	Escape	ESCAPE	adapter	host-dispatched		classBB.method874,classBB.method875,classBB.method876,classJF.method6405
 4112	AppendChar	APPEND_CHAR	adapter	host-dispatched		classBB.method874,classBB.method875,classBB.method876,classJF.method6405
 4113	CharIsprintable	CHAR_ISPRINTABLE	adapter	host-dispatched		classBB.method874,classBB.method875,classBB.method876,classJF.method6405
@@ -1010,13 +1010,13 @@ opcode	adapter_name	runelite_name	evidence_status	host_status	live_uses	scanned_
 7252	MinimapSetzoom		unknown	host-dispatched	4	
 7253	MinimapGetzoom		unknown	host-dispatched	7	
 7254	MinimapSeticonzoomlimit		unknown	host-dispatched	6	
-7400			unknown	unnamed-cache-used	3	
-7401			unknown	unnamed-cache-used	12	
-7404			unknown	unnamed-cache-used	3	
-7406			unknown	unnamed-cache-used	11	
-7407			unknown	unnamed-cache-used	10	
-7408			unknown	unnamed-cache-used	14	
-7409			unknown	unnamed-cache-used	13	
+7400	StringvectorAdd		unknown	host-dispatched	3	
+7401	StringvectorAddunique		unknown	host-dispatched	12	
+7404	StringvectorRemove		unknown	host-dispatched	3	
+7406	StringvectorGet		unknown	host-dispatched	11	
+7407	StringvectorSize		unknown	host-dispatched	10	
+7408	StringvectorContains		unknown	host-dispatched	14	
+7409	StringvectorClear		unknown	host-dispatched	13	
 7451			unknown	unnamed-cache-used	1	
 7453			unknown	unnamed-cache-used	1	
 7454			unknown	unnamed-cache-used	1	

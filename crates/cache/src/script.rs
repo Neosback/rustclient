@@ -622,6 +622,16 @@ pub enum Opcode {
     GetDeviceOption,
     SetGameOption,
     GetGameOption,
+    DeviceoptionGetrange,
+    StringvectorAdd,
+    StringvectorAddunique,
+    StringvectorRemove,
+    StringvectorGet,
+    StringvectorSize,
+    StringvectorContains,
+    StringvectorClear,
+    /// Text-input field configuration (`classBB` 1133-1146); carries the instruction number.
+    CcFieldConfig(u16),
     Unsupported(u16),
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

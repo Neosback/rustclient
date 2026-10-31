@@ -25,6 +25,35 @@ fn set_brightness<S: ReadOnlyBlobs>(h: &mut ScriptHost<'_, S>, value: i32) -> Re
     let brightness = rustclient_model::ScreenBrightness::new(percent).ok_or("brightness range")?;
     h.apply(InterfaceUpdate::ScreenBrightness(brightness))
 }
+/// Most string lists a script may keep, and entries in each.
+const STRING_VECTORS: usize = 64;
+const STRING_VECTOR_ENTRIES: usize = 4096;
+fn vector_mut<'a, S: ReadOnlyBlobs>(
+    h: &'a mut ScriptHost<'_, S>,
+    vector: i32,
+) -> Result<&'a mut Vec<String>> {
+    let vectors = &mut h.resources.string_vectors;
+    if !vectors.contains_key(&vector) && vectors.len() >= STRING_VECTORS {
+        return Err("string vector limit".into());
+    }
+    let values = vectors.entry(vector).or_default();
+    if values.len() >= STRING_VECTOR_ENTRIES {
+        return Err("string vector entry limit".into());
+    }
+    Ok(values)
+}
+fn same_text(a: &str, b: &str, ignore_case: bool) -> bool {
+    if ignore_case {
+        a.to_lowercase() == b.to_lowercase()
+    } else {
+        a == b
+    }
+}
+fn vector_contains(values: &[String], value: &str, ignore_case: bool) -> bool {
+    values
+        .iter()
+        .any(|held| same_text(held, value, ignore_case))
+}
 fn id(n: i32) -> Result<u32> {
     u32::try_from(n).map_err(|_| "negative definition ID".into())
 }
@@ -230,6 +259,100 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
             s.push_object(ScriptValue::Text(name.to_owned()));
             None
         }
+        // `Mes` (3100) files its text as a game message with no sender; the settings pages use it
+        // to say why a setting cannot change.
+        Opcode::Mes => {
+            let text = s.text()?;
+            h.state
+                .apply_operation(SemanticOperation::GameMessage(
+                    rustclient_model::GameMessage {
+                        channel: rustclient_model::ids::ChatChannelId::new(0),
+                        sender: String::new(),
+                        text,
+                    },
+                ))
+                .map_err(|e| e.to_string())?;
+            None
+        }
+        // `TEXT_SWITCH` (4110, `classBB` 4110): the first string when the condition is 1.
+        Opcode::TextSwitch => {
+            let second = s.text()?;
+            let first = s.text()?;
+            let chosen = if s.int()? == 1 { first } else { second };
+            s.push_object(ScriptValue::Text(chosen));
+            None
+        }
+        // `DEVICEOPTION_GETRANGE` (3217): the pinned jar's ranges by option kind. Option 20 is
+        // newer than the jar; its scaling range follows the TSPS 241 client (`DEVICE-OPTION-RANGE`).
+        Opcode::DeviceoptionGetrange => {
+            let (min, max) = match s.int()? {
+                2..=4 => (0, 1),
+                5 => (0, i32::MAX),
+                6 => (0, 100),
+                14 => (25, 90),
+                20 => (100, 400),
+                other => return Err(format!("unrecognized device option {other}")),
+            };
+            s.integers.extend([min, max]);
+            None
+        }
+        Opcode::StringvectorAdd => {
+            let value = s.text()?;
+            let vector = s.int()?;
+            vector_mut(h, vector)?.push(value);
+            None
+        }
+        Opcode::StringvectorAddunique => {
+            let [vector, ignore_case] = s.ints()?;
+            let value = s.text()?;
+            let values = vector_mut(h, vector)?;
+            if !vector_contains(values, &value, ignore_case != 0) {
+                values.push(value);
+            }
+            None
+        }
+        Opcode::StringvectorRemove => {
+            let [vector, ignore_case] = s.ints()?;
+            let value = s.text()?;
+            vector_mut(h, vector)?.retain(|held| !same_text(held, &value, ignore_case != 0));
+            None
+        }
+        Opcode::StringvectorGet => {
+            let [vector, index] = s.ints()?;
+            let value = usize::try_from(index)
+                .ok()
+                .and_then(|index| h.resources.string_vectors.get(&vector)?.get(index))
+                .cloned()
+                .unwrap_or_default();
+            s.push_object(ScriptValue::Text(value));
+            None
+        }
+        Opcode::StringvectorSize => {
+            let vector = s.int()?;
+            Some(
+                h.resources
+                    .string_vectors
+                    .get(&vector)
+                    .map_or(0, |values| i32::try_from(values.len()).unwrap_or(i32::MAX)),
+            )
+        }
+        Opcode::StringvectorContains => {
+            let [vector, ignore_case, alternate] = s.ints()?;
+            let value = s.text()?;
+            let found = h
+                .resources
+                .string_vectors
+                .get(&vector)
+                .is_some_and(|values| {
+                    vector_contains(values, &value, ignore_case != 0 || alternate != 0)
+                });
+            Some(i32::from(found))
+        }
+        Opcode::StringvectorClear => {
+            let vector = s.int()?;
+            h.resources.string_vectors.remove(&vector);
+            None
+        }
         Opcode::ChatGethistorylength => {
             let channel = rustclient_model::ids::ChatChannelId::new(id(s.int()?)?);
             Some(
@@ -334,7 +457,9 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
             )))?;
             None
         }
-        Opcode::DiscardMobileFlag | Opcode::Renderself => {
+        // `CcFieldConfig` is text-input field configuration (1133-1146): fields are not
+        // interactive yet, so the operand is consumed and ignored (`TEXT-FIELD-WIDGET`).
+        Opcode::DiscardMobileFlag | Opcode::Renderself | Opcode::CcFieldConfig(_) => {
             s.int()?;
             None
         }
@@ -1065,6 +1190,115 @@ mod tests {
             1,
             "a command becomes one outbound chat intent"
         );
+    }
+
+    /// Run one instruction against fresh stacks seeded with `ints` and `texts` (push order).
+    fn run_with_text(
+        scripts: &mut ClientScripts<MemoryBlobs>,
+        state: &mut GameState,
+        op: Opcode,
+        ints: &[i32],
+        texts: &[&str],
+    ) -> Result<Stacks> {
+        let mut stacks = Stacks::default();
+        stacks.integers.extend_from_slice(ints);
+        for text in texts {
+            stacks.push_object(ScriptValue::Text((*text).into()));
+        }
+        let mut host = ScriptHost {
+            resources: scripts,
+            state,
+        };
+        instruction(&mut host, op, 0, &mut stacks)?;
+        Ok(stacks)
+    }
+
+    #[test]
+    fn settings_text_ops_follow_the_reference_stack_effects() {
+        let (mut scripts, mut state) = (scripts(), state());
+        let mut pick = |condition| {
+            let mut out = run_with_text(
+                &mut scripts,
+                &mut state,
+                Opcode::TextSwitch,
+                &[condition],
+                &["first", "second"],
+            )
+            .unwrap();
+            out.text().unwrap()
+        };
+        assert_eq!(pick(1), "first");
+        assert_eq!(pick(0), "second");
+        let range = |scripts: &mut ClientScripts<MemoryBlobs>, state: &mut GameState, option| {
+            run_with_text(scripts, state, Opcode::DeviceoptionGetrange, &[option], &[])
+                .map(|out| out.integers)
+        };
+        assert_eq!(range(&mut scripts, &mut state, 14).unwrap(), [25, 90]);
+        assert_eq!(range(&mut scripts, &mut state, 3).unwrap(), [0, 1]);
+        assert_eq!(range(&mut scripts, &mut state, 20).unwrap(), [100, 400]);
+        assert!(range(&mut scripts, &mut state, 99).is_err());
+        assert!(
+            run_with_text(
+                &mut scripts,
+                &mut state,
+                Opcode::CcFieldConfig(1137),
+                &[5],
+                &[]
+            )
+            .unwrap()
+            .integers
+            .is_empty(),
+            "field configuration consumes its operand and pushes nothing"
+        );
+    }
+
+    #[test]
+    fn string_vectors_add_dedupe_remove_and_clear() {
+        let (mut scripts, mut state) = (scripts(), state());
+        let mut call = |op, ints: &[i32], texts: &[&str]| {
+            run_with_text(&mut scripts, &mut state, op, ints, texts).unwrap()
+        };
+        call(Opcode::StringvectorAdd, &[7], &["Alpha"]);
+        call(Opcode::StringvectorAddunique, &[7, 1], &["alpha"]);
+        call(Opcode::StringvectorAddunique, &[7, 0], &["alpha"]);
+        assert_eq!(call(Opcode::StringvectorSize, &[7], &[]).integers, [2]);
+        assert_eq!(
+            call(Opcode::StringvectorGet, &[7, 1], &[]).text().unwrap(),
+            "alpha"
+        );
+        assert_eq!(
+            call(Opcode::StringvectorGet, &[7, 9], &[]).text().unwrap(),
+            "",
+            "an index past the end reads as the empty string"
+        );
+        assert_eq!(
+            call(Opcode::StringvectorContains, &[7, 1, 0], &["ALPHA"]).integers,
+            [1]
+        );
+        assert_eq!(
+            call(Opcode::StringvectorContains, &[7, 0, 0], &["ALPHA"]).integers,
+            [0]
+        );
+        call(Opcode::StringvectorRemove, &[7, 1], &["alpha"]);
+        assert_eq!(call(Opcode::StringvectorSize, &[7], &[]).integers, [0]);
+        call(Opcode::StringvectorAdd, &[7], &["x"]);
+        call(Opcode::StringvectorClear, &[7], &[]);
+        assert_eq!(call(Opcode::StringvectorSize, &[7], &[]).integers, [0]);
+    }
+
+    #[test]
+    fn mes_files_a_senderless_game_message() {
+        let (mut scripts, mut state) = (scripts(), state());
+        let mut stacks = Stacks::default();
+        stacks.push_object(ScriptValue::Text("That setting is locked.".into()));
+        let mut host = ScriptHost {
+            resources: &mut scripts,
+            state: &mut state,
+        };
+        instruction(&mut host, Opcode::Mes, 0, &mut stacks).unwrap();
+        let entries = state.chat().entries();
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].message.text, "That setting is locked.");
     }
 
     #[test]

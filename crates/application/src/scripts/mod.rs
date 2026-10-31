@@ -68,6 +68,8 @@ pub struct ClientScripts<S> {
     fonts: BTreeMap<FontId, rustclient_cache::BitmapFont>,
     font_icons: Option<Vec<rustclient_cache::Sprite>>,
     effects: Vec<rustclient_protocol::ClientIntent>,
+    /// Script-owned string lists (`STRINGVECTOR_*`), keyed by the script's vector number.
+    string_vectors: BTreeMap<i32, Vec<String>>,
     sound_effects: Vec<SoundEffectRequest>,
     db: database::DbState,
     item_search: item_search::ItemSearch,
@@ -100,6 +102,7 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
             fonts: BTreeMap::new(),
             font_icons: None,
             effects: Vec::new(),
+            string_vectors: BTreeMap::new(),
             sound_effects: Vec::new(),
             db: database::DbState::default(),
             item_search: item_search::ItemSearch::default(),
@@ -499,6 +502,7 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
         self.deferred_operations.clear();
         self.operation_depth = 0;
         self.effects.clear();
+        self.string_vectors.clear();
         self.sound_effects.clear();
         self.db.reset();
         self.item_search = item_search::ItemSearch::default();

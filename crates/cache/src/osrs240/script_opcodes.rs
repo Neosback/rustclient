@@ -89,6 +89,14 @@ const OPCODES: &[(u16, Opcode)] = &[
     (1123, Opcode::CcSetfillcolour),
     (1126, Opcode::CcSetlinedirection),
     (1127, Opcode::CcSetmodeltransparent),
+    (1133, Opcode::CcFieldConfig(1133)),
+    (1134, Opcode::CcFieldConfig(1134)),
+    (1137, Opcode::CcFieldConfig(1137)),
+    (1138, Opcode::CcFieldConfig(1138)),
+    (1139, Opcode::CcFieldConfig(1139)),
+    (1144, Opcode::CcFieldConfig(1144)),
+    (1145, Opcode::CcFieldConfig(1145)),
+    (1146, Opcode::CcFieldConfig(1146)),
     (1200, Opcode::CcSetobject),
     (1201, Opcode::CcSetnpchead),
     (1202, Opcode::CcSetplayerheadSelf),
@@ -299,11 +307,6 @@ const OPCODES: &[(u16, Opcode)] = &[
     (3117, Opcode::Setshiftclickdrop),
     (3118, Opcode::Setshowmouseovertext),
     (3119, Opcode::Renderself),
-    // Minimap zoom ops: in the cache's scripts but not in the pinned 240 jar; see model::minimap.
-    (7250, Opcode::MinimapSetzoomable),
-    (7252, Opcode::MinimapSetzoom),
-    (7253, Opcode::MinimapGetzoom),
-    (7254, Opcode::MinimapSeticonzoomlimit),
     (3125, Opcode::Setshowmousecross),
     (3126, Opcode::Setshowloadingmessages),
     (3127, Opcode::Settaptodrop),
@@ -333,6 +336,7 @@ const OPCODES: &[(u16, Opcode)] = &[
     (3213, Opcode::SetGameOption),
     (3214, Opcode::GetDeviceOption),
     (3215, Opcode::GetGameOption),
+    (3217, Opcode::DeviceoptionGetrange),
     (3300, Opcode::Clientclock),
     (3301, Opcode::InvGetobj),
     (3302, Opcode::InvGetnum),
@@ -599,6 +603,18 @@ const OPCODES: &[(u16, Opcode)] = &[
     (6696, Opcode::MecSprite),
     (6697, Opcode::WorldmapElement),
     (6699, Opcode::WorldmapElementcoord),
+    // Minimap zoom ops: in the cache's scripts but not in the pinned 240 jar; see model::minimap.
+    (7250, Opcode::MinimapSetzoomable),
+    (7252, Opcode::MinimapSetzoom),
+    (7253, Opcode::MinimapGetzoom),
+    (7254, Opcode::MinimapSeticonzoomlimit),
+    (7400, Opcode::StringvectorAdd),
+    (7401, Opcode::StringvectorAddunique),
+    (7404, Opcode::StringvectorRemove),
+    (7406, Opcode::StringvectorGet),
+    (7407, Opcode::StringvectorSize),
+    (7408, Opcode::StringvectorContains),
+    (7409, Opcode::StringvectorClear),
     (7500, Opcode::DbFindWithCount),
     (7501, Opcode::DbFindnext),
     (7502, Opcode::DbGetfield),
@@ -627,3 +643,24 @@ const OPCODES: &[(u16, Opcode)] = &[
     (8028, Opcode::ArrayInsertAll),
     (8029, Opcode::ArrayRemoveRange),
 ];
+
+#[cfg(test)]
+mod tests {
+    use super::{OPCODES, opcode};
+    use crate::script::Opcode;
+
+    #[test]
+    fn table_is_sorted_because_lookup_is_a_binary_search() {
+        for pair in OPCODES.windows(2) {
+            assert!(pair[0].0 < pair[1].0, "{} is out of order", pair[1].0);
+        }
+    }
+
+    #[test]
+    fn every_listed_number_decodes_to_its_opcode() {
+        for &(number, expected) in OPCODES {
+            assert_eq!(opcode(number), expected, "instruction {number}");
+        }
+        assert_eq!(opcode(7253), Opcode::MinimapGetzoom);
+    }
+}
