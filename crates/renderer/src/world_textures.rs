@@ -22,7 +22,7 @@ pub(crate) fn upload(
         view_formats: &[],
     });
     let mut animations = [[0_f32; 4]; 256];
-    for (id, asset) in &mesh.textures {
+    for (id, asset) in mesh.textures.iter() {
         let mut pixels = asset.image.pixels().to_vec();
         let mut size = 128;
         for level in 0..8 {
@@ -80,7 +80,7 @@ pub(crate) fn validate(mesh: &WorldMesh, limits: &wgpu::Limits) -> Result<(), cr
             "classic texture array exceeds device limits",
         ));
     }
-    for (id, asset) in &mesh.textures {
+    for (id, asset) in mesh.textures.iter() {
         if id.get() >= 256 || asset.image.width() != 128 || asset.image.height() != 128 {
             return Err(crate::RenderError::World(
                 "invalid classic texture layer or image dimensions",
@@ -190,7 +190,7 @@ mod validation_tests {
             dynamic: rustclient_scene::SceneGeometry::default(),
             focus: [0.; 3],
             stats: rustclient_scene::SceneStats::default(),
-            textures: std::collections::BTreeMap::default(),
+            textures: std::sync::Arc::default(),
             roofs: std::sync::Arc::default(),
         };
         let limits = wgpu::Limits::default();
@@ -208,17 +208,17 @@ mod validation_tests {
             animation_speed: 0,
             opaque: true,
         };
-        mesh.textures.insert(TextureId::new(0), asset.clone());
+        std::sync::Arc::make_mut(&mut mesh.textures).insert(TextureId::new(0), asset.clone());
         assert!(validate(&mesh, &limits).is_err());
-        mesh.textures.clear();
+        std::sync::Arc::make_mut(&mut mesh.textures).clear();
         let asset = TextureAsset {
             image: Image::new(128, 128, vec![255; 128 * 128 * 4], source).unwrap(),
             ..asset
         };
-        mesh.textures.insert(TextureId::new(256), asset.clone());
+        std::sync::Arc::make_mut(&mut mesh.textures).insert(TextureId::new(256), asset.clone());
         assert!(validate(&mesh, &limits).is_err());
-        mesh.textures.clear();
-        mesh.textures.insert(TextureId::new(255), asset);
+        std::sync::Arc::make_mut(&mut mesh.textures).clear();
+        std::sync::Arc::make_mut(&mut mesh.textures).insert(TextureId::new(255), asset);
         assert!(validate(&mesh, &limits).is_ok());
     }
 }

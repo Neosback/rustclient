@@ -3,17 +3,17 @@ use super::{animation, hash_file};
 use crate::{
     Cache, FileId, GroupId, IndexId, Source,
     error::Result,
+    memo::TextureSet,
     reader::Reader,
     world::{LegacyFrame, SequenceAsset, Skeleton, TextureAsset, VarbitDefinition},
 };
 use rustclient_model::{SequenceId, TextureId, VarbitId};
 use rustclient_platform::ReadOnlyBlobs;
-use sha2::Sha256;
+use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
-pub(super) fn textures<S: ReadOnlyBlobs>(
-    cache: &Cache<S>,
-    digest: &mut Sha256,
-) -> Result<(BTreeMap<TextureId, u16>, BTreeMap<TextureId, TextureAsset>)> {
+pub(super) fn textures<S: ReadOnlyBlobs>(cache: &Cache<S>) -> Result<TextureSet> {
+    let mut digest = Sha256::new();
+    let digest = &mut digest;
     let mut colors = BTreeMap::new();
     let mut textures = BTreeMap::new();
     let mut sprite_bytes = BTreeMap::new();
@@ -93,7 +93,11 @@ pub(super) fn textures<S: ReadOnlyBlobs>(
             },
         );
     }
-    Ok((colors, textures))
+    Ok(TextureSet {
+        colors,
+        textures: std::sync::Arc::new(textures),
+        digest: std::mem::take(digest).finalize().into(),
+    })
 }
 pub(super) type Animations = (
     BTreeMap<SequenceId, SequenceAsset>,

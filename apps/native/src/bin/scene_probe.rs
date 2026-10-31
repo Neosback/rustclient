@@ -32,6 +32,34 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "{:>7.0} ms world assets",
         started.elapsed().as_secs_f64() * 1000.
     );
+    if std::env::var_os("RUSTCLIENT_PROBE_NEIGHBOUR").is_some() {
+        // A second window on the same open cache: what a region change costs once warm.
+        let neighbour = std::time::Instant::now();
+        let next = CacheProfile::OpenRune240.load_world(
+            &cache,
+            WorldTile::new(3232, 3168, Plane::MIN),
+            104,
+            104,
+            |_| {},
+        )?;
+        println!(
+            "{:>7.0} ms neighbouring window on the warm cache (models {})",
+            neighbour.elapsed().as_secs_f64() * 1000.,
+            next.models.len()
+        );
+        let again = CacheProfile::OpenRune240.load_world(
+            &cache,
+            WorldTile::new(3168, 3168, Plane::MIN),
+            104,
+            104,
+            |_| {},
+        )?;
+        assert_eq!(
+            again.content_hash, assets.content_hash,
+            "a warm reload must reproduce the cold content hash"
+        );
+        println!("warm reload of the first window reproduces its content hash");
+    }
     println!(
         "squares {} ({} absent), locations {}, objects {}, models {}",
         assets.squares.len(),
@@ -136,7 +164,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         std::fs::create_dir_all(&path)?;
         let textures = path.join("textures");
         std::fs::create_dir_all(&textures)?;
-        for (id, texture) in &mesh.textures {
+        for (id, texture) in mesh.textures.iter() {
             std::fs::write(
                 textures.join(format!("{}.rgba", id.get())),
                 texture.image.pixels(),

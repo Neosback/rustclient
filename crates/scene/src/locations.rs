@@ -43,78 +43,158 @@ pub(crate) fn build(
         Scope::Patch(patch) => Some(patch.tiles.clone()),
     };
     let plan = crate::decorations::plan(asset, inputs, &locations, restricted_tiles.as_ref())?;
+    // Selecting what to prepare is cheap and updates the stats in order; building each model is
+    // pure, so that part may run on several threads and is folded back in location order.
+    let mut jobs = Vec::new();
+    for (index, loc) in locations.iter().enumerate() {
+        if let Scope::Patch(patch) = scope
+            && !patch.prepare.contains(&index)
+        {
+            continue;
+        }
+        // Unknown objects fall through so the explicit missing-object error stays.
+        if dynamic
+            && asset.assets.objects.contains_key(&loc.object)
+            && !is_dynamic(asset, inputs, loc)
+        {
+            continue;
+        }
+        if loc.tile.x < origin.x
+            || loc.tile.y < origin.y
+            || i64::from(loc.tile.x) >= i64::from(origin.x) + i64::from(d.width())
+            || i64::from(loc.tile.y) >= i64::from(origin.y) + i64::from(d.height())
+        {
+            continue;
+        }
+        let def = asset
+            .assets
+            .objects
+            .get(&loc.object)
+            .ok_or_else(|| SceneError(format!("missing object {}", loc.object.get())))?;
+        if is_dynamic(asset, inputs, loc) != dynamic {
+            continue;
+        }
+        mesh.stats.locations += 1;
+        let Some(def) = resolve(asset, def, inputs)? else {
+            continue;
+        };
+        if def.animation.is_some() {
+            mesh.stats.animated_static += 1;
+        }
+        let animated = inputs
+            .locations
+            .get(&location_key(loc))
+            .and_then(|o| o.animation)
+            .and_then(|a| a.placement);
+        let rotation = animated.map_or(loc.orientation.get(), |p| p.orientation.get());
+        let shape = animated.map_or(loc.shape, |p| p.shape);
+        if plan.dropped(index) {
+            continue;
+        }
+        jobs.push(PrepareJob {
+            index,
+            loc,
+            def,
+            requests: plan.requests(index, shape, rotation),
+        });
+    }
     let mut prepared = Vec::new();
     let mut prepared_vertices = 0_usize;
-    {
-        for (index, loc) in locations.iter().enumerate() {
-            if let Scope::Patch(patch) = scope
-                && !patch.prepare.contains(&index)
-            {
-                continue;
+    for (job, outcome) in jobs.iter().zip(prepare_jobs(asset, inputs, &jobs)) {
+        let mut selected = false;
+        for mut model in outcome?.into_iter().flatten() {
+            model.source = u32::try_from(job.index)
+                .map_err(|_| SceneError("location index overflow".into()))?;
+            selected = true;
+            prepared_vertices += model.model.vertices.len();
+            if prepared_vertices > 3_000_000 {
+                return Err(SceneError("prepared scenery allocation limit".into()));
             }
-            // Unknown objects fall through so the explicit missing-object error stays.
-            if dynamic
-                && asset.assets.objects.contains_key(&loc.object)
-                && !is_dynamic(asset, inputs, loc)
-            {
-                continue;
-            }
-            if loc.tile.x < origin.x
-                || loc.tile.y < origin.y
-                || i64::from(loc.tile.x) >= i64::from(origin.x) + i64::from(d.width())
-                || i64::from(loc.tile.y) >= i64::from(origin.y) + i64::from(d.height())
-            {
-                continue;
-            }
-            let def = asset
-                .assets
-                .objects
-                .get(&loc.object)
-                .ok_or_else(|| SceneError(format!("missing object {}", loc.object.get())))?;
-            if is_dynamic(asset, inputs, loc) != dynamic {
-                continue;
-            }
-            mesh.stats.locations += 1;
-            let Some(def) = resolve(asset, def, inputs)? else {
-                continue;
-            };
-            if def.animation.is_some() {
-                mesh.stats.animated_static += 1;
-            }
-            let animated = inputs
-                .locations
-                .get(&location_key(loc))
-                .and_then(|o| o.animation)
-                .and_then(|a| a.placement);
-            let rotation = animated.map_or(loc.orientation.get(), |p| p.orientation.get());
-            let shape = animated.map_or(loc.shape, |p| p.shape);
-            if plan.dropped(index) {
-                continue;
-            }
-            let requests = plan.requests(index, shape, rotation);
-            let mut selected = false;
-            for (shape, orientation, offset) in requests {
-                if let Some(mut model) =
-                    prepare(asset, loc, def, shape, orientation, offset, inputs)?
-                {
-                    model.source = u32::try_from(index)
-                        .map_err(|_| SceneError("location index overflow".into()))?;
-                    selected = true;
-                    prepared_vertices += model.model.vertices.len();
-                    if prepared_vertices > 3_000_000 {
-                        return Err(SceneError("prepared scenery allocation limit".into()));
-                    }
-                    prepared.push(model);
-                }
-            }
-            if !selected {
-                mesh.stats.no_model += 1;
-            }
+            prepared.push(model);
+        }
+        if !selected {
+            mesh.stats.no_model += 1;
         }
     }
     super::seams::merge(&mut prepared)?;
     emit_prepared(asset, mesh, prepared, scope)
 }
+/// One location chosen for preparation, with the placements the decoration plan asked for.
+struct PrepareJob<'a> {
+    index: usize,
+    loc: &'a StaticLocation,
+    def: &'a ObjectDefinition,
+    requests: Vec<(u8, u8, [i32; 2])>,
+}
+
+type Prepared = Result<Vec<Option<PreparedModel>>>;
+
+fn prepare_job(
+    asset: &SceneAsset,
+    inputs: &crate::SceneryInputs,
+    job: &PrepareJob<'_>,
+) -> Prepared {
+    job.requests
+        .iter()
+        .map(|&(shape, orientation, offset)| {
+            prepare(asset, job.loc, job.def, shape, orientation, offset, inputs)
+        })
+        .collect()
+}
+
+/// Smallest batch worth the cost of starting threads.
+#[cfg(not(target_arch = "wasm32"))]
+const PARALLEL_MIN_JOBS: usize = 256;
+
+/// Prepare every job, in job order. Each model depends only on the immutable scene inputs.
+#[cfg(not(target_arch = "wasm32"))]
+fn prepare_jobs(
+    asset: &SceneAsset,
+    inputs: &crate::SceneryInputs,
+    jobs: &[PrepareJob<'_>],
+) -> Vec<Prepared> {
+    let threads = std::thread::available_parallelism()
+        .map_or(1, usize::from)
+        .min(8);
+    if threads < 2 || jobs.len() < PARALLEL_MIN_JOBS {
+        return jobs
+            .iter()
+            .map(|job| prepare_job(asset, inputs, job))
+            .collect();
+    }
+    std::thread::scope(|scope| {
+        let handles: Vec<_> = jobs
+            .chunks(jobs.len().div_ceil(threads))
+            .map(|chunk| {
+                scope.spawn(move || {
+                    chunk
+                        .iter()
+                        .map(|job| prepare_job(asset, inputs, job))
+                        .collect::<Vec<_>>()
+                })
+            })
+            .collect();
+        handles
+            .into_iter()
+            .flat_map(|handle| match handle.join() {
+                Ok(done) => done,
+                Err(panic) => std::panic::resume_unwind(panic),
+            })
+            .collect()
+    })
+}
+
+#[cfg(target_arch = "wasm32")]
+fn prepare_jobs(
+    asset: &SceneAsset,
+    inputs: &crate::SceneryInputs,
+    jobs: &[PrepareJob<'_>],
+) -> Vec<Prepared> {
+    jobs.iter()
+        .map(|job| prepare_job(asset, inputs, job))
+        .collect()
+}
+
 /// Emit the merged models in order; a patch emits only the locations it replaces.
 fn emit_prepared(
     asset: &SceneAsset,

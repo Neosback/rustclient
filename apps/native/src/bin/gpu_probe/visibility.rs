@@ -195,7 +195,7 @@ pub fn shader_contract(path: &Path) -> Result<()> {
             terrain_triangles: 2,
             ..SceneStats::default()
         },
-        textures: std::collections::BTreeMap::default(),
+        textures: std::sync::Arc::default(),
         roofs: std::sync::Arc::default(),
     };
     let target = CameraTarget {

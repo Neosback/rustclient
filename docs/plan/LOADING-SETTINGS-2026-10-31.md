@@ -75,10 +75,42 @@ every live-behaviour line below is NOT-RUN.
 - No release-profile load timing was taken for the retained-scene change; the earlier measurements
   (`SCENERY-PATCH-2026-10-30.md`, `UPDATE-OPTIMIZATION-2026-10-30.md`) still describe load cost.
 
+## Load latency (stage 1b)
+
+What changed, all on the worker side of a window load:
+
+- `Cache` keeps a `Memo` (`crates/cache/src/memo.rs`): the decoded texture set, floor set and kit
+  set once per open cache, and decoded models (bounded at 4096; reaching it drops the set).
+  Entries carry the SHA-256 of the source bytes they came from and `load_world` composes those into
+  the window's content hash, so a warm load reproduces the cold hash. The hash composition itself
+  changed (per-entry digests instead of one stream of file bytes), so `SceneAssetId` values differ
+  from earlier builds; nothing persists or pins them (checked: only in-memory identity).
+- `WorldAssets.textures` and `WorldMesh.textures` are `Arc<BTreeMap<..>>`: the cache's set, every
+  scene asset and every mesh share one copy instead of deep-cloning it per load and per mesh.
+- `locations::build` selects locations serially (stats and error order unchanged), then prepares
+  the models on up to 8 scoped threads (not on wasm32) and folds the results back in location
+  order. The seam merge and emit remain serial.
+
+Measured (`scene_probe --performance`, release, 104x104 at 3168,3168, M-series Mac, one run each,
+`RUSTCLIENT_PROBE_NEIGHBOUR=1` for the warm figure):
+
+| Step | Before | After |
+|---|---|---|
+| cold `load_world` | 218 ms | 210-213 ms (first load still decodes everything) |
+| neighbouring window on the warm cache | not measured (everything re-decoded) | 17-18 ms |
+| `build_mesh` | ~140 ms | ~100-115 ms |
+| static location phases | | prepare 18 ms, seam merge 34 ms, emit 29 ms, terrain 13 ms |
+
+The probe asserts that reloading the first window warm gives the same `content_hash`.
+Not done: map-square decode cache, sharing `effective_locations`/`decorations::plan` between the
+static and dynamic passes (both are ~1 ms), chunked vertex packing, moving `build_scene_minimap` off
+the UI thread, cancellation checks between phases, prefetching, parallel seam merge/emit (the
+largest remaining serial cost, ~63 ms).
+
 ## Open, in order
 
-1. Load latency (SPEC-0023 stage 1b): share decoded models/textures/sprites across loads, cache
-   map-square decodes, parallelise the per-location prepare loop, `Arc` the texture set.
+1. Load latency leftovers: parallel seam merge/emit, chunked vertex packing, minimap off the UI
+   thread, cancellation between phases.
 2. Settings: find the varp a real click changes and why script 3840 takes its empty branch;
    `Mes`/MES_TYPED 3100/3102, CC_INPUT_*, DEVICEOPTION_GETRANGE 3217, STRINGVECTOR.
 3. `interface_audit` over every cache group (mount, 20 cycles, sprites/fonts/atlas area, prompts

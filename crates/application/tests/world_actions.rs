@@ -33,7 +33,7 @@ fn asset() -> SceneAsset {
             texture_colors: BTreeMap::new(),
             map_scenes: Vec::new(),
             map_dots: Vec::new(),
-            textures: BTreeMap::new(),
+            textures: std::sync::Arc::default(),
             sequences: BTreeMap::new(),
             frames: BTreeMap::new(),
             skeletons: BTreeMap::new(),

@@ -23,16 +23,20 @@ pub mod widgets;
 pub mod world_map;
 mod world_maps;
 use crate::{
-    Cache, CacheProfile, FileId, GroupId, IndexId, Source,
+    Cache, CacheError, CacheProfile, FileId, GroupId, IndexId, Source,
     error::Result,
-    world::{FloorMaterial, KitDefinition, ObjectDefinition, StaticModel, WorldAssets},
+    memo::{FloorSet, KitSet, ModelEntry},
+    world::{FloorMaterial, ObjectDefinition, StaticModel, WorldAssets},
 };
 use rustclient_model::{
     FloorOverlayId, FloorUnderlayId, KitId, ModelId, ObjectDefinitionId, SequenceId, WorldTile,
 };
 use rustclient_platform::ReadOnlyBlobs;
 use sha2::{Digest, Sha256};
-use std::collections::{BTreeMap, BTreeSet};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    sync::Arc,
+};
 impl CacheProfile {
     /// Profile actor initialization; NPC definitions independently supply their own turn rate.
     #[must_use]
@@ -67,7 +71,7 @@ impl CacheProfile {
         self,
         cache: &Cache<S>,
     ) -> Result<BTreeMap<FloorOverlayId, FloorMaterial>> {
-        load_floors(cache, &mut Sha256::new()).map(|(_, overlays)| overlays)
+        load_floors(cache).map(|floors| floors.overlays)
     }
 
     /// Extend an immutable region's resource closure for server-created locations.
@@ -177,18 +181,31 @@ impl CacheProfile {
         let (squares, needed, auxiliary_map_files) =
             world_maps::load(cache, origin, (end_x, end_y), &mut digest, &mut progress)?;
         progress("floor definitions");
-        let (underlays, overlays) = load_floors(cache, &mut digest)?;
+        let floors = cache.memo().floors.get_or_load(|| load_floors(cache))?;
+        digest.update(floors.digest);
+        let (underlays, overlays) = (floors.underlays.clone(), floors.overlays.clone());
         let mut warnings = Vec::new();
         progress("object definitions");
         let (objects, mut model_ids) =
             load_objects(cache, self, &needed, &mut digest, &mut warnings)?;
         progress("identity kit definitions");
-        let (kits, kit_model_ids) = load_kits(cache, &mut digest);
-        model_ids.extend(kit_model_ids);
+        let kit_set = cache
+            .memo()
+            .kits
+            .get_or_load(|| Ok::<_, CacheError>(load_kits(cache)))?;
+        digest.update(kit_set.digest);
+        let kits = kit_set.kits.clone();
+        model_ids.extend(kit_set.models.iter().copied());
         progress("location models");
         let models = load_models(cache, model_ids, &mut digest)?;
         progress("texture sprites");
-        let (texture_colors, textures) = dependencies::textures(cache, &mut digest)?;
+        let texture_set = cache
+            .memo()
+            .textures
+            .get_or_load(|| dependencies::textures(cache))?;
+        digest.update(texture_set.digest);
+        let texture_colors = texture_set.colors.clone();
+        let textures = Arc::clone(&texture_set.textures);
         let map_scenes = cache.named_sprites("mapscene")?;
         let map_dots = cache.named_sprites("mapdots")?;
         progress("sequence and frame dependencies");
@@ -227,11 +244,10 @@ impl CacheProfile {
     }
 }
 
-type Kits = (BTreeMap<KitId, KitDefinition>, BTreeSet<ModelId>);
-
-fn load_kits<S: ReadOnlyBlobs>(cache: &Cache<S>, digest: &mut Sha256) -> Kits {
+fn load_kits<S: ReadOnlyBlobs>(cache: &Cache<S>) -> KitSet {
+    let mut digest = Sha256::new();
     let mut kits = BTreeMap::new();
-    let mut model_ids = BTreeSet::new();
+    let mut models = BTreeSet::new();
     if let Ok(files) = cache.group_files(IndexId(2), GroupId(3)) {
         for (id, bytes) in files {
             let source = Source {
@@ -239,29 +255,28 @@ fn load_kits<S: ReadOnlyBlobs>(cache: &Cache<S>, digest: &mut Sha256) -> Kits {
                 group: Some(GroupId(3)),
                 file: Some(id),
             };
-            hash_file(digest, source, &bytes);
+            hash_file(&mut digest, source, &bytes);
             if let Ok(kit) = definitions::kit(&bytes, KitId::new(id.0), source) {
-                for model in &kit.models {
-                    model_ids.insert(*model);
-                }
+                models.extend(kit.models.iter().copied());
                 kits.insert(kit.id, kit);
             }
         }
     }
-    (kits, model_ids)
+    KitSet {
+        kits,
+        models,
+        digest: digest.finalize().into(),
+    }
 }
 
-type Floors = (
-    BTreeMap<FloorUnderlayId, FloorMaterial>,
-    BTreeMap<FloorOverlayId, FloorMaterial>,
-);
-fn load_floors<S: ReadOnlyBlobs>(cache: &Cache<S>, digest: &mut Sha256) -> Result<Floors> {
+fn load_floors<S: ReadOnlyBlobs>(cache: &Cache<S>) -> Result<FloorSet> {
+    let mut digest = Sha256::new();
     let mut underlays = BTreeMap::new();
     let mut overlays = BTreeMap::new();
     for (group, overlay) in [(1, false), (4, true)] {
         for (id, bytes) in cache.group_files(IndexId(2), GroupId(group))? {
             hash_file(
-                digest,
+                &mut digest,
                 Source {
                     index: IndexId(2),
                     group: Some(GroupId(group)),
@@ -285,7 +300,11 @@ fn load_floors<S: ReadOnlyBlobs>(cache: &Cache<S>, digest: &mut Sha256) -> Resul
             }
         }
     }
-    Ok((underlays, overlays))
+    Ok(FloorSet {
+        underlays,
+        overlays,
+        digest: digest.finalize().into(),
+    })
 }
 type Objects = (
     BTreeMap<ObjectDefinitionId, ObjectDefinition>,
@@ -344,21 +363,30 @@ fn load_models<S: ReadOnlyBlobs>(
 ) -> Result<BTreeMap<ModelId, StaticModel>> {
     let mut models = BTreeMap::new();
     for id in model_ids {
-        let group = GroupId(id.get());
-        let source = Source {
-            index: IndexId(7),
-            group: Some(group),
-            file: Some(FileId(0)),
-        };
-        let files = cache.group_files(IndexId(7), group)?;
-        let bytes = files
-            .iter()
-            .find(|(f, _)| f.0 == 0)
-            .ok_or_else(|| source.error("model lookup", "missing model file"))?;
-        hash_file(digest, source, &bytes.1);
-        models.insert(id, models::decode(&bytes.1, source)?);
+        let entry = cache.memo().model(id, || load_model(cache, id))?;
+        digest.update(entry.digest);
+        models.insert(id, entry.model.clone());
     }
     Ok(models)
+}
+fn load_model<S: ReadOnlyBlobs>(cache: &Cache<S>, id: ModelId) -> Result<ModelEntry> {
+    let group = GroupId(id.get());
+    let source = Source {
+        index: IndexId(7),
+        group: Some(group),
+        file: Some(FileId(0)),
+    };
+    let files = cache.group_files(IndexId(7), group)?;
+    let bytes = files
+        .iter()
+        .find(|(f, _)| f.0 == 0)
+        .ok_or_else(|| source.error("model lookup", "missing model file"))?;
+    let mut digest = Sha256::new();
+    hash_file(&mut digest, source, &bytes.1);
+    Ok(ModelEntry {
+        model: models::decode(&bytes.1, source)?,
+        digest: digest.finalize().into(),
+    })
 }
 fn hash_file(digest: &mut Sha256, source: Source, bytes: &[u8]) {
     digest.update([source.index.0]);

@@ -4,6 +4,7 @@
 mod assets;
 mod container;
 mod error;
+mod memo;
 mod profile;
 mod reader;
 mod sprite;

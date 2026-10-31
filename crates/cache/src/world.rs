@@ -320,7 +320,8 @@ pub struct WorldAssets {
     pub map_scenes: Vec<crate::Sprite>,
     /// Frames of the `mapdots` sprite group: item, NPC, player, friend, team and so on.
     pub map_dots: Vec<crate::Sprite>,
-    pub textures: BTreeMap<TextureId, TextureAsset>,
+    /// Shared with the cache's decoded set and every mesh built from these assets.
+    pub textures: std::sync::Arc<BTreeMap<TextureId, TextureAsset>>,
     pub sequences: BTreeMap<SequenceId, SequenceAsset>,
     pub frames: BTreeMap<u32, LegacyFrame>,
     pub skeletons: BTreeMap<u16, Skeleton>,

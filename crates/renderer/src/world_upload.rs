@@ -70,7 +70,7 @@ mod tests {
             dynamic: rustclient_scene::SceneGeometry::default(),
             focus: [1., 2., 3.],
             stats: rustclient_scene::SceneStats::default(),
-            textures: std::collections::BTreeMap::new(),
+            textures: std::sync::Arc::default(),
             roofs: std::sync::Arc::default(),
         };
         let prepared = PreparedWorldMesh::new(mesh).unwrap();

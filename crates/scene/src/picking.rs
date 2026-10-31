@@ -153,7 +153,6 @@ mod tests {
     use super::*;
     use crate::{DrawTile, RoofVolumes, SceneGeometry, SceneStats, SceneVertex};
     use rustclient_model::{SceneAssetId, WorldTile};
-    use std::collections::BTreeMap;
     use std::sync::Arc;
 
     pub(super) fn mesh(tag: u16) -> WorldMesh {
@@ -188,7 +187,7 @@ mod tests {
                 terrain_triangles: 1,
                 ..SceneStats::default()
             },
-            textures: BTreeMap::new(),
+            textures: Arc::default(),
             roofs: Arc::new(RoofVolumes::default()),
         }
     }

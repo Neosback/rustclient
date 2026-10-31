@@ -99,7 +99,9 @@ pub struct WorldMesh {
     pub dynamic: SceneGeometry,
     pub focus: [f32; 3],
     pub stats: SceneStats,
-    pub textures: std::collections::BTreeMap<TextureId, rustclient_cache::world::TextureAsset>,
+    pub textures: std::sync::Arc<
+        std::collections::BTreeMap<TextureId, rustclient_cache::world::TextureAsset>,
+    >,
     /// The roof regions this mesh's vertices are tagged with; the line-of-sight cut and the
     /// per-roof hiding must read the same regions.
     pub roofs: std::sync::Arc<crate::RoofVolumes>,
@@ -238,7 +240,7 @@ pub fn build_mesh_with_inputs(
             (spawn.y - origin.y) as f32 + 0.5,
         ],
         stats: SceneStats::default(),
-        textures: asset.assets.textures.clone(),
+        textures: std::sync::Arc::clone(&asset.assets.textures),
         roofs: asset.roofs_with(&inputs.roof_areas),
     };
     super::terrain::build(asset, &mut mesh, inputs)?;
@@ -305,7 +307,7 @@ fn empty_mesh(
         dynamic: SceneGeometry::default(),
         focus,
         stats: SceneStats::default(),
-        textures: std::collections::BTreeMap::default(),
+        textures: std::sync::Arc::default(),
         roofs,
     }
 }

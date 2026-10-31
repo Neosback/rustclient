@@ -13,6 +13,7 @@ pub struct Cache<S> {
     source: S,
     config_warnings: std::sync::RwLock<BTreeMap<u32, Vec<String>>>,
     config_files: std::sync::RwLock<BTreeMap<u32, BTreeMap<FileId, Vec<u8>>>>,
+    memo: crate::memo::Memo,
     data: StorageKey,
     data_len: u64,
     tables: BTreeMap<IndexId, ReferenceTable>,
@@ -47,6 +48,7 @@ impl<S: ReadOnlyBlobs> Cache<S> {
             source,
             config_warnings: std::sync::RwLock::default(),
             config_files: std::sync::RwLock::default(),
+            memo: crate::memo::Memo::default(),
             data,
             data_len,
             tables: BTreeMap::new(),
@@ -94,6 +96,10 @@ impl<S: ReadOnlyBlobs> Cache<S> {
     #[must_use]
     pub const fn tables(&self) -> &BTreeMap<IndexId, ReferenceTable> {
         &self.tables
+    }
+
+    pub(crate) const fn memo(&self) -> &crate::memo::Memo {
+        &self.memo
     }
 
     pub(crate) fn config_group_with<R>(

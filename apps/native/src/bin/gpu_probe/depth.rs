@@ -111,7 +111,7 @@ pub fn capture(path: &Path) -> Result<()> {
         dynamic: SceneGeometry::default(),
         focus: [4., 0., 4.],
         stats: SceneStats::default(),
-        textures: std::collections::BTreeMap::default(),
+        textures: std::sync::Arc::default(),
         roofs: std::sync::Arc::default(),
     };
     let conventional = render(&mesh, camera)?;

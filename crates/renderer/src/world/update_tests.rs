@@ -12,7 +12,7 @@ fn scenery_replacement_retains_actors_until_the_scene_asset_changes() {
         dynamic: SceneGeometry::default(),
         focus: [0.; 3],
         stats: SceneStats::default(),
-        textures: std::collections::BTreeMap::new(),
+        textures: std::sync::Arc::default(),
         roofs: std::sync::Arc::default(),
     };
     let mut world = WorldGpu::new(
