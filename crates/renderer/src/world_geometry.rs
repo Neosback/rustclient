@@ -57,7 +57,10 @@ struct GeometryData {
     model_sources: Vec<u32>,
     /// Sorted baseline location indices currently hidden by a scenery patch.
     hidden: Vec<u32>,
+    /// Source-to-packed vertex indices; only needed while `metadata` builds the draw order, so
+    /// it is released afterwards and `immutable` remembers that the geometry was packed.
     vertex_remap: Vec<u32>,
+    immutable: bool,
     expanded_vertex_bytes: u64,
     last_sort: Option<ModelView>,
     ordering_runs: u64,
@@ -86,7 +89,7 @@ impl GeometryGpu {
         queue: &wgpu::Queue,
         geometry: &SceneGeometry,
     ) -> Result<(), RenderError> {
-        if !self.data.vertex_remap.is_empty() {
+        if self.data.immutable {
             return Err(RenderError::World(
                 "immutable packed geometry cannot receive dynamic updates",
             ));

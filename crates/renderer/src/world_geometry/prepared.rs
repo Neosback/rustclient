@@ -25,6 +25,8 @@ impl PreparedGeometry {
             ..GeometryData::default()
         };
         data.metadata(geometry)?;
+        data.immutable = !data.vertex_remap.is_empty();
+        data.vertex_remap = Vec::new();
         Ok(Self { packed, data })
     }
     fn buffers<'a>(&'a self, geometry: &'a SceneGeometry) -> [&'a [u8]; 3] {
@@ -106,6 +108,27 @@ impl PreparedGeometry {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn packed_geometry_stays_immutable_without_keeping_the_remap() {
+        let vertex = SceneVertex {
+            position: [1, 2, 3, 0],
+            abhsl: 0x1234,
+            texture_uv: [1, 2, 3, 4],
+            draw_tile: rustclient_scene::DrawTile::default(),
+        };
+        let geometry = SceneGeometry {
+            vertices: vec![vertex; 60],
+            opaque: (0..30).collect(),
+            transparent: (30..60).rev().collect(),
+            ..SceneGeometry::default()
+        };
+        let packed = PreparedGeometry::new(&geometry, true).unwrap();
+        assert!(packed.packed.is_some(), "the fixture must pack");
+        assert!(packed.data.immutable);
+        assert_eq!(packed.data.vertex_remap.capacity(), 0);
+        let plain = PreparedGeometry::new(&geometry, false).unwrap();
+        assert!(!plain.data.immutable);
+    }
     #[test]
     #[ignore = "manual GPU buffer-lifetime diagnostic, no pixel assertions"]
     fn prepared_replacements_reuse_sufficient_buffers() {
