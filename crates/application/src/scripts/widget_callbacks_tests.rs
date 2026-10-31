@@ -397,29 +397,7 @@ fn operation_listener_failure_reports_diagnostics_but_preserves_source_permissio
 #[test]
 fn listener_index_retains_order_and_ignores_visual_changes_but_tracks_child_replacement() {
     let (mut scripts, mut state, id) = setup();
-    for (script, digit) in [(90050, 1), (90051, 2)] {
-        program(
-            &mut scripts,
-            script,
-            &[
-                (Opcode::GetVarcInt, 700),
-                (Opcode::Iconst, 10),
-                (Opcode::Multiply, 0),
-                (Opcode::Iconst, digit),
-                (Opcode::Add, 0),
-                (Opcode::SetVarcInt, 700),
-                (Opcode::Return, 0),
-            ],
-        );
-    }
-    state
-        .apply_operation(SemanticOperation::Interface(
-            InterfaceUpdate::ClientVariable {
-                id: 700,
-                value: ScriptValue::Int(0),
-            },
-        ))
-        .unwrap();
+    install_index_callbacks(&mut scripts, &mut state);
     let mut runtime = WidgetRuntime::default();
     runtime
         .listeners
@@ -485,7 +463,7 @@ fn listener_index_retains_order_and_ignores_visual_changes_but_tracks_child_repl
     assert!(scripts.drain(&mut state).is_empty());
     assert_eq!(
         state.interfaces().client_variables().get(&700),
-        Some(&ScriptValue::Int(111112))
+        Some(&ScriptValue::Int(111_112))
     );
     state
         .apply_operation(SemanticOperation::Interface(InterfaceUpdate::DeleteChild(
@@ -496,7 +474,7 @@ fn listener_index_retains_order_and_ignores_visual_changes_but_tracks_child_repl
     assert!(scripts.drain(&mut state).is_empty());
     assert_eq!(
         state.interfaces().client_variables().get(&700),
-        Some(&ScriptValue::Int(1111121))
+        Some(&ScriptValue::Int(1_111_121))
     );
     state
         .apply_operation(SemanticOperation::Interface(InterfaceUpdate::CreateChild {
@@ -515,6 +493,35 @@ fn listener_index_retains_order_and_ignores_visual_changes_but_tracks_child_repl
     assert!(scripts.drain(&mut state).is_empty());
     assert_eq!(
         state.interfaces().client_variables().get(&700),
-        Some(&ScriptValue::Int(11111211))
+        Some(&ScriptValue::Int(11_111_211))
     );
+}
+
+fn install_index_callbacks(
+    scripts: &mut ClientScripts<rustclient_platform::MemoryBlobs>,
+    state: &mut GameState,
+) {
+    for (script, digit) in [(90050, 1), (90051, 2)] {
+        program(
+            scripts,
+            script,
+            &[
+                (Opcode::GetVarcInt, 700),
+                (Opcode::Iconst, 10),
+                (Opcode::Multiply, 0),
+                (Opcode::Iconst, digit),
+                (Opcode::Add, 0),
+                (Opcode::SetVarcInt, 700),
+                (Opcode::Return, 0),
+            ],
+        );
+    }
+    state
+        .apply_operation(SemanticOperation::Interface(
+            InterfaceUpdate::ClientVariable {
+                id: 700,
+                value: ScriptValue::Int(0),
+            },
+        ))
+        .unwrap();
 }

@@ -5,6 +5,25 @@
 supplied-resource files. Coverage and hashes do not measure semantic completion. The owning plan is
 [BUILTIN-PLUGINS](../../plan/BUILTIN-PLUGINS.md); the source baseline remains unchanged.
 
+## Presentation diagnostics — 2026-10-31
+
+Native caps now advance against absolute deadlines, retaining phase after ordinary
+wake lateness and skipping missed periods without bursts. Policy changes,
+suspension and occlusion reset pacing. Effective GPU/FPS policy and platform FIFO
+behavior remain unchanged. This does not change actor simulation timing or quality.
+
+Opt-in instrumentation records CPU stage wall times separately from asynchronous
+GPU command intervals. A three-slot timestamp ring uses nonblocking polls; unsupported
+timing remains unavailable. Raw trace overflow or missing completion invalidates a
+scored run. Surface acquisition, submit and present-call spans are separate;
+application presents are **not measured scanout cadence**. Trace metadata freezes
+physical viewport, scale, refresh, backend/features and effective settings.
+
+The [canonical update checkpoint](../UPDATE-OPTIMIZATION-2026-10-30.md) owns exact
+commands, raw samples and unmet gates. Timings, successful compilation and settings
+inventories do not close the classic GPU parity or live stress gates. No shader
+correction, software-renderer boundary or external plugin ABI changes here.
+
 ## Changes and source differences
 
 The game UI now rasterizes to an encoded-RGB logical canvas. Its GPU compositor implements nearest,

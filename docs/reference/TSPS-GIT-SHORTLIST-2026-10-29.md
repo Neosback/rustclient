@@ -5,6 +5,37 @@ decision is made here. This narrows the [snapshot review](TSPS-241-REVIEW-2026-1
 using the actual [client history](https://github.com/RSPSApp/tsps/commits/main/client).
 The [existing roadmap](../plan/PORTING-ROADMAP.md) still orders implementation.
 
+## Current reconciliation — 2026-10-31
+
+This section supersedes the **current-gap recommendations** in the original ranked
+table below; the October 29 source/history findings remain historical evidence.
+OC_FIND 4210–4212, IF1 decoding/CS1, bounded CPU admission, owned pose reuse,
+retained widget painting and the shared RuneLite shell are now present in Rust.
+They are not candidates for another wholesale port. Complete feature parity and
+live acceptance remain separate from those implemented subsets.
+
+| Priority | Remaining slice / impact | Existing owner and prerequisite | Transferable TSPS idea / exclusions |
+| --- | --- | --- | --- |
+| 1 | Actor preparation and upload tails; high frame-time value | `scene::entity_mesh`, native `entities`, renderer instance/geometry resources; profile supported 256 actors and 1,024 separately | Pose identity, owned scratch and coherent latest publication. Keep stock pose/priority/alpha rules; no speculative skinning. |
+| 2 | Slot/widget granularity and asset arrival; high recurring CPU value | GameState projection journal → application widget layout/paint dependencies → retained UI; listener index now avoids repeated discovery | Explicit dirty dependencies and bounded image residency. Do not skip timers or infer semantic events from visual changes. |
+| 3 | Complete ground-item and combat effects; high correctness value, larger dependency chain | Authoritative stacks/effect lifetimes → selected packet/cache adapters → menus/picking → scene/overlays | Use TSPS as scenarios and decoding cross-checks; stock 240 priorities, delays, reset/index reuse and validated actions remain authoritative. Existing declarations/decoded fields are not completed effects. |
+| 4 | World-map hover, element menus, exact alignment and smooth target/zoom/flash lifecycle; medium correctness value | Existing `scripts::worldmap`, `scene::world_map`, native map adapter; click dispatch and worker pixel retention implemented in this pass | Retain explicit view/asset dependencies and coalesce jobs. Exclude TSPS packet 105, release-click policy and differing coordinate byte order. Separate staff modifier shortcut remains unavailable. |
+| 5 | Remaining menu/action and CS2 host behavior; high correctness, slice by source case | Application script/menu owners and selected outbound adapter; prove stack behavior plus actual effects | Cache/script sweeps and close/reopen failure cases. Do not neutral-stub unknown operations or call dispatch counts parity. |
+| 6 | Audio scheduling/mixing and complete source effects; lower direct frame-time value | Existing audio/platform adapters; finish semantic triggers, priorities and native/browser output acceptance | Bounded work and cancellation patterns only after source checks; no foreign playback timing rules. |
+
+The map worker now composes viewport/overview pixels away from the event loop,
+shares immutable assets, reuses one spare output pair, retains valid pixels and
+publishes only a matching session/view/resource request. Unchanged images have
+nonzero revisions. The title similarly retains geometry and flame content revisions.
+Frame pacing now uses absolute deadlines. These are implementation changes, **not
+measured FPS or memory wins** until the matching run evidence says so. See the
+[canonical update audit](UPDATE-OPTIMIZATION-2026-10-30.md) for current gate results.
+
+Supporting snapshot inputs are frozen separately from the previously reviewed Git
+history (including 842fd5d); neither is promoted to runtime revision 241 authority.
+No reference tree or TSPS snapshot was modified. Decoration offsets/depth and
+previously documented shader corrections retain their existing dispositions.
+
 ## Recommendation
 
 Use TSPS primarily for **small, separable algorithms, lifecycle failure cases and
@@ -41,7 +72,7 @@ The supplied TSPS folder remains an unversioned snapshot; the previous report's
 now supplies introduction/follow-up evidence separately. New live Git fixes are
 not assumed to exist in the local copy.
 
-## Ranked shortlist
+## Original ranked shortlist (2026-10-29; current status superseded above)
 
 Size describes the proposed Rust slice, not a time estimate. Existing coverage
 comes from working-tree inspection, including concurrent uncommitted work.

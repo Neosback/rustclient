@@ -588,9 +588,6 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
         });
         Ok(())
     }
-    /// Schedule a committed variable/container notification. Trigger filtering follows cache listeners.
-    /// # Errors
-    /// Propagates bounded queue or malformed listener failures.
     /// Run a bounded event batch. Failures stop that invocation and are returned explicitly.
     pub fn drain(&mut self, state: &mut GameState) -> Vec<String> {
         let mut errors = Vec::new();

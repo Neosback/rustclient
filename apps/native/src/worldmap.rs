@@ -41,6 +41,19 @@ pub(super) struct MapBatch {
     pub fonts: BTreeMap<WorldMapLabelSize, Arc<BitmapFont>>,
 }
 impl MapView {
+    fn select_raster_scale(&mut self, map: u32, ppt: u8) {
+        if self.map != Some(map) || self.ppt != ppt {
+            self.cancellation.cancel();
+            self.cancellation = rustclient_platform::JobCancellation::default();
+            self.pending = false;
+            Arc::make_mut(&mut self.regions).clear();
+            self.resource_revision = self.resource_revision.wrapping_add(1);
+            self.failed.clear();
+            self.map = Some(map);
+            self.ppt = ppt;
+        }
+    }
+
     fn clear_missing_area(&mut self) {
         if self.map.is_some() || !self.regions.is_empty() || self.pending {
             self.cancellation.cancel();
@@ -85,16 +98,7 @@ impl MapView {
         self.settled = None;
         let zoom = pixels_per_tile(state.zoom);
         let ppt = zoom.ceil().clamp(1., 8.) as u8;
-        if self.map != Some(map) || self.ppt != ppt {
-            self.cancellation.cancel();
-            self.cancellation = rustclient_platform::JobCancellation::default();
-            self.pending = false;
-            Arc::make_mut(&mut self.regions).clear();
-            self.resource_revision = self.resource_revision.wrapping_add(1);
-            self.failed.clear();
-            self.map = Some(map);
-            self.ppt = ppt;
-        }
+        self.select_raster_scale(map, ppt);
         if self.pending {
             return;
         }

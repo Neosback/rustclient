@@ -77,7 +77,7 @@ client-to-server	74	OPLOC1_V2	encoded-subset	2	classIK.method6263:108|client.met
 client-to-server	75	OPOBJ5_V2	missing-encoder	3	classHU.method6158:220|client.method1970:17294|client.method1971:28767
 client-to-server	76	MEMBERSHIP_PROMOTION_ELIGIBILITY	missing-encoder	0	-
 client-to-server	77	OPLOC5_V2	encoded-subset	2	classIK.method6263:236|client.method1973:28866
-client-to-server	78	CLICKWORLDMAP	missing-encoder	2	RenderOverview.method12463:2620|RenderOverview.method12464:3760
+client-to-server	78	CLICKWORLDMAP	encoded-subset	2	RenderOverview.method12463:2620|RenderOverview.method12464:3760
 client-to-server	79	CLIENT_CHEAT	encoded-subset	3	VarbitComposition.method9259:348|client.method1723:11863|client.method1724:17687
 client-to-server	80	IF_BUTTONT	missing-encoder	4	classQP.method9746:348|client.method1966:27020|client.method1967:27606|client.method1968:28192
 client-to-server	81	IGNORELIST_ADD	missing-encoder	4	classBW.method1316:346|classBW.method1317:472|classBW.method1318:1061|classBW.method1319:1140
