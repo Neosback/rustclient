@@ -185,6 +185,22 @@ Findings that need other work:
   and child-index errors that depend on the row a live server would pass.
 - Item 2360 (group 426) has no inventory model in the cache.
 
+## Minimap (stage 4, first part)
+
+- **Zoom renders.** `compose_minimap`, `click_destination` and the marker/dot placement take the
+  committed `zoom_quarters` (16 is the stored 4 pixels per tile, 8 to 32 are 2x to 8x), so the
+  zoom scripts (7250-7254) now change what is drawn and where a click lands. The composed key
+  includes the zoom, so a change repaints. `scene_probe CACHE DIR` writes `minimap-*-z8/z16/z32`.
+- **`mapfunction` icons.** Locations whose object names a world map element that the minimap shows
+  (`minimap_visible`, with a sprite) are listed per plane in `MinimapImage::icons` and drawn over
+  the map with the same rotation and scale as dots. `WorldAssets::map_icons` holds only the sprites
+  the loaded objects reference (39 sprites, 43 icons in the Lumbridge window). Icons hide below
+  `icon_zoom_limit` whole steps (`MINIMAP-ICON-ZOOM-LIMIT`).
+- Not done: item, friend, team, friends-chat and clan dots (no ground items or friend list in
+  `GameState`); wheel zoom (the stock client has none; the RuneLite Minimap plugin adds it and
+  needs plugin API additions); rebuilding the image when scenery changes; the RuneLite Minimap
+  plugin and Tile Indicators.
+
 ## Open, in order
 
 1. Load latency leftovers: parallel seam merge/emit, chunked vertex packing, minimap off the UI
@@ -194,7 +210,7 @@ Findings that need other work:
 3. Interface audit: burn down the 33 script-error groups in the order of how many groups each op
    touches; extend the harness with varp/inventory fixtures so state-dependent scripts can run;
    fire each Variable/Operation/Click listener once and assert scroll survives and prompts close.
-4. Minimap: render at the committed zoom, wheel zoom, mapfunction icons, remaining dot frames,
-   rebuild on scenery change; Tile Indicators and the Minimap plugin (plugin API additions needed).
+4. Minimap: remaining dot frames (needs ground items and friend lists in `GameState`), rebuild on
+   scenery change, wheel zoom; Tile Indicators and the Minimap plugin (plugin API additions needed).
 5. Memory and baseline FPS (see the plan: `vertex_remap`, `WorldMesh` retention, per-cycle
    plugin/entity work, release profile).

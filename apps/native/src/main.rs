@@ -1184,6 +1184,12 @@ impl NativeApp {
                         camera_focus_tile.0.to_bits().hash(&mut hasher);
                         camera_focus_tile.1.to_bits().hash(&mut hasher);
                         angle.hash(&mut hasher);
+                        let minimap_settings = self.state.interfaces().minimap();
+                        (
+                            minimap_settings.zoom_quarters,
+                            minimap_settings.icon_zoom_limit,
+                        )
+                            .hash(&mut hasher);
                         (origin.x, origin.y).hash(&mut hasher);
                         self.scene.loaded.is_some().hash(&mut hasher);
                         destination.map(|tile| (tile.x, tile.y)).hash(&mut hasher);
@@ -1207,8 +1213,22 @@ impl NativeApp {
                                 minimap,
                                 camera_focus_tile,
                                 angle,
+                                minimap_settings.zoom_quarters,
                             );
                             if let Some(loaded) = &self.scene.loaded {
+                                rustclient_scene::minimap::draw_icons(
+                                    &mut self.minimap_pixels,
+                                    &mask.pixels,
+                                    [mask.size[0] as usize, mask.size[1] as usize],
+                                    &loaded.asset.sources().map_icons,
+                                    &minimap.icons,
+                                    rustclient_scene::minimap::MinimapView {
+                                        camera: camera_focus_tile,
+                                        angle,
+                                        zoom_quarters: minimap_settings.zoom_quarters,
+                                    },
+                                    minimap_settings.icon_zoom_limit,
+                                );
                                 let relative = (
                                     camera_focus_tile.0 - f64::from(origin.x),
                                     camera_focus_tile.1 - f64::from(origin.y),
@@ -1219,8 +1239,11 @@ impl NativeApp {
                                     [mask.size[0] as usize, mask.size[1] as usize],
                                     &loaded.asset.sources().map_dots,
                                     &dots,
-                                    relative,
-                                    angle,
+                                    rustclient_scene::minimap::MinimapView {
+                                        camera: relative,
+                                        angle,
+                                        zoom_quarters: minimap_settings.zoom_quarters,
+                                    },
                                 );
                             }
                             if let (Some(destination), Some(sprite)) =
@@ -1235,8 +1258,11 @@ impl NativeApp {
                                         f64::from(destination.x) + 0.5,
                                         f64::from(destination.y) + 0.5,
                                     ),
-                                    camera_focus_tile,
-                                    angle,
+                                    rustclient_scene::minimap::MinimapView {
+                                        camera: camera_focus_tile,
+                                        angle,
+                                        zoom_quarters: minimap_settings.zoom_quarters,
+                                    },
                                 );
                             }
                             if local_visible {

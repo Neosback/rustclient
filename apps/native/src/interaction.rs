@@ -63,9 +63,12 @@ impl NativeApp {
                 let offset = [dx as i32, dy as i32];
                 let position = player.path_queue.fine_position(player.tile);
                 let fine = [position.x + 64, position.y + 64];
-                let Some(target) =
-                    rustclient_scene::minimap::click_destination(offset, fine, camera.yaw())
-                else {
+                let Some(target) = rustclient_scene::minimap::click_destination(
+                    offset,
+                    fine,
+                    camera.yaw(),
+                    self.state.interfaces().minimap().zoom_quarters,
+                ) else {
                     return Ok(false);
                 };
                 let origin = scene.origin();

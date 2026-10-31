@@ -366,22 +366,44 @@ fn write_minimap_captures(
 ) -> Result<(), Box<dyn std::error::Error>> {
     use rustclient_scene::minimap::{build_scene_minimap, compose_compass, compose_minimap};
     let minimap = build_scene_minimap(scene, Plane::MIN);
+    println!(
+        "minimap: {}x{} px, {} icons ({} icon sprites loaded)",
+        minimap.width,
+        minimap.height,
+        minimap.icons.len(),
+        scene.sources().map_icons.len()
+    );
     let compass = cache.sprite(169)?.ok_or("compass sprite 169")?;
     let focus = (3221.5, 3218.5);
     for (name, mask_id, compass_mask_id) in [("fixed", 1183, 1184), ("resizable", 1178, 1179)] {
         let mask = cache.sprite(mask_id)?.ok_or("minimap mask")?;
         let compass_mask = cache.sprite(compass_mask_id)?.ok_or("compass mask")?;
-        for angle in [0_u16, 512, 1024] {
-            let pixels = compose_minimap(
+        for (angle, zoom) in [(0_u16, 16), (512, 16), (1024, 16), (0, 8), (0, 32)] {
+            let size = [mask.image.width() as usize, mask.image.height() as usize];
+            let mut pixels = compose_minimap(
                 mask.image.pixels(),
-                mask.image.width() as usize,
-                mask.image.height() as usize,
+                size[0],
+                size[1],
                 &minimap,
                 focus,
                 angle,
+                zoom,
+            );
+            rustclient_scene::minimap::draw_icons(
+                &mut pixels,
+                mask.image.pixels(),
+                size,
+                &scene.sources().map_icons,
+                &minimap.icons,
+                rustclient_scene::minimap::MinimapView {
+                    camera: focus,
+                    angle,
+                    zoom_quarters: zoom,
+                },
+                0,
             );
             image::save_buffer(
-                directory.join(format!("minimap-{name}-{angle}.png")),
+                directory.join(format!("minimap-{name}-{angle}-z{zoom}.png")),
                 &pixels,
                 mask.image.width(),
                 mask.image.height(),

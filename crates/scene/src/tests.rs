@@ -42,6 +42,7 @@ fn assets() -> WorldAssets {
         texture_colors: BTreeMap::new(),
         map_scenes: Vec::new(),
         map_dots: Vec::new(),
+        map_icons: BTreeMap::new(),
         textures: std::sync::Arc::default(),
         sequences: BTreeMap::new(),
         frames: BTreeMap::new(),
@@ -559,6 +560,69 @@ fn minimap_map_scene_sprites_replace_the_object_and_honour_the_canvas_offset() {
     assert_eq!(minimap_pixel(&image, 2, 6), [255, 0, 0, 255]);
     assert_ne!(minimap_pixel(&image, 0, 4), [255, 0, 0, 255]);
     assert_ne!(minimap_pixel(&image, 3, 7), [255, 0, 0, 255]);
+}
+#[test]
+fn minimap_icons_sit_on_their_location_and_hide_below_the_zoom_limit() {
+    use rustclient_cache::{Image, Source, Sprite};
+    let mut assets = assets();
+    let mut object = definition();
+    object.map_icon = Some(7);
+    object.size = [2, 2];
+    assets.objects.insert(ObjectDefinitionId::new(1), object);
+    assets.squares[0].locations.push(StaticLocation {
+        object: ObjectDefinitionId::new(1),
+        tile: WorldTile::new(0, 0, Plane::MIN),
+        shape: 10,
+        orientation: LocOrientation::new(0).unwrap(),
+    });
+    let icon = Sprite {
+        id: rustclient_model::SpriteId::new(0),
+        frame: 0,
+        canvas: [1, 1],
+        offset: [0, 0],
+        image: Image::new(
+            1,
+            1,
+            vec![0, 255, 0, 255],
+            Source::group(rustclient_cache::IndexId(8), rustclient_cache::GroupId(0)),
+        )
+        .unwrap(),
+    };
+    // An element the scene has no sprite for is not listed.
+    assets.map_icons.insert(8, icon.clone());
+    let none = minimap::build_scene_minimap(&scene(assets.clone()), Plane::MIN);
+    assert!(none.icons.is_empty());
+    assets.map_icons.insert(7, icon);
+    let image = minimap::build_scene_minimap(&scene(assets.clone()), Plane::MIN);
+    assert_eq!(image.icons.len(), 1);
+    let origin = image.origin;
+    assert_eq!(
+        image.icons[0].tile,
+        (f64::from(origin.x) + 1., f64::from(origin.y) + 1.),
+        "centre of a 2x2 location"
+    );
+    let mask = vec![0_u8; 33 * 33 * 4];
+    let view = |zoom_quarters| minimap::MinimapView {
+        camera: (image.icons[0].tile.0, image.icons[0].tile.1 - 4.),
+        angle: 0,
+        zoom_quarters,
+    };
+    let drawn = |zoom_quarters, limit| {
+        let mut out = vec![0_u8; 33 * 33 * 4];
+        minimap::draw_icons(
+            &mut out,
+            &mask,
+            [33, 33],
+            &assets.map_icons,
+            &image.icons,
+            view(zoom_quarters),
+            limit,
+        );
+        out.chunks_exact(4).any(|pixel| pixel[3] != 0)
+    };
+    assert!(drawn(16, 0), "no limit draws the icon");
+    assert!(drawn(16, 4), "the default zoom of 4 meets a limit of 4");
+    assert!(!drawn(12, 4), "zoom 3 is below a limit of 4");
 }
 #[test]
 fn entity_models_stand_on_the_ground_with_their_tops_above_it() {

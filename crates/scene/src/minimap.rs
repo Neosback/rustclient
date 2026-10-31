@@ -13,7 +13,7 @@
 )]
 
 use crate::SceneAsset;
-use rustclient_model::{Plane, WorldTile};
+use rustclient_model::{MINIMAP_ZOOM_QUARTERS_DEFAULT, Plane, WorldTile};
 
 /// Minimap pixels per world tile.
 pub const TILE_PX: usize = 4;
@@ -49,6 +49,15 @@ const TILE_ROTATION_2D: [[u8; 16]; 4] = [
     [3, 7, 11, 15, 2, 6, 10, 14, 1, 5, 9, 13, 0, 4, 8, 12],
 ];
 
+/// A `mapfunction` icon the scene asks the minimap to draw over a location.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct MinimapIcon {
+    /// World map element id, the key of the scene's icon sprites.
+    pub element: u32,
+    /// Centre of the location in absolute world tile units.
+    pub tile: (f64, f64),
+}
+
 /// Generated 2D minimap image for the scene.
 #[derive(Debug, Clone)]
 pub struct MinimapImage {
@@ -56,6 +65,8 @@ pub struct MinimapImage {
     pub height: usize,
     pub origin: WorldTile,
     pub rgba: Vec<u8>,
+    /// Icons of the locations on this plane, drawn over the composed map.
+    pub icons: Vec<MinimapIcon>,
 }
 
 impl MinimapImage {
@@ -85,6 +96,7 @@ pub fn build_scene_minimap(asset: &SceneAsset, plane: Plane) -> MinimapImage {
         height: img_h,
         origin,
         rgba: vec![0; img_w * img_h * 4],
+        icons: Vec::new(),
     };
 
     // 1. Terrain: each tile of this plane unless a bridge or roof flag hides it, then the tiles
@@ -122,6 +134,23 @@ pub fn build_scene_minimap(asset: &SceneAsset, plane: Plane) -> MinimapImage {
             let Some(definition) = resolved_object(asset, loc.object) else {
                 continue;
             };
+            if loc.tile.plane == plane
+                && let Some(element) = definition.map_icon
+                && asset.sources().map_icons.contains_key(&element)
+            {
+                let [size_x, size_y] = if loc.orientation.get() & 1 == 1 {
+                    [definition.size[1], definition.size[0]]
+                } else {
+                    definition.size
+                };
+                minimap.icons.push(MinimapIcon {
+                    element,
+                    tile: (
+                        f64::from(loc.tile.x) + f64::from(size_x) / 2.,
+                        f64::from(loc.tile.y) + f64::from(size_y) / 2.,
+                    ),
+                });
+            }
             let px = tx as usize * TILE_PX;
             let py = (height_tiles - 1 - ty as usize) * TILE_PX;
             let color = if definition.int1 != 0 {
@@ -350,13 +379,18 @@ pub fn click_destination(
     offset: [i32; 2],
     fine: [i64; 2],
     yaw: u16,
+    zoom_quarters: i32,
 ) -> Option<rustclient_model::MapDestination> {
     let radians = f64::from(yaw & 2047) * std::f64::consts::TAU / 2048.;
     let sin = (radians.sin() * 65536.) as i64;
     let cos = (radians.cos() * 65536.) as i64;
     let [dx, dy] = offset.map(i64::from);
-    let x = fine[0].checked_add((cos * dx + sin * dy) >> 11)?;
-    let y = fine[1].checked_sub((cos * dy - sin * dx) >> 11)?;
+    // A click covers fewer tiles per pixel the further the map is zoomed in.
+    let scale = |value: i64| {
+        value * i64::from(MINIMAP_ZOOM_QUARTERS_DEFAULT) / i64::from(zoom_quarters.max(1))
+    };
+    let x = fine[0].checked_add(scale(cos * dx + sin * dy) >> 11)?;
+    let y = fine[1].checked_sub(scale(cos * dy - sin * dx) >> 11)?;
     Some(rustclient_model::MapDestination {
         x: i32::try_from(x >> 7).ok()?,
         y: i32::try_from(y >> 7).ok()?,
@@ -379,7 +413,8 @@ fn rotation_16_16(angle: u16) -> (i64, i64) {
 /// Mirrors the reference `SpritePixels.drawRotatedMaskedCenteredAround`: destination pixel
 /// `(i, j)` sits at `(i - w/2, j - h/2)` from the mask centre and samples the scene sprite at
 /// the integer focus pixel plus that offset rotated by the camera yaw. Transparent mask pixels
-/// are the visible span. Returns `mask_width * mask_height * 4` RGBA bytes.
+/// are the visible span. `zoom_quarters` is the tile scale in quarter-steps: 16 shows the stored
+/// 4 pixels per tile one to one, 32 doubles it. Returns `mask_width * mask_height * 4` RGBA bytes.
 #[must_use]
 pub fn compose_minimap(
     mask_rgba: &[u8],
@@ -388,6 +423,7 @@ pub fn compose_minimap(
     minimap: &MinimapImage,
     camera: (f64, f64),
     angle: u16,
+    zoom_quarters: i32,
 ) -> Vec<u8> {
     let mut out = vec![0_u8; mask_width * mask_height * 4];
     if mask_rgba.len() != out.len() || minimap.width == 0 || minimap.height == 0 {
@@ -398,6 +434,11 @@ pub fn compose_minimap(
         - 1
         - ((camera.1 - f64::from(minimap.origin.y)) * TILE_PX as f64).floor() as i32;
     let (sin, cos) = rotation_16_16(angle);
+    // Zooming in samples fewer source pixels per screen pixel.
+    let (sin, cos) = (
+        sin * i64::from(MINIMAP_ZOOM_QUARTERS_DEFAULT) / i64::from(zoom_quarters.max(1)),
+        cos * i64::from(MINIMAP_ZOOM_QUARTERS_DEFAULT) / i64::from(zoom_quarters.max(1)),
+    );
     let (half_w, half_h) = ((mask_width / 2) as i32, (mask_height / 2) as i32);
     for y in 0..mask_height {
         let dy = y as i32 - half_h;
@@ -446,8 +487,7 @@ pub fn draw_dots(
     mask_size: [usize; 2],
     sprites: &[rustclient_cache::Sprite],
     dots: &[MinimapDot],
-    camera: (f64, f64),
-    angle: u16,
+    view: MinimapView,
 ) {
     let [mask_width, mask_height] = mask_size;
     if out.len() != mask_width * mask_height * 4 || mask_rgba.len() != out.len() {
@@ -455,7 +495,7 @@ pub fn draw_dots(
     }
     for dot in dots {
         if let Some(sprite) = sprites.get(dot.frame) {
-            draw_marker(out, mask_rgba, mask_size, sprite, dot.tile, camera, angle);
+            draw_marker(out, mask_rgba, mask_size, sprite, dot.tile, view);
         }
     }
 }
@@ -467,9 +507,13 @@ pub fn draw_marker(
     mask_size: [usize; 2],
     sprite: &rustclient_cache::Sprite,
     tile: (f64, f64),
-    camera: (f64, f64),
-    angle: u16,
+    view: MinimapView,
 ) {
+    let MinimapView {
+        camera,
+        angle,
+        zoom_quarters,
+    } = view;
     let [mask_width, mask_height] = mask_size;
     if out.len() != mask_width * mask_height * 4 || mask_rgba.len() != out.len() {
         return;
@@ -479,8 +523,13 @@ pub fn draw_marker(
         (radians.sin() * 65536.) as i64,
         (radians.cos() * 65536.) as i64,
     );
-    let offset_x = (tile.0 * 4.).floor() as i64 - (camera.0 * 4.).floor() as i64;
-    let offset_y = (camera.1 * 4.).floor() as i64 - (tile.1 * 4.).floor() as i64;
+    // Offsets are measured in stored minimap pixels, then scaled to the zoomed screen.
+    let zoom = i64::from(zoom_quarters.max(1));
+    let default_zoom = i64::from(MINIMAP_ZOOM_QUARTERS_DEFAULT);
+    let offset_x =
+        ((tile.0 * 4.).floor() as i64 - (camera.0 * 4.).floor() as i64) * zoom / default_zoom;
+    let offset_y =
+        ((camera.1 * 4.).floor() as i64 - (tile.1 * 4.).floor() as i64) * zoom / default_zoom;
     if offset_x.unsigned_abs() > 80
         || offset_y.unsigned_abs() > 80
         || offset_x * offset_x + offset_y * offset_y > 6400
@@ -510,6 +559,37 @@ pub fn draw_marker(
             }
         }
     }
+}
+
+/// Draw the scene's `mapfunction` icons over a composed minimap.
+///
+/// `sprites` maps element ids to their icon. Icons follow the same rotation and zoom as dots and
+/// are skipped below `icon_zoom_limit` whole zoom steps.
+pub fn draw_icons(
+    out: &mut [u8],
+    mask_rgba: &[u8],
+    mask_size: [usize; 2],
+    sprites: &std::collections::BTreeMap<u32, rustclient_cache::Sprite>,
+    icons: &[MinimapIcon],
+    view: MinimapView,
+    icon_zoom_limit: i32,
+) {
+    if view.zoom_quarters / 4 < icon_zoom_limit {
+        return;
+    }
+    for icon in icons {
+        if let Some(sprite) = sprites.get(&icon.element) {
+            draw_marker(out, mask_rgba, mask_size, sprite, icon.tile, view);
+        }
+    }
+}
+
+/// Where the minimap is looking: the camera focus tile, yaw and tile scale.
+#[derive(Debug, Clone, Copy)]
+pub struct MinimapView {
+    pub camera: (f64, f64),
+    pub angle: u16,
+    pub zoom_quarters: i32,
 }
 
 /// The reference local-player marker is a three-pixel white square at the integer mask centre.
@@ -617,14 +697,31 @@ mod tests {
             height: 64,
             origin: WorldTile::new(0, 0, Plane::MIN),
             rgba: vec![0; 64 * 64 * 4],
+            icons: Vec::new(),
         };
         // One lit tile directly north of the focus (tile 8, 12).
         for sub in 0..16 {
             image.set_pixel(32 + sub % 4, 64 - 1 - 48 - sub / 4, 0x00FF_0000);
         }
-        let out = compose_minimap(&opaque_mask(33, 33), 33, 33, &image, (8.5, 8.5), quarter);
+        let out = compose_minimap(
+            &opaque_mask(33, 33),
+            33,
+            33,
+            &image,
+            (8.5, 8.5),
+            quarter,
+            MINIMAP_ZOOM_QUARTERS_DEFAULT,
+        );
         let (x, y) = marker_position(&out, 33).expect("rotated north tile");
         assert!(x > 16 && y.abs_diff(16) <= 2, "north tile at ({x}, {y})");
+    }
+
+    fn view(angle: u16, zoom_quarters: i32) -> MinimapView {
+        MinimapView {
+            camera: (8.5, 8.5),
+            angle,
+            zoom_quarters,
+        }
     }
 
     fn dot_sprite() -> rustclient_cache::Sprite {
@@ -659,8 +756,7 @@ mod tests {
                 [33, 33],
                 &[dot_sprite()],
                 &dots,
-                (8.5, 8.5),
-                angle,
+                view(angle, MINIMAP_ZOOM_QUARTERS_DEFAULT),
             );
             marker_position(&out, 33).expect("dot drawn")
         };
@@ -686,8 +782,7 @@ mod tests {
             [33, 33],
             &[dot_sprite()],
             &dots,
-            (8.5, 8.5),
-            0,
+            view(0, MINIMAP_ZOOM_QUARTERS_DEFAULT),
         );
         assert!(out.iter().all(|byte| *byte == 0));
     }
@@ -700,10 +795,71 @@ mod tests {
             height: 16,
             origin: WorldTile::new(0, 0, Plane::MIN),
             rgba: vec![255; 16 * 16 * 4],
+            icons: Vec::new(),
         };
-        let out = compose_minimap(&mask, 145, 151, &image, (2., 2.), 0);
+        let out = compose_minimap(&mask, 145, 151, &image, (2., 2.), 0, 16);
         assert_eq!(out.len(), 145 * 151 * 4);
-        let wrong_size = compose_minimap(&mask[..mask.len() - 4], 145, 151, &image, (2., 2.), 0);
+        let wrong_size =
+            compose_minimap(&mask[..mask.len() - 4], 145, 151, &image, (2., 2.), 0, 16);
         assert!(wrong_size.iter().all(|b| *b == 0));
+    }
+
+    #[test]
+    fn zoom_changes_the_scale_of_composition_clicks_and_markers() {
+        let mut image = MinimapImage {
+            width: 64,
+            height: 64,
+            origin: WorldTile::new(0, 0, Plane::MIN),
+            rgba: vec![0; 64 * 64 * 4],
+            icons: Vec::new(),
+        };
+        // One lit tile (4x4 pixels) two tiles east of the focus tile (8, 8).
+        for sub in 0..16 {
+            image.set_pixel(40 + sub % 4, 64 - 1 - 32 - sub / 4, 0x00FF_0000);
+        }
+        let mask = opaque_mask(65, 65);
+        let lit_columns = |zoom| {
+            let out = compose_minimap(&mask, 65, 65, &image, (8.5, 8.5), 0, zoom);
+            let columns: Vec<usize> = out
+                .chunks_exact(4)
+                .enumerate()
+                .filter(|(_, p)| p[3] != 0)
+                .map(|(i, _)| i % 65)
+                .collect();
+            (columns.iter().min().copied(), columns.iter().max().copied())
+        };
+        let (near_start, near_end) = lit_columns(32);
+        let (far_start, far_end) = lit_columns(8);
+        let width = |a: Option<usize>, b: Option<usize>| b.unwrap() - a.unwrap() + 1;
+        assert_eq!(width(far_start, far_end), 2, "a tile is 2 pixels at 2x");
+        assert_eq!(width(near_start, near_end), 8, "a tile is 8 pixels at 8x");
+
+        // Sixteen pixels east is four tiles at the default scale and two tiles at 2x.
+        let fine = [8 * 128, 8 * 128];
+        let east = |zoom| click_destination([16, 0], fine, 0, zoom).unwrap().x;
+        assert_eq!(east(16), 12);
+        assert_eq!(east(32), 10);
+        assert_eq!(east(8), 16);
+
+        // Markers keep their sprite size and move with the scale: four tiles north is 16 pixels at 4x.
+        let place = |zoom| {
+            let mut out = vec![0_u8; 33 * 33 * 4];
+            draw_marker(
+                &mut out,
+                &opaque_mask(33, 33),
+                [33, 33],
+                &dot_sprite(),
+                (8.5, 12.5),
+                view(0, zoom),
+            );
+            marker_position(&out, 33)
+        };
+        assert_eq!(place(16), Some((16, 0)));
+        assert_eq!(place(8), Some((16, 8)));
+        assert_eq!(
+            place(32),
+            None,
+            "eight tiles out is beyond the visible radius"
+        );
     }
 }

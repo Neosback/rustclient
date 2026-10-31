@@ -208,6 +208,7 @@ impl CacheProfile {
         let textures = Arc::clone(&texture_set.textures);
         let map_scenes = cache.named_sprites("mapscene")?;
         let map_dots = cache.named_sprites("mapdots")?;
+        let map_icons = self.load_map_icons(cache, &objects, &mut warnings)?;
         progress("sequence and frame dependencies");
         let mut wanted: BTreeSet<SequenceId> =
             objects.values().filter_map(|d| d.animation).collect();
@@ -230,6 +231,7 @@ impl CacheProfile {
             texture_colors,
             map_scenes,
             map_dots,
+            map_icons,
             textures,
             sequences,
             frames,
@@ -310,6 +312,34 @@ type Objects = (
     BTreeMap<ObjectDefinitionId, ObjectDefinition>,
     BTreeSet<ModelId>,
 );
+impl CacheProfile {
+    /// Icon sprites for the minimap, for every world map element a loaded object points at that
+    /// the minimap shows. Elements without a sprite are skipped.
+    fn load_map_icons<S: ReadOnlyBlobs>(
+        self,
+        cache: &Cache<S>,
+        objects: &BTreeMap<ObjectDefinitionId, ObjectDefinition>,
+        warnings: &mut Vec<String>,
+    ) -> Result<BTreeMap<u32, crate::Sprite>> {
+        let wanted: BTreeSet<u32> = objects.values().filter_map(|d| d.map_icon).collect();
+        let mut icons = BTreeMap::new();
+        if wanted.is_empty() {
+            return Ok(icons);
+        }
+        for (id, element) in self.load_world_map_elements(cache, warnings)? {
+            if !wanted.contains(&id) || !element.minimap_visible {
+                continue;
+            }
+            if let Some(sprite) = element.sprite
+                && let Some(sprite) = cache.sprite(sprite)?
+            {
+                icons.insert(id, sprite);
+            }
+        }
+        Ok(icons)
+    }
+}
+
 fn load_objects<S: ReadOnlyBlobs>(
     cache: &Cache<S>,
     profile: CacheProfile,
