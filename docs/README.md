@@ -115,6 +115,7 @@ Current machine-readable data: [domain matrix](reference/rs240-port/PORT-MATRIX.
 - [plan/GAMEFRAME-240.md](plan/GAMEFRAME-240.md)
 - [plan/GRAPHICS-FEATURE-MENU.md](plan/GRAPHICS-FEATURE-MENU.md)
 - [plan/IF1-BUTTONS-240-2026-10-29.md](plan/IF1-BUTTONS-240-2026-10-29.md)
+- [plan/LOADING-SETTINGS-2026-10-31.md](plan/LOADING-SETTINGS-2026-10-31.md)
 - [plan/NPC-ANIMATION-240.md](plan/NPC-ANIMATION-240.md)
 - [plan/OPENRUNE-login.md](plan/OPENRUNE-login.md)
 - [plan/PLAYABLE-desktop.md](plan/PLAYABLE-desktop.md)
