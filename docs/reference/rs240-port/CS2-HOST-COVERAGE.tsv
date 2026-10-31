@@ -406,9 +406,9 @@ opcode	adapter_name	runelite_name	evidence_status	host_status	live_uses	scanned_
 3101	Anim	ANIM	adapter	named-unhandled		classBB.method852,classBB.method853,classBB.method855,classKU.method6609
 3102			unknown	unnamed-cache-used	2	
 3103	IfClose	IF_CLOSE	adapter	host-dispatched		classBB.method853,classBB.method854,classBB.method855,classKU.method6609
-3104	ResumeCountdialog	RESUME_COUNTDIALOG	adapter	named-unhandled		classBB.method853,classBB.method854,classBB.method855,classKU.method6609
-3105	ResumeNamedialog	RESUME_NAMEDIALOG	adapter	named-unhandled		classBB.method853,classBB.method854,classBB.method855,classKU.method6609
-3106	ResumeStringdialog	RESUME_STRINGDIALOG	adapter	named-unhandled		classBB.method853,classBB.method855,classKU.method6609
+3104	ResumeCountdialog	RESUME_COUNTDIALOG	adapter	host-dispatched		classBB.method853,classBB.method854,classBB.method855,classKU.method6609
+3105	ResumeNamedialog	RESUME_NAMEDIALOG	adapter	host-dispatched		classBB.method853,classBB.method854,classBB.method855,classKU.method6609
+3106	ResumeStringdialog	RESUME_STRINGDIALOG	adapter	host-dispatched		classBB.method853,classBB.method855,classKU.method6609
 3107	Opplayer	OPPLAYER	adapter	named-unhandled		classBB.method853,classBB.method854,classBB.method855,classKU.method6609
 3108	IfDragpickup	IF_DRAGPICKUP	adapter	named-unhandled		classBB.method852,classBB.method853,classKU.method6609
 3109	CcDragpickup	CC_DRAGPICKUP	adapter	named-unhandled		classBB.method852,classBB.method853,classBB.method854,classKU.method6609
@@ -417,7 +417,7 @@ opcode	adapter_name	runelite_name	evidence_status	host_status	live_uses	scanned_
 3112	Setremoveroofs	SETREMOVEROOFS	adapter	named-unhandled		classBB.method853,classKU.method6609
 3113	Openurl	OPENURL	adapter	named-unhandled		classBB.method853,classBB.method855,classKU.method6609
 3114			handler-only	unnamed-unused		classBB.method853,classBB.method854,classKU.method6609
-3115	ResumeObjdialog	RESUME_OBJDIALOG	adapter	named-unhandled		classBB.method852,classBB.method853,classBB.method854,classKU.method6609
+3115	ResumeObjdialog	RESUME_OBJDIALOG	adapter	host-dispatched		classBB.method852,classBB.method853,classBB.method854,classKU.method6609
 3116	BugReport	BUG_REPORT	adapter	named-unhandled		classBB.method853,classBB.method854,classKU.method6609
 3117	Setshiftclickdrop	SETSHIFTCLICKDROP	adapter	host-dispatched		classBB.method853,classBB.method855,classKU.method6609
 3118	Setshowmouseovertext	SETSHOWMOUSEOVERTEXT	adapter	host-dispatched		classBB.method852,classBB.method853,classBB.method854,classBB.method855,classKU.method6609

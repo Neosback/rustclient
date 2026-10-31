@@ -2,7 +2,7 @@ direction	opcode	name	length	declaration	status	owner	remaining
 client-to-server	0	EVENT_MOUSE_CLICK_V1	6	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
 client-to-server	1	IF_BUTTONX	9	selected-rsprot	encoded-subset	crates/protocol/src/openrune_240/game.rs	Validate full source UI/intent/response path; encoder reachability is not acceptance.
 client-to-server	2	OPWORLDENTITY4	3	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
-client-to-server	3	RESUME_P_OBJDIALOG	2	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	3	RESUME_P_OBJDIALOG	2	selected-rsprot	encoded-subset	crates/protocol/src/openrune_240/resume.rs	Sent by CS2 ops 3104/3105/3106/3115 (classKU); live prompt acceptance open.
 client-to-server	4	OPPLAYER6	3	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
 client-to-server	5	-	3	deob-only	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
 client-to-server	6	-	7	deob-only	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
@@ -53,7 +53,7 @@ client-to-server	50	OPPLAYER7	3	selected-rsprot	missing-encoder	crates/protocol/
 client-to-server	51	FRIENDCHAT_KICK	-1	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
 client-to-server	52	OPPLAYER5	3	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
 client-to-server	53	-	7	deob-only	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
-client-to-server	54	RESUME_P_STRINGDIALOG	-1	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	54	RESUME_P_STRINGDIALOG	-1	selected-rsprot	encoded-subset	crates/protocol/src/openrune_240/resume.rs	Sent by CS2 ops 3104/3105/3106/3115 (classKU); live prompt acceptance open.
 client-to-server	55	EVENT_CAMERA_POSITION	4	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
 client-to-server	56	MESSAGE_PUBLIC	-1	selected-rsprot	encoded-subset	crates/protocol/src/openrune_240/game.rs	Validate full source UI/intent/response path; encoder reachability is not acceptance.
 client-to-server	57	OPPLAYER1	3	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
@@ -61,7 +61,7 @@ client-to-server	58	IF_SCRIPT_TRIGGER	-2	selected-rsprot	missing-encoder	crates/
 client-to-server	59	OPNPC1_V2	4	selected-rsprot	encoded-subset	crates/protocol/src/openrune_240/game.rs	Validate full source UI/intent/response path; encoder reachability is not acceptance.
 client-to-server	60	AFFINEDCLANSETTINGS_SETMUTED_FROMCHANNEL	-1	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
 client-to-server	61	MOVE_MINIMAPCLICK	-1	selected-rsprot	encoded-subset	crates/protocol/src/openrune_240/game.rs	Validate full source UI/intent/response path; encoder reachability is not acceptance.
-client-to-server	62	RESUME_P_COUNTDIALOG	4	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	62	RESUME_P_COUNTDIALOG	4	selected-rsprot	encoded-subset	crates/protocol/src/openrune_240/resume.rs	Sent by CS2 ops 3104/3105/3106/3115 (classKU); live prompt acceptance open.
 client-to-server	63	OPNPCT	11	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
 client-to-server	64	OPPLAYER4	3	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
 client-to-server	65	OPOBJ4_V2	8	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
@@ -69,7 +69,7 @@ client-to-server	66	FRIENDCHAT_SETRANK	-1	selected-rsprot	missing-encoder	crates
 client-to-server	67	FRIENDLIST_ADD	-1	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
 client-to-server	68	OPLOCT	15	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
 client-to-server	69	OPLOC4_V2	8	selected-rsprot	encoded-subset	crates/protocol/src/openrune_240/game.rs	Validate full source UI/intent/response path; encoder reachability is not acceptance.
-client-to-server	70	RESUME_P_NAMEDIALOG	-1	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	70	RESUME_P_NAMEDIALOG	-1	selected-rsprot	encoded-subset	crates/protocol/src/openrune_240/resume.rs	Sent by CS2 ops 3104/3105/3106/3115 (classKU); live prompt acceptance open.
 client-to-server	71	EXIT_FREECAM	0	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
 client-to-server	72	-	7	deob-only	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
 client-to-server	73	OPNPC5_V2	4	selected-rsprot	encoded-subset	crates/protocol/src/openrune_240/game.rs	Validate full source UI/intent/response path; encoder reachability is not acceptance.
@@ -110,7 +110,7 @@ client-to-server	107	OPNPCU	11	selected-rsprot	missing-encoder	crates/protocol/s
 client-to-server	108	MESSAGE_PRIVATE	-2	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
 client-to-server	109	SET_HEADING	1	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
 client-to-server	110	HISCORE_REQUEST	-1	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
-client-to-server	111	RESUME_P_COUNTDIALOG_LONG	8	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
+client-to-server	111	RESUME_P_COUNTDIALOG_LONG	8	selected-rsprot	encoded-subset	crates/protocol/src/openrune_240/resume.rs	Encoder only: CS2 op 3114 has no cache script use and no named opcode yet; live acceptance open.
 client-to-server	112	OPOBJ1_V2	8	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
 client-to-server	113	OPOBJ2_V2	8	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.
 client-to-server	114	EVENT_MOUSE_MOVE	-1	selected-rsprot	missing-encoder	crates/protocol/src/openrune_240/game.rs	Triage current stock sender/selected decoder, lifecycle and Rust intent owner.

@@ -21,6 +21,7 @@ mod player_extended;
     reason = "the rev-240 GPI decoder intentionally mirrors the deob's ordered bitstream state machine"
 )]
 pub(crate) mod player_info;
+pub(crate) mod resume;
 mod scripts;
 mod speech;
 pub(crate) mod zone;

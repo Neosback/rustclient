@@ -267,6 +267,8 @@ pub enum ClientIntent {
     CloseModal,
     /// Chat typed in the main chatbox. `command` carries text after `::`.
     Chat(ChatIntent),
+    /// A script prompt's answer (`RESUME_P_*`).
+    Resume(super::resume::ResumeIntent),
     NpcAction {
         index: rustclient_model::NpcIndex,
         slot: rustclient_model::ActionSlot,
@@ -283,6 +285,10 @@ impl ClientIntent {
     /// Encode only after validating all fields, before advancing the cipher.
     /// # Errors
     /// Rejects destinations outside this profile's coordinate range.
+    #[expect(
+        clippy::too_many_lines,
+        reason = "one arm per outbound packet keeps each wire layout beside its opcode"
+    )]
     pub fn encode(self, cipher: &mut Isaac) -> Result<Vec<u8>> {
         let (opcode, payload) = match self {
             Self::KeepAlive => (99, vec![]),
@@ -291,6 +297,7 @@ impl ClientIntent {
                 (32, super::control::ping_reply(first, second, fps))
             }
             Self::CloseModal => (98, vec![]),
+            Self::Resume(resume) => resume.encode()?,
             Self::Chat(chat) => {
                 // MESSAGE_PUBLIC and CLIENT_CHEAT are both VAR_BYTE.
                 let (opcode, body) = match chat {

@@ -455,6 +455,17 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
             .push(rustclient_protocol::ClientIntent::Chat(chat));
         Ok(())
     }
+    /// Queue a prompt answer (`RESUME_P_*`) for the server.
+    /// # Errors
+    /// Rejects an exhausted effect budget.
+    pub(crate) fn queue_resume(&mut self, resume: rustclient_protocol::ResumeIntent) -> Result<()> {
+        if self.effects.len() >= 32 {
+            return Err("script effect limit".into());
+        }
+        self.effects
+            .push(rustclient_protocol::ClientIntent::Resume(resume));
+        Ok(())
+    }
     /// Frame a public chat message with the cache's Huffman table, loading it on first use.
     /// # Errors
     /// Fails when the cache has no table or the text cannot be coded.

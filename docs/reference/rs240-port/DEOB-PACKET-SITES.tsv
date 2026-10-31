@@ -2,7 +2,7 @@ direction	opcode	name	rust_status	deob_sites	anchors
 client-to-server	0	EVENT_MOUSE_CLICK_V1	missing-encoder	0	-
 client-to-server	1	IF_BUTTONX	encoded-subset	5	classEA.method3815:192|client.method1988:11934|client.method1989:29772|client.method1990:32783|client.method1991:35018
 client-to-server	2	OPWORLDENTITY4	missing-encoder	4	classQP.method9746:444|client.method1966:27088|client.method1967:27674|client.method1968:28260
-client-to-server	3	RESUME_P_OBJDIALOG	missing-encoder	5	classBB.method852:5714|classBB.method853:6092|classBB.method854:6470|classBB.method855:6848|classKU.method6609:364
+client-to-server	3	RESUME_P_OBJDIALOG	encoded-subset	5	classBB.method852:5714|classBB.method853:6092|classBB.method854:6470|classBB.method855:6848|classKU.method6609:364
 client-to-server	4	OPPLAYER6	missing-encoder	6	classLN.method7171:183|classQP.method9746:728|client.method1966:27230|client.method1967:27816|client.method1968:28402|client.method1976:29031
 client-to-server	5	-	missing-encoder	0	-
 client-to-server	6	-	missing-encoder	0	-
@@ -53,7 +53,7 @@ client-to-server	50	OPPLAYER7	missing-encoder	6	classLN.method7171:188|classQP.m
 client-to-server	51	FRIENDCHAT_KICK	missing-encoder	3	classCV.method2683:124|client.method2072:26522|client.method2073:48966
 client-to-server	52	OPPLAYER5	missing-encoder	4	classQP.method9746:692|client.method1966:27214|client.method1967:27800|client.method1968:28386
 client-to-server	53	-	missing-encoder	0	-
-client-to-server	54	RESUME_P_STRINGDIALOG	missing-encoder	6	classBB.method852:5656|classBB.method853:6034|classBB.method854:6412|classBB.method855:6790|classBW.method1320:1587|classKU.method6609:235
+client-to-server	54	RESUME_P_STRINGDIALOG	encoded-subset	6	classBB.method852:5656|classBB.method853:6034|classBB.method854:6412|classBB.method855:6790|classBW.method1320:1587|classKU.method6609:235
 client-to-server	55	EVENT_CAMERA_POSITION	missing-encoder	2	client.method2172:3625|client.method2173:43077
 client-to-server	56	MESSAGE_PUBLIC	encoded-subset	2	classCX.method2697:102|classZM.method14115:64
 client-to-server	57	OPPLAYER1	missing-encoder	6	classLN.method7171:165|classQP.method9746:862|client.method1966:27308|client.method1967:27894|client.method1968:28480|client.method1976:29021
@@ -61,7 +61,7 @@ client-to-server	58	IF_SCRIPT_TRIGGER	missing-encoder	3	classPF.method8893:224|c
 client-to-server	59	OPNPC1_V2	encoded-subset	3	classSW.method10742:70|client.method1974:21720|client.method1975:28915
 client-to-server	60	AFFINEDCLANSETTINGS_SETMUTED_FROMCHANNEL	missing-encoder	2	VarbitComposition.method9260:521|client.method2084:35287
 client-to-server	61	MOVE_MINIMAPCLICK	encoded-subset	4	classXP.method12927:34|client.method1715:11402|client.method1716:11473|client.method1717:43904
-client-to-server	62	RESUME_P_COUNTDIALOG	missing-encoder	5	classBB.method852:5643|classBB.method853:6021|classBB.method854:6399|classBB.method855:6777|classKU.method6609:214
+client-to-server	62	RESUME_P_COUNTDIALOG	encoded-subset	5	classBB.method852:5643|classBB.method853:6021|classBB.method854:6399|classBB.method855:6777|classKU.method6609:214
 client-to-server	63	OPNPCT	missing-encoder	4	classQP.method9746:653|client.method1966:27195|client.method1967:27781|client.method1968:28367
 client-to-server	64	OPPLAYER4	missing-encoder	6	classLN.method7171:174|classQP.method9746:372|client.method1966:27040|client.method1967:27626|client.method1968:28212|client.method1976:29026
 client-to-server	65	OPOBJ4_V2	missing-encoder	3	classHU.method6158:186|client.method1970:17276|client.method1971:28749
@@ -69,7 +69,7 @@ client-to-server	66	FRIENDCHAT_SETRANK	missing-encoder	1	classCR.method2565:355
 client-to-server	67	FRIENDLIST_ADD	missing-encoder	6	classBW.method1305:314|classBW.method1306:845|classBW.method1307:874|classBW.method1308:903|classBW.method1309:932|classBW.method1310:967
 client-to-server	68	OPLOCT	missing-encoder	4	classQP.method9746:988|client.method1966:27370|client.method1967:27956|client.method1968:28542
 client-to-server	69	OPLOC4_V2	encoded-subset	2	classIK.method6263:206|client.method1973:28848
-client-to-server	70	RESUME_P_NAMEDIALOG	missing-encoder	5	classBB.method852:5649|classBB.method853:6027|classBB.method854:6405|classBB.method855:6783|classKU.method6609:224
+client-to-server	70	RESUME_P_NAMEDIALOG	encoded-subset	5	classBB.method852:5649|classBB.method853:6027|classBB.method854:6405|classBB.method855:6783|classKU.method6609:224
 client-to-server	71	EXIT_FREECAM	missing-encoder	4	classZJ.method14096:723|client.method1748:20769|client.method1749:29625|client.method1750:33730
 client-to-server	72	-	missing-encoder	0	-
 client-to-server	73	OPNPC5_V2	encoded-subset	3	classSW.method10742:178|client.method1974:21796|client.method1975:28991
@@ -110,7 +110,7 @@ client-to-server	107	OPNPCU	missing-encoder	5	classQP.method9746:919|client.meth
 client-to-server	108	MESSAGE_PRIVATE	missing-encoder	4	classBB.method878:8801|classBB.method879:9452|classBB.method880:14482|classQO.method9743:443
 client-to-server	109	SET_HEADING	missing-encoder	8	classCF.method1459:365|classQP.method9746:1037|client.method1719:11594|client.method1720:11629|client.method1721:14015|client.method1966:27407|+2 more
 client-to-server	110	HISCORE_REQUEST	missing-encoder	0	-
-client-to-server	111	RESUME_P_COUNTDIALOG_LONG	missing-encoder	5	classBB.method852:5708|classBB.method853:6086|classBB.method854:6464|classBB.method855:6842|classKU.method6609:354
+client-to-server	111	RESUME_P_COUNTDIALOG_LONG	encoded-subset	5	classBB.method852:5708|classBB.method853:6086|classBB.method854:6464|classBB.method855:6842|classKU.method6609:354
 client-to-server	112	OPOBJ1_V2	missing-encoder	3	classHU.method6158:88|client.method1970:17222|client.method1971:28695
 client-to-server	113	OPOBJ2_V2	missing-encoder	3	classHU.method6158:122|client.method1970:17240|client.method1971:28713
 client-to-server	114	EVENT_MOUSE_MOVE	missing-encoder	2	client.method2172:3379|client.method2173:42954

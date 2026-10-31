@@ -429,6 +429,34 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
                 .queue_chat(rustclient_protocol::ChatIntent::Public { chat_type, message })?;
             None
         }
+        // Prompt answers (`classKU` 3104-3106, 3115): the text is read from the script stack and
+        // sent as is; the script itself closes the prompt afterwards.
+        Opcode::ResumeCountdialog => {
+            let text = s.text()?;
+            h.resources
+                .queue_resume(rustclient_protocol::ResumeIntent::count_from_text(&text))?;
+            None
+        }
+        Opcode::ResumeNamedialog => {
+            let text = s.text()?;
+            h.resources
+                .queue_resume(rustclient_protocol::ResumeIntent::Name(text))?;
+            None
+        }
+        Opcode::ResumeStringdialog => {
+            let text = s.text()?;
+            h.resources
+                .queue_resume(rustclient_protocol::ResumeIntent::Text(text))?;
+            None
+        }
+        Opcode::ResumeObjdialog => {
+            let item = s.int()?;
+            // The stock writer keeps the low sixteen bits of the item id.
+            let item = u16::try_from(item & 0xffff).map_err(|_| "item id out of range")?;
+            h.resources
+                .queue_resume(rustclient_protocol::ResumeIntent::Item(item))?;
+            None
+        }
         Opcode::Docheat => {
             let text = s.text()?;
             h.resources
@@ -976,6 +1004,53 @@ mod tests {
             1,
             "a command becomes one outbound chat intent"
         );
+    }
+
+    #[test]
+    fn prompt_answers_queue_one_resume_intent_each() {
+        use rustclient_protocol::{ClientIntent, ResumeIntent};
+        let (mut scripts, mut state) = (scripts(), state());
+        for (op, text, expected) in [
+            (Opcode::ResumeCountdialog, "1234", ResumeIntent::Count(1234)),
+            (Opcode::ResumeCountdialog, "12k", ResumeIntent::Count(0)),
+            (
+                Opcode::ResumeNamedialog,
+                "Zezima",
+                ResumeIntent::Name("Zezima".into()),
+            ),
+            (
+                Opcode::ResumeStringdialog,
+                "hello",
+                ResumeIntent::Text("hello".into()),
+            ),
+        ] {
+            let mut stacks = Stacks::default();
+            stacks.push_object(ScriptValue::Text(text.into()));
+            let mut host = ScriptHost {
+                resources: &mut scripts,
+                state: &mut state,
+            };
+            instruction(&mut host, op, 0, &mut stacks).unwrap();
+            let intents = scripts.take_intents();
+            assert!(matches!(
+                intents.as_slice(),
+                [ClientIntent::Resume(resume)] if *resume == expected
+            ));
+        }
+        assert!(
+            run(
+                &mut scripts,
+                &mut state,
+                Opcode::ResumeObjdialog,
+                &[0x1_0005]
+            )
+            .unwrap()
+            .is_empty()
+        );
+        assert!(matches!(
+            scripts.take_intents().as_slice(),
+            [ClientIntent::Resume(ResumeIntent::Item(5))]
+        ));
     }
 
     #[test]
