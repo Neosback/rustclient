@@ -39,7 +39,7 @@ impl Review {
         }
         let tree = WidgetTree::build(
             state.interfaces(),
-            &scripts.interfaces,
+            scripts.interfaces(),
             WidgetBounds::canvas(state.interfaces()),
         )?;
         if self.phase == 2 {
@@ -47,10 +47,10 @@ impl Review {
             let Some(node) = tree.nodes.iter().find(|node| node.address == address) else {
                 return Ok(());
             };
-            let widget = resolve_widget(state.interfaces(), &scripts.interfaces, address)?;
+            let widget = resolve_widget(state.interfaces(), scripts.interfaces(), address)?;
             let parent_address = rustclient_game_ui::pointer::drag_parent(
                 state.interfaces(),
-                &scripts.interfaces,
+                scripts.interfaces(),
                 address,
             )?
             .ok_or("zoom drag parent absent")?;
@@ -166,7 +166,7 @@ impl Review {
                 .nodes
                 .iter()
                 .find(|node| {
-                    resolve_widget(state.interfaces(), &scripts.interfaces, node.address)
+                    resolve_widget(state.interfaces(), scripts.interfaces(), node.address)
                         .is_ok_and(|w| w.content == rustclient_model::WidgetContent::WorldViewport)
                 })
                 .ok_or("gameframe viewport absent")?;
@@ -211,7 +211,7 @@ impl Review {
                 continue;
             }
             for (label, action) in
-                rustclient_application::widget_actions(state, &scripts.interfaces, node.address)?
+                rustclient_application::widget_actions(state, scripts.interfaces(), node.address)?
             {
                 if !label.contains(needle) {
                     continue;
@@ -290,14 +290,14 @@ fn select_layout(
 ) -> Result<()> {
     let tree = WidgetTree::build(
         state.interfaces(),
-        &scripts.interfaces,
+        scripts.interfaces(),
         WidgetBounds::canvas(state.interfaces()),
     )?;
     for node in tree.nodes.iter().rev() {
         if node.id.interface.get() != 116 || node.clip.width <= 0 || node.clip.height <= 0 {
             continue;
         }
-        let widget = resolve_widget(state.interfaces(), &scripts.interfaces, node.address)?;
+        let widget = resolve_widget(state.interfaces(), scripts.interfaces(), node.address)?;
         let rustclient_model::WidgetBody::Text { text, .. } = &widget.body else {
             continue;
         };
@@ -306,9 +306,9 @@ fn select_layout(
         }
         let mut address = node.address;
         for _ in 0..8 {
-            let widget = resolve_widget(state.interfaces(), &scripts.interfaces, address)?;
+            let widget = resolve_widget(state.interfaces(), scripts.interfaces(), address)?;
             if let Some((_, action)) =
-                rustclient_application::widget_actions(state, &scripts.interfaces, address)?
+                rustclient_application::widget_actions(state, scripts.interfaces(), address)?
                     .into_iter()
                     .next()
             {

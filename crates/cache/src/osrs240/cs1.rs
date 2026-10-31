@@ -5,7 +5,7 @@ const WORD_LIMIT: usize = 65_536;
 const TEXT_LIMIT: usize = 1_048_576;
 pub const PRESENT: i32 = 999_999_999;
 /// Revision-independent facts requested by an authored legacy expression.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Query {
     CurrentLevel(SkillId),
     BaseLevel(SkillId),

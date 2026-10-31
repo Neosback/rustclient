@@ -16,7 +16,7 @@ mod viewport_overlay;
 pub use viewport_overlay::ViewportOverlay;
 
 pub use controller::{TitlePreferences, TitleUi};
-pub use draw::{Quad, Rect, StretchedCanvas, TitleViewport, UiFrame, UiImageId};
+pub use draw::{Quad, Rect, RetainedUi, StretchedCanvas, TitleViewport, UiFrame, UiImageId};
 pub mod stretch;
 pub use flame::Flames;
 pub use text::{draw_text, text_width};

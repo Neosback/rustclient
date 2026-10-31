@@ -511,7 +511,7 @@ impl NativeApp {
     pub(super) fn cancel_gestures(&mut self) {
         self.scene.input = rustclient_renderer::CameraInput::default();
         self.widget_pointer = crate::widget_pointer::WidgetPointer::default();
-        self.world_map_drag = None;
+        self.cancel_map_input();
     }
     /// A press while a menu is open: the menu selects the row under the pointer or closes, and
     /// nothing beneath receives it. Returns whether a menu took the press.
@@ -562,7 +562,7 @@ impl NativeApp {
                 }
                 let Ok(widget) = rustclient_game_ui::widgets::resolve_widget(
                     self.state.interfaces(),
-                    &scripts.interfaces,
+                    scripts.interfaces(),
                     node.address,
                 ) else {
                     continue;
@@ -572,7 +572,7 @@ impl NativeApp {
                 }
                 if let Some((label, _)) = rustclient_application::widget_actions(
                     &self.state,
-                    &scripts.interfaces,
+                    scripts.interfaces(),
                     node.address,
                 )
                 .ok()?

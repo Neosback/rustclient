@@ -15,6 +15,7 @@ use std::collections::BTreeMap;
 pub struct WidgetProjection {
     pub tree: rustclient_game_ui::widgets::WidgetTree,
     pub diagnostics: Vec<String>,
+    pub dependencies: super::WidgetPaintDependencies,
 }
 impl<S: ReadOnlyBlobs> ClientScripts<S> {
     pub(super) fn perform_legacy_button(
@@ -76,14 +77,29 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
         frame: &mut UiFrame,
         dragged: Option<rustclient_game_ui::pointer::DraggedWidget>,
     ) -> Result<WidgetProjection, String> {
+        self.project_widgets_reusing(state, assets, frame, dragged, None)
+    }
+    /// Paint live values while retaining a layout with unchanged interface/catalog/drag inputs.
+    /// # Errors
+    /// Reports the same bounded failures as `project_widgets`.
+    pub fn project_widgets_reusing(
+        &self,
+        state: &GameState,
+        assets: &WidgetVisualAssets,
+        frame: &mut UiFrame,
+        dragged: Option<rustclient_game_ui::pointer::DraggedWidget>,
+        retained: Option<rustclient_game_ui::widgets::WidgetTree>,
+    ) -> Result<WidgetProjection, String> {
         let mut diagnostics = Vec::new();
         let mut budget = 1_000_000_usize;
-        let tree = rustclient_game_ui::widget_visuals::project_widgets_with_presentation(
+        let mut dependencies = self.widget_paint_dependencies(state, dragged);
+        let tree = rustclient_game_ui::widget_visuals::project_widgets_with_retained_tree(
             state,
             &self.interfaces,
             assets,
             frame,
             dragged,
+            retained,
             |address, body| {
                 if address.child.is_none()
                     && let Some(legacy) = self
@@ -97,12 +113,18 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
                         legacy,
                         &mut diagnostics,
                         &mut budget,
+                        &mut dependencies.queries,
                     )?;
                 }
                 Ok(())
             },
         )?;
-        Ok(WidgetProjection { tree, diagnostics })
+        self.finish_widget_paint_dependencies(state, &mut dependencies);
+        Ok(WidgetProjection {
+            tree,
+            diagnostics,
+            dependencies,
+        })
     }
     fn present_legacy(
         &self,
@@ -111,6 +133,7 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
         legacy: &LegacyPresentation,
         diagnostics: &mut Vec<String>,
         budget: &mut usize,
+        queries: &mut BTreeMap<Query, Result<i32, String>>,
     ) -> Result<(), String> {
         let (id, body) = widget;
         let mut values = BTreeMap::new();
@@ -129,7 +152,10 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
                 let result = self
                     .profile
                     .evaluate_cs1(&legacy.expressions, index, |query| {
-                        self.cs1_query(state, query)
+                        queries
+                            .entry(query)
+                            .or_insert_with(|| self.cs1_query(state, query))
+                            .clone()
                     });
                 if let Some(error) = result.error
                     && diagnostics.len() < 256
@@ -160,7 +186,7 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
         }
         Ok(())
     }
-    fn cs1_query(&self, state: &GameState, query: Query) -> Result<i32, String> {
+    pub(super) fn cs1_query(&self, state: &GameState, query: Query) -> Result<i32, String> {
         Ok(match query {
             Query::CurrentLevel(id) | Query::BaseLevel(id) | Query::Experience(id) => {
                 let value = state

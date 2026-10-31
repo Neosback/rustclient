@@ -161,11 +161,37 @@ impl GameState {
     /// Returns [`OperationError`] when the requested operation is invalid for
     /// the current state. Failed operations leave authoritative state unchanged
     /// and therefore produce no [`OperationCommit`].
+    pub fn apply_operation(
+        &mut self,
+        operation: SemanticOperation,
+    ) -> Result<OperationCommit, OperationError> {
+        let widget = match &operation {
+            SemanticOperation::Interface(
+                rustclient_model::InterfaceUpdate::SetProperty {
+                    property: rustclient_model::WidgetProperty::Runtime { address, .. },
+                    ..
+                }
+                | rustclient_model::InterfaceUpdate::DeleteChild(address),
+            ) => Some(*address),
+            SemanticOperation::Interface(rustclient_model::InterfaceUpdate::SetProperty {
+                widget,
+                ..
+            }) => Some(rustclient_model::WidgetAddress {
+                widget: *widget,
+                child: None,
+            }),
+            _ => None,
+        };
+        let commit = self.dispatch_operation(operation)?;
+        self.projection.committed(commit, widget);
+        Ok(commit)
+    }
+
     #[expect(
         clippy::too_many_lines,
         reason = "explicit semantic transition dispatch"
     )]
-    pub fn apply_operation(
+    fn dispatch_operation(
         &mut self,
         operation: SemanticOperation,
     ) -> Result<OperationCommit, OperationError> {
@@ -365,7 +391,7 @@ impl GameState {
         let id = update.id();
         if self
             .inventories
-            .apply(update)
+            .apply(update, &mut self.projection)
             .map_err(OperationError::Inventory)?
         {
             Ok(OperationCommit::new(
@@ -466,6 +492,21 @@ impl GameState {
             .apply_npc_info(update, origin, self.scenery.cycle())
         {
             return Ok(OperationCommit::new(None, StateDelta::default()));
+        }
+        for attributes in &update.attributes {
+            if attributes
+                .changes
+                .iter()
+                .any(|value| matches!(value, rustclient_model::NpcProperty::Overhead(_)))
+                && let Some(npc) = self.entities.npcs().get(&attributes.index)
+            {
+                self.projection.push(crate::ProjectionChange::ActorOverhead(
+                    crate::ActorProjectionKey::Npc {
+                        index: attributes.index,
+                        instance: npc.instance,
+                    },
+                ));
+            }
         }
         Ok(OperationCommit::new(
             Some(SemanticEvent::EntitiesUpdated),

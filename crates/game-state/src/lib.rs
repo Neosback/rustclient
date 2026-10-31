@@ -31,6 +31,8 @@ pub use player_movement::ExactMovement;
 pub use players::TrackedPlayer;
 
 mod commit;
+mod projection;
+pub use projection::{ActorProjectionKey, ProjectionChange, ProjectionChanges, ProjectionCursor};
 mod destination;
 mod fingerprint;
 mod operation;

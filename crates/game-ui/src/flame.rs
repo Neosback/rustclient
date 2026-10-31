@@ -18,6 +18,11 @@ pub struct Flames {
     pixels: Vec<u8>,
 }
 impl Flames {
+    /// Content identity for the current pixels; zero on counter wrap forces upload.
+    #[must_use]
+    pub const fn revision(&self) -> u64 {
+        self.cycle.wrapping_add(1)
+    }
     /// Width of the RGBA upload, including horizontal wave padding.
     pub const WIDTH: u32 = 192;
     /// Height of the RGBA upload.

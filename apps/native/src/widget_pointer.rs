@@ -81,7 +81,7 @@ impl NativeApp {
                 continue;
             }
             let Ok(widget) =
-                resolve_widget(self.state.interfaces(), &scripts.interfaces, node.address)
+                resolve_widget(self.state.interfaces(), scripts.interfaces(), node.address)
             else {
                 continue;
             };
@@ -111,7 +111,7 @@ impl NativeApp {
         let scripts = self.scripts.as_ref()?;
         let parent = rustclient_game_ui::pointer::drag_parent(
             self.state.interfaces(),
-            &scripts.interfaces,
+            scripts.interfaces(),
             address,
         )
         .ok()??;
@@ -189,7 +189,7 @@ impl NativeApp {
             .interfaces()
             .groups()
             .contains(&address.widget.interface)
-            || resolve_widget(self.state.interfaces(), &scripts.interfaces, address).is_err()
+            || resolve_widget(self.state.interfaces(), scripts.interfaces(), address).is_err()
         {
             return;
         }
@@ -271,7 +271,7 @@ impl NativeApp {
                 self.scripts.as_ref().is_some_and(|scripts| {
                     rustclient_application::widget_actions(
                         &self.state,
-                        &scripts.interfaces,
+                        scripts.interfaces(),
                         address,
                     )
                     .is_ok_and(|entries| !entries.is_empty())
@@ -373,7 +373,7 @@ impl NativeApp {
                     return;
                 };
                 let Ok(widget) =
-                    resolve_widget(self.state.interfaces(), &scripts.interfaces, address)
+                    resolve_widget(self.state.interfaces(), scripts.interfaces(), address)
                 else {
                     self.widget_pointer.held = None;
                     return;

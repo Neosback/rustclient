@@ -348,14 +348,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             );
         }
         if std::env::var_os("RUSTCLIENT_COMPONENTS").is_some() {
-            for (id, definition) in &runtime.interfaces {
+            for (id, definition) in runtime.interfaces() {
                 if id.get() != 116 {
                     continue;
                 }
                 for widget in definition.widgets().values() {
                     let Ok(resolved) = rustclient_game_ui::widgets::resolve_widget(
                         state.interfaces(),
-                        &runtime.interfaces,
+                        runtime.interfaces(),
                         rustclient_model::WidgetAddress::component(widget.id),
                     ) else {
                         continue;
@@ -382,7 +382,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let mut frame = rustclient_game_ui::UiFrame::default();
             let tree = rustclient_game_ui::widget_visuals::project_widgets(
                 &state,
-                &runtime.interfaces,
+                runtime.interfaces(),
                 &rustclient_game_ui::widget_visuals::WidgetVisualAssets::default(),
                 &mut frame,
             )?;
@@ -408,7 +408,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 if std::env::var_os("RUSTCLIENT_LISTENERS").is_some()
                     && let Ok(widget) = rustclient_game_ui::widgets::resolve_widget(
                         state.interfaces(),
-                        &runtime.interfaces,
+                        runtime.interfaces(),
                         node.address,
                     )
                 {

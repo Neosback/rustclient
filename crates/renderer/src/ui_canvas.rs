@@ -18,6 +18,7 @@ struct CanvasUniform {
 }
 
 pub(crate) struct UiCanvas {
+    raster_valid: bool,
     texture: wgpu::Texture,
     view: wgpu::TextureView,
     blank: wgpu::TextureView,
@@ -96,6 +97,7 @@ impl UiCanvas {
             cache: None,
         });
         Self {
+            raster_valid: false,
             texture,
             view,
             blank,
@@ -130,6 +132,7 @@ impl UiCanvas {
         let rect = canvas_rect(size, viewport, device.limits().max_texture_dimension_2d)?;
         let resized = size != self.size;
         if resized {
+            self.raster_valid = false;
             self.texture = create_texture(device, size);
             self.view = self
                 .texture
@@ -205,7 +208,13 @@ impl UiCanvas {
     pub fn invalidate_world(&mut self) {
         self.world_key = None;
     }
-    pub fn render(&self, encoder: &mut wgpu::CommandEncoder, ui: &UiGpu) {
+    pub fn render(&mut self, encoder: &mut wgpu::CommandEncoder, ui: &mut UiGpu) {
+        ui.stats.raster_passes = 0;
+        if self.raster_valid && !ui.raster_changed {
+            return;
+        }
+        self.raster_valid = true;
+        ui.stats.raster_passes = 1;
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("logical game canvas"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {

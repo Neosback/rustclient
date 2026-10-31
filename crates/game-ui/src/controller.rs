@@ -22,9 +22,13 @@ enum Focus {
     Password,
 }
 
+type TitlePaintKey = (TitleScreen, u64, bool, [bool; 3]);
+
 /// Transient input controller. Intentionally has no Debug/Clone implementation.
 /// Passwords leave only through the explicit single-use connection handoff.
 pub struct TitleUi {
+    presentation_revision: u64,
+    projection: Option<(TitlePaintKey, crate::RetainedUi)>,
     username: String,
     password: Zeroizing<String>,
     online: bool,
@@ -35,6 +39,46 @@ pub struct TitleUi {
     hover: Option<(f32, f32)>,
 }
 impl TitleUi {
+    /// Reuse title commands until their visible inputs change. The retained identity
+    /// prevents a game/loading frame from being mistaken for the old title prefix.
+    pub fn project_reusing(
+        &mut self,
+        assets: &rustclient_cache::TitleAssets,
+        screen: TitleScreen,
+        cycle: u64,
+        frame: &mut crate::UiFrame,
+    ) {
+        let credentials = matches!(screen, TitleScreen::Credentials(_));
+        let blink = matches!(screen, TitleScreen::Credentials(status) if status != LoginStatus::Connecting)
+            && cycle % 40 < 20;
+        let hover = if credentials {
+            [
+                self.hovered(REMEMBER),
+                self.hovered(HIDE),
+                self.hovered(HELP),
+            ]
+        } else {
+            [false; 3]
+        };
+        let key = (screen, self.presentation_revision, blink, hover);
+        if self
+            .projection
+            .as_ref()
+            .is_some_and(|(previous, identity)| {
+                *previous == key && frame.retained.as_ref() == Some(identity)
+            })
+            && frame.reuse_widgets()
+        {
+            return;
+        }
+        self.project(assets, screen, cycle, frame);
+        frame.seal_widgets();
+        self.projection = frame.retained.clone().map(|identity| (key, identity));
+    }
+    /// Asset replacement revokes retained title commands independently from input.
+    pub fn invalidate_projection(&mut self) {
+        self.projection = None;
+    }
     /// Begin editing from non-secret persisted preferences.
     #[must_use]
     pub fn new(mut preferences: TitlePreferences) -> Self {
@@ -49,6 +93,8 @@ impl TitleUi {
         }
         let username = preferences.username.clone();
         Self {
+            presentation_revision: 1,
+            projection: None,
             username,
             password: Zeroizing::new(String::new()),
             online: false,
@@ -61,6 +107,7 @@ impl TitleUi {
     }
     /// Enable the server-login control when the composition root has a profile.
     pub fn set_online(&mut self, available: bool) {
+        self.presentation_revision = self.presentation_revision.wrapping_add(1);
         self.online = available;
     }
     pub(crate) const fn online(&self) -> bool {
@@ -69,6 +116,7 @@ impl TitleUi {
     /// Move a submitted password exactly once to the connection owner.
     /// No credential data enters the returned semantic operation.
     pub fn take_submission(&mut self) -> Option<Credentials> {
+        self.presentation_revision = self.presentation_revision.wrapping_add(1);
         if !std::mem::take(&mut self.submission) {
             return None;
         }
@@ -80,6 +128,7 @@ impl TitleUi {
     }
     /// Erase any remaining transient password after connection completion.
     pub fn clear_password(&mut self) {
+        self.presentation_revision = self.presentation_revision.wrapping_add(1);
         self.password.zeroize();
         self.focus = Focus::Username;
         self.submission = false;
@@ -106,6 +155,7 @@ impl TitleUi {
     }
     /// Insert literal printable CP1252 text into the focused field.
     pub fn text(&mut self, screen: TitleScreen, text: &str) {
+        self.presentation_revision = self.presentation_revision.wrapping_add(1);
         if !matches!(screen, TitleScreen::Credentials(status) if status != LoginStatus::Connecting)
         {
             return;
@@ -120,6 +170,7 @@ impl TitleUi {
     /// Handle a normalized editing key, returning only non-secret semantic intent.
     #[must_use]
     pub fn key(&mut self, screen: TitleScreen, key: EditKey) -> Option<SemanticOperation> {
+        self.presentation_revision = self.presentation_revision.wrapping_add(1);
         if key == EditKey::Escape {
             return Some(self.cancel());
         }
@@ -156,6 +207,7 @@ impl TitleUi {
     /// Activate a local title control. Drawing and hit testing share these rectangles.
     #[must_use]
     pub fn click(&mut self, screen: TitleScreen, x: f32, y: f32) -> Option<SemanticOperation> {
+        self.presentation_revision = self.presentation_revision.wrapping_add(1);
         self.pointer(x, y);
         if screen == TitleScreen::Credentials(LoginStatus::Connecting) {
             return CANCEL.contains(x, y).then(|| self.cancel());

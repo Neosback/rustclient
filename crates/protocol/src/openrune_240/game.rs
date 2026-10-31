@@ -244,6 +244,8 @@ pub enum ClientIntent {
         height: u16,
     },
     KeepAlive,
+    /// Normal world-map selection. The server decides its effect and permissions.
+    WorldMapClick(WorldTile),
     PingReply {
         first: i32,
         second: i32,
@@ -284,6 +286,7 @@ impl ClientIntent {
     pub fn encode(self, cipher: &mut Isaac) -> Result<Vec<u8>> {
         let (opcode, payload) = match self {
             Self::KeepAlive => (99, vec![]),
+            Self::WorldMapClick(tile) => super::actions::map_click(tile)?,
             Self::PingReply { first, second, fps } => {
                 (32, super::control::ping_reply(first, second, fps))
             }

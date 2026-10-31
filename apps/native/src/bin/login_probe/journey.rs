@@ -322,7 +322,7 @@ impl Journey {
         };
         let tree = rustclient_game_ui::widgets::WidgetTree::build(
             state.interfaces(),
-            &scripts.interfaces,
+            scripts.interfaces(),
             rustclient_game_ui::widgets::WidgetBounds {
                 x: 0,
                 y: 0,
@@ -333,7 +333,7 @@ impl Journey {
         let mut actions = Vec::new();
         for node in &tree.nodes {
             for (label, action) in
-                rustclient_application::widget_actions(state, &scripts.interfaces, node.address)?
+                rustclient_application::widget_actions(state, scripts.interfaces(), node.address)?
             {
                 actions.push((label, action));
             }

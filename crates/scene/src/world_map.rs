@@ -31,7 +31,71 @@ use rustclient_cache::Sprite;
 use rustclient_cache::osrs240::world_map::{
     MapCoord, WorldMapArea, WorldMapComposite, WorldMapElement,
 };
-use std::collections::{BTreeMap, BTreeSet};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    sync::Arc,
+};
+
+/// Borrowed dependencies for deciding whether a flash-phase change can affect this view.
+pub struct WorldMapFlashInputs<'a> {
+    pub size: [u32; 2],
+    pub center: [i32; 2],
+    pub zoom: f32,
+    pub composite: Option<&'a WorldMapComposite>,
+    pub regions: &'a BTreeMap<[i32; 2], Arc<RegionImage>>,
+    pub elements: &'a BTreeMap<u32, WorldMapElement>,
+    pub disabled_elements: &'a BTreeSet<u32>,
+    pub disabled_categories: &'a BTreeSet<u32>,
+    pub flashing_elements: &'a BTreeSet<u32>,
+    pub flashing_categories: &'a BTreeSet<u32>,
+    pub disabled: bool,
+}
+impl WorldMapFlashInputs<'_> {
+    #[must_use]
+    pub fn visible(&self) -> bool {
+        if self.disabled || self.size.contains(&0) {
+            return false;
+        }
+        let Some(composite) = self.composite else {
+            return false;
+        };
+        let zoom = pixels_per_tile(self.zoom);
+        composite
+            .icons
+            .iter()
+            .chain(self.regions.values().flat_map(|r| r.icons.iter()))
+            .any(|icon| {
+                let Some(id) = icon.element else {
+                    return false;
+                };
+                let Some(element) = self.elements.get(&id) else {
+                    return false;
+                };
+                if !element.world_map_visible
+                    || self.disabled_elements.contains(&id)
+                    || element
+                        .category
+                        .is_some_and(|category| self.disabled_categories.contains(&category))
+                    || !(self.flashing_elements.contains(&id)
+                        || element
+                            .category
+                            .is_some_and(|category| self.flashing_categories.contains(&category)))
+                {
+                    return false;
+                }
+                let x = (self.size[0] as f32 / 2.
+                    + (icon.coord.x as f32 - self.center[0] as f32) * zoom)
+                    as i32;
+                let y = (self.size[1] as f32 / 2.
+                    - (icon.coord.y as f32 - self.center[1] as f32) * zoom)
+                    as i32;
+                x >= -24
+                    && x <= self.size[0] as i32 + 24
+                    && y >= -24
+                    && y <= self.size[1] as i32 + 24
+            })
+    }
+}
 
 /// Composes the main interactive world map viewport (contentType 1400 / component 595:8).
 pub fn compose_world_map_viewport(
@@ -42,7 +106,7 @@ pub fn compose_world_map_viewport(
     area: Option<&WorldMapArea>,
     composite: Option<&WorldMapComposite>,
     elements: &BTreeMap<u32, WorldMapElement>,
-    element_sprites: &BTreeMap<u32, Sprite>,
+    element_sprites: &BTreeMap<u32, Arc<Sprite>>,
     disabled_elements: &BTreeSet<u32>,
     disabled_categories: &BTreeSet<u32>,
     elements_disabled: bool,
@@ -50,10 +114,10 @@ pub fn compose_world_map_viewport(
     flashing_categories: &BTreeSet<u32>,
     flash_cycle: i32,
     player_coord: Option<MapCoord>,
-    regions: &BTreeMap<[i32; 2], RegionImage>,
+    regions: &BTreeMap<[i32; 2], Arc<RegionImage>>,
     fonts: &BTreeMap<
         rustclient_cache::osrs240::world_map::WorldMapLabelSize,
-        rustclient_cache::BitmapFont,
+        Arc<rustclient_cache::BitmapFont>,
     >,
     target_buffer: &mut Vec<u8>,
 ) {

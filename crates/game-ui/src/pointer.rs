@@ -2,7 +2,7 @@
 use crate::widgets::{PlacedWidget, WidgetBounds};
 
 /// Temporary pointer projection; never commits a scripted widget position.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DraggedWidget {
     pub address: rustclient_model::WidgetAddress,
     pub origin: [i32; 2],

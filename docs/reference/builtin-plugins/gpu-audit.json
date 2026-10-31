@@ -1132,6 +1132,17 @@
     "date": "2026-10-30",
     "document": "docs/reference/UPDATE-OPTIMIZATION-2026-10-30.md",
     "evidence": "docs/reference/UPDATE-OPTIMIZATION-EVIDENCE-2026-10-30.json",
-    "status": "partial; live pacing and browser gameplay NOT-RUN"
+    "status": "partial; live pacing and browser gameplay NOT-RUN",
+    "foundation": "Internal invalidation history and bounded shared native CPU workers; GPU numThreads, hard upload budgets and live pacing remain open.",
+    "retainedUi": {
+      "date": "2026-10-31",
+      "owners": [
+        "crates/application/src/scripts/widget_paint.rs",
+        "crates/renderer/src/ui/commands.rs",
+        "crates/renderer/src/ui_canvas.rs"
+      ],
+      "evidence": "docs/reference/UPDATE-OPTIMIZATION-EVIDENCE-2026-10-30.json#uiRasterRetention",
+      "scope": "Unchanged widget commands/vertices/static UI raster retention; 60 actual-GPU lifecycle/submission steps. No GPU timing, reference pixels, gameplay or classic-gate completion claim."
+    }
   }
 }

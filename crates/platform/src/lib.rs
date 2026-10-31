@@ -7,7 +7,11 @@
 #![forbid(unsafe_code)]
 
 mod clipboard;
+mod jobs;
 pub use clipboard::{Clipboard, ClipboardError, ClipboardErrorKind};
+pub use jobs::{
+    CpuJob, CpuJobExecutor, JobCancellation, JobIdentity, JobOutcome, JobPriority, JobRejected,
+};
 
 mod clock;
 mod read_only;

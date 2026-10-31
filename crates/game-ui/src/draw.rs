@@ -1,4 +1,28 @@
 //! Ordered, platform-neutral UI projection commands.
+use std::sync::Arc;
+
+/// Identity of an immutable widget command prefix. A fresh seal owns a fresh identity,
+/// including across different frames; it carries no semantic state or GPU handles.
+#[derive(Debug, Clone)]
+pub struct RetainedUi {
+    identity: Arc<()>,
+    quads: usize,
+    world_boundary: usize,
+}
+impl PartialEq for RetainedUi {
+    fn eq(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.identity, &other.identity)
+            && self.quads == other.quads
+            && self.world_boundary == other.world_boundary
+    }
+}
+impl Eq for RetainedUi {}
+impl RetainedUi {
+    #[must_use]
+    pub const fn quad_count(&self) -> usize {
+        self.quads
+    }
+}
 
 /// Image role within one title asset set; these are not GPU handles.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -104,10 +128,59 @@ pub struct UiFrame {
     /// Mask sprites authored on the minimap and compass widgets; absent when not laid out.
     pub minimap_sprite: Option<rustclient_model::SpriteId>,
     pub compass_sprite: Option<rustclient_model::SpriteId>,
-    /// Painter-ordered commands.
+    /// Widget commands followed by transient pointer/menu commands. A sealed prefix
+    /// must not be mutated until `clear_quads` or a new `seal_widgets` call.
     pub quads: Vec<Quad>,
+    /// Transient world commands, drawn at `world_overlay_index` beneath mounted UI.
+    pub world_quads: Vec<Quad>,
+    /// Opaque retained-prefix identity; producers normally use `seal_widgets`.
+    pub retained: Option<RetainedUi>,
 }
 impl UiFrame {
+    /// Clear commands and invalidate prepared geometry without releasing capacities.
+    pub fn clear_quads(&mut self) {
+        self.quads.clear();
+        self.world_quads.clear();
+        self.retained = None;
+    }
+
+    /// Seal the widget prefix before appending this frame's transient overlays.
+    pub fn seal_widgets(&mut self) {
+        self.retained = Some(RetainedUi {
+            identity: Arc::new(()),
+            quads: self.quads.len(),
+            world_boundary: self.world_boundary(),
+        });
+    }
+
+    /// Discard only transient commands. The producer must first check all dependencies.
+    /// Returns false when there is no intact sealed prefix.
+    pub fn reuse_widgets(&mut self) -> bool {
+        let Some(retained) = &self.retained else {
+            return false;
+        };
+        if self.quads.len() < retained.quads || self.world_boundary() != retained.world_boundary {
+            return false;
+        }
+        self.quads.truncate(retained.quads);
+        self.world_quads.clear();
+        true
+    }
+
+    #[must_use]
+    pub fn world_boundary(&self) -> usize {
+        self.world_overlay_index.unwrap_or(0).min(self.quads.len())
+    }
+
+    /// Full painter order, independent of retained/transient storage layout.
+    pub fn ordered_quads(&self) -> impl Iterator<Item = &Quad> {
+        let boundary = self.world_boundary();
+        self.quads[..boundary]
+            .iter()
+            .chain(&self.world_quads)
+            .chain(&self.quads[boundary..])
+    }
+
     pub fn image(&mut self, image: UiImageId, rect: Rect, clip: Rect) {
         self.quads.push(Quad {
             image,
@@ -138,7 +211,7 @@ impl UiFrame {
 }
 
 /// Native and browser must apply this same logical/DPI transform to input/output.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct TitleViewport {
     /// Drawable logical canvas width (765 for the title/fixed game).
     pub canvas_width: u32,

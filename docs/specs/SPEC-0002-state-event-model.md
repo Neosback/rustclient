@@ -8,6 +8,37 @@ Make runtime behavior deterministic enough to debug, replay, test plugins, and s
 
 ## State model
 
+### Listener index invalidation (accepted 2026-10-31)
+
+Interface topology/listener membership revisions are disposable internal metadata,
+separate from ordinary text, layout and visual-property revisions. Successful
+topology, child creation/removal/replacement and listener/trigger changes invalidate
+the application listener index. Failed/no-op updates do not. The index preserves
+current address ordering, runtime overrides, trigger filtering and callback arguments;
+dispatch resolves current state before enqueueing. Timer invocations are never
+dropped to satisfy performance targets. These revisions do not change fingerprints,
+semantic events, replay records or the external plugin ABI.
+
+### Incremental projection observations (accepted 2026-10-30)
+
+The successful operation gateway also records bounded, discardable projection
+invalidations. Independent consumers hold opaque cursors and read without
+advancing another consumer. An expired cursor explicitly requests a full current
+snapshot; truncation must never silently preserve stale output. Records contain
+typed keys/aspects, not a second copy of semantic values. Failed operations add
+no invalidations. Successful no-ops add none unless another committed domain
+changed. Session boundaries invalidate every projection.
+
+Inventory patches validate all bounds before mutation and apply only the final
+value for each slot, preserving ordered last-write semantics and final no-op
+detection without cloning the container. Container presence and length changes
+remain observable even when every newly transmitted slot is empty.
+
+This journal is internal projection metadata, excluded from semantic and commit
+fingerprints and the public plugin ABI. Existing ordered OperationCommit/replay
+contracts remain unchanged. Missing actor/ground-item/effect semantics require
+their own events, reset behavior and fingerprint changes before support claims.
+
 `GameState` owns semantic live state such as players/NPCs, scene occupancy, inventories, varps/varbits, skills, widgets, camera intent where semantic, chat/message state, timers, and connection/session metadata that affects behavior.
 
 State is changed through explicit operations. Systems must not retain mutable aliases into state across a transition boundary.

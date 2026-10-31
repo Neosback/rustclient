@@ -72,9 +72,11 @@ pub fn project<'a>(
     }
     // The world widget owns this paint layer. Mounted interfaces cover world speech just as
     // they cover the 3D viewport; popups and pointer feedback are painted later still.
-    let added = frame.quads.len() - overlay_start;
-    let insertion = frame.world_overlay_index.unwrap_or(0).min(overlay_start);
-    frame.quads[insertion..].rotate_right(added);
+    let previous = frame.world_quads.len();
+    frame.world_quads.extend(frame.quads.drain(overlay_start..));
+    // Repeated projections prepend at the same world boundary, as the stock ordered
+    // insertion did, without shifting or copying the retained widget commands.
+    frame.world_quads.rotate_left(previous);
 }
 
 fn draw_label(

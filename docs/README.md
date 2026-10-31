@@ -168,6 +168,7 @@ Current machine-readable data: [domain matrix](reference/rs240-port/PORT-MATRIX.
 - [reference/client-240/verification/portable-setup-20261024.md](reference/client-240/verification/portable-setup-20261024.md)
 - [reference/client-240/verification/seed.md](reference/client-240/verification/seed.md)
 - [reference/client-240/verification/tooling-setup-20261025.md](reference/client-240/verification/tooling-setup-20261025.md)
+- [reference/client-240/verification/wave-1.md](reference/client-240/verification/wave-1.md)
 
 ## Documentation and evidence rules
 

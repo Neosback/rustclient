@@ -11,6 +11,7 @@ mod options;
 mod performance;
 mod plugins;
 mod scene;
+mod scene_workers;
 mod shell;
 mod shell_input;
 mod widget_pointer;
@@ -35,10 +36,8 @@ use rustclient_renderer::{ClearColor, FrameOutcome, SurfaceRenderer, SurfaceSize
 use rustclient_scene::{
     entity_mesh::build_entities_geometry,
     minimap::{MinimapImage, build_scene_minimap, compose_compass, compose_minimap},
-    world_map::{compose_world_map_overview, compose_world_map_viewport},
 };
 use std::{
-    collections::BTreeMap,
     hash::{DefaultHasher, Hash, Hasher},
     process::ExitCode,
     sync::Arc,
@@ -59,7 +58,14 @@ const STEP: Duration = Duration::from_millis(20);
     reason = "keep bounded network operations inline without a heap allocation per packet"
 )]
 enum LoadEvent {
-    WorldMapAssets(Box<Result<worldmap::MapBatch, String>>),
+    MapComposed(
+        rustclient_platform::JobIdentity,
+        Box<Result<worldmap::MapPixels, String>>,
+    ),
+    WorldMapAssets(
+        rustclient_platform::JobIdentity,
+        Box<Result<worldmap::MapBatch, String>>,
+    ),
     Progress(String),
     Loaded(Box<Result<TitleAssets, String>>),
     Network(u64, network::NetworkEvent),
@@ -72,7 +78,10 @@ enum LoadEvent {
         Box<rustclient_game_ui::widget_visuals::WidgetVisualAssets>,
     ),
     SceneProgress(u64, String),
+    DynamicFault(u64, u64, rustclient_model::ClientCycle),
+    EntityFault(u64, u64, String),
     EntityAssets(
+        u64,
         u64,
         Box<rustclient_cache::osrs240::entity_assets::EntityAssets>,
     ),
@@ -116,11 +125,15 @@ struct NativeApp {
     /// The plugin sprite replacements currently standing in the widget sprites.
     applied_sprite_overrides: Vec<rustclient_plugin_api::SpriteOverride>,
     scripts: Option<rustclient_application::scripts::ClientScripts<DirectoryBlobs>>,
+    widget_job_scope: rustclient_platform::JobCancellation,
     widget_assets: rustclient_game_ui::widget_visuals::WidgetVisualAssets,
     widget_requested: rustclient_application::scripts::WidgetAssetRequest,
+    widget_asset_key: Option<(u64, u64)>,
     widget_loading: bool,
     reported_window: Option<rustclient_model::WindowMetrics>,
     widget_tree: rustclient_game_ui::widgets::WidgetTree,
+    widget_tree_key: Option<widgets::WidgetLayoutKey>,
+    widget_paint: Option<rustclient_application::scripts::WidgetPaintDependencies>,
     widget_pointer: widget_pointer::WidgetPointer,
     widget_cache_dir: std::path::PathBuf,
     widget_cache_profile: rustclient_cache::CacheProfile,
@@ -137,12 +150,13 @@ struct NativeApp {
     compass_key: u64,
     compass_revision: u64,
     map_view: worldmap::MapView,
+    map_composer: worldmap::MapComposer,
+    world_map_revision: u64,
     world_map_pixels: Vec<u8>,
     world_map_size: [u32; 2],
     world_map_overview_pixels: Vec<u8>,
     world_map_overview_size: [u32; 2],
-    world_map_sprites: BTreeMap<u32, rustclient_cache::Sprite>,
-    world_map_drag: Option<([f32; 2], [i32; 2])>,
+    world_map_input_bounds: Option<rustclient_game_ui::Rect>,
     /// Widget-authored mask sprites expanded onto their canvas; replaced with the widget assets.
     minimap_mask: Option<(SpriteId, CanvasImage)>,
     compass_mask: Option<(SpriteId, CanvasImage)>,
@@ -209,18 +223,16 @@ impl NativeApp {
             sources: rustclient_plugin_bridge::Sources {
                 npcs: Some(&resolve),
                 varbits: asset.map(|asset| &asset.sources().varbits),
-                interfaces: self.scripts.as_ref().map(|scripts| &scripts.interfaces),
+                interfaces: self
+                    .scripts
+                    .as_ref()
+                    .map(rustclient_application::scripts::ClientScripts::interfaces),
             },
         };
         self.plugins.update(&self.state, &inputs);
         self.shell.set_plugin_statuses(self.plugins.statuses());
         // Sprites a plugin draws are decoded by the same worker as widget sprites.
-        if self.plugins.requested_sprites().any(|sprite| {
-            !self
-                .widget_requested
-                .sprites
-                .contains(&rustclient_model::SpriteId::new(sprite))
-        }) {
+        if self.widget_sprites_missing() {
             self.request_widget_assets();
         }
         let raised = self.plugins.take_notifications();
@@ -286,6 +298,7 @@ impl NativeApp {
         if !self.widget_assets.set_sprite_overrides(images) {
             return;
         }
+        self.widget_paint = None;
         if let (Some(renderer), Some(title)) = (&mut self.renderer, &self.assets)
             && let Err(error) = renderer.set_widget_images(title, &self.widget_assets.images)
         {
@@ -473,11 +486,15 @@ impl NativeApp {
             frame_limit: frame_limit::FrameLimit::default(),
             applied_sprite_overrides: Vec::new(),
             scripts: None,
+            widget_job_scope: rustclient_platform::JobCancellation::default(),
             widget_assets: rustclient_game_ui::widget_visuals::WidgetVisualAssets::default(),
             widget_requested: rustclient_application::scripts::WidgetAssetRequest::default(),
+            widget_asset_key: None,
             widget_loading: false,
             reported_window: None,
             widget_tree: rustclient_game_ui::widgets::WidgetTree::default(),
+            widget_tree_key: None,
+            widget_paint: None,
             widget_pointer: widget_pointer::WidgetPointer::default(),
             widget_cache_dir: options.cache_dir.clone(),
             widget_cache_profile: options.profile,
@@ -491,12 +508,13 @@ impl NativeApp {
             compass_key: 0,
             compass_revision: 0,
             map_view: worldmap::MapView::default(),
+            map_composer: worldmap::MapComposer::default(),
+            world_map_revision: 0,
             world_map_pixels: Vec::new(),
             world_map_size: [0, 0],
             world_map_overview_pixels: Vec::new(),
             world_map_overview_size: [0, 0],
-            world_map_sprites: BTreeMap::new(),
-            world_map_drag: None,
+            world_map_input_bounds: None,
             minimap_mask: None,
             compass_mask: None,
             flames: None,
@@ -527,9 +545,10 @@ impl NativeApp {
             return;
         };
         let size = window.inner_size();
-        match pollster::block_on(SurfaceRenderer::new(
+        match pollster::block_on(SurfaceRenderer::new_with_instrumentation(
             window.clone(),
             SurfaceSize::new(size.width, size.height),
+            self.performance.instrumentation(),
         )) {
             Ok(mut renderer) => {
                 self.shell.apply_current(&window, Some(&mut renderer));
@@ -572,6 +591,7 @@ impl NativeApp {
                         self.state.semantic_fingerprint() == fingerprint
                     );
                 }
+                self.performance.renderer_created(&window, &renderer);
                 self.renderer = Some(renderer);
                 window.request_redraw();
             }
@@ -624,7 +644,7 @@ impl NativeApp {
                 self.scripts.as_ref().is_some_and(|scripts| {
                     rustclient_application::validate_widget_action(
                         &self.state,
-                        &scripts.interfaces,
+                        scripts.interfaces(),
                         *action,
                     )
                     .is_ok()
@@ -684,7 +704,6 @@ impl NativeApp {
                 Err(error) => eprintln!("client script: {error}"),
             }
         }
-        self.widget_tree.nodes.clear();
         self.flush_script_intents();
         self.request_widget_assets();
         if let Some(window) = &self.window {
@@ -819,7 +838,15 @@ impl NativeApp {
         self.reported_window = None;
         self.widget_menu.close();
         self.widget_tree.nodes.clear();
+        self.widget_tree_key = None;
+        self.widget_paint = None;
+        self.world_map_input_bounds = None;
+        self.widget_asset_key = None;
         self.widget_loading = false;
+        self.map_view = worldmap::MapView::default();
+        self.map_composer.clear();
+        self.widget_job_scope.cancel();
+        self.widget_job_scope = rustclient_platform::JobCancellation::default();
         if let Some(scripts) = &mut self.scripts {
             scripts.reset();
         }
@@ -853,6 +880,7 @@ impl NativeApp {
         }
 
         if let Some(operation) = operation {
+            let commit_start = Instant::now();
             let result = if let Some(scripts) = &mut self.scripts {
                 let authenticated =
                     matches!(operation, SemanticOperation::AuthenticateSession { .. });
@@ -870,6 +898,8 @@ impl NativeApp {
                     .map(|_| Vec::new())
                     .map_err(|e| e.to_string())
             };
+            self.performance
+                .stage(performance::Stage::CommitAndScripts, commit_start);
             match result {
                 Ok(errors) => {
                     for error in errors {
@@ -882,7 +912,6 @@ impl NativeApp {
                 }
                 Err(error) => eprintln!("semantic input rejected: {error}"),
             }
-            self.widget_tree.nodes.clear();
             self.flush_script_intents();
         }
         if let Some(credentials) = self.ui.take_submission() {
@@ -986,6 +1015,9 @@ impl NativeApp {
         reason = "validated world fine positions fit the f64 minimap projection"
     )]
     fn redraw(&mut self, event_loop: &ActiveEventLoop) {
+        if self.performance.run_complete() {
+            return;
+        }
         let Some(window) = self.window.clone() else {
             return;
         };
@@ -993,12 +1025,12 @@ impl NativeApp {
             return;
         }
         // GPU pacing and an optional FPS plugin share the existing presentation clock.
-        if !self
-            .frame_limit
-            .allow(self.presentation_limit(), Instant::now())
-        {
+        let policy = self.presentation_limit();
+        let deadline = self.frame_limit.deadline(policy);
+        if !self.frame_limit.allow(policy, Instant::now()) {
             return;
         }
+        self.performance.presentation_deadline(deadline);
         let frame_start = Instant::now();
         if let Err(error) = self.shell.update_panel(&window) {
             eprintln!("shell input: {error}");
@@ -1031,6 +1063,17 @@ impl NativeApp {
                 eprintln!("retained shell: {error}");
             }
         }
+        if self.assets.is_some()
+            && self.flames.is_some()
+            && self.state.authenticated_player().is_some()
+            && self.state.interfaces().root().is_some()
+            && !self.scene.diagnostics
+        {
+            self.project_game_widgets();
+            self.update_map_projection();
+        } else {
+            self.clear_map_projection();
+        }
         let result = if let (Some(assets), Some(flames)) = (&self.assets, &self.flames) {
             if self.state.authenticated_player().is_some()
                 && self.state.interfaces().root().is_some()
@@ -1040,36 +1083,7 @@ impl NativeApp {
                     self.frame.viewport_settings = rustclient_model::ViewportSettings::default();
                     self.ui.project_world(assets, &self.state, &mut self.frame);
                 } else {
-                    self.frame.quads.clear();
                     self.entered_world = true;
-
-                    if let Some(scripts) = &self.scripts {
-                        let dragged = self.dragged_widget();
-                        let started = Instant::now();
-                        match scripts.project_widgets(
-                            &self.state,
-                            &self.widget_assets,
-                            &mut self.frame,
-                            dragged,
-                        ) {
-                            Ok(projection) => {
-                                self.widget_tree = projection.tree;
-                                for error in projection.diagnostics {
-                                    if self.reported_script_errors.len() < 256
-                                        && self.reported_script_errors.insert(error.clone())
-                                    {
-                                        eprintln!("widget projection: {error}");
-                                    }
-                                }
-                            }
-                            Err(error) => {
-                                eprintln!("widget projection: {error}");
-                                self.widget_tree.nodes.clear();
-                            }
-                        }
-                        self.performance
-                            .stage(performance::Stage::WidgetProjection, started);
-                    }
                 }
                 let visibility = self.scene_visibility(&window);
                 actor_overlays::project(
@@ -1258,87 +1272,6 @@ impl NativeApp {
                             );
                         }
                     }
-                    if let Some(quad) = self
-                        .frame
-                        .quads
-                        .iter()
-                        .find(|q| q.image == rustclient_game_ui::UiImageId::WorldMap)
-                    {
-                        #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-                        let width = quad.rect.width.round().max(1.0) as u32;
-                        #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-                        let height = quad.rect.height.round().max(1.0) as u32;
-                        self.world_map_size = [width, height];
-                        if let Some(scripts) = &mut self.scripts {
-                            self.map_view.request(
-                                &scripts.world_map,
-                                [width, height],
-                                &self.widget_cache_dir,
-                                self.widget_cache_profile,
-                                &self.scene.shared_cache,
-                                &self.world_map_sprites,
-                                self.proxy.clone(),
-                            );
-                            scripts.world_map.set_display_pixels([width, height]);
-                            let player_coord = self.state.entities().local_player().map(|p| {
-                                rustclient_cache::osrs240::world_map::MapCoord::new(
-                                    i32::from(p.tile.plane.get()),
-                                    p.tile.x,
-                                    p.tile.y,
-                                )
-                            });
-                            compose_world_map_viewport(
-                                width,
-                                height,
-                                scripts.world_map.center_tile,
-                                scripts.world_map.zoom,
-                                scripts.world_map.active_area(),
-                                scripts.world_map.active_composite.as_ref(),
-                                &scripts.world_map.elements,
-                                &self.world_map_sprites,
-                                &scripts.world_map.disabled_elements,
-                                &scripts.world_map.disabled_categories,
-                                scripts.world_map.elements_disabled,
-                                &scripts.world_map.flashing_elements,
-                                &scripts.world_map.flashing_categories,
-                                scripts.world_map.flash_cycle,
-                                player_coord,
-                                &self.map_view.regions,
-                                &self.map_view.fonts,
-                                &mut self.world_map_pixels,
-                            );
-                        }
-                    } else {
-                        self.world_map_size = [0, 0];
-                        self.world_map_pixels.clear();
-                    }
-
-                    if let Some(quad) = self
-                        .frame
-                        .quads
-                        .iter()
-                        .find(|q| q.image == rustclient_game_ui::UiImageId::WorldMapOverview)
-                    {
-                        #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-                        let width = quad.rect.width.round().max(1.0) as u32;
-                        #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-                        let height = quad.rect.height.round().max(1.0) as u32;
-                        self.world_map_overview_size = [width, height];
-                        if let Some(scripts) = &self.scripts {
-                            compose_world_map_overview(
-                                width,
-                                height,
-                                scripts.world_map.center_tile,
-                                scripts.world_map.display_size,
-                                scripts.world_map.active_area(),
-                                scripts.world_map.active_composite.as_ref(),
-                                &mut self.world_map_overview_pixels,
-                            );
-                        }
-                    } else {
-                        self.world_map_overview_size = [0, 0];
-                        self.world_map_overview_pixels.clear();
-                    }
                 }
             } else if self.state.authenticated_player().is_some() {
                 if self.entered_world {
@@ -1349,7 +1282,7 @@ impl NativeApp {
                         .project_session(assets, &self.state, &mut self.frame);
                 }
             } else {
-                self.ui.project(
+                self.ui.project_reusing(
                     assets,
                     self.state.title_screen(),
                     self.cycle,
@@ -1378,6 +1311,7 @@ impl NativeApp {
                         self.state.scenery().cycle(),
                         &self.frame,
                         rustclient_renderer::DynamicImages {
+                            flame_revision: 0,
                             minimap: dynamic_image(
                                 &self.minimap_pixels,
                                 self.minimap_mask.as_ref(),
@@ -1392,22 +1326,28 @@ impl NativeApp {
                                 pixels: &self.world_map_pixels,
                                 width: self.world_map_size[0],
                                 height: self.world_map_size[1],
-                                revision: 0,
+                                revision: self.world_map_revision,
                             },
                             world_map_overview: rustclient_renderer::DynamicImage {
                                 pixels: &self.world_map_overview_pixels,
                                 width: self.world_map_overview_size[0],
                                 height: self.world_map_overview_size[1],
-                                revision: 0,
+                                revision: self.world_map_revision,
                             },
                         },
                         window.scale_factor(),
                         || window.pre_present_notify(),
                     );
                 }
-                renderer.render_ui(&self.frame, flames.pixels(), window.scale_factor(), || {
-                    window.pre_present_notify();
-                })
+                renderer.render_ui_with_flame_revision(
+                    &self.frame,
+                    flames.pixels(),
+                    flames.revision(),
+                    window.scale_factor(),
+                    || {
+                        window.pre_present_notify();
+                    },
+                )
             })
         } else {
             self.renderer.as_mut().map(|renderer| {
@@ -1416,8 +1356,8 @@ impl NativeApp {
         };
         self.performance.note(|| {
             format!(
-                "quads {} world_viewport {:?} nodes {} root {:?} mounts {:?} entered {} loaded {} result {:?} shell {:?} geometry {:?} picking {:?}",
-                self.frame.quads.len(),
+                "quads {} world_viewport {:?} nodes {} root {:?} mounts {:?} entered {} loaded {} result {:?} shell {:?} geometry {:?} picking {:?} ui {:?}",
+                self.frame.quads.len() + self.frame.world_quads.len(),
                 self.frame.world_viewport,
                 self.widget_tree.nodes.len(),
                 self.state.interfaces().root(),
@@ -1433,8 +1373,23 @@ impl NativeApp {
                 self.shell.panel.stats(),
                 self.renderer.as_ref().map(rustclient_renderer::SurfaceRenderer::world_geometry_stats),
                 self.scene.loaded.as_ref().map(|loaded| loaded.picking.stats()),
+                self.renderer.as_ref().map(rustclient_renderer::SurfaceRenderer::ui_stats),
             )
         });
+        if let Some(pool) = &self.scene.jobs {
+            self.performance.job_stats(|| pool.stats());
+        }
+        if matches!(result, Some(Ok(FrameOutcome::Suspended))) {
+            self.performance.suspend_presentation();
+            self.frame_limit.reset();
+        }
+        if let Some(renderer) = &mut self.renderer {
+            self.performance.render_metrics(
+                frame_start,
+                matches!(result, Some(Ok(FrameOutcome::Presented))),
+                renderer,
+            );
+        }
         self.performance.frame(
             &window,
             frame_start,
@@ -1724,6 +1679,10 @@ impl NativeApp {
 }
 
 impl ApplicationHandler<LoadEvent> for NativeApp {
+    fn new_events(&mut self, _event_loop: &ActiveEventLoop, cause: winit::event::StartCause) {
+        self.performance.wake(cause);
+    }
+
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         if self.window.is_some() {
             return;
@@ -1747,8 +1706,18 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
     )]
     fn user_event(&mut self, event_loop: &ActiveEventLoop, event: LoadEvent) {
         match event {
-            LoadEvent::WorldMapAssets(result) => {
-                self.map_view.receive(*result, &mut self.world_map_sprites);
+            LoadEvent::MapComposed(identity, result) => {
+                if identity.session == self.connection_generation {
+                    self.map_composer.receive(identity, *result);
+                }
+                if let Some(window) = &self.window {
+                    window.request_redraw();
+                }
+            }
+            LoadEvent::WorldMapAssets(identity, result) => {
+                if identity.session == self.connection_generation {
+                    self.map_view.receive(identity, *result);
+                }
                 if let Some(window) = &self.window {
                     window.request_redraw();
                 }
@@ -1784,6 +1753,7 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                         eprintln!("widget asset: {error}");
                     }
                     self.widget_assets.merge(*assets);
+                    self.widget_paint = None;
                     if let (Some(renderer), Some(title)) = (&mut self.renderer, &self.assets)
                         && let Err(e) =
                             renderer.set_widget_images(title, &self.widget_assets.images)
@@ -1881,8 +1851,27 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                     }
                 }
             }
-            LoadEvent::EntityAssets(session, assets) => {
-                if session == self.scene.generation {
+            LoadEvent::DynamicFault(session, worker, cycle) => {
+                if session == self.scene.generation && worker == self.scene.animator_generation {
+                    if self.scene.animator_in_flight == Some(cycle) {
+                        self.scene.animator_in_flight = None;
+                    }
+                    self.scene.animator = None;
+                    eprintln!("scenery animation worker panicked; reconnect to retry");
+                }
+            }
+            LoadEvent::EntityFault(session, worker, error) => {
+                if session == self.scene.generation && worker == self.scene.entity_loader_generation
+                {
+                    self.scene.cancel_entity_request();
+                    self.scene.entity_loader = None;
+                    eprintln!("entity asset worker: {error}");
+                }
+            }
+            LoadEvent::EntityAssets(session, worker, assets) => {
+                if session == self.scene.generation && worker == self.scene.entity_loader_generation
+                {
+                    self.scene.entity_request = None;
                     for failure in &assets.failures {
                         eprintln!("entity asset advisory: {failure}");
                     }
@@ -1909,6 +1898,7 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                         assets.metadata_fingerprint
                     );
                     let random = &mut self.random;
+                    self.ui.invalidate_projection();
                     self.flames = Some(Flames::new(assets.flame_colors, || {
                         random.next_sample().get()
                     }));
@@ -2061,21 +2051,7 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                 };
                 self.cursor = Some((position.x, position.y));
                 let (x, y) = self.ui_pointer(&window, position.x, position.y);
-                if let Some(([sx, sy], start_center)) = self.world_map_drag
-                    && let Some(scripts) = &mut self.scripts
-                {
-                    let pixels_per_tile =
-                        rustclient_scene::world_map::pixels_per_tile(scripts.world_map.zoom);
-                    let dx = x - sx;
-                    let dy = y - sy;
-                    #[expect(clippy::cast_possible_truncation)]
-                    {
-                        scripts.world_map.center_tile[0] =
-                            start_center[0] - (dx / pixels_per_tile).round() as i32;
-                        scripts.world_map.center_tile[1] =
-                            start_center[1] + (dy / pixels_per_tile).round() as i32;
-                    }
-                }
+                self.map_pointer([x, y], false, true);
                 self.ui.pointer(x, y);
                 self.context_menu.pointer(x, y);
                 self.widget_menu.pointer(x, y);
@@ -2083,6 +2059,7 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                 window.request_redraw();
             }
             WindowEvent::CursorLeft { .. } => {
+                self.cancel_map_input();
                 self.scene.input.middle = false;
                 self.close_menus();
                 self.cursor = None;
@@ -2177,7 +2154,11 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                 button: MouseButton::Left,
                 ..
             } => {
-                self.world_map_drag = None;
+                if let Some((x, y)) = self.cursor {
+                    let point = self.ui_pointer(&window, x, y);
+                    self.map_pointer([point.0, point.1], false, false);
+                }
+                self.world_map_input_bounds = None;
                 if let Some((x, y)) = self.cursor {
                     let (x, y) = self.ui_pointer(&window, x, y);
                     self.widget_pointer_release(x, y);
@@ -2215,6 +2196,7 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                 }
             }
             WindowEvent::Focused(false) => {
+                self.cancel_map_input();
                 self.window_focused = false;
                 self.close_menus();
                 self.scene.input = rustclient_renderer::CameraInput::default();
@@ -2230,6 +2212,8 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
             }
             WindowEvent::Occluded(occluded) => {
                 self.occluded = occluded;
+                self.performance.suspend_presentation();
+                self.frame_limit.reset();
                 if !occluded {
                     window.request_redraw();
                 }
@@ -2322,6 +2306,20 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
         reason = "frame scheduling, timer commits, plugin dispatch and asset upload in one loop"
     )]
     fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
+        if self.performance.run_complete() {
+            let done = self
+                .renderer
+                .as_mut()
+                .is_none_or(|renderer| self.performance.finish_run(renderer));
+            if done {
+                event_loop.exit();
+            } else {
+                event_loop.set_control_flow(ControlFlow::WaitUntil(
+                    Instant::now() + Duration::from_millis(2),
+                ));
+            }
+            return;
+        }
         let tick_start = Instant::now();
         if self.connection.is_some() || self.state.authenticated_player().is_some() {
             if self.state.authenticated_player().is_some()
@@ -2504,13 +2502,19 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                 && visible
                 && let Some(loaded) = &self.scene.loaded
             {
-                if let Some(request) = self.scene.entity_catalog.request_missing(
-                    &loaded.asset,
-                    self.state.entities(),
-                    self.state.scenery(),
-                ) && let Some(loader) = &self.scene.entity_loader
+                if self.scene.entity_request.is_none()
+                    && let Some(loader) = &self.scene.entity_loader
+                    && let Some(request) = self.scene.entity_catalog.request_missing(
+                        &loaded.asset,
+                        self.state.entities(),
+                        self.state.scenery(),
+                    )
                 {
-                    let _ = loader.send(request);
+                    let in_flight = request.clone();
+                    match loader.try_send(request) {
+                        Ok(()) => self.scene.entity_request = Some(in_flight),
+                        Err(_) => self.scene.entity_catalog.retry_request(&in_flight),
+                    }
                 }
                 if self.entity_report.0.elapsed() >= Duration::from_secs(2) {
                     let report = self.scene.entity_catalog.report(

@@ -393,3 +393,128 @@ fn operation_listener_failure_reports_diagnostics_but_preserves_source_permissio
         matches!(intents.as_slice(),[rustclient_protocol::ClientIntent::WidgetAction(selected)] if *selected==action)
     );
 }
+
+#[test]
+fn listener_index_retains_order_and_ignores_visual_changes_but_tracks_child_replacement() {
+    let (mut scripts, mut state, id) = setup();
+    for (script, digit) in [(90050, 1), (90051, 2)] {
+        program(
+            &mut scripts,
+            script,
+            &[
+                (Opcode::GetVarcInt, 700),
+                (Opcode::Iconst, 10),
+                (Opcode::Multiply, 0),
+                (Opcode::Iconst, digit),
+                (Opcode::Add, 0),
+                (Opcode::SetVarcInt, 700),
+                (Opcode::Return, 0),
+            ],
+        );
+    }
+    state
+        .apply_operation(SemanticOperation::Interface(
+            InterfaceUpdate::ClientVariable {
+                id: 700,
+                value: ScriptValue::Int(0),
+            },
+        ))
+        .unwrap();
+    let mut runtime = WidgetRuntime::default();
+    runtime
+        .listeners
+        .insert(WidgetListener::Timer, Some(vec![ScriptValue::Int(90050)]));
+    state
+        .apply_operation(SemanticOperation::Interface(InterfaceUpdate::SetProperty {
+            widget: id,
+            property: WidgetProperty::Runtime {
+                address: WidgetAddress::component(id),
+                value: Box::new(runtime.clone()),
+            },
+        }))
+        .unwrap();
+    for _ in 0..3 {
+        scripts.notify(&state, WidgetListener::Timer, None).unwrap();
+        assert!(scripts.drain(&mut state).is_empty());
+    }
+    let rebuilds = scripts.listener_index_rebuilds();
+    assert_eq!(
+        state.interfaces().client_variables().get(&700),
+        Some(&ScriptValue::Int(111))
+    );
+    state
+        .apply_operation(SemanticOperation::Interface(InterfaceUpdate::SetProperty {
+            widget: id,
+            property: WidgetProperty::Text("paint only".into()),
+        }))
+        .unwrap();
+    scripts.notify(&state, WidgetListener::Timer, None).unwrap();
+    assert!(scripts.drain(&mut state).is_empty());
+    assert_eq!(scripts.listener_index_rebuilds(), rebuilds);
+    let child = WidgetAddress {
+        widget: id,
+        child: Some(0),
+    };
+    state
+        .apply_operation(SemanticOperation::Interface(InterfaceUpdate::CreateChild {
+            parent: id,
+            parent_child: None,
+            index: 0,
+            reject_replace: false,
+            body: WidgetBody::Rectangle {
+                color: 0,
+                filled: true,
+                transparency: 0,
+            },
+        }))
+        .unwrap();
+    let mut value = state.interfaces().runtime().get(&child).unwrap().clone();
+    value
+        .listeners
+        .insert(WidgetListener::Timer, Some(vec![ScriptValue::Int(90051)]));
+    state
+        .apply_operation(SemanticOperation::Interface(InterfaceUpdate::SetProperty {
+            widget: id,
+            property: WidgetProperty::Runtime {
+                address: child,
+                value: Box::new(value),
+            },
+        }))
+        .unwrap();
+    scripts.notify(&state, WidgetListener::Timer, None).unwrap();
+    assert!(scripts.drain(&mut state).is_empty());
+    assert_eq!(
+        state.interfaces().client_variables().get(&700),
+        Some(&ScriptValue::Int(111112))
+    );
+    state
+        .apply_operation(SemanticOperation::Interface(InterfaceUpdate::DeleteChild(
+            child,
+        )))
+        .unwrap();
+    scripts.notify(&state, WidgetListener::Timer, None).unwrap();
+    assert!(scripts.drain(&mut state).is_empty());
+    assert_eq!(
+        state.interfaces().client_variables().get(&700),
+        Some(&ScriptValue::Int(1111121))
+    );
+    state
+        .apply_operation(SemanticOperation::Interface(InterfaceUpdate::CreateChild {
+            parent: id,
+            parent_child: None,
+            index: 0,
+            reject_replace: false,
+            body: WidgetBody::Rectangle {
+                color: 0,
+                filled: true,
+                transparency: 0,
+            },
+        }))
+        .unwrap();
+    scripts.notify(&state, WidgetListener::Timer, None).unwrap();
+    assert!(scripts.drain(&mut state).is_empty());
+    assert_eq!(
+        state.interfaces().client_variables().get(&700),
+        Some(&ScriptValue::Int(11111211))
+    );
+}

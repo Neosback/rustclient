@@ -64,7 +64,7 @@ fn committed_variables_select_paint_without_writing_widget_or_game_state() {
             }))
             .unwrap();
         let before = state.semantic_fingerprint();
-        frame.quads.clear();
+        frame.clear_quads();
         let result = scripts
             .project_widgets(&state, &WidgetVisualAssets::default(), &mut frame, None)
             .unwrap();
@@ -72,6 +72,22 @@ fn committed_variables_select_paint_without_writing_widget_or_game_state() {
         assert_eq!(frame.quads.last().unwrap().tint, tint);
         assert_eq!(state.semantic_fingerprint(), before);
         assert!(state.interfaces().runtime().is_empty());
+        assert!(scripts.widget_paint_is_current(&state, &result.dependencies, None));
+        // An unobserved variable must not invalidate this paint.
+        state
+            .apply_operation(SemanticOperation::Scenery(SceneryOperation::SetVariable {
+                id: VarpId::new(999),
+                value,
+            }))
+            .unwrap();
+        assert!(scripts.widget_paint_is_current(&state, &result.dependencies, None));
+        state
+            .apply_operation(SemanticOperation::Scenery(SceneryOperation::SetVariable {
+                id: VarpId::new(42),
+                value: value + 1,
+            }))
+            .unwrap();
+        assert!(!scripts.widget_paint_is_current(&state, &result.dependencies, None));
     }
 }
 #[test]
@@ -108,6 +124,7 @@ fn alternate_selection_keeps_live_shared_fields_and_empty_text_uses_primary() {
             &legacy,
             &mut errors,
             &mut 1_000_000,
+            &mut BTreeMap::new(),
         )
         .unwrap();
     assert!(
@@ -134,6 +151,7 @@ fn unavailable_facts_use_source_failure_value_with_visible_diagnostics() {
             &legacy,
             &mut errors,
             &mut 1_000_000,
+            &mut BTreeMap::new(),
         )
         .unwrap();
     assert_eq!(errors.len(), 1);

@@ -34,6 +34,20 @@ recorded action-to-packet rows. This spec defines the shared model.
 
 ## Normative behavior
 
+### World-map click dispatch (accepted 2026-10-31)
+
+The application world-map owner handles press/drag/release using logical canvas
+coordinates and explicit monotonic time. Stock 240 RenderOverview.method12459 /
+method12464 define press ordering, truncation and the 500 ms / 25-pixel confirmation
+guard. Active-area inverse section mapping supplies the source coordinate. A typed
+map-click intent is encoded only by the selected protocol adapter (240 CLICKWORLDMAP,
+opcode 78, four-byte packed coordinate; pinned decoder g4Alt1). TSPS packet IDs and
+its release-click policy are not target behavior. Occluding UI/menu arbitration,
+map closure, focus loss and session replacement revoke unfinished gestures. Normal
+clicks do not teleport local GameState: the OpenRune administrator handler decides
+whether to telejump and authoritative server updates establish the new position.
+The separate stock staff modifier shortcut is not replaced with a normal map click.
+
 ### Input events (`crates/input`)
 
 - Mouse: button press/release with button identity, position in logical canvas pixels, motion,

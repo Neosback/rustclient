@@ -11,6 +11,7 @@ pub use legacy::WidgetProjection;
 mod lifecycle;
 #[cfg(test)]
 mod lifecycle_tests;
+mod listener_index;
 mod queries;
 #[cfg(test)]
 mod test_support;
@@ -19,6 +20,8 @@ mod wheel;
 #[cfg(test)]
 mod widget_callbacks_tests;
 mod widget_iteration;
+mod widget_paint;
+pub use widget_paint::WidgetPaintDependencies;
 mod widgets;
 pub mod worldmap;
 use rustclient_cache::{Cache, CacheProfile, script::Script, widget::InterfaceDefinition};
@@ -52,7 +55,8 @@ struct QueuedScript {
 pub struct ClientScripts<S> {
     pub cache: Cache<S>,
     pub profile: CacheProfile,
-    pub interfaces: BTreeMap<InterfaceId, InterfaceDefinition>,
+    pub(crate) interfaces: BTreeMap<InterfaceId, InterfaceDefinition>,
+    catalog_revision: u64,
     scripts: BTreeMap<ScriptId, Arc<Script>>,
     enums: BTreeMap<u32, rustclient_cache::osrs240::script_tables::ScriptEnum>,
     items: BTreeMap<ItemDefinitionId, rustclient_cache::world::ItemDefinition>,
@@ -76,6 +80,7 @@ pub struct ClientScripts<S> {
     pub world_map: worldmap::WorldMapState,
     session_initialized: bool,
     widget_iteration: widget_iteration::WidgetIteration,
+    listener_index: listener_index::ListenerIndex,
 }
 impl<S: ReadOnlyBlobs> ClientScripts<S> {
     #[must_use]
@@ -84,6 +89,7 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
             cache,
             profile,
             interfaces: BTreeMap::new(),
+            catalog_revision: 0,
             scripts: BTreeMap::new(),
             enums: BTreeMap::new(),
             items: BTreeMap::new(),
@@ -105,8 +111,36 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
             world_map: worldmap::WorldMapState::new(),
             session_initialized: false,
             widget_iteration: widget_iteration::WidgetIteration::default(),
+            listener_index: listener_index::ListenerIndex::default(),
         }
     }
+    /// Immutable definitions; mutations remain inside the catalog owner.
+    #[must_use]
+    pub fn interfaces(&self) -> &BTreeMap<InterfaceId, InterfaceDefinition> {
+        &self.interfaces
+    }
+    /// Invalidation identity for retained layouts using these definitions.
+    #[must_use]
+    pub const fn catalog_revision(&self) -> u64 {
+        self.catalog_revision
+    }
+
+    /// Replace decoded immutable definitions for an explicit cache/profile diagnostic.
+    /// Live widget mutations still use `GameState` operations.
+    pub fn replace_interface_definitions(
+        &mut self,
+        definitions: impl IntoIterator<Item = InterfaceDefinition>,
+    ) {
+        self.interfaces = definitions
+            .into_iter()
+            .map(|definition| (definition.id, definition))
+            .collect();
+        self.catalog_revision = self.catalog_revision.wrapping_add(1);
+        self.layout_revision = None;
+        self.layout_sizes.clear();
+        self.loaded_groups.clear();
+    }
+
     /// Initialize cache-authored desktop preferences before opening a gameframe.
     /// Idempotent within a session; reset makes a fresh login run the helper again.
     /// # Errors
@@ -446,6 +480,7 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
     pub fn reset(&mut self) {
         self.session_initialized = false;
         self.widget_iteration = widget_iteration::WidgetIteration::default();
+        self.listener_index = listener_index::ListenerIndex::default();
         self.loaded_groups.clear();
         self.layout_sizes.clear();
         self.layout_revision = None;
@@ -556,80 +591,6 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
     /// Schedule a committed variable/container notification. Trigger filtering follows cache listeners.
     /// # Errors
     /// Propagates bounded queue or malformed listener failures.
-    pub fn notify(
-        &mut self,
-        state: &GameState,
-        kind: WidgetListener,
-        changed: Option<i32>,
-    ) -> Result<()> {
-        let groups = state.interfaces().groups();
-        let mut addresses = std::collections::BTreeSet::new();
-        for group in &groups {
-            if let Some(assets) = self.interfaces.get(group) {
-                addresses.extend(
-                    assets
-                        .widgets()
-                        .keys()
-                        .copied()
-                        .map(WidgetAddress::component),
-                );
-            }
-        }
-        addresses.extend(
-            state
-                .interfaces()
-                .runtime()
-                .keys()
-                .filter(|address| {
-                    address.child.is_some() && groups.contains(&address.widget.interface)
-                })
-                .copied(),
-        );
-        let mut pending = Vec::new();
-        for address in addresses {
-            let runtime = state.interfaces().runtime().get(&address);
-            let base = self
-                .interfaces
-                .get(&address.widget.interface)
-                .and_then(|group| group.widgets().get(&address.widget));
-            let args = runtime.and_then(|r| r.listeners.get(&kind)).map_or_else(
-                || {
-                    if address.child.is_none() {
-                        base.and_then(|w| w.listeners.get(&kind))
-                    } else {
-                        None
-                    }
-                },
-                Option::as_ref,
-            );
-            if let Some(args) = args {
-                let triggers = runtime.and_then(|r| r.triggers.get(&kind)).map_or_else(
-                    || {
-                        if address.child.is_none() {
-                            base.map_or(&[][..], |w| match kind {
-                                WidgetListener::Inventory => w.inventory_triggers.as_slice(),
-                                WidgetListener::Variable => w.variable_triggers.as_slice(),
-                                WidgetListener::Stat => w.stat_triggers.as_slice(),
-                                _ => &[],
-                            })
-                        } else {
-                            &[]
-                        }
-                    },
-                    Vec::as_slice,
-                );
-                if triggers.is_empty() || changed.is_none_or(|c| triggers.contains(&c)) {
-                    pending.push((address, args.clone()));
-                }
-            }
-        }
-        for (widget, args) in pending {
-            if let Some(request) = request(args)? {
-                self.enqueue(request, Some(widget))?;
-            }
-        }
-        Ok(())
-    }
     /// Run a bounded event batch. Failures stop that invocation and are returned explicitly.
     pub fn drain(&mut self, state: &mut GameState) -> Vec<String> {
         let mut errors = Vec::new();

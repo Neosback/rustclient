@@ -88,6 +88,26 @@ pub struct StateDelta {
     changed: u16,
 }
 impl StateDelta {
+    pub(crate) const ALL: Self = Self {
+        changed: (1 << 12) - 1,
+    };
+    pub(crate) fn domains(self) -> impl Iterator<Item = (usize, Self)> {
+        let mut remaining = self.changed;
+        std::iter::from_fn(move || {
+            if remaining == 0 {
+                return None;
+            }
+            let index = remaining.trailing_zeros();
+            let changed = 1 << index;
+            remaining &= !changed;
+            Some((usize::try_from(index).unwrap_or(0), Self { changed }))
+        })
+    }
+    pub(crate) const fn union(self, other: Self) -> Self {
+        Self {
+            changed: self.changed | other.changed,
+        }
+    }
     pub(crate) const PLAYER_PLANE: Self = Self {
         changed: 8 | 16 | 128,
     };

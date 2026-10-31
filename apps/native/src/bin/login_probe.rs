@@ -322,7 +322,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         );
         let tree = rustclient_game_ui::widgets::WidgetTree::build(
             state.interfaces(),
-            &scripts.interfaces,
+            scripts.interfaces(),
             rustclient_game_ui::widgets::WidgetBounds {
                 x: 0,
                 y: 0,
@@ -333,7 +333,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         for node in tree.nodes {
             let w = rustclient_game_ui::widgets::resolve_widget(
                 state.interfaces(),
-                &scripts.interfaces,
+                scripts.interfaces(),
                 node.address,
             )?;
             println!(

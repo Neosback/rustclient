@@ -8,13 +8,19 @@
 mod capture;
 mod shader_sources;
 mod surface;
+mod timing;
 mod ui;
 mod ui_canvas;
 pub use capture::{
     capture_canvas, capture_canvas_with_overlay, capture_capabilities, capture_ui,
     capture_ui_with_images, capture_ui_with_settings,
 };
+pub use timing::{FrameTimings, GpuTimingSample, Instrumentation};
 pub use ui::{DynamicImage, DynamicImages, UiStats};
+#[cfg(not(target_arch = "wasm32"))]
+pub use ui::{UiPreparationMeasurement, measure_ui_preparation};
+#[cfg(not(target_arch = "wasm32"))]
+pub use ui::{UiRasterStep, verify_ui_raster_retention};
 
 pub use surface::{
     ClearColor, FrameOutcome, RenderError, RendererInitError, SurfaceRenderer, SurfaceSize,

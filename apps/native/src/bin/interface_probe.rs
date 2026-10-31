@@ -1,4 +1,6 @@
 //! Read-only interface/cache diagnostic; does not execute CS2 scripts or claim UI parity.
+#[path = "interface_probe/retention.rs"]
+mod retention;
 use rustclient_cache::{Cache, CacheProfile};
 use rustclient_model::{InterfaceId, WidgetBody};
 use rustclient_platform_native::DirectoryBlobs;
@@ -14,10 +16,14 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     let cache = Cache::open(DirectoryBlobs::open(path)?)?;
     println!("cache {}", cache.metadata_fingerprint());
     let args: Vec<_> = args.collect();
-    let cs1 = args.iter().any(|arg| arg == "--cs1");
+    let gpu = args.iter().any(|arg| arg == "--retained-ui-gpu");
+    let benchmark = args.iter().any(|arg| arg == "--retained-paint-benchmark");
+    let cs1 = gpu || benchmark || args.iter().any(|arg| arg == "--cs1");
     let mut groups = args
         .into_iter()
-        .filter(|arg| arg != "--cs1")
+        .filter(|arg| {
+            arg != "--cs1" && arg != "--retained-paint-benchmark" && arg != "--retained-ui-gpu"
+        })
         .map(|id| id.parse::<u32>())
         .collect::<Result<Vec<_>, _>>()?;
     if groups.is_empty() {
@@ -81,11 +87,10 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
             .keys()
             .filter(|id| definition.legacy(**id).is_some())
             .count();
-        runtime.interfaces.clear();
-        runtime.interfaces.insert(definition.id, definition);
+        runtime.replace_interface_definitions([definition]);
         let tree = rustclient_game_ui::widgets::WidgetTree::build(
             state.interfaces(),
-            &runtime.interfaces,
+            runtime.interfaces(),
             rustclient_game_ui::widgets::WidgetBounds {
                 x: 0,
                 y: 0,
@@ -113,6 +118,12 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
                 projected.diagnostics.len(),
                 visuals.failures.len()
             );
+            if gpu {
+                retention::gpu(&runtime, &state, &visuals, group)?;
+            }
+            if benchmark {
+                retention::run(&runtime, &state, &visuals, group)?;
+            }
             for diagnostic in projected.diagnostics.iter().chain(visuals.failures.iter()) {
                 println!("  {diagnostic}");
             }

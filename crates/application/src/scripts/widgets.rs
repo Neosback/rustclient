@@ -257,6 +257,7 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
             .load_interface(&h.resources.cache, address.widget.interface)
             .map_err(|e| e.to_string())?;
         h.resources.interfaces.insert(group.id, group);
+        h.resources.catalog_revision = h.resources.catalog_revision.wrapping_add(1);
     }
     let widget = rustclient_game_ui::widgets::resolve_widget(
         h.state.interfaces(),

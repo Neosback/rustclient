@@ -335,6 +335,7 @@ fn player_carried_chat_notifies_the_cache_chat_listener_after_history_commits() 
         InterfaceUpdate::SetRoot(Some(group)),
     );
     assert_eq!(observed(&state), 1);
+    let cursor = state.projection_cursor();
     let errors = scripts
         .commit(
             &mut state,
@@ -354,6 +355,18 @@ fn player_carried_chat_notifies_the_cache_chat_listener_after_history_commits() 
     assert!(errors.is_empty(), "{errors:?}");
     assert_eq!(observed(&state), 12);
     assert_eq!(state.chat().entries().len(), 1);
+    let changes = state.projection_changes(cursor);
+    assert!(
+        changes
+            .iter()
+            .any(|change| matches!(change, rustclient_game_state::ProjectionChange::Chat(_)))
+    );
+    assert!(changes.iter().any(|change| matches!(
+        change,
+        rustclient_game_state::ProjectionChange::ActorOverhead(_)
+    )));
+    assert!(changes.iter().any(|change| matches!(change, rustclient_game_state::ProjectionChange::Domains(delta) if delta.interfaces_changed())),
+        "nested cache-authored callback commits are captured by the same gateway");
     scripts
         .commit(
             &mut state,

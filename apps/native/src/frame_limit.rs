@@ -5,29 +5,44 @@ use std::time::{Duration, Instant};
 
 #[derive(Debug, Default)]
 pub(super) struct FrameLimit {
-    last: Option<Instant>,
+    limit: Option<u32>,
+    next: Option<Instant>,
 }
 
 impl FrameLimit {
     /// The next allowed presentation, or no deadline when uncapped/not yet presented.
     pub(super) fn deadline(&self, limit: Option<u32>) -> Option<Instant> {
-        self.last?.checked_add(interval(limit?))
+        let limit = limit.map(|fps| fps.max(1));
+        (limit == self.limit).then_some(self.next).flatten()
+    }
+
+    pub(super) fn reset(&mut self) {
+        *self = Self::default();
     }
 
     /// Whether a frame may be presented at `now` when at most `limit` frames per second are allowed.
     pub(super) fn allow(&mut self, limit: Option<u32>, now: Instant) -> bool {
+        let limit = limit.map(|fps| fps.max(1));
+        if self.limit != limit {
+            self.limit = limit;
+            self.next = None;
+        }
         let Some(fps) = limit else {
-            self.last = Some(now);
             return true;
         };
         let interval = interval(fps);
-        if self
-            .last
-            .is_some_and(|last| now.saturating_duration_since(last) < interval)
-        {
+        let deadline = self.next.unwrap_or(now);
+        if now < deadline {
             return false;
         }
-        self.last = Some(now);
+        // Keep phase after ordinary wake lateness. Skip entire missed periods;
+        // never issue a burst of catch-up frames or accumulate wake-up drift.
+        let periods = now.saturating_duration_since(deadline).as_nanos() / interval.as_nanos() + 1;
+        self.next = u32::try_from(periods)
+            .ok()
+            .and_then(|periods| interval.checked_mul(periods))
+            .and_then(|elapsed| deadline.checked_add(elapsed))
+            .or_else(|| now.checked_add(interval));
         true
     }
 }
@@ -112,10 +127,34 @@ mod gpu_tests {
         );
         assert!(!clock.allow(Some(60), start + Duration::from_micros(16_666)));
         assert!(clock.allow(Some(60), start + Duration::from_secs(2)));
+        assert_eq!(clock.deadline(Some(50)), None);
+        assert!(clock.allow(Some(50), start + Duration::from_secs(2)));
         assert_eq!(
             clock.deadline(Some(50)),
             Some(start + Duration::from_millis(2020))
         );
         assert_eq!(clock.deadline(None), None);
+    }
+
+    #[test]
+    fn late_wakes_keep_phase_and_suspension_restarts_immediately() {
+        let mut clock = FrameLimit::default();
+        let origin = Instant::now();
+        assert!(clock.allow(Some(60), origin));
+        let period = interval(60);
+        for frame in 1..600 {
+            let late = origin + period * frame + Duration::from_micros(800);
+            assert!(clock.allow(Some(60), late));
+            assert_eq!(
+                clock.deadline(Some(60)),
+                Some(origin + period * (frame + 1))
+            );
+            assert!(!clock.allow(Some(60), late));
+        }
+        let resumed = origin + Duration::from_mins(1);
+        assert!(clock.allow(Some(60), resumed));
+        assert!(!clock.allow(Some(60), resumed));
+        clock.reset();
+        assert!(clock.allow(Some(60), resumed));
     }
 }

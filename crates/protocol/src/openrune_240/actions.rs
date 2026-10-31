@@ -160,6 +160,21 @@ pub(super) fn widget(action: rustclient_model::WidgetAction) -> Result<(u8, Vec<
     Ok((1, out))
 }
 
+/// Selected `RSProt` 240 `ClickWorldMapDecoder.g4Alt1`; stock `classXY.method13284`.
+pub(super) fn map_click(tile: WorldTile) -> Result<(u8, Vec<u8>)> {
+    let coordinate = |value| {
+        u32::try_from(value)
+            .ok()
+            .filter(|value| *value < 16384)
+            .ok_or_else(|| {
+                ProtocolError::new("world map click", "coordinate exceeds packed 14-bit range")
+            })
+    };
+    let packed =
+        (u32::from(tile.plane.get()) << 28) | (coordinate(tile.x)? << 14) | coordinate(tile.y)?;
+    Ok((78, packed.to_le_bytes().to_vec()))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -292,6 +307,24 @@ mod tests {
                 false
             )
             .is_err()
+        );
+    }
+    #[test]
+    fn world_map_click_uses_selected_240_little_endian_packed_coordinates() {
+        use rustclient_model::Plane;
+        assert_eq!(
+            map_click(WorldTile::new(3200, 3201, Plane::new(1).unwrap())).unwrap(),
+            (78, vec![0x81, 0x0c, 0x20, 0x13])
+        );
+        for value in [-1, 16384, i32::MAX] {
+            assert!(map_click(WorldTile::new(value, 0, Plane::MIN)).is_err());
+            assert!(map_click(WorldTile::new(0, value, Plane::MIN)).is_err());
+        }
+        assert_eq!(
+            map_click(WorldTile::new(16383, 16383, Plane::MAX))
+                .unwrap()
+                .1,
+            vec![0xff, 0xff, 0xff, 0x3f]
         );
     }
 }

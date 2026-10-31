@@ -139,13 +139,28 @@ pub fn project_widgets_with_drag(
 /// still use the authoritative topology; the callback can select visual fields and cannot change layout.
 /// # Errors
 /// Reports the same bounded layout/asset failures or an explicit presentation failure.
-#[expect(clippy::too_many_lines, reason = "painter-ordered widget grammar")]
 pub fn project_widgets_with_presentation(
     state: &GameState,
     definitions: &BTreeMap<InterfaceId, InterfaceDefinition>,
     assets: &WidgetVisualAssets,
     frame: &mut UiFrame,
     dragged: Option<crate::pointer::DraggedWidget>,
+    present: impl FnMut(rustclient_model::WidgetAddress, &mut WidgetBody) -> Result<(), String>,
+) -> Result<crate::widgets::WidgetTree, String> {
+    project_widgets_with_retained_tree(state, definitions, assets, frame, dragged, None, present)
+}
+/// Reuse a layout whose interface/catalog/drag inputs are unchanged. The caller owns
+/// invalidation; live widget values are still resolved for painting every time.
+/// # Errors
+/// Reports the same bounded layout, asset and presentation failures as a fresh projection.
+#[expect(clippy::too_many_lines, reason = "painter-ordered widget grammar")]
+pub fn project_widgets_with_retained_tree(
+    state: &GameState,
+    definitions: &BTreeMap<InterfaceId, InterfaceDefinition>,
+    assets: &WidgetVisualAssets,
+    frame: &mut UiFrame,
+    dragged: Option<crate::pointer::DraggedWidget>,
+    retained: Option<crate::widgets::WidgetTree>,
     mut present: impl FnMut(rustclient_model::WidgetAddress, &mut WidgetBody) -> Result<(), String>,
 ) -> Result<crate::widgets::WidgetTree, String> {
     use crate::widgets::{WidgetBounds, WidgetTree, resolve_widget};
@@ -157,13 +172,17 @@ pub fn project_widgets_with_presentation(
     frame.canvas = Some(state.interfaces().window().canvas);
     frame.viewport_settings = state.interfaces().viewport();
     frame.scene_brightness = state.interfaces().brightness();
-    let tree = WidgetTree::build_with_drag(
-        state.interfaces(),
-        definitions,
-        WidgetBounds::canvas(state.interfaces()),
-        dragged,
-    )
-    .map_err(|e| e.to_string())?;
+    let tree = if let Some(tree) = retained {
+        tree
+    } else {
+        WidgetTree::build_with_drag(
+            state.interfaces(),
+            definitions,
+            WidgetBounds::canvas(state.interfaces()),
+            dragged,
+        )
+        .map_err(|e| e.to_string())?
+    };
     let mut overlay_viewport = None;
     for node in &tree.nodes {
         let mut widget = resolve_widget(state.interfaces(), definitions, node.address)

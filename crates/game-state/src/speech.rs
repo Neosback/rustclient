@@ -174,14 +174,23 @@ impl GameState {
     pub(crate) fn commit_speech(&mut self, prepared: Vec<PreparedSpeech>) -> bool {
         let mut history_changed = false;
         for speech in prepared {
-            if let Some(PlayerEntity { overhead, .. }) =
-                self.entities.players.get_mut(&speech.index)
+            if let Some(PlayerEntity {
+                overhead, instance, ..
+            }) = self.entities.players.get_mut(&speech.index)
             {
                 *overhead = Some(speech.overhead);
+                self.projection.push(crate::ProjectionChange::ActorOverhead(
+                    crate::ActorProjectionKey::Player {
+                        index: speech.index,
+                        instance: *instance,
+                    },
+                ));
                 if let Some(message) = speech.message {
-                    self.chat
+                    let uid = self
+                        .chat
                         .push(message, self.scenery.cycle())
                         .expect("history prevalidated before entity mutation");
+                    self.projection.push(crate::ProjectionChange::Chat(uid));
                     history_changed = true;
                 }
             }

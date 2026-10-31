@@ -63,6 +63,20 @@ impl EntityCatalog {
         self.poses.clear();
     }
 
+    /// Release only requests which were rejected or revoked before their result was accepted.
+    /// Decoded resources remain resident; a subsequent live request can retry missing inputs.
+    pub fn retry_request(&mut self, request: &EntityRequest) {
+        for id in &request.npcs {
+            self.requested_npcs.remove(id);
+        }
+        for id in &request.items {
+            self.requested_items.remove(id);
+        }
+        for id in &request.sequences {
+            self.requested_sequences.remove(id);
+        }
+    }
+
     /// Definitions that live entities reference and no earlier request covered.
     ///
     /// Each id is requested once; the loader never retries absent or undecodable assets.

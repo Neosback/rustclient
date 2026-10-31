@@ -8,6 +8,19 @@ One semantic client implementation, with thin native/browser adapters.
 
 ## Platform capabilities
 
+### Bounded CPU projection work (accepted 2026-10-30)
+
+`CpuJobExecutor` admits owned, cancellable projection work without blocking for
+capacity. Jobs carry explicit session/scene/resource/request identities and
+visible/prefetch priority. Rejection returns ownership; required work must be
+retried rather than silently marked complete. Semantic commits, network ordering
+and GPU handles never enter these jobs. Native's persistent pool has 1..4 workers
+(available logical CPUs minus two) and at most 64 queued tasks. Callers bound their
+input batches and outstanding results independently. Queue count is not a byte
+budget. Teardown revokes queued work without blocking the event thread; running
+closures check their explicit cancellation at stage boundaries. Browser execution
+is a separate adapter and is not implemented by merely sharing the contract.
+
 The `platform` crate defines capability-oriented contracts. CP2 implements the first two contracts:
 
 - monotonic and wall clocks,

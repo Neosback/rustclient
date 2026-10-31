@@ -118,7 +118,7 @@ impl TitleUi {
     pub fn project_loading(&self, assets: &TitleAssets, state: &GameState, frame: &mut UiFrame) {
         frame.viewport_overlay = crate::ViewportOverlay::default();
         let canvas = state.interfaces().window().canvas;
-        frame.quads.clear();
+        frame.clear_quads();
         frame.fill_rect(
             Rect::new(0., 0., canvas.width as f32, canvas.height as f32),
             [0, 0, 0, 255],
@@ -184,7 +184,7 @@ impl TitleUi {
     /// Project a compact HUD over the authenticated static scene preview.
     pub fn project_world(&self, assets: &TitleAssets, state: &GameState, frame: &mut UiFrame) {
         frame.viewport_overlay = crate::ViewportOverlay::default();
-        frame.quads.clear();
+        frame.clear_quads();
         frame.image(UiImageId::White, Rect::new(8., 8., 749., 54.), CLIP);
         if let Some(q) = frame.quads.last_mut() {
             q.tint = [12, 15, 20, 215];
@@ -368,7 +368,7 @@ impl TitleUi {
 fn title_chrome(assets: &TitleAssets, frame: &mut UiFrame) {
     frame.viewport_overlay = crate::ViewportOverlay::default();
     frame.canvas = None;
-    frame.quads.clear();
+    frame.clear_quads();
     frame.image(UiImageId::Background, Rect::new(0., 0., 382., 503.), CLIP);
     frame.image(UiImageId::Background, Rect::new(382., 0., 382., 503.), CLIP);
     if let Some(quad) = frame.quads.last_mut() {

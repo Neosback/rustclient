@@ -63,6 +63,7 @@ impl std::error::Error for TickAdvanceError {}
 /// authority by cloning the whole state tree.
 #[derive(Debug)]
 pub struct GameState {
+    pub(crate) projection: crate::projection::ProjectionJournal,
     lifecycle: SessionLifecycle,
     revision: Option<Revision>,
     tick: GameTick,
@@ -88,6 +89,7 @@ impl GameState {
     #[must_use]
     pub fn new() -> Self {
         Self {
+            projection: crate::projection::ProjectionJournal::default(),
             lifecycle: SessionLifecycle::Inactive,
             revision: None,
             tick: GameTick::ZERO,
@@ -108,6 +110,20 @@ impl GameState {
     #[must_use]
     pub const fn inventories(&self) -> &crate::InventoryState {
         &self.inventories
+    }
+
+    /// Capture a consumer's current position without affecting any other observer.
+    #[must_use]
+    pub const fn projection_cursor(&self) -> crate::ProjectionCursor {
+        self.projection.cursor()
+    }
+    /// Read invalidations after a prior cursor. Expired history requires a current snapshot.
+    #[must_use]
+    pub fn projection_changes(
+        &self,
+        cursor: crate::ProjectionCursor,
+    ) -> crate::ProjectionChanges<'_> {
+        self.projection.read(cursor)
     }
 
     #[must_use]

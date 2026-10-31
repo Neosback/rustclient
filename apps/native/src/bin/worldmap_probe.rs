@@ -66,7 +66,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .map(|region| {
             (
                 region.region,
-                painter.render(
+                std::sync::Arc::new(painter.render(
                     region,
                     3,
                     main.region_background,
@@ -74,7 +74,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     &textures,
                     &objects,
                     &scenes,
-                ),
+                )),
             )
         })
         .collect();
@@ -94,7 +94,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             && !sprites.contains_key(&id)
             && let Some(sprite) = cache.sprite(id)?
         {
-            sprites.insert(id, sprite);
+            sprites.insert(id, std::sync::Arc::new(sprite));
         }
     }
     let mut fonts = BTreeMap::new();
@@ -103,7 +103,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         rustclient_cache::osrs240::world_map::WorldMapLabelSize::Medium,
         rustclient_cache::osrs240::world_map::WorldMapLabelSize::Large,
     ] {
-        fonts.insert(size, profile.load_world_map_font(&cache, size)?);
+        fonts.insert(
+            size,
+            std::sync::Arc::new(profile.load_world_map_font(&cache, size)?),
+        );
     }
     let mut pixels = Vec::new();
     rustclient_scene::world_map::compose_world_map_viewport(

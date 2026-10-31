@@ -34,6 +34,7 @@ pub struct InterfaceState {
     device_preferences: BTreeMap<u8, i32>,
     epoch: u64,
     revision: u64,
+    listener_revision: u64,
     root: Option<InterfaceId>,
     mounts: BTreeMap<WidgetId, InterfaceMount>,
     events: Vec<WidgetEventRange>,
@@ -71,6 +72,14 @@ impl InterfaceState {
     #[must_use]
     pub const fn revision(&self) -> u64 {
         self.revision
+    }
+    /// Disposable listener/child membership invalidation, independent of paint changes.
+    #[must_use]
+    pub const fn listener_revision(&self) -> u64 {
+        self.listener_revision
+    }
+    fn invalidate_listeners(&mut self) {
+        self.listener_revision = self.listener_revision.wrapping_add(1);
     }
     pub(crate) fn touch(&mut self) {
         self.revision = self.revision.wrapping_add(1);
@@ -243,6 +252,9 @@ impl InterfaceState {
                 };
                 let changed = self.runtime.get(&address) != Some(&value);
                 self.runtime.insert(address, value);
+                if changed {
+                    self.invalidate_listeners();
+                }
                 Ok(changed)
             }
             InterfaceUpdate::CloneChild {
@@ -272,6 +284,9 @@ impl InterfaceState {
                 self.validate_parent(address, value.parent_child)?;
                 let changed = self.runtime.get(&address) != Some(&value);
                 self.runtime.insert(address, value);
+                if changed {
+                    self.invalidate_listeners();
+                }
                 Ok(changed)
             }
             InterfaceUpdate::DeleteChild(address) => {
@@ -300,13 +315,21 @@ impl InterfaceState {
                     key.widget != address.widget
                         || key.child.is_none_or(|child| !removed.contains(&child))
                 });
-                Ok(before != self.runtime.len())
+                let changed = before != self.runtime.len();
+                if changed {
+                    self.invalidate_listeners();
+                }
+                Ok(changed)
             }
             InterfaceUpdate::DeleteChildren(parent) => {
                 let before = self.runtime.len();
                 self.runtime
                     .retain(|address, _| address.widget != parent || address.child.is_none());
-                Ok(before != self.runtime.len())
+                let changed = before != self.runtime.len();
+                if changed {
+                    self.invalidate_listeners();
+                }
+                Ok(changed)
             }
             InterfaceUpdate::SetProperty { widget, property } => self.property(widget, property),
             InterfaceUpdate::SetEvents(event) => {
@@ -369,7 +392,14 @@ impl InterfaceState {
         if self.runtime.get(&address) == Some(&value) {
             return Ok(false);
         }
+        let listeners_changed = self.runtime.get(&address).map_or_else(
+            || !value.listeners.is_empty() || !value.triggers.is_empty(),
+            |previous| previous.listeners != value.listeners || previous.triggers != value.triggers,
+        );
         self.runtime.insert(address, value);
+        if listeners_changed {
+            self.invalidate_listeners();
+        }
         Ok(true)
     }
     fn validate_parent(

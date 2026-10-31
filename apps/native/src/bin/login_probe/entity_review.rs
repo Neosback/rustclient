@@ -71,7 +71,7 @@ pub fn logout(
     use rustclient_platform::ByteStream;
     let tree = rustclient_game_ui::widgets::WidgetTree::build(
         state.interfaces(),
-        &scripts.interfaces,
+        scripts.interfaces(),
         rustclient_game_ui::widgets::WidgetBounds::canvas(state.interfaces()),
     )?;
     let root = state.interfaces().root();
@@ -81,7 +81,7 @@ pub fn logout(
     nodes.sort_by_key(|node| Some(node.id.interface) == root);
     for node in nodes {
         for (label, action) in
-            rustclient_application::widget_actions(state, &scripts.interfaces, node.address)?
+            rustclient_application::widget_actions(state, scripts.interfaces(), node.address)?
         {
             if label.to_ascii_lowercase().contains("logout") {
                 let (intents, errors) = scripts.perform_action(state, action)?;

@@ -1,5 +1,154 @@
 # Prepared scene updates and retained pose uploads — 2026-10-30
 
+## Retained UI canvas (2026-10-31, subsequent checkpoint)
+
+The renderer now reuses the existing encoded UI canvas texture when its commands
+and dynamic pixels are unchanged and neither the current nor previous frame has
+transient overlays. This adds no full-screen texture or extra widget command copy.
+Removing the final overlay forces a raster pass even with zero vertex upload bytes,
+so its pixels cannot remain on screen. Dynamic pixel uploads, a new command identity,
+atlas replacement, canvas resizing/reconstruction and renderer reconstruction force
+repainting. The world and final display composite continue on every required frame.
+`UiStats.raster_passes` records actual UI raster decisions in the shared production path.
+
+The explicit `interface_probe CACHE_DIR 12 149 548 161 --retained-ui-gpu` diagnostic
+submitted 15 lifecycle steps per cache-authored root on the actual GPU (60 total).
+The unchanged/recovered/reconstructed cases submitted zero UI raster passes and
+zero vertex/texture upload bytes. Adding/removing overlays, recovering from unknown
+assets, replacing the atlas, resizing and reconstructing resources forced repainting.
+GPU validation reported no errors. No pixels were read back and no GPU execution
+time was measured; this is a lifecycle/submission contract, not the ADR-0004 visual
+comparison or a live performance gate. The later `uiRasterRetention` evidence section
+records this checkpoint separately from the earlier frozen widget-only validation.
+
+The CPU workload additionally compares a static frame and the same frame with two
+transient overlays. Static retained frames prepare/upload no vertices and become
+eligible for raster reuse; the overlay case prepares only the two transient quads.
+For cache root 548 (43 widget quads), medians across three rounds' 27 raw measured
+batches of 2,000 iterations were:
+
+| CPU preparation workload | Fresh batch | Retained batch | Requested vertex bytes/iteration |
+| --- | ---: | ---: | ---: |
+| Static widgets | 3.2740 ms | 0.0261 ms | 8,256 → 0 |
+| Same widgets plus two overlays | 3.4303 ms | 0.1475 ms | 8,640 → 384 |
+
+These measure CPU preparation, not GPU copy/execution time or live frame latency.
+The host was not isolated; all samples/outliers remain in the JSON. Root 149 has no
+visible quads without CS2 and remains the no-geometry-benefit control. Native
+unchanged-frame painting also remains zero in the retained paint workload. The
+existing 6 MiB vertex scratch capacity is preserved: lazy geometric growth for
+clipped rotated quads was rejected during review before final validation. No RSS
+or whole-update memory improvement is inferred from these counts.
+
+Unchanged transient commands still repaint conservatively. Fine-grained widget/slot
+changes, world-map pixel retention, ground items/combat effects and live 256/1024-actor,
+memory and visual acceptance remain open.
+
+Final source `d543e9086e9b6b48902030d21fbb7e321235cadffe3ebdc604378d822c9b0a54`
+passed formatting, workspace/all-target checks, strict workspace/all-target Clippy,
+380 scoped contracts (seven ignored), the Wasm check and native binary build.
+Source hashes match before/after every gate. Exact commands/logs and the interrupted
+pre-capacity-review attempt remain separate in the evidence JSON. Browser gameplay,
+full native device loss and the live/visual/stress/memory gates remain NOT-RUN.
+
+## Retained widget preparation (2026-10-31, continuation of the foundation)
+
+The native painter now retains its widget command prefix. Its application-owned
+presentation dependencies name the interface revision, definition-catalog revision,
+drag geometry and the facts actually read by CS1. Successful varbit reads retain
+the owning varp dependency, avoiding cache decoding on unchanged-frame checks.
+An unobserved variable does not invalidate the paint. Missing facts remain explicit
+errors and are rechecked; no legacy inventory binding is invented. Asset merges and
+plugin sprite replacement invalidate painting independently of gameplay events.
+Timers, listeners and semantic commits continue through their existing owners.
+
+Speech uses a separate transient command layer at the world widget's painter
+boundary. Mounted interfaces, pointer feedback and menus retain their order.
+`UiFrame::seal_widgets` supplies a fresh owned content identity; renderer preparation
+retains widget vertices and batches and uploads transient vertices at the buffer
+suffix. Atlas replacement, viewport/DPI/stretch changes, a new seal and renderer
+reconstruction invalidate prepared vertices. Preparation failure invalidates its
+key before a retry. `UiStats` reports prepared/retained quads and vertex bytes
+separately from dynamic texture bytes, available in native timing notes.
+
+The explicit `interface_probe --retained-paint-benchmark` workload compares fresh
+and retained painting/preparation in the same optimized binary with the same cache
+and frame, retaining two warm-up and nine measured batches. It exercises painter
+order, five DPI transforms, stretching/resizing, texture layout, content identity,
+atlas invalidation and missing-asset recovery against fresh preparation. These are
+CPU command/vertex checks, not screenshots or the ADR-0004 visual parity gate.
+The cache-authored roots are measured without CS2: 12/548/161 contain 34/43/50
+quads; root 149 is empty and is retained as a no-benefit geometry case. A pair of
+diagnostic transient rectangles exercises the two overlay layers without creating
+gameplay events. Raw logs, binary/source identities and final validation are recorded
+in the evidence JSON's `retainedWidgets` section.
+
+This slice skips unchanged-frame painting and widget vertex uploads; a changed
+widget can still repaint the interface prefix. Per-widget/per-slot preparation,
+GPU raster retention (completed for static UI in the subsequent checkpoint above), world-map image retention and full inventory/chat gameplay
+acceptance remain open. It does not complete ground items/combat effects or establish
+live frame pacing, GPU timing or process-memory improvements.
+
+## Incremental update foundation (2026-10-30, baseline `56e822b5`)
+
+The accepted incremental-update plan is broader than this foundation. Its
+requirements are recorded in SPEC-0002, SPEC-0003 and SPEC-0007. Historical
+measurements below retain their original scope. The evidence JSON's
+`incrementalFoundation` section records this separate implementation and validation.
+
+- The single successful-operation gateway records bounded projection history
+  with independent consumer cursors. Typed location, variable, widget, inventory
+  slot, received-chat and actor-overhead keys supplement broad domain fallback.
+  Expired readers receive the affected domains to refresh. Failed/no-op
+  operations do not manufacture changes. Cache-authored nested script commits
+  use the same gateway. This metadata stays outside semantic/replay fingerprints
+  and the external plugin ABI; schema version 29 remains unchanged.
+- Sparse inventory patches validate first, retain last-write/no-op semantics and
+  apply final slot values in place. They no longer clone the entire container.
+  Empty versus absent containers and extension by empty slots remain observable.
+- Native widget layout survives unrelated semantic operations. Its key includes
+  interface revision, controlled definition-catalog revision and drag geometry.
+  Asset dependency collection also skips unchanged interface/catalog inputs,
+  while newly requested plugin sprites still trigger loading. Painting live
+  values, timer/listener execution and overlays continue; full retained painting,
+  per-slot icon updates and unchanged-quad upload suppression remain open.
+- Scene loading, structural preparation, animated scenery, actor assets, widgets
+  and world-map batches share one persistent 1..4-worker pool with at most 64
+  queued jobs. Cancellation, fault notification and session/resource/request
+  identities prevent abandoned work from clearing newer pending state. Actor
+  assets have at most one outstanding request; revoked/rejected requests retry.
+  Queue count is not a byte budget. Large builder/decoder calls still need finer
+  cancellation slices. This does not implement the GPU plugin's `numThreads` option.
+- Timing logs retain every sample in bounded histograms, with conservative
+  0.1 ms quantiles, lifetime p99, maximum and >25 ms presentation-gap counts.
+  Skipped/reconfigured frames remain in presentation gaps; occlusion and explicit
+  surface suspension reset the origin. Commit/script and worker-queue
+  diagnostics are available. Frame wall time includes presentation; active CPU,
+  GPU timestamps and full decode-to-visible correlation remain open.
+
+The optimized inventory probe runs the same source against the frozen baseline
+crate and current crate. Three alternating baseline/current rounds, each with
+two warm-up and nine measured batches, preserve all raw samples:
+
+| Workload | Baseline median | Current median |
+| --- | ---: | ---: |
+| 200,000 single-slot updates; 28-slot inventory | 19.1883 ms | 8.2742 ms |
+| 20,000 single-slot updates; 16,384-slot container | 83.7974 ms | 0.8191 ms |
+
+Both final semantic fingerprints match. Earlier very short probes were noisy,
+including a small-container regression; those samples are retained separately.
+The larger repeated workloads are CPU diagnostics on a non-isolated host, not
+native FPS, allocation/RSS measurements or the 20% whole-update memory gate.
+Run the current workload with `cargo run --release -p rustclient-game-state
+--example inventory_updates -- 28` (or `16384`).
+
+Ground items, complete combat effects, precise actor-body/pose invalidation,
+complete dirty-zone residency, hard upload-byte/time admission, inactive catalog
+eviction and GPU acceleration remain acceptance dependencies. Concurrent scenery
+patch work in the shared checkout is separate from these foundation measurements.
+The 256/1024-actor runs, three five-minute frame-pacing runs, 30-minute memory soak,
+live Java comparison and browser gameplay acceptance remain NOT-RUN.
+
 Status: implementation and bounded optimized diagnostics; live frame-pacing/visual acceptance
 remains open. Owners: application (owned projection transfer), scene (immutable catalog lookup),
 renderer (CPU preparation, resident buffers and staging), native (worker/publication composition).

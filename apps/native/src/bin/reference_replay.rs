@@ -174,7 +174,7 @@ fn print_layout(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let tree = WidgetTree::build(
         state.interfaces(),
-        &scripts.interfaces,
+        scripts.interfaces(),
         WidgetBounds::canvas(state.interfaces()),
     )?;
     println!("group\tcomponent\tchild\tx\ty\twidth\theight\tclip_width\tclip_height");

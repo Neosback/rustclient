@@ -1,12 +1,19 @@
 //! GPU projection of the platform-neutral ordered quad stream.
-#![expect(
-    clippy::cast_precision_loss,
-    reason = "texture/window dimensions are bounded well below f32 integer precision"
-)]
 use crate::RenderError;
 use bytemuck::{Pod, Zeroable};
 use rustclient_cache::{Image, TitleAssets};
 use rustclient_game_ui::{Flames, Quad, TitleViewport, UiFrame, UiImageId};
+mod commands;
+mod geometry;
+#[cfg(not(target_arch = "wasm32"))]
+mod measurement;
+#[cfg(not(target_arch = "wasm32"))]
+mod raster_probe;
+use commands::{ImageLayout, PreparedUi};
+#[cfg(not(target_arch = "wasm32"))]
+pub use measurement::{UiPreparationMeasurement, measure_ui_preparation};
+#[cfg(not(target_arch = "wasm32"))]
+pub use raster_probe::{UiRasterStep, verify_ui_raster_retention};
 use std::collections::BTreeMap;
 
 const ATLAS_WIDTH: u32 = 2048;
@@ -31,6 +38,8 @@ pub struct DynamicImage<'a> {
 /// Script-sized widget images supplied for one frame.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct DynamicImages<'a> {
+    /// Zero preserves the legacy always-upload flame contract.
+    pub flame_revision: u64,
     pub minimap: DynamicImage<'a>,
     pub compass: DynamicImage<'a>,
     pub world_map: DynamicImage<'a>,
@@ -135,12 +144,6 @@ enum DrawSource {
     WorldMapOverview,
 }
 
-struct Draw {
-    first: u32,
-    count: u32,
-    source: DrawSource,
-}
-
 /// Per-frame projection counters, suitable for diagnostics without GPU readback.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct UiStats {
@@ -150,6 +153,14 @@ pub struct UiStats {
     pub draw_calls: u32,
     /// Dynamic texture bytes uploaded in this frame.
     pub dynamic_upload_bytes: u32,
+    /// Quad commands prepared this frame, including fully clipped commands.
+    pub prepared_quads: u32,
+    /// Nonempty widget quads reused without preparing vertices.
+    pub retained_quads: u32,
+    /// Vertex bytes uploaded this frame, independent of texture uploads.
+    pub vertex_upload_bytes: u32,
+    /// Actual logical UI raster passes (zero when the existing canvas is reused).
+    pub raster_passes: u32,
 }
 
 pub(crate) struct UiGpu {
@@ -157,6 +168,7 @@ pub(crate) struct UiGpu {
     atlas: wgpu::BindGroup,
     flames: wgpu::BindGroup,
     flame_texture: wgpu::Texture,
+    flame_revision: u64,
     layout: wgpu::BindGroupLayout,
     sampler: wgpu::Sampler,
     minimap: DynamicTexture,
@@ -165,9 +177,9 @@ pub(crate) struct UiGpu {
     world_map_overview: DynamicTexture,
     regions: BTreeMap<UiImageId, Region>,
     vertex_buffer: wgpu::Buffer,
-    vertices: Vec<Vertex>,
-    draws: Vec<Draw>,
+    geometry: PreparedUi,
     draw_extent: [u32; 2],
+    pub(crate) raster_changed: bool,
     pub(crate) stats: UiStats,
 }
 impl UiGpu {
@@ -283,6 +295,7 @@ impl UiGpu {
             atlas,
             flames,
             flame_texture,
+            flame_revision: 0,
             layout,
             sampler,
             minimap,
@@ -291,9 +304,9 @@ impl UiGpu {
             world_map_overview,
             regions,
             vertex_buffer,
-            vertices: Vec::with_capacity(MAX_QUADS * 6),
-            draws: Vec::with_capacity(16),
+            geometry: PreparedUi::default(),
             draw_extent: [1, 1],
+            raster_changed: true,
             stats: UiStats::default(),
         })
     }
@@ -311,12 +324,9 @@ impl UiGpu {
         upload(queue, &atlas_texture, ATLAS_WIDTH, ATLAS_HEIGHT, &pixels);
         self.atlas = bind(device, &self.layout, &self.sampler, &atlas_texture);
         self.regions = regions;
+        self.geometry.invalidate();
         Ok(())
     }
-    #[expect(
-        clippy::too_many_lines,
-        reason = "single painter-ordered batching pass"
-    )]
     pub(crate) fn prepare(
         &mut self,
         device: &wgpu::Device,
@@ -333,7 +343,7 @@ impl UiGpu {
             || !images.compass.valid()
             || !images.world_map.valid()
             || !images.world_map_overview.valid()
-            || frame.quads.len() > MAX_QUADS
+            || frame.quads.len().saturating_add(frame.world_quads.len()) > MAX_QUADS
             || !viewport.scale.is_finite()
             || viewport.scale <= 0.
             || viewport.physical_width == 0
@@ -342,10 +352,11 @@ impl UiGpu {
             return Err(RenderError::Ui("invalid UI upload or viewport"));
         }
         self.draw_extent = [viewport.physical_width, viewport.physical_height];
-        self.vertices.clear();
-        self.draws.clear();
         self.stats = UiStats::default();
-        if !flame_pixels.is_empty() {
+        if !flame_pixels.is_empty()
+            && (images.flame_revision == 0 || images.flame_revision != self.flame_revision)
+        {
+            self.flame_revision = images.flame_revision;
             upload(
                 queue,
                 &self.flame_texture,
@@ -371,98 +382,31 @@ impl UiGpu {
             &self.sampler,
             images.world_map_overview,
         );
-        for quad in &frame.quads {
-            let (source, region, width, height) = match quad.image {
-                UiImageId::Flames => (
-                    DrawSource::Flames,
-                    Region {
-                        x: 0,
-                        y: 0,
-                        width: Flames::WIDTH,
-                        height: Flames::HEIGHT,
-                    },
-                    Flames::WIDTH,
-                    Flames::HEIGHT,
-                ),
-                UiImageId::Minimap => (
-                    DrawSource::Minimap,
-                    Region {
-                        x: 0,
-                        y: 0,
-                        width: self.minimap.size[0],
-                        height: self.minimap.size[1],
-                    },
-                    self.minimap.size[0],
-                    self.minimap.size[1],
-                ),
-                UiImageId::Compass => (
-                    DrawSource::Compass,
-                    Region {
-                        x: 0,
-                        y: 0,
-                        width: self.compass.size[0],
-                        height: self.compass.size[1],
-                    },
-                    self.compass.size[0],
-                    self.compass.size[1],
-                ),
-                UiImageId::WorldMap => (
-                    DrawSource::WorldMap,
-                    Region {
-                        x: 0,
-                        y: 0,
-                        width: self.world_map.size[0],
-                        height: self.world_map.size[1],
-                    },
-                    self.world_map.size[0],
-                    self.world_map.size[1],
-                ),
-                UiImageId::WorldMapOverview => (
-                    DrawSource::WorldMapOverview,
-                    Region {
-                        x: 0,
-                        y: 0,
-                        width: self.world_map_overview.size[0],
-                        height: self.world_map_overview.size[1],
-                    },
-                    self.world_map_overview.size[0],
-                    self.world_map_overview.size[1],
-                ),
-                _ => {
-                    let region = self
-                        .regions
-                        .get(&quad.image)
-                        .copied()
-                        .ok_or(RenderError::Ui("unknown UI image"))?;
-                    (DrawSource::Atlas, region, ATLAS_WIDTH, ATLAS_HEIGHT)
-                }
-            };
-            let before = self.vertices.len();
-            add_quad(&mut self.vertices, quad, region, width, height, viewport);
-            if self.vertices.len() == before {
-                continue;
-            }
-            if self.vertices.len() > MAX_QUADS * 6 {
-                return Err(RenderError::Ui("UI vertex budget exceeded"));
-            }
-            let count = u32::try_from(self.vertices.len() - before)
-                .map_err(|_| RenderError::Ui("vertex overflow"))?;
-            let first = u32::try_from(before).map_err(|_| RenderError::Ui("vertex overflow"))?;
-            if let Some(draw) = self.draws.last_mut().filter(|draw| draw.source == source) {
-                draw.count += count;
-            } else {
-                self.draws.push(Draw {
-                    first,
-                    count,
-                    source,
-                });
-            }
-            self.stats.quads += 1;
-        }
-        self.stats.draw_calls =
-            u32::try_from(self.draws.len()).map_err(|_| RenderError::Ui("draw overflow"))?;
-        if !self.vertices.is_empty() {
-            queue.write_buffer(&self.vertex_buffer, 0, bytemuck::cast_slice(&self.vertices));
+        let layout = ImageLayout {
+            regions: &self.regions,
+            dynamic: [
+                self.minimap.size,
+                self.compass.size,
+                self.world_map.size,
+                self.world_map_overview.size,
+            ],
+        };
+        let upload = self.geometry.prepare(frame, layout, viewport)?;
+        self.raster_changed = !self.geometry.unchanged() || self.stats.dynamic_upload_bytes != 0;
+        self.stats.quads = self.geometry.quads();
+        self.stats.draw_calls = u32::try_from(self.geometry.draws().count())
+            .map_err(|_| RenderError::Ui("draw overflow"))?;
+        self.stats.prepared_quads = self.geometry.prepared_quads();
+        self.stats.retained_quads = self.geometry.retained_quads();
+        let vertices = &self.geometry.vertices[upload.clone()];
+        self.stats.vertex_upload_bytes = u32::try_from(std::mem::size_of_val(vertices))
+            .map_err(|_| RenderError::Ui("vertex byte overflow"))?;
+        if !vertices.is_empty() {
+            queue.write_buffer(
+                &self.vertex_buffer,
+                (upload.start * std::mem::size_of::<Vertex>()) as u64,
+                bytemuck::cast_slice(vertices),
+            );
         }
         Ok(())
     }
@@ -484,7 +428,7 @@ impl UiGpu {
         pass.set_scissor_rect(0, 0, self.draw_extent[0], self.draw_extent[1]);
         pass.set_pipeline(&self.pipeline);
         pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-        for draw in &self.draws {
+        for draw in self.geometry.draws() {
             pass.set_bind_group(
                 IMAGE_GROUP,
                 match draw.source {
@@ -664,211 +608,5 @@ fn copy_image(pixels: &mut [u8], image: &Image, x: u32, y: u32) {
             ((usize::try_from(y).unwrap_or(0) + row) * ATLAS_WIDTH as usize + x as usize) * 4;
         pixels[dest..dest + width * 4]
             .copy_from_slice(&image.pixels()[row * width * 4..(row + 1) * width * 4]);
-    }
-}
-fn add_quad(
-    vertices: &mut Vec<Vertex>,
-    quad: &Quad,
-    region: Region,
-    tw: u32,
-    th: u32,
-    viewport: TitleViewport,
-) {
-    let rect = quad.rect;
-    let clip = quad.clip;
-    if rect.width <= 0. || rect.height <= 0. {
-        return;
-    }
-    if quad.rotation != 0 {
-        add_rotated_quad(vertices, quad, region, tw, th, viewport);
-        return;
-    }
-    let x0 = rect.x.max(clip.x);
-    let y0 = rect.y.max(clip.y);
-    let x1 = (rect.x + rect.width).min(clip.x + clip.width);
-    let y1 = (rect.y + rect.height).min(clip.y + clip.height);
-    if x1 <= x0 || y1 <= y0 {
-        return;
-    }
-    let u = |x: f32| {
-        (region.x as f32
-            + (quad.uv.x + (x - rect.x) / rect.width * quad.uv.width) * region.width as f32)
-            / tw as f32
-    };
-    let v = |y: f32| {
-        (region.y as f32
-            + (quad.uv.y + (y - rect.y) / rect.height * quad.uv.height) * region.height as f32)
-            / th as f32
-    };
-    let position = |x: f32, y: f32| viewport.ndc(x, y);
-    let tint = [
-        normalized(quad.tint[0]),
-        normalized(quad.tint[1]),
-        normalized(quad.tint[2]),
-        f32::from(quad.tint[3]) / 255.,
-    ];
-    let top_left = Vertex {
-        position: position(x0, y0),
-        uv: [u(x0), v(y0)],
-        tint,
-    };
-    let top_right = Vertex {
-        position: position(x1, y0),
-        uv: [u(x1), v(y0)],
-        tint,
-    };
-    let bottom_right = Vertex {
-        position: position(x1, y1),
-        uv: [u(x1), v(y1)],
-        tint,
-    };
-    let bottom_left = Vertex {
-        position: position(x0, y1),
-        uv: [u(x0), v(y1)],
-        tint,
-    };
-    vertices.extend_from_slice(&[
-        top_left,
-        top_right,
-        bottom_right,
-        top_left,
-        bottom_right,
-        bottom_left,
-    ]);
-}
-/// Rotated sprites use a bounded eight-corner clip polygon; ordinary quads keep the fast path.
-fn add_rotated_quad(
-    vertices: &mut Vec<Vertex>,
-    quad: &Quad,
-    region: Region,
-    tw: u32,
-    th: u32,
-    viewport: TitleViewport,
-) {
-    let rect = quad.rect;
-    let center = quad
-        .rotation_center
-        .unwrap_or([rect.x + rect.width / 2., rect.y + rect.height / 2.]);
-    let radians = f32::from(quad.rotation) * std::f32::consts::TAU / 65_536.;
-    let (sin, cos) = radians.sin_cos();
-    let tint = [
-        normalized(quad.tint[0]),
-        normalized(quad.tint[1]),
-        normalized(quad.tint[2]),
-        f32::from(quad.tint[3]) / 255.,
-    ];
-    let mut polygon = Vec::with_capacity(8);
-    for (x, y, u, v) in [
-        (rect.x, rect.y, 0., 0.),
-        (rect.x + rect.width, rect.y, 1., 0.),
-        (rect.x + rect.width, rect.y + rect.height, 1., 1.),
-        (rect.x, rect.y + rect.height, 0., 1.),
-    ] {
-        let delta = [x - center[0], y - center[1]];
-        polygon.push(Vertex {
-            position: [
-                center[0] + delta[0] * cos - delta[1] * sin,
-                center[1] + delta[0] * sin + delta[1] * cos,
-            ],
-            uv: [
-                (region.x as f32 + (quad.uv.x + u * quad.uv.width) * region.width as f32)
-                    / tw as f32,
-                (region.y as f32 + (quad.uv.y + v * quad.uv.height) * region.height as f32)
-                    / th as f32,
-            ],
-            tint,
-        });
-    }
-    for (axis, boundary, positive) in [
-        (0, quad.clip.x, true),
-        (0, quad.clip.x + quad.clip.width, false),
-        (1, quad.clip.y, true),
-        (1, quad.clip.y + quad.clip.height, false),
-    ] {
-        let mut clipped = Vec::with_capacity(8);
-        if let Some(mut previous) = polygon.last().copied() {
-            let inside = |point: Vertex| {
-                if positive {
-                    point.position[axis] >= boundary
-                } else {
-                    point.position[axis] <= boundary
-                }
-            };
-            for current in polygon {
-                if inside(previous) != inside(current) {
-                    let t = (boundary - previous.position[axis])
-                        / (current.position[axis] - previous.position[axis]);
-                    clipped.push(Vertex {
-                        position: std::array::from_fn(|i| {
-                            previous.position[i] + t * (current.position[i] - previous.position[i])
-                        }),
-                        uv: std::array::from_fn(|i| {
-                            previous.uv[i] + t * (current.uv[i] - previous.uv[i])
-                        }),
-                        tint,
-                    });
-                }
-                if inside(current) {
-                    clipped.push(current);
-                }
-                previous = current;
-            }
-        }
-        polygon = clipped;
-    }
-    for point in &mut polygon {
-        point.position = viewport.ndc(point.position[0], point.position[1]);
-    }
-    for index in 1..polygon.len().saturating_sub(1) {
-        vertices.extend_from_slice(&[polygon[0], polygon[index], polygon[index + 1]]);
-    }
-}
-
-fn normalized(channel: u8) -> f32 {
-    f32::from(channel) / 255.
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use rustclient_game_ui::Rect;
-
-    #[test]
-    fn clipping_preserves_mirrored_uvs_and_hidpi_positions() {
-        let quad = Quad {
-            image: UiImageId::Background,
-            rect: Rect::new(-10., 0., 20., 20.),
-            uv: Rect::new(1., 0., -1., 1.),
-            tint: [255; 4],
-            clip: Rect::new(0., 0., 765., 503.),
-            rotation: 0,
-            rotation_center: None,
-        };
-        let region = Region {
-            x: 0,
-            y: 0,
-            width: 20,
-            height: 20,
-        };
-        let viewport = TitleViewport {
-            canvas_width: 765,
-            physical_width: 1800,
-            physical_height: 1100,
-            scale: 2.,
-            stretch: None,
-        };
-        let mut vertices = Vec::new();
-        add_quad(&mut vertices, &quad, region, 20, 20, viewport);
-        assert_eq!(vertices.len(), 6);
-        assert!((vertices[0].uv[0] - 0.5).abs() < f32::EPSILON);
-        assert!(vertices[0].uv[1].abs() < f32::EPSILON);
-        assert!(vertices[1].uv.iter().all(|v| v.abs() < f32::EPSILON));
-        let expected = (viewport.origin_x() * 2.) / 1800. * 2. - 1.;
-        assert!((vertices[0].position[0] - expected).abs() < 0.00001);
-        let mut outside = quad;
-        outside.rect = Rect::new(-30., 0., 20., 20.);
-        vertices.clear();
-        add_quad(&mut vertices, &outside, region, 20, 20, viewport);
-        assert!(vertices.is_empty());
     }
 }

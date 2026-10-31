@@ -166,6 +166,9 @@ pub struct SurfaceRenderer {
     /// be submitted; a hidden window then costs one bounded CPU copy and no GPU memory.
     staged: StagedGeometry,
     device_lost: Arc<AtomicBool>,
+    instrumentation: crate::Instrumentation,
+    frame_timings: crate::FrameTimings,
+    gpu_timer: Option<crate::timing::GpuTimer>,
 }
 
 /// One latest-wins geometry stream: a reusable copy plus whether it still needs uploading.
@@ -367,6 +370,19 @@ impl SurfaceRenderer {
     where
         T: Into<wgpu::SurfaceTarget<'static>>,
     {
+        Self::new_with_instrumentation(target, size, crate::Instrumentation::Disabled).await
+    }
+    /// Construct a renderer with optional asynchronous engine timing diagnostics.
+    /// # Errors
+    /// Reports the same surface/device failures as `new`.
+    pub async fn new_with_instrumentation<T>(
+        target: T,
+        size: SurfaceSize,
+        instrumentation: crate::Instrumentation,
+    ) -> Result<Self, RendererInitError>
+    where
+        T: Into<wgpu::SurfaceTarget<'static>>,
+    {
         let instance = wgpu::Instance::default();
         let surface = instance
             .create_surface(target)
@@ -380,8 +396,12 @@ impl SurfaceRenderer {
             })
             .await
             .map_err(|error| RendererInitError::Adapter(error.to_string().into()))?;
+        let mut descriptor = crate::settings::device_descriptor(&adapter);
+        if instrumentation.enabled() && adapter.features().contains(crate::timing::GPU_FEATURES) {
+            descriptor.required_features |= crate::timing::GPU_FEATURES;
+        }
         let (device, queue) = adapter
-            .request_device(&crate::settings::device_descriptor(&adapter))
+            .request_device(&descriptor)
             .await
             .map_err(|error| RendererInitError::Device(error.to_string().into()))?;
 
@@ -417,6 +437,10 @@ impl SurfaceRenderer {
         // Pipeline compilation belongs to device initialization, never the first sidebar click.
         // Hidden chrome retains only the tiny placeholder image and does no recurring uploads.
         let shell_gpu = crate::shell::ShellGpu::new(&device, view_format);
+        let gpu_timer = instrumentation
+            .enabled()
+            .then(|| crate::timing::GpuTimer::new(&device, &queue))
+            .flatten();
         let mut renderer = Self {
             _instance: instance,
             surface,
@@ -438,6 +462,9 @@ impl SurfaceRenderer {
             stretch: None,
             staged: StagedGeometry::default(),
             device_lost,
+            instrumentation,
+            frame_timings: crate::FrameTimings::default(),
+            gpu_timer,
         };
         renderer
             .resize(size)
@@ -673,6 +700,7 @@ impl SurfaceRenderer {
             Ok(texture) => texture,
             Err(outcome) => return outcome,
         };
+        let preparation = crate::timing::CpuClock::start(self.instrumentation.enabled());
         let world = self
             .world
             .as_mut()
@@ -696,6 +724,7 @@ impl SurfaceRenderer {
             self.settings,
         );
         self.prepare_ui(frame, &[], images, viewport, true)?;
+        self.frame_timings.preparation = preparation.elapsed();
         Ok(self.present_frame(
             surface_texture,
             ClearColor {
@@ -710,6 +739,24 @@ impl SurfaceRenderer {
         ))
     }
 
+    /// Timing spans for the latest attempted frame; presentation calls are not display timestamps.
+    #[must_use]
+    pub const fn frame_timings(&self) -> crate::FrameTimings {
+        self.frame_timings
+    }
+    /// Completed samples are consumed once, without waiting for the GPU.
+    pub fn take_gpu_timings(&mut self) -> [Option<crate::GpuTimingSample>; 3] {
+        self.gpu_timer
+            .as_mut()
+            .map_or([None; 3], crate::timing::GpuTimer::take_samples)
+    }
+    /// Poll diagnostic callbacks without waiting; useful after the last benchmark frame.
+    pub fn poll_gpu_timings(&mut self) -> usize {
+        self.gpu_timer.as_mut().map_or(0, |timer| {
+            timer.poll(&self.device);
+            timer.pending()
+        })
+    }
     /// Latest title projection counters, without GPU readback.
     #[must_use]
     pub fn ui_stats(&self) -> UiStats {
@@ -727,6 +774,19 @@ impl SurfaceRenderer {
         scale: f64,
         before_present: F,
     ) -> Result<FrameOutcome, RenderError> {
+        self.render_ui_with_flame_revision(frame, flames, 0, scale, before_present)
+    }
+    /// Present title commands with a named cosmetic flame image. Zero forces upload.
+    /// # Errors
+    /// Reports the same failures as `render_ui`.
+    pub fn render_ui_with_flame_revision<F: FnOnce()>(
+        &mut self,
+        frame: &UiFrame,
+        flames: &[u8],
+        flame_revision: u64,
+        scale: f64,
+        before_present: F,
+    ) -> Result<FrameOutcome, RenderError> {
         if !self.configured {
             return Ok(FrameOutcome::Suspended);
         }
@@ -738,13 +798,18 @@ impl SurfaceRenderer {
             Err(outcome) => return outcome,
         };
         let viewport = self.viewport(frame.canvas.map_or(765, |s| s.width), scale);
+        let preparation = crate::timing::CpuClock::start(self.instrumentation.enabled());
         self.prepare_ui(
             frame,
             flames,
-            crate::ui::DynamicImages::default(),
+            crate::ui::DynamicImages {
+                flame_revision,
+                ..Default::default()
+            },
             viewport,
             false,
         )?;
+        self.frame_timings.preparation = preparation.elapsed();
         Ok(self.present_frame(
             surface_texture,
             ClearColor {
@@ -822,13 +887,26 @@ impl SurfaceRenderer {
     ///
     /// Callers acquire before preparing uploads so skipped frames stage nothing.
     fn acquire(&mut self) -> Result<wgpu::SurfaceTexture, Result<FrameOutcome, RenderError>> {
+        let next = self.frame_timings.frame.wrapping_add(1);
+        self.frame_timings = crate::FrameTimings {
+            frame: next,
+            gpu_available: self.gpu_timer.is_some(),
+            ..Default::default()
+        };
+        if let Some(timer) = &mut self.gpu_timer {
+            timer.poll(&self.device);
+            self.frame_timings.gpu_samples_dropped = timer.dropped;
+        }
         if !self.configured {
             return Err(Ok(FrameOutcome::Suspended));
         }
         if self.device_lost.load(Ordering::Relaxed) {
             return Err(Ok(FrameOutcome::RecreateRequired));
         }
-        match self.surface.get_current_texture() {
+        let started = crate::timing::CpuClock::start(self.instrumentation.enabled());
+        let texture = self.surface.get_current_texture();
+        self.frame_timings.acquire = started.elapsed();
+        match texture {
             wgpu::CurrentSurfaceTexture::Success(texture) => Ok(texture),
             wgpu::CurrentSurfaceTexture::Occluded | wgpu::CurrentSurfaceTexture::Timeout => {
                 Err(Ok(FrameOutcome::Skipped))
@@ -888,6 +966,7 @@ impl SurfaceRenderer {
         draw_world: bool,
         before_present: F,
     ) -> FrameOutcome {
+        let cpu_started = crate::timing::CpuClock::start(self.instrumentation.enabled());
         self.shell_staging
             .prepare(&mut self.shell_gpu, &self.device, &self.queue);
         let texture_view = surface_texture
@@ -901,10 +980,14 @@ impl SurfaceRenderer {
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("rustclient surface encoder"),
             });
+        let query = self
+            .gpu_timer
+            .as_mut()
+            .and_then(|timer| timer.begin(&mut encoder, self.frame_timings.frame));
         if draw_world && let Some(world) = &self.world {
             world.render_scene(&mut encoder);
         }
-        if draw_ui && let (Some(canvas), Some(ui)) = (&self.ui_canvas, &self.ui) {
+        if draw_ui && let (Some(canvas), Some(ui)) = (&mut self.ui_canvas, &mut self.ui) {
             canvas.render(&mut encoder, ui);
         }
         self.egui_staging
@@ -939,9 +1022,23 @@ impl SurfaceRenderer {
                 [self.config.width, self.config.height],
             );
         }
+        if let Some(index) = query
+            && let Some(timer) = &self.gpu_timer
+        {
+            timer.end(&mut encoder, index);
+        }
         self.queue.submit([encoder.finish()]);
+        if let Some(index) = query
+            && let Some(timer) = &mut self.gpu_timer
+        {
+            timer.submitted(index);
+            self.frame_timings.gpu_samples_dropped = timer.dropped;
+        }
+        self.frame_timings.encoding_submit = cpu_started.elapsed();
+        let present_started = crate::timing::CpuClock::start(self.instrumentation.enabled());
         before_present();
         self.queue.present(surface_texture);
+        self.frame_timings.present_call = present_started.elapsed();
         FrameOutcome::Presented
     }
 

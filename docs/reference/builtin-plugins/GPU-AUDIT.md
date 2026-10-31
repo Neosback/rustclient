@@ -86,6 +86,19 @@ render-policy services; external plugins do not receive GPU handles.
 
 ## Remaining gates
 
+The 2026-10-31 continuation retains unchanged widget commands, GPU vertices and
+the existing static UI canvas. Its explicit offscreen GPU diagnostic passed 60
+resource/overlay lifecycle steps with zero raster/upload work in the unchanged
+cases. This is engine UI submission evidence; it does not measure GPU timing,
+establish visual/gameplay parity or close a classic GPU gate. Raw evidence and
+remaining dependencies stay in the update-optimization document and JSON.
+
+The incremental-update foundation shares native scene, actor, widget and map
+preparation across a bounded persistent CPU pool. This is engine scheduling,
+not implementation of GPU `numThreads`, upload-byte/time budgets or verified
+frame pacing. No classic acceptance gate is closed by that infrastructure;
+see the separate foundation evidence in the prepared-update checkpoint below.
+
 [The prepared-update checkpoint](../UPDATE-OPTIMIZATION-2026-10-30.md) moves packing, texture
 identity and draw-metadata construction onto the native scene worker and reuses GPU buffer
 capacity. Identical actor/scenery poses retain their uploads. Incremental dirty zones, hard

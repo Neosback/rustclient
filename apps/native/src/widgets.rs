@@ -3,7 +3,32 @@ use crate::{LoadEvent, NativeApp, network};
 use rustclient_game_ui::gameframe::{GameplayPointer, gameplay_pointer};
 use rustclient_game_ui::widgets::resolve_widget;
 use rustclient_model::{WidgetAction, WidgetBody, WidgetContent};
+use rustclient_platform::CpuJobExecutor;
+pub(super) type WidgetLayoutKey = (u64, u64, Option<rustclient_game_ui::pointer::DraggedWidget>);
 impl NativeApp {
+    pub(super) fn widget_sprites_missing(&self) -> bool {
+        self.plugins.requested_sprites().any(|sprite| {
+            !self
+                .widget_requested
+                .sprites
+                .contains(&rustclient_model::SpriteId::new(sprite))
+        })
+    }
+    pub(super) fn cpu_jobs(
+        &mut self,
+    ) -> Result<std::sync::Arc<rustclient_platform_native::NativeJobPool>, String> {
+        self.scene.cpu_jobs()
+    }
+    pub(super) fn widget_layout_key(&self) -> Option<WidgetLayoutKey> {
+        self.scripts.as_ref().map(|scripts| {
+            (
+                self.state.interfaces().revision(),
+                scripts.catalog_revision(),
+                self.dragged_widget(),
+            )
+        })
+    }
+
     #[expect(
         clippy::cast_possible_truncation,
         clippy::cast_sign_loss,
@@ -37,6 +62,7 @@ impl NativeApp {
             .widget_cache_profile
             .window_metrics(self.state.interfaces().window().mode, available);
         if metrics != self.state.interfaces().window() {
+            self.cancel_map_input();
             self.widget_menu.close();
             self.context_menu.close();
             self.apply(Some(rustclient_game_state::SemanticOperation::Interface(
@@ -69,6 +95,13 @@ impl NativeApp {
         let Some(scripts) = &self.scripts else {
             return;
         };
+        let key = (
+            self.state.interfaces().revision(),
+            scripts.catalog_revision(),
+        );
+        if self.widget_asset_key == Some(key) && !self.widget_sprites_missing() {
+            return;
+        }
         let mut request = match scripts.visual_request(&self.state) {
             Ok(r) => r,
             Err(e) => {
@@ -84,6 +117,7 @@ impl NativeApp {
         // Everything loaded stays loaded (the cache is immutable); only new visuals are decoded.
         let request = request.missing_from(&self.widget_requested);
         if request.is_empty() {
+            self.widget_asset_key = Some(key);
             return;
         }
         self.widget_loading = true;
@@ -92,9 +126,25 @@ impl NativeApp {
         let shared_cache = std::sync::Arc::clone(&self.scene.shared_cache);
         let proxy = self.proxy.clone();
         let generation = self.connection_generation;
-        let result = std::thread::Builder::new()
-            .name("widget-assets".into())
-            .spawn(move || {
+        let pool = match self.cpu_jobs() {
+            Ok(pool) => pool,
+            Err(error) => {
+                self.widget_loading = false;
+                eprintln!("{error}");
+                return;
+            }
+        };
+        let identity = rustclient_platform::JobIdentity {
+            session: generation,
+            ..Default::default()
+        };
+        let fault_proxy = proxy.clone();
+        let fault_request = request.clone();
+        let job = rustclient_platform::CpuJob::new(
+            identity,
+            rustclient_platform::JobPriority::Visible,
+            self.widget_job_scope.clone(),
+            move |cancellation| {
                 let assets = crate::scene::SceneView::open_shared_cache(&path, &shared_cache)
                     .map_or_else(
                         |e| {
@@ -109,15 +159,32 @@ impl NativeApp {
                             )
                         },
                     );
+                if cancellation.is_cancelled() {
+                    return;
+                }
                 let _ = proxy.send_event(LoadEvent::WidgetAssets(
                     generation,
                     request,
                     Box::new(assets),
                 ));
-            });
-        if let Err(e) = result {
+            },
+        )
+        .with_fault_handler(move || {
+            let mut assets = rustclient_game_ui::widget_visuals::WidgetVisualAssets::default();
+            assets
+                .failures
+                .push("widget asset worker panicked; reconnect to retry".into());
+            let _ = fault_proxy.send_event(LoadEvent::WidgetAssets(
+                generation,
+                fault_request,
+                Box::new(assets),
+            ));
+        });
+        if pool.try_submit(job).is_err() {
+            // Nothing was marked loaded/requested. The next cycle retries admission.
             self.widget_loading = false;
-            eprintln!("widget asset worker: {e}");
+        } else {
+            self.widget_asset_key = Some(key);
         }
     }
     pub(super) fn send_widget_action(&mut self, action: WidgetAction) -> Result<(), String> {
@@ -141,12 +208,61 @@ impl NativeApp {
                 intent,
             })?;
         }
-        self.widget_tree.nodes.clear();
         self.request_widget_assets();
         Ok(())
     }
+    /// Retain widget commands until one of the actual paint dependencies changes.
+    pub(super) fn project_game_widgets(&mut self) {
+        let dragged = self.dragged_widget();
+        let key = self.widget_layout_key();
+        let Some(scripts) = &self.scripts else {
+            self.frame.clear_quads();
+            self.widget_paint = None;
+            return;
+        };
+        if self.widget_paint.as_ref().is_some_and(|dependencies| {
+            scripts.widget_paint_is_current(&self.state, dependencies, dragged)
+        }) && self.frame.reuse_widgets()
+        {
+            return;
+        }
+        self.frame.clear_quads();
+        self.widget_paint = None;
+        let started = std::time::Instant::now();
+        let retained = (self.widget_tree_key == key).then(|| std::mem::take(&mut self.widget_tree));
+        match scripts.project_widgets_reusing(
+            &self.state,
+            &self.widget_assets,
+            &mut self.frame,
+            dragged,
+            retained,
+        ) {
+            Ok(projection) => {
+                self.widget_tree = projection.tree;
+                self.widget_tree_key = key;
+                self.widget_paint = Some(projection.dependencies);
+                self.frame.seal_widgets();
+                for error in projection.diagnostics {
+                    if self.reported_script_errors.len() < 256
+                        && self.reported_script_errors.insert(error.clone())
+                    {
+                        eprintln!("widget projection: {error}");
+                    }
+                }
+            }
+            Err(error) => {
+                eprintln!("widget projection: {error}");
+                self.widget_tree.nodes.clear();
+                self.widget_tree_key = None;
+                self.frame.clear_quads();
+            }
+        }
+        self.performance
+            .stage(crate::performance::Stage::WidgetProjection, started);
+    }
     pub(super) fn ensure_widget_tree(&mut self) {
-        if !self.widget_tree.nodes.is_empty()
+        let key = self.widget_layout_key();
+        if self.widget_tree_key == key
             || self.state.authenticated_player().is_none()
             || self.state.interfaces().root().is_none()
         {
@@ -155,12 +271,14 @@ impl NativeApp {
         let Some(scripts) = &self.scripts else {
             return;
         };
-        if let Ok(tree) = rustclient_game_ui::widgets::WidgetTree::build(
+        if let Ok(tree) = rustclient_game_ui::widgets::WidgetTree::build_with_drag(
             self.state.interfaces(),
-            &scripts.interfaces,
+            scripts.interfaces(),
             rustclient_game_ui::widgets::WidgetBounds::canvas(self.state.interfaces()),
+            self.dragged_widget(),
         ) {
             self.widget_tree = tree;
+            self.widget_tree_key = key;
         }
     }
     pub(super) fn widget_click(&mut self, x: f32, y: f32, right: bool) -> Result<bool, String> {
@@ -185,8 +303,9 @@ impl NativeApp {
             if !node.bounds.rect().contains(x, y) || !node.clip.rect().contains(x, y) {
                 continue;
             }
-            let widget = resolve_widget(self.state.interfaces(), &scripts.interfaces, node.address)
-                .map_err(|e| e.to_string())?;
+            let widget =
+                resolve_widget(self.state.interfaces(), scripts.interfaces(), node.address)
+                    .map_err(|e| e.to_string())?;
             if widget.content == WidgetContent::Compass && !right {
                 if let Some(camera) = &mut self.scene.camera {
                     camera.set_yaw(0);
@@ -194,7 +313,8 @@ impl NativeApp {
                 return Ok(true);
             }
             if widget.content == WidgetContent::WorldMap && !right {
-                self.world_map_drag = Some(([x, y], scripts.world_map.center_tile));
+                self.world_map_input_bounds = Some(node.bounds.rect());
+                self.map_pointer([x, y], true, true);
                 return Ok(true);
             }
             if matches!(
@@ -205,7 +325,7 @@ impl NativeApp {
             }
             let entries = rustclient_application::widget_actions(
                 &self.state,
-                &scripts.interfaces,
+                scripts.interfaces(),
                 node.address,
             )?;
             if !entries.is_empty() {

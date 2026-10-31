@@ -3,7 +3,9 @@
 #![forbid(unsafe_code)]
 
 mod clipboard;
+mod jobs;
 pub use clipboard::NativeClipboard;
+pub use jobs::{JobPoolStats, NativeJobPool};
 
 mod clock;
 mod read_only;

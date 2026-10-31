@@ -1,11 +1,9 @@
 //! Native scene worker and disposable camera state.
 use crate::LoadEvent;
 use rustclient_application::{LoadedScene, load_scene_from_cache};
-use rustclient_cache::{
-    Cache, CacheProfile,
-    osrs240::entity_assets::{EntityLoader, EntityRequest},
-};
+use rustclient_cache::{Cache, CacheProfile, osrs240::entity_assets::EntityRequest};
 use rustclient_game_state::InitialPlacement;
+use rustclient_platform::CpuJobExecutor;
 use rustclient_platform_native::DirectoryBlobs;
 use rustclient_renderer::{CameraInput, CameraTarget, GameplayCameraController};
 use std::{
@@ -38,9 +36,14 @@ pub struct SceneView {
     pub camera: Option<GameplayCameraController>,
     pub input: CameraInput,
     pub diagnostics: bool,
-    pub animator: Option<std::sync::mpsc::SyncSender<rustclient_scene::SceneryInputs>>,
+    pub animator: Option<crate::scene_workers::SceneryWorker>,
     pub entity_catalog: rustclient_scene::entity_mesh::EntityCatalog,
-    pub entity_loader: Option<std::sync::mpsc::Sender<EntityRequest>>,
+    pub entity_loader: Option<crate::scene_workers::EntityWorker>,
+    pub jobs: Option<Arc<rustclient_platform_native::NativeJobPool>>,
+    structural_scope: rustclient_platform::JobCancellation,
+    pub entity_request: Option<EntityRequest>,
+    pub entity_loader_generation: u64,
+    entity_scope: rustclient_platform::JobCancellation,
     pub dynamic_cycle: rustclient_model::ClientCycle,
     /// Areas plugins force roofed; scenes are projected with these and rebuilt when they change.
     pub roof_areas: std::sync::Arc<[rustclient_scene::RoofArea]>,
@@ -49,6 +52,12 @@ pub struct SceneView {
     /// Actors plugins remove from the scene (model) and from their 2D overlays.
     pub hidden_models: rustclient_scene::entity_mesh::HiddenActors,
     pub hidden_overlays: rustclient_scene::entity_mesh::HiddenActors,
+}
+impl Drop for SceneView {
+    fn drop(&mut self) {
+        self.structural_scope.cancel();
+        self.entity_scope.cancel();
+    }
 }
 impl SceneView {
     pub fn new(options: &crate::options::Options) -> Self {
@@ -70,6 +79,11 @@ impl SceneView {
             animator: None,
             entity_catalog: rustclient_scene::entity_mesh::EntityCatalog::default(),
             entity_loader: None,
+            jobs: None,
+            structural_scope: rustclient_platform::JobCancellation::default(),
+            entity_request: None,
+            entity_loader_generation: 0,
+            entity_scope: rustclient_platform::JobCancellation::default(),
             dynamic_cycle: rustclient_model::ClientCycle::ZERO,
             roof_areas: std::sync::Arc::default(),
             interpolation: rustclient_scene::AnimationInterpolation::default(),
@@ -100,7 +114,16 @@ impl SceneView {
             .and_then(|loaded| loaded.projection_inputs.base_locations.clone());
         inputs
     }
+    pub(super) fn cancel_entity_request(&mut self) {
+        self.entity_scope.cancel();
+        if let Some(request) = self.entity_request.take() {
+            self.entity_catalog.retry_request(&request);
+        }
+    }
     pub fn clear(&mut self) {
+        self.structural_scope.cancel();
+        self.structural_scope = rustclient_platform::JobCancellation::default();
+        self.cancel_entity_request();
         self.entity_geometry = rustclient_scene::SceneGeometry::default();
         self.motion = rustclient_scene::ActorMotion::default();
         self.animator_in_flight = None;
@@ -118,6 +141,7 @@ impl SceneView {
     /// Drop the loaded region but keep what is not tied to it: the camera, the actors' drawn
     /// positions, rotations and poses, and already-decoded entity definitions/models/animations.
     pub fn invalidate_map(&mut self) {
+        self.cancel_entity_request();
         let camera = self.camera;
         let motion = std::mem::take(&mut self.motion);
         let entity_catalog = std::mem::take(&mut self.entity_catalog);
@@ -150,19 +174,44 @@ impl SceneView {
         let path = self.cache_dir.clone();
         let profile = self.profile;
         let shared_cache = Arc::clone(&self.shared_cache);
-        std::thread::Builder::new()
-            .name("spawn-scene-loader".into())
-            .spawn(move || {
+        let pool = self.cpu_jobs()?;
+        let fault_proxy = proxy.clone();
+        let job = rustclient_platform::CpuJob::new(
+            rustclient_platform::JobIdentity {
+                session: generation,
+                ..Default::default()
+            },
+            rustclient_platform::JobPriority::Visible,
+            self.structural_scope.clone(),
+            move |cancellation| {
                 let result = Self::open_shared_cache(&path, &shared_cache).and_then(|cache| {
                     load_scene_from_cache(&cache, profile, placement, &inputs, |message| {
-                        let _ = proxy
-                            .send_event(LoadEvent::SceneProgress(generation, message.to_owned()));
+                        if !cancellation.is_cancelled() {
+                            let _ = proxy.send_event(LoadEvent::SceneProgress(
+                                generation,
+                                message.to_owned(),
+                            ));
+                        }
                     })
                 });
+                if cancellation.is_cancelled() {
+                    return;
+                }
                 let result = result.and_then(prepare_scene);
+                if cancellation.is_cancelled() {
+                    return;
+                }
                 let _ = proxy.send_event(LoadEvent::SceneLoaded(generation, Box::new(result)));
-            })
-            .map_err(|e| format!("scene worker: {e}"))?;
+            },
+        )
+        .with_fault_handler(move || {
+            let _ = fault_proxy.send_event(LoadEvent::SceneLoaded(
+                generation,
+                Box::new(Err("scene worker panicked".into())),
+            ));
+        });
+        pool.try_submit(job)
+            .map_err(|_| "projection queue full; scene load will retry".to_owned())?;
         self.loading = true;
         self.attempted = true;
         Ok(())
@@ -178,18 +227,39 @@ impl SceneView {
         let cache_dir = self.cache_dir.clone();
         let shared_cache = std::sync::Arc::clone(&self.shared_cache);
         let profile = self.profile;
-        std::thread::Builder::new()
-            .name("scenery-projector".into())
-            .spawn(move || {
+        let pool = self.cpu_jobs()?;
+        let fault_proxy = proxy.clone();
+        let job = rustclient_platform::CpuJob::new(
+            rustclient_platform::JobIdentity {
+                session: generation,
+                ..Default::default()
+            },
+            rustclient_platform::JobPriority::Visible,
+            self.structural_scope.clone(),
+            move |cancellation| {
                 let result = Self::open_shared_cache(&cache_dir, &shared_cache).and_then(|cache| {
                     rustclient_application::reproject_scene_from_cache(
                         &cache, profile, asset, placement, &inputs,
                     )
                 });
+                if cancellation.is_cancelled() {
+                    return;
+                }
                 let result = result.and_then(prepare_scene);
+                if cancellation.is_cancelled() {
+                    return;
+                }
                 let _ = proxy.send_event(LoadEvent::SceneLoaded(generation, Box::new(result)));
-            })
-            .map_err(|e| e.to_string())?;
+            },
+        )
+        .with_fault_handler(move || {
+            let _ = fault_proxy.send_event(LoadEvent::SceneLoaded(
+                generation,
+                Box::new(Err("scenery worker panicked".into())),
+            ));
+        });
+        pool.try_submit(job)
+            .map_err(|_| "projection queue full; scene update will retry".to_owned())?;
         self.loading = true;
         Ok(())
     }
@@ -212,78 +282,69 @@ impl SceneView {
             eprintln!("animation worker: {error}");
         }
     }
+    pub fn cpu_jobs(&mut self) -> Result<Arc<rustclient_platform_native::NativeJobPool>, String> {
+        if self.jobs.is_none() {
+            self.jobs = Some(Arc::new(
+                rustclient_platform_native::NativeJobPool::new()
+                    .map_err(|error| format!("projection workers: {error}"))?,
+            ));
+        }
+        self.jobs
+            .clone()
+            .ok_or_else(|| "projection workers unavailable".into())
+    }
     pub fn start_animator(
         &mut self,
-        asset: std::sync::Arc<rustclient_scene::SceneAsset>,
+        asset: Arc<rustclient_scene::SceneAsset>,
         session: u64,
         proxy: EventLoopProxy<LoadEvent>,
     ) -> Result<(), String> {
-        let (sender, receiver) =
-            std::sync::mpsc::sync_channel::<rustclient_scene::SceneryInputs>(2);
         let worker = self.animator_generation.wrapping_add(1);
-        std::thread::Builder::new()
-            .name("scenery-animation".into())
-            .spawn(move || {
-                while let Ok(mut inputs) = receiver.recv() {
-                    while let Ok(next) = receiver.try_recv() {
-                        inputs = next;
-                    }
-                    inputs.retain_scene_dependencies(&asset);
-                    let result =
-                        rustclient_scene::build_dynamic(&asset, &inputs).map_err(|e| e.to_string());
-                    if proxy
-                        .send_event(LoadEvent::DynamicReady(
-                            session,
-                            worker,
-                            Box::new(inputs),
-                            Box::new(result),
-                        ))
-                        .is_err()
-                    {
-                        break;
-                    }
-                }
-            })
-            .map_err(|e| e.to_string())?;
-        self.animator = Some(sender);
+        self.animator = Some(crate::scene_workers::SceneryWorker::new(
+            crate::scene_workers::WorkerContext {
+                pool: self.cpu_jobs()?,
+                cancellation: rustclient_platform::JobCancellation::default(),
+                identity: rustclient_platform::JobIdentity {
+                    session,
+                    scene: Some(asset.descriptor().id().bytes()),
+                    resources: worker,
+                    ..Default::default()
+                },
+                proxy,
+                asset,
+            },
+        ));
         self.animator_generation = worker;
         self.animator_in_flight = None;
         Ok(())
     }
-    /// Start the worker that decodes NPC, worn-item and animation dependencies on demand.
     pub fn start_entity_loader(
         &mut self,
-        asset: std::sync::Arc<rustclient_scene::SceneAsset>,
+        asset: Arc<rustclient_scene::SceneAsset>,
         session: u64,
         proxy: EventLoopProxy<LoadEvent>,
     ) -> Result<(), String> {
-        let (sender, receiver) = std::sync::mpsc::channel::<EntityRequest>();
-        let path = self.cache_dir.clone();
-        let profile = self.profile;
-        let shared_cache = Arc::clone(&self.shared_cache);
-        std::thread::Builder::new()
-            .name("entity-assets".into())
-            .spawn(move || {
-                let cache = match Self::open_shared_cache(&path, &shared_cache) {
-                    Ok(cache) => cache,
-                    Err(error) => {
-                        eprintln!("entity assets: {error}");
-                        return;
-                    }
-                };
-                let mut loader = EntityLoader::new(profile, asset.sources());
-                while let Ok(request) = receiver.recv() {
-                    let assets = loader.load(&cache, &request);
-                    if proxy
-                        .send_event(LoadEvent::EntityAssets(session, Box::new(assets)))
-                        .is_err()
-                    {
-                        break;
-                    }
-                }
-            })
-            .map_err(|e| e.to_string())?;
-        self.entity_loader = Some(sender);
+        let pool = self.cpu_jobs()?;
+        self.cancel_entity_request();
+        self.entity_scope = rustclient_platform::JobCancellation::default();
+        self.entity_loader_generation = self.entity_loader_generation.wrapping_add(1);
+        self.entity_loader = Some(crate::scene_workers::EntityWorker::new(
+            crate::scene_workers::WorkerContext {
+                pool,
+                cancellation: self.entity_scope.clone(),
+                identity: rustclient_platform::JobIdentity {
+                    session,
+                    scene: Some(asset.descriptor().id().bytes()),
+                    resources: self.entity_loader_generation,
+                    ..Default::default()
+                },
+                proxy,
+                asset,
+            },
+            self.cache_dir.clone(),
+            self.profile,
+            Arc::clone(&self.shared_cache),
+        ));
         Ok(())
     }
     pub fn reset_camera(&mut self) {

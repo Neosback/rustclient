@@ -58,6 +58,7 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
         let new_groups: Vec<_> = current.difference(&self.loaded_groups).copied().collect();
         for group in &new_groups {
             if !self.interfaces.contains_key(group) {
+                self.catalog_revision = self.catalog_revision.wrapping_add(1);
                 self.interfaces.insert(
                     *group,
                     self.profile

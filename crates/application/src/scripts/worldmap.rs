@@ -13,14 +13,20 @@ use rustclient_cache::{
 use rustclient_client_script::Stacks;
 use rustclient_model::ScriptValue;
 use rustclient_platform::ReadOnlyBlobs;
-use std::collections::{BTreeMap, BTreeSet};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    sync::Arc,
+};
+mod input;
+pub use input::WorldMapPointer;
 
 /// State of the world map subsystem, owned by `ClientScripts`.
 #[derive(Default)]
 pub struct WorldMapState {
+    input: input::MapGesture,
     pub areas: BTreeMap<u32, WorldMapArea>,
-    pub elements: BTreeMap<u32, WorldMapElement>,
-    pub active_composite: Option<WorldMapComposite>,
+    pub elements: Arc<BTreeMap<u32, WorldMapElement>>,
+    pub active_composite: Option<Arc<WorldMapComposite>>,
     pub current_map_area_id: i32,
     pub center_tile: [i32; 2],
     pub target_tile: Option<[i32; 2]>,
@@ -46,8 +52,9 @@ impl WorldMapState {
     #[must_use]
     pub fn new() -> Self {
         Self {
+            input: input::MapGesture::default(),
             areas: BTreeMap::new(),
-            elements: BTreeMap::new(),
+            elements: Arc::default(),
             active_composite: None,
             current_map_area_id: -1,
             center_tile: [0, 0],
@@ -82,6 +89,7 @@ impl WorldMapState {
     }
 
     pub fn reset(&mut self) {
+        self.cancel_input();
         // Cache assets survive logout; account-dependent interaction/position does not.
         self.center_tile = self
             .active_area()
@@ -102,6 +110,7 @@ impl WorldMapState {
         map_id: i32,
     ) {
         self.current_map_area_id = map_id;
+        self.cancel_input();
         self.active_composite = None;
         self.is_loaded = false;
         self.load_error = None;
@@ -119,7 +128,7 @@ impl WorldMapState {
         self.target_zoom = self.zoom;
         match profile.load_world_map_composite(cache, area) {
             Ok(composite) => {
-                self.active_composite = Some(composite);
+                self.active_composite = Some(Arc::new(composite));
                 self.is_loaded = true;
             }
             Err(error) => self.load_error = Some(error.to_string()),
@@ -146,10 +155,11 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
             .into_iter()
             .map(|area| (area.id, area))
             .collect();
-        self.world_map.elements = self
-            .profile
-            .load_world_map_elements(&self.cache, &mut Vec::new())
-            .map_err(|e| e.to_string())?;
+        self.world_map.elements = Arc::new(
+            self.profile
+                .load_world_map_elements(&self.cache, &mut Vec::new())
+                .map_err(|e| e.to_string())?,
+        );
         let main = self
             .world_map
             .areas
@@ -193,7 +203,7 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
     {
         let mut warnings = Vec::new();
         if let Ok(elems) = profile.load_world_map_elements(cache, &mut warnings) {
-            world_map.elements = elems;
+            world_map.elements = Arc::new(elems);
         }
     }
 
@@ -587,7 +597,7 @@ mod tests {
             horizontal_alignment: 1,
             vertical_alignment: 1,
         };
-        resources.world_map.elements.insert(10, element);
+        Arc::make_mut(&mut resources.world_map.elements).insert(10, element);
 
         let mut host = super::ScriptHost {
             resources: &mut resources,

@@ -60,6 +60,78 @@ The CP2 diagnostic clear frame is only a boundary proof. It is not a second scen
 
 ## Performance principles
 
+The accepted incremental-update plan (2026-10-30) requires precise committed
+invalidation through scene, widgets, picking, minimap and GPU publication. Small
+chat/inventory changes do not invalidate unrelated world geometry. Location work
+targets dependency-correct 8x8 zones, preserving cross-zone footprints, normal
+reconciliation and source ordering. Full rasterization is independent of whether
+CPU preparation or uploads changed. View distance, resolution and effects are
+not reduced to satisfy performance or memory targets.
+
+Target native acceptance on the 8 GiB M2 uses 256 visible actors (64 players,
+192 NPCs), with 1024 for overload characterization. Gates are active CPU p99
+<=10 ms, GPU p99 <=12 ms, presentation-gap p99 <=20 ms and gaps >25 ms <=0.1%;
+warm small-change visibility p99 <=50 ms. Compare three five-minute warm runs,
+cold updates and a 30-minute lifecycle soak at identical settings. Target at
+least 20% less peak update-transient CPU memory without steady-state RSS
+regression. These are acceptance requirements, not current measurements.
+
+Native background work uses a persistent bounded pool (logical CPUs minus two,
+clamped to 1..4), typed lifecycle identities, cancellation and visible-work
+priority. Background upload admission initially allows 2 MiB or 1 ms CPU enqueue
+work per frame; urgent updates remain inside the total frame budget. No source
+cycle, committed input or required effect is discarded under overload. Optional
+GPU acceleration must pass correctness and CPU/GPU/memory measurement before
+selection. Existing cache budgets remain unchanged without measured justification.
+
+Retained game widgets must name their actual presentation dependencies: interface
+and definition revisions, dragging, loaded visual assets, and the facts read by
+legacy expressions. Retention cannot use a frame-end state fingerprint or treat
+all actor movement as a widget change. Asset arrival invalidates presentation
+without creating semantic events. Future animated widget content must contribute
+its animation deadline before it can participate in retention.
+
+The shared UI command stream separates transient world overlays from the retained
+widget prefix. Drawing preserves the world-widget insertion boundary, mounted
+interface ordering and later pointer/menu overlays. A retained prefix has an
+explicit content identity; callers must invalidate it before mutating that prefix.
+The renderer may retain its clipped vertices and batches while this identity,
+viewport transform and texture layout remain unchanged. Transient commands use a
+separate suffix of the same bounded vertex buffer. Atlas replacement, resizing,
+DPI/stretch changes and device reconstruction invalidate prepared geometry.
+The existing encoded UI canvas may skip its raster pass only when its texture is
+valid, the prepared command content is unchanged, there are no current or previous
+transient overlays and no dynamic pixels were uploaded. Removing the last overlay
+requires repainting to erase its pixels. Resizing or recreating the canvas requires
+a first raster even when command inputs match. The world and final display composite
+continue independently. This does not claim partial world rasterization.
+Diagnostics distinguish prepared/retained quads, vertex upload bytes, dynamic texture
+bytes and actual UI raster passes.
+
+### Stable presentation and world-map preparation (accepted 2026-10-31)
+
+Capped native presentation follows absolute monotonic deadlines. Small wake-up
+delays do not accumulate into a lower effective cap; missed periods are skipped
+without catch-up bursts. Effective-cap changes and suspension reset the clock.
+Effective FIFO pacing is not combined with an unintended software cap. Telemetry
+distinguishes wake lateness, active preparation, surface acquisition, submission/
+present-call time and observed display cadence. Optional GPU timestamp collection
+uses bounded asynchronous readback; unavailable timings remain unknown. Raw trace
+overflow invalidates a scored run rather than blocking presentation.
+
+Title geometry depends on visible presentation generations and blink phases, not
+every render or cosmetic cycle. Flame pixel revisions advance at the existing
+source-defined simulation steps; identical pixels do not upload again. No input,
+animation, resolution, effect or draw-distance reduction is a performance fix.
+
+World-map viewport/overview composition uses explicit asset/view/presentation
+identities. Unchanged content is neither recomposed nor uploaded. Visible flash
+phase changes and asset arrival invalidate pixels without gameplay events. Native
+composition uses the existing bounded pool with one outstanding and one coalesced
+latest request; obsolete session/resource/request results cannot publish. Valid
+pixels survive loading/failure, and rejected uploads remain pending for retry.
+GameState remains authoritative; map pixels and job inputs are projections.
+
 - batch uploads/draw work,
 - separate CPU asset decode from GPU upload,
 - spatially cull before expensive preparation,
