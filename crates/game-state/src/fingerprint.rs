@@ -163,6 +163,14 @@ impl GameState {
                 write_scene(&mut fingerprint, scene);
             }
         }
+        // A retired scene follows the empty-scene tag with its own tag (destination tags are 0
+        // and 1), so every state without one keeps its published vector.
+        if self.loaded_scene().is_none()
+            && let Some(retired) = self.displayed_scene()
+        {
+            fingerprint.write_u8(2);
+            write_scene(&mut fingerprint, retired);
+        }
         write_destination(&mut fingerprint, self.destination());
         let scenery = self.scenery();
         fingerprint.write_u64(scenery.cycle().get());

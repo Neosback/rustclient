@@ -56,6 +56,7 @@ Current delivery gaps: [revision-240 delivery plan](../plan/REVISION-240-deliver
 - [SPEC-0020: Client cycle and session runtime](SPEC-0020-client-cycle.md) — Draft. Stock 20 ms cycle order, packet budget and groups, outbound flush, keepalive, idle and reconnect.
 - [SPEC-0021: Input, picking and menus](SPEC-0021-input-menus.md) — Draft. Shared input events, the stock menu model, sort, selection modes and action dispatch.
 
+- [SPEC-0023: Map loading state](SPEC-0023-map-loading-state.md) — Accepted for the retained-scene slice: a window-changing rebuild keeps the previous scene drawn until its replacement installs; stock loading box rules.
 - [SPEC-0025: Interface and client-script host](SPEC-0025-interface-script-host.md) — Accepted for scoped item search, IF1 decoding, deferred operations and audits; full phase acceptance open.
 
 The [porting roadmap](../plan/PORTING-ROADMAP.md) reserves the remaining numbers in SPEC-0022 through SPEC-0028 for later

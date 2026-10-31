@@ -71,6 +71,8 @@ pub struct GameState {
     authenticated: Option<AuthenticatedPlayer>,
     placement: Option<InitialPlacement>,
     scene: Option<SceneDescriptor>,
+    /// Scene kept drawn after a window-changing rebuild until its replacement is installed.
+    retired_scene: Option<SceneDescriptor>,
     pub(crate) chat: crate::ChatState,
     pub(crate) scenery: crate::SceneryState,
     pub(crate) interfaces: crate::InterfaceState,
@@ -97,6 +99,7 @@ impl GameState {
             authenticated: None,
             placement: None,
             scene: None,
+            retired_scene: None,
             chat: crate::ChatState::default(),
             scenery: crate::SceneryState::default(),
             entities: crate::WorldEntitiesState::default(),
@@ -158,6 +161,15 @@ impl GameState {
     pub const fn loaded_scene(&self) -> Option<SceneDescriptor> {
         self.scene
     }
+    /// The scene to draw: the installed one, else the one a rebuild retired while its
+    /// replacement loads (SPEC-0023). Gameplay validation uses [`Self::loaded_scene`].
+    #[must_use]
+    pub const fn displayed_scene(&self) -> Option<SceneDescriptor> {
+        match self.scene {
+            Some(scene) => Some(scene),
+            None => self.retired_scene,
+        }
+    }
     pub(crate) fn install_scene(
         &mut self,
         scene: SceneDescriptor,
@@ -172,6 +184,7 @@ impl GameState {
             return Err(ConnectionStateError::SceneAlreadyInstalled);
         }
         self.scene = Some(scene);
+        self.retired_scene = None;
         Ok(())
     }
     pub(crate) fn change_map_plane(&mut self, position: rustclient_model::WorldTile) {
@@ -218,7 +231,7 @@ impl GameState {
             return Ok((placement, changed));
         }
         self.placement = Some(placement);
-        self.scene = None;
+        self.retired_scene = self.scene.take().or(self.retired_scene);
         self.scenery.clear_map_locations();
         Ok((placement, true))
     }
@@ -339,6 +352,7 @@ impl GameState {
         self.authenticated = None;
         self.placement = None;
         self.scene = None;
+        self.retired_scene = None;
         self.chat = crate::ChatState::default();
         self.scenery = crate::SceneryState::default();
         self.entities = crate::WorldEntitiesState::default();
@@ -370,6 +384,7 @@ impl GameState {
         self.authenticated = None;
         self.placement = None;
         self.scene = None;
+        self.retired_scene = None;
         self.chat = crate::ChatState::default();
         self.scenery = crate::SceneryState::default();
         self.entities = crate::WorldEntitiesState::default();

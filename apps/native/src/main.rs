@@ -379,10 +379,31 @@ impl NativeApp {
             self.scene.roof_areas = wanted;
         }
     }
+    /// Start the load for the committed placement once the packets of this cycle batch are
+    /// applied, so the scenery snapshot already holds the batch's location changes.
+    fn start_pending_scene(&mut self) {
+        if let Some(placement) = self.state.initial_placement()
+            && let Some(window) = &self.window
+            && !self.scene.attempted
+            && (self.scene.loaded.is_none() || self.scene.replacing.is_some())
+            && !self.scene.loading
+        {
+            window.set_title("RustClient - Loading spawn scene");
+            if let Err(error) = self.scene.start(
+                placement,
+                self.scene.scenery_inputs(self.state.scenery()),
+                self.scene.generation,
+                self.proxy.clone(),
+            ) {
+                eprintln!("{error}");
+            }
+        }
+    }
     /// Publish rendering work after committed client-cycle work, never from an intermediate
     /// packet in a group. Semantic operations and script listeners still run in wire order.
     fn schedule_scene_projection(&mut self) {
-        if self.scene.loading {
+        self.start_pending_scene();
+        if self.scene.loading || self.scene.replacing.is_some() {
             return;
         }
         let Some(loaded) = &mut self.scene.loaded else {
@@ -750,28 +771,15 @@ impl NativeApp {
                 }
                 if self.state.loaded_scene().is_none() && (rebuild || previous_scene.is_some()) {
                     self.context_menu.close();
-                    self.scene.invalidate_map();
-                    self.minimap = None;
+                    if self.state.displayed_scene().is_some() && self.scene.loaded.is_some() {
+                        // SPEC-0023: the retired scene stays drawn until the replacement installs.
+                        self.scene.retire_map();
+                    } else {
+                        self.scene.invalidate_map();
+                        self.minimap = None;
+                    }
                 } else if rebuild && self.state.loaded_scene().is_some() {
                     self.acknowledge_map();
-                }
-                if self.state.initial_placement().is_some()
-                    && let Some(window) = &self.window
-                    && !self.scene.attempted
-                    && self.scene.loaded.is_none()
-                    && !self.scene.loading
-                {
-                    window.set_title("RustClient - Loading spawn scene");
-                    if let Some(placement) = self.state.initial_placement()
-                        && let Err(error) = self.scene.start(
-                            placement,
-                            self.scene.scenery_inputs(self.state.scenery()),
-                            self.scene.generation,
-                            self.proxy.clone(),
-                        )
-                    {
-                        eprintln!("{error}");
-                    }
                 }
             }
             network::NetworkEvent::Failed(category, diagnostic) => {
@@ -1110,15 +1118,14 @@ impl NativeApp {
                 );
                 self.plugins
                     .overlay(&self.state, assets, &self.widget_assets, &mut self.frame);
-                if self.state.loaded_scene().is_none() || self.scene.loading {
-                    rustclient_game_ui::shadowed_text(
+                if scene::loading_box_due(
+                    self.state.displayed_scene().is_some(),
+                    self.scene.replacing.map(|since| since.elapsed()),
+                ) {
+                    rustclient_game_ui::loading_box(
                         &mut self.frame,
                         assets,
                         "Loading - please wait.",
-                        6,
-                        20,
-                        [255; 4],
-                        rustclient_game_ui::Rect::new(0., 0., 16384., 16384.),
                     );
                 }
                 if let (Some(loaded), Some(player), Some(_)) = (
@@ -1302,7 +1309,7 @@ impl NativeApp {
             let visibility = self.scene_visibility(&window);
             self.renderer.as_mut().map(|renderer| {
                 if let (Some(descriptor), Some(camera)) =
-                    (self.state.loaded_scene(), self.scene.camera)
+                    (self.state.displayed_scene(), self.scene.camera)
                 {
                     return renderer.render_world(
                         descriptor.id(),
@@ -1476,7 +1483,9 @@ impl NativeApp {
         }
         self.performance
             .event(|| "discarded obsolete scenery projection".into());
-        if let Some(loaded) = &mut self.scene.loaded
+        // A scene being replaced is never the one this projection stands in for.
+        if self.scene.replacing.is_none()
+            && let Some(loaded) = &mut self.scene.loaded
             && static_scene_shows(
                 loaded,
                 self.state.scenery(),
@@ -1602,6 +1611,14 @@ impl NativeApp {
                 }
                 self.scene.dynamic_cycle = scene.projection_inputs.cycle;
                 self.scene.loaded = Some(scene);
+                if let Some(since) = self.scene.replacing.take() {
+                    self.performance.event(|| {
+                        format!(
+                            "map replacement published {:.1} ms after the rebuild",
+                            since.elapsed().as_secs_f64() * 1000.
+                        )
+                    });
+                }
                 if first {
                     self.acknowledge_map();
                     self.scene.reset_camera();
@@ -1812,6 +1829,7 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                 if session == self.scene.generation
                     && worker == self.scene.animator_generation
                     && cycle >= self.scene.dynamic_cycle
+                    && self.scene.replacing.is_none()
                     && let Some(loaded) = &self.scene.loaded
                     && inputs.matches_state(self.state.scenery(), &loaded.asset)
                     && inputs
@@ -2494,6 +2512,7 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
             let visible = !self.occluded;
             if advanced
                 && visible
+                && self.scene.replacing.is_none()
                 && self.scene.animator_in_flight.is_none()
                 && let Some(animator) = &self.scene.animator
                 && animator

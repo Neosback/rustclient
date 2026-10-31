@@ -341,3 +341,99 @@ fn movement_map_rebuild_cycles_and_appearance_replay_through_the_same_gateway() 
         GameState::new().semantic_fingerprint()
     );
 }
+
+#[test]
+fn window_changing_rebuild_retires_the_scene_until_the_replacement_installs() {
+    use rustclient_model::MapAnchor;
+    let next = SceneDescriptor::new(
+        descriptor().id(),
+        WorldTile::new(3176, 3168, Plane::MIN),
+        104,
+        104,
+    )
+    .unwrap();
+    let mut state = GameState::new();
+    let mut recorded = Vec::new();
+    for operation in [
+        authenticate(),
+        placement(),
+        SemanticOperation::InstallScene(descriptor()),
+    ] {
+        let commit = state.apply_operation(operation.clone()).unwrap();
+        recorded.push(ReplayEnvelope::new(operation, commit));
+    }
+    assert_eq!(state.displayed_scene(), Some(descriptor()));
+    let installed = state.semantic_fingerprint();
+
+    // The same window keeps the installed scene and retires nothing.
+    state
+        .apply_operation(SemanticOperation::RebuildMap(MapAnchor {
+            x: 3216,
+            y: 3216,
+        }))
+        .unwrap();
+    assert_eq!(state.loaded_scene(), Some(descriptor()));
+
+    // A different window retires it: nothing is installed, yet it is still displayed.
+    let rebuild = SemanticOperation::RebuildMap(MapAnchor { x: 3224, y: 3216 });
+    let commit = state.apply_operation(rebuild.clone()).unwrap();
+    recorded.push(ReplayEnvelope::new(rebuild, commit));
+    assert_eq!(state.loaded_scene(), None);
+    assert_eq!(state.displayed_scene(), Some(descriptor()));
+    let retired = state.semantic_fingerprint();
+    assert_ne!(installed, retired);
+
+    // A second rebuild before installation keeps the oldest retired scene.
+    let again = SemanticOperation::RebuildMap(MapAnchor { x: 3232, y: 3216 });
+    let commit = state.apply_operation(again.clone()).unwrap();
+    recorded.push(ReplayEnvelope::new(again, commit));
+    assert_eq!(state.loaded_scene(), None);
+    assert_eq!(state.displayed_scene(), Some(descriptor()));
+
+    let mut replay = GameState::new();
+    replay.replay_envelopes(&recorded).unwrap();
+    assert_eq!(state.semantic_fingerprint(), replay.semantic_fingerprint());
+
+    // Installing the replacement clears the retired scene.
+    state
+        .apply_operation(SemanticOperation::InstallScene(next))
+        .unwrap();
+    assert_eq!(state.loaded_scene(), Some(next));
+    assert_eq!(state.displayed_scene(), Some(next));
+
+    // Logout drops it with the rest of the session.
+    state
+        .apply_operation(SemanticOperation::RebuildMap(MapAnchor {
+            x: 3300,
+            y: 3216,
+        }))
+        .unwrap();
+    assert_eq!(state.displayed_scene(), Some(next));
+    state
+        .apply_operation(SemanticOperation::EndSession)
+        .unwrap();
+    assert_eq!(state.displayed_scene(), None);
+}
+
+#[test]
+fn losing_the_footprint_without_a_rebuild_displays_nothing() {
+    use rustclient_model::{PlayerInfoUpdate, PlayerMovement};
+    let mut state = GameState::new();
+    for operation in [
+        authenticate(),
+        placement(),
+        SemanticOperation::InstallScene(descriptor()),
+        SemanticOperation::UpdatePlayers(PlayerInfoUpdate {
+            local_movement: Some(PlayerMovement::Teleport {
+                delta_x: 200,
+                delta_y: 0,
+                plane_delta: 1,
+            }),
+            ..Default::default()
+        }),
+    ] {
+        state.apply_operation(operation).unwrap();
+    }
+    assert_eq!(state.loaded_scene(), None);
+    assert_eq!(state.displayed_scene(), None);
+}

@@ -36,6 +36,32 @@ pub fn shadowed_text(
     font.width(value)
 }
 
+/// The stock loading message (`classLU.method7199`): plain12 text at (10,10) inside a black box
+/// with a one-pixel white border at (6,6), padded by four pixels (SPEC-0023).
+#[expect(
+    clippy::cast_precision_loss,
+    reason = "text widths and the 13 px line height are far below f32 precision"
+)]
+pub fn loading_box(frame: &mut UiFrame, assets: &rustclient_cache::TitleAssets, value: &str) {
+    const PAD: f32 = 4.;
+    const LINE: f32 = 13.;
+    const WHITE: [u8; 4] = [255; 4];
+    let font = &assets.fonts[1]; // p12_full
+    let (x, y) = (6., 6.);
+    let (w, h) = (font.width(value) as f32 + PAD * 2., LINE + PAD * 2.);
+    let clip = Rect::new(0., 0., 16384., 16384.);
+    frame.fill_rect(Rect::new(x, y, w, h), [0, 0, 0, 255], clip);
+    for edge in [
+        Rect::new(x, y, w, 1.),
+        Rect::new(x, y + h - 1., w, 1.),
+        Rect::new(x, y, 1., h),
+        Rect::new(x + w - 1., y, 1., h),
+    ] {
+        frame.fill_rect(edge, WHITE, clip);
+    }
+    presentation::text(frame, font, 1, value, 10, 21, WHITE, clip);
+}
+
 pub mod widget_text;
 pub mod widget_visuals;
 

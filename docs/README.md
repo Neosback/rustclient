@@ -36,6 +36,7 @@ Current machine-readable data: [domain matrix](reference/rs240-port/PORT-MATRIX.
 - [specs/SPEC-0019-port-parity.md](specs/SPEC-0019-port-parity.md)
 - [specs/SPEC-0020-client-cycle.md](specs/SPEC-0020-client-cycle.md)
 - [specs/SPEC-0021-input-menus.md](specs/SPEC-0021-input-menus.md)
+- [specs/SPEC-0023-map-loading-state.md](specs/SPEC-0023-map-loading-state.md)
 - [specs/SPEC-0025-interface-script-host.md](specs/SPEC-0025-interface-script-host.md)
 
 ## Architecture decisions

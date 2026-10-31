@@ -32,6 +32,9 @@ pub struct SceneView {
     pub shared_cache: SharedCacheSlot,
     pub loading: bool,
     pub attempted: bool,
+    /// Set while a window-changing rebuild's replacement loads and `loaded` is still the scene
+    /// being drawn (SPEC-0023); the instant it began delays the loading box.
+    pub replacing: Option<std::time::Instant>,
     pub loaded: Option<LoadedScene>,
     pub camera: Option<GameplayCameraController>,
     pub input: CameraInput,
@@ -72,6 +75,7 @@ impl SceneView {
             shared_cache: Arc::new(OnceLock::new()),
             loading: false,
             attempted: false,
+            replacing: None,
             loaded: None,
             camera: None,
             input: CameraInput::default(),
@@ -132,6 +136,7 @@ impl SceneView {
         self.entity_loader = None;
         self.loading = false;
         self.attempted = false;
+        self.replacing = None;
         self.loaded = None;
         self.animator = None;
         self.dynamic_cycle = rustclient_model::ClientCycle::ZERO;
@@ -149,6 +154,16 @@ impl SceneView {
         self.camera = camera;
         self.motion = motion;
         self.entity_catalog = entity_catalog;
+    }
+    /// A rebuild to a different window: keep drawing the loaded scene while the replacement
+    /// loads. Workers tied to the old asset stop and restart once the replacement installs, so
+    /// nothing publishes scenery or actor models against a scene about to be dropped.
+    pub fn retire_map(&mut self) {
+        let loaded = self.loaded.take();
+        let replacing = self.replacing.unwrap_or_else(std::time::Instant::now);
+        self.invalidate_map();
+        self.loaded = loaded;
+        self.replacing = Some(replacing);
     }
     pub fn open_shared_cache(
         cache_dir: &Path,
@@ -168,7 +183,7 @@ impl SceneView {
         generation: u64,
         proxy: EventLoopProxy<LoadEvent>,
     ) -> Result<(), String> {
-        if self.attempted || self.loading || self.loaded.is_some() {
+        if self.attempted || self.loading || (self.loaded.is_some() && self.replacing.is_none()) {
             return Ok(());
         }
         let path = self.cache_dir.clone();
@@ -446,4 +461,28 @@ pub fn canvas_pointer(x: f32, y: f32) -> [i32; 2] {
         x.clamp(-16384., 16384.) as i32,
         y.clamp(-16384., 16384.) as i32,
     ]
+}
+
+/// How long a replacement scene may load before the loading box covers the frozen frame.
+pub const LOADING_BOX_DELAY: std::time::Duration = std::time::Duration::from_millis(250);
+
+/// Whether the stock "Loading - please wait." box is drawn (SPEC-0023): always when no scene is
+/// displayed (login, first load); over a retired scene only once its replacement has been
+/// loading longer than [`LOADING_BOX_DELAY`]. Reprojections never show it.
+pub fn loading_box_due(displayed: bool, replacing_for: Option<std::time::Duration>) -> bool {
+    !displayed || replacing_for.is_some_and(|elapsed| elapsed >= LOADING_BOX_DELAY)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::Duration;
+
+    #[test]
+    fn loading_box_covers_an_empty_viewport_and_a_slow_replacement_only() {
+        assert!(loading_box_due(false, None));
+        assert!(!loading_box_due(true, None));
+        assert!(!loading_box_due(true, Some(Duration::from_millis(100))));
+        assert!(loading_box_due(true, Some(LOADING_BOX_DELAY)));
+    }
 }
