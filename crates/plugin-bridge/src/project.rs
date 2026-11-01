@@ -34,6 +34,8 @@ pub struct Frame {
     pub camera: CameraSnapshot,
     /// Input idle time, when the shell tracks it.
     pub input_idle: Option<InputIdle>,
+    /// Tile under the pointer in the game view, when the shell tracks the pointer.
+    pub hovered_tile: Option<rustclient_model::WorldTile>,
 }
 
 /// Immutable cache definitions the projection consults.
@@ -109,6 +111,14 @@ pub(crate) fn client(state: &GameState, frame: &Frame) -> ClientSnapshot {
         run_energy: state.entities().run_energy(),
         weight: state.entities().run_weight(),
         input_idle: frame.input_idle,
+        hovered_tile: frame.hovered_tile.map(world),
+        // A destination has no plane; the local player's supplies it (as the scene does).
+        destination: state
+            .destination()
+            .zip(state.entities().local_player())
+            .map(|(destination, player)| {
+                WorldPoint::new(destination.x, destination.y, player.tile.plane.get())
+            }),
     }
 }
 

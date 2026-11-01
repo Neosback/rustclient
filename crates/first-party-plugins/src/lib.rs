@@ -20,6 +20,7 @@ mod roofremoval;
 mod statusbars;
 mod stretchedmode;
 mod text;
+mod tileindicators;
 pub mod xptracker;
 
 use rustclient_plugin_api::{
@@ -214,6 +215,16 @@ const ENTRIES: &[Entry] = &[
             Capability::GameReadVars,
         ],
         build: || boxed(playerindicators::PlayerIndicators),
+    },
+    Entry {
+        name: "tileindicators",
+        capabilities: &[
+            Capability::UiOverlay,
+            Capability::GameReadClient,
+            Capability::GameReadPlayers,
+            Capability::GameReadVars,
+        ],
+        build: || boxed(tileindicators::TileIndicators),
     },
     Entry {
         name: "camera",

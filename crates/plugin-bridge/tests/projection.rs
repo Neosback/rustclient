@@ -413,3 +413,32 @@ fn query_only_categories_keep_current_snapshots_without_events_or_replay_on_subs
         "subscribing replayed query-only history: {events:?}"
     );
 }
+
+#[test]
+fn the_pointer_tile_and_the_walk_destination_reach_the_client_snapshot_on_the_players_plane() {
+    let mut state = session();
+    let mut projector = Projector::new();
+    let sources = Sources::default();
+    let wanted = everything();
+    let quiet = projector.snapshot(&state, &Frame::default(), &sources, &wanted);
+    assert_eq!(quiet.client.hovered_tile, None);
+    assert_eq!(quiet.client.destination, None);
+
+    apply(
+        &mut state,
+        SemanticOperation::SetDestination(Some(rustclient_model::MapDestination { x: 5, y: 6 })),
+    );
+    let frame = Frame {
+        hovered_tile: Some(WorldTile::new(4, 2, Plane::MIN)),
+        ..Frame::default()
+    };
+    let client = projector.snapshot(&state, &frame, &sources, &wanted).client;
+    assert_eq!(
+        client.hovered_tile,
+        Some(rustclient_plugin_api::WorldPoint::new(4, 2, 0))
+    );
+    assert_eq!(
+        client.destination,
+        Some(rustclient_plugin_api::WorldPoint::new(5, 6, 0))
+    );
+}

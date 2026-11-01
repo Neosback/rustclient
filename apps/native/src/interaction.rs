@@ -328,16 +328,28 @@ impl NativeApp {
                 .is_none_or(|renderer| renderer.gpu_settings().hide_unrelated_maps),
         )
     }
-    /// Track the tile under the pointer for the hovered-roof mode.
+    /// The tile under the pointer on the local player's plane, as plugins see it.
+    pub(super) fn hovered_world_tile(&self) -> Option<rustclient_model::WorldTile> {
+        let [x, y] = self.roof_hover?;
+        let base = self.state.loaded_scene()?.origin();
+        let plane = self.state.entities().local_player()?.tile.plane;
+        Some(rustclient_model::WorldTile::new(
+            base.x + x,
+            base.y + y,
+            plane,
+        ))
+    }
+    /// Track the tile under the pointer for plugins and the hovered-roof mode.
     ///
     /// The pick ignores hidden roofs on purpose: pointing at a roof is what asks for it to go.
     pub(super) fn update_roof_hover(&mut self, window: &Window) {
-        let wanted = self
-            .plugins
-            .output()
-            .scene
-            .roofs
-            .contains(rustclient_plugin_api::RoofModes::HOVERED);
+        let wanted = self.plugins.reads_client()
+            || self
+                .plugins
+                .output()
+                .scene
+                .roofs
+                .contains(rustclient_plugin_api::RoofModes::HOVERED);
         let hovered = if wanted
             && let Some(loaded) = &self.scene.loaded
             && let Some((x, y)) = self.cursor

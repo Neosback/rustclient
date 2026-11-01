@@ -41,6 +41,12 @@ pub(super) struct Inputs<'a> {
 }
 
 impl Plugins {
+    /// Whether a running plugin may read client facts, which include the tile under the pointer.
+    pub(super) fn reads_client(&self) -> bool {
+        self.set
+            .granted()
+            .contains(rustclient_plugin_api::Capability::GameReadClient)
+    }
     /// Load every package directory under `packages`, skipping failures.
     ///
     /// Plugin-local persisted data is rooted at `storage_root`; the package tree itself is

@@ -113,7 +113,7 @@ statusbars	Status Bars	false		5	820	no	partial-module	client-feature	actor-effec
 stretchedmode	Stretched Mode	false		4	355	no	partial-module	client-feature	canvas	proposed-applicable	
 team	Team	false		4	703	no	not-started	client-feature	appearance|plugin-api	proposed-applicable	
 tearsofguthix	Tears Of Guthix	true		3	308	no	not-started	content-helper	dynamic-scenery|plugin-api	proposed-applicable	
-tileindicators	Tile Indicators	false		3	398	no	not-started	client-feature	plugin-api	proposed-applicable	
+tileindicators	Tile Indicators	false		3	398	no	partial-module	client-feature	plugin-api	proposed-applicable	
 timersandbuffs	Timers & Buffs	true		8	2484	no	not-started	client-feature	var-domains|actor-effects|plugin-api	proposed-applicable	
 timestamp	Chat Timestamps	false		2	225	no	not-started	client-feature	public-chat	proposed-applicable	
 timetracking	Time Tracking	true		43	9338	no	not-started	content-helper	var-domains|widgets|plugin-api	proposed-applicable	

@@ -35,6 +35,7 @@ PLUGIN_LIST = [
     ("devtools", "devtools"),
     ("entityhider", "entityhider"),
     ("npchighlight", "npchighlight"),
+    ("tileindicators", "tileindicators"),
     ("playerindicators", "playerindicators"),
     ("idlenotifier", "idlenotifier"),
     ("camera", "camera"),

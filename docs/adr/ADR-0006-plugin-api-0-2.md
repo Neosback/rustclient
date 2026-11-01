@@ -53,6 +53,9 @@ process; that model is rejected by invariants 1 and 4.
   crate owns the blend (`AnimationInterpolation`); plugins never see frames or models.
 - `ClientSnapshot::scene_base` is the loaded scene's south-west world tile and `scene_size` its extent, so plugins can
   resolve map regions as `Scene.getBaseX/Y` and `getMapRegions` would.
+- `ClientSnapshot::hovered_tile` is the tile under the pointer in the game view (`WorldView.getSelectedSceneTile`) and
+  `destination` the tile the local player is walking to (`getLocalDestinationLocation`), both on the local player's plane
+  and both read through `GameReadClient`. Additive within 0.2; absent means unknown, never guessed.
 - First-party plugins live in `crates/first-party-plugins`, are native `PluginInstance`s, take settings from
   schema-driven configuration (`PluginCall::config`) and carry an `enabled` switch (RuneLite `enabledByDefault`).
   Their schemas are generated from the vendored `*Config.java` by `tools/builtin-plugins/first_party_schemas.py`.

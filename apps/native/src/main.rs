@@ -219,6 +219,7 @@ impl NativeApp {
                 loading: self.scene.loading,
                 camera: camera.unwrap_or_default(),
                 input_idle: Some(self.input_activity.idle(Instant::now())),
+                hovered_tile: self.hovered_world_tile(),
             },
             sources: rustclient_plugin_bridge::Sources {
                 npcs: Some(&resolve),

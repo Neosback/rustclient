@@ -455,6 +455,12 @@ pub struct ClientSnapshot {
     pub weight: i16,
     /// Input idle time, if the host tracks it.
     pub input_idle: Option<InputIdle>,
+    /// The tile under the pointer in the game view, as `WorldView.getSelectedSceneTile`; absent
+    /// while the pointer is elsewhere or no scene is loaded. The plane is the local player's.
+    pub hovered_tile: Option<WorldPoint>,
+    /// The tile the local player is walking to, as `Client.getLocalDestinationLocation`; absent
+    /// when no destination is set. The plane is the local player's.
+    pub destination: Option<WorldPoint>,
 }
 
 /// One consistent view of the committed game, built once per update and shared by all plugins.

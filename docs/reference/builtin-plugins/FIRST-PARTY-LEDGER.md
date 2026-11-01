@@ -28,6 +28,7 @@ exact evidence below remains bounded to its recorded implementation.
 | idlenotifier | partial | interaction idle and the combat branch are dormant without interact target, spot animations and hitsplats |
 | camera | partial | zoom limits and scroll zoom, shake, mouse remaps |
 | npchighlight | partial | menu tagging, outline, dead/pet filters, respawn timer, minimap names |
+| tileindicators | partial | sub-tile destination point (whole-tile `MapDestination` only) |
 | playerindicators | partial | relationship lists (party, friends, chat, clan, team), rank icons, coloured menu, minimap names |
 | interfacestyles | partial | widget overrides (2005 side stones), HD health bars, menu options, cross sprites, always-stack |
 | menuentryswapper | not-implemented | the right-click menu is not exposed to plugins (entries, `PostMenuSort`, edits) |
@@ -262,6 +263,26 @@ Sources: `plugins/playerindicators/{PlayerIndicatorsPlugin,PlayerIndicatorsServi
 Known differences:
 
 - Every non-local player counts as "others" (the source's others rule is "in no friends chat and no clan").
+
+## tileindicators
+
+Sources: `plugins/tileindicators/{TileIndicatorsPlugin,TileIndicatorsConfig,TileIndicatorsOverlay}.java`,
+`ui/overlay/OverlayUtil.java`. Overlay projection: `apps/native/src/world_overlays.rs`.
+
+| Source | Rust owner | Implemented | Verified |
+| --- | --- | --- | --- |
+| Hovered tile (`WorldView.getSelectedSceneTile`), off by default | `first-party-plugins::tileindicators` reading `ClientSnapshot::hovered_tile` (shell pointer pick, `Frame::hovered_tile`) | yes | unit: draw order and styles; bridge: projection on the player's plane; not seen on screen |
+| Destination tile (`getLocalDestinationLocation`), on by default, gray border, `0x32000000` fill, width 2 | `ClientSnapshot::destination` from `GameState::destination` | yes, whole tile | unit |
+| Current (true) tile from the local player's world location, off by default, cyan | local player snapshot | yes | unit |
+| Sections, colours, fill colours and border widths | generated schema, `OverlayCommand::Tile` (`width` rounded to whole pixels, 1..=8) | yes | schema test via `Harness::enable` |
+| Cutscene (`CUTSCENE_STATUS` varbit 542 = 1) draws nothing | `TileIndicators` | yes | unit |
+
+Known differences:
+
+- The plugin is `enabledByDefault = false` in the 240 source, so it is off until switched on in the plugin list.
+- The client tracks the pointer tile only while a running plugin holds `GameReadClient` (the pick ignores hidden roofs, as the
+  hovered-roof mode does), so the tile can lag the pointer by one pointer event.
+- The destination is the whole-tile `MapDestination` the client keeps; the source reads a local point, which draws the same tile.
 
 ## interfacestyles
 

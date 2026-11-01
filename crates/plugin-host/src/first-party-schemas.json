@@ -1313,6 +1313,207 @@
   ]
  },
  {
+  "plugin": "dev.rustclient.tileindicators",
+  "name": "Tile Indicators",
+  "version": 1,
+  "description": "Highlight the tile you are currently moving to",
+  "tags": [
+   "highlight",
+   "overlay"
+  ],
+  "required": false,
+  "settings": [
+   {
+    "key": "enabled",
+    "label": "Enabled",
+    "description": "Switch Tile Indicators on or off.",
+    "section": "",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    },
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/tileindicators/TileIndicatorsPlugin.java#PluginDescriptor.enabledByDefault"
+   },
+   {
+    "key": "highlightDestinationTile",
+    "label": "Highlight destination tile",
+    "description": "Highlights tile player is walking to.",
+    "section": "Destination tile",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/tileindicators/TileIndicatorsConfig.java#highlightDestinationTile",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": true
+    }
+   },
+   {
+    "key": "highlightDestinationColor",
+    "label": "Highlight color",
+    "description": "Configures the highlight color of current destination.",
+    "section": "Destination tile",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/tileindicators/TileIndicatorsConfig.java#highlightDestinationColor",
+    "control": {
+     "type": "color"
+    },
+    "default": {
+     "type": "color",
+     "value": 4286611584
+    }
+   },
+   {
+    "key": "destinationTileFillColor",
+    "label": "Fill color",
+    "description": "Configures the fill color of destination tile.",
+    "section": "Destination tile",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/tileindicators/TileIndicatorsConfig.java#destinationTileFillColor",
+    "control": {
+     "type": "color"
+    },
+    "default": {
+     "type": "color",
+     "value": 838860800
+    }
+   },
+   {
+    "key": "destinationTileBorderWidth",
+    "label": "Border width",
+    "description": "Width of the destination tile marker border.",
+    "section": "Destination tile",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/tileindicators/TileIndicatorsConfig.java#destinationTileBorderWidth",
+    "control": {
+     "type": "decimal",
+     "min": -1000000000,
+     "max": 1000000000
+    },
+    "default": {
+     "type": "decimal",
+     "value": 2000
+    }
+   },
+   {
+    "key": "highlightHoveredTile",
+    "label": "Highlight hovered tile",
+    "description": "Highlights tile player is hovering with mouse.",
+    "section": "Hovered tile",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/tileindicators/TileIndicatorsConfig.java#highlightHoveredTile",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "highlightHoveredColor",
+    "label": "Highlight color",
+    "description": "Configures the highlight color of hovered tile.",
+    "section": "Hovered tile",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/tileindicators/TileIndicatorsConfig.java#highlightHoveredColor",
+    "control": {
+     "type": "color"
+    },
+    "default": {
+     "type": "color",
+     "value": 0
+    }
+   },
+   {
+    "key": "hoveredTileFillColor",
+    "label": "Fill color",
+    "description": "Configures the fill color of hovered tile.",
+    "section": "Hovered tile",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/tileindicators/TileIndicatorsConfig.java#hoveredTileFillColor",
+    "control": {
+     "type": "color"
+    },
+    "default": {
+     "type": "color",
+     "value": 838860800
+    }
+   },
+   {
+    "key": "hoveredTileBorderWidth",
+    "label": "Border width",
+    "description": "Width of the hovered tile marker border.",
+    "section": "Hovered tile",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/tileindicators/TileIndicatorsConfig.java#hoveredTileBorderWidth",
+    "control": {
+     "type": "decimal",
+     "min": -1000000000,
+     "max": 1000000000
+    },
+    "default": {
+     "type": "decimal",
+     "value": 2000
+    }
+   },
+   {
+    "key": "highlightCurrentTile",
+    "label": "Highlight true tile",
+    "description": "Highlights true tile player is on as seen by server.",
+    "section": "Current tile",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/tileindicators/TileIndicatorsConfig.java#highlightCurrentTile",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "highlightCurrentColor",
+    "label": "Highlight color",
+    "description": "Configures the highlight color of current true tile.",
+    "section": "Current tile",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/tileindicators/TileIndicatorsConfig.java#highlightCurrentColor",
+    "control": {
+     "type": "color"
+    },
+    "default": {
+     "type": "color",
+     "value": 4278255615
+    }
+   },
+   {
+    "key": "currentTileFillColor",
+    "label": "Fill color",
+    "description": "Configures the fill color of current true tile.",
+    "section": "Current tile",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/tileindicators/TileIndicatorsConfig.java#currentTileFillColor",
+    "control": {
+     "type": "color"
+    },
+    "default": {
+     "type": "color",
+     "value": 838860800
+    }
+   },
+   {
+    "key": "currentTileBorderWidth",
+    "label": "Border width",
+    "description": "Width of the true tile marker border.",
+    "section": "Current tile",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/tileindicators/TileIndicatorsConfig.java#currentTileBorderWidth",
+    "control": {
+     "type": "decimal",
+     "min": -1000000000,
+     "max": 1000000000
+    },
+    "default": {
+     "type": "decimal",
+     "value": 2000
+    }
+   }
+  ]
+ },
+ {
   "plugin": "dev.rustclient.playerindicators",
   "name": "Player Indicators",
   "version": 1,

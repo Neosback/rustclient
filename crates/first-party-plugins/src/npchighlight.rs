@@ -21,18 +21,18 @@ use rustclient_plugin_api::{
 use rustclient_plugin_host::{PluginCall, PluginFault};
 
 /// `VarbitID.CUTSCENE_STATUS`.
-const CUTSCENE_STATUS: u32 = 542;
+pub(crate) const CUTSCENE_STATUS: u32 = 542;
 /// `getLogicalHeight() + 40` is the name offset; the anchor here is already the model top.
 const NAME_OFFSET: i32 = 40;
 
 pub(crate) struct NpcHighlight;
 
 /// Stroke width in whole pixels from the `borderWidth` decimal (thousandths).
-fn stroke_width(thousandths: i32) -> u8 {
+pub(crate) fn stroke_width(thousandths: i32) -> u8 {
     u8::try_from(((thousandths + 500) / 1000).clamp(1, 8)).unwrap_or(2)
 }
 
-fn layered(command: OverlayCommand) -> LayeredOverlay {
+pub(crate) fn layered(command: OverlayCommand) -> LayeredOverlay {
     LayeredOverlay {
         layer: OverlayLayer::AboveScene,
         command,
