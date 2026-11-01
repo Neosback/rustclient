@@ -56,6 +56,10 @@ process; that model is rejected by invariants 1 and 4.
 - `ClientSnapshot::hovered_tile` is the tile under the pointer in the game view (`WorldView.getSelectedSceneTile`) and
   `destination` the tile the local player is walking to (`getLocalDestinationLocation`), both on the local player's plane
   and both read through `GameReadClient`. Additive within 0.2; absent means unknown, never guessed.
+- `ClientSnapshot::minimap_zoom` is the minimap zoom in pixels per tile (`Client.getMinimapZoom`), and `PluginOutput::minimap`
+  (`MinimapRequest`, capability `ui.minimap`) asks for mouse-wheel zoom, a zoom level to apply once, hiding the minimap and
+  per-kind map dot colors. The host clamps the zoom to 2..=8 and drops non-finite values; the client owns the zoom value,
+  the sprite replacement and widget visibility. Additive within 0.2.
 - First-party plugins live in `crates/first-party-plugins`, are native `PluginInstance`s, take settings from
   schema-driven configuration (`PluginCall::config`) and carry an `enabled` switch (RuneLite `enabledByDefault`).
   Their schemas are generated from the vendored `*Config.java` by `tools/builtin-plugins/first_party_schemas.py`.

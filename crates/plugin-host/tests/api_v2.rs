@@ -2,10 +2,10 @@
 use rustclient_plugin_api::{
     ActorRef, ActorState, CameraCommand, Capability, CapabilitySet, ChatKind, ChatLine,
     ClientSnapshot, EntityVisibility, GameEvent, GameSnapshot, InfoBox, ItemStack, LayeredOverlay,
-    MenuEdit, Notification, NotificationKind, NpcSnapshot, OverlayCommand, OverlayLayer,
-    PlayerSnapshot, PluginApiVersion, PluginEvent, PluginId, PluginManifest, PluginOutput, Rect,
-    RoofArea, RoofModes, SceneFlags, SkillLevel, SpriteOverride, Stretch, StretchScaling,
-    VarbitDef, Vars, WidgetSnapshot, WorldPoint,
+    MenuEdit, MinimapRequest, Notification, NotificationKind, NpcSnapshot, OverlayCommand,
+    OverlayLayer, PlayerSnapshot, PluginApiVersion, PluginEvent, PluginId, PluginManifest,
+    PluginOutput, Rect, RoofArea, RoofModes, SceneFlags, SkillLevel, SpriteOverride, Stretch,
+    StretchScaling, VarbitDef, Vars, WidgetSnapshot, WorldPoint,
 };
 use rustclient_plugin_host::{
     CapabilityDenied, FaultKind, MemoryLogSink, MemoryStorage, PluginCall, PluginFault,
@@ -511,6 +511,7 @@ fn full_output() -> PluginOutput {
         }),
         smoothing_denied: (0..5000).collect(),
         frame_limit: Some(100_000),
+        minimap: None,
     }
 }
 
@@ -649,6 +650,63 @@ fn the_lowest_frame_limit_among_plugins_applies() {
     harness.add("dev.rustclient.c", &[], limit(1), false);
     // The second asks for zero, which clamps up to one frame per second; the third has no grant.
     assert_eq!(harness.output(&game).frame_limit, Some(1));
+}
+
+#[test]
+fn minimap_requests_need_their_grant_clamp_the_zoom_and_merge_per_slot() {
+    let game = snapshot();
+    let mut harness = Harness::new();
+    let request =
+        |wheel_zoom, zoom, hidden, first: Option<u32>, second: Option<u32>| PluginOutput {
+            minimap: Some(MinimapRequest {
+                wheel_zoom,
+                zoom,
+                hidden,
+                dot_colors: [first, second, None, None, None, None, None],
+            }),
+            ..PluginOutput::default()
+        };
+    harness.add(
+        "dev.rustclient.a",
+        &[Capability::UiMinimap],
+        request(
+            true,
+            Some(100.),
+            false,
+            Some(0xFF11_1111),
+            Some(0xFF22_2222),
+        ),
+        false,
+    );
+    harness.add(
+        "dev.rustclient.b",
+        &[Capability::UiMinimap],
+        request(false, Some(f64::NAN), true, Some(0xFF33_3333), None),
+        false,
+    );
+    harness.add(
+        "dev.rustclient.c",
+        &[],
+        request(true, Some(3.), true, Some(0xFF44_4444), Some(0xFF55_5555)),
+        false,
+    );
+    let merged = harness.output(&game).minimap;
+    // The zoom is clamped to what the minimap can show; a non-finite one is dropped, so the
+    // first plugin's request stands; the plugin without the grant contributes nothing.
+    assert_eq!(merged.zoom, Some(MinimapRequest::MAX_ZOOM));
+    assert!(merged.wheel_zoom && merged.hidden);
+    assert_eq!(
+        merged.dot_colors,
+        [
+            Some(0xFF33_3333),
+            Some(0xFF22_2222),
+            None,
+            None,
+            None,
+            None,
+            None
+        ]
+    );
 }
 
 #[test]

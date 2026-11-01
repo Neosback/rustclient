@@ -1514,6 +1514,161 @@
   ]
  },
  {
+  "plugin": "dev.rustclient.minimap",
+  "name": "Minimap",
+  "version": 1,
+  "description": "Customize the color of minimap dots, hide the minimap, and zoom",
+  "tags": [
+   "items",
+   "npcs",
+   "players",
+   "zoom"
+  ],
+  "required": false,
+  "settings": [
+   {
+    "key": "enabled",
+    "label": "Enabled",
+    "description": "Switch Minimap on or off.",
+    "section": "",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": true
+    },
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/minimap/MinimapPlugin.java#PluginDescriptor.enabledByDefault"
+   },
+   {
+    "key": "zoom",
+    "label": "Zoom",
+    "description": "Enables zooming on the minimap.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/minimap/MinimapConfig.java#zoom",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": true
+    }
+   },
+   {
+    "key": "hideMinimap",
+    "label": "Hide minimap",
+    "description": "Do not show the minimap on screen (resizable only).",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/minimap/MinimapConfig.java#hideMinimap",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "item",
+    "label": "Item color",
+    "description": "Set the minimap color items are drawn in.",
+    "section": "Minimap dot colors",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/minimap/MinimapConfig.java#itemColor",
+    "control": {
+     "type": "color"
+    },
+    "default": {
+     "type": "color",
+     "value": 0
+    }
+   },
+   {
+    "key": "npc",
+    "label": "NPC color",
+    "description": "Set the minimap color NPCs are drawn in.",
+    "section": "Minimap dot colors",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/minimap/MinimapConfig.java#npcColor",
+    "control": {
+     "type": "color"
+    },
+    "default": {
+     "type": "color",
+     "value": 0
+    }
+   },
+   {
+    "key": "player",
+    "label": "Player color",
+    "description": "Set the minimap color players are drawn in.",
+    "section": "Minimap dot colors",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/minimap/MinimapConfig.java#playerColor",
+    "control": {
+     "type": "color"
+    },
+    "default": {
+     "type": "color",
+     "value": 0
+    }
+   },
+   {
+    "key": "friend",
+    "label": "Friends color",
+    "description": "Set the minimap color your friends are drawn in.",
+    "section": "Minimap dot colors",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/minimap/MinimapConfig.java#friendColor",
+    "control": {
+     "type": "color"
+    },
+    "default": {
+     "type": "color",
+     "value": 0
+    }
+   },
+   {
+    "key": "team",
+    "label": "Team color",
+    "description": "Set the minimap color your team is drawn in.",
+    "section": "Minimap dot colors",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/minimap/MinimapConfig.java#teamColor",
+    "control": {
+     "type": "color"
+    },
+    "default": {
+     "type": "color",
+     "value": 0
+    }
+   },
+   {
+    "key": "clan",
+    "label": "Friends chat color",
+    "description": "Set the minimap color your friends chat members are drawn in.",
+    "section": "Minimap dot colors",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/minimap/MinimapConfig.java#friendsChatColor",
+    "control": {
+     "type": "color"
+    },
+    "default": {
+     "type": "color",
+     "value": 0
+    }
+   },
+   {
+    "key": "clanchat",
+    "label": "Clan chat color",
+    "description": "Set the minimap color your clan chat members are drawn in.",
+    "section": "Minimap dot colors",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/minimap/MinimapConfig.java#clanChatColor",
+    "control": {
+     "type": "color"
+    },
+    "default": {
+     "type": "color",
+     "value": 0
+    }
+   }
+  ]
+ },
+ {
   "plugin": "dev.rustclient.playerindicators",
   "name": "Player Indicators",
   "version": 1,

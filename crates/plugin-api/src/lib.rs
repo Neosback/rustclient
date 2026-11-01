@@ -26,8 +26,8 @@ pub use manifest::{ManifestError, PluginManifest};
 pub use menu::{MenuEdit, MenuEntry, MenuKind};
 pub use output::{
     ActorAnchor, AnimationSmoothing, CameraCommand, EntityVisibility, HorizontalAlign, InfoBox,
-    LayeredOverlay, Notification, NotificationKind, OverlayCommand, OverlayLayer, PluginOutput,
-    RoofArea, RoofModes, SceneFlags, SpriteOverride, Stretch, StretchScaling, limits,
+    LayeredOverlay, MinimapRequest, Notification, NotificationKind, OverlayCommand, OverlayLayer,
+    PluginOutput, RoofArea, RoofModes, SceneFlags, SpriteOverride, Stretch, StretchScaling, limits,
 };
 
 /// Major version of the plugin API implemented by this client.
@@ -235,11 +235,13 @@ pub enum Capability {
     ClientNotify,
     /// Cap the frame rate (API 0.2).
     ClientFrameLimit,
+    /// Zoom the minimap and recolor its dots (API 0.2).
+    UiMinimap,
 }
 
 impl Capability {
     /// Every capability understood by this client, in stable order.
-    pub const ALL: [Self; 23] = [
+    pub const ALL: [Self; 24] = [
         Self::GameReadPlayers,
         Self::GameReadNpcs,
         Self::GameReadInventory,
@@ -263,6 +265,7 @@ impl Capability {
         Self::CameraControl,
         Self::ClientNotify,
         Self::ClientFrameLimit,
+        Self::UiMinimap,
     ];
 
     /// Canonical dotted name used by manifests and diagnostics.
@@ -292,6 +295,7 @@ impl Capability {
             Self::CameraControl => "camera.control",
             Self::ClientNotify => "client.notify",
             Self::ClientFrameLimit => "client.frame_limit",
+            Self::UiMinimap => "ui.minimap",
         }
     }
 

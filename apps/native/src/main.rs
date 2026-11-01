@@ -141,6 +141,12 @@ struct NativeApp {
     /// Plane the cached minimap image was built for; the client rebuilds it when the player changes plane.
     minimap_plane: Option<rustclient_model::Plane>,
     minimap_pixels: Vec<u8>,
+    /// Whether the last plugin update asked for mouse-wheel zoom on the minimap, so the client
+    /// changes the script-owned flag only when the request changes.
+    plugin_wheel_zoom: bool,
+    /// Whether the client last hid the minimap and orbs for a plugin, so lifting the request
+    /// shows them again.
+    minimap_hidden: bool,
     compass_pixels: Vec<u8>,
     /// Hash of every input the composed minimap/compass pixels depend on, and the revision handed
     /// to the renderer; a frame with an unchanged key neither recomposes nor re-uploads.
@@ -231,6 +237,7 @@ impl NativeApp {
             },
         };
         self.plugins.update(&self.state, &inputs);
+        self.sync_minimap();
         self.shell.set_plugin_statuses(self.plugins.statuses());
         // Sprites a plugin draws are decoded by the same worker as widget sprites.
         if self.widget_sprites_missing() {
@@ -309,6 +316,79 @@ impl NativeApp {
         self.compass_mask = None;
         self.minimap_key = 0;
         self.compass_key = 0;
+    }
+    /// Follow the minimap preferences plugins ask for: wheel zoom, the saved zoom level and
+    /// hiding. No request means the unmodified client.
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "the host clamps the requested zoom to 2..=8 pixels per tile"
+    )]
+    fn sync_minimap(&mut self) {
+        use rustclient_model::MinimapUpdate;
+        let wheel_zoom = self.plugins.output().minimap.wheel_zoom;
+        if wheel_zoom != self.plugin_wheel_zoom {
+            self.plugin_wheel_zoom = wheel_zoom;
+            self.update_minimap(MinimapUpdate::Zoomable(wheel_zoom));
+        }
+        if let Some(zoom) = self.plugins.take_minimap_zoom() {
+            self.update_minimap(MinimapUpdate::ZoomQuarters((zoom * 4.).round() as i32));
+        }
+        self.sync_minimap_visibility();
+    }
+    /// The plugin's `hideMinimap` hides the minimap and its orbs in the resizable top-levels
+    /// (161 and 164) with `Widget.setHidden`, and again after every redraw script; here the
+    /// request is re-asserted each cycle, and lifting it shows both again.
+    fn sync_minimap_visibility(&mut self) {
+        use rustclient_model::{InterfaceUpdate, WidgetAddress, WidgetId, WidgetProperty};
+        const MINIMAP: u32 = 22;
+        const ORBS: u32 = 33;
+        let hide = self.plugins.output().minimap.hidden;
+        if !hide && !self.minimap_hidden {
+            return;
+        }
+        let Some(root) = self
+            .state
+            .interfaces()
+            .root()
+            .filter(|root| matches!(root.get(), 161 | 164))
+        else {
+            return;
+        };
+        for component in [MINIMAP, ORBS] {
+            let widget = WidgetId::new(root, component);
+            let hidden = self
+                .state
+                .interfaces()
+                .runtime()
+                .get(&WidgetAddress::component(widget))
+                .and_then(|runtime| runtime.hidden);
+            if hidden != Some(hide) {
+                self.apply(Some(SemanticOperation::Interface(
+                    InterfaceUpdate::SetProperty {
+                        widget,
+                        property: WidgetProperty::Hidden(hide),
+                    },
+                )));
+            }
+        }
+        self.minimap_hidden = hide;
+    }
+    fn update_minimap(&mut self, update: rustclient_model::MinimapUpdate) {
+        self.apply(Some(SemanticOperation::Interface(
+            rustclient_model::InterfaceUpdate::Minimap(update),
+        )));
+    }
+    /// One wheel notch over the minimap changes its zoom by a quarter pixel per tile (the 241
+    /// client's step); `amount` is positive when the wheel turns toward the user.
+    fn zoom_minimap_with_wheel(&mut self, amount: i32) -> bool {
+        let settings = self.state.interfaces().minimap();
+        if !settings.zoomable || amount == 0 {
+            return false;
+        }
+        self.update_minimap(rustclient_model::MinimapUpdate::ZoomQuarters(
+            settings.zoom_quarters - amount.signum(),
+        ));
+        true
     }
     /// Follow the camera preferences plugins ask for; no request means the unmodified client.
     fn sync_camera_tuning(&mut self) {
@@ -523,6 +603,8 @@ impl NativeApp {
             minimap: None,
             minimap_plane: None,
             minimap_pixels: Vec::new(),
+            plugin_wheel_zoom: false,
+            minimap_hidden: false,
             compass_pixels: Vec::new(),
             minimap_key: 0,
             minimap_revision: 0,
@@ -1191,6 +1273,7 @@ impl NativeApp {
                             minimap_settings.icon_zoom_limit,
                         )
                             .hash(&mut hasher);
+                        self.plugins.output().minimap.dot_colors.hash(&mut hasher);
                         (origin.x, origin.y).hash(&mut hasher);
                         self.scene.loaded.is_some().hash(&mut hasher);
                         destination.map(|tile| (tile.x, tile.y)).hash(&mut hasher);
@@ -1238,7 +1321,10 @@ impl NativeApp {
                                     &mut self.minimap_pixels,
                                     &mask.pixels,
                                     [mask.size[0] as usize, mask.size[1] as usize],
-                                    &loaded.asset.sources().map_dots,
+                                    &rustclient_scene::minimap::recolored_dots(
+                                        &loaded.asset.sources().map_dots,
+                                        &self.plugins.output().minimap.dot_colors,
+                                    ),
                                     &dots,
                                     rustclient_scene::minimap::MinimapView {
                                         camera: relative,
@@ -2061,7 +2147,16 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                             && y >= q.rect.y
                             && y <= q.rect.y + q.rect.height
                     });
-                    if over_world_map {
+                    let over_minimap = self.frame.quads.iter().any(|q| {
+                        q.image == rustclient_game_ui::UiImageId::Minimap
+                            && x >= q.rect.x
+                            && x <= q.rect.x + q.rect.width
+                            && y >= q.rect.y
+                            && y <= q.rect.y + q.rect.height
+                    });
+                    if over_minimap && self.zoom_minimap_with_wheel(amount) {
+                        window.request_redraw();
+                    } else if over_world_map {
                         if let Some(scripts) = &mut self.scripts {
                             let factor = if amount > 0 { 0.85 } else { 1.15 };
                             let new_zoom = (scripts.world_map.zoom * factor).clamp(25.0, 200.0);

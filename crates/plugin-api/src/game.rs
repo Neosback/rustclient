@@ -461,6 +461,9 @@ pub struct ClientSnapshot {
     /// The tile the local player is walking to, as `Client.getLocalDestinationLocation`; absent
     /// when no destination is set. The plane is the local player's.
     pub destination: Option<WorldPoint>,
+    /// Minimap zoom in pixels per tile, as `Client.getMinimapZoom` (2 to 8, 4 by default); `0`
+    /// until the host reports one.
+    pub minimap_zoom: f64,
 }
 
 /// One consistent view of the committed game, built once per update and shared by all plugins.

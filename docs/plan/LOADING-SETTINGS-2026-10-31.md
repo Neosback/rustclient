@@ -197,9 +197,25 @@ Findings that need other work:
   the loaded objects reference (39 sprites, 43 icons in the Lumbridge window). Icons hide below
   `icon_zoom_limit` whole steps (`MINIMAP-ICON-ZOOM-LIMIT`).
 - Not done: item, friend, team, friends-chat and clan dots (no ground items or friend list in
-  `GameState`); wheel zoom (the stock client has none; the RuneLite Minimap plugin adds it and
-  needs plugin API additions); rebuilding the image when scenery changes; the RuneLite Minimap
-  plugin and Tile Indicators.
+  `GameState`); rebuilding the image when scenery changes.
+
+## RuneLite Minimap plugin (stage 4, third pass)
+
+`first-party-plugins::minimap` ports `MinimapPlugin`; it is `enabledByDefault` in the source, so the
+wheel zoom is on out of the box. API 0.2 gained, additively, the capability `ui.minimap`,
+`PluginOutput::minimap` (`MinimapRequest`: wheel zoom, a zoom to apply once, hide, seven dot
+colors) and `ClientSnapshot::minimap_zoom` (ADR-0006, SPEC-0004).
+
+- The shell owns every effect: wheel over the minimap changes `MinimapSettings::zoom_quarters` by one
+  quarter per notch (the 241 step, 2x to 8x); a request change flips `MinimapUpdate::Zoomable`; the
+  saved level (`zoomLevel` in plugin storage, written every 11 s when it moved) is applied once with
+  `ZoomQuarters`; dot colors replace the seven `mapdots` frames with the source's 4x5 sprite
+  (`recolored_dots`; alpha zero is the source's null color, which keeps the stock dot); `hideMinimap`
+  sets the runtime `hidden` of components 22 (minimap) and 33 (orbs) on top-levels 161/164 every
+  cycle and unhides them when lifted.
+- Differences are listed under `## minimap` in `FIRST-PARTY-LEDGER.md`.
+- NOT-RUN: nothing was seen in the live client, so the wheel feel, the saved-zoom round trip across a
+  restart, the dot look and the hidden minimap/orbs on a real resizable layout are unobserved.
 
 ## Memory and baseline FPS (stage 5, first pass)
 
@@ -245,6 +261,6 @@ nothing about steady-state frame time.
    touches; extend the harness with varp/inventory fixtures so state-dependent scripts can run;
    fire each Variable/Operation/Click listener once and assert scroll survives and prompts close.
 4. Minimap: remaining dot frames (needs ground items and friend lists in `GameState`), rebuild on
-   scenery change, wheel zoom; Tile Indicators and the Minimap plugin (plugin API additions needed).
+   scenery change; observe the Minimap plugin live; Ground Markers.
 5. Memory and baseline FPS: retained CPU mesh (46 MB), texture array layers, per-cycle
    plugin/entity work after a live profile (see "Memory and baseline FPS").

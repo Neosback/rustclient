@@ -36,6 +36,7 @@ PLUGIN_LIST = [
     ("entityhider", "entityhider"),
     ("npchighlight", "npchighlight"),
     ("tileindicators", "tileindicators"),
+    ("minimap", "minimap"),
     ("playerindicators", "playerindicators"),
     ("idlenotifier", "idlenotifier"),
     ("camera", "camera"),
@@ -283,7 +284,9 @@ def model(jtype, expr, rng, units, consts, enum_files, annotations):
     if jtype == "String":
         return {"type": "text", "max_len": 4096}, {"type": "text", "value": json.loads(expr) if expr.startswith('"') else ""}
     if jtype == "Color":
-        return {"type": "color"}, {"type": "color", "value": parse_color(expr)}
+        # A `Color` member with no default method is null in the source, which leaves the stock
+        # value in place; a fully transparent color stands for it.
+        return {"type": "color"}, {"type": "color", "value": parse_color(expr) if expr else 0}
     if jtype in ("Keybind", "ModifierlessKeybind"):
         m = re.search(r"VK_(\w+)", expr)
         key = m[1] if m else ""

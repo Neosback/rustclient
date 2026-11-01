@@ -477,6 +477,73 @@ pub struct MinimapDot {
     pub frame: usize,
 }
 
+/// The dot sprites with each replacement color applied, as the `RuneLite` Minimap plugin does.
+///
+/// The source replaces a map dot by a 4x5 sprite of one color with a dark lower rim; a kind
+/// without a color keeps its cache sprite. Borrowed when nothing is replaced.
+#[must_use]
+pub fn recolored_dots<'a>(
+    dots: &'a [rustclient_cache::Sprite],
+    colors: &[Option<u32>],
+) -> std::borrow::Cow<'a, [rustclient_cache::Sprite]> {
+    if colors.iter().all(Option::is_none) {
+        return std::borrow::Cow::Borrowed(dots);
+    }
+    std::borrow::Cow::Owned(
+        dots.iter()
+            .enumerate()
+            .map(|(frame, dot)| {
+                colors
+                    .get(frame)
+                    .copied()
+                    .flatten()
+                    .and_then(|argb| recolored_dot(dot, argb))
+                    .unwrap_or_else(|| dot.clone())
+            })
+            .collect(),
+    )
+}
+
+/// Width and height of the sprite `RuneLite` substitutes for a map dot.
+const REPLACEMENT_DOT: [usize; 2] = [4, 5];
+
+/// One replacement dot: `1` is the near-black rim pixel, `2` the color, `0` transparent.
+const REPLACEMENT_DOT_SHAPE: [u8; 20] =
+    [0, 2, 2, 0, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 1, 0, 1, 1, 0];
+
+fn recolored_dot(
+    template: &rustclient_cache::Sprite,
+    argb: u32,
+) -> Option<rustclient_cache::Sprite> {
+    let [red, green, blue] = [(argb >> 16) as u8, (argb >> 8) as u8, argb as u8];
+    let mut rgba = Vec::with_capacity(REPLACEMENT_DOT_SHAPE.len() * 4);
+    for cell in REPLACEMENT_DOT_SHAPE {
+        rgba.extend_from_slice(&match cell {
+            0 => [0, 0, 0, 0],
+            1 => [0, 0, 1, 255],
+            _ => [red, green, blue, 255],
+        });
+    }
+    let image = rustclient_cache::Image::new(
+        REPLACEMENT_DOT[0] as u32,
+        REPLACEMENT_DOT[1] as u32,
+        rgba,
+        rustclient_cache::Source::group(
+            rustclient_cache::IndexId(8),
+            rustclient_cache::GroupId(template.id.get()),
+        ),
+    )
+    .ok()?;
+    Some(rustclient_cache::Sprite {
+        id: template.id,
+        frame: template.frame,
+        // The replacement sprite is its own canvas, as `createSpritePixels` makes it.
+        canvas: [REPLACEMENT_DOT[0] as u16, REPLACEMENT_DOT[1] as u16],
+        offset: [0, 0],
+        image,
+    })
+}
+
 /// Draw `dots` over a composed minimap (`mask_width * mask_height` RGBA bytes).
 ///
 /// Each dot is placed by the inverse of the rotation `compose_minimap` samples through, then
@@ -739,6 +806,28 @@ mod tests {
             )
             .unwrap(),
         }
+    }
+
+    #[test]
+    fn recolored_dots_replace_only_the_kinds_with_a_color_and_keep_the_rim() {
+        let stock = [dot_sprite(), dot_sprite()];
+        assert!(matches!(
+            recolored_dots(&stock, &[None, None]),
+            std::borrow::Cow::Borrowed(_)
+        ));
+        let dots = recolored_dots(&stock, &[None, Some(0xFF11_2233)]);
+        assert_eq!(dots[0].image.pixels(), stock[0].image.pixels());
+        let dot = &dots[1];
+        assert_eq!((dot.image.width(), dot.image.height()), (4, 5));
+        assert_eq!(dot.canvas, [4, 5]);
+        let pixel = |column: usize, row: usize| {
+            let at = (row * 4 + column) * 4;
+            dot.image.pixels()[at..at + 4].to_vec()
+        };
+        assert_eq!(pixel(0, 0), [0, 0, 0, 0], "corners stay transparent");
+        assert_eq!(pixel(1, 0), [0x11, 0x22, 0x33, 255]);
+        assert_eq!(pixel(0, 3), [0, 0, 1, 255], "the lower rim is near black");
+        assert_eq!(pixel(1, 4), [0, 0, 1, 255]);
     }
 
     #[test]

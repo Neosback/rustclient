@@ -362,6 +362,30 @@ impl Stretch {
     pub const MAX_SCALE_PERCENT: i16 = 800;
 }
 
+/// Minimap requests (`Client.setMinimapZoom` and the replaced map dot sprites).
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct MinimapRequest {
+    /// Let the mouse wheel zoom the minimap (`Client.setMinimapZoom(boolean)`).
+    pub wheel_zoom: bool,
+    /// Zoom to apply once, in pixels per tile ([`MinimapRequest::MIN_ZOOM`] to
+    /// [`MinimapRequest::MAX_ZOOM`]), as `Client.setMinimapZoom(double)`.
+    pub zoom: Option<f64>,
+    /// Hide the minimap and its orbs (resizable layouts only), as the plugin's `hideMinimap`.
+    pub hidden: bool,
+    /// Replacement colors for the map dots, indexed by [`MinimapRequest::DOT_KINDS`] order:
+    /// item, NPC, player, friend, team, friends chat, clan chat. `None` keeps the sprite.
+    pub dot_colors: [Option<u32>; Self::DOT_KINDS],
+}
+
+impl MinimapRequest {
+    /// Lowest zoom the host accepts.
+    pub const MIN_ZOOM: f64 = 2.;
+    /// Highest zoom the host accepts.
+    pub const MAX_ZOOM: f64 = 8.;
+    /// Map dot kinds, the frames of the `mapdots` sprite group.
+    pub const DOT_KINDS: usize = 7;
+}
+
 /// Everything one plugin wants this update.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct PluginOutput {
@@ -390,6 +414,8 @@ pub struct PluginOutput {
     pub smoothing_denied: Vec<u32>,
     /// Frames per second the client may present at most; the lowest request among plugins applies.
     pub frame_limit: Option<u32>,
+    /// Minimap zoom and dot colors, if the plugin controls them.
+    pub minimap: Option<MinimapRequest>,
 }
 
 impl PluginOutput {

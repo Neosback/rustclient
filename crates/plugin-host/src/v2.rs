@@ -7,9 +7,9 @@
 use crate::{HostView, LogSink, PluginCall, PluginSet, PluginStorage};
 use rustclient_plugin_api::{
     CameraCommand, Capability, CapabilitySet, ChatLine, EntityVisibility, GameEvent, GameSnapshot,
-    InfoBox, ItemStack, LayeredOverlay, LogLevel, MenuEdit, Notification, OverlayCommand,
-    PlayerPosition, PlayerSnapshot, PluginId, PluginOutput, RoofArea, SceneFlags, SkillLevel,
-    SpriteOverride, Stretch, WidgetSnapshot, limits,
+    InfoBox, ItemStack, LayeredOverlay, LogLevel, MenuEdit, MinimapRequest, Notification,
+    OverlayCommand, PlayerPosition, PlayerSnapshot, PluginId, PluginOutput, RoofArea, SceneFlags,
+    SkillLevel, SpriteOverride, Stretch, WidgetSnapshot, limits,
 };
 use std::collections::BTreeSet;
 
@@ -192,6 +192,9 @@ pub struct HostOutput {
     pub smoothing_denied: Vec<u32>,
     /// The lowest frame limit any plugin asked for.
     pub frame_limit: Option<u32>,
+    /// Merged minimap requests: wheel zoom or hiding if any plugin wants it, the last zoom or dot color
+    /// requested for each slot.
+    pub minimap: MinimapRequest,
 }
 
 impl HostOutput {
@@ -234,6 +237,14 @@ impl HostOutput {
         self.smoothing_denied.extend(output.smoothing_denied);
         if output.stretch.is_some() {
             self.stretch = output.stretch;
+        }
+        if let Some(minimap) = output.minimap {
+            self.minimap.wheel_zoom |= minimap.wheel_zoom;
+            self.minimap.hidden |= minimap.hidden;
+            self.minimap.zoom = minimap.zoom.or(self.minimap.zoom);
+            for (have, ask) in self.minimap.dot_colors.iter_mut().zip(minimap.dot_colors) {
+                *have = ask.or(*have);
+            }
         }
         self.frame_limit = match (self.frame_limit, output.frame_limit) {
             (Some(have), Some(ask)) => Some(have.min(ask)),
@@ -310,6 +321,15 @@ fn validate_scene(refuse: &mut impl FnMut(Capability, bool) -> bool, output: &mu
         stretch.scale_percent = stretch
             .scale_percent
             .clamp(Stretch::MIN_SCALE_PERCENT, Stretch::MAX_SCALE_PERCENT);
+    }
+    if refuse(Capability::UiMinimap, output.minimap.is_some()) {
+        output.minimap = None;
+    }
+    if let Some(minimap) = &mut output.minimap {
+        minimap.zoom = minimap
+            .zoom
+            .filter(|zoom| zoom.is_finite())
+            .map(|zoom| zoom.clamp(MinimapRequest::MIN_ZOOM, MinimapRequest::MAX_ZOOM));
     }
     if refuse(Capability::ClientFrameLimit, output.frame_limit.is_some()) {
         output.frame_limit = None;
@@ -438,6 +458,9 @@ impl PluginSet {
                 let mut value = value.clone();
                 value.notifications.clear();
                 value.menu_edits.clear();
+                if let Some(minimap) = &mut value.minimap {
+                    minimap.zoom = None;
+                }
                 value.camera.retain(|command| {
                     matches!(
                         command,

@@ -442,3 +442,28 @@ fn the_pointer_tile_and_the_walk_destination_reach_the_client_snapshot_on_the_pl
         Some(rustclient_plugin_api::WorldPoint::new(5, 6, 0))
     );
 }
+
+#[test]
+fn the_minimap_zoom_reaches_the_client_snapshot_in_pixels_per_tile() {
+    let mut state = session();
+    let mut projector = Projector::new();
+    let sources = Sources::default();
+    let wanted = everything();
+    let zoom = |state: &rustclient_game_state::GameState, projector: &mut Projector| {
+        projector
+            .snapshot(state, &Frame::default(), &sources, &wanted)
+            .client
+            .minimap_zoom
+    };
+    assert!((zoom(&state, &mut projector) - 4.).abs() < f64::EPSILON);
+    for update in [
+        rustclient_model::MinimapUpdate::Zoomable(true),
+        rustclient_model::MinimapUpdate::ZoomQuarters(26),
+    ] {
+        apply(
+            &mut state,
+            SemanticOperation::Interface(rustclient_model::InterfaceUpdate::Minimap(update)),
+        );
+    }
+    assert!((zoom(&state, &mut projector) - 6.5).abs() < f64::EPSILON);
+}

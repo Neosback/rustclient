@@ -29,6 +29,7 @@ exact evidence below remains bounded to its recorded implementation.
 | camera | partial | zoom limits and scroll zoom, shake, mouse remaps |
 | npchighlight | partial | menu tagging, outline, dead/pet filters, respawn timer, minimap names |
 | tileindicators | partial | sub-tile destination point (whole-tile `MapDestination` only) |
+| minimap | partial | saved zoom applied only while `zoom` is on; wheel zoom hit area is the minimap rectangle |
 | playerindicators | partial | relationship lists (party, friends, chat, clan, team), rank icons, coloured menu, minimap names |
 | interfacestyles | partial | widget overrides (2005 side stones), HD health bars, menu options, cross sprites, always-stack |
 | menuentryswapper | not-implemented | the right-click menu is not exposed to plugins (entries, `PostMenuSort`, edits) |
@@ -283,6 +284,27 @@ Known differences:
 - The client tracks the pointer tile only while a running plugin holds `GameReadClient` (the pick ignores hidden roofs, as the
   hovered-roof mode does), so the tile can lag the pointer by one pointer event.
 - The destination is the whole-tile `MapDestination` the client keeps; the source reads a local point, which draws the same tile.
+
+## minimap
+
+Sources: `plugins/minimap/{MinimapPlugin,MinimapConfig,MinimapDot}.java`; zoom steps follow the 241 client (secondary evidence,
+`widgetMinimapWheelInput.ts`, `OsrsClient.applyMinimapWheelZoom`: a quarter pixel per tile per notch, 2 to 8).
+
+| Source | Rust owner | Implemented | Verified |
+| --- | --- | --- | --- |
+| `zoom` (default on): `Client.setMinimapZoom(boolean)` | `PluginOutput::minimap.wheel_zoom`; the shell sets `MinimapUpdate::Zoomable` on a change and zooms with the wheel over the minimap | yes | unit: defaults; host: merge; shell not exercised live |
+| `zoomLevel` saved every 11 s and applied on start | plugin storage (`storage.plugin`), `MinimapRequest::zoom` applied once as `MinimapUpdate::ZoomQuarters` | yes | unit: applied once, saved on the period and only when changed |
+| Dot colors (`item`, `npc`, `player`, `friend`, `team`, `clan`, `clanchat`) | `MinimapRequest::dot_colors`, `rustclient_scene::minimap::recolored_dots` (the 4x5 `MinimapDot` sprite) | yes | unit: slot order, alpha-zero null, sprite shape |
+| `hideMinimap`: minimap and orbs hidden (resizable only) | `MinimapRequest::hidden`; the shell sets the widgets' runtime `hidden` on 161/164 components 22 and 33 each cycle | yes | host: merge; not seen on screen |
+
+Known differences:
+
+- The source's colors have no default (null), which leaves the stock sprite; the schema models null as a fully transparent color.
+- The saved zoom level is applied only while `zoom` is on; the source also applies it with the wheel off, where it cannot change.
+- Wheel zoom works over the minimap rectangle, not its circular mask.
+- Turning the plugin off or lifting `hideMinimap` writes `hidden = false` for the minimap and orbs; the stock `MINIMAP_TOGGLE` hide
+  returns at the next top-level redraw script rather than being kept (the source re-applies `vanillaHideMinimap`).
+- Wasm plugins cannot request minimap changes (the WIT surface is unchanged).
 
 ## interfacestyles
 

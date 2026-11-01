@@ -14,6 +14,7 @@ mod idlenotifier;
 mod idlenotifier_animations;
 mod interfacestyles;
 mod interfacestyles_sprites;
+mod minimap;
 mod npchighlight;
 mod playerindicators;
 mod roofremoval;
@@ -225,6 +226,15 @@ const ENTRIES: &[Entry] = &[
             Capability::GameReadVars,
         ],
         build: || boxed(tileindicators::TileIndicators),
+    },
+    Entry {
+        name: "minimap",
+        capabilities: &[
+            Capability::UiMinimap,
+            Capability::GameReadClient,
+            Capability::StoragePlugin,
+        ],
+        build: || boxed(minimap::Minimap::default()),
     },
     Entry {
         name: "camera",

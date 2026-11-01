@@ -119,6 +119,7 @@ pub(crate) fn client(state: &GameState, frame: &Frame) -> ClientSnapshot {
             .map(|(destination, player)| {
                 WorldPoint::new(destination.x, destination.y, player.tile.plane.get())
             }),
+        minimap_zoom: f64::from(state.interfaces().minimap().zoom_quarters) / 4.,
     }
 }
 

@@ -309,6 +309,11 @@ impl Plugins {
             .collect()
     }
 
+    /// The saved minimap zoom a plugin asked for in the last update, reported once.
+    pub(super) fn take_minimap_zoom(&mut self) -> Option<f64> {
+        self.output.minimap.zoom.take()
+    }
+
     /// The merged declarative output of the last update.
     pub(super) fn output(&self) -> &HostOutput {
         &self.output
