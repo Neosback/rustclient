@@ -35,6 +35,9 @@ pub struct SceneView {
     /// Set while a window-changing rebuild's replacement loads and `loaded` is still the scene
     /// being drawn (SPEC-0023); the instant it began delays the loading box.
     pub replacing: Option<std::time::Instant>,
+    /// The renderer was created after the static triangles of `loaded` were released, so the
+    /// GPU has no world until the scene is projected again from its cached asset (since when).
+    pub awaiting_world: Option<std::time::Instant>,
     pub loaded: Option<LoadedScene>,
     pub camera: Option<GameplayCameraController>,
     pub input: CameraInput,
@@ -76,6 +79,7 @@ impl SceneView {
             loading: false,
             attempted: false,
             replacing: None,
+            awaiting_world: None,
             loaded: None,
             camera: None,
             input: CameraInput::default(),

@@ -168,6 +168,18 @@ same preparation/publication contract without requiring native threads or GPU ha
 Publication checks current device limits before changing resources, reuses sufficient buffer
 capacity and preserves explicit scene-versus-scenery actor lifetimes. Reconstructing the device
 cannot invalidate the CPU prepared payload. Newer compatible dynamic poses must not be rewound.
+
+Released static triangles (2026-11-01): once a static mesh is uploaded and its `ScenePickIndex`
+is built, the shell may call `SceneGeometry::release_triangles`, which drops the vertex and
+index lists (about 24 bytes per vertex plus 8 for the index lists) and keeps model spans, pick
+ranges and labels. The index owns a compact copy (6 bytes per vertex plus 8 per triangle: corner
+positions, and for the first corner the render tag, draw tile and whether every corner has alpha
+255), which is all that surface, terrain and clickbox picking read, with the same hits, ties and
+ordering as the full vertices. A released geometry cannot rebuild an index and cannot be
+re-uploaded: reconstructing the device then has no CPU payload to republish, so the shell
+projects the scene again from the cached asset and current scenery inputs (the same worker as a
+scenery rebuild) and draws no world until it publishes. This weakens "consuming publication
+returns the original CPU mesh for device recovery" to "or a rebuild from the asset".
 Preparation and publication costs, buffer capacity and correctness are measured separately; moving
 work off the event thread does not count as reduced total work or incremental zone parity.
 

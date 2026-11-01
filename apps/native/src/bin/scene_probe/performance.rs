@@ -10,6 +10,14 @@ pub(super) fn run(mesh: &WorldMesh) -> Result<(), Box<dyn std::error::Error>> {
         index.stats(),
         started.elapsed()
     );
+    let geometry = &mesh.geometry;
+    println!(
+        "static triangles: {} vertices, {} B resident as vertices and index lists; {} B kept by the picking index once they are released",
+        geometry.vertex_count(),
+        geometry.vertices.len() * size_of::<rustclient_scene::SceneVertex>()
+            + (geometry.opaque.len() + geometry.transparent.len()) * size_of::<u32>(),
+        index.stats().resident_bytes,
+    );
     let visibility = SceneVisibility::everything();
     let mut original = Vec::new();
     for indexed in [false, true] {
@@ -43,10 +51,24 @@ pub(super) fn run(mesh: &WorldMesh) -> Result<(), Box<dyn std::error::Error>> {
             samples[300], samples[570], samples[599]
         );
     }
+    let mut released = mesh.geometry.clone();
+    released.release_triangles();
+    for step in 0..600_u16 {
+        let origin = [
+            f32::from(step.wrapping_mul(173) % 13000),
+            3000.,
+            f32::from(step.wrapping_mul(91) % 13000),
+        ];
+        let hit = index.pick_surface(&released, origin, [0., -1., 0.], &visibility);
+        if hit.map(|hit| (hit.distance, hit.target)) != original[usize::from(step)] {
+            return Err(format!("released-geometry query differs for ray {step}").into());
+        }
+    }
+    drop(released);
     let resources = pollster::block_on(rustclient_renderer::capture_world_resources(mesh))?;
     println!("actual GPU world resources: {resources:?}");
     println!(
-        "600 indexed hits match original picker; resource figures exclude textures/render targets and whole-process RSS"
+        "600 indexed hits match original picker, also after the triangles are released; resource figures exclude textures/render targets and whole-process RSS"
     );
     Ok(())
 }

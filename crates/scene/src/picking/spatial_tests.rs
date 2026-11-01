@@ -59,7 +59,8 @@ fn indexed_hits_match_original_queries_including_edges_occluders_and_visibility(
         precision: crate::PickPrecision::ProjectedFaces,
     });
     let index = ScenePickIndex::new(&geometry).unwrap();
-    assert!(index.stats().resident_bytes < geometry.vertices.len() * 2);
+    // The compact copy is well under the 24-byte vertices it replaces.
+    assert!(index.stats().resident_bytes < geometry.vertices.len() * size_of::<SceneVertex>() / 2);
     for top_level in [0, 3] {
         let mut visibility = SceneVisibility::everything();
         visibility.top_level = top_level;
@@ -89,6 +90,70 @@ fn indexed_hits_match_original_queries_including_edges_occluders_and_visibility(
             [0., -1., 0.],
             &SceneVisibility::everything(),
         );
+    }
+}
+#[test]
+fn a_released_geometry_keeps_picking_from_the_compact_copy() {
+    let mut geometry = self::geometry(24);
+    let target = WorldTarget::Npc {
+        index: NpcIndex::new(1),
+        instance: NpcInstanceId::new(1),
+        definition: NpcDefinitionId::new(1),
+        resolved: NpcDefinitionId::new(1),
+    };
+    geometry.picks.push(PickRange {
+        vertices: 0..geometry.vertices.len(),
+        target,
+        bounds: None,
+        precision: crate::PickPrecision::ProjectedFaces,
+    });
+    let index = ScenePickIndex::new(&geometry).unwrap();
+    let reference = geometry.clone();
+    let count = geometry.vertices.len();
+    geometry.release_triangles();
+    assert!(geometry.is_released());
+    assert_eq!(geometry.vertex_count(), count);
+    assert!(geometry.vertices.is_empty() && geometry.opaque.is_empty());
+    assert!(
+        ScenePickIndex::new(&geometry).is_err(),
+        "an index cannot be rebuilt from released triangles"
+    );
+    for top_level in [0, 3] {
+        let mut visibility = SceneVisibility::everything();
+        visibility.top_level = top_level;
+        for x in -1_i16..50 {
+            for z in -1_i16..50 {
+                let origin = [f32::from(x) * 32., 1500., f32::from(z) * 32.];
+                for direction in [[0., -1., 0.], [0.03125, -1., -0.0625]] {
+                    let expected = pick_surface(&reference, origin, direction, &visibility);
+                    let actual = index.pick_surface(&geometry, origin, direction, &visibility);
+                    assert_eq!(
+                        actual.map(|h| (h.distance, h.target)),
+                        expected.map(|h| (h.distance, h.target)),
+                        "origin={origin:?}, direction={direction:?}"
+                    );
+                }
+            }
+        }
+    }
+    // A ray starting beyond the bounded range tests every triangle, still from the copy.
+    let far = [20_000_000., 100., 10.];
+    let visibility = SceneVisibility::everything();
+    assert_eq!(
+        index
+            .pick_surface(&geometry, far, [0., -1., 0.], &visibility)
+            .map(|h| h.distance),
+        pick_surface(&reference, far, [0., -1., 0.], &visibility).map(|h| h.distance)
+    );
+    // Clickboxes read the copy as well.
+    let view = crate::ModelView::new([768, 0, -1000], 0, 0);
+    let projection = PickProjection::new(view, 512, [256, 167], [256, 167]).unwrap();
+    let released = index.pick_targets(&geometry, projection, &visibility);
+    let original = super::pick_targets(&reference, projection, &visibility);
+    assert!(!original.is_empty(), "the projection must reach the model");
+    assert_eq!(released.len(), original.len());
+    for (a, b) in released.iter().zip(&original) {
+        assert_eq!((a.target, a.depth), (b.target, b.depth));
     }
 }
 #[test]

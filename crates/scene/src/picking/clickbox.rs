@@ -1,6 +1,7 @@
 //! Revision-client menu selection differs deliberately from pixel/depth visibility.
 //! client.method1631/2264/2290: model boxes, five-pixel face bounds, all overlapping tags.
-use crate::{ModelView, Result, SceneError, SceneGeometry, SceneVisibility};
+use super::triangles::Triangles;
+use crate::{ModelView, PickRange, Result, SceneError, SceneGeometry, SceneVisibility};
 use rustclient_model::{ModelPoint, WorldTarget};
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub enum PickPrecision {
@@ -214,21 +215,18 @@ impl Clickboxes {
     }
     pub fn query(
         &self,
-        geometry: &SceneGeometry,
+        picks: &[PickRange],
+        triangles: &impl Triangles,
         projection: PickProjection,
         visibility: &SceneVisibility,
         hidden: impl Fn(usize) -> bool,
     ) -> Vec<ClickHit> {
         let mut hits = Vec::<ClickHit>::new();
-        for (range, bounds) in geometry.picks.iter().zip(&self.boxes) {
-            let Some(vertices) = geometry
-                .vertices
-                .get(range.vertices.clone())
-                .filter(|vertices| !vertices.is_empty())
-            else {
+        for (range, bounds) in picks.iter().zip(&self.boxes) {
+            if range.vertices.is_empty() || range.vertices.end > triangles.vertex_count() {
                 continue;
-            };
-            if hidden(range.vertices.start) || !visibility.shows_vertex(&vertices[0]) {
+            }
+            if hidden(range.vertices.start) || !triangles.shows(range.vertices.start, visibility) {
                 continue;
             }
             let Some(box_depth) =
@@ -239,15 +237,13 @@ impl Clickboxes {
             let depth = if range.precision == PickPrecision::BoundsOnly {
                 box_depth
             } else {
-                let Some(depth) = vertices
-                    .chunks_exact(3)
-                    .filter_map(|triangle| {
-                        projection.face([triangle[0], triangle[1], triangle[2]].map(|vertex| {
-                            ModelPoint::new(
-                                i32::from(vertex.position[0]),
-                                i32::from(vertex.position[1]),
-                                i32::from(vertex.position[2]),
-                            )
+                let Some(depth) = (range.vertices.start..range.vertices.end)
+                    .step_by(3)
+                    .filter(|&first| first + 3 <= range.vertices.end)
+                    .filter_map(|first| {
+                        projection.face(std::array::from_fn(|i| {
+                            let [x, y, z] = triangles.position(first + i);
+                            ModelPoint::new(i32::from(x), i32::from(y), i32::from(z))
                         }))
                     })
                     .min()
@@ -275,5 +271,5 @@ pub fn pick_targets(
     projection: PickProjection,
     visibility: &SceneVisibility,
 ) -> Vec<ClickHit> {
-    Clickboxes::new(geometry).query(geometry, projection, visibility, |_| false)
+    Clickboxes::new(geometry).query(&geometry.picks, geometry, projection, visibility, |_| false)
 }

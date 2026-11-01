@@ -491,19 +491,24 @@ impl NativeApp {
             return;
         };
         let scenery = self.state.scenery();
-        if loaded.projection_generation == scenery.generation()
+        let rebuild = self.scene.awaiting_world.is_some();
+        if !rebuild
+            && loaded.projection_generation == scenery.generation()
             && loaded.projection_inputs.roof_areas == self.scene.roof_areas
         {
             return;
         }
         // A door or location change the baked scene can express as a patch is published by the
-        // animation worker; only a change it cannot express rebuilds the static scene.
-        if static_scene_shows(
-            loaded,
-            scenery,
-            &self.scene.roof_areas,
-            self.scene.animator.is_some(),
-        ) {
+        // animation worker; only a change it cannot express rebuilds the static scene. A renderer
+        // created after the triangles were released has nothing to patch.
+        if !rebuild
+            && static_scene_shows(
+                loaded,
+                scenery,
+                &self.scene.roof_areas,
+                self.scene.animator.is_some(),
+            )
+        {
             loaded.projection_generation = scenery.generation();
             return;
         }
@@ -670,13 +675,23 @@ impl NativeApp {
                     self.fail(event_loop, &error.to_string());
                     return;
                 }
-                if let Some(scene) = &self.scene.loaded
-                    && let Err(error) = renderer.set_world(&scene.mesh)
-                {
-                    self.fail(event_loop, &error.to_string());
-                    return;
+                // Uploaded triangles are released after the upload (the picking index keeps its
+                // own copy), so a renderer created later has to wait for a fresh projection.
+                let released = self
+                    .scene
+                    .loaded
+                    .as_ref()
+                    .is_some_and(|scene| scene.mesh.geometry.is_released());
+                self.scene.awaiting_world = released.then(Instant::now);
+                if !released && let Some(scene) = &mut self.scene.loaded {
+                    if let Err(error) = renderer.set_world(&scene.mesh) {
+                        self.fail(event_loop, &error.to_string());
+                        return;
+                    }
+                    scene.mesh.geometry.release_triangles();
                 }
-                if let Some(scene) = &self.scene.loaded
+                if !released
+                    && let Some(scene) = &self.scene.loaded
                     && let Err(error) = renderer
                         .set_world_dynamic(scene.asset.descriptor().id(), &scene.mesh.dynamic)
                         .and_then(|()| {
@@ -697,6 +712,9 @@ impl NativeApp {
                 }
                 self.performance.renderer_created(&window, &renderer);
                 self.renderer = Some(renderer);
+                // A renderer created after the triangles were released waits for the projection
+                // this starts (and the per-cycle scheduler retries).
+                self.schedule_scene_projection();
                 window.request_redraw();
             }
             Err(error) => self.fail(event_loop, &format!("renderer initialization: {error}")),
@@ -1647,6 +1665,17 @@ impl NativeApp {
         }
         Ok(())
     }
+    /// The scene projected again after a renderer was created without its released triangles.
+    fn note_world_rebuilt(&mut self) {
+        if let Some(since) = self.scene.awaiting_world.take() {
+            self.performance.event(|| {
+                format!(
+                    "world rebuilt {:.1} ms after the renderer was recreated",
+                    since.elapsed().as_secs_f64() * 1000.
+                )
+            });
+        }
+    }
     fn finish_scene(
         &mut self,
         event_loop: &ActiveEventLoop,
@@ -1700,6 +1729,9 @@ impl NativeApp {
                         return;
                     }
                 };
+                if self.renderer.is_some() {
+                    scene.mesh.geometry.release_triangles();
+                }
                 if let Err(error) = self.preserve_scene_pose(&mut scene) {
                     self.fail(event_loop, &error.to_string());
                     return;
@@ -1723,6 +1755,7 @@ impl NativeApp {
                         .stage(performance::Stage::MinimapBuild, started);
                 }
                 self.scene.dynamic_cycle = scene.projection_inputs.cycle;
+                self.note_world_rebuilt();
                 self.scene.loaded = Some(scene);
                 if let Some(since) = self.scene.replacing.take() {
                     self.performance.event(|| {
@@ -1957,6 +1990,7 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                         Ok(geometry) => {
                             if let Some(loaded) = &mut self.scene.loaded {
                                 if let Some(renderer) = &mut self.renderer
+                                    && self.scene.awaiting_world.is_none()
                                     && let Err(e) = renderer.set_world_dynamic(
                                         loaded.asset.descriptor().id(),
                                         &geometry,
@@ -2698,6 +2732,7 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                     .stage(performance::Stage::EntityBuild, entity_start);
                 let upload_start = Instant::now();
                 if let Some(renderer) = &mut self.renderer
+                    && self.scene.awaiting_world.is_none()
                     && let Err(e) = renderer.set_world_entities(
                         loaded.asset.descriptor().id(),
                         &self.scene.entity_geometry,

@@ -1,5 +1,6 @@
 //! Conservative broad phase over blocks of the immutable static projection.
 //! Exact intersections and original triangle order remain the picking contract.
+use super::triangles::{PickTriangles, Triangles};
 use super::{intersection, surface_hit, terrain_tile};
 use crate::{SceneError, SceneGeometry, SceneVisibility, SurfaceHit, WorldMesh};
 use rustclient_model::{Plane, SceneDescriptor, WorldTile};
@@ -57,7 +58,7 @@ struct Block {
     first: u32,
     end: u32,
 }
-/// Retained resource costs; triangle storage remains owned by `SceneGeometry`.
+/// Retained resource costs, including the compact triangle copy picking runs on.
 #[derive(Debug, Clone, Copy)]
 pub struct PickIndexStats {
     pub blocks: usize,
@@ -66,8 +67,9 @@ pub struct PickIndexStats {
 /// Immutable acceleration projection. Rebuild when the source geometry changes.
 /// Mismatched allocations fall back to the original linear query.
 pub struct ScenePickIndex {
-    source: usize,
+    /// Vertices of the geometry this index was built from.
     vertices: usize,
+    triangles: PickTriangles,
     blocks: usize,
     nodes: Vec<Node>,
     clickboxes: super::clickbox::Clickboxes,
@@ -78,8 +80,14 @@ pub struct ScenePickIndex {
 impl ScenePickIndex {
     /// Build a balanced index with one leaf per 32 original triangles.
     /// # Errors
-    /// Rejects source vertex counts beyond the index's u32 address space.
+    /// Rejects source vertex counts beyond the index's u32 address space, and a geometry whose
+    /// triangles were already released.
     pub fn new(geometry: &SceneGeometry) -> Result<Self, SceneError> {
+        if geometry.is_released() {
+            return Err(SceneError(
+                "picking index needs the geometry's triangles".into(),
+            ));
+        }
         let count = geometry.vertices.len() / 3 * 3;
         u32::try_from(count).map_err(|_| SceneError("picking vertex count exceeds u32".into()))?;
         let mut blocks = Vec::with_capacity(count.div_ceil(BLOCK_VERTICES));
@@ -104,8 +112,8 @@ impl ScenePickIndex {
             });
         }
         let mut index = Self {
-            source: geometry.vertices.as_ptr() as usize,
             vertices: geometry.vertices.len(),
+            triangles: PickTriangles::new(geometry),
             blocks: blocks.len(),
             clickboxes: super::clickbox::Clickboxes::new(geometry),
             hidden: Vec::new(),
@@ -180,13 +188,18 @@ impl ScenePickIndex {
         PickIndexStats {
             blocks: self.blocks,
             resident_bytes: self.nodes.capacity() * std::mem::size_of::<Node>()
+                + self.triangles.bytes()
                 + self.clickboxes.bytes(),
         }
     }
-    fn matches(&self, geometry: &SceneGeometry, origin: [f32; 3]) -> bool {
-        self.source == geometry.vertices.as_ptr() as usize
-            && self.vertices == geometry.vertices.len()
-            && origin.iter().all(|v| v.abs() <= 16_777_216.)
+    /// Whether `geometry` is the one this index was built from. Its triangles may be released.
+    fn matches(&self, geometry: &SceneGeometry) -> bool {
+        self.vertices == geometry.vertex_count()
+    }
+    /// The bounding volumes stay exact for rays this close to the origin; beyond that every
+    /// triangle is tested in source order.
+    fn bounded(origin: [f32; 3]) -> bool {
+        origin.iter().all(|v| v.abs() <= 16_777_216.)
     }
     #[expect(
         clippy::float_cmp,
@@ -194,7 +207,6 @@ impl ScenePickIndex {
     )]
     fn nearest(
         &self,
-        geometry: &SceneGeometry,
         limit: usize,
         origin: [f32; 3],
         direction: [f32; 3],
@@ -204,6 +216,7 @@ impl ScenePickIndex {
         if self.nodes.is_empty() || origin.iter().chain(&direction).any(|v| !v.is_finite()) {
             return None;
         }
+        let bounded = Self::bounded(origin);
         // Balanced tree depth is below 32 for the supported source size.
         let mut stack = [0_u32; 64];
         let mut depth = 1;
@@ -211,7 +224,7 @@ impl ScenePickIndex {
         while depth > 0 {
             depth -= 1;
             let node = self.nodes[stack[depth] as usize];
-            if !node.bounds.intersects(origin, direction) {
+            if bounded && !node.bounds.intersects(origin, direction) {
                 continue;
             }
             if !node.leaf {
@@ -221,18 +234,16 @@ impl ScenePickIndex {
                 continue;
             }
             for vertex in (node.first as usize..(node.end as usize).min(limit)).step_by(3) {
-                let triangle = &geometry.vertices[vertex..vertex + 3];
                 if self.is_hidden(vertex) {
                     continue;
                 }
-                if !visibility.shows_vertex(&triangle[0])
-                    || (surface && triangle.iter().all(|v| v.abhsl >> 24 == 255))
+                if !self.triangles.shows(vertex, visibility)
+                    || (surface && self.triangles.invisible(vertex))
                 {
                     continue;
                 }
-                let points = std::array::from_fn(|i| {
-                    std::array::from_fn(|axis| f32::from(triangle[i].position[axis]))
-                });
+                let points =
+                    std::array::from_fn(|i| self.triangles.position(vertex + i).map(f32::from));
                 if let Some(distance) = intersection(points, origin, direction)
                     && distance.is_finite()
                     && hit.is_none_or(|(old_vertex, old_distance)| {
@@ -252,11 +263,14 @@ impl ScenePickIndex {
         projection: super::PickProjection,
         visibility: &SceneVisibility,
     ) -> Vec<super::ClickHit> {
-        if self.matches(geometry, [0.; 3]) {
-            self.clickboxes
-                .query(geometry, projection, visibility, |vertex| {
-                    self.is_hidden(vertex)
-                })
+        if self.matches(geometry) {
+            self.clickboxes.query(
+                &geometry.picks,
+                &self.triangles,
+                projection,
+                visibility,
+                |vertex| self.is_hidden(vertex),
+            )
         } else {
             super::pick_targets(geometry, projection, visibility)
         }
@@ -269,18 +283,11 @@ impl ScenePickIndex {
         direction: [f32; 3],
         visibility: &SceneVisibility,
     ) -> Option<SurfaceHit> {
-        if !self.matches(geometry, origin) {
+        if !self.matches(geometry) {
             return super::pick_surface(geometry, origin, direction, visibility);
         }
-        self.nearest(
-            geometry,
-            geometry.vertices.len() / 3 * 3,
-            origin,
-            direction,
-            visibility,
-            true,
-        )
-        .map(|(vertex, distance)| surface_hit(geometry, vertex, distance))
+        self.nearest(self.vertices / 3 * 3, origin, direction, visibility, true)
+            .map(|(vertex, distance)| surface_hit(geometry, vertex, distance))
     }
     #[must_use]
     pub fn pick_terrain(
@@ -292,7 +299,7 @@ impl ScenePickIndex {
         direction: [f32; 3],
         visibility: &SceneVisibility,
     ) -> Option<WorldTile> {
-        if !self.matches(&mesh.geometry, origin) {
+        if !self.matches(&mesh.geometry) {
             return super::pick_terrain(mesh, descriptor, plane, origin, direction, visibility);
         }
         if mesh.asset != descriptor.id() {
@@ -301,8 +308,7 @@ impl ScenePickIndex {
         let count = usize::try_from(mesh.stats.terrain_triangles)
             .ok()?
             .saturating_mul(3);
-        let (_, distance) =
-            self.nearest(&mesh.geometry, count, origin, direction, visibility, false)?;
+        let (_, distance) = self.nearest(count, origin, direction, visibility, false)?;
         terrain_tile(descriptor, plane, origin, direction, distance)
     }
 }

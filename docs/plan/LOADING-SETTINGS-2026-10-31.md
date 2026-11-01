@@ -242,14 +242,25 @@ nothing about steady-state frame time.
   `performance.rs`) are being edited at the same time. The listener-candidate index that
   replaced the per-cycle scan is already in. Per-cycle plugin/entity skip-when-unchanged needs a
   live profile first.
-- **Open, with numbers.** The CPU copy of the static mesh stays resident after upload: 46.3 MB of
-  `SceneVertex` (1,929,558 vertices) plus the opaque/transparent index lists, kept for hover
-  picking (`pick_surface`), the hidden-scenery set and device-loss recovery. Dropping it needs a
-  compact pick-only vertex store plus a rebuild path for recovery. The world texture array is
-  allocated at 256 layers (about 22 MB with mips) because the layer is the texture id; shrinking
-  it needs an id-to-layer map in the shader. The probe's first run measured 296 MB peak RSS and
-  every later run (including the A/B without my change) 412 MB; I did not find why, so treat the
-  absolute RSS as unreliable between sessions and compare only A/B pairs.
+- **Done: the static mesh's CPU triangles are released after upload.** `SceneGeometry::
+  release_triangles` drops `vertices`, `opaque` and `transparent` once the renderer has the mesh
+  and `ScenePickIndex` has built; the index keeps a compact copy (`picking/triangles.rs`:
+  `[i16; 3]` per vertex and an 8-byte mark per triangle with the first corner's render tag, draw
+  tile and the all-alpha-255 flag) and runs the same traversal, ties and clickbox query on it
+  through a small `Triangles` trait that the reference geometry also implements. A renderer
+  created after the release (`F5`, surface loss, window resume) cannot re-upload, so
+  `create_renderer` sets `SceneView::awaiting_world` and `schedule_scene_projection` re-projects
+  the scene from the cached asset and the current scenery inputs until it publishes (no world is
+  drawn meanwhile; the per-cycle entity and animator uploads are skipped). Spec: SPEC-0016
+  "Released static triangles". Tests: `a_released_geometry_keeps_picking_from_the_compact_copy`
+  (surface, far-ray fallback and clickbox answers equal the unreleased reference) and the
+  existing indexed-versus-linear tests. `scene_probe --performance` prints the resident figures
+  and checks 600 rays against the released geometry.
+- **Open, with numbers.** The world texture array is allocated at 256 layers (about 22 MB with
+  mips) because the layer is the texture id; shrinking it needs an id-to-layer map in the shader.
+  The probe's first run measured 296 MB peak RSS and every later run (including the A/B without
+  my change) 412 MB; I did not find why, so treat the absolute RSS as unreliable between
+  sessions and compare only A/B pairs.
 
 ## Open, in order
 
@@ -262,5 +273,5 @@ nothing about steady-state frame time.
    fire each Variable/Operation/Click listener once and assert scroll survives and prompts close.
 4. Minimap: remaining dot frames (needs ground items and friend lists in `GameState`), rebuild on
    scenery change; observe the Minimap plugin live; Ground Markers.
-5. Memory and baseline FPS: retained CPU mesh (46 MB), texture array layers, per-cycle
+5. Memory and baseline FPS: texture array layers, per-cycle
    plugin/entity work after a live profile (see "Memory and baseline FPS").

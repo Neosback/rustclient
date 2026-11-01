@@ -104,7 +104,12 @@ impl SceneVisibility {
     }
     #[must_use]
     pub fn shows_vertex(&self, vertex: &SceneVertex) -> bool {
-        self.shows(vertex.render_tag()) && self.shows_tile(vertex.draw_tile)
+        self.shows_mark(vertex.render_tag(), vertex.draw_tile)
+    }
+    /// [`SceneVisibility::shows_vertex`] for the render tag and draw tile alone.
+    #[must_use]
+    pub fn shows_mark(&self, tag: u16, tile: DrawTile) -> bool {
+        self.shows(tag) && self.shows_tile(tile)
     }
     #[must_use]
     pub fn shows_tile(&self, tile: DrawTile) -> bool {

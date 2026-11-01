@@ -62,6 +62,9 @@ pub struct SceneGeometry {
     /// Dynamic scenery only: sorted effective-location indices whose static models the baseline
     /// must not draw or pick, because this geometry re-emits them (scenery patch publication).
     pub hidden_static: Vec<u32>,
+    /// Vertices dropped by [`SceneGeometry::release_triangles`]; zero while they are resident.
+    /// Public only so `..SceneGeometry::default()` literals keep working; use the methods.
+    pub released: usize,
 }
 /// One whole emitted model, retaining its source raster policy alongside its existing vertex span.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -117,6 +120,27 @@ impl SceneGeometry {
         self.models.clear();
         self.model_sources.clear();
         self.hidden_static.clear();
+        self.released = 0;
+    }
+    /// Vertices the geometry was built with, resident or not.
+    #[must_use]
+    pub fn vertex_count(&self) -> usize {
+        self.vertices.len().max(self.released)
+    }
+    /// Whether [`SceneGeometry::release_triangles`] dropped the triangle storage.
+    #[must_use]
+    pub fn is_released(&self) -> bool {
+        self.released != 0
+    }
+    /// Drop the vertex and index storage once the GPU holds the triangles and a
+    /// [`crate::ScenePickIndex`] holds the picking copy. Model spans, pick ranges and labels stay,
+    /// so the geometry keeps answering what those index; anything that needs the triangles again
+    /// (re-uploading to a new device) must rebuild the scene.
+    pub fn release_triangles(&mut self) {
+        self.released = self.vertex_count();
+        self.vertices = Vec::new();
+        self.opaque = Vec::new();
+        self.transparent = Vec::new();
     }
     pub(crate) fn model_triangle(
         &mut self,

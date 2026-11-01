@@ -1,6 +1,7 @@
 //! Pointer queries over the exact retained CPU terrain triangles.
 mod clickbox;
 mod spatial;
+mod triangles;
 pub use clickbox::{ClickHit, PickBounds, PickPrecision, PickProjection, pick_targets};
 #[cfg(test)]
 mod spatial_tests;
