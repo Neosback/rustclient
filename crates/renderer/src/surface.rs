@@ -189,7 +189,9 @@ impl StagedStream {
             && self.geometry.opaque == geometry.opaque
             && self.geometry.transparent == geometry.transparent
             && self.geometry.models == geometry.models
+            && self.geometry.model_locations == geometry.model_locations
             && self.geometry.hidden_static == geometry.hidden_static
+            && rustclient_scene::same_location_zones(&self.geometry.location_zones, &geometry.location_zones)
         {
             return false;
         }
@@ -202,7 +204,9 @@ impl StagedStream {
         staged.transparent.extend_from_slice(&geometry.transparent);
         staged.models.clear();
         staged.models.extend_from_slice(&geometry.models);
+        staged.model_locations.clone_from(&geometry.model_locations);
         staged.hidden_static.clone_from(&geometry.hidden_static);
+        staged.location_zones = std::sync::Arc::clone(&geometry.location_zones);
         self.pending = true;
         self.known = true;
         true
@@ -640,6 +644,51 @@ impl SurfaceRenderer {
         Ok(())
     }
 
+    /// Queue worker-prepared structural resources without acquiring GPU state on the worker.
+    /// # Errors
+    /// Rejects a publication for an absent or different scene.
+    pub fn set_prepared_locations(
+        &mut self,
+        asset: rustclient_model::SceneAssetId,
+        update: crate::PreparedLocationUpdate,
+    ) -> Result<(), RenderError> {
+        let world = self
+            .world
+            .as_mut()
+            .filter(|world| world.asset == asset)
+            .ok_or(RenderError::World("location publication scene mismatch"))?;
+        world.queue_locations(update)?;
+        Ok(())
+    }
+    #[must_use]
+    pub fn locations_are(&self, zones: &std::sync::Arc<[rustclient_scene::LocationZone]>) -> bool {
+        self.world.as_ref().is_some_and(|w| w.locations_are(zones))
+    }
+
+    #[must_use]
+    pub fn locations_ready(
+        &self,
+        zones: &std::sync::Arc<[rustclient_scene::LocationZone]>,
+    ) -> bool {
+        self.world
+            .as_ref()
+            .is_some_and(|w| w.locations_ready(zones))
+    }
+    /// Commit matching resources for the next frame after application projections are ready.
+    pub fn commit_locations(
+        &mut self,
+        zones: &std::sync::Arc<[rustclient_scene::LocationZone]>,
+    ) -> bool {
+        self.world
+            .as_mut()
+            .is_some_and(|w| w.commit_locations(&self.queue, zones))
+    }
+
+    #[must_use]
+    pub fn location_publication(&self) -> u64 {
+        self.world.as_ref().map_or(0, |w| w.location_counters().0)
+    }
+
     /// Replace live entity geometry; scenery and static buffers are untouched.
     /// The upload happens with the next presented frame.
     /// # Errors
@@ -706,11 +755,16 @@ impl SurfaceRenderer {
             .as_mut()
             .ok_or(RenderError::World("scene is not uploaded"))?;
         self.staged
-            .dynamic
-            .apply_pending(|geometry| world.update_dynamic(&self.device, &self.queue, geometry))?;
-        self.staged
             .entities
             .apply_pending(|geometry| world.update_entities(&self.device, &self.queue, geometry))?;
+        if world.advance_locations(&self.device, &self.queue)? {
+            self.staged.dynamic.apply_pending(|geometry| {
+                world.update_dynamic(&self.device, &self.queue, geometry)
+            })?;
+        }
+        let (publication, bytes) = world.location_counters();
+        self.frame_timings.location_publication = publication;
+        self.frame_timings.location_upload_bytes = bytes;
         let bounds = frame.world_viewport;
         world.prepare_viewport(
             &self.queue,
@@ -787,6 +841,8 @@ impl SurfaceRenderer {
         scale: f64,
         before_present: F,
     ) -> Result<FrameOutcome, RenderError> {
+        self.frame_timings.location_publication = 0;
+        self.frame_timings.location_upload_bytes = 0;
         if !self.configured {
             return Ok(FrameOutcome::Suspended);
         }
@@ -983,12 +1039,25 @@ impl SurfaceRenderer {
         let query = self
             .gpu_timer
             .as_mut()
-            .and_then(|timer| timer.begin(&mut encoder, self.frame_timings.frame));
+            .and_then(|timer| timer.begin(self.frame_timings.frame));
+        let timestamps = |begin, end| {
+            query.and_then(|index| {
+                self.gpu_timer
+                    .as_ref()
+                    .map(|timer| timer.writes(index, begin, end))
+            })
+        };
+        let mut timestamp_started = false;
         if draw_world && let Some(world) = &self.world {
-            world.render_scene(&mut encoder);
+            world.render_scene(&mut encoder, timestamps(true, false));
+            timestamp_started = query.is_some();
         }
         if draw_ui && let (Some(canvas), Some(ui)) = (&mut self.ui_canvas, &mut self.ui) {
-            canvas.render(&mut encoder, ui);
+            let first = (!timestamp_started)
+                .then(|| timestamps(true, false))
+                .flatten();
+            let rasterized = canvas.render(&mut encoder, ui, first);
+            timestamp_started |= rasterized && query.is_some();
         }
         self.egui_staging
             .prepare(&self.device, &self.queue, &mut encoder, &mut self.shell_gpu);
@@ -1005,7 +1074,7 @@ impl SurfaceRenderer {
                     },
                 })],
                 depth_stencil_attachment: None,
-                timestamp_writes: None,
+                timestamp_writes: timestamps(!timestamp_started, true),
                 occlusion_query_set: None,
                 multiview_mask: None,
             });
@@ -1025,7 +1094,7 @@ impl SurfaceRenderer {
         if let Some(index) = query
             && let Some(timer) = &self.gpu_timer
         {
-            timer.end(&mut encoder, index);
+            timer.resolve(&mut encoder, index);
         }
         self.queue.submit([encoder.finish()]);
         if let Some(index) = query

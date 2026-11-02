@@ -97,6 +97,8 @@ pub struct Healthbar {
 /// State shared by players and NPCs.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ActorState {
+    /// Session-local incarnation from the actor owner; zero means unknown.
+    pub instance: u64,
     /// Scene index.
     pub index: u16,
     /// Current tile.
@@ -427,6 +429,8 @@ pub struct InputIdle {
 /// Client-level facts that are not part of authoritative game semantics.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct ClientSnapshot {
+    /// Application session identity; zero means unavailable, never an account id.
+    pub session: u64,
     /// Lifecycle state.
     pub state: GameStateKind,
     /// Committed gameplay tick.

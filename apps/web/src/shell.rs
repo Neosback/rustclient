@@ -156,6 +156,15 @@ impl Shell {
     pub fn action(&self, action: ShellAction) {
         self.channel.send(action);
     }
+    fn prepare_action(&mut self, action: &ShellAction, time: f64) -> Result<(), String> {
+        if matches!(
+            action,
+            ShellAction::Close | ShellAction::TogglePanel | ShellAction::ToggleSidebar
+        ) {
+            self.panel.finish_editing(time)?;
+        }
+        Ok(())
+    }
     pub fn update(
         &mut self,
         window: &Window,
@@ -164,7 +173,11 @@ impl Shell {
     ) -> Result<(), String> {
         let mut gpu_changed = false;
         for action in self.channel.drain() {
+            self.prepare_action(&action, time)?;
             let result = match action {
+                ShellAction::PluginUi(_) => {
+                    Err("Plugin execution is not connected in this browser shell harness".into())
+                }
                 ShellAction::ToggleSidebar => {
                     let mut model = self.channel.model.borrow_mut();
                     model.sidebar = if model.sidebar == SidebarState::Hidden {

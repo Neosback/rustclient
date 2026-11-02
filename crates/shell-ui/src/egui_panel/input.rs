@@ -172,6 +172,12 @@ impl EguiPanel {
         }
     }
     pub fn clear_focus(&mut self) {
+        if self.visible && self.plugin_selected.is_some() {
+            let time = self.ctx.input(|input| input.time);
+            if let Err(error) = self.finish_editing(time) {
+                self.channel.model.borrow_mut().error = Some(error);
+            }
+        }
         self.input.events.push(egui::Event::WindowFocused(false));
         self.input.focused = false;
         self.capture = None;

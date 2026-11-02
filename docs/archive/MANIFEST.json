@@ -1,0 +1,322 @@
+{
+  "schema": 1,
+  "date": "2026-11-01",
+  "reason": "Retire competing execution plans; retain checkpoint evidence and original hashes. Relocated Markdown has authority notices and repaired links. Frozen JSON provenance paths remain historical and resolve through original -> path here.",
+  "entries": [
+    {
+      "kind": "relocated",
+      "original": "docs/plan/BUILTIN-PLUGINS.md",
+      "path": "docs/archive/2026-foundation/plan/BUILTIN-PLUGINS.md",
+      "original_sha256": "2b593c118be13f0055344c2fb6df4a408c32e53b54e604a48a1d43c49c60985a",
+      "archived_sha256": "0d11b4aa733f6e2695e75202559cbf714db0483f4c0bcba15605072ad9b12b87"
+    },
+    {
+      "kind": "relocated",
+      "original": "docs/plan/CHAT-ACTORS-240.md",
+      "path": "docs/archive/2026-foundation/plan/CHAT-ACTORS-240.md",
+      "original_sha256": "c25ebea4e1dc92fce12cd8a8c1393dd4aa48c3b1471939b4ba0349e993fde82a",
+      "archived_sha256": "8a5097ad6cdfa1eeaee1c94e437bb61e244feeb604c6aa051ab1d498f138cc38"
+    },
+    {
+      "kind": "relocated",
+      "original": "docs/plan/CLIENT-CYCLE-runtime.md",
+      "path": "docs/archive/2026-foundation/plan/CLIENT-CYCLE-runtime.md",
+      "original_sha256": "80fe2afe7ca67037069488ba8cc1f09d71806e35c132a1273063aad57870d50e",
+      "archived_sha256": "7dd5c6980774064dd16bf5fc98b91c120ec629b49ce2baac58bb0c23341cda92"
+    },
+    {
+      "kind": "relocated",
+      "original": "docs/plan/CP0-reference-infrastructure.md",
+      "path": "docs/archive/2026-foundation/plan/CP0-reference-infrastructure.md",
+      "original_sha256": "07a5d6c124856abf3ecb9864f60a4f7012a7ab6910010c562b313e98914feec2",
+      "archived_sha256": "107bd1aad4c35f774b198d7c3a1fda26b8e6ce343846b24a8f54caa675e21db1"
+    },
+    {
+      "kind": "relocated",
+      "original": "docs/plan/CP1-semantic-model.md",
+      "path": "docs/archive/2026-foundation/plan/CP1-semantic-model.md",
+      "original_sha256": "54136a9f5a241086da78987f77eeb6433c47f07299f7af59dfcb5cc2483c979f",
+      "archived_sha256": "dc9fa5f2850f6b2c7f4c8515468a0c66431669ac44901316669b32d068ccbabe"
+    },
+    {
+      "kind": "relocated",
+      "original": "docs/plan/CP11-plugin-slice.md",
+      "path": "docs/archive/2026-foundation/plan/CP11-plugin-slice.md",
+      "original_sha256": "7b6f158ad887ad0e9da9d8bbcd61616ce935593618f6983a25c1c6e29b6b326a",
+      "archived_sha256": "7b9e1882b2d4545c272975e3057f97d9c79af47ab0862062eb1d0f8da8785fd0"
+    },
+    {
+      "kind": "relocated",
+      "original": "docs/plan/CP2A-platform-capabilities.md",
+      "path": "docs/archive/2026-foundation/plan/CP2A-platform-capabilities.md",
+      "original_sha256": "35ec5909eaa319335578f10602803e20631416fd2b8f3859e6e467bf7cbf80fe",
+      "archived_sha256": "cb97e13383788728d8788bff4c9695deaaef9d2c03252a5419e46eb6480e31dd"
+    },
+    {
+      "kind": "relocated",
+      "original": "docs/plan/CP2B-shared-renderer-core.md",
+      "path": "docs/archive/2026-foundation/plan/CP2B-shared-renderer-core.md",
+      "original_sha256": "c086740dee5c27d99856fe3ad42102f762554850915c0139b330d1f03bf20751",
+      "archived_sha256": "55d11231fa64f588543840b0b879c83bd41beed5667991fa0ed9997161362413"
+    },
+    {
+      "kind": "relocated",
+      "original": "docs/plan/CP2C-native-composition.md",
+      "path": "docs/archive/2026-foundation/plan/CP2C-native-composition.md",
+      "original_sha256": "59ca14dbe35b4e7d6e0f8e55a041c80f675b59ce9de00c99f6d440a791bea086",
+      "archived_sha256": "ce49d6ada11469b1e4a0aa0891277f17c1f3ea7830360c7d7964c242ea9c4fca"
+    },
+    {
+      "kind": "relocated",
+      "original": "docs/plan/CP2D-web-composition.md",
+      "path": "docs/archive/2026-foundation/plan/CP2D-web-composition.md",
+      "original_sha256": "32c06974bbd98a55740dd013c7a9c961cd7077ce29f8b21288c00efe073de98d",
+      "archived_sha256": "0967ce34d864d2e30044356fb723c83bf8f5438d05119b156a6d8ecd61fa7e26"
+    },
+    {
+      "kind": "relocated",
+      "original": "docs/plan/CP3A-game-state-root.md",
+      "path": "docs/archive/2026-foundation/plan/CP3A-game-state-root.md",
+      "original_sha256": "7efee81acd255310d42fbb209264ae391cb831559ade39cec4b2a5a1deb0a4fc",
+      "archived_sha256": "2c1fba3a0837509cea83cbcda7259a75b4034dc589f19d7b3a370c729e08d5fa"
+    },
+    {
+      "kind": "relocated",
+      "original": "docs/plan/CP3B-tick-transition.md",
+      "path": "docs/archive/2026-foundation/plan/CP3B-tick-transition.md",
+      "original_sha256": "14a5e8a02532fc65ad2d877bc0f6fb6a5c31c372082ecc692ce16fd51143a582",
+      "archived_sha256": "3bb9bbae9e70d8d18cdd6be7ff175d290d98fa666a7bacdab5e773681aa7aa02"
+    },
+    {
+      "kind": "relocated",
+      "original": "docs/plan/CP3C-semantic-operation-boundary.md",
+      "path": "docs/archive/2026-foundation/plan/CP3C-semantic-operation-boundary.md",
+      "original_sha256": "504ad2d67daf97f6e83440f14dfec07e9989b6648d8fd12937657bd4d6d35bb9",
+      "archived_sha256": "3e5322d795cb14301e76ee2a08bd87c8876c30416b529fc816c83002dbfcfe61"
+    },
+    {
+      "kind": "relocated",
+      "original": "docs/plan/CP3D-operation-batches.md",
+      "path": "docs/archive/2026-foundation/plan/CP3D-operation-batches.md",
+      "original_sha256": "77869d87c5e1c6e978f90c9397822628daf7c202e80c62c6affebe67f61d6187",
+      "archived_sha256": "dc363ea95126d7066ca9abe7e5afe192fec5ba98f73ff7c6f79413c9dd43e51f"
+    },
+    {
+      "kind": "relocated",
+      "original": "docs/plan/CP3E-committed-events-delta.md",
+      "path": "docs/archive/2026-foundation/plan/CP3E-committed-events-delta.md",
+      "original_sha256": "cb32a8e6ac7f069779a235d08b7a726e5995e945227d88c3e85bbf20dd4bc171",
+      "archived_sha256": "852ae9763e18e5dc2913253da4bb2369770be56b5eae70b84895b20f2bb3de26"
+    },
+    {
+      "kind": "relocated",
+      "original": "docs/plan/CP3F-semantic-replay-envelope.md",
+      "path": "docs/archive/2026-foundation/plan/CP3F-semantic-replay-envelope.md",
+      "original_sha256": "fcead6b5ba1be74c3ec95cff1b7f8d43a417c65e4768f7a9d54aaf5f6f10e324",
+      "archived_sha256": "d04ef5271a39f3666b2e522e278355d2c2e9af33ad7ae586f85a349f1421de86"
+    },
+    {
+      "kind": "relocated",
+      "original": "docs/plan/CP3G-session-revision-identity.md",
+      "path": "docs/archive/2026-foundation/plan/CP3G-session-revision-identity.md",
+      "original_sha256": "341dbe5d250ae57ad7f35ff46d5427138074d95924efee61abef47c915d2246d",
+      "archived_sha256": "4fb207c505001cc9b3fd79de6f1a74d43e787743be83d5f8697233b78c52d561"
+    },
+    {
+      "kind": "relocated",
+      "original": "docs/plan/CP3H-cp3-exit-audit.md",
+      "path": "docs/archive/2026-foundation/plan/CP3H-cp3-exit-audit.md",
+      "original_sha256": "b2ddba68220275d62d56bc557b274171c2722f5b3796b6537d491b48b34c0ad1",
+      "archived_sha256": "9fafc0223a6a379833d46a6bc00b8227e8a6313e10c48cac0b508560fe9fe874"
+    },
+    {
+      "kind": "relocated",
+      "original": "docs/plan/CP3I-deterministic-randomness.md",
+      "path": "docs/archive/2026-foundation/plan/CP3I-deterministic-randomness.md",
+      "original_sha256": "1c43522b186e3a5522eeb32e61f87f08eed0d50fa1d1f752631552266e36d1c5",
+      "archived_sha256": "eacaeb2bd5641a81075c658b0dc29ca673a3071e58cd77e3a11b4e96c92fe8ee"
+    },
+    {
+      "kind": "relocated",
+      "original": "docs/plan/CP3J-semantic-fingerprints.md",
+      "path": "docs/archive/2026-foundation/plan/CP3J-semantic-fingerprints.md",
+      "original_sha256": "cc88690946fc67a92571a401fe71655533720d1e99016980de4d1fee2a027938",
+      "archived_sha256": "df1851149de86ff22565c74911c5a7dc75550d47cefdd9dfff49c227612b6119"
+    },
+    {
+      "kind": "relocated",
+      "original": "docs/plan/CS1-240-2026-10-29.md",
+      "path": "docs/archive/2026-foundation/plan/CS1-240-2026-10-29.md",
+      "original_sha256": "a5cf1dce52bfb374fdb897b6507f8a96d2886178e002e8a7252f8fb84b55a2fd",
+      "archived_sha256": "5fe0c88ac90ccae1a6b3c52d935bcf869e90b63f8677fca5e992b5c6ce7d4de8"
+    },
+    {
+      "kind": "relocated",
+      "original": "docs/plan/ENTITY-assets.md",
+      "path": "docs/archive/2026-foundation/plan/ENTITY-assets.md",
+      "original_sha256": "e43ecf7f57001288357f791301dbd0d5d2e863e1f7a6d774294cf3536a194c16",
+      "archived_sha256": "28dce9ea471127e2316651259b45f27e537f30b73ddc0d654712f87045cdccb5"
+    },
+    {
+      "kind": "relocated",
+      "original": "docs/plan/GAMEFRAME-240.md",
+      "path": "docs/archive/2026-foundation/plan/GAMEFRAME-240.md",
+      "original_sha256": "97c59662ab62c8d51b6f2b1879254a6066189b568bca33b2b339f349f7a86a90",
+      "archived_sha256": "32ddec3457177042c87fd1eedfc92346b968005d7e793125ad2562ac57977c50"
+    },
+    {
+      "kind": "relocated",
+      "original": "docs/plan/GRAPHICS-FEATURE-MENU.md",
+      "path": "docs/archive/2026-foundation/plan/GRAPHICS-FEATURE-MENU.md",
+      "original_sha256": "0e2ebfaa71ceac3c2641b422b8cc86607fc70eeb08244b0a7e84229fedee5fa3",
+      "archived_sha256": "14a81380bfecb8bea9bdd7bf94a44021e1e878c29de02a82e9978082921dd64b"
+    },
+    {
+      "kind": "relocated",
+      "original": "docs/plan/IF1-BUTTONS-240-2026-10-29.md",
+      "path": "docs/archive/2026-foundation/plan/IF1-BUTTONS-240-2026-10-29.md",
+      "original_sha256": "365281214415996a13d238d57b77e486b4780318eb1d7cebff06c66adaa96a55",
+      "archived_sha256": "cb6ca81b43dd086b81989d1b5b65d812266e94eea522f2b42825ea03a14ae12d"
+    },
+    {
+      "kind": "relocated",
+      "original": "docs/plan/LOADING-SETTINGS-2026-10-31.md",
+      "path": "docs/archive/2026-foundation/plan/LOADING-SETTINGS-2026-10-31.md",
+      "original_sha256": "a26d542c926497ffab40f53e3187b2d93b9e3b022c326faecd62da6fdb169ea8",
+      "archived_sha256": "22c4f7e7f728d0537f656d7f48659505f7601816943fdc2052761a1249de923f"
+    },
+    {
+      "kind": "relocated",
+      "original": "docs/plan/MASTER_PLAN.md",
+      "path": "docs/archive/2026-foundation/plan/MASTER_PLAN.md",
+      "original_sha256": "8e964e749f1d6a0696f8ff5791cec4437cc769f6371cb9e35e2d8635316c9bf5",
+      "archived_sha256": "3c8a46c76b62caf24d3d9a5046d5dd54160d7d2b8348d27a4747f551e312a682"
+    },
+    {
+      "kind": "relocated",
+      "original": "docs/plan/NPC-ANIMATION-240.md",
+      "path": "docs/archive/2026-foundation/plan/NPC-ANIMATION-240.md",
+      "original_sha256": "4778ee1d8b5c4897ffeb6155eac8d8927ef941fe6bd0b3b2a4eba9a6dd1f47a8",
+      "archived_sha256": "e3ca3507e42f56421b628aa1d9cb4c0f6b0f7dfa53b85c9b253885f046cacc1e"
+    },
+    {
+      "kind": "relocated",
+      "original": "docs/plan/OPENRUNE-login.md",
+      "path": "docs/archive/2026-foundation/plan/OPENRUNE-login.md",
+      "original_sha256": "019e8b15e486c16c1e966cfc2bea61022f77ecb17245ad7d12966d3e74784cf7",
+      "archived_sha256": "621c6999b736c9db77a8029577714977eeb248930ba8c1cfcfc30ea1e5ee6986"
+    },
+    {
+      "kind": "relocated",
+      "original": "docs/plan/PLAYABLE-desktop.md",
+      "path": "docs/archive/2026-foundation/plan/PLAYABLE-desktop.md",
+      "original_sha256": "6c57c4c530a5b0d6d681c4cf27ddc69e9c63fcf23f9f719ffd0b6f7760d79994",
+      "archived_sha256": "a9681fb8e1606a64f8c942b37c2dc442a5c74133f1a2a18fd02e263fd69a3727"
+    },
+    {
+      "kind": "relocated",
+      "original": "docs/plan/PLAYER-UPDATING-240.md",
+      "path": "docs/archive/2026-foundation/plan/PLAYER-UPDATING-240.md",
+      "original_sha256": "b04c4806eedb69e488395ce1cac5eb8e606297086380723a7dc1557e7378757c",
+      "archived_sha256": "bb00aedde129c19dcdc36b8fc8ecdae2553d61c0f03cd342a2c05b31eac2e16c"
+    },
+    {
+      "kind": "relocated",
+      "original": "docs/plan/RENDER-GAMEFRAME-CONTINUATION-240.md",
+      "path": "docs/archive/2026-foundation/plan/RENDER-GAMEFRAME-CONTINUATION-240.md",
+      "original_sha256": "904059ef8750e4d86865675da3a32dab8c93382d36b7ac1dae3821a1bc156e2b",
+      "archived_sha256": "010b619d7f3275ea2c462f9576a33987a5f7a6bc139edaf53a9899ca463b8c1a"
+    },
+    {
+      "kind": "relocated",
+      "original": "docs/plan/RENDER-PIPELINE-REVIEW-2026-10-30.md",
+      "path": "docs/archive/2026-foundation/plan/RENDER-PIPELINE-REVIEW-2026-10-30.md",
+      "original_sha256": "bea782e6b6f59b445ac0869cd7608c26e2baac7b838d7ef725fa933d19b93510",
+      "archived_sha256": "f15db6f3ca95d1162a9d4de58ee66271d4c889b05596733ec08b72eef9cd6713"
+    },
+    {
+      "kind": "relocated",
+      "original": "docs/plan/REVISION-240-delivery.md",
+      "path": "docs/archive/2026-foundation/plan/REVISION-240-delivery.md",
+      "original_sha256": "155b8eff6504f77c7ebd855c13fe2df22a2f8622ae0b858577e832ac9adb889f",
+      "archived_sha256": "fe2c181ce6ad0a50e7c25405379442e5a52340d4719bb1220ad6a5189d8505bb"
+    },
+    {
+      "kind": "relocated",
+      "original": "docs/plan/SCENE-DEPTH-240.md",
+      "path": "docs/archive/2026-foundation/plan/SCENE-DEPTH-240.md",
+      "original_sha256": "536797b12d931b6c116fd4038cd7a7afd74a2b07a167144eab66676d3771b42a",
+      "archived_sha256": "8b0ffefdcb667f03822c306ad5f0e02b02904dc9a7df7554b8e971506d92b548"
+    },
+    {
+      "kind": "relocated",
+      "original": "docs/plan/SCENERY-PATCH-2026-10-30.md",
+      "path": "docs/archive/2026-foundation/plan/SCENERY-PATCH-2026-10-30.md",
+      "original_sha256": "2be8c9c760fc20db0a503b5f62723faa8de8ee88b7f4233054a05f5920d5a6ee",
+      "archived_sha256": "56f875a710239edd0d29a4f689b03bbbb17e480f13b1a8339d2d35086f9fa8e9"
+    },
+    {
+      "kind": "relocated",
+      "original": "docs/plan/SIDEBAR-PERFORMANCE-2026-10-28.md",
+      "path": "docs/archive/2026-foundation/plan/SIDEBAR-PERFORMANCE-2026-10-28.md",
+      "original_sha256": "c9773ccd84f5deca6fe70a2f3380738aef97930a95ad36dfd649292812d3c4ef",
+      "archived_sha256": "6fcf5193f8e005af05ce64be70e72c941e56c1d29fd6e121b9df94addbd38b7c"
+    },
+    {
+      "kind": "relocated",
+      "original": "docs/plan/SIDEBAR-PORT-AUDIT-2026-10-26.md",
+      "path": "docs/archive/2026-foundation/plan/SIDEBAR-PORT-AUDIT-2026-10-26.md",
+      "original_sha256": "210f719eb21b1fe1421e3eac50f064531c3979b7f5c726530b801f4f108c5d49",
+      "archived_sha256": "722e477524c0853e08ae6324a65b29d86f53b1f6c920a09e6f7dc91383875db2"
+    },
+    {
+      "kind": "relocated",
+      "original": "docs/plan/SPAWN-scene.md",
+      "path": "docs/archive/2026-foundation/plan/SPAWN-scene.md",
+      "original_sha256": "5e0cc928a00eae0371c534888308071226340ab56e147261e1c32a2ba9394b81",
+      "archived_sha256": "4463b7e8bdbcf6bdf9e4e547c77c2950d1a49a6b0534ed1b91619dd80eaace2f"
+    },
+    {
+      "kind": "relocated",
+      "original": "docs/plan/TITLE-offline-cache.md",
+      "path": "docs/archive/2026-foundation/plan/TITLE-offline-cache.md",
+      "original_sha256": "a6903278f51eec4a5feeaf3621e7433278a9e4680da54fcde789af6f3b1bd5a6",
+      "archived_sha256": "ca2e30b09c8f7cf3f1e628914cfb5bb2e5d97d848a97a6b5cdd0bc49a10230d9"
+    },
+    {
+      "kind": "relocated",
+      "original": "docs/plan/TSPS-ADOPTION-2026-10-29.md",
+      "path": "docs/archive/2026-foundation/plan/TSPS-ADOPTION-2026-10-29.md",
+      "original_sha256": "9cf2ae085a8c8dd6ab2d251b868aa0d155323bb7f8674080bf5e8efa760d82ec",
+      "archived_sha256": "22c5621840308a3b9e1789620d7aca2872e7d9a867461b5687887edbe29e8971"
+    },
+    {
+      "kind": "relocated",
+      "original": "docs/plan/WALL-DECOR-240-2026-10-29.md",
+      "path": "docs/archive/2026-foundation/plan/WALL-DECOR-240-2026-10-29.md",
+      "original_sha256": "99bd89f2fbedb3968afa86c13844d7da49e9eeb622d27306064fdf42ef9dd213",
+      "archived_sha256": "8f9f127180b6bcd6d659e10c031fe7b1a66a7236e6f8b75342411bdb13d5b383"
+    },
+    {
+      "kind": "relocated",
+      "original": "docs/plan/CHECKPOINT_TEMPLATE.md",
+      "path": "docs/templates/CHECKPOINT_TEMPLATE.md",
+      "original_sha256": "d7995d8e2d9e5c2425a73eee381f097f955d5eb12dd299a1943c45f7fba56920",
+      "archived_sha256": "f402a98feaf93218c4f11c83643761919223c88644ccd1b0894b3b65ba57c24e"
+    },
+    {
+      "kind": "superseded-snapshot",
+      "original": "docs/plan/PORTING-ROADMAP.md",
+      "path": "docs/archive/2026-foundation/plan/PORTING-ROADMAP-2026-10-29.md",
+      "original_sha256": "1e99b82db1eb12e6f847bd54881cfebb74b914320382d275c125005f2a68d247",
+      "archived_sha256": "6f71884405cfd1cdfb3ff54be8973bb65e399b0cfd447e845f0f4b2cb01ebf3b"
+    },
+    {
+      "kind": "superseded-snapshot",
+      "original": "docs/reference/rs240-port/CURRENT-AUDIT.md",
+      "path": "docs/archive/2026-foundation/reviews/CURRENT-AUDIT-2026-10-28.md",
+      "original_sha256": "bdc6511aa27965fa4d619b6bfb8688afe6216ea7c853d047ebb881a74c0a269e",
+      "archived_sha256": "98eb59a20c8116efb8abdb6c50f73246a2e210d4753dc48819a43c64a0e79b99"
+    }
+  ]
+}

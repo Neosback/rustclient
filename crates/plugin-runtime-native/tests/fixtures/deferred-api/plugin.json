@@ -1,0 +1,8 @@
+{
+  "id": "test.deferred-api",
+  "name": "Deferred API fixture",
+  "version": "1",
+  "plugin-api": "0.2",
+  "capabilities": [],
+  "entry": "must-not-be-compiled.wasm"
+}

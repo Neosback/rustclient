@@ -71,3 +71,13 @@ process; that model is rejected by invariants 1 and 4.
 - Per-renderable callbacks for entity hiding: thousands of ABI calls per frame.
 - Binding 0.2 only through WIT first: blocks first-party ports behind runtime maturity work that ADR-0001 already
   schedules separately.
+
+## Applicable-plugin continuation (2026-10-31)
+
+SPEC-0004 records the accepted catalog scope and event-major subscription contract.
+Source-stage hooks supplement snapshot differences where transient effects cannot be
+recovered from final state. Existing actor incarnations are projected without another
+registry. External 0.2 execution remains deferred. Declared, emitted, reachable and
+independently verified behavior remain separate ledger dimensions.
+
+The native component loader explicitly caps executable guest packages at ABI 0.1, independently of the in-tree Rust API version. Requests for ABI 0.2 fail compatibility before entry resolution/compilation; parse/bindgen support is not executable support.

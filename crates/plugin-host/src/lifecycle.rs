@@ -12,7 +12,7 @@ pub enum LifecycleStatus {
     Faulted,
 }
 /// Host-local incarnation, never a guest ABI or game-state identity.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct ActivationId {
     pub(crate) registration: u64,
     pub(crate) generation: u64,
@@ -23,6 +23,7 @@ pub(crate) enum Phase {
     Game,
     Overlay,
     Output,
+    Ui,
 }
 impl Phase {
     const fn index(self) -> usize {
@@ -34,9 +35,11 @@ impl Phase {
 pub(crate) struct Lifecycle {
     pub status: LifecycleStatus,
     pub activation: ActivationId,
-    pub streaks: [u32; 4],
+    pub streaks: [u32; 5],
     pub error: Option<PluginFault>,
     pub output: Option<(ActivationId, PluginOutput)>,
+    pub panels: Vec<crate::HostedPanel>,
+    pub panel_sequence: u64,
 }
 impl LoadedPlugin {
     #[must_use]
@@ -64,7 +67,7 @@ impl LoadedPlugin {
         self.lifecycle.error.as_ref()
     }
     pub(crate) fn wants_game_events(&self) -> bool {
-        self.instance.subscribes_game_events()
+        !self.subscription.interest.is_empty()
     }
 }
 
@@ -114,8 +117,9 @@ pub(crate) fn start(
         })?;
     plugin.lifecycle.activation.generation = next;
     plugin.lifecycle.status = LifecycleStatus::Starting;
-    plugin.lifecycle.streaks = [0; 4];
+    plugin.lifecycle.streaks = [0; 5];
     plugin.lifecycle.output = None;
+    plugin.lifecycle.panels.clear();
     match call(plugin, view, storage, logs, |instance, call| {
         instance.init(call)
     }) {
@@ -140,6 +144,7 @@ pub(crate) fn stop(
     logs: &mut dyn LogSink,
 ) -> Result<(), PluginFault> {
     plugin.lifecycle.output = None;
+    plugin.lifecycle.panels.clear();
     if !matches!(
         plugin.status(),
         LifecycleStatus::Starting | LifecycleStatus::Running
@@ -193,6 +198,7 @@ pub(crate) fn invoke<T>(
             logs.log(&plugin.manifest.id, LogLevel::Error, &error.to_string());
             plugin.lifecycle.error = Some(error.clone());
             plugin.lifecycle.output = None;
+            plugin.lifecycle.panels.clear();
             if failures >= fault_limit.max(1) {
                 let _ = stop(plugin, view, storage, logs);
                 plugin.lifecycle.error = Some(error);

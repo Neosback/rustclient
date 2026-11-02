@@ -389,6 +389,8 @@ impl MinimapRequest {
 /// Everything one plugin wants this update.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct PluginOutput {
+    /// Retained navigation panels, requiring `ui.panel`.
+    pub panels: Vec<Arc<crate::PluginPanel>>,
     /// Drawing primitives, back to front within a layer.
     pub overlay: Vec<LayeredOverlay>,
     /// Notifications to raise now.

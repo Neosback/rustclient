@@ -1,0 +1,198 @@
+{
+  "schema": 1,
+  "captured_utc": "2026-11-01T17:12:31.200434+00:00",
+  "scope": "In-tree API authority/routing/identity and retained local Notes/XP panels; full approved catalog plan remains in progress",
+  "baseline_artifact": "target/runelite-api-20261031/baseline.json",
+  "head": "e2ce6f64c9cbfcd957c219fe27f4c94e7883e8fe",
+  "validated_source_digest": "0445583a2fe1daf85a7e1990b6b485e8a37d92140d080ca5fb1b23ef53500a2d",
+  "commands": [
+    {
+      "name": "fmt",
+      "command": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--check"
+      ],
+      "exit_code": 0,
+      "seconds": 0.848,
+      "source_before": "0445583a2fe1daf85a7e1990b6b485e8a37d92140d080ca5fb1b23ef53500a2d",
+      "source_after": "0445583a2fe1daf85a7e1990b6b485e8a37d92140d080ca5fb1b23ef53500a2d",
+      "same_source": true
+    },
+    {
+      "name": "workspace-current",
+      "command": [
+        "cargo",
+        "check",
+        "--workspace",
+        "--all-targets"
+      ],
+      "exit_code": 0,
+      "seconds": 6.326,
+      "source_before": "0445583a2fe1daf85a7e1990b6b485e8a37d92140d080ca5fb1b23ef53500a2d",
+      "source_after": "0445583a2fe1daf85a7e1990b6b485e8a37d92140d080ca5fb1b23ef53500a2d",
+      "same_source": true
+    },
+    {
+      "name": "contracts",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "rustclient-plugin-api",
+        "-p",
+        "rustclient-plugin-host",
+        "-p",
+        "rustclient-plugin-bridge",
+        "-p",
+        "rustclient-first-party-plugins",
+        "-p",
+        "rustclient-shell-ui",
+        "-p",
+        "rustclient-plugin-runtime-native"
+      ],
+      "exit_code": 0,
+      "seconds": 283.155,
+      "source_before": "0445583a2fe1daf85a7e1990b6b485e8a37d92140d080ca5fb1b23ef53500a2d",
+      "source_after": "0445583a2fe1daf85a7e1990b6b485e8a37d92140d080ca5fb1b23ef53500a2d",
+      "same_source": true
+    },
+    {
+      "name": "clippy",
+      "command": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--all-features",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "seconds": 207.588,
+      "source_before": "0445583a2fe1daf85a7e1990b6b485e8a37d92140d080ca5fb1b23ef53500a2d",
+      "source_after": "0445583a2fe1daf85a7e1990b6b485e8a37d92140d080ca5fb1b23ef53500a2d",
+      "same_source": true
+    },
+    {
+      "name": "wasm",
+      "command": [
+        "cargo",
+        "check",
+        "-p",
+        "rustclient-web",
+        "--target",
+        "wasm32-unknown-unknown"
+      ],
+      "exit_code": 0,
+      "seconds": 69.785,
+      "source_before": "0445583a2fe1daf85a7e1990b6b485e8a37d92140d080ca5fb1b23ef53500a2d",
+      "source_after": "0445583a2fe1daf85a7e1990b6b485e8a37d92140d080ca5fb1b23ef53500a2d",
+      "same_source": true
+    }
+  ],
+  "canonical_checks": [
+    {
+      "command": [
+        "python3",
+        "tools/builtin-plugins/inventory.py",
+        "--check"
+      ],
+      "exit_code": 0,
+      "raw_log": "target/runelite-api-20261031/inventory-final.log"
+    },
+    {
+      "command": [
+        "python3",
+        "tools/gpu/audit.py",
+        "--check"
+      ],
+      "exit_code": 0,
+      "raw_log": "target/runelite-api-20261031/audit-final.log"
+    },
+    {
+      "command": [
+        "python3",
+        "tools/port_audit.py",
+        "--check"
+      ],
+      "exit_code": 0,
+      "raw_log": "target/runelite-api-20261031/port_audit-final.log"
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit_code": 0,
+      "raw_log": "target/runelite-api-20261031/diff-whitespace-final.log"
+    }
+  ],
+  "rust_contracts": {
+    "passed": 173,
+    "failed": 0,
+    "ignored": 0,
+    "raw_log": "target/runelite-api-20261031/contracts.log",
+    "source_test_parity": "not-established; Rust counts are not the Java source-case denominator"
+  },
+  "inventory": {
+    "catalog_slots": 131,
+    "source_files": 1162,
+    "resources": 629,
+    "test_fixture_files": 100,
+    "registration_counts": {
+      "no-registration-found": 115,
+      "first-party-entry": 15,
+      "required-service": 1
+    },
+    "meaning": "file coverage and syntactic candidates only; not AST member/case closure or reachability"
+  },
+  "assets": [
+    {
+      "name": "notes",
+      "source": "references/open-runelite-rev-240/runelite-client/src/main/resources/net/runelite/client/plugins/notes/notes_icon.png",
+      "owned": "crates/shell-ui/assets/runelite/notes_icon.png",
+      "source_sha256": "dfdb00b3d27fe3cb9208d87c1251afbadc96d35734d17aef32f18350b3e6989a",
+      "owned_sha256": "dfdb00b3d27fe3cb9208d87c1251afbadc96d35734d17aef32f18350b3e6989a",
+      "byte_identical": true
+    },
+    {
+      "name": "xp",
+      "source": "references/open-runelite-rev-240/runelite-client/src/main/resources/skill_icons/overall.png",
+      "owned": "crates/shell-ui/assets/runelite/xp_tracker_icon.png",
+      "source_sha256": "ee40869ab452658e396e027319724da1b15c48cda4a83e0c936838a3cb960a26",
+      "owned_sha256": "ee40869ab452658e396e027319724da1b15c48cda4a83e0c936838a3cb960a26",
+      "byte_identical": true
+    }
+  ],
+  "legacy_component": {
+    "execution": "compatibility::executable_legacy_component_preserves_queries_storage_logs_and_capability_denial",
+    "fixture": "crates/plugin-runtime-native/tests/fixtures/legacy-api/PROVENANCE.json",
+    "component_sha256": "b359b8aa973914f2f736121a356fa20871cc9a6178ebb4ceb20b1dcbae26c9e2",
+    "api_0_2_execution": "deferred; rejected before entry resolution"
+  },
+  "acceptance": {
+    "native_title_logout_wiring": "implemented and type checked; native GUI not observed",
+    "browser": "shared UI compiled for Wasm; gameplay/plugin execution not connected in harness",
+    "reference_visual": "not-run; reference_status returned connection refused",
+    "performance": "not-run; no FPS, memory reduction or global engine claim",
+    "source_test_differential": "not-run"
+  },
+  "remaining": [
+    "source-stage commit/menu/script hooks",
+    "missing authoritative actor/combat/ground-item and social facts",
+    "definition/image/clock/profile and derived provider services",
+    "remaining applicable plugin ports and full source-case dispositions",
+    "ADR-0004 visuals and scored performance/lifecycle acceptance"
+  ],
+  "preserved": {
+    "reference_tree_diff": [],
+    "scene_budgets": "unchanged",
+    "quality": "no draw-distance/resolution/effect reduction",
+    "external_abi_0_1": "actual packaged-component query/storage/log/grant test",
+    "external_abi_0_2": "declaration and bindgen only"
+  }
+}

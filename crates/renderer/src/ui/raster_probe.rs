@@ -44,7 +44,7 @@ impl Probe {
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("retained UI canvas lifecycle diagnostic"),
             });
-        self.canvas.render(&mut encoder, &mut self.ui);
+        self.canvas.render(&mut encoder, &mut self.ui, None);
         self.queue.submit([encoder.finish()]);
         if self.ui.stats.raster_passes != expected_passes {
             return Err(RenderError::Ui(stage));

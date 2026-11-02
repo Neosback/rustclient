@@ -4,7 +4,7 @@ use rustclient_model::{ModelPoint, Plane};
 use std::collections::BTreeMap;
 use std::hash::{Hash, Hasher};
 mod index;
-mod patch;
+pub(crate) mod patch;
 pub(crate) use index::{LocationIndex, effective_locations, effective_locations_with};
 pub use patch::{PATCH_KEY_BUDGET, patch_supported};
 pub(crate) use patch::{Patch, plan as plan_patch};
@@ -24,10 +24,20 @@ pub(crate) fn build(
     inputs: &crate::SceneryInputs,
     scope: Scope<'_>,
 ) -> Result<()> {
+    let (locations, orders) = index::effective_ordered(asset, inputs);
+    build_selected(asset, mesh, inputs, scope, &locations, &orders)
+}
+pub(crate) fn build_selected(
+    asset: &SceneAsset,
+    mesh: &mut WorldMesh,
+    inputs: &crate::SceneryInputs,
+    scope: Scope<'_>,
+    locations: &[StaticLocation],
+    orders: &[crate::LocationOrder],
+) -> Result<()> {
     let dynamic = matches!(scope, Scope::Dynamic);
     let d = asset.descriptor;
     let origin = d.origin();
-    let locations = effective_locations(asset, inputs);
 
     // A pose-only rebuild runs every client cycle; wall thickness is only consulted
     // on tiles that hold a posed location, so index just those tiles.
@@ -42,9 +52,9 @@ pub(crate) fn build(
         ),
         Scope::Patch(patch) => Some(patch.tiles.clone()),
     };
-    let plan = crate::decorations::plan(asset, inputs, &locations, restricted_tiles.as_ref())?;
-    // Selecting what to prepare is cheap and updates the stats in order; building each model is
-    // pure, so that part may run on several threads and is folded back in location order.
+    let plan = crate::decorations::plan(asset, inputs, locations, restricted_tiles.as_ref())?;
+    // Model construction is pure and ordered. The application schedules this preparation
+    // on its persistent pool; this function never creates or waits on nested worker jobs.
     let mut jobs = Vec::new();
     for (index, loc) in locations.iter().enumerate() {
         if let Scope::Patch(patch) = scope
@@ -93,6 +103,7 @@ pub(crate) fn build(
         }
         jobs.push(PrepareJob {
             index,
+            order: orders[index],
             loc,
             def,
             requests: plan.requests(index, shape, rotation),
@@ -103,6 +114,7 @@ pub(crate) fn build(
     for (job, outcome) in jobs.iter().zip(prepare_jobs(asset, inputs, &jobs)) {
         let mut selected = false;
         for mut model in outcome?.into_iter().flatten() {
+            model.order = job.order;
             model.source = u32::try_from(job.index)
                 .map_err(|_| SceneError("location index overflow".into()))?;
             selected = true;
@@ -122,6 +134,7 @@ pub(crate) fn build(
 /// One location chosen for preparation, with the placements the decoration plan asked for.
 struct PrepareJob<'a> {
     index: usize,
+    order: crate::LocationOrder,
     loc: &'a StaticLocation,
     def: &'a ObjectDefinition,
     requests: Vec<(u8, u8, [i32; 2])>,
@@ -142,49 +155,8 @@ fn prepare_job(
         .collect()
 }
 
-/// Smallest batch worth the cost of starting threads.
-#[cfg(not(target_arch = "wasm32"))]
-const PARALLEL_MIN_JOBS: usize = 256;
-
-/// Prepare every job, in job order. Each model depends only on the immutable scene inputs.
-#[cfg(not(target_arch = "wasm32"))]
-fn prepare_jobs(
-    asset: &SceneAsset,
-    inputs: &crate::SceneryInputs,
-    jobs: &[PrepareJob<'_>],
-) -> Vec<Prepared> {
-    let threads = std::thread::available_parallelism()
-        .map_or(1, usize::from)
-        .min(8);
-    if threads < 2 || jobs.len() < PARALLEL_MIN_JOBS {
-        return jobs
-            .iter()
-            .map(|job| prepare_job(asset, inputs, job))
-            .collect();
-    }
-    std::thread::scope(|scope| {
-        let handles: Vec<_> = jobs
-            .chunks(jobs.len().div_ceil(threads))
-            .map(|chunk| {
-                scope.spawn(move || {
-                    chunk
-                        .iter()
-                        .map(|job| prepare_job(asset, inputs, job))
-                        .collect::<Vec<_>>()
-                })
-            })
-            .collect();
-        handles
-            .into_iter()
-            .flat_map(|handle| match handle.join() {
-                Ok(done) => done,
-                Err(panic) => std::panic::resume_unwind(panic),
-            })
-            .collect()
-    })
-}
-
-#[cfg(target_arch = "wasm32")]
+/// Pure bounded preparation; native callers already execute on the shared CPU pool.
+/// Never spawn nested worker threads or block a pool worker on its own child jobs.
 fn prepare_jobs(
     asset: &SceneAsset,
     inputs: &crate::SceneryInputs,
@@ -209,6 +181,10 @@ fn emit_prepared(
             continue;
         }
         let first = mesh.geometry.vertices.len();
+        let location = crate::LocationModel {
+            key: location_key(&model.loc),
+            order: model.order,
+        };
         let source = model.source;
         let target = model.target;
         let bounds = crate::PickBounds::new(model.origin, &model.points)?;
@@ -219,6 +195,7 @@ fn emit_prepared(
                 depth_policy: rustclient_model::ModelDepthPolicy::DepthWrite,
                 sort_source: None,
             });
+            mesh.geometry.model_locations.push(location);
             if matches!(scope, Scope::Static) {
                 mesh.geometry.model_sources.push(source);
             }
@@ -397,6 +374,7 @@ pub(crate) struct PreparedModel {
     target: rustclient_model::WorldTarget,
     /// Index of the effective location this model was prepared for; set by `build`.
     pub source: u32,
+    pub order: crate::LocationOrder,
 }
 #[expect(
     clippy::too_many_lines,
@@ -562,6 +540,7 @@ fn prepare(
             resolved: def.id,
         },
         source: 0,
+        order: crate::LocationOrder::Source(0),
     }))
 }
 #[expect(

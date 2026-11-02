@@ -21,7 +21,7 @@ impl NativePlugin for StretchedMode {
         false
     }
     fn output(&mut self, call: &mut PluginCall<'_>) -> Result<PluginOutput, PluginFault> {
-        let config = call.config;
+        let config = call.config();
         let percent = config.integer("scalingFactor").clamp(
             i32::from(Stretch::MIN_SCALE_PERCENT),
             i32::from(Stretch::MAX_SCALE_PERCENT),

@@ -143,10 +143,12 @@ difference between the baseline and the current committed overrides.
   region (`classDI.method3340`); server-added locations (`classDI.method3336`) never change them.
   Terrain shadows therefore derive from the map-file locations alone, independent of overrides.
   This deliberately corrects the earlier full build, which re-baked shadows from live overrides.
-- **Fallback to a full rebuild** (behavior unchanged from before): a replacement object missing
-  from the loaded asset, a roof-area change, an instanced area, more changed keys than a bounded
-  patch budget, or any patch error. A full rebuild installs the then-current overrides as the new
-  baseline. The patch never silently drops a change.
+- **Incremental continuation (accepted 2026-11-01).**
+  [SPEC-0024](SPEC-0024-zone-updates.md) supersedes the 48-key/missing-asset fallback
+  for ordinary normal-map changes. Structural resources must persist independently
+  of animated poses; unavailable assets retain dirty work instead of forcing a
+  whole-scene reconstruction. The original fallback remains a historical description
+  until this continuation is implemented and accepted; do not claim it already removed.
 - **Picking and ordering.** Hidden static models are excluded from picking and from the GPU
   sort/transparent/opaque lists; patch picks come from the dynamic stream. Camera sorting, shader
   cycles, semantic commits and labels are unaffected.

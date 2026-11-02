@@ -68,7 +68,7 @@ def render():
             raise ValueError(f'line {line}: incomplete behavior needs a concrete obligation')
     lines = [
         '# Revision 240 port matrix', '',
-        f"Audit checkpoint: {baseline['review_date']}; inspected Rust `{baseline['reviewed_rust_commit'][:8]}`.", '',
+        f"Audit checkpoint: {baseline['review_date']}; inspected HEAD `{baseline['reviewed_rust_commit'][:8]}` plus the captured working-tree changes.", '',
         'Contract: [SPEC-0019](../../specs/SPEC-0019-port-parity.md). '
         'Execution order: [PORTING-ROADMAP.md](../../plan/PORTING-ROADMAP.md).', '',
         'Canonical editable data: [PORT-MATRIX.tsv](PORT-MATRIX.tsv). Regenerate with',
@@ -91,7 +91,7 @@ def render():
         links = ', '.join(f'[{Path(p).name}](../../../{p})' for p in paths)
         evidence = ', '.join(f'[{Path(p).name}](../../../{p})' for p in filter(None, row['evidence'].split('|')))
         lines.append(f"| {row['priority']} / {row['id']} | {row['behavior']} | {row['implementation']} | {row['verification']} | {links}<br>{evidence} | {row['remaining']} |")
-    lines += ['', 'Priority order and cross-revision evidence are maintained in [CURRENT-AUDIT.md](CURRENT-AUDIT.md).', '']
+    lines += ['', 'Execution order belongs to the roadmap; findings and source restrictions belong to [CURRENT-AUDIT.md](CURRENT-AUDIT.md).', '']
     return '\n'.join(lines), len(rows)
 
 

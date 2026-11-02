@@ -62,3 +62,28 @@ filter changes 53,583 channel bytes and reconstruction is byte-identical. Its di
 a black filtered frame and a narrow visible unfiltered platform; this is admission evidence, not
 Java/gameplay visual acceptance. See
 [the sparse-map checkpoint](../../docs/reference/builtin-plugins/GPU-SPARSE-MAPS-2026-10-27.md).
+
+
+## Incremental locations and complete title traces
+
+Build release binaries before measuring; keep Cargo and profilers inactive during window runs.
+The location diagnostic commits remove/restore operations through GameState, compares visible
+triangle content with a full Rust projection, and checks actual resident GPU buffers, deferred
+publication and the upload-byte ceiling. It is a bounded engineering diagnostic under ADR-0004,
+not a Java visual comparison, window FPS workload or source-case completion claim.
+
+```sh
+cargo build --release -p rustclient-native --bin rustclient-native --bin scene_probe
+RUSTCLIENT_ZONE_REPORT=target/door-zones.json target/release/scene_probe /path/to/cache --updates-zones
+python3 -m unittest discover -s tools/gpu/tests -v
+python3 tools/gpu/window_probe.py /path/to/cache --binary target/release/rustclient-native --direct --seconds 300 --warmup 30 --repeats 3 --output target/title-scored
+```
+
+`--direct` explicitly launches the executable when macOS LaunchServices cannot launch the temporary
+measurement bundle. The report records this choice and actual physical viewport/DPI; do not mix
+launch modes or infer Retina sizing from the filename. The default bundle path remains available.
+Scoring retains every raw sample, rejects trace overflow/missing frames and foreground loss, and
+reports unsupported GPU timing separately. No location updates means the location-latency gate is
+unavailable, never passed. Location correlation begins at post-cycle observation (or its containing
+commit/script stage as an upper bound) and ends at the first application presentation carrying the
+matching renderer/scene/publication identity. It does not measure packet arrival or physical scanout.

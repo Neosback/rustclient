@@ -1,9 +1,35 @@
 [
  {
+  "plugin": "dev.rustclient.notes",
+  "name": "Notes",
+  "version": 1,
+  "description": "Enable the Notes panel",
+  "tags": [
+   "panel"
+  ],
+  "required": false,
+  "settings": [
+   {
+    "key": "enabled",
+    "label": "Enabled",
+    "description": "Switch Notes on or off.",
+    "section": "",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": true
+    },
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/notes/NotesPlugin.java#PluginDescriptor.enabledByDefault"
+   }
+  ]
+ },
+ {
   "plugin": "dev.rustclient.xptracker",
   "name": "XP Tracker",
   "version": 1,
-  "description": "Local session XP, rates and actions overlay. Panel, account persistence and network sync are pending.",
+  "description": "Local session XP, rates and actions overlay and panel. Full panel controls, account persistence and network sync are pending.",
   "tags": [
    "experience",
    "levels",

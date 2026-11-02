@@ -36,11 +36,15 @@ pub struct WorldGeometryStats {
     pub cpu_remap_bytes: u64,
     pub ordering_runs: u64,
     pub ordering_reuses: u64,
+    /// Requested buffer bytes awaiting coherent publication or GPU completion.
+    pub pending_gpu_buffer_bytes: u64,
+    pub retired_gpu_buffer_bytes: u64,
+    pub resident_location_zones: u64,
 }
 pub(crate) struct WorldGpu {
     pub asset: SceneAssetId,
     pipelines: super::world_pipeline::WorldPipelines,
-    geometry: super::world_geometry::GeometryGpu,
+    geometry: super::world_geometry::SceneryGpu,
     dynamic: super::world_geometry::GeometryGpu,
     /// Live players/NPCs; rewritten per client cycle without touching scenery buffers.
     entities: super::world_geometry::GeometryGpu,
@@ -72,14 +76,20 @@ pub(crate) struct WorldGpu {
 impl WorldGpu {
     pub fn geometry_stats(&self) -> WorldGeometryStats {
         let mut sum = WorldGeometryStats::default();
-        for source in [&self.geometry, &self.dynamic, &self.entities] {
-            let stats = source.stats();
+        for stats in [
+            self.geometry.stats(),
+            self.dynamic.stats(),
+            self.entities.stats(),
+        ] {
             sum.gpu_buffer_bytes += stats.gpu_buffer_bytes;
             sum.expanded_vertex_bytes += stats.expanded_vertex_bytes;
             sum.resident_vertex_bytes += stats.resident_vertex_bytes;
             sum.cpu_remap_bytes += stats.cpu_remap_bytes;
             sum.ordering_runs += stats.ordering_runs;
             sum.ordering_reuses += stats.ordering_reuses;
+            sum.pending_gpu_buffer_bytes += stats.pending_gpu_buffer_bytes;
+            sum.retired_gpu_buffer_bytes += stats.retired_gpu_buffer_bytes;
+            sum.resident_location_zones += stats.resident_location_zones;
         }
         sum
     }
@@ -155,7 +165,7 @@ impl WorldGpu {
             )
         } else {
             (
-                super::world_geometry::GeometryGpu::new_static(device, &mesh.geometry)?,
+                super::world_geometry::SceneryGpu::new_static(device, &mesh.geometry)?,
                 super::world_geometry::GeometryGpu::new(device, &mesh.dynamic)?,
             )
         };
@@ -303,10 +313,61 @@ impl WorldGpu {
         queue: &wgpu::Queue,
         geometry: &rustclient_scene::SceneGeometry,
     ) -> Result<(), RenderError> {
+        if !self.geometry.publication_is(&geometry.location_zones) {
+            self.geometry
+                .queue_zones(crate::PreparedLocationUpdate::prepare(geometry, None)?)?;
+            if !self.geometry.advance_zones(device, queue)? {
+                return Ok(());
+            }
+        }
         self.dynamic.update(device, queue, geometry)?;
         self.geometry.set_hidden(&geometry.hidden_static);
         self.last_camera = None;
         Ok(())
+    }
+    pub(crate) fn queue_locations(
+        &mut self,
+        update: crate::PreparedLocationUpdate,
+    ) -> Result<(), RenderError> {
+        self.geometry.queue_deferred_zones(update)
+    }
+    pub(crate) fn advance_locations(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+    ) -> Result<bool, RenderError> {
+        let pending = self.geometry.has_pending();
+        let complete = self.geometry.advance_zones(device, queue)?;
+        if pending && complete {
+            self.last_camera = None;
+        }
+        Ok(complete)
+    }
+    pub(crate) fn location_counters(&self) -> (u64, u64) {
+        (self.geometry.publication, self.geometry.last_enqueued_bytes)
+    }
+    pub(crate) fn locations_ready(
+        &self,
+        zones: &std::sync::Arc<[rustclient_scene::LocationZone]>,
+    ) -> bool {
+        self.geometry.ready_for(zones)
+    }
+    pub(crate) fn commit_locations(
+        &mut self,
+        queue: &wgpu::Queue,
+        zones: &std::sync::Arc<[rustclient_scene::LocationZone]>,
+    ) -> bool {
+        let ready = self.geometry.commit_ready(queue, zones);
+        if ready {
+            self.last_camera = None;
+        }
+        ready
+    }
+    pub(crate) fn locations_are(
+        &self,
+        zones: &std::sync::Arc<[rustclient_scene::LocationZone]>,
+    ) -> bool {
+        self.geometry.publication_is(zones)
     }
     pub fn update_entities(
         &mut self,
@@ -460,15 +521,22 @@ impl WorldGpu {
         let dynamic_changed = self.dynamic.sort(queue, view);
         let entities_changed = self.entities.sort(queue, view);
         if static_changed || dynamic_changed || entities_changed {
-            let sources = [&self.geometry, &self.dynamic, &self.entities];
             super::transparency::merge(
-                |source, index| sources[source].alpha_depth(index, eye),
+                |source, index| match source {
+                    0 => self.geometry.alpha_depth(index, eye),
+                    1 => self.dynamic.alpha_depth(index, eye),
+                    _ => self.entities.alpha_depth(index, eye),
+                },
                 &mut self.transparent_runs,
             );
         }
         self.last_camera = Some((camera, viewport, cycle, visibility.clone(), brightness, gpu));
     }
-    pub fn render_scene(&self, encoder: &mut wgpu::CommandEncoder) {
+    pub fn render_scene(
+        &self,
+        encoder: &mut wgpu::CommandEncoder,
+        timestamps: Option<wgpu::RenderPassTimestampWrites<'_>>,
+    ) {
         // Without multisampling the pass renders straight into the texture that is composited.
         let (view, resolve_target, store) = match &self.target.multisampled {
             Some(multisampled) => (
@@ -497,7 +565,7 @@ impl WorldGpu {
                 }),
                 stencil_ops: None,
             }),
-            timestamp_writes: None,
+            timestamp_writes: timestamps,
             occlusion_query_set: None,
             multiview_mask: None,
         });
@@ -514,9 +582,12 @@ impl WorldGpu {
         self.dynamic.draw_opaque(pass, &self.pipelines);
         self.entities.draw_opaque(pass, &self.pipelines);
         pass.set_pipeline(&self.pipelines.transparent);
-        let sources = [&self.geometry, &self.dynamic, &self.entities];
         for run in &self.transparent_runs {
-            sources[run.source].draw_alpha(pass, run.indices.clone());
+            match run.source {
+                0 => self.geometry.draw_alpha(pass, run.indices.clone()),
+                1 => self.dynamic.draw_alpha(pass, run.indices.clone()),
+                _ => self.entities.draw_alpha(pass, run.indices.clone()),
+            }
         }
     }
 }

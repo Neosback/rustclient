@@ -2,6 +2,7 @@
 mod controls;
 mod input;
 mod layout;
+mod panels;
 mod theme;
 use crate::{ShellAction, ShellChannel, ShellModel, SidebarMetrics, SidebarState};
 use egui::{
@@ -36,6 +37,8 @@ pub struct EguiPanel {
     dirty: bool,
     deadline: Option<f64>,
     selected: Option<String>,
+    plugin_selected: Option<(rustclient_plugin_api::PluginId, String)>,
+    editors: BTreeMap<(rustclient_plugin_api::PluginId, String, String), panels::EditorDraft>,
     query: String,
     drafts: BTreeMap<(String, String), ConfigValue>,
     text: BTreeMap<(String, String), String>,
@@ -69,6 +72,8 @@ impl EguiPanel {
             dirty: true,
             deadline: None,
             selected: None,
+            plugin_selected: None,
+            editors: BTreeMap::new(),
             query: String::new(),
             drafts: BTreeMap::default(),
             text: BTreeMap::default(),
@@ -86,6 +91,7 @@ impl EguiPanel {
     }
     pub fn set_visible(&mut self, visible: bool) {
         if self.visible && !visible {
+            self.flush_editors();
             self.input.events.clear();
             self.clear_focus();
             self.targets.clear();
@@ -95,6 +101,20 @@ impl EguiPanel {
             self.dirty = true;
         }
         self.visible = visible;
+    }
+    /// Repaint published content without discarding configuration or editor drafts.
+    pub fn content_changed(&mut self) {
+        let channel = self.channel.clone();
+        self.prune_editors(&channel.model.borrow());
+        self.dirty = true;
+    }
+    /// Process pending input and commit editor drafts before removing the active panel.
+    /// # Errors
+    /// Reports the same bounded presentation errors as `render`.
+    pub fn finish_editing(&mut self, time: f64) -> Result<(), String> {
+        self.render(time)?;
+        self.flush_editors();
+        Ok(())
     }
     pub fn invalidate(&mut self) {
         self.dirty = true;
@@ -158,6 +178,7 @@ impl EguiPanel {
         self.targets.clear();
         let previous = (
             self.selected.clone(),
+            self.plugin_selected.clone(),
             self.query.clone(),
             self.capture.clone(),
         );
@@ -198,6 +219,7 @@ impl EguiPanel {
         self.dirty = previous
             != (
                 self.selected.clone(),
+                self.plugin_selected.clone(),
                 self.query.clone(),
                 self.capture.clone(),
             );
@@ -281,7 +303,8 @@ impl EguiPanel {
         for id in delta.free.drain() {
             self.frame.textures.remove(&id);
         }
-        if self.frame.textures.len() > 16
+        // One texture per owned icon and the toolkit font atlas; byte budget remains independent.
+        if self.frame.textures.len() > crate::assets::ICONS.len() + 1
             || self
                 .frame
                 .textures

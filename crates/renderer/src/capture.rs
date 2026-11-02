@@ -95,7 +95,7 @@ pub async fn capture_ui_with_settings(
     let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
         label: Some("title capture encoder"),
     });
-    canvas.render(&mut encoder, &mut ui);
+    canvas.render(&mut encoder, &mut ui, None);
     {
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("title capture pass"),

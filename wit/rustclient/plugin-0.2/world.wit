@@ -9,6 +9,10 @@
 package rustclient:plugin@0.2.0;
 
 interface types {
+    // Host routing declarations; executable 0.2 remains deferred.
+    enum game-event-kind { game-state-changed, client-tick, game-tick, pre-map-load, player-spawned, player-despawned, player-changed, npc-spawned, npc-despawned, npc-changed, animation-changed, graphic-changed, interacting-changed, hitsplat-applied, overhead-text-changed, varbit-changed, stat-changed, item-container-changed, widget-loaded, widget-closed, chat-message, resizeable-changed, focus-changed, menu-entry-added, menu-opened, post-menu-sort, menu-option-clicked, script-post-fired }
+    record event-subscription { kind: game-event-kind, priority: f32 }
+
     record world-point { x: s32, y: s32, plane: u8 }
     record rect { x: s32, y: s32, width: s32, height: s32 }
 
@@ -17,7 +21,10 @@ interface types {
     record hitsplat { kind: u16, amount: s32, cycle: u32 }
     record healthbar { kind: u16, amount: option<u16> }
 
+    record actor-handle { session: u64, actor: actor-ref, incarnation: u64 }
+
     record actor-state {
+        instance: u64,
         index: u16,
         %world: world-point,
         orientation: u16,
@@ -81,6 +88,7 @@ interface types {
     record input-idle { keyboard: u32, mouse: u32, mouse-press: u32 }
 
     record client-snapshot {
+        session: u64,
         state: game-state,
         tick: u64,
         cycle: u64,
@@ -98,6 +106,9 @@ interface types {
         run-energy: u16,
         weight: s16,
         input-idle: option<input-idle>,
+        hovered-tile: option<world-point>,
+        destination: option<world-point>,
+        minimap-zoom: f64,
     }
 
     variant menu-kind {
@@ -225,7 +236,38 @@ interface types {
 
     record stretch { keep-aspect-ratio: bool, integer-scaling: bool, scale-percent: s16, scaling: stretch-scaling }
 
+    enum panel-icon { notes, xp-tracker }
+    record panel-metric { label: string, value: string }
+    record panel-button { id: string, label: string }
+    record panel-editor { id: string, text: string, max-bytes: u32 }
+    variant panel-block {
+        text(string),
+        metric(panel-metric),
+        button(panel-button),
+        editor(panel-editor),
+    }
+    record plugin-panel {
+        id: string,
+        revision: u64,
+        title: string,
+        priority: s32,
+        icon: panel-icon,
+        blocks: list<panel-block>,
+    }
+    variant panel-value { activate, text(string) }
+    record panel-event { panel: string, revision: u64, element: string, value: panel-value }
+
+    record minimap-request {
+        wheel-zoom: bool,
+        hidden: bool,
+        zoom: option<f64>,
+        /// Seven slots in stock mapdots order; executable adapters must enforce this bound.
+        dot-colors: list<option<u32>>,
+    }
+
     record plugin-output {
+        panels: list<plugin-panel>,
+        minimap: option<minimap-request>,
         overlay: list<layered-overlay>,
         notifications: list<notification>,
         info-boxes: list<info-box>,
@@ -245,7 +287,7 @@ interface types {
 
 /// Host services. Each call below the log is gated by the capability named in its doc.
 interface host {
-    use types.{player, npc, skill-level, item-stack, widget, chat-line, client-snapshot, log-level};
+    use types.{player, npc, actor-ref, actor-handle, actor-state, skill-level, item-stack, widget, chat-line, client-snapshot, log-level};
 
     /// Always permitted; rate-limited by the host.
     log: func(level: log-level, message: string);
@@ -258,6 +300,10 @@ interface host {
     local-player: func() -> option<player>;
     /// Requires `game.read.npcs`.
     npcs: func() -> list<npc>;
+    /// Requires the handle kind's player/NPC read grant; stale identities resolve absent.
+    actor: func(handle: actor-handle) -> option<actor-state>;
+    /// Capture current identity with the actor kind's read grant, without broader client access.
+    capture-actor: func(actor: actor-ref) -> option<actor-handle>;
     /// Requires `game.read.skills`.
     skills: func() -> list<skill-level>;
     /// Requires `game.read.vars`.
@@ -278,12 +324,15 @@ interface host {
 }
 
 interface guest {
-    use types.{game-event, plugin-output};
+    use types.{game-event, plugin-output, panel-event};
 
     init: func();
 
     /// Events already filtered to the plugin's grants, in committed order.
     on-game-events: func(events: list<game-event>);
+
+    /// Checked against the running activation and its last validated panel document.
+    on-panel-event: func(event: panel-event);
 
     /// Declarative output for this update; the host validates and bounds every item.
     output: func() -> plugin-output;

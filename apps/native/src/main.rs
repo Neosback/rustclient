@@ -11,6 +11,8 @@ mod options;
 mod performance;
 mod plugins;
 mod scene;
+mod scene_publication;
+mod scene_resources;
 mod scene_workers;
 mod shell;
 mod shell_input;
@@ -89,7 +91,12 @@ enum LoadEvent {
         u64,
         u64,
         Box<rustclient_scene::SceneryInputs>,
-        Box<Result<rustclient_scene::SceneGeometry, String>>,
+        Box<Result<scene_workers::DynamicProjection, String>>,
+    ),
+    LocationResources(
+        u64,
+        u64,
+        Box<Result<std::sync::Arc<rustclient_scene::SceneAsset>, String>>,
     ),
     SceneLoaded(u64, Box<Result<scene::PreparedScene, String>>),
 }
@@ -137,7 +144,7 @@ struct NativeApp {
     widget_pointer: widget_pointer::WidgetPointer,
     widget_cache_dir: std::path::PathBuf,
     widget_cache_profile: rustclient_cache::CacheProfile,
-    minimap: Option<MinimapImage>,
+    minimap: Option<std::sync::Arc<MinimapImage>>,
     /// Plane the cached minimap image was built for; the client rebuilds it when the player changes plane.
     minimap_plane: Option<rustclient_model::Plane>,
     minimap_pixels: Vec<u8>,
@@ -220,6 +227,7 @@ impl NativeApp {
         let resolve = |id| asset.and_then(|asset| catalog.resolve_npc(asset, id, variables));
         let inputs = plugins::Inputs {
             frame: rustclient_plugin_bridge::Frame {
+                session: self.connection_generation.checked_add(1).unwrap_or(0),
                 fps: self.performance.fps(),
                 focused: self.window_focused,
                 loading: self.scene.loading,
@@ -236,7 +244,9 @@ impl NativeApp {
                     .map(rustclient_application::scripts::ClientScripts::interfaces),
             },
         };
-        self.plugins.update(&self.state, &inputs);
+        self.plugins
+            .update(&self.state, &inputs, &self.shell.take_panel_actions());
+        self.shell.set_plugin_panels(&self.plugins.output().panels);
         self.sync_minimap();
         self.shell.set_plugin_statuses(self.plugins.statuses());
         // Sprites a plugin draws are decoded by the same worker as widget sprites.
@@ -483,6 +493,17 @@ impl NativeApp {
     /// Publish rendering work after committed client-cycle work, never from an intermediate
     /// packet in a group. Semantic operations and script listeners still run in wire order.
     fn schedule_scene_projection(&mut self) {
+        self.performance.scene_generation(self.scene.generation);
+        let generation = self.state.scenery().generation();
+        if self.scene.locations.observed != Some(generation) {
+            self.performance.location_event("post_cycle_observation",generation,self.state.scenery().cycle().get(),0,||serde_json::json!({"scope":"post-cycle observation; packet arrival and physical visibility are separate"}));
+            self.scene.locations.observed = Some(generation);
+        }
+        let changes = self.state.projection_changes(self.scene.locations.cursor);
+        if changes.missed() && changes.missed_domains().scenery_changed() {
+            self.scene.locations.invalidate = true;
+        }
+        self.scene.locations.cursor = changes.cursor();
         self.start_pending_scene();
         if self.scene.loading || self.scene.replacing.is_some() {
             return;
@@ -510,6 +531,20 @@ impl NativeApp {
             )
         {
             loaded.projection_generation = scenery.generation();
+            return;
+        }
+        if !rebuild
+            && self.scene.animator.is_some()
+            && loaded.projection_inputs.roof_areas == self.scene.roof_areas
+        {
+            let asset = loaded.asset.clone();
+            if let Err(error) = self.scene.request_location_resources(
+                asset,
+                self.scene.scenery_inputs(scenery),
+                self.proxy.clone(),
+            ) {
+                eprintln!("{error}");
+            }
             return;
         }
         let (Some(placement), asset) = (self.state.initial_placement(), loaded.asset.clone())
@@ -953,7 +988,7 @@ impl NativeApp {
         self.widget_asset_key = None;
         self.widget_loading = false;
         self.map_view = worldmap::MapView::default();
-        self.map_composer.clear();
+        self.clear_map_projection();
         self.widget_job_scope.cancel();
         self.widget_job_scope = rustclient_platform::JobCancellation::default();
         if let Some(scripts) = &mut self.scripts {
@@ -1124,6 +1159,7 @@ impl NativeApp {
         reason = "validated world fine positions fit the f64 minimap projection"
     )]
     fn redraw(&mut self, event_loop: &ActiveEventLoop) {
+        self.performance.scene_generation(self.scene.generation);
         if self.performance.run_complete() {
             return;
         }
@@ -1235,7 +1271,10 @@ impl NativeApp {
                     &self.minimap,
                 ) && self.minimap_plane != Some(player.tile.plane)
                 {
-                    self.minimap = Some(build_scene_minimap(&loaded.asset, player.tile.plane));
+                    self.minimap = Some(std::sync::Arc::new(build_scene_minimap(
+                        &loaded.asset,
+                        player.tile.plane,
+                    )));
                     self.minimap_plane = Some(player.tile.plane);
                     self.minimap_generation += 1;
                 }
@@ -1512,7 +1551,7 @@ impl NativeApp {
                 self.renderer.as_ref().map(rustclient_renderer::SurfaceRenderer::world_geometry_stats),
                 self.scene.loaded.as_ref().map(|loaded| loaded.picking.stats()),
                 self.renderer.as_ref().map(rustclient_renderer::SurfaceRenderer::ui_stats),
-                self.scripts.as_ref().map(|scripts| scripts.listener_index_rebuilds()),
+                self.scripts.as_ref().map(rustclient_application::scripts::ClientScripts::listener_index_rebuilds),
                 self.map_composer.submitted,
                 self.map_composer.published,
                 self.map_composer.stale,
@@ -1531,6 +1570,9 @@ impl NativeApp {
                 matches!(result, Some(Ok(FrameOutcome::Presented))),
                 renderer,
             );
+        }
+        if matches!(result, Some(Ok(FrameOutcome::Presented))) {
+            self.publish_dynamic_if_ready();
         }
         self.performance.frame(
             &window,
@@ -1719,36 +1761,31 @@ impl NativeApp {
                 } else {
                     rustclient_renderer::WorldUpdate::Scenery
                 };
-                let mut scene = match scene.try_map_mesh(|prepared| match &mut self.renderer {
-                    Some(renderer) => renderer.set_prepared_world(prepared, update),
-                    None => Ok(prepared.into_mesh()),
-                }) {
+                let scene = match self.upload_scene_projection(scene, update) {
                     Ok(scene) => scene,
                     Err(error) => {
                         self.fail(event_loop, &error.to_string());
                         return;
                     }
                 };
-                if self.renderer.is_some() {
-                    scene.mesh.geometry.release_triangles();
-                }
-                if let Err(error) = self.preserve_scene_pose(&mut scene) {
-                    self.fail(event_loop, &error.to_string());
-                    return;
-                }
                 self.performance
                     .stage(performance::Stage::SceneUpload, upload_started);
+                self.scene.locations.cursor = self.state.projection_cursor();
+                self.scene.locations.invalidate = false;
                 self.scene.ensure_workers(
                     scene.asset.clone(),
                     resources_changed,
+                    scene.projection_inputs.clone(),
                     self.proxy.clone(),
                 );
                 if let Some(placement) = self.state.initial_placement()
                     && (resources_changed || self.minimap_plane != Some(placement.position.plane))
                 {
                     let started = Instant::now();
-                    self.minimap =
-                        Some(build_scene_minimap(&scene.asset, placement.position.plane));
+                    self.minimap = Some(std::sync::Arc::new(build_scene_minimap(
+                        &scene.asset,
+                        placement.position.plane,
+                    )));
                     self.minimap_plane = Some(placement.position.plane);
                     self.minimap_generation += 1;
                     self.performance
@@ -1964,6 +2001,9 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                     self.enqueue_network_event(event);
                 }
             }
+            LoadEvent::LocationResources(session, resources, result) => {
+                self.accept_location_resources(session, resources, *result);
+            }
             LoadEvent::DynamicReady(session, worker, inputs, result) => {
                 let cycle = inputs.cycle;
                 if session == self.scene.generation
@@ -1987,35 +2027,15 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                     && inputs.interpolation == self.scene.interpolation
                 {
                     match *result {
-                        Ok(geometry) => {
-                            if let Some(loaded) = &mut self.scene.loaded {
-                                if let Some(renderer) = &mut self.renderer
-                                    && self.scene.awaiting_world.is_none()
-                                    && let Err(e) = renderer.set_world_dynamic(
-                                        loaded.asset.descriptor().id(),
-                                        &geometry,
-                                    )
-                                {
-                                    eprintln!("dynamic GPU upload: {e}");
-                                    return;
-                                }
-                                loaded.mesh.dynamic = geometry;
-                                loaded.picking.set_hidden(
-                                    &loaded.mesh.geometry,
-                                    &loaded.mesh.dynamic.hidden_static,
-                                );
-                                loaded.projection_inputs.cycle = cycle;
-                                loaded.projection_inputs.interpolation =
-                                    inputs.interpolation.clone();
-                                self.scene.dynamic_cycle = cycle;
-                                if let Some(window) = &self.window {
-                                    window.request_redraw();
-                                }
-                            }
-                        }
+                        Ok(projection) => self.accept_dynamic(*inputs, projection),
                         Err(e) => {
-                            eprintln!("scenery animation: {e}");
-                            self.scene.animator = None;
+                            eprintln!(
+                                "scenery preparation: {e}; retained presentation, retry pending"
+                            );
+                            self.scene.locations.projection_retry = Some((
+                                self.state.scenery().generation(),
+                                Instant::now() + Duration::from_millis(500),
+                            ));
                         }
                     }
                 }
@@ -2125,6 +2145,8 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
         }
         match event {
             WindowEvent::CloseRequested => {
+                self.shell.prepare_close();
+                self.update_plugins();
                 self.disconnect();
                 event_loop.exit();
             }
@@ -2558,6 +2580,8 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                             window.request_redraw();
                         }
                     }
+                    // Local plugin activation and panels also run on the title/login screen.
+                    self.update_plugins();
                     continue;
                 }
                 self.synchronize_window();
@@ -2670,11 +2694,24 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                 && visible
                 && self.scene.replacing.is_none()
                 && self.scene.animator_in_flight.is_none()
+                && self
+                    .scene
+                    .locations
+                    .projection_retry
+                    .is_none_or(|(generation, until)| {
+                        generation != self.state.scenery().generation() || Instant::now() >= until
+                    })
+                && self.scene.location_resources_ready(self.state.scenery())
                 && let Some(animator) = &self.scene.animator
                 && animator
-                    .try_send(self.scene.animator_inputs(self.state.scenery()))
+                    .try_send(
+                        self.scene.animator_inputs(self.state.scenery()),
+                        self.minimap_plane.unwrap_or(rustclient_model::Plane::MIN),
+                        self.scene.locations.invalidate,
+                    )
                     .is_ok()
             {
+                self.scene.locations.invalidate = false;
                 self.scene.animator_in_flight = Some(self.state.scenery().cycle());
             }
             if advanced

@@ -2600,6 +2600,7 @@ version = "0.0.0"
 name = "rustclient-native"
 version = "0.0.0"
 dependencies = [
+ "bytemuck",
  "getrandom 0.3.4",
  "image",
  "keyboard-types",
@@ -2726,6 +2727,7 @@ dependencies = [
  "rustclient-game-ui",
  "rustclient-model",
  "rustclient-scene",
+ "web-time",
  "wgpu",
 ]
 
@@ -2747,6 +2749,7 @@ dependencies = [
  "image",
  "keyboard-types",
  "rustclient-platform",
+ "rustclient-plugin-api",
  "rustclient-plugin-host",
 ]
 

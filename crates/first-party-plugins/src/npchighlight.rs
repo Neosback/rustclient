@@ -44,7 +44,7 @@ impl NativePlugin for NpcHighlight {
         false
     }
     fn output(&mut self, call: &mut PluginCall<'_>) -> Result<PluginOutput, PluginFault> {
-        let config = call.config;
+        let config = call.config();
         let mut output = PluginOutput::default();
         if call.varbit(CUTSCENE_STATUS).ok().flatten() == Some(1) {
             return Ok(output);

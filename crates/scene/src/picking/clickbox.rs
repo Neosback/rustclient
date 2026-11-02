@@ -271,5 +271,11 @@ pub fn pick_targets(
     projection: PickProjection,
     visibility: &SceneVisibility,
 ) -> Vec<ClickHit> {
-    Clickboxes::new(geometry).query(&geometry.picks, geometry, projection, visibility, |_| false)
+    let mut hits =
+        Clickboxes::new(geometry)
+            .query(&geometry.picks, geometry, projection, visibility, |_| false);
+    for zone in geometry.location_zones.iter() {
+        hits.extend(pick_targets(&zone.geometry, projection, visibility));
+    }
+    hits
 }

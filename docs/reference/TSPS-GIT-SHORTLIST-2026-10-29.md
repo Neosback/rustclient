@@ -40,10 +40,11 @@ previously documented shader corrections retain their existing dispositions.
 
 Use TSPS primarily for **small, separable algorithms, lifecycle failure cases and
 tooling**, with the exact 240 deob determining game behavior and the pinned RuneLite
-tree determining plugin effects. The best immediate gap-filling candidates are
-**stock item search, cache/script sweeps and IF1 decoding**. The best rendering
-mechanisms are **owned pose reuse, coherent cancellable builds and bounded upload
-publication**. Local XP tracking is a promising later RuneLite feature.
+tree determining plugin effects. The reconciled table above owns the remaining candidates. Item search, IF1/CS1,
+owned pose reuse, bounded CPU admission and local XP core/panel subsets now exist;
+do not port them again. Finish actor/update tails, granular widgets, authoritative
+effects, map interactions and source-correct menu/script/audio consumers in the
+[current roadmap](../plan/PORTING-ROADMAP.md) dependency order.
 
 An implementation mechanism can improve without changing OSRS results. A different
 result/order/pose needs evidence that the departure is far superior under the user's

@@ -24,11 +24,13 @@ use std::sync::Arc;
 /// Non-semantic facts owned by the shell, renderer and input layers.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Frame {
+    /// Application session identity; zero while unavailable.
+    pub session: u64,
     /// Measured frames per second.
     pub fps: u32,
     /// Whether the window has focus.
     pub focused: bool,
-    /// Whether the scene is still loading.
+    /// Presentation loading hint, retained for adapter compatibility; not semantic lifecycle.
     pub loading: bool,
     /// Camera state.
     pub camera: CameraSnapshot,
@@ -76,10 +78,10 @@ pub(crate) fn varbit_table(
     )
 }
 
-pub(crate) fn lifecycle(state: &GameState, frame: &Frame) -> GameStateKind {
+pub(crate) fn lifecycle(state: &GameState, _frame: &Frame) -> GameStateKind {
     if state.lifecycle() != SessionLifecycle::Active {
         GameStateKind::LoginScreen
-    } else if frame.loading || state.loaded_scene().is_none() {
+    } else if state.displayed_scene().is_none() {
         GameStateKind::Loading
     } else {
         GameStateKind::LoggedIn
@@ -90,6 +92,7 @@ pub(crate) fn client(state: &GameState, frame: &Frame) -> ClientSnapshot {
     let window = state.interfaces().window();
     let scene = state.loaded_scene();
     ClientSnapshot {
+        session: frame.session,
         state: lifecycle(state, frame),
         tick: state
             .current_tick()
@@ -146,6 +149,7 @@ pub(crate) fn player(entity: &PlayerEntity, local: bool) -> PlayerSnapshot {
     });
     PlayerSnapshot {
         actor: ActorState {
+            instance: entity.instance.get(),
             index: u16::try_from(entity.index.get()).unwrap_or(u16::MAX),
             world: world(entity.tile),
             orientation: entity.current_orientation,
@@ -176,6 +180,7 @@ pub(crate) fn npc(entity: &NpcEntity, definition: Option<&NpcDefinition>) -> Npc
     let size = definition.map_or(1, |def| def.size.max(1));
     NpcSnapshot {
         actor: ActorState {
+            instance: entity.instance.get(),
             index: u16::try_from(entity.index.get()).unwrap_or(u16::MAX),
             world: world(entity.tile),
             orientation: entity.current_orientation,

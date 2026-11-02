@@ -17,10 +17,12 @@ differences explicitly under ADR-0004.
 
 ## Retained shell (approved 2026-10-25; native backend revision 2026-10-28)
 
-The original shell uses Dioxus HTML/CSS components and Blitz CPU painting.
+Historical backend context (superseded by the approved shared sidebar continuation
+above): the original shell used Dioxus HTML/CSS components and Blitz CPU painting.
 The user-authorized native replacement in ADR-0007 uses demand-driven egui passes
 and cached wgpu panel targets, preserving the shared typed configuration model.
-Browser DOM panels remain during WebGPU integration; browser runtime acceptance is separate. OSRS game widgets remain in
+The temporary browser DOM panel has also been retired in favor of the shared egui
+harness; browser gameplay/runtime acceptance remains separate. OSRS game widgets remain in
 game-ui. External plugins receive neither toolkit objects nor renderer handles.
 
 Panel generation changes, input, resize, scale and theme changes invalidate retained

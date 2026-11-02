@@ -22,7 +22,7 @@ impl NativePlugin for Camera {
         false
     }
     fn output(&mut self, call: &mut PluginCall<'_>) -> Result<PluginOutput, PluginFault> {
-        let config = call.config;
+        let config = call.config();
         // `cameraSpeed` is a decimal in thousandths; `setCameraSpeed` clamps to 0.2..=5.0.
         #[expect(
             clippy::cast_precision_loss,

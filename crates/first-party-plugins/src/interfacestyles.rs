@@ -78,7 +78,7 @@ impl NativePlugin for InterfaceStyles {
     }
 
     fn output(&mut self, call: &mut PluginCall<'_>) -> Result<PluginOutput, PluginFault> {
-        let Some(skin) = Skin::parse(call.config.choice("gameframe")) else {
+        let Some(skin) = Skin::parse(call.config().choice("gameframe")) else {
             self.cached = None;
             return Ok(PluginOutput::default());
         };

@@ -53,7 +53,7 @@ The new behavior is based on reference-table membership, never a catch-all error
   byte-identical; materials, fog, color correction and filtering captures pass.
 
 Reproduce using `tools/gpu/README.md`. Generated logs and PNGs live under ignored `target/`.
-Full automated gate results are recorded in [the owning plan](../../plan/BUILTIN-PLUGINS.md).
+Full automated gate results are recorded in [the owning plan](../../archive/2026-foundation/plan/BUILTIN-PLUGINS.md).
 No new browser run, Java pixel comparison, reference-MCP session, authenticated travel or
 fixed/classic/modern visual acceptance is claimed by this sparse-map checkpoint. The later overlay checkpoint reduces the remaining broader
 GPU obligations to ten; complete classic GPU and 117HD readiness are not established.

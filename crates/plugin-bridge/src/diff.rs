@@ -4,8 +4,8 @@
 //! then per-actor changes), NPCs likewise, variables, stats, containers, widgets, chat.
 
 use rustclient_plugin_api::{
-    ActorRef, ActorState, Capability, CapabilitySet, GameEvent, GameSnapshot, NpcSnapshot,
-    PlayerSnapshot, VarKind, VarbitDef,
+    ActorRef, ActorState, Capability, CapabilitySet, EventInterest, GameEvent, GameEventKind,
+    GameSnapshot, NpcSnapshot, PlayerSnapshot, VarKind, VarbitDef,
 };
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -56,54 +56,107 @@ pub(crate) fn derive_interested(
     timing: Timing,
     interest: Option<&CapabilitySet>,
 ) -> Vec<GameEvent> {
+    derive_filtered(prev, next, varbits, timing, interest, EventInterest::ALL)
+}
+
+const ACTOR_CHANGES: EventInterest = EventInterest::NONE
+    .with(GameEventKind::AnimationChanged)
+    .with(GameEventKind::GraphicChanged)
+    .with(GameEventKind::InteractingChanged)
+    .with(GameEventKind::HitsplatApplied)
+    .with(GameEventKind::OverheadTextChanged);
+const PLAYER_EVENTS: EventInterest = ACTOR_CHANGES
+    .with(GameEventKind::PlayerSpawned)
+    .with(GameEventKind::PlayerDespawned)
+    .with(GameEventKind::PlayerChanged);
+const NPC_EVENTS: EventInterest = ACTOR_CHANGES
+    .with(GameEventKind::NpcSpawned)
+    .with(GameEventKind::NpcDespawned)
+    .with(GameEventKind::NpcChanged);
+
+pub(crate) fn derive_filtered(
+    prev: &GameSnapshot,
+    next: &GameSnapshot,
+    varbits: &VarbitIndex,
+    timing: Timing,
+    interest: Option<&CapabilitySet>,
+    kinds: EventInterest,
+) -> Vec<GameEvent> {
     let wants = |capability| interest.is_none_or(|grants| grants.contains(capability));
-    let mut events = Vec::new();
+    let mut events = Events {
+        values: Vec::new(),
+        kinds,
+    };
     if prev.client.state != next.client.state {
-        events.push(GameEvent::GameStateChanged(next.client.state));
+        events.emit(GameEventKind::GameStateChanged, || {
+            GameEvent::GameStateChanged(next.client.state)
+        });
     }
     if wants(Capability::GameReadClient) && prev.client.resizable != next.client.resizable {
-        events.push(GameEvent::ResizeableChanged(next.client.resizable));
+        events.emit(GameEventKind::ResizeableChanged, || {
+            GameEvent::ResizeableChanged(next.client.resizable)
+        });
     }
     if wants(Capability::GameReadClient) && prev.client.focused != next.client.focused {
-        events.push(GameEvent::FocusChanged(next.client.focused));
+        events.emit(GameEventKind::FocusChanged, || {
+            GameEvent::FocusChanged(next.client.focused)
+        });
     }
     if prev.client.scene_base != next.client.scene_base {
-        events.push(GameEvent::PreMapLoad);
+        events.emit(GameEventKind::PreMapLoad, || GameEvent::PreMapLoad);
     }
-    for _ in 0..timing.client_ticks {
-        events.push(GameEvent::ClientTick);
+    if kinds.contains(GameEventKind::ClientTick) {
+        for _ in 0..timing.client_ticks {
+            events.emit(GameEventKind::ClientTick, || GameEvent::ClientTick);
+        }
     }
     if let Some(tick) = timing.game_tick {
-        events.push(GameEvent::GameTick(tick));
+        events.emit(GameEventKind::GameTick, || GameEvent::GameTick(tick));
     }
-    if wants(Capability::GameReadPlayers) {
+    if wants(Capability::GameReadPlayers) && kinds.intersects(PLAYER_EVENTS) {
         players(prev, next, &mut events);
     }
-    if wants(Capability::GameReadNpcs) {
+    if wants(Capability::GameReadNpcs) && kinds.intersects(NPC_EVENTS) {
         npcs(prev, next, &mut events);
     }
-    if wants(Capability::GameReadVars) {
+    if wants(Capability::GameReadVars) && (kinds.contains(GameEventKind::VarbitChanged)) {
         variables(prev, next, varbits, &mut events);
     }
-    if wants(Capability::GameReadSkills) {
+    if wants(Capability::GameReadSkills) && (kinds.contains(GameEventKind::StatChanged)) {
         stats(prev, next, &mut events);
     }
-    if wants(Capability::GameReadInventory) {
+    if wants(Capability::GameReadInventory) && (kinds.contains(GameEventKind::ItemContainerChanged))
+    {
         containers(prev, next, &mut events);
     }
-    if wants(Capability::GameReadWidgets) {
+    if wants(Capability::GameReadWidgets)
+        && (kinds.contains(GameEventKind::WidgetLoaded)
+            || kinds.contains(GameEventKind::WidgetClosed))
+    {
         widgets(prev, next, &mut events);
     }
-    if wants(Capability::GameReadChat) {
+    if wants(Capability::GameReadChat) && (kinds.contains(GameEventKind::ChatMessage)) {
         chat(prev, next, &mut events);
     }
-    events
+    events.values
+}
+
+struct Events {
+    values: Vec<GameEvent>,
+    kinds: EventInterest,
+}
+impl Events {
+    fn emit(&mut self, kind: GameEventKind, create: impl FnOnce() -> GameEvent) {
+        if self.kinds.contains(kind) {
+            self.values.push(create());
+        }
+    }
 }
 
 fn merge<'a, T>(
     prev: &'a [T],
     next: &'a [T],
-    index: impl Fn(&T) -> u16,
+    index: impl Fn(&T) -> (u16, u64),
 ) -> (Vec<&'a T>, Vec<&'a T>, Vec<(&'a T, &'a T)>) {
     let mut removed = Vec::new();
     let mut added = Vec::new();
@@ -134,17 +187,33 @@ fn merge<'a, T>(
     (removed, added, kept)
 }
 
-fn players(prev: &GameSnapshot, next: &GameSnapshot, events: &mut Vec<GameEvent>) {
-    let (removed, added, kept) = merge(&prev.players, &next.players, |p| p.actor.index);
+fn players(prev: &GameSnapshot, next: &GameSnapshot, events: &mut Events) {
+    let (removed, added, kept) = if prev.client.session == next.client.session {
+        merge(&prev.players, &next.players, |p| {
+            (p.actor.index, p.actor.instance)
+        })
+    } else {
+        (
+            prev.players.iter().collect(),
+            next.players.iter().collect(),
+            Vec::new(),
+        )
+    };
     for old in removed {
-        events.push(GameEvent::PlayerDespawned(Box::new(old.clone())));
+        events.emit(GameEventKind::PlayerDespawned, || {
+            GameEvent::PlayerDespawned(Box::new(old.clone()))
+        });
     }
     for new in added {
-        events.push(GameEvent::PlayerSpawned(Box::new(new.clone())));
+        events.emit(GameEventKind::PlayerSpawned, || {
+            GameEvent::PlayerSpawned(Box::new(new.clone()))
+        });
     }
     for (old, new) in kept {
         if changed_appearance(old, new) {
-            events.push(GameEvent::PlayerChanged(new.actor.index));
+            events.emit(GameEventKind::PlayerChanged, || {
+                GameEvent::PlayerChanged(new.actor.index)
+            });
         }
         actor_changes(
             ActorRef::Player(new.actor.index),
@@ -162,17 +231,31 @@ fn changed_appearance(old: &PlayerSnapshot, new: &PlayerSnapshot) -> bool {
         || old.hidden != new.hidden
 }
 
-fn npcs(prev: &GameSnapshot, next: &GameSnapshot, events: &mut Vec<GameEvent>) {
-    let (removed, added, kept) = merge(&prev.npcs, &next.npcs, |n| n.actor.index);
+fn npcs(prev: &GameSnapshot, next: &GameSnapshot, events: &mut Events) {
+    let (removed, added, kept) = if prev.client.session == next.client.session {
+        merge(&prev.npcs, &next.npcs, |n| {
+            (n.actor.index, n.actor.instance)
+        })
+    } else {
+        (
+            prev.npcs.iter().collect(),
+            next.npcs.iter().collect(),
+            Vec::new(),
+        )
+    };
     for old in removed {
-        events.push(GameEvent::NpcDespawned(Box::new(old.clone())));
+        events.emit(GameEventKind::NpcDespawned, || {
+            GameEvent::NpcDespawned(Box::new(old.clone()))
+        });
     }
     for new in added {
-        events.push(GameEvent::NpcSpawned(Box::new(new.clone())));
+        events.emit(GameEventKind::NpcSpawned, || {
+            GameEvent::NpcSpawned(Box::new(new.clone()))
+        });
     }
     for (old, new) in kept {
         if old.id != new.id {
-            events.push(GameEvent::NpcChanged {
+            events.emit(GameEventKind::NpcChanged, || GameEvent::NpcChanged {
                 index: new.actor.index,
                 previous: old.id,
             });
@@ -181,7 +264,7 @@ fn npcs(prev: &GameSnapshot, next: &GameSnapshot, events: &mut Vec<GameEvent>) {
     }
 }
 
-fn actor_changes_npc(old: &NpcSnapshot, new: &NpcSnapshot, events: &mut Vec<GameEvent>) {
+fn actor_changes_npc(old: &NpcSnapshot, new: &NpcSnapshot, events: &mut Events) {
     actor_changes(
         ActorRef::Npc(new.actor.index),
         &old.actor,
@@ -190,47 +273,52 @@ fn actor_changes_npc(old: &NpcSnapshot, new: &NpcSnapshot, events: &mut Vec<Game
     );
 }
 
-fn actor_changes(actor: ActorRef, old: &ActorState, new: &ActorState, events: &mut Vec<GameEvent>) {
+fn actor_changes(actor: ActorRef, old: &ActorState, new: &ActorState, events: &mut Events) {
     if old.animation != new.animation {
-        events.push(GameEvent::AnimationChanged {
-            actor,
-            animation: new.animation,
+        events.emit(GameEventKind::AnimationChanged, || {
+            GameEvent::AnimationChanged {
+                actor,
+                animation: new.animation,
+            }
         });
     }
     if old.graphic != new.graphic {
-        events.push(GameEvent::GraphicChanged {
-            actor,
-            graphic: new.graphic,
+        events.emit(GameEventKind::GraphicChanged, || {
+            GameEvent::GraphicChanged {
+                actor,
+                graphic: new.graphic,
+            }
         });
     }
     if old.interacting != new.interacting {
-        events.push(GameEvent::InteractingChanged {
-            source: actor,
-            target: new.interacting,
+        events.emit(GameEventKind::InteractingChanged, || {
+            GameEvent::InteractingChanged {
+                source: actor,
+                target: new.interacting,
+            }
         });
     }
     if old.overhead_text != new.overhead_text {
-        events.push(GameEvent::OverheadTextChanged {
-            actor,
-            text: new.overhead_text.clone(),
+        events.emit(GameEventKind::OverheadTextChanged, || {
+            GameEvent::OverheadTextChanged {
+                actor,
+                text: new.overhead_text.clone(),
+            }
         });
     }
     for hitsplat in &new.hitsplats {
         if !old.hitsplats.contains(hitsplat) {
-            events.push(GameEvent::HitsplatApplied {
-                actor,
-                hitsplat: *hitsplat,
+            events.emit(GameEventKind::HitsplatApplied, || {
+                GameEvent::HitsplatApplied {
+                    actor,
+                    hitsplat: *hitsplat,
+                }
             });
         }
     }
 }
 
-fn variables(
-    prev: &GameSnapshot,
-    next: &GameSnapshot,
-    varbits: &VarbitIndex,
-    events: &mut Vec<GameEvent>,
-) {
+fn variables(prev: &GameSnapshot, next: &GameSnapshot, varbits: &VarbitIndex, events: &mut Events) {
     let ids: BTreeSet<u32> = prev
         .vars
         .varps
@@ -243,7 +331,7 @@ fn variables(
         if old == new {
             continue;
         }
-        events.push(GameEvent::VarbitChanged {
+        events.emit(GameEventKind::VarbitChanged, || GameEvent::VarbitChanged {
             kind: VarKind::Varp,
             id,
             value: new,
@@ -256,7 +344,7 @@ fn variables(
                 continue;
             };
             if before != after {
-                events.push(GameEvent::VarbitChanged {
+                events.emit(GameEventKind::VarbitChanged, || GameEvent::VarbitChanged {
                     kind: VarKind::Varbit,
                     id: varbit,
                     value: after,
@@ -266,13 +354,13 @@ fn variables(
     }
 }
 
-fn stats(prev: &GameSnapshot, next: &GameSnapshot, events: &mut Vec<GameEvent>) {
+fn stats(prev: &GameSnapshot, next: &GameSnapshot, events: &mut Events) {
     for (index, level) in next.skills.iter().enumerate() {
         let Some(skill) = rustclient_plugin_api::Skill::from_index(index) else {
             continue;
         };
         if prev.skills.get(index) != Some(level) {
-            events.push(GameEvent::StatChanged {
+            events.emit(GameEventKind::StatChanged, || GameEvent::StatChanged {
                 skill,
                 level: *level,
             });
@@ -280,7 +368,7 @@ fn stats(prev: &GameSnapshot, next: &GameSnapshot, events: &mut Vec<GameEvent>) 
     }
 }
 
-fn containers(prev: &GameSnapshot, next: &GameSnapshot, events: &mut Vec<GameEvent>) {
+fn containers(prev: &GameSnapshot, next: &GameSnapshot, events: &mut Events) {
     let ids: BTreeSet<u32> = prev
         .containers
         .keys()
@@ -291,29 +379,37 @@ fn containers(prev: &GameSnapshot, next: &GameSnapshot, events: &mut Vec<GameEve
         let same = prev.containers.get(&id).map(Vec::as_slice)
             == next.containers.get(&id).map(Vec::as_slice);
         if !same {
-            events.push(GameEvent::ItemContainerChanged { container: id });
+            events.emit(GameEventKind::ItemContainerChanged, || {
+                GameEvent::ItemContainerChanged { container: id }
+            });
         }
     }
 }
 
-fn widgets(prev: &GameSnapshot, next: &GameSnapshot, events: &mut Vec<GameEvent>) {
+fn widgets(prev: &GameSnapshot, next: &GameSnapshot, events: &mut Events) {
     for group in &prev.widget_groups {
         if !next.widget_groups.contains(group) {
-            events.push(GameEvent::WidgetClosed { group: *group });
+            events.emit(GameEventKind::WidgetClosed, || GameEvent::WidgetClosed {
+                group: *group,
+            });
         }
     }
     for group in &next.widget_groups {
         if !prev.widget_groups.contains(group) {
-            events.push(GameEvent::WidgetLoaded { group: *group });
+            events.emit(GameEventKind::WidgetLoaded, || GameEvent::WidgetLoaded {
+                group: *group,
+            });
         }
     }
 }
 
-fn chat(prev: &GameSnapshot, next: &GameSnapshot, events: &mut Vec<GameEvent>) {
+fn chat(prev: &GameSnapshot, next: &GameSnapshot, events: &mut Events) {
     let seen = prev.chat.last().map(|line| line.id);
     for line in &next.chat {
         if seen.is_none_or(|last| line.id > last) {
-            events.push(GameEvent::ChatMessage(line.clone()));
+            events.emit(GameEventKind::ChatMessage, || {
+                GameEvent::ChatMessage(line.clone())
+            });
         }
     }
 }
@@ -332,6 +428,7 @@ mod tests {
 
     fn actor(index: u16) -> ActorState {
         ActorState {
+            instance: 1,
             index,
             world: WorldPoint::new(3200, 3200, 0),
             orientation: 0,

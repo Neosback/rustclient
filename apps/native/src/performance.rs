@@ -104,6 +104,7 @@ pub(super) struct Performance {
     run_seconds: Option<Duration>,
     trace: Option<trace::Trace>,
     epoch: u64,
+    scene_generation: u64,
     requested: Option<Instant>,
     wake_late: Duration,
     cpu_work: Samples,
@@ -151,6 +152,7 @@ impl Performance {
                 .map(Duration::from_secs),
             trace,
             epoch: 0,
+            scene_generation: 0,
             requested: None,
             wake_late: Duration::ZERO,
             cpu_work: Samples::default(),
@@ -159,6 +161,21 @@ impl Performance {
         }
     }
 
+    pub(super) fn scene_generation(&mut self, generation: u64) {
+        self.scene_generation = generation;
+    }
+    pub(super) fn location_event(
+        &self,
+        phase: &str,
+        generation: u64,
+        cycle: u64,
+        publication: u64,
+        details: impl FnOnce() -> serde_json::Value,
+    ) {
+        if let Some(trace) = &self.trace {
+            trace.send(trace::Record::Metadata(serde_json::json!({"type":"location","epoch":self.epoch,"phase":phase,"scene_generation":self.scene_generation,"source_generation":generation,"cycle":cycle,"publication":publication,"at_ns":u64::try_from(self.origin.elapsed().as_nanos()).unwrap_or(u64::MAX),"details":details()})));
+        }
+    }
     pub(super) fn instrumentation(&self) -> rustclient_renderer::Instrumentation {
         if self.log {
             rustclient_renderer::Instrumentation::Timings
@@ -234,10 +251,12 @@ impl Performance {
         if let Some(trace) = &self.trace {
             let size = window.inner_size();
             trace.send(trace::Record::Metadata(serde_json::json!({
-                "type":"renderer", "schema":1, "epoch":self.epoch, "physical":[size.width,size.height],
-                "dpi":window.scale_factor(), "refresh_millihertz":window.current_monitor().and_then(|m| m.refresh_rate_millihertz()),
+                "type":"renderer", "schema":2, "epoch":self.epoch, "physical":[size.width,size.height],
+                "focused":window.has_focus(), "dpi":window.scale_factor(), "refresh_millihertz":window.current_monitor().and_then(|m| m.refresh_rate_millihertz()),
                 "effective":format!("{:?}", renderer.effective_gpu()), "backend":format!("{:?}",renderer.gpu_capabilities().backend),
                 "features":format!("{:?}",renderer.gpu_capabilities().enabled_features),
+                "supported_features":format!("{:?}",renderer.gpu_capabilities().supported_features),
+                "settings":format!("{:?}",renderer.gpu_settings()),
                 "stage_names":["hover","entity_build","entity_upload","scene_upload","minimap_build","widget_projection","widget_assets","commit_scripts"],
                 "timing_scope":"CPU stage wall times; GPU enclosing command interval; present calls are not display timestamps"
             })));
@@ -264,6 +283,9 @@ impl Performance {
         if let Some(trace) = &self.trace {
             let nanos = |duration: Duration| u64::try_from(duration.as_nanos()).unwrap_or(u64::MAX);
             trace.send(trace::Record::Frame(trace::FrameRecord {
+                scene_generation: self.scene_generation,
+                location_publication: timing.location_publication,
+                location_upload_bytes: timing.location_upload_bytes,
                 epoch: self.epoch,
                 frame: timing.frame,
                 at_ns: nanos(now.saturating_duration_since(self.origin)),
@@ -299,7 +321,14 @@ impl Performance {
     /// `RUSTCLIENT_FRAME_TIMINGS` is set.
     pub(super) fn event(&self, describe: impl FnOnce() -> String) {
         if self.log {
-            eprintln!("event: {}", describe());
+            let description = describe();
+            eprintln!("event: {description}");
+            if let Some(trace) = &self.trace {
+                trace.send(trace::Record::Metadata(serde_json::json!({
+                    "type":"event", "at_ns":u64::try_from(self.origin.elapsed().as_nanos()).unwrap_or(u64::MAX),
+                    "description":description,
+                })));
+            }
         }
     }
 

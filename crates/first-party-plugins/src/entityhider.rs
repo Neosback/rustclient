@@ -116,7 +116,7 @@ impl NativePlugin for EntityHider {
         false
     }
     fn output(&mut self, call: &mut PluginCall<'_>) -> Result<PluginOutput, PluginFault> {
-        let config = call.config;
+        let config = call.config();
         let switches = Switches {
             others: config.boolean("hidePlayers"),
             others_2d: config.boolean("hidePlayers2D"),

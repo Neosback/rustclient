@@ -14,7 +14,7 @@ rebuild, interact with a banker or bank booth, deposit/withdraw one or all throu
 server-driven interfaces, close/reopen the bank, and continue playing. Item counts
 must survive another login. This milestone does not establish RuneLite parity.
 
-Implementation status and exact validation: [playable desktop checkpoint](../plan/PLAYABLE-desktop.md).
+Implementation status and exact validation: [playable desktop checkpoint](../archive/2026-foundation/plan/PLAYABLE-desktop.md).
 
 ## Invariants and interfaces
 
@@ -295,7 +295,7 @@ The exact revision-240 client manager is rl-suite-240 classDF, not an older
 PlayerUpdateManager copy. The selected RSProt writer and its byte-buffer
 extensions define the profile's wire transforms; classDF/classDC corroborate
 movement/mask ordering and forced offsets. See the dated
-[player audit](../plan/PLAYER-UPDATING-240.md) and selected-file manifest.
+[player audit](../archive/2026-foundation/plan/PLAYER-UPDATING-240.md) and selected-file manifest.
 
 GameState owns persistent traversal, each current movement's speed and the
 normalized forced trajectory. Outside-view records retain the persistent speed
@@ -344,7 +344,7 @@ Mounted roots use their host container's effective scroll extent for alignment,
 matching the same reflow used for ordinary and dynamic children. Unused canvas
 margins are black. The pointer and painting share the same top-aligned horizontal
 centering transform. New live and source evidence is in the
-[gameframe audit](../plan/GAMEFRAME-240.md).
+[gameframe audit](../archive/2026-foundation/plan/GAMEFRAME-240.md).
 
 ## NPC path and object animation audit continuation (2026-10-23)
 

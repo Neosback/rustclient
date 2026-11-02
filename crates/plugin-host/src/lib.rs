@@ -11,8 +11,11 @@
 
 pub mod configuration;
 mod lifecycle;
+mod panels;
 pub mod required;
+mod subscriptions;
 pub use lifecycle::{ActivationId, LifecycleStatus};
+pub use panels::{HostedPanel, PanelAction, PanelLease};
 mod v2;
 
 pub use configuration::PluginConfig;
@@ -181,19 +184,32 @@ impl LogSink for StderrLogSink {
 }
 
 /// Everything a plugin instance may legally observe or change during one call.
+/// Authority references are host-owned and cannot be rebound by plugins.
+/// ```compile_fail,E0616
+/// use rustclient_plugin_host::PluginCall;
+/// fn rebind(call: &mut PluginCall<'_>) { call.plugin = call.plugin_id(); }
+/// ```
+/// ```compile_fail,E0616
+/// use rustclient_plugin_host::PluginCall;
+/// fn rebind(call: &mut PluginCall<'_>) { call.capabilities = call.capabilities(); }
+/// ```
+/// ```compile_fail,E0616
+/// use rustclient_plugin_host::PluginCall;
+/// fn rebind(call: &mut PluginCall<'_>) { call.config = call.config(); }
+/// ```
 pub struct PluginCall<'a> {
     /// Executing plugin identity.
-    pub plugin: &'a PluginId,
+    plugin: &'a PluginId,
     /// Operator grants for this package.
-    pub capabilities: &'a CapabilitySet,
+    capabilities: &'a CapabilitySet,
     /// Approved state projection.
-    pub view: &'a dyn HostView,
+    view: &'a dyn HostView,
     /// Plugin-local storage.
-    pub storage: &'a mut dyn PluginStorage,
+    storage: &'a mut dyn PluginStorage,
     /// Diagnostic sink.
-    pub logs: &'a mut dyn LogSink,
+    logs: &'a mut dyn LogSink,
     /// Effective settings of this plugin, defaults applied.
-    pub config: &'a PluginConfig,
+    config: &'a PluginConfig,
     /// Capabilities already reported as denied, so diagnostics are not repeated every call.
     denied: &'a mut BTreeSet<Capability>,
 }
@@ -218,6 +234,18 @@ pub trait PluginInstance {
     fn subscribes_game_events(&self) -> bool {
         true
     }
+    /// Static event declaration; changes require a new registration.
+    fn game_event_interests(&self) -> rustclient_plugin_api::EventInterest {
+        rustclient_plugin_api::EventInterest::ALL
+    }
+    /// Source subscriber class for RuneLite-compatible tie ordering.
+    fn game_event_source(&self) -> &str {
+        core::any::type_name::<Self>()
+    }
+    /// Source annotation priority for one event class. Must be finite.
+    fn game_event_priority(&self, _kind: rustclient_plugin_api::GameEventKind) -> f32 {
+        0.
+    }
 
     /// Initialize after grants, before any event.
     ///
@@ -241,10 +269,19 @@ pub trait PluginInstance {
     /// Runtime or contract failures described by [`PluginFault`].
     fn overlay(&mut self, call: &mut PluginCall<'_>) -> Result<Vec<OverlayLine>, PluginFault>;
 
+    /// User action checked against this activation's last validated panel document.
+    /// # Errors
+    /// Runtime or contract failures described by [`PluginFault`].
+    fn on_panel_event(
+        &mut self,
+        _call: &mut PluginCall<'_>,
+        _event: &rustclient_plugin_api::PanelEvent,
+    ) -> Result<(), PluginFault> {
+        Ok(())
+    }
+
     /// Receive typed gameplay events (API 0.2), already filtered to the plugin's grants.
-    ///
     /// The default ignores them, so 0.1 plugins are unaffected.
-    ///
     /// # Errors
     /// Runtime or contract failures described by [`PluginFault`].
     fn on_game_events(
@@ -320,6 +357,7 @@ pub struct LoadedPlugin {
     enabled: bool,
     required: bool,
     config: PluginConfig,
+    subscription: subscriptions::Subscription,
     denied: BTreeSet<Capability>,
 }
 
@@ -348,6 +386,7 @@ pub struct PluginSet {
     registration_sequence: u64,
     plugins: Vec<LoadedPlugin>,
     fault_limit: u32,
+    event_routes: subscriptions::Routes,
 }
 
 impl Default for PluginSet {
@@ -364,6 +403,7 @@ impl PluginSet {
             plugins: Vec::new(),
             registration_sequence: 0,
             fault_limit: 3,
+            event_routes: subscriptions::Routes::default(),
         }
     }
 
@@ -374,6 +414,7 @@ impl PluginSet {
             plugins: Vec::new(),
             registration_sequence: 0,
             fault_limit,
+            event_routes: subscriptions::Routes::default(),
         }
     }
 
@@ -406,7 +447,10 @@ impl PluginSet {
             )
         })?;
         self.registration_sequence = registration;
+        let subscription =
+            subscriptions::Subscription::new(instance.as_ref(), &manifest.capabilities)?;
         self.plugins.push(LoadedPlugin {
+            subscription,
             manifest,
             instance,
             lifecycle: lifecycle::Lifecycle {
@@ -508,7 +552,21 @@ impl PluginSet {
             .any(|event| matches!(event, PluginEvent::Stopped))
         {
             for plugin in &mut self.plugins {
-                plugin.lifecycle.output = None;
+                // Session-derived world output expires; local panels belong to the activation.
+                plugin.lifecycle.output =
+                    plugin
+                        .lifecycle
+                        .output
+                        .take()
+                        .and_then(|(activation, output)| {
+                            (!output.panels.is_empty()).then_some((
+                                activation,
+                                PluginOutput {
+                                    panels: output.panels,
+                                    ..PluginOutput::default()
+                                },
+                            ))
+                        });
             }
         }
         for index in 0..self.plugins.len() {

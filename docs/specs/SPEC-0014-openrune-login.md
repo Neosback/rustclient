@@ -1,6 +1,6 @@
 # SPEC-0014: OpenRune desktop connection bootstrap
 
-Status: implemented focused milestone; validation recorded in docs/plan/OPENRUNE-login.md. Owners: protocol (wire/profile/crypto), platform
+Status: implemented focused milestone; validation recorded in docs/archive/2026-foundation/plan/OPENRUNE-login.md. Owners: protocol (wire/profile/crypto), platform
 (byte-stream contract), platform-native (TCP and entropy), application (connection
 orchestration), game-state (authenticated session and initial placement), game-ui
 (secret drafts and presentation), native (composition and worker lifecycle).

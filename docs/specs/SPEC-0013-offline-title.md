@@ -2,7 +2,7 @@
 
 **Status:** Implemented for the first desktop title milestone (2026-10-21)
 
-Validation evidence: [offline title checkpoint](../plan/TITLE-offline-cache.md).
+Validation evidence: [offline title checkpoint](../archive/2026-foundation/plan/TITLE-offline-cache.md).
 
 ## Goal and owners
 

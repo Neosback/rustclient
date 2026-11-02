@@ -984,7 +984,7 @@
     },
     {
       "id": "workers",
-      "requirement": "CPU packing, draw metadata and texture identity now prepare on the native scene worker; GPU buffer capacity and identical-pose uploads are retained. Complete incremental zone/resource publication, hard upload-byte budgets and measurable parallel-worker/numThreads behavior; numThreads remains inert/disabled. See UPDATE-OPTIMIZATION-2026-10-30.md. Live frame-pacing acceptance remains open."
+      "requirement": "Native CPU packing/preparation uses the bounded shared pool without nested per-rebuild threads. Ordinary normal-map locations now retain owning-zone resources and stage at 2 MiB / 1 ms admission with coherent acknowledgement and deferred retirement. Actual-cache resource diagnostics pass; meaningful parallel-worker/numThreads behavior, live frame pacing, cold/replacement and memory acceptance remain open. numThreads is still disabled/inert. See UPDATE-OPTIMIZATION-2026-10-30.md."
     },
     {
       "id": "entity-tint",
@@ -1133,7 +1133,7 @@
     "document": "docs/reference/UPDATE-OPTIMIZATION-2026-10-30.md",
     "evidence": "docs/reference/UPDATE-OPTIMIZATION-EVIDENCE-2026-10-30.json",
     "status": "partial; live pacing and browser gameplay NOT-RUN",
-    "foundation": "Internal invalidation history and bounded shared native CPU workers; GPU numThreads, hard upload budgets and live pacing remain open.",
+    "foundation": "Independent invalidation cursors, bounded shared native CPU preparation and persistent normal-map owning zones with 2 MiB / 1 ms upload admission. Actual-GPU buffer/deferred-publication contracts pass; GPU numThreads, live pacing/lifecycle and memory acceptance remain open.",
     "retainedUi": {
       "date": "2026-10-31",
       "owners": [
@@ -1143,6 +1143,19 @@
       ],
       "evidence": "docs/reference/UPDATE-OPTIMIZATION-EVIDENCE-2026-10-30.json#uiRasterRetention",
       "scope": "Unchanged widget commands/vertices/static UI raster retention; 60 actual-GPU lifecycle/submission steps. No GPU timing, reference pixels, gameplay or classic-gate completion claim."
+    },
+    "incrementalLocations": {
+      "date": "2026-11-01",
+      "spec": "docs/specs/SPEC-0024-zone-updates.md",
+      "owners": [
+        "crates/scene/src/zones.rs",
+        "crates/renderer/src/world_geometry/scenery.rs",
+        "crates/renderer/src/world_geometry/zone_upload.rs",
+        "apps/native/src/scene_publication.rs",
+        "apps/native/src/scene_resources.rs"
+      ],
+      "evidence": "docs/reference/UPDATE-OPTIMIZATION-EVIDENCE-2026-10-30.json#incrementalLocations",
+      "scope": "Nine GameState remove/restore cache/GPU diagnostics: two changed and 273 unchanged zones, zero unchanged uploads, exact full-Rust visible triangle content. Bounded before/after PNG comparison; no stock runtime parity or live gameplay acceptance."
     }
   },
   "presentationDiagnostics": {

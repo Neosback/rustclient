@@ -12,7 +12,8 @@ use rustclient_game_state::LocationOverride;
 use rustclient_model::{LocationKey, Plane, WorldTile};
 use std::collections::{BTreeMap, BTreeSet};
 
-/// Largest number of changed override keys patched instead of rebuilding the baseline.
+/// Historical fallback threshold, retained for compatibility and regression workloads.
+/// Current zone preparation does not impose this override-count limit.
 pub const PATCH_KEY_BUDGET: usize = 48;
 
 /// Indices are positions in the *current* effective location list, except `hidden`, which indexes
@@ -29,15 +30,15 @@ pub(crate) struct Patch {
 
 /// A footprint on one plane: tiles `x0..x1` by `y0..y1`.
 #[derive(Clone, Copy)]
-struct Rect {
-    plane: Plane,
-    x0: i32,
-    y0: i32,
-    x1: i32,
-    y1: i32,
+pub(crate) struct Rect {
+    pub(crate) plane: Plane,
+    pub(crate) x0: i32,
+    pub(crate) y0: i32,
+    pub(crate) x1: i32,
+    pub(crate) y1: i32,
 }
 impl Rect {
-    fn grown(self) -> Self {
+    pub(crate) fn grown(self) -> Self {
         Self {
             x0: self.x0 - 1,
             y0: self.y0 - 1,
@@ -46,7 +47,7 @@ impl Rect {
             ..self
         }
     }
-    fn touches(self, other: Self) -> bool {
+    pub(crate) fn touches(self, other: Self) -> bool {
         self.plane.get().abs_diff(other.plane.get()) <= 1
             && self.x0 < other.x1
             && other.x0 < self.x1
@@ -54,10 +55,16 @@ impl Rect {
             && other.y0 < self.y1
     }
 }
-fn footprint(asset: &SceneAsset, loc: &StaticLocation) -> Rect {
+pub(crate) fn footprint(asset: &SceneAsset, loc: &StaticLocation) -> Rect {
+    footprint_from(&asset.assets, loc)
+}
+pub(crate) fn footprint_from(
+    assets: &rustclient_cache::world::WorldAssets,
+    loc: &StaticLocation,
+) -> Rect {
     // Only models of shapes 10 and 11 span more than their tile (`seams::footprint`).
     let [w, h] = if matches!(loc.shape, 10 | 11) {
-        asset.assets.objects.get(&loc.object).map_or([1, 1], |def| {
+        assets.objects.get(&loc.object).map_or([1, 1], |def| {
             if loc.orientation.get() & 1 != 0 {
                 [def.size[1], def.size[0]]
             } else {
@@ -111,23 +118,22 @@ pub fn patch_supported(
     current: &BTreeMap<LocationKey, LocationOverride>,
 ) -> bool {
     let changed = changed_keys(base, current);
-    changed.len() <= PATCH_KEY_BUDGET
-        && changed
-            .iter()
-            .all(|key| match current.get(key).map(|value| value.change) {
-                Some(rustclient_model::LocationChange::Replace(def)) => {
-                    asset.assets.objects.contains_key(&def.object)
-                }
-                _ => true,
-            })
+    changed
+        .iter()
+        .all(|key| match current.get(key).map(|value| value.change) {
+            Some(rustclient_model::LocationChange::Replace(def)) => {
+                asset.assets.objects.contains_key(&def.object)
+            }
+            _ => true,
+        })
 }
 
 /// The patch from the baseline overrides to `inputs`.
-/// `None` when nothing differs or the change is not worth patching (`PATCH_KEY_BUDGET`).
+/// `None` when nothing differs or a required definition has not arrived yet.
 pub(crate) fn plan(asset: &SceneAsset, inputs: &SceneryInputs) -> Option<Patch> {
     let base = inputs.base_locations.as_deref()?;
     let changed = changed_keys(base, &inputs.locations);
-    if changed.is_empty() || changed.len() > PATCH_KEY_BUDGET {
+    if changed.is_empty() {
         return None;
     }
     let before = effective_locations_with(asset, base);
@@ -182,4 +188,39 @@ pub(crate) fn plan(asset: &SceneAsset, inputs: &SceneryInputs) -> Option<Patch> 
         tiles,
         hidden,
     })
+}
+
+/// Whole owning zones to emit, plus one input ring for seam and decoration dependencies.
+pub(crate) fn for_zones(
+    asset: &SceneAsset,
+    inputs: &SceneryInputs,
+    zones: &BTreeSet<crate::SceneZone>,
+) -> (Patch, Vec<StaticLocation>, Vec<crate::LocationOrder>) {
+    let own = asset.location_index.owning(asset, inputs, zones);
+    let around: Vec<_> = own.values().map(|loc| footprint(asset, loc)).collect();
+    let mut selected = asset.location_index.neighbors(asset, inputs, &around);
+    selected.extend(own);
+    let (orders, list): (Vec<_>, Vec<_>) = selected.into_iter().unzip();
+    let emit = list
+        .iter()
+        .enumerate()
+        .filter(|(_, loc)| zones.contains(&crate::SceneZone::of(location_key(loc))))
+        .map(|(i, _)| i)
+        .collect();
+    let prepare = (0..list.len()).collect();
+    let tiles = list
+        .iter()
+        .filter(|loc| matches!(loc.shape, 0..=9 | 22))
+        .map(|loc| loc.tile)
+        .collect();
+    (
+        Patch {
+            prepare,
+            emit,
+            tiles,
+            hidden: Vec::new(),
+        },
+        list,
+        orders,
+    )
 }

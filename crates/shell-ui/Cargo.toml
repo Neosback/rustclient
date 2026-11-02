@@ -6,6 +6,7 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+rustclient-plugin-api = { path = "../plugin-api" }
 rustclient-plugin-host = { path = "../plugin-host" }
 rustclient-platform = { path = "../platform" }
 image.workspace = true

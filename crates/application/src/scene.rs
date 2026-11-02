@@ -130,34 +130,7 @@ pub fn reproject_scene_from_cache(
     placement: InitialPlacement,
     inputs: &rustclient_scene::SceneryInputs,
 ) -> Result<LoadedScene, String> {
-    let wanted: std::collections::BTreeSet<_> = inputs
-        .locations
-        .values()
-        .filter_map(|value| match value.change {
-            rustclient_model::LocationChange::Replace(def)
-                if !asset.sources().objects.contains_key(&def.object) =>
-            {
-                Some(def.object)
-            }
-            _ => None,
-        })
-        .collect();
-    if !wanted.is_empty() {
-        let descriptor = asset.descriptor();
-        let mut sources = asset.sources().clone();
-        profile
-            .extend_world_locations(cache, &mut sources, &wanted)
-            .map_err(|e| e.to_string())?;
-        asset = std::sync::Arc::new(
-            SceneAsset::new(
-                sources,
-                descriptor.origin(),
-                descriptor.width(),
-                descriptor.height(),
-            )
-            .map_err(|e| e.to_string())?,
-        );
-    }
+    asset = extend_location_resources_from_cache(cache, profile, asset, inputs)?;
     reproject_scene(asset, placement, inputs)
 }
 
@@ -195,4 +168,45 @@ pub fn reproject_scene(
         projection_generation: inputs.generation,
         projection_inputs,
     })
+}
+
+/// Extend the current immutable scene's model/definition closure without preparing terrain,
+/// geometry or picking. Resource arrival is not a semantic scene replacement.
+/// # Errors
+/// Propagates missing/corrupt cache resources and invalid source bounds.
+pub fn extend_location_resources_from_cache(
+    cache: &Cache<impl ReadOnlyBlobs>,
+    profile: CacheProfile,
+    mut asset: std::sync::Arc<SceneAsset>,
+    inputs: &rustclient_scene::SceneryInputs,
+) -> Result<std::sync::Arc<SceneAsset>, String> {
+    let wanted: std::collections::BTreeSet<_> = inputs
+        .locations
+        .values()
+        .filter_map(|value| match value.change {
+            rustclient_model::LocationChange::Replace(def)
+                if !asset.sources().objects.contains_key(&def.object) =>
+            {
+                Some(def.object)
+            }
+            _ => None,
+        })
+        .collect();
+    if !wanted.is_empty() {
+        let descriptor = asset.descriptor();
+        let mut sources = asset.sources().clone();
+        profile
+            .extend_world_locations(cache, &mut sources, &wanted)
+            .map_err(|e| e.to_string())?;
+        asset = std::sync::Arc::new(
+            SceneAsset::new(
+                sources,
+                descriptor.origin(),
+                descriptor.width(),
+                descriptor.height(),
+            )
+            .map_err(|e| e.to_string())?,
+        );
+    }
+    Ok(asset)
 }

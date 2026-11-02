@@ -25,6 +25,12 @@ impl GeometryData {
         }
         self.hidden.clear();
         self.model_sources.clone_from(&geometry.model_sources);
+        self.location_orders = geometry
+            .models
+            .iter()
+            .enumerate()
+            .map(|(i, _)| geometry.model_locations.get(i).map(|m| m.order))
+            .collect();
         self.model_groups.clear();
         self.model_groups.resize(geometry.models.len(), None);
         let mut used = 0;
@@ -109,6 +115,8 @@ impl GeometryData {
                             .unwrap_or(index)
                     }),
                     ordinal: first / 3,
+                    location_order: group
+                        .and_then(|g| geometry.model_locations.get(g).map(|m| m.order)),
                     priority,
                     alpha,
                     points: triangle.map(|index| {
@@ -191,7 +199,7 @@ impl GeometryData {
             }
         }
     }
-    fn group_hidden(&self, group: usize) -> bool {
+    pub(super) fn group_hidden(&self, group: usize) -> bool {
         self.model_sources
             .get(group)
             .is_some_and(|source| self.hidden.binary_search(source).is_ok())

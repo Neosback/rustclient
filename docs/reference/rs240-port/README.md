@@ -117,10 +117,10 @@ as the same scale. Packet status vocabulary is literal: `encoded-subset`,
 Existing deep audits remain evidence for their exact checkpoints, not competing
 current gap lists. In particular:
 
-- `docs/plan/PLAYER-UPDATING-240.md`
-- `docs/plan/NPC-ANIMATION-240.md`
-- `docs/plan/GAMEFRAME-240.md`
-- `docs/plan/REVISION-240-delivery.md`
+- `docs/archive/2026-foundation/plan/PLAYER-UPDATING-240.md`
+- `docs/archive/2026-foundation/plan/NPC-ANIMATION-240.md`
+- `docs/archive/2026-foundation/plan/GAMEFRAME-240.md`
+- `docs/archive/2026-foundation/plan/REVISION-240-delivery.md`
 
 This directory links and normalizes those findings. It must not copy large tables
 from them and then drift.

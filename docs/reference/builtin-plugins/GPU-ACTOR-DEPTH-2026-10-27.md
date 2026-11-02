@@ -67,7 +67,7 @@ allocation or queued writes.
 Artifacts: `target/gpu-depth-probe/`, `target/gpu-depth-probe.log`,
 `target/gpu-depth-browser.json`, `target/gpu-depth-browser.png`.
 Reproduction: [GPU tools](../../../tools/gpu/README.md). Full gate results belong in
-[the owning plan](../../plan/BUILTIN-PLUGINS.md).
+[the owning plan](../../archive/2026-foundation/plan/BUILTIN-PLUGINS.md).
 
 The source uploader also rejects a whole model when any vertex is nearer than 50 fine units and
 excludes back faces before its priority thresholds. Rust still relies on GPU clipping/backface

@@ -31,6 +31,10 @@ pub struct FrameTimings {
     pub present_call: Duration,
     pub gpu_available: bool,
     pub gpu_samples_dropped: u64,
+    /// Zone writes enqueued during this frame; excludes actor/UI uploads.
+    pub location_upload_bytes: u64,
+    /// Resident publication carried by this frame, scoped to its renderer/scene lifetime.
+    pub location_publication: u64,
 }
 
 pub(crate) struct CpuClock {
@@ -46,6 +50,13 @@ impl CpuClock {
             start: enabled.then(std::time::Instant::now),
         }
     }
+    #[cfg_attr(
+        target_arch = "wasm32",
+        expect(
+            clippy::unused_self,
+            reason = "shared clock API; CPU timings are unavailable on Wasm"
+        )
+    )]
     pub fn elapsed(&self) -> Duration {
         #[cfg(not(target_arch = "wasm32"))]
         {
@@ -58,8 +69,7 @@ impl CpuClock {
     }
 }
 
-pub(crate) const GPU_FEATURES: wgpu::Features =
-    wgpu::Features::TIMESTAMP_QUERY.union(wgpu::Features::TIMESTAMP_QUERY_INSIDE_ENCODERS);
+pub(crate) const GPU_FEATURES: wgpu::Features = wgpu::Features::TIMESTAMP_QUERY;
 
 struct Slot {
     query: wgpu::QuerySet,
@@ -153,18 +163,28 @@ impl GpuTimer {
             }
         }
     }
-    pub fn begin(&mut self, encoder: &mut wgpu::CommandEncoder, frame: u64) -> Option<usize> {
+    pub fn begin(&mut self, frame: u64) -> Option<usize> {
         let Some(index) = self.slots.iter().position(|slot| slot.pending.is_none()) else {
             self.dropped += 1;
             return None;
         };
         self.slots[index].frame = frame;
-        encoder.write_timestamp(&self.slots[index].query, 0);
         Some(index)
     }
-    pub fn end(&self, encoder: &mut wgpu::CommandEncoder, index: usize) {
+    pub fn writes(
+        &self,
+        index: usize,
+        begin: bool,
+        end: bool,
+    ) -> wgpu::RenderPassTimestampWrites<'_> {
+        wgpu::RenderPassTimestampWrites {
+            query_set: &self.slots[index].query,
+            beginning_of_pass_write_index: begin.then_some(0),
+            end_of_pass_write_index: end.then_some(1),
+        }
+    }
+    pub fn resolve(&self, encoder: &mut wgpu::CommandEncoder, index: usize) {
         let slot = &self.slots[index];
-        encoder.write_timestamp(&slot.query, 1);
         encoder.resolve_query_set(&slot.query, 0..2, &slot.resolved, 0);
         encoder.copy_buffer_to_buffer(&slot.resolved, 0, &slot.readback, 0, 16);
     }

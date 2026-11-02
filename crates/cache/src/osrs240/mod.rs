@@ -130,6 +130,8 @@ impl CacheProfile {
             self,
             &mut assets.size_hint_warnings,
         )?;
+        let map_icons = self.load_map_icons(cache, &objects, &mut assets.size_hint_warnings)?;
+        assets.map_icons.extend(map_icons);
         assets.objects.extend(objects);
         assets.models.extend(models);
         assets.sequences.extend(sequences);

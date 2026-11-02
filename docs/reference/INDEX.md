@@ -81,10 +81,10 @@ change never proves equality. New 240 compatibility claims need 240 anchors.
 
 The earlier `references/RuneLite-melxin` was removed and remains in Git history; cite the tree above instead.
 
-The [gameframe audit](../plan/GAMEFRAME-240.md) maps 240 canvas sizing, reflow and
+The [gameframe audit](../archive/2026-foundation/plan/GAMEFRAME-240.md) maps 240 canvas sizing, reflow and
 operation-callback ordering to the shared widget/runtime owners.
 
-The [2026-10-23 player audit](../plan/PLAYER-UPDATING-240.md) identifies the actual
+The [2026-10-23 player audit](../archive/2026-foundation/plan/PLAYER-UPDATING-240.md) identifies the actual
 240 update manager and separates verified movement from remaining actor gaps.
 
 ## CP1 semantic-model evidence
@@ -124,11 +124,11 @@ Before implementing a nontrivial OSRS-style behavior:
 
 RustClient's first implemented compatibility target is revision `240`. Multi-revision selection is part of the architecture from the start, but only supported revisions appear in the runtime registry. See `docs/specs/SPEC-0005-protocol-revisions.md`.
 
-The current NPC/object animation correction audit is [NPC-ANIMATION-240.md](../plan/NPC-ANIMATION-240.md); source pins distinguish stock framing from unimplemented actor scheduling/effects.
+The current NPC/object animation correction audit is [NPC-ANIMATION-240.md](../archive/2026-foundation/plan/NPC-ANIMATION-240.md); source pins distinguish stock framing from unimplemented actor scheduling/effects.
 
-Scoped implementation results: [TSPS shortlist checkpoint, 2026-10-29](../plan/TSPS-ADOPTION-2026-10-29.md).
+Scoped implementation results: [TSPS shortlist checkpoint, 2026-10-29](../archive/2026-foundation/plan/TSPS-ADOPTION-2026-10-29.md).
 
-IF1 continuations: [CS1 evaluation and source-backed audit fixes](../plan/CS1-240-2026-10-29.md), [authored button dispatch](../plan/IF1-BUTTONS-240-2026-10-29.md).
+IF1 continuations: [CS1 evaluation and source-backed audit fixes](../archive/2026-foundation/plan/CS1-240-2026-10-29.md), [authored button dispatch](../archive/2026-foundation/plan/IF1-BUTTONS-240-2026-10-29.md).
 
 Shared sidebar and lifecycle: [2026-10-29 implementation checkpoint](SIDEBAR-LIFECYCLE-2026-10-29.md),
 [hook/API ownership](builtin-plugins/HOOK-API-OWNERS.tsv) and

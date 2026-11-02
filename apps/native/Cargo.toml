@@ -16,6 +16,7 @@ rustclient-protocol = { path = "../../crates/protocol" }
 rustclient-platform = { path = "../../crates/platform" }
 rustclient-model = { path = "../../crates/model" }
 image.workspace = true
+bytemuck.workspace = true
 wgpu.workspace = true
 rustclient-application = { path = "../../crates/application" }
 rustclient-cache = { path = "../../crates/cache" }

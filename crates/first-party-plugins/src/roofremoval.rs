@@ -193,7 +193,7 @@ impl NativePlugin for RoofRemoval {
     }
 
     fn output(&mut self, call: &mut PluginCall<'_>) -> Result<PluginOutput, PluginFault> {
-        let config = call.config;
+        let config = call.config();
         let mut modes = 0;
         for (key, flag) in [
             ("removePosition", RoofModes::POSITION),

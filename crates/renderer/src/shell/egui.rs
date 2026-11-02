@@ -89,7 +89,9 @@ impl EguiStaging {
                     ));
                 }
             }
-            if layer.textures.len() > 16 {
+            // Shared chrome currently owns 16 icons plus its font atlas. Keep a bounded
+            // backend ceiling above that inventory; the 64 MiB byte limit remains unchanged.
+            if layer.textures.len() > 32 {
                 return Err(RenderError::Ui("too many shell textures"));
             }
             self.jobs.clear();

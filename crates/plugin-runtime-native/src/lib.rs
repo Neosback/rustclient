@@ -16,6 +16,10 @@ use std::path::Path;
 use wasmtime::component::{Component, HasSelf, Linker};
 use wasmtime::{Config, Engine, Store};
 
+/// Executable component contract. The in-tree Rust API is newer; it does not imply guest execution support.
+pub const EXECUTABLE_API: rustclient_plugin_api::PluginApiVersion =
+    rustclient_plugin_api::PluginApiVersion::new(0, 1);
+
 mod bindings {
     wasmtime::component::bindgen!({
         path: "../../wit/rustclient/plugin/world.wit",
@@ -35,7 +39,7 @@ mod bindings_v2 {
     });
 
     #[test]
-    fn wit_0_2_generates_records_that_mirror_the_api_crate() {
+    fn declared_wit_0_2_generates_bindings_for_host_records() {
         use rustclient::plugin::types::{ActorRef, GameEvent, PluginOutput, WorldPoint};
         let point = WorldPoint {
             x: 3222,
@@ -44,6 +48,8 @@ mod bindings_v2 {
         };
         let event = GameEvent::AnimationChanged((ActorRef::Npc(5), Some(422)));
         let output = PluginOutput {
+            panels: Vec::new(),
+            minimap: None,
             overlay: Vec::new(),
             notifications: Vec::new(),
             info_boxes: Vec::new(),
@@ -103,7 +109,7 @@ impl NativeRuntime {
         let manifest = PluginManifest::from_dir(package_dir)
             .map_err(|error| PluginFault::new(FaultKind::Contract, error.to_string()))?;
         manifest
-            .check_api(rustclient_plugin_api::PluginApiVersion::current())
+            .check_api(EXECUTABLE_API)
             .map_err(|error| PluginFault::new(FaultKind::Contract, error.to_string()))?;
         let entry = manifest
             .entry_path(package_dir)
@@ -130,12 +136,17 @@ impl NativeInstance {
     /// Copy the mediated call projection into owned store state.
     fn prepare(&mut self, call: &mut PluginCall<'_>) {
         let state = self.store.data_mut();
-        state.plugin = Some(call.plugin.clone());
-        state.capabilities = call.capabilities.clone();
-        state.config = call.storage.load(call.plugin);
+        state.plugin = Some(call.plugin_id().clone());
+        state.capabilities = call.capabilities().clone();
+        state.config = if call.granted(Capability::StoragePlugin) {
+            call.load_storage().unwrap_or_default()
+        } else {
+            BTreeMap::default()
+        };
         state.config_dirty = false;
-        state.position = call.view.player_position();
-        state.tick = call.view.tick();
+        let view = call.legacy_view();
+        state.position = view.position;
+        state.tick = view.tick;
         state.logs.clear();
         state.denials.clear();
     }
@@ -144,17 +155,13 @@ impl NativeInstance {
     fn finish(&mut self, call: &mut PluginCall<'_>) {
         let state = self.store.data_mut();
         for (level, message) in state.logs.drain(..) {
-            call.logs.log(call.plugin, level, &message);
+            call.log(level, &message);
         }
         for denial in state.denials.drain(..) {
-            call.logs.log(
-                call.plugin,
-                LogLevel::Warn,
-                &format!("host service denied: {denial}"),
-            );
+            call.log(LogLevel::Warn, &format!("host service denied: {denial}"));
         }
         if state.config_dirty {
-            call.storage.save(call.plugin, &state.config);
+            let _ = call.save_storage(&state.config);
             state.config_dirty = false;
         }
     }
@@ -178,6 +185,11 @@ fn trap(kind: FaultKind, error: &wasmtime::Error) -> PluginFault {
 }
 
 impl PluginInstance for NativeInstance {
+    // Executable ABI 0.1 has only the legacy event export; typed events cannot be consumed.
+    fn subscribes_game_events(&self) -> bool {
+        false
+    }
+
     fn init(&mut self, call: &mut PluginCall<'_>) -> Result<(), PluginFault> {
         self.prepare(call);
         self.refuel(FaultKind::Init)?;

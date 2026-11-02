@@ -59,6 +59,9 @@ pub use world_capture::{WorldUpdateTiming, measure_prepared_world_updates};
 pub use world_capture::{
     capture_world, capture_world_at, capture_world_resources, capture_world_with,
 };
+pub use world_geometry::PreparedLocationUpdate;
+#[cfg(not(target_arch = "wasm32"))]
+pub use world_geometry::{ZoneResidencySample, verify_location_residency};
 pub use world_upload::{PreparedWorldMesh, WorldUpdate};
 
 pub use world::WorldGeometryStats;

@@ -208,7 +208,12 @@ impl Plugins {
     ///
     /// Only granted query categories are projected. Minimal client/timing history advances even
     /// without grants so later enablement cannot replay a synthetic session transition.
-    pub(super) fn update(&mut self, state: &GameState, inputs: &Inputs<'_>) {
+    pub(super) fn update(
+        &mut self,
+        state: &GameState,
+        inputs: &Inputs<'_>,
+        actions: &[rustclient_plugin_host::PanelAction],
+    ) {
         self.last_frame = inputs.frame;
         for (key, (id, config, enabled)) in std::mem::take(&mut self.pending) {
             let grants = self
@@ -234,18 +239,23 @@ impl Plugins {
         }
         let wanted = self.set.granted();
         let interest = self.set.game_event_interest();
-        let (snapshot, events) = self.projector.project_interested(
+        let (snapshot, events) = self.projector.project_filtered(
             state,
             &inputs.frame,
             &inputs.sources,
             &wanted,
             interest.as_ref(),
+            self.set.game_event_kinds(),
         );
         if wanted.is_empty() && interest.is_none() {
             self.output = HostOutput::default();
             return;
         }
         let view = SnapshotView(&snapshot);
+        for action in actions {
+            self.set
+                .dispatch_panel_action(action, &view, &mut self.storage, &mut self.logs);
+        }
         self.set
             .dispatch_game(&events, &view, &mut self.storage, &mut self.logs);
         self.output = self
@@ -275,7 +285,6 @@ impl Plugins {
             &mut self.logs,
         );
         self.projector.reset();
-        self.output = HostOutput::default();
         let view = SessionView::from_state(state, self.tick);
         self.set.dispatch(
             &[PluginEvent::Stopped],
@@ -283,6 +292,7 @@ impl Plugins {
             &mut self.storage,
             &mut self.logs,
         );
+        self.output = self.set.retained_output();
     }
 
     pub(super) fn statuses(

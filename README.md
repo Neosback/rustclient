@@ -8,28 +8,29 @@ or have a documented, evidenced departure under [SPEC-0019](docs/specs/SPEC-0019
 
 ## Status
 
-The native client has cache-backed login/world/gameframe, player/NPC movement and
-selected action/chat/widget/CS2 paths. World-map assets/controller, viewport and
-overview rendering, native pan/zoom and compass reset exist. Full gameplay parity
-remains incomplete: selected NPC masks can terminate sessions, instances are
-rejected, ground-item and server scenery updates/actions/dialogue are incomplete,
-actor effects/model widgets/audio and many packet/script consumers remain open.
-Server pings and reflection checks go unanswered, and a reasoned server logout ends
-as a protocol error. Of 606 named CS2 opcodes, 185 still fail in the host. Of 131
-pinned RuneLite plugins, 11 have partial ports.
+The native client has cache-backed title/login, normal-map scenery, player/NPC
+movement, public chat and selected widget/action/script paths. Incremental-update
+foundations now include sparse inventory changes, bounded workers, retained poses
+and UI, absolute frame deadlines and retained asynchronous world-map pixels. Normal
+map-click dispatch is implemented; live administrator teleport acceptance remains open.
 
-The native WIT component/host/overlay sample and a JS-host transpilation proof
-exist; full plugin feature coverage and browser runtime integration remain open.
-The browser app is still a renderer/canvas bootstrap. Native GPU-shell integration
-at bd3aae10 replaces the earlier CPU-DOM mechanism; this documentation review does
-not certify its controls, performance or live behavior.
+Native and browser share the egui sidebar; browser gameplay is not connected.
+The in-tree plugin API has capability mediation, lifecycle identities, subscriber
+filtering and retained local Notes/XP Tracker panel subsets. Native executable guests
+remain ABI 0.1; executable ABI 0.2 is deferred. Registered plugins are partial ports.
 
-Follow [the porting roadmap](docs/plan/PORTING-ROADMAP.md),
+Major gaps include authoritative ground items/combat effects, selected actor masks,
+rich facing, instances/world views, dependency-complete zone updates, shared input/
+menus, script/widget consumers, social/trading/audio and full RuneLite feature parity.
+Sustained 60 FPS, memory targets, exact visuals and native/browser lifecycle acceptance
+are unverified. No quality reductions or software renderer are planned for this pass.
+
+Follow [the roadmap](docs/plan/PORTING-ROADMAP.md),
 [the current audit](docs/reference/rs240-port/CURRENT-AUDIT.md) and
-[the domain matrix](docs/reference/rs240-port/PORT-MATRIX.md). Historical checkpoint
-validation is bounded to its recorded source snapshot. No full-client, visual or
-browser gameplay parity is claimed. [The documentation index](docs/README.md)
-identifies canonical owners and historical evidence.
+[the domain matrix](docs/reference/rs240-port/PORT-MATRIX.md) for completed subsets,
+remaining work and evidence. [Documentation navigation](docs/README.md) separates
+current owners from [historical checkpoints](docs/archive/README.md). Historical
+validation applies only to its recorded source; no full-client parity is claimed.
 
 ## Architectural goals
 
@@ -63,7 +64,7 @@ RustOSRS submodule supplement them. rsprox supplies both client and server packe
 evidence, including an `osrs-240` module; OpenRune and its pinned rsprot sources
 resolve revision-240 differences. OpenRune FileStore supplies additional cache
 opcode/decoder evidence. See [the integration guide](docs/reference/REVISION-240.md)
-and [the current delivery plan](docs/plan/REVISION-240-delivery.md).
+and [the current implementation audit](docs/reference/rs240-port/CURRENT-AUDIT.md).
 
 Start with [`ARCHITECTURE.md`](ARCHITECTURE.md), [`docs/specs/README.md`](docs/specs/README.md), and [`docs/reference/INDEX.md`](docs/reference/INDEX.md).
 
@@ -94,8 +95,10 @@ entity assets and gameframe work are present; full reference parity is unverifie
 F5 recreates GPU resources from retained CPU assets. Instances, complete entity
 movement/animation selection and full visual parity remain unfinished. Cache widgets,
 bounded scripts and banking now have integration evidence; see the
-[playable desktop checkpoint](docs/plan/PLAYABLE-desktop.md) for manual gaps.
-The original [spawn-scene checkpoint](docs/plan/SPAWN-scene.md) describes the earlier
+[historical playable checkpoint](docs/archive/2026-foundation/plan/PLAYABLE-desktop.md)
+for its fixture setup and [the current audit](docs/reference/rs240-port/CURRENT-AUDIT.md)
+for remaining gaps.
+The original [spawn-scene checkpoint](docs/archive/2026-foundation/plan/SPAWN-scene.md) describes the earlier
 static slice; [SPEC-0016](docs/specs/SPEC-0016-reference-scenery-parity.md) and
 [SPEC-0017](docs/specs/SPEC-0017-gameframe-entities.md) define later work.
 

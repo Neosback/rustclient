@@ -147,6 +147,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         return Ok(());
     }
+    if std::env::args().nth(2).as_deref() == Some("--updates-zones") {
+        updates::zones(&scene, state.loaded_scene().ok_or("scene commit missing")?)?;
+        return Ok(());
+    }
     if std::env::args().nth(2).as_deref() == Some("--updates") {
         updates::run(
             &scene,

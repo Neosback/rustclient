@@ -1,6 +1,11 @@
 //! Owned pinned `RuneLite` resources; source notices in assets/runelite/.
 pub const OPEN_RS_PNG: &[u8] = include_bytes!("../assets/runelite/open_rs.png");
 pub(crate) const ICONS: &[(&str, &[u8])] = &[
+    ("notes", include_bytes!("../assets/runelite/notes_icon.png")),
+    (
+        "xp_tracker",
+        include_bytes!("../assets/runelite/xp_tracker_icon.png"),
+    ),
     (
         "config_icon_lg",
         include_bytes!("../assets/runelite/config_icon_lg.png"),

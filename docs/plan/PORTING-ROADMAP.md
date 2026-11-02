@@ -1,295 +1,253 @@
-# OSRS 240 / RuneLite porting roadmap
+# OSRS 240 / RuneLite roadmap
 
-Status: canonical execution order, revised 2026-10-29 at `dbb2b500` after a deob-first review
-of the stock client. Full client parity is open.
-Contract: [SPEC-0019](../specs/SPEC-0019-port-parity.md). Source navigation:
-[CLIENT-LOGIC-MAP](../reference/rs240-port/CLIENT-LOGIC-MAP.md). Domain status:
-[PORT-MATRIX](../reference/rs240-port/PORT-MATRIX.md). Findings:
-[CURRENT-AUDIT](../reference/rs240-port/CURRENT-AUDIT.md).
+Canonical execution order, reviewed **2026-11-01** against `e2ce6f64` plus the
+existing uncommitted performance and plugin/API work. Full parity is incomplete.
+The [current audit](../reference/rs240-port/CURRENT-AUDIT.md) records the inspected
+baseline and acceptance limits; the [domain matrix](../reference/rs240-port/PORT-MATRIX.md)
+owns detailed status. This roadmap replaces the October 29 execution plan and the
+original foundation plan; their evidence remains in the [archive](../archive/README.md).
 
-## Read and update these owners
+## What is already in place
 
-| Question | Canonical document/data |
-| --- | --- |
-| What must match, and what can Rust improve? | SPEC-0019 and [deviations](PARITY-DEVIATIONS.tsv) |
-| Where does the stock client do it? | [CLIENT-LOGIC-MAP](../reference/rs240-port/CLIENT-LOGIC-MAP.md), [SYMBOL-LEDGER.tsv](../reference/rs240-port/SYMBOL-LEDGER.tsv), [DEOB-PACKET-SITES.tsv](../reference/rs240-port/DEOB-PACKET-SITES.tsv) |
-| What exists and what is missing by domain? | [PORT-MATRIX.tsv](../reference/rs240-port/PORT-MATRIX.tsv), generated Markdown |
-| What packets/opcodes/plugins/events are covered? | [PACKET-COVERAGE](../reference/rs240-port/PACKET-COVERAGE.tsv), [CS2-HOST-COVERAGE](../reference/rs240-port/CS2-HOST-COVERAGE.tsv), [RUNELITE-PLUGINS](../reference/builtin-plugins/RUNELITE-PLUGINS.tsv), [RUNELITE-EVENTS](../reference/builtin-plugins/RUNELITE-EVENTS.tsv) |
-| What was actually tested at a past milestone? | Its historical checkpoint; dates/commits delimit the claim |
-| Which documents are active or historical? | [Documentation index](../README.md) |
+These are implemented foundations, not completed domains or live acceptance:
 
-## How every phase runs (spec-driven)
+- Cache-backed native title/login, normal-map scenery, players/NPCs, ordinary
+  movement/turning, public chat, selected widget actions, IF1/CS1 and script execution.
+- Bounded cycle-stage inbound admission, indivisible packet groups, queued outbound
+  flushes, ping replies, typed logout/transfer handling and shared cycle timing.
+- Typed projection invalidations, sparse inventory updates, bounded shared native
+  workers, retained scene buffers/identical poses and retained widget layout/painting.
+  Ordinary location changes now prepare dependent 8×8 owning zones and retain terrain/
+  untouched GPU buffers, with coherent publication and bounded uploads. Live dependency/
+  lifecycle acceptance and proportionate work across every system remain open.
+- Absolute presentation deadlines, retained title geometry/flames, indexed widget
+  listeners, asynchronous retained map pixels, optional nonblocking GPU timestamps
+  and stock normal map-click dispatch (packet 78). Live teleport acceptance is open.
+- One egui sidebar for native/browser harness, owned reference assets, GPU **Always
+  on** settings, capability-mediated in-tree API, actor lifetime handles, subscriber
+  filtering, lifecycle isolation and bounded retained Notes/XP Tracker panel subsets.
+  Executable native guests remain ABI 0.1; API 0.2 is in-tree plus a deferred WIT contract.
 
-1. **Spec gate.** The phase's spec is written or amended and accepted before implementation.
-   It cites the stock anchors below, states invariants, failure behavior and acceptance tests.
-   Specs that only have a planned number below are written at the start of their phase. New
-   phases do not append "continuation" sections to SPEC-0017/0018; those stay as history.
-2. **Deob first.** Behavior comes from the 240 rl-suite deob (`references/rl-suite-240`). The
-   readable 235 tree is for navigation, and every 235 rule is re-read in 240. RuneLite
-   (`references/open-runelite-rev-240`) defines what plugins observe and how GPU features
-   behave. It never defines stock rules. Wire layouts come from selected RSProt, and cache
-   layouts from the actual cache. TSPS (`tsps-main`, a TypeScript revision-241 browser client
-   fork) is a secondary cross-check only: it supplies scenarios, algorithms and failure cases,
-   never rules. It is not a deob port (its wall-decoration offsets are 235-style plus its own
-   corrections). When it disagrees with the 240 deob, 240 wins and the difference is recorded as
-   evidence. Behavior taken from it needs a deob anchor or a deviation row, and BSD-2-Clause
-   attribution if code is derived.
-3. **Owners, not mirrors.** Port semantics into the existing crate owners. Java class shapes,
-   static state and injection are not copied.
-4. **Exit.** The spec's acceptance tests pass. PORT-MATRIX, PACKET-COVERAGE, SYMBOL-LEDGER and
-   the generated inventories are updated in the same change, along with a checkpoint that
-   records exact commands and NOT-RUN gates.
+Do not port these foundations again. Extend their existing owners and finish their
+missing branches. See [implementation evidence](../reference/UPDATE-OPTIMIZATION-2026-10-30.md)
+and [the plugin ledger](../reference/builtin-plugins/FIRST-PARTY-LEDGER.md).
 
-## Phases in dependency order
+## Next delivery queue
 
-Each later phase assumes phase 1. Phases 2-4 and 7 can overlap once phase 1 lands. Phase 0
-research can run alongside any phase.
+| Order | Deliverable | Exit evidence |
+| --- | --- | --- |
+| 1 | Establish a valid current-machine baseline, then remove the largest measured update tails. Start with ordinary location replacement, actor preparation and remaining widget/inventory granularity. | Matched raw traces; no unrelated world reconstruction/upload for chat or inventory; ordinary doors avoid whole-scene reconstruction; failed uploads remain pending. |
+| 2 | Complete authoritative ground items and actor/combat facts, including selected rejected NPC masks, rich facing, effects, lifetimes and reset/index reuse. | Exact 240/selected RSProt/cache source cases → GameState transitions → replay/fingerprints → menus/rendering → reachable plugin facts. No guessed interaction or synthetic hooks. |
+| 3 | Finish shared input/menu/script stage ownership and provider services, then port applicable plugin slices by their dependencies. | Correct stage/order and capabilities; source-case dispositions; actual visual consumers. Menu/script events originate at their owners. |
+| 4 | Close classic GPU, map/session and remaining client systems, then browser gameplay integration and release acceptance. | Per-gate source evidence and native/browser lifecycle results; ADR-0004 visual comparison. Inventory/build success alone cannot close a gate. |
 
-### Phase 0: evidence denominators (ongoing)
+Work may overlap only when its prerequisites exist. Measuring supported gameplay
+must proceed now; the full mixed combat workload remains blocked on missing
+semantic systems. Do not label a reduced workload the full 256-actor gate.
 
-- **Spec:** SPEC-0019 (no new spec).
-- **Supporting research:** [TSPS cache-241 review, 2026-10-29](../reference/TSPS-241-REVIEW-2026-10-29.md)
-  maps cache/script sweeps, projection scheduling and UI invalidation ideas to the
-  phases below. It records existing Rust coverage and rendering exclusions; it
-  does not establish a new target revision, phase order or completed behavior.
-  The [Git-history shortlist](../reference/TSPS-GIT-SHORTLIST-2026-10-29.md) adds
-  ranked feature/tooling slices and exact-240 checks, including item search, IF1,
-  interface ordering and measured projection optimizations.
-- **Work:** finish the inventories: RuneLite hooks/`Client` API disposition, per-payload stock
-  mask branch tables, cache layout variants with actual-cache vectors, and an inventory of
-  source tests and cases. Promote the S anchors in CLIENT-LOGIC-MAP through a
-  [client-240 naming wave](../reference/client-240/README.md).
-- **Anchors:** [hook-anchors-240](../reference/client-240/inputs/hook-anchors-240.tsv),
-  `runelite-api/.../Client.java`, `classDF.method3050`, `classAS.method661`.
-- **Exit:** `tools/parity_inventory.py --check` and `tools/port_audit.py --check` cover the new
-  inventories.
+## Workstreams and dependencies
 
-### Phase 1: client cycle and session runtime (foundation)
+The phase numbers below retain existing spec/research references. They identify
+workstreams, not a requirement to repeat completed foundation checkpoints in order.
 
-- **Spec:** [SPEC-0020](../specs/SPEC-0020-client-cycle.md) (draft; accept first).
-- **Why first:** every later behavior depends on where in the 20 ms cycle it runs. Today
-  packets apply whenever window events deliver them, outbound packets bypass the cycle, and
-  the driver lives in `apps/native`.
-- **Work:** an application-owned cycle driver used by native and browser; the inbound queue
-  with a 100-packet budget and atomic PACKET_GROUP_START; outbound creation and end-of-cycle
-  flush; NO_TIMEOUT after 50 idle write cycles; IDLE at 15000; the 750-cycle watchdog and the
-  reconnect state; typed LOGOUT_WITHREASON/LOGOUT_TRANSFER outcomes; SEND_PING_REPLY; and a
-  reflection-check policy under SPEC-0009.
-- **240 anchors:** `client.vmethod231` (doCycle), `client.method2172` (doCycleLoggedIn),
-  `client.method2198` (packet loop), `client.method2346` (dispatcher; PACKET_GROUP_START at
-  6987, SERVER_TICK_END at 6027, SEND_PING at 6993), `client.method2301` (logged-out cycle),
-  `classCN.method2546` (network error), `classJB.method6386` (updateGameState), `GameEngine`.
-- **235:** `Client.doCycle`, `doCycleLoggedIn`, `method1357`, `method1434`, `doCycleLoggedOut`.
-- **RuneLite:** `GameStateChanged`, `GameTick`, `ClientTick`, and `Callbacks.tick/tickEnd/serverTick`.
-- **Matrix rows:** `client-cycle`, `session-control`, `input-queue`, `login` (reconnect).
+### Phase 0: evidence and performance baseline
+
+**Owners:** application diagnostics, native performance, scene/renderer probes and
+canonical ledgers. **Contract:** SPEC-0008/0019 and ADR-0004.
+
+Freeze source/worktree, executable, cache/profile, effective settings, physical
+viewport, DPI/refresh and concurrent workload. Stock 240 determines gameplay;
+pinned RuneLite determines plugin effects/chrome. Selected RSProt and actual cache
+resolve wire/assets. TSPS snapshot and reviewed upstream through `842fd5d` are
+separate supporting inputs, not revision authority. Reference trees stay unchanged.
+
+Measure decode → commit → scripts → extraction → preparation → upload → presentation,
+separating CPU, GPU and surface waits. Keep allocations, copied/uploaded bytes,
+queue depth/stale work, residency and commit-to-visible latency. Overflow or missing
+timing invalidates the affected measurement. Application present calls are not scanout.
+
+Run three matched five-minute warm measurements per scored title, supported
+256-actor and open-map workload, plus cold-resource tests and a 30-minute lifecycle/
+memory soak. The full mixed workload is 64 players + 192 NPCs with varied poses,
+effects, movement, chat, ground/inventory changes and repeated location replacement;
+characterize 1,024 actors and uncapped headroom separately. Builds/profilers stay
+inactive during scoring; the local OpenRune server is part of the declared workload.
+
+At the effective 60 Hz target: presentation rate ≥99% of measured target, active CPU
+p99 ≤10 ms, GPU p99 ≤12 ms, presentation gaps p99 ≤20 ms, gaps >25 ms ≤0.1%, warm
+change visibility p99 ≤50 ms. Compare identical content for ≥20% lower peak transient
+CPU memory, no steady process-memory regression and bounded post-lifecycle retention;
+report CPU/GPU accounting separately on unified memory. These gates are **open**.
+Keep draw distance **184**, resolution and effects; no quality cuts or global “fastest” claim.
+
+### Phase 1: client cycle and session runtime
+
+**Owners:** application cycle/session orchestration and platform adapters.
+**Contract:** [SPEC-0020](../specs/SPEC-0020-client-cycle.md), accepted for implementation.
+
+Keep the implemented S4 packet queue, 100 ordinary-packet budget, indivisible groups,
+ten-cycle catch-up bound, end-cycle outbound flush and acknowledged-write keepalive.
+Finish stage orchestration, input/script queue order, clock-driven idle/watchdog,
+reason panels, actual transfer/reconnect and browser composition. Required engine
+services survive login/logout and renderer reconstruction; activation is not a session.
 
 ### Phase 2: valid inbound actor traffic
 
-- **Spec:** new SPEC-0022 "Actor synchronization and effects" (planned; supersedes the actor
-  continuations in SPEC-0017).
-- **Work:** selected NPC masks BAS `0x200000`, head `0x80000` and body `0x2000000`, decoded in
-  order and retained; the rest of the stock NPC and player mask branches; full appearance
-  retention (transformed NPC, skull/overheads, slot overrides). Never widen a mask whitelist
-  without decoding the payload.
-- **240 anchors:** `classAS.method661`, `classDF.method3050/3065`, `classDC.method2984/2987`,
-  `NPC.method3510`, `Player.method2661`, `PlayerComposition`.
-- **235:** `PlayerUpdateManager.updatePlayers`, `AttackOption.updateNpcs`, `Player.read`.
-- **Write-ups:** clusters [04](../reference/client-240/clusters/04-player-info.md),
-  [05](../reference/client-240/clusters/05-npc-info.md),
-  [12](../reference/client-240/clusters/12-player-appearance.md),
-  [PLAYER-EXTENDED-STATE](../reference/rs240-port/PLAYER-EXTENDED-STATE.md),
-  [PLAYER-APPEARANCE](../reference/rs240-port/PLAYER-APPEARANCE.md).
-- **Matrix rows:** `npc-masks`, `player-masks`, `appearance`, `npc-defs`.
+**Owners:** selected protocol adapter → existing GameState player/NPC collections.
+**Spec reservation:** SPEC-0022, actor synchronization/effects, not yet authored.
+
+Port selected rejected BAS/head/body NPC blocks in exact writer order. Retain
+consumed-only appearance, freeze, facing and customization facts with their source
+policy. Keep full-stock masks separate from what the selected server writer emits.
+Test partial packets, malformed input, reset/removal, index reuse, appearance changes
+and replay/fingerprint coverage. A decoder accepting bytes does not close this phase.
 
 ### Phase 3: map lifecycle and world views
 
-- **Spec:** new SPEC-0023 "Map lifecycle, instances and world views" (planned; extends SPEC-0015/0016 scene contracts).
-- **Work:** REBUILD_REGION_V2 instances with chunk rotation and collision; normal travel and
-  loading state 25; teardown and asset cancellation; world views and world entities
-  (REBUILD_WORLDENTITY_V4, WORLDENTITY_INFO_V7, SET_ACTIVE_WORLD_V2) with 240 root id 0.
-- **240 anchors:** `classFK.method4840` (loadRegion), `rl4.method10135` (PreMapLoad/loadScene),
-  `client.method2174/2294` (world view load and swap), `classCL.method1620/1622`,
-  `client.method2273`, `WorldView`, `WorldEntity`, `CollisionData`.
-- **235:** `class383.loadRegion`.
-- **RuneLite:** `WorldView`, `InstanceTemplates`, `PreMapLoad`, `WorldViewLoaded/Unloaded`, and
-  `DrawCallbacks.loadScene/swapScene`.
-- **Write-ups:** clusters [06](../reference/client-240/clusters/06-world-region.md),
-  [18](../reference/client-240/clusters/18-world-views.md).
-- **Matrix rows:** `instances`, `worldviews`, `normal-maps`.
+**Owners:** protocol, model/GameState scene lifecycle, application loading and scene.
+**Contract:** [SPEC-0023](../specs/SPEC-0023-map-loading-state.md), accepted retained-scene slice.
 
-### Phase 4: zone updates, dynamic objects, ground items, world effects
+Preserve previous-scene display until coherent replacement. Complete instances,
+rotated chunks/collision, extended bounds/residency, world-view/entity identities and
+transforms, travel cancellation and teardown. Rebuild packets currently rejected or
+unintegrated remain blockers. Coordinate types and reset ordering precede view consumers.
 
-- **Spec:** new SPEC-0024 "Zone updates and world objects" (planned).
-- **Work:** every UPDATE_ZONE_* enclosed payload in order; LOC_ADD_CHANGE/LOC_DEL/LOC_MERGE with
-  temporary-spawn lifetime; OBJ_* ground items (count, visibility, customization, enabled ops);
-  MAP_ANIM and PROJANIM graphics objects and projectiles; collision and minimap invalidation.
-  All of this becomes GameState-owned, extending the existing scenery owner.
-- **240 anchors:** dispatcher sites in DEOB-PACKET-SITES (UPDATE_ZONE_*, LOC_*, OBJ_*, MAP_ANIM*,
-  PROJANIM_SPECIFIC_V4), `Scene.method4424/4449/4463/4465/4470/4473/4495/4504`,
-  `WorldView.method3791`, `TileItem.method3423`, `client.method1736`, `Projectile.method1228`,
-  `GraphicsObject.method1105`.
-- **235:** `class150.addPendingSpawnToScene`, `class157.updateItemPile`,
-  `Widget.addTileItemToGroundItems`, `Projectile.setDestination`, `Scene.newGameObject`.
-- **RuneLite:** `TileItem`, `ItemSpawned/Despawned/QuantityChanged`, `GameObjectSpawned…`,
-  `ProjectileMoved`, `GraphicsObjectCreated`, and the `grounditems`/`objectindicators` plugins.
-- **Write-ups:** [WORLD-EFFECTS](../reference/rs240-port/WORLD-EFFECTS.md), cluster
-  [16](../reference/client-240/clusters/16-zone-updates.md).
-- **Matrix rows:** `ground-items`, `dynamic-scenery`, `world-effects`, `objects`, `minimap` (dots).
+### Phase 4: incremental zones and world objects
 
-### Phase 5: input, picking, menus and every outbound action
+**Owners:** GameState projection journal → application/scene preparation → renderer.
+**Contract:** [SPEC-0024](../specs/SPEC-0024-zone-updates.md), accepted incremental-location slice; ground items and complete zone semantics remain separate obligations.
 
-- **Spec:** [SPEC-0021](../specs/SPEC-0021-input-menus.md) (draft; accept first).
-- **Work:** move gameplay input semantics out of `apps/native` into `crates/input` and
-  `application`. Build the stock menu model: construction order, sort, the 2000 deprioritization
-  and left-click rule. Add item/spell selection modes, every menu-action packet, RESUME_P_* dialogs,
-  IF_BUTTOND drag, player options, hidden ops and hint arrows, F-keys and shortcut arbitration.
-  Emit the menu plugin events.
-- **240 anchors:** `Menu.method12757/12755`, `classEY.method4149`, `client.method1651/2307/2344`,
-  `classQP.method9746`, `Scene.method4364`, `classTZ`, `classTI`, `classTC`,
-  [menu-actions-240](../reference/client-240/inputs/menu-actions-240.tsv).
-- **235:** `Menu.insertMenuItem`, `Client.menu`, `Client.openMenu`, `class101.menuAction`,
-  `class62.addSceneMenuOptions`, `class40.addNpcToMenu`, `AsyncRestClient.addPlayerToMenu`,
-  `HealthBarDefinition.resumePauseWidget`.
-- **RuneLite:** `MenuAction` (75 values), `MenuEntry`, and the `menuentryswapper`,
-  `mousehighlight` and `keyremapping` plugins.
-- **Supporting research (TSPS, scenario inventory only):** `MenuEngine.ts` (left-click rule,
-  sort), `check.ts` world-click guards, `widgetClickGuard.ts` and `choose-option.ts` (menu consumes
-  the press, one-frame guard after close), and `widgetReleaseInput.ts` (drag order differs from 240).
-  Its text-based opcode inference and hard-coded chrome boxes are not stock rules.
-- **Arbitration slice (2026-10-29):** SPEC-0021 "Input arbitration" is accepted and implemented first
-  (modal menu, shell-chrome gating, lifetime). The unified menu model remains the next pass.
-- **Matrix rows:** `shared-input`, `menus`, `menu-paint`, `outbound-actions`, `widget-input`,
-  `server-interaction-state`.
+Server location add/change/delete and animation are present. The accepted slice now
+implements 8×8 owning-zone preparation and persistent residency for ordinary replacements.
+The bounded cache/resource diagnostic retains 273 zones while replacing two, matches the
+full Rust projection, and unchanged publication uploads zero bytes. This is implementation
+evidence, not live source visual or whole-client performance acceptance. Continue to verify
+Invalidate old/new footprints, adjacent normals, decorations, bridge/storage planes,
+roofs, collision, picking and minimap dependencies; preserve stable ordering and
+cross-zone identity without seams or duplicate draws. Separate initial bake from live replacement.
+
+Publish related resources coherently, reject stale generations, retry failed uploads
+and preserve every semantic commit. Background staging now enforces the initial
+2 MiB / 1 ms CPU enqueue admission ceiling per frame; critical actor/overlay work shares the
+frame budget. Complete temporary merges and authoritative ground stacks/counts/
+visibility/customization, menus and validated actions. Retire GPU resources only
+after their submissions complete. Do not add another model or semantic cache.
+
+### Phase 5: shared input, picking, menus and actions
+
+**Owners:** input/application/game-ui, with thin native/browser adapters.
+**Contract:** [SPEC-0021](../specs/SPEC-0021-input-menus.md); input arbitration accepted,
+full menu/input contract still draft.
+
+Move reusable winit-bound picking/menu/key/hover logic out of NativeApp. Finish
+player/ground-item actions, targeting/sub-ops, drag/drop packets, dialogue resumes,
+attack/hidden-op policy, tall/submenus and source picking order. Add widget
+incarnations for stale callbacks. Preserve menu/sort/open/select stage hooks; do not
+infer these from frame-end snapshots. Test focus, keyboard/IME, clipboard and clipping.
 
 ### Phase 6: actor effects and facing
 
-- **Spec:** SPEC-0022 (from phase 2).
-- **Work:** decode SPOTANIM, HITSPLAT and HEALTHBAR definitions. Add GameState slots for spot
-  animations, hitsplats and health bars with stock lifetimes and expiry (SPEC-0020 S7). Port
-  timed tint/transparency/model overrides, freeze, rich target facing and interaction slowdown,
-  and the remaining action/idle lifecycle. Then the scene/game-ui projections and plugin events.
-- **240 anchors:** `Actor.method3277/3278/3279/3283/3286/3290`, `ActorSpotAnim`, `Hitsplat`,
-  `HealthBarConfig.method9419`, `classKN.method6539`, `Actor.method3284/3289/3291`,
-  `client.method2175`.
-- **235:** `Actor.addHitSplat`, `Actor.addHealthBar`, `Actor.spotAnimations`,
-  `class85.updateActorSequence`.
-- **Write-ups:** [ACTOR-RUNTIME](../reference/rs240-port/ACTOR-RUNTIME.md),
-  [SEQUENCE-SCHEDULER](../reference/rs240-port/SEQUENCE-SCHEDULER.md),
-  [FACING-TURNING](../reference/rs240-port/FACING-TURNING.md), clusters 07-11.
-- **RuneLite:** `HitsplatApplied`, `GraphicChanged`, `InteractingChanged`, `ActorDeath`, and the
-  `opponentinfo`, `statusbars` and `idlenotifier` plugins.
-- **Matrix rows:** `actor-effects`, `actor-overrides`, `facing`, `turns`, `action-legacy`,
-  `action-cached`, `cache-families` (actor groups).
+**Owners:** existing GameState actor/effect owners, scene poses and UI overlays.
+**Dependency:** phase 2 facts; planned SPEC-0022.
+
+Complete source-rich target facing/apply/reset policy, interaction slowdown, animation
+readiness/freeze/callbacks, delayed spot animations, hitsplats/health bars, tint and
+temporary overrides. Add world projectiles/graphics with lifetimes and retargeting.
+Speech/hitsplats change overlays without rebuilding bodies; transforms, poses and
+appearances invalidate separately. Extend pose reuse; evaluate GPU acceleration
+only after source correctness and CPU/GPU/latency/memory measurements show a benefit.
 
 ### Phase 7: interfaces and client-script host
 
-Scoped follow-up: [2026-10-29 implementation evidence](TSPS-ADOPTION-2026-10-29.md) covers item search, IF1 decoding, deferred operations, audits, measured CPU reuse and the local XP subset; it does not complete this phase.
+**Owners:** GameState interfaces, client-script, application host and game-ui.
+**Contract:** [SPEC-0025](../specs/SPEC-0025-interface-script-host.md), scoped acceptance.
 
-- **Spec:** [SPEC-0025](../specs/SPEC-0025-interface-script-host.md), accepted for the
-  user-authorized item-search, IF1 and audit slices; remaining phase acceptance is open.
-- **Continuations:** [CS1 conditions/presentation and zero-scale cache fix](CS1-240-2026-10-29.md), [IF1 click/toggle/select dispatch](IF1-BUTTONS-240-2026-10-29.md); content/option effects, target/close lifecycle and complete legacy UI remain open.
-- **Work:** server IF_* mutations; model, NPC-head and player-head widgets; the 185
-  named-unhandled and 318 unnamed CS2 opcodes (CS2-HOST-COVERAGE); stock script event queues
-  and their order (SPEC-0020 S11); DB long branches; close/reset/unload order; varc
-  definitions and persistence.
-- **240 anchors:** `classPQ.method9202/9203/9206`, `classGP.method5585/5625`,
-  `client.method2371/2381`, the `classBB` dispatcher ([OPCODES](../reference/client-240/OPCODES.md)),
-  `classDS.method3606/3607`, IF_* dispatcher sites.
-- **235:** `PcmPlayer.updateRootInterface`, `class40.drawInterface`, `class150.drawWidgets`,
-  `class141.runScriptEvent`, `LoginType.runScript`, `class376.invalidateWidget`.
-- **RuneLite:** `Widget`, `ScriptID`, `ScriptPreFired/PostFired`, `VarClientInt/StrChanged`, and
-  the `devtools`, `bank` and `banktags` plugins.
-- **Matrix rows:** `widgets`, `widget-mutations`, `scripts`, `db`, `fonts`, `var-domains` (varc).
+Keep IF1/CS1, indexed item search, deferred operations, listener indexing and retained
+paint foundations. Complete widget mutation packets, inventory bindings/model widgets,
+content/option effects, missing CS2 operations and exact listener lifetime/order.
+Retain slot/icon/text/draw data with explicit asset/script/variable/input dependencies;
+unchanged/hidden UI does no repeated layout/tessellation/upload work. Separate dragging
+and overlays from base content. Asset arrival is presentation invalidation, not a game event.
+Use the CS2 ledger for the live denominator; opcode dispatch is not semantic parity.
 
-### Phase 8: variables, chat, social and Grand Exchange
+### Phase 8: variables, chat, social and trading
 
-- **Spec:** new SPEC-0026 "Variables, chat, social and trading state" (planned).
-- **Work:** VarGroups and clan vars; private, friends-chat and clan chat; friend and ignore
-  lists; clan settings and channels; stock market and trading post; chat filter settings
-  round-trip.
-- **240 anchors:** `client.method2241`, `classFM.method4865`, `client.addChatMessage`,
-  `MessageNode`, `ChatLineBuffer`, `FriendContainer`, `NameableContainer`, `classBW.method1339/1340`,
-  `FriendsChatManager`, `ClanChannel.method6235/6236`, `ClanSettings`, `client.method2076/2365`,
-  `GrandExchangeOffer`, `client.method2288`.
-- **235:** `class222.addChatMessage`, `class356.addGameMessage`, `FriendSystem`.
-- **RuneLite:** `friendlist`, `friendnotes`, `chatchannel`, `chatfilter`, `grandexchange`, and the
-  `ChatMessageType` enum.
-- **Matrix rows:** `public-chat`, `private-clan-chat`, `var-domains`, `stockmarket`.
+**Owners:** GameState variable/chat/social/trading state, protocol/cache and script queries.
+**Spec reservation:** SPEC-0026, not yet authored.
+
+Complete var groups/clan/varcs and persistence, friend/ignore/clan/private channel
+membership/dedupe/ranks, player options/attack policy, stock market/trading state,
+reset/replay and consumers. Public chat is an existing subset; relationship-dependent
+plugins cannot close until these facts are authoritative.
 
 ### Phase 9: audio
 
-- **Spec:** new SPEC-0027 "Audio" (planned), plus a SPEC-0003 audio capability amendment.
-- **Work:** decode sound effect, music, jingle, sample and patch indices; synth sound effects;
-  area and ambient sounds; MIDI music and jingles; volume preferences; the queued-sound stage in
-  the cycle; native and browser audio adapters.
-- **240 anchors:** `classSM.method10549`, `AmbientSoundEffect`, `WorldView.method3795`,
-  `MidiRequest`, `ClientPreferences.method2836/2837/2839`, `client.method2172` S7.
-- **235:** `class27.queueSoundEffect`, `KitDefinition.playSong`, and the sound loop in
-  `Client.doCycleLoggedIn`.
-- **RuneLite:** `SoundEffectPlayed`, `AreaSoundEffectPlayed`, `VolumeChanged`, and the `music` plugin.
-- **Matrix rows:** `audio`, `cache-families` (audio indices).
+**Owners:** audio semantic scheduling/cache and native/browser playback adapters.
+**Spec reservation:** SPEC-0027, not yet authored; amend SPEC-0003 as needed.
 
-### Phase 10: camera, world map, preferences and world list
+Complete definitions/resources, packet/script/animation triggers, priorities, delays,
+attenuation, ambient/area effects, music and bounded queue drain/expiry/playback.
+Test actual native/browser output and teardown. An existing bounded queue is not audible parity.
 
-- **Spec:** amend SPEC-0007 (camera) and write new SPEC-0028 "Preferences, world map and world
-  list" (planned).
-- **Work:** CAM_* scripted camera packets and the camera stage; world map completion (hover,
-  menus, flash, scale, state ownership); the stock preferences file (ClientPreferences) and its
-  effects; world list and world hopping.
-- **240 anchors:** `classHA.method6018`, `classMH.method7615`, CAM_* dispatcher sites,
-  `RenderOverview`, `WorldMapRenderer`, `WorldMapData`, `WorldMapIcon`, `ClientPreferences`,
-  `World.method2517`, `client.method1946`.
-- **235:** `Player.savePreferences`, `WorldMap`.
-- **RuneLite:** `worldmap`, `worldhopper`, `defaultworld` and `camera` plugins.
-- **Matrix rows:** `camera`, `world-map`, `persistence`, `world-list`, `minimap`.
+### Phase 10: camera, world map, preferences and worlds
 
-### Phase 11: classic rendering parity
+**Owners:** existing camera/map application owners, GameState/preferences and adapters.
+**Spec reservation:** SPEC-0028, not yet authored; amend SPEC-0007 as needed.
 
-- **Spec:** SPEC-0007/0016/0017, with ADR-0004 for the manual acceptance pass.
-- **Work:** close the per-setting GPU and core obligations, depth/priority/alpha, materials,
-  fog, render modes and widget model rendering. Then run the one manual reference comparison.
-- **240 anchors:** `Scene.method4508/4511/4474`, `Model`, `ModelData`, `Texture`,
-  `IntProjection`/`FloatProjection`, and the `DrawCallbacks` sites.
-- **RuneLite:** the `gpu` plugin and its shaders ([GPU-AUDIT](../reference/builtin-plugins/GPU-AUDIT.md)).
-- **Pulled forward (2026-10-29, user request):** wall-decoration placement is re-read against 240
-  `classDI.method3340/3336` and `Scene.method4495/4502`; see
-  [WALL-DECOR-240-2026-10-29](WALL-DECOR-240-2026-10-29.md). TSPS wall-decoration code is a negative
-  reference only (235-style offsets plus non-stock nudges).
-- **Matrix rows:** `gpu`, `depth`, `materials`, `roofs`, `canvas`.
+Keep retained map composition, inverse section mapping and guarded normal click dispatch.
+Finish map alignment/wrapping, element hover/menus, smooth targets/zoom, flash lifetime
+and staff shortcut; audit state/replay ownership. Verify administrator teleporting live
+and ordinary-account denial; the server controls rights and authoritative movement.
+Complete scripted/cutscene camera, remaining preference effects, remembered window
+bounds and profile-supplied world selection/hopping. Transfer decoding already exists;
+world switching remains unintegrated.
 
-### Phase 12: RuneLite feature layer
+### Phase 11: classic GPU completion
 
-- **Spec:** SPEC-0004/0011 and ADR-0006, plus the plugin API version bump the new events need.
-- **Work:** emit plugin events from the stock owners ported above. Decide the dispositions in
-  RUNELITE-PLUGINS (external services, fork-only). Port applicable plugins in order of their
-  blocking rows, and finish the SDK and the browser plugin runtime.
-- **Matrix rows:** `plugin-api`, `first-party`, `required-plugins`.
+**Owners:** scene and renderer; [GPU-AUDIT](../reference/builtin-plugins/GPU-AUDIT.md)
+and [gpu-audit.json](../reference/builtin-plugins/gpu-audit.json) own source/owner gates.
+
+Finish in dependency order: extended loading with matching fog/culling/picking/
+residency; source-correct float vertices/removeVertexSnapping; measured worker/upload
+scheduling and meaningful numThreads; tint/alpha metadata/world-view/instance transforms
+and ordering/frustum cases; FPS/vsync/reconstruction/native/browser lifecycle; exact
+source comparisons and test dispositions. Nine classic gates remain open. Keep
+xBR undefined-variable and other documented shader corrections explicit. 117HD is a
+separate future scope. GPU remains an always-on service; software rendering is deferred.
+
+### Phase 12: RuneLite hooks, providers and feature ports
+
+**Owners:** existing API/bridge/host/first-party/runtime/shared-shell crates.
+**Contract:** SPEC-0004/0011 and ADR-0006.
+
+Keep implemented private call authority, grants, activation/publication identities,
+subscriber routing and immutable retained panels. Complete authoritative hook-stage
+emission, dynamic widget identity, stable profile storage, monotonic elapsed clock,
+definition/image services, overlays/tooltips/infoboxes and menu APIs before dependent
+ports. Track declared → emitted → reachable → independently verified separately.
+Port local features by dependency/disposition; finish source-test case inventories and
+actual visual consumers. Notes/XP subsets are foundations, not full reference ports.
+External ABI 0.1 compatibility stays required; executable ABI 0.2 and browser guest
+execution are later work, not prerequisites to pretend complete in this pass.
 
 ### Phase 13: browser, packaging and final acceptance
 
-- **Spec:** SPEC-0003, plus the browser sections of each phase spec.
-- **Work:** the browser cache, transport, storage and audio adapters on the shared cycle driver
-  and input layer; packaging; the full acceptance run on both targets.
-- **Matrix rows:** `browser`, `sidebar`, and all remaining rows.
+**Owners:** shared application semantics and web/platform adapters.
+**Contract:** SPEC-0003 plus each subsystem's platform acceptance.
 
-## Where Rust may do better (selected, limited)
+Connect cache/transport/session, cycle/input, scene/game UI, audio and guest runtime.
+The shared sidebar harness and Wasm/WebGPU probes do not establish browser gameplay.
+Complete device loss, DPI/resize/fullscreen/monitor changes, login/reconnect/toggles/
+cancellation and bounded memory tests, then packaging and all applicable acceptance.
 
-These are the only standing permissions to differ in mechanism. Each must keep the same
-observable result, and anything that changes timing, order, bytes or visuals needs a
-[deviation](PARITY-DEVIATIONS.tsv) entry with evidence:
+## Completion and maintenance
 
-- Decoding and framing off the cycle thread, as long as application happens at SPEC-0020 S4.
-- Bounded queues and explicit errors in place of unbounded Java collections and silent drops.
-- Typed state, replay and fingerprints in place of static mutable fields.
-- Parallel asset decoding and caching that never changes which asset is used.
-- A GPU renderer in place of the software rasterizer (non-goal per SPEC-0019), held to the
-  classic visual acceptance.
-- Ray picking only after it is shown to produce the stock candidate set and order (SPEC-0021).
+For each slice: freeze source inputs, accept/amend its owning contract, implement in
+existing owners, add source-backed semantic/reset/replay/lifecycle cases, update the
+matrix and relevant packet/method/plugin ledgers, and record exact commands and open
+gates. Planned spec numbers above are reservations, not accepted documents.
 
-## Completion and document maintenance
-
-An implemented subset can be retained as such without declaring its domain done. Missing
-branches, unresolved source behavior, absent consumers, unaccounted source cases and NOT-RUN
-platform/visual gates all remain open. Historical validation is never carried forward to a new
-worktree. Validate the documentation tools after edits; their success proves schema, path and
-provenance consistency only.
+Source-declared members, file counts, schemas, shader compilation and green Rust
+contracts never establish full parity. Keep historical evidence scoped to its snapshot.
+A behavior-changing improvement needs an evidenced [deviation](PARITY-DEVIATIONS.tsv).
+Update these canonical owners instead of creating another competing current plan.

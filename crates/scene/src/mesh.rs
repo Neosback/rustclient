@@ -59,6 +59,10 @@ pub struct SceneGeometry {
     /// Static scenery only: the index of the effective location each entry of `models` was
     /// emitted for. Empty for every other geometry.
     pub model_sources: Vec<u32>,
+    /// Stable ownership/order for static location models; absent for actors and terrain.
+    pub model_locations: Vec<crate::LocationModel>,
+    /// Retained structural updates; not part of the changing animation vertex stream.
+    pub location_zones: std::sync::Arc<[crate::LocationZone]>,
     /// Dynamic scenery only: sorted effective-location indices whose static models the baseline
     /// must not draw or pick, because this geometry re-emits them (scenery patch publication).
     pub hidden_static: Vec<u32>,
@@ -119,6 +123,8 @@ impl SceneGeometry {
         self.actor_labels.clear();
         self.models.clear();
         self.model_sources.clear();
+        self.model_locations.clear();
+        self.location_zones = std::sync::Arc::default();
         self.hidden_static.clear();
         self.released = 0;
     }
@@ -183,7 +189,7 @@ impl SceneGeometry {
         bias: i8,
         tag: u16,
     ) -> Result<bool> {
-        if self.vertices.len() + 3 > 3_000_000 {
+        if self.vertices.len() + 3 > crate::SCENE_VERTEX_LIMIT {
             return Err(SceneError("scene vertex allocation limit exceeded".into()));
         }
         let first = u32::try_from(self.vertices.len())
@@ -320,7 +326,7 @@ pub(crate) fn render_tag(
     u16::from(render_level(asset, source, x, y)) | (slot << 2)
 }
 
-fn empty_mesh(
+pub(crate) fn empty_mesh(
     asset: &SceneAsset,
     focus: [f32; 3],
     roofs: std::sync::Arc<crate::RoofVolumes>,
@@ -357,4 +363,13 @@ impl WorldMesh {
     pub fn vertex_count(&self) -> usize {
         self.geometry.vertices.len() + self.dynamic.vertices.len()
     }
+}
+
+pub(crate) fn build_animated(
+    asset: &SceneAsset,
+    inputs: &crate::SceneryInputs,
+) -> Result<SceneGeometry> {
+    let mut mesh = empty_mesh(asset, [0.; 3], asset.roofs_with(&inputs.roof_areas));
+    super::locations::build(asset, &mut mesh, inputs, super::locations::Scope::Dynamic)?;
+    Ok(mesh.geometry)
 }

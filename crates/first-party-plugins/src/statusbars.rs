@@ -256,7 +256,7 @@ pub(crate) struct StatusBars {
 impl StatusBars {
     /// `checkStatusBars`.
     fn check(&mut self, call: &mut PluginCall<'_>) {
-        let delay = call.config.integer("hideAfterCombatDelay");
+        let delay = call.config().integer("hideAfterCombatDelay");
         self.checked_delay = Some(delay);
         let Some(local) = call.local_player().ok().flatten() else {
             return;
@@ -373,6 +373,10 @@ fn current_viewport(widgets: &[WidgetSnapshot]) -> Option<(Viewport, &WidgetSnap
 }
 
 impl NativePlugin for StatusBars {
+    fn game_event_interests(&self) -> rustclient_plugin_api::EventInterest {
+        rustclient_plugin_api::EventInterest::one(rustclient_plugin_api::GameEventKind::GameTick)
+    }
+
     fn shutdown(&mut self, _call: &mut PluginCall<'_>) -> Result<(), PluginFault> {
         *self = Self::default();
         Ok(())
@@ -399,7 +403,7 @@ impl NativePlugin for StatusBars {
 
     fn output(&mut self, call: &mut PluginCall<'_>) -> Result<PluginOutput, PluginFault> {
         // `startUp` and a changed delay evaluate straight away instead of waiting for a tick.
-        if self.checked_delay != Some(call.config.integer("hideAfterCombatDelay")) {
+        if self.checked_delay != Some(call.config().integer("hideAfterCombatDelay")) {
             self.check(call);
         }
         if !self.displayed {
@@ -411,7 +415,7 @@ impl NativePlugin for StatusBars {
         let Some((viewport, anchor)) = current_viewport(widgets) else {
             return Ok(PluginOutput::default());
         };
-        let config = call.config;
+        let config = call.config();
         let (left_offset, right_offset) = viewport.offsets();
         let (location_x, location_y) = (anchor.bounds.x, anchor.bounds.y);
         let (width, height, left, right) = if viewport == Viewport::ResizedBottom {

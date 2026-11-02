@@ -181,3 +181,45 @@ fn location_overrides_preserve_duplicate_membership_and_source_order() {
             .is_none()
     );
 }
+
+#[test]
+fn chat_and_inventory_commits_do_not_invalidate_scenery_resources() {
+    let asset = scene(with_model());
+    let mut state = GameState::new();
+    state
+        .apply_operation(SemanticOperation::BeginSession {
+            revision: rustclient_model::REVISION_240,
+        })
+        .unwrap();
+    let before = SceneryInputs::from(state.scenery());
+    let mut projection = crate::LocationProjection::new(&asset, before.clone());
+    let initial = projection.extract(&asset, &before).unwrap();
+    let cursor = state.projection_cursor();
+    for operation in [
+        SemanticOperation::GameMessage(rustclient_model::GameMessage {
+            channel: rustclient_model::ids::ChatChannelId::new(2),
+            sender: "fixture".into(),
+            text: "hello".into(),
+        }),
+        SemanticOperation::Inventory(rustclient_model::InventoryUpdate::Replace {
+            id: rustclient_model::InventoryId::new(1),
+            slots: vec![Some(rustclient_model::ItemStack {
+                item: rustclient_model::ItemDefinitionId::new(1),
+                amount: 2,
+            })],
+        }),
+    ] {
+        let commit = state.apply_operation(operation).unwrap();
+        assert!(!commit.delta().scenery_changed());
+    }
+    assert!(!state.projection_changes(cursor).missed());
+    let current = projection
+        .extract(&asset, &SceneryInputs::from(state.scenery()))
+        .unwrap();
+    assert!(std::sync::Arc::ptr_eq(
+        &initial.location_zones,
+        &current.location_zones
+    ));
+    assert_eq!(projection.zone_builds(), 0);
+    assert_eq!(initial.vertices, current.vertices);
+}

@@ -16,7 +16,7 @@ packet codecs are behavioral evidence; OpenRune's selected rsprot 240 sources
 and cache resolve revision differences. OpenRune FileStore supplies cache decoder
 research; RustOSRS supplies additional scene/GPU evidence. See
 [the source map](docs/reference/INDEX.md) and
-[delivery status](docs/plan/REVISION-240-delivery.md). The
+[implementation status](docs/reference/rs240-port/CURRENT-AUDIT.md). The
 [parity contract](docs/specs/SPEC-0019-port-parity.md) requires observable behavior
 to match; Rust ownership/API/performance improvements preserve those contracts
 unless an explicit evidenced deviation is accepted.

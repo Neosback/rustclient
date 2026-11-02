@@ -25,6 +25,7 @@ OUT = ROOT / "crates/plugin-host/src/first-party-schemas.json"
 
 # (directory, rust id suffix, config interface file or None)
 PLUGIN_LIST = [
+    ("notes", "notes"),
     ("xptracker", "xptracker"),
     ("roofremoval", "roofremoval"),
     ("animsmoothing", "animsmoothing"),
@@ -313,7 +314,7 @@ def main():
         if suffix == "xptracker":
             # Only controls with an implemented local-overlay effect are exposed.
             supported = {"hideMaxed", "pauseSkillAfter", "resetSkillRateAfter", "prioritizeRecentXpSkills"}
-            meta["description"] = "Local session XP, rates and actions overlay. Panel, account persistence and network sync are pending."
+            meta["description"] = "Local session XP, rates and actions overlay and panel. Full panel controls, account persistence and network sync are pending."
         sections, items = parse_config(plugin_dir, rel, supported)
         settings = [{
             "key": "enabled",

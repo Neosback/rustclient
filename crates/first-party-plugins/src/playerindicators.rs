@@ -35,7 +35,7 @@ impl NativePlugin for PlayerIndicators {
         false
     }
     fn output(&mut self, call: &mut PluginCall<'_>) -> Result<PluginOutput, PluginFault> {
-        let config = call.config;
+        let config = call.config();
         let in_pvp = [INSIDE_WILDERNESS, PVP_AREA_CLIENT]
             .into_iter()
             .any(|id| call.varbit(id).ok().flatten() == Some(1));

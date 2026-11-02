@@ -1,0 +1,8 @@
+{
+  "purpose": "Executable ABI 0.1 mediation regression fixture; not a source parity claim",
+  "input": "Pre-existing packaged plugins/hello-overlay component; compiler/source correlation not independently re-established",
+  "component_sha256": "b359b8aa973914f2f736121a356fa20871cc9a6178ebb4ceb20b1dcbae26c9e2",
+  "sample_source_sha256_at_capture": "2813f86da44bf8c860fb294f76528f1ae4c8bd71505d3f827559668371eef769",
+  "rebuild_owner": "scripts/build-sample-plugin.sh",
+  "license": "RustClient sample; same workspace license"
+}

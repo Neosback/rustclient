@@ -1,5 +1,11 @@
 # Prepared scene updates and retained pose uploads — 2026-10-30
 
+Current status: [audit](rs240-port/CURRENT-AUDIT.md) and [roadmap](../plan/PORTING-ROADMAP.md).
+This document is an ordered collection of dated evidence, newest first. Older
+remaining-work statements describe their checkpoint; later implementations can
+supersede them without extending the original measurements or validation.
+
+
 ## Stable presentation, listener discovery and world-map clicks (2026-10-31)
 
 This checkpoint follows the retained UI work below; it does not replace its frozen
@@ -16,7 +22,11 @@ wakes. Missed periods skip without catch-up bursts; cap/policy changes, occlusio
 and suspension reset scheduling. GPU and FPS-plugin policy remain the same.
 Optional diagnostics distinguish CPU stage wall time, acquire/submit/present-call
 spans and asynchronous GPU intervals. The GPU reader has three slots and never
-waits for completion on the rendering path. Unsupported GPU timing remains unknown.
+waits for completion on the rendering path. Its portable path timestamps the first
+executed world/UI render pass through the final display pass using base
+TIMESTAMP_QUERY support, including Metal stage-boundary counters; it requires no
+extra pass or optional encoder-timestamp feature. Preceding queue uploads and actual
+scanout are outside this interval. Unsupported GPU timing remains unknown.
 Raw timing uses an 8,192-record nonblocking writer queue; overflow, incomplete output
 or lost GPU samples invalidates the corresponding scored gate. `window_probe.py`
 now enforces the declared 60 Hz gates instead of accepting 60% of the requested cap.
@@ -330,3 +340,100 @@ and strict Clippy; 223 unique relevant automated tests and two manual GPU resour
 domain/port/GPU audit checks; and a fresh native executable build. Four default-ignored tests
 remain unrun. Renderer/native tests were repeated after their final changes without double-counting
 them. The running old client instances were not restarted; restart the client to use the new build.
+
+
+## Incremental-location continuation — 2026-11-01
+
+This section supersedes the preceding full-reconstruction/upload limitations for
+ordinary normal-map locations only. Historical measurements above retain their
+original source and workload. [SPEC-0024](../specs/SPEC-0024-zone-updates.md) owns the
+new resource/publication contract; the roadmap's full acceptance gates remain open.
+
+The existing GameState journal now has an independent native scenery cursor, with
+explicit domain refresh after history expires. Spatial queries find old/new footprints,
+adjacent-plane normal dependencies and decoration inputs. A model belongs to its
+anchor's 8×8 zone once, including crossing models. Structural zone resources persist;
+terrain stays resident and animated/morphing poses use their separate existing stream.
+Stable source identities preserve opaque and alpha ordering across resources.
+
+CPU preparation runs on the existing bounded pool, without nested per-build thread
+creation. Missing object/model definitions extend the existing immutable catalog on
+a worker instead of reconstructing terrain, picking or the whole mesh. The former
+48-override fallback is removed. The existing three-million-vertex budget also bounds
+retained structural/pose output; no cache budget or quality setting was lowered.
+
+GPU groups stage in 256 KiB chunks under 2 MiB / 1 ms admission per frame after actor
+updates. They publish only after all matching resources are ready and the application
+acknowledges the group. CPU minimap/picking, hidden baseline IDs and GPU geometry switch
+for the same next frame. Superseded work does not publish; failures remain retryable.
+Replaced allocations retire after queue completion. Browser handles remain on their
+owning thread behind completion flags; no rendering path waits for the GPU.
+
+### Bounded mechanism evidence
+
+Frozen sources/binaries, initial dirty patch, complete raw logs and captures are under
+`target/incremental-locations-20261101/` (ignored local artifacts). The canonical evidence
+JSON records their hashes and exact commands; a fresh checkout does not contain them.
+The cache diagnostic changes an actual openable object at `(3186,3268,0)` nine times
+through GameState, alternating remove/inherit. It compares visible emitted triangles
+with the full Rust projection outside CI and checks actual GPU buffer identities,
+deferred acknowledgement and unchanged-publication upload suppression.
+
+The indexed diagnostic changed two of 275 resident zones, retaining 273 buffer groups.
+Structural upload was 412,980–416,856 bytes; unchanged publication uploaded zero bytes.
+All nine visible triangle comparisons passed. Worker extraction was 8.18–11.20 ms;
+preparation was usually 1.67–1.92 ms, with 4.09 and 16.95 ms outliers retained during
+concurrent checks. GPU enqueue was 0.104–0.191 ms. These nine observations are not a
+representative latency percentile, live door measurement or whole-client FPS result.
+Twenty-two bounded before/after PNG captures are byte-identical, including fresh GPU
+reconstruction and alternate camera/size/settings. They compare Rust versions, not
+stock runtime appearance, and remain separate from ADR-0004 reference acceptance.
+
+### Remaining work
+
+Structural changes still compose a full minimap once on the worker; dirty rectangles
+remain open. Cold resource extension still clones the immutable catalog's owned data.
+Initial scene baking, device reconstruction, actor preparation, per-slot/widget updates,
+queue/retirement cleanup and changing-camera draw counts need representative profiling.
+Do not infer process-memory savings from requested GPU buffer byte counts or sum those
+counts with RSS on unified memory. No 20% transient-memory result is established.
+
+Live source door/roof/bridge/collision/minimap comparison, rapid replacements and
+missing assets, 256/1,024-actor gameplay, open-map interaction, device loss and the
+30-minute lifecycle/memory soak remain open. The complete combat/ground-item workload
+also depends on unfinished authoritative systems. numThreads remains disabled; no
+classic GPU gate, source-case inventory or external ABI status is promoted by this slice.
+
+
+### Measured initial-preparation memory correction
+
+The first resource/query probe exposed an extra expanded-scene copy during initial
+zone partitioning. Its maximum RSS was 478,773,248 bytes versus 431,079,424 at the frozen
+baseline. Initial preparation now streams one owning zone and releases expanded input
+once packed buffers own the upload bytes. A focused ownership contract verifies those
+bytes remain unchanged; all 22 bounded captures still match the frozen Rust baseline.
+
+After correction, the same probe reported maximum RSS 315,310,080 bytes, while macOS
+peak footprint was 342,901,576 versus 340,034,400 baseline bytes. Requested GPU geometry
+buffers were 25,206,180 versus 25,205,172 bytes; resident vertex bytes were identical.
+These are different accounting measures: one initial-process pair is not the update
+transient-memory workload, a steady gameplay result or proof of the 20% target. The
+higher footprint observation is retained. Driver/textures/targets and shared-memory
+accounting prevent summing logical GPU bytes with process RSS.
+
+The preliminary title run was stopped for this correction, marked INCOMPLETE and kept
+with all partial samples. It is excluded from scored acceptance. Final matched title
+runs use the corrected binary, source/executable hashes and the same declared settings.
+
+The final no-Cargo zone diagnostic again retained 273 GPU groups and changed two.
+Extraction was 7.85–9.19 ms, preparation 1.67–1.83 ms, and enqueue 0.103–12.690 ms.
+All nine full-Rust triangle checks and unchanged-upload checks passed. These samples
+remain a bounded CPU/resource diagnostic, not live presentation or source acceptance.
+
+
+The final resource sample includes an enclosing enqueue/automatic-publication outlier
+of **12.690375 ms**; the other eight were 0.103–0.161 ms. It is retained. Byte admission
+passed, but the 1 ms check admits work between calls and cannot preempt an allocation,
+write, callback/publication call or OS interruption. No profiler was attached and the
+cause is unassigned. This does **not** establish a hard 1 ms wall-time guarantee. Tail
+attribution, publication/cleanup timing and larger/cold/live workloads remain required.

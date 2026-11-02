@@ -13,6 +13,9 @@ use std::{
 #[derive(Clone, Copy)]
 pub(super) struct FrameRecord {
     pub epoch: u64,
+    pub scene_generation: u64,
+    pub location_publication: u64,
+    pub location_upload_bytes: u64,
     pub frame: u64,
     pub at_ns: u64,
     pub presented: bool,
@@ -62,7 +65,8 @@ impl Trace {
                         Record::Stage { at_ns, stage, ns } => serde_json::json!({"type":"stage", "at_ns":at_ns,"stage":stage,"ns":ns}),
                         Record::Gpu { epoch, frame, ns } => serde_json::json!({"type":"gpu", "epoch":epoch, "frame":frame, "ns":ns}),
                         Record::Frame(f) => serde_json::json!({
-                            "type":"frame", "epoch":f.epoch, "frame":f.frame, "at_ns":f.at_ns,
+                            "type":"frame", "epoch":f.epoch, "frame":f.frame,
+                            "scene_generation":f.scene_generation,"location_publication":f.location_publication,"location_upload_bytes":f.location_upload_bytes, "at_ns":f.at_ns,
                             "presented":f.presented, "frame_wall_ns":f.frame_wall_ns,
                             "cpu_work_upper_ns":f.cpu_work_upper_ns, "acquire_ns":f.acquire_ns,
                             "preparation_ns":f.preparation_ns, "encoding_submit_ns":f.encoding_submit_ns,

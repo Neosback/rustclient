@@ -2,8 +2,10 @@
 
 Scope: `docs/reference/rs240-port/` only.
 
-Read `README.md`, `PORT-MATRIX.md`, the applicable existing `docs/plan/*240*.md`
-audit, and the root/docs `AGENTS.md` files before extending this corpus.
+Read `README.md`, `PORT-MATRIX.md`, the applicable source/domain audit and the
+root/docs `AGENTS.md` files before extending this corpus. Older implementation
+checkpoints live under `docs/archive/2026-foundation/plan/`; use the archive index
+and path manifest when following historical citations.
 Also read `docs/specs/SPEC-0019-port-parity.md` and
 `docs/plan/PORTING-ROADMAP.md`. The current matrix/audit supersede implementation
 gap lists in historical checkpoints; those checkpoints retain exact source and

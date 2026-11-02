@@ -6,11 +6,12 @@
 
 use crate::{HostView, LogSink, PluginCall, PluginSet, PluginStorage};
 use rustclient_plugin_api::{
-    CameraCommand, Capability, CapabilitySet, ChatLine, EntityVisibility, GameEvent, GameSnapshot,
-    InfoBox, ItemStack, LayeredOverlay, LogLevel, MenuEdit, MinimapRequest, Notification,
-    OverlayCommand, PlayerPosition, PlayerSnapshot, PluginId, PluginOutput, RoofArea, SceneFlags,
-    SkillLevel, SpriteOverride, Stretch, WidgetSnapshot, limits,
+    CameraCommand, Capability, CapabilitySet, ChatLine, EntityVisibility, GameSnapshot, InfoBox,
+    ItemStack, LayeredOverlay, LogLevel, MenuEdit, MinimapRequest, Notification, OverlayCommand,
+    PlayerPosition, PlayerSnapshot, PluginId, PluginOutput, RoofArea, SceneFlags, SkillLevel,
+    SpriteOverride, Stretch, WidgetSnapshot, limits,
 };
+use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 
 /// A query or output item was refused because the capability is not granted.
@@ -49,6 +50,22 @@ impl HostView for SnapshotView<'_> {
 }
 
 impl<'a> PluginCall<'a> {
+    /// The executing identity, fixed for the duration of this call.
+    #[must_use]
+    pub const fn plugin_id(&self) -> &'a PluginId {
+        self.plugin
+    }
+    /// Granted capabilities; reading this set does not permit replacing it.
+    #[must_use]
+    pub const fn capabilities(&self) -> &'a CapabilitySet {
+        self.capabilities
+    }
+    /// Accepted configuration for the executing plugin.
+    #[must_use]
+    pub const fn config(&self) -> &'a crate::PluginConfig {
+        self.config
+    }
+
     /// Fail unless `capability` is granted, reporting the first denial of each capability.
     fn require(&mut self, capability: Capability) -> Result<(), CapabilityDenied> {
         if self.capabilities.contains(capability) {
@@ -62,6 +79,40 @@ impl<'a> PluginCall<'a> {
             );
         }
         Err(CapabilityDenied(capability))
+    }
+
+    /// Owned ABI 0.1 facts, filtered without exposing the aggregate gameplay snapshot.
+    #[must_use]
+    pub fn legacy_view(&self) -> crate::StaticView {
+        crate::StaticView {
+            position: self
+                .granted(Capability::GameReadPlayers)
+                .then(|| self.view.player_position())
+                .flatten(),
+            tick: self.view.tick(),
+        }
+    }
+    /// Load this plugin's namespace, never another plugin's data.
+    /// # Errors
+    /// Requires `storage.plugin`.
+    pub fn load_storage(&mut self) -> Result<BTreeMap<String, String>, CapabilityDenied> {
+        self.require(Capability::StoragePlugin)?;
+        Ok(self.storage.load(self.plugin))
+    }
+    /// Replace this plugin's namespace through the host storage adapter.
+    /// # Errors
+    /// Requires `storage.plugin`.
+    pub fn save_storage(
+        &mut self,
+        values: &BTreeMap<String, String>,
+    ) -> Result<(), CapabilityDenied> {
+        self.require(Capability::StoragePlugin)?;
+        self.storage.save(self.plugin, values);
+        Ok(())
+    }
+    /// Write a diagnostic attributed to the executing plugin.
+    pub fn log(&mut self, level: rustclient_plugin_api::LogLevel, message: &str) {
+        self.logs.log(self.plugin, level, message);
     }
 
     fn snapshot(&self) -> Option<&'a GameSnapshot> {
@@ -102,6 +153,42 @@ impl<'a> PluginCall<'a> {
     pub fn npcs(&mut self) -> Result<&'a [rustclient_plugin_api::NpcSnapshot], CapabilityDenied> {
         self.require(Capability::GameReadNpcs)?;
         Ok(self.snapshot().map_or(&[][..], |game| &game.npcs))
+    }
+
+    /// Capture the current occupant of an actor slot without requiring broader client access.
+    /// # Errors
+    /// Requires the read grant of the actor kind.
+    pub fn actor_handle(
+        &mut self,
+        actor: rustclient_plugin_api::ActorRef,
+    ) -> Result<Option<rustclient_plugin_api::ActorHandle>, CapabilityDenied> {
+        self.require_actor(actor)?;
+        Ok(self
+            .snapshot()
+            .and_then(|snapshot| snapshot.actor_handle(actor)))
+    }
+
+    fn require_actor(
+        &mut self,
+        actor: rustclient_plugin_api::ActorRef,
+    ) -> Result<(), CapabilityDenied> {
+        self.require(match actor {
+            rustclient_plugin_api::ActorRef::Player(_) => Capability::GameReadPlayers,
+            rustclient_plugin_api::ActorRef::Npc(_) => Capability::GameReadNpcs,
+        })
+    }
+
+    /// Resolve a lifetime reference only while the observed actor still exists.
+    /// # Errors
+    /// Requires the read grant of the actor kind.
+    pub fn actor(
+        &mut self,
+        handle: rustclient_plugin_api::ActorHandle,
+    ) -> Result<Option<&'a rustclient_plugin_api::ActorState>, CapabilityDenied> {
+        self.require_actor(handle.actor())?;
+        Ok(self
+            .snapshot()
+            .and_then(|snapshot| snapshot.actor_by_handle(handle)))
     }
 
     /// Skill levels in client index order. Requires `game.read.skills`.
@@ -168,6 +255,8 @@ impl<'a> PluginCall<'a> {
 /// Validated, merged output of every enabled plugin for one update.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct HostOutput {
+    /// Validated retained panels with their publishing activation.
+    pub panels: Vec<crate::HostedPanel>,
     /// Overlay primitives ordered by layer, then plugin load order.
     pub overlay: Vec<LayeredOverlay>,
     /// Notifications in plugin load order.
@@ -198,7 +287,8 @@ pub struct HostOutput {
 }
 
 impl HostOutput {
-    fn merge(&mut self, plugin: &PluginId, output: PluginOutput) {
+    fn merge(&mut self, panels: &[crate::HostedPanel], plugin: &PluginId, output: PluginOutput) {
+        self.panels.extend_from_slice(panels);
         self.overlay.extend(output.overlay);
         self.notifications.extend(
             output
@@ -441,6 +531,16 @@ pub(crate) fn validate(
     }
     output.camera = bound_camera(output.camera);
 
+    if refuse(Capability::UiPanel, !output.panels.is_empty()) {
+        output.panels.clear();
+    }
+    let mut panel_ids = BTreeSet::new();
+    output
+        .panels
+        .truncate(rustclient_plugin_api::panel_limits::PANELS);
+    output
+        .panels
+        .retain(|panel| crate::panels::valid_panel(panel) && panel_ids.insert(panel.id.clone()));
     validate_scene(&mut refuse, &mut output);
     output
 }
@@ -471,7 +571,7 @@ impl PluginSet {
                             | CameraCommand::RelaxPitch(_)
                     )
                 });
-                merged.merge(&plugin.manifest.id, value);
+                merged.merge(&plugin.lifecycle.panels, &plugin.manifest.id, value);
             }
         }
         merged.finish();
@@ -514,46 +614,6 @@ impl PluginSet {
             .collect()
     }
 
-    /// Deliver typed events to every enabled plugin, filtered to each plugin's grants.
-    pub fn dispatch_game(
-        &mut self,
-        events: &[GameEvent],
-        view: &dyn HostView,
-        storage: &mut dyn PluginStorage,
-        logs: &mut dyn LogSink,
-    ) {
-        for index in 0..self.plugins.len() {
-            let fault_limit = self.fault_limit;
-            let plugin = &mut self.plugins[index];
-            if !plugin.enabled() {
-                continue;
-            }
-            let granted = &plugin.manifest.capabilities;
-            let visible: Vec<GameEvent> = events
-                .iter()
-                .filter(|event| {
-                    plugin.wants_game_events()
-                        && event
-                            .required_capability()
-                            .is_none_or(|capability| granted.contains(capability))
-                })
-                .cloned()
-                .collect();
-            if visible.is_empty() {
-                continue;
-            }
-            let _ = Self::invoke(
-                plugin,
-                crate::lifecycle::Phase::Game,
-                view,
-                storage,
-                logs,
-                fault_limit,
-                |instance, call| instance.on_game_events(call, &visible),
-            );
-        }
-    }
-
     /// Collect, validate and merge every enabled plugin's declarative output.
     pub fn collect_output(
         &mut self,
@@ -578,6 +638,7 @@ impl PluginSet {
             };
             if produced.is_empty() {
                 plugin.lifecycle.output = None;
+                plugin.lifecycle.panels.clear();
                 continue;
             }
             let capabilities = plugin.manifest.capabilities.clone();
@@ -594,8 +655,19 @@ impl PluginSet {
                     );
                 }
             }
+            if let Err(error) = crate::panels::publish_panels(plugin, &checked.panels) {
+                let _ = crate::lifecycle::stop(plugin, view, storage, logs);
+                plugin.lifecycle.status = crate::LifecycleStatus::Faulted;
+                plugin.lifecycle.error = Some(error.clone());
+                logs.log(&plugin.manifest.id, LogLevel::Error, &error.to_string());
+                continue;
+            }
             plugin.lifecycle.output = Some((plugin.activation(), checked.clone()));
-            merged.merge(&plugin.manifest.id.clone(), checked);
+            merged.merge(
+                &plugin.lifecycle.panels,
+                &plugin.manifest.id.clone(),
+                checked,
+            );
         }
         merged.finish();
         merged

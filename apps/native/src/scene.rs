@@ -46,10 +46,17 @@ pub struct SceneView {
     pub entity_catalog: rustclient_scene::entity_mesh::EntityCatalog,
     pub entity_loader: Option<crate::scene_workers::EntityWorker>,
     pub jobs: Option<Arc<rustclient_platform_native::NativeJobPool>>,
-    structural_scope: rustclient_platform::JobCancellation,
+    pub(super) structural_scope: rustclient_platform::JobCancellation,
     pub entity_request: Option<EntityRequest>,
     pub entity_loader_generation: u64,
     entity_scope: rustclient_platform::JobCancellation,
+    pub locations: crate::scene_resources::LocationRequests,
+    pub pending_dynamic: Option<(
+        rustclient_scene::SceneryInputs,
+        rustclient_scene::SceneGeometry,
+        Arc<rustclient_scene::minimap::MinimapImage>,
+        rustclient_model::Plane,
+    )>,
     pub dynamic_cycle: rustclient_model::ClientCycle,
     /// Areas plugins force roofed; scenes are projected with these and rebuilt when they change.
     pub roof_areas: std::sync::Arc<[rustclient_scene::RoofArea]>,
@@ -92,6 +99,8 @@ impl SceneView {
             entity_request: None,
             entity_loader_generation: 0,
             entity_scope: rustclient_platform::JobCancellation::default(),
+            locations: crate::scene_resources::LocationRequests::default(),
+            pending_dynamic: None,
             dynamic_cycle: rustclient_model::ClientCycle::ZERO,
             roof_areas: std::sync::Arc::default(),
             interpolation: rustclient_scene::AnimationInterpolation::default(),
@@ -143,6 +152,8 @@ impl SceneView {
         self.replacing = None;
         self.loaded = None;
         self.animator = None;
+        self.locations = crate::scene_resources::LocationRequests::default();
+        self.pending_dynamic = None;
         self.dynamic_cycle = rustclient_model::ClientCycle::ZERO;
         self.camera = None;
         self.input = CameraInput::default();
@@ -287,6 +298,7 @@ impl SceneView {
         &mut self,
         asset: Arc<rustclient_scene::SceneAsset>,
         resources_changed: bool,
+        baseline: rustclient_scene::SceneryInputs,
         proxy: EventLoopProxy<LoadEvent>,
     ) {
         if (resources_changed || self.entity_loader.is_none())
@@ -295,9 +307,11 @@ impl SceneView {
         {
             eprintln!("entity asset worker: {error}");
         }
-        if (resources_changed || self.animator.is_none())
-            && let Err(error) = self.start_animator(asset, self.generation, proxy)
-        {
+        self.locations.assets = None;
+        self.locations.retry_assets = None;
+        self.locations.projection_retry = None;
+        self.pending_dynamic = None;
+        if let Err(error) = self.start_animator(asset, baseline, self.generation, proxy) {
             eprintln!("animation worker: {error}");
         }
     }
@@ -315,6 +329,7 @@ impl SceneView {
     pub fn start_animator(
         &mut self,
         asset: Arc<rustclient_scene::SceneAsset>,
+        baseline: rustclient_scene::SceneryInputs,
         session: u64,
         proxy: EventLoopProxy<LoadEvent>,
     ) -> Result<(), String> {
@@ -332,6 +347,7 @@ impl SceneView {
                 proxy,
                 asset,
             },
+            baseline,
         ));
         self.animator_generation = worker;
         self.animator_in_flight = None;

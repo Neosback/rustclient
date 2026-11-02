@@ -25,6 +25,45 @@ Acceptance includes startup while logged in, rollback, cleanup failure, per-phas
 fault isolation, reactivation, stale activation output, current snapshot isolation,
 capability filtering and required-service/session independence.
 
+## Applicable RuneLite plugin completion (approved 2026-10-31)
+
+The target is every applicable feature in the pinned bundled-plugin catalog, with
+local portions of mixed local/service plugins tracked separately. Remote accounts,
+cloud synchronization, public price/hiscore providers, telemetry and Discord/Twitch
+remain deferred. External ABI 0.1 remains compatible; executable 0.2 remains deferred.
+Stock 240 owns gameplay and timing, RuneLite owns plugin effects/visuals, and TSPS
+supplies independently verified implementation ideas. Existing canonical inventories
+and per-plugin/source-case ledgers own completion evidence.
+
+The Rust call context keeps aggregate views, storage adapters and log sinks private.
+Public accessors filter reads by grants, bind persistence and diagnostics to the
+executing plugin, and provide an owned filtered 0.1 view to its runtime adapter.
+
+Gameplay subscriptions declare event kinds, source subscriber class and finite
+source priority. Dispatch is event-major in committed order: subscribers for each
+event run in descending priority, then source class name, then registration order.
+Declarations are immutable for a registration. Scheduling intersects declarations,
+running status and grants. Dispatch borrows events; it must not clone a payload
+vector for each plugin. Query-only plugins require no event dispatch. This extends
+the host-side contract only and adds no ABI 0.1 guest imports.
+
+Client lifecycle queries use authoritative session/displayed-scene state. Renderer
+reconstruction and replacement preparation do not manufacture semantic loading/login
+transitions while a committed scene remains displayed (SPEC-0023).
+
+Actor observations expose the existing semantic owner's incarnation, distinct from
+a reusable slot. Public lifetime handles bind session, actor kind/slot and incarnation;
+unknown identity is explicit. Replacing an actor in one slot yields despawn then
+spawn, even if its appearance is identical. Projection metadata cannot create
+missing combat facts. Later source-stage hooks supplement snapshot differences;
+declared menu/script hooks remain unavailable until their owners emit them.
+
+Acceptance includes event-major ordering, source priority/ties, kind/grant filtering,
+route invalidation on unload/re-register, per-callback fault isolation, actor index
+reuse and bootstrap/history isolation. Plugin panels, resources, named services and
+stage-bound commands require their documented capability and owning consumer before
+being reported as working. No raw mutable client, interpreter or GPU access is added.
+
 ## Required built-ins (approved 2026-10-25)
 
 The host registers `dev.rustclient.gpu` and `dev.rustclient.runelite` as required
@@ -198,3 +237,28 @@ stable account identity, elapsed real time and those services reach the plugin
 boundary. Display names are not silently promoted to persistent account IDs.
 The complete RuneLite tracker, external sync and native/browser visual acceptance
 remain separate obligations in the canonical plugin ledger.
+
+### Retained in-tree panels
+
+In-tree API 0.2 panels are immutable, revisioned documents of bounded flat blocks,
+rendered by the shared egui shell. They carry supported owned navigation icons,
+source priority, text/metric rows, buttons and focus-committed text editors. `ui.panel`
+is required. The host validates ids, duplicate interactive ids and total text bytes;
+it rejects invalid documents as a whole. A returned action identifies the plugin,
+activation, panel revision and element, and is accepted only against that plugin's
+last validated running output and the element's declared value kind/size. It is
+never an arbitrary game command. Shutdown immediately revokes panels and actions.
+The shell retains drafts and focus independently of configuration controls; ordinary
+content publication must not reset IME, undo or search. In-tree presentation does not
+make external component ABI 0.2 executable. Notes initially uses existing plugin-local
+storage: RuneLite profile switching and exact Swing undo grouping remain open parity
+items until their shared owners exist. Text budgets are explicit host limits, not
+claims that the source imposes the same limits.
+
+Projection history shares the immutable snapshot root; ordinary history retention must not clone its actor/chat/container payloads. Newly queried domains establish a baseline without reporting their existing contents as fresh shared gameplay events. Private bootstrap reads do not advance that history.
+
+Each mounted panel also has a host-owned publication lease. Removal, callback failure or changed content revokes it, even if a plugin reuses its document id and revision within one activation. Unchanged documents retain the lease. UI actions must match this lease as well as the activation, panel revision and element.
+
+Session stop expires cached game/world effects while activation-owned local panels remain mounted. Native title/login cycles continue plugin query/output and panel-action processing without inventing gameplay ticks. Actual disable, unload or fault still revokes panels, publication leases and owned editor/undo state.
+
+Call identity, grant and accepted-configuration references are private as well as the aggregate view/storage/log sinks. Plugins receive read-only accessors and cannot rebind authority references on a mutable call context; compile-fail API contracts enforce that boundary.

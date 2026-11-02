@@ -48,7 +48,7 @@ impl NativePlugin for TileIndicators {
         if call.varbit(CUTSCENE_STATUS).ok().flatten() == Some(1) {
             return Ok(output);
         }
-        let config = call.config;
+        let config = call.config();
         let client = call.client().ok();
         let current = call
             .local_player()

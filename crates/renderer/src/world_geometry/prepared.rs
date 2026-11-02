@@ -6,7 +6,7 @@ use super::{
 
 pub(crate) struct PreparedGeometry {
     packed: Option<compact::PackedGeometry>,
-    data: GeometryData,
+    pub(super) data: GeometryData,
 }
 
 impl PreparedGeometry {
@@ -29,7 +29,13 @@ impl PreparedGeometry {
         data.vertex_remap = Vec::new();
         Ok(Self { packed, data })
     }
-    fn buffers<'a>(&'a self, geometry: &'a SceneGeometry) -> [&'a [u8]; 3] {
+    /// Packed streams own every GPU input; release their redundant expanded CPU source.
+    pub(super) fn release_packed_source(&self, geometry: &mut SceneGeometry) {
+        if self.packed.is_some() {
+            *geometry = SceneGeometry::default();
+        }
+    }
+    pub(super) fn buffers<'a>(&'a self, geometry: &'a SceneGeometry) -> [&'a [u8]; 3] {
         let (vertices, opaque, transparent) = self.packed.as_ref().map_or(
             (
                 &geometry.vertices[..],
@@ -128,6 +134,15 @@ mod tests {
         assert_eq!(packed.data.vertex_remap.capacity(), 0);
         let plain = PreparedGeometry::new(&geometry, false).unwrap();
         assert!(!plain.data.immutable);
+        let bytes = packed.buffers(&geometry).map(<[u8]>::to_vec);
+        let mut released = geometry;
+        packed.release_packed_source(&mut released);
+        assert_eq!(released.vertices.capacity(), 0);
+        assert_eq!(
+            packed.buffers(&released),
+            bytes.each_ref().map(Vec::as_slice)
+        );
+        assert!(packed.validate_for(&released, u64::MAX).is_ok());
     }
     #[test]
     #[ignore = "manual GPU buffer-lifetime diagnostic, no pixel assertions"]

@@ -52,10 +52,12 @@ impl EguiPanel {
                             self.assets
                                 .image("config_icon", Vec2::splat(SidebarMetrics::ICON)),
                         )
-                        .frame(model.sidebar == SidebarState::Panel),
+                        .frame(
+                            model.sidebar == SidebarState::Panel && self.plugin_selected.is_none(),
+                        ),
                     )
                     .on_hover_text("Configuration");
-                if model.sidebar == SidebarState::Panel {
+                if model.sidebar == SidebarState::Panel && self.plugin_selected.is_none() {
                     ui.painter().rect_filled(
                         Rect::from_min_size(
                             response.rect.min,
@@ -68,8 +70,15 @@ impl EguiPanel {
                 self.targets.insert("toggle-panel".into(), response.rect);
                 self.hit(&response);
                 if response.clicked() {
-                    self.channel.send(ShellAction::TogglePanel);
+                    self.flush_editors();
+                    let was_config = self.plugin_selected.take().is_none();
+                    self.channel.send(if was_config {
+                        ShellAction::TogglePanel
+                    } else {
+                        ShellAction::Open
+                    });
                 }
+                self.plugin_navigation(ui, model);
             },
         );
     }
@@ -78,6 +87,9 @@ impl EguiPanel {
         reason = "one panel pass lays out navigation and schema-generated settings"
     )]
     fn panel(&mut self, ui: &mut egui::Ui, model: &ShellModel) {
+        if self.plugin_panel(ui, model) {
+            return;
+        }
         self.configuration_header(ui);
         ui.add_space(10.);
         if let Some(id) = self.selected.clone()

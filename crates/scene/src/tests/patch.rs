@@ -239,3 +239,154 @@ fn picking_skips_the_static_models_a_patch_replaces() {
         .unwrap();
     assert!((restored.distance - before.distance).abs() < 1e-3);
 }
+
+#[test]
+fn zone_projection_retains_structural_identity_across_pose_cycles_and_retry() {
+    let asset = row_scene();
+    let baseline = SceneryInputs::default();
+    let mut projection = crate::LocationProjection::new(&asset, baseline.clone());
+    let mut inputs = baseline;
+    inputs.locations.insert(key(3, 3), removal());
+    let first = projection.extract(&asset, &inputs).unwrap();
+    assert!(!first.location_zones.is_empty());
+    let builds = projection.zone_builds();
+    inputs.cycle = rustclient_model::ClientCycle::new(10);
+    let second = projection.extract(&asset, &inputs).unwrap();
+    assert!(std::sync::Arc::ptr_eq(
+        &first.location_zones,
+        &second.location_zones
+    ));
+    assert_eq!(projection.zone_builds(), builds);
+    inputs.locations.insert(key(3, 3), replace(999_999, 0));
+    assert!(projection.extract(&asset, &inputs).is_err());
+    inputs.locations.insert(key(3, 3), removal());
+    let recovered = projection.extract(&asset, &inputs).unwrap();
+    assert!(std::sync::Arc::ptr_eq(
+        &second.location_zones,
+        &recovered.location_zones
+    ));
+}
+
+#[test]
+fn zone_dependencies_cross_boundaries_without_duplicate_model_ownership() {
+    let mut sources = row_scene().sources().clone();
+    sources.squares[0].locations.push(StaticLocation {
+        object: ObjectDefinitionId::new(1),
+        tile: WorldTile::new(8, 3, Plane::MIN),
+        shape: 0,
+        orientation: LocOrientation::new(0).unwrap(),
+    });
+    let asset = SceneAsset::new(sources, WorldTile::new(0, 0, Plane::MIN), 12, 12).unwrap();
+    let mut after = SceneryInputs::default();
+    after.locations.insert(key(7, 3), replace(3, 1));
+    let dirty = crate::changed_location_zones(&asset, &SceneryInputs::default(), &after);
+    let zones = crate::build_location_zones(&asset, &after, &dirty).unwrap();
+    for zone in &zones {
+        assert!(
+            zone.geometry
+                .model_locations
+                .iter()
+                .all(|model| crate::SceneZone::of(model.key) == zone.zone)
+        );
+    }
+    assert!(dirty.contains(&crate::SceneZone::of(key(8, 3))));
+    // A far-away owning zone was not emitted just because its source shares a cache square.
+    assert!(!dirty.contains(&crate::SceneZone::of(key(10, 10))));
+}
+
+#[test]
+fn location_count_no_longer_forces_a_full_scene_fallback() {
+    let asset = row_scene();
+    let base = std::collections::BTreeMap::new();
+    let mut after = base.clone();
+    for x in 1..11 {
+        for y in 1..11 {
+            after.insert(key(x, y), removal());
+        }
+    }
+    assert!(after.len() > crate::PATCH_KEY_BUDGET);
+    assert!(crate::patch_supported(&asset, &base, &after));
+    let mut projection = crate::LocationProjection::new(&asset, SceneryInputs::default());
+    let inputs = SceneryInputs {
+        locations: after,
+        ..SceneryInputs::default()
+    };
+    let frame = projection.extract(&asset, &inputs).unwrap();
+    assert!(!frame.location_zones.is_empty());
+    let next = projection.extract(&asset, &inputs).unwrap();
+    assert!(std::sync::Arc::ptr_eq(
+        &frame.location_zones,
+        &next.location_zones
+    ));
+}
+
+#[test]
+fn dependency_index_finds_cross_zone_footprints_and_adjacent_planes() {
+    let mut sources = row_scene().sources().clone();
+    sources
+        .objects
+        .get_mut(&ObjectDefinitionId::new(4))
+        .unwrap()
+        .size = [4, 2];
+    let large = rustclient_model::LocationKey {
+        tile: WorldTile::new(7, 7, Plane::MIN),
+        layer: rustclient_model::LocationLayer::GameObject,
+    };
+    sources.squares[0].locations.push(StaticLocation {
+        object: ObjectDefinitionId::new(4),
+        tile: large.tile,
+        shape: 10,
+        orientation: LocOrientation::new(0).unwrap(),
+    });
+    for plane in [Plane::MIN, Plane::new(1).unwrap()] {
+        sources.squares[0].locations.push(StaticLocation {
+            object: ObjectDefinitionId::new(1),
+            tile: WorldTile::new(10, 7, plane),
+            shape: 0,
+            orientation: LocOrientation::new(0).unwrap(),
+        });
+    }
+    let asset = SceneAsset::new(sources, WorldTile::new(0, 0, Plane::MIN), 12, 12).unwrap();
+    let mut current = SceneryInputs::default();
+    current.locations.insert(key(10, 7), removal());
+    let dirty = crate::changed_location_zones(&asset, &SceneryInputs::default(), &current);
+    assert!(
+        dirty.contains(&crate::SceneZone::of(large)),
+        "an anchor-only lookup would miss the crossing footprint"
+    );
+    assert!(
+        dirty.contains(&crate::SceneZone::of(rustclient_model::LocationKey {
+            tile: WorldTile::new(10, 7, Plane::new(1).unwrap()),
+            ..key(10, 7)
+        }))
+    );
+    let built = crate::build_location_zones(&asset, &current, &dirty).unwrap();
+    assert_eq!(
+        built
+            .iter()
+            .flat_map(|z| &z.geometry.model_locations)
+            .filter(|model| model.key == large)
+            .count(),
+        1
+    );
+}
+
+#[test]
+fn explicit_journal_invalidation_refreshes_the_domain_without_reusing_stale_resources() {
+    let asset = row_scene();
+    let mut projection = crate::LocationProjection::new(&asset, SceneryInputs::default());
+    let mut inputs = SceneryInputs::default();
+    inputs.locations.insert(key(3, 3), removal());
+    let first = projection.extract(&asset, &inputs).unwrap();
+    projection.invalidate();
+    let refreshed = projection.extract(&asset, &inputs).unwrap();
+    assert!(!std::sync::Arc::ptr_eq(
+        &first.location_zones,
+        &refreshed.location_zones
+    ));
+    let retained = projection.extract(&asset, &inputs).unwrap();
+    assert!(std::sync::Arc::ptr_eq(
+        &refreshed.location_zones,
+        &retained.location_zones
+    ));
+}

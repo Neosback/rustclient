@@ -1,9 +1,9 @@
 {
-  "review_date": "2026-10-28",
+  "review_date": "2026-11-01",
   "initial_rust_commit": "0a91c0237c5d2bb4825a549ffc89497dfe671208",
-  "reviewed_rust_commit": "b0c57e072fe9365c44142e719bea30a45e93ebd4",
-  "worktree_note": "Review began with dirty native/world-map/renderer/shell changes, committed externally as bd3aae10 during inspection. No acceptance is inferred from that commit. Only documentation/tooling changed by this review.",
-  "method": "Targeted static source/caller inspection; no CodeGraph index present. Not exhaustive behavioral verification.",
+  "reviewed_rust_commit": "e2ce6f64c9cbfcd957c219fe27f4c94e7883e8fe",
+  "worktree_note": "Documentation sweep over the existing dirty performance and API continuation. No Rust, reference tree, settings or ABI implementation changed by this sweep. Initial full status/document hashes: target/docs-sweep-20261101/baseline.json. Historical records retain their original source/validation scope.",
+  "method": "Targeted current-owner source inspection, full Markdown/file-link and plan-authority inventory, canonical ledger reconciliation and historical relocation. Not exhaustive behavioral or source-case verification.",
   "pasted_input_sha256": "0d896a6f52f66fc5a3c7e0d46369dadcd47639c878026abc947a8336d1a3ee63",
   "rsprot_artifacts": [
     {
@@ -96,261 +96,85 @@
   ],
   "reviewed_files": [
     {
-      "path": "crates/protocol/src/openrune_240/game.rs",
-      "sha256": "c60af40cb30c24a8d7616d969d2157822732b355bd42e6d98f4b336fa0fdfedc"
+      "path": "README.md",
+      "sha256": "51ce341b4c6834cd858b725f1a91973c8a8f2d3ac42c37e7688d40fe343a2c87"
     },
     {
-      "path": "crates/protocol/src/openrune_240/actions.rs",
-      "sha256": "eacbeb9cf5cc4acc814debfc8cfadab576f4790a079cf3af21bafddc61e84b5a"
+      "path": "ARCHITECTURE.md",
+      "sha256": "41f79541242a177927d0ec4b84561302e75ca82130ea0757b5e862f4af997e73"
     },
     {
-      "path": "crates/protocol/src/openrune_240/minimap.rs",
-      "sha256": "7ae92f1f4f04aa2f2c4d24b7b7a0e173b70bd195559caf6252a297ebc0c117b6"
+      "path": "crates/application/src/cycle.rs",
+      "sha256": "98c39acbf0b49251b7e63b77e4ec3d1e5303799743a89e7c28750e53d9ee5bac"
     },
     {
-      "path": "crates/protocol/src/openrune_240/npc_extended.rs",
-      "sha256": "ca5fb7c03a80400aab6ae0dae57a2bcba99b186953040172ae8a8a490f71aef7"
+      "path": "crates/game-state/src/projection.rs",
+      "sha256": "271da64683e2480da1a5745c169a58c2d8156881221e7184a10bc4c340323d76"
     },
     {
-      "path": "crates/protocol/src/openrune_240/player_extended.rs",
-      "sha256": "8aaefb9f578295f54861b1473af0ee75da06e4d0c8b5647f48ff76991c4021c1"
+      "path": "crates/game-state/src/inventory.rs",
+      "sha256": "708640fdfd23809d7b9b5270c354912a254531d1ad721031c72a6590206ac541"
     },
     {
-      "path": "crates/protocol/src/openrune_240/zone.rs",
-      "sha256": "2a35474769dbd1e4ffcc15eca91383e277c76670a6ae78032a0db48f9c65452a"
+      "path": "crates/platform-native/src/jobs.rs",
+      "sha256": "cc90e196edcc5af13f045cbe7ca79f97213a1b4cfad95240996db3831aa234d3"
     },
     {
-      "path": "crates/protocol/src/openrune_240/lengths.rs",
-      "sha256": "8d975badfdb592a8f60aa63268310346555bfe858171d812926faa4c239fa1c4"
+      "path": "crates/scene/src/locations/index.rs",
+      "sha256": "f67de2b0c1d4406009f506f2a3e278f3d52adf24e416050513bc4e1067f5f1ec"
     },
     {
-      "path": "crates/protocol/src/openrune_240/player_appearance.rs",
-      "sha256": "ac03a3ff61051e8b0b8f661e4261d34bd683cb4bd309ae35d00b17cf203ff380"
-    },
-    {
-      "path": "crates/application/src/connection.rs",
-      "sha256": "66f189aa34000d47160d2d067b86ac5d54addfceb679d2cc912f5af04b0d8eb4"
-    },
-    {
-      "path": "crates/application/src/scripts/mod.rs",
-      "sha256": "bd913655687ae9499a82e321bbb1b6a62efc8df6425a655873c5ef544a2542bf"
-    },
-    {
-      "path": "crates/application/src/scripts/queries.rs",
-      "sha256": "af52229249d6247291b37f650b7f8a25f22e4a9f4eb93c21d531ae780c4711c2"
-    },
-    {
-      "path": "crates/application/src/scripts/database.rs",
-      "sha256": "95a99de62eb4708849d36d85fb0474970b944d4a128ab8cb1144059533cf19d5"
-    },
-    {
-      "path": "crates/application/src/scripts/worldmap.rs",
-      "sha256": "52b63c80aeb37d594c31c0c659c44e42497d86e23a83ecd9b9ca0bd19ab3a6cc"
-    },
-    {
-      "path": "crates/game-state/src/entities.rs",
-      "sha256": "ecaf4c1f48176d96589ce45232475bacbf3eaacf0a36def9c709bc0192354ed8"
-    },
-    {
-      "path": "crates/game-state/src/actor_turning.rs",
-      "sha256": "07457573b5eb271d35fd9f8cc97af944a8aa4f44e7a1431f9a3591d95d01eab0"
-    },
-    {
-      "path": "crates/game-state/src/scenery.rs",
-      "sha256": "79f4a05cae73bea7ea8fd6c0f40eb586f052b89e18d21ebb17eeb1f716dd5a5b"
-    },
-    {
-      "path": "crates/model/src/entity.rs",
-      "sha256": "f3f4410318985a9993238b9b4851a8de2563754271cfdfed6af3bf61525310b9"
-    },
-    {
-      "path": "crates/model/src/widget.rs",
-      "sha256": "f72f7e09eb1b88be0696c8d7d7864652e31847c81d3a69f3fcc29d7b780aea0e"
-    },
-    {
-      "path": "crates/game-ui/src/widget_visuals.rs",
-      "sha256": "9addf451518c02e6e8580244ceeff0f112f1bcce5949409e90d12d84bc1d40f7"
-    },
-    {
-      "path": "crates/scene/src/minimap.rs",
-      "sha256": "90e469248dbe540f0fc0ee7c0227f86d323fea3b2f1b20b56b276417df8683cc"
-    },
-    {
-      "path": "crates/scene/src/world_map.rs",
-      "sha256": "a6d1f78eab4068a6633600cb3350fd573ff8c55a13361fe21c9eaa8e2c1286c4"
-    },
-    {
-      "path": "crates/cache/src/world.rs",
-      "sha256": "e134e8ac72bc359ab59f89f2e6965e4c6e20353a4fa70576d3fa83a939f02245"
-    },
-    {
-      "path": "crates/cache/src/osrs240/world_map.rs",
-      "sha256": "c52a2ed8d64668ad653b2a47bd27b54eabec1b5c687790286686df1a02a814b4"
+      "path": "crates/plugin-runtime-native/src/lib.rs",
+      "sha256": "68fb1ac699b6fae5761e86f9a7c8b6ebeb03a990176df48069cf833355938abd"
     },
     {
       "path": "apps/native/src/main.rs",
-      "sha256": "6ef8e5248c0054741c32e7e1b2e59eb3727ebb7ac6cbc305602439c6a4be1297"
+      "sha256": "89805165b3f5fbb3935b875efb434250bf9dc57c4e939712a3cfd9ac02e694f5"
     },
     {
-      "path": "apps/native/src/widgets.rs",
-      "sha256": "b968d591d04a7346fe4f73ca20701af9309d892404fddf85c487789b1e35403b"
+      "path": "docs/reference/rs240-port/PORT-MATRIX.tsv",
+      "sha256": "4f6310c6e162c7a40ff3f33eb57fa45bd7d94ad2de14be35f5fe5f29a6812430"
     },
     {
-      "path": "apps/native/src/interaction.rs",
-      "sha256": "7588c536697fa8060f25374a178f2ab03905a2938941b676dfc7308a762ddbed"
+      "path": "docs/reference/rs240-port/CS2-HOST-COVERAGE.tsv",
+      "sha256": "fd9b87fce06cc89263ba98066c901435306012d1b52cb22788162e633825ef79"
     },
     {
-      "path": "apps/native/src/network.rs",
-      "sha256": "bad0e9d9447b943b0e6c4bdc6b1e117163dabac77c2fd67aa53d1254ccf78a36"
+      "path": "docs/reference/builtin-plugins/RUNELITE-PLUGINS.tsv",
+      "sha256": "42888bddde6cae8f9d062bddea8625b2b2bbbf80f6d9d76c7cdb76e2888f3f81"
     },
     {
-      "path": "apps/web/src/lib.rs",
-      "sha256": "cfea015d76164266511e0a8ab02ae5aa4275fc4b9c03dbab0d532271d98259c4"
+      "path": "docs/reference/builtin-plugins/API-CONTINUATION-EVIDENCE.json",
+      "sha256": "2e605af4529995863ec4ada3f591d9a019498d4739a34b7709108b6ee781bbd7"
     },
     {
-      "path": "crates/audio/src/lib.rs",
-      "sha256": "2ea875900ecc428b1f7d42c3043b96f6f70c3a4cab1380076d19071ee337e231"
+      "path": "docs/reference/builtin-plugins/gpu-audit.json",
+      "sha256": "839a862934b561d907c3ea67f478fa23a678b12b1125395b67c680e4d58a87c1"
     },
     {
-      "path": "docs/adr/ADR-0007-on-demand-gpu-shell.md",
-      "sha256": "c36158fab6d5e42ce6d5c15a8fd67c1876c36666cd889b7dc6fb2df75eb6a9c0"
+      "path": "docs/plan/PORTING-ROADMAP.md",
+      "sha256": "7c33545e425f40bf3db37c32b989986685e72c93a0a48e5ac9d02529a2b49c05"
     },
     {
-      "path": "docs/reference/client-240/inputs/client-packets.tsv",
-      "sha256": "2ba5e2855fca01ffa3ce62a63ee41ee38b407c6572a65ec1532a749412a2ca57"
+      "path": "docs/reference/rs240-port/CURRENT-AUDIT.md",
+      "sha256": "a8a6b7bcb67589be1feee13f5a3c7ba5f2b7020c34ab354c1ff8b7c543f8bd3f"
     },
     {
-      "path": "docs/reference/client-240/inputs/server-packets.tsv",
-      "sha256": "02964eb784f4a18ba070d41f5ef158aad260e3db0b0c2ba02038817b1ca2db3b"
-    },
-    {
-      "path": "references/rl-suite-240/sources-semantic/classDF.java",
-      "sha256": "b7af3a17c6a25711d1cc600bc7cae03ab0e34982180c3c055fec246bc45a368c"
-    },
-    {
-      "path": "references/rl-suite-240/sources-semantic/classAS.java",
-      "sha256": "818472abec022e35e8b1dd463f1240a845e4005ca6eb28447b3a60e25340cde8"
-    },
-    {
-      "path": "references/rl-suite-240/sources-semantic/classKN.java",
-      "sha256": "6fa5c6b80e286eef23eecd6546e84c43d3bf0b37c16e55d846341e90aa36eedb"
-    },
-    {
-      "path": "references/rl-suite-240/sources-semantic/Friend.java",
-      "sha256": "83d5f7bfc273583b890c071829a663ef6f57c3ed4c5697dc159a4312c59fd52a"
-    },
-    {
-      "path": "references/rl-suite-240/sources-semantic/classBB.java",
-      "sha256": "9b299f51dce52286186c8d8ce9d5fc5bd5c48d73abf448cd1a24490dee75409a"
-    },
-    {
-      "path": "crates/cache/src/osrs240/script_opcodes.rs",
-      "sha256": "a4f12b6d84c9f9c5d332a0de709791c1bda4132dc7dfbe687884f276bb5f0330"
-    },
-    {
-      "path": "crates/cache/src/script.rs",
-      "sha256": "70ecd32d010253da212c8e4b264791bd785a571b9ea3d6fcb4ed6082f31c8c49"
-    },
-    {
-      "path": "crates/plugin-bridge/src/project.rs",
-      "sha256": "c85ac1cd97d00b10122c6bbbd92063ee4fb66af3da546c5b7c40d2383b0170d7"
-    },
-    {
-      "path": "crates/plugin-bridge/src/diff.rs",
-      "sha256": "d46d0be4448bf8aac9d87a89d93bf54f2b714092fcf2d54824db9a86fb0aa669"
-    },
-    {
-      "path": "crates/plugin-api/src/events.rs",
-      "sha256": "880b34a5b95357ef5cd6d65d402a76c1761dee9d5d65fc15a8d51eba399c8ccb"
-    },
-    {
-      "path": "crates/input/src/lib.rs",
-      "sha256": "720f8058ab2a0e6fc0f2aee3ca9e7b62a9739dda473c04580a320e37932c28e7"
-    },
-    {
-      "path": "crates/plugin-runtime-web/src/lib.rs",
-      "sha256": "f6fd0055359abd767dff9f655eae6e9f76e84916b9098e95151e4c4d21ce8a6c"
-    },
-    {
-      "path": "apps/native/src/input_activity.rs",
-      "sha256": "75d17a1c6da906b61626aff59d0f14c49554c113eeec069c75fe88b4059eec93"
-    },
-    {
-      "path": "crates/cache/src/osrs240/script_tables.rs",
-      "sha256": "60cff2319dc06ec450d9d605425bef9e0d29055176b0b0f74aa29cc7c3a85fa2"
-    },
-    {
-      "path": "crates/cache/src/osrs240/mod.rs",
-      "sha256": "bc292181057fde4bbd7c95965d215b98e21bb44a52951d08fb9e905c0c54b8ae"
-    },
-    {
-      "path": "references/rsprox-master/protocol/osrs-240/src/main/kotlin/net/rsprox/protocol/v240/game/outgoing/decoder/prot/GameServerProtId.kt",
-      "sha256": "bb39207b4e429bc0f68253e2863425b1c8d2e50b15f5a6e4dd64b17ab527b3bb"
-    },
-    {
-      "path": "references/rsprox-master/protocol/osrs-240/src/main/kotlin/net/rsprox/protocol/v240/game/incoming/decoder/prot/GameClientProtId.kt",
-      "sha256": "61b501f0443cb4dd0621b3e2670c9bc93037ff5091259a4dd1c60a01eb5c11f9"
-    },
-    {
-      "path": "references/open-runelite-rev-240/cache/src/main/java/net/runelite/cache/ConfigType.java",
-      "sha256": "04e76c9e77ef58b621546f69907e568b9192ed7134c1174efc6490fa1ae6bc0b"
-    },
-    {
-      "path": "references/open-runelite-rev-240/cache/src/main/java/net/runelite/cache/IndexType.java",
-      "sha256": "99c9a8144cec4306b350cf215c96e15aed9846f4c5a8272400780bc8f5bb081a"
-    },
-    {
-      "path": "references/rl-suite-240/sources-semantic/client.java",
-      "sha256": "7c61d35b0f260c2cd8fbf1ae4436b6ef19954c93f79e13b27657c465c544043e"
-    },
-    {
-      "path": "references/rl-suite-240/sources-semantic/Menu.java",
-      "sha256": "071651eef9b1470e65accf4ac4611c59e258fef30a4b94380da27f7d6cdd49c8"
-    },
-    {
-      "path": "references/rl-suite-240/sources-semantic/classQP.java",
-      "sha256": "a1dd92f91c1236847ca051f64d140a90fec2973e7b9326b3f937fd7158a1816a"
-    },
-    {
-      "path": "references/rl-suite-240/sources-semantic/classCN.java",
-      "sha256": "c410d7563b8ec84e5c9a62111fce07e5b02a9620107105892689f6be002f86be"
-    },
-    {
-      "path": "references/rl-suite-240/sources-semantic/classCZ.java",
-      "sha256": "6db98e11ffaefc30f42b5fc6c3610e09dbbd8f1e2346e3b32c1c767ee1b8da0b"
-    },
-    {
-      "path": "references/rl-suite-240/sources-semantic/classEY.java",
-      "sha256": "3fb94c039b0acc0e9c2773db2a98327ea6e6cf514239723192b6c285970e6268"
-    },
-    {
-      "path": "references/rl-suite-240/sources-semantic/classJB.java",
-      "sha256": "11d0f1e395b2161edad1cdc259bdb97fcf9f79e1515e4032756eb2d143e4e4cf"
-    },
-    {
-      "path": "references/rl-suite-240/sources-semantic/classFK.java",
-      "sha256": "d9cc5fb9aa9dec0dc73915bf2e998fdea708804862c0d87812af631e18291533"
-    },
-    {
-      "path": "references/runelite-melxin-235/runescape-client/src/main/java/Client.java",
-      "sha256": "72af4f9723a9704ff23faa7d862e287048e54ec49760f44e1137aca451830a9d"
-    },
-    {
-      "path": "references/runelite-melxin-235/runescape-client/src/main/java/Menu.java",
-      "sha256": "01a73d640030b4350a52877634d70ecee77a6880226da3a7cacfb1038fe4f665"
+      "path": "docs/archive/MANIFEST.json",
+      "sha256": "44abba283e16e3d680b7554c6ae53886ad6ccc102537688303c29ed6e1bb0c7c"
     }
   ],
   "packet_coverage_counts": {
-    "missing-encoder": 98,
-    "encoded-subset": 19,
-    "framed-unhandled": 110,
-    "semantic-subset": 31,
+    "missing-encoder": 89,
+    "encoded-subset": 28,
+    "framed-unhandled": 106,
+    "semantic-subset": 35,
     "rejected": 1,
     "partial": 7,
     "codec-context": 2,
     "unassigned": 1
   },
-  "validation": "See REVISION-240-delivery.md for documentation checks. Cargo/live/Java/GPU/visual checks not run by this review.",
+  "validation": "Documentation/ledger checks only; exact commands/results in documentationSweep. No Cargo, Java differential, live client, performance, memory or visual acceptance rerun.",
   "followup_review": {
     "date": "2026-10-28",
     "rust_commit": "b0c57e072fe9365c44142e719bea30a45e93ebd4",
@@ -1245,5 +1069,420 @@
     "date": "2026-10-30",
     "scope": "Selective derived-update optimization; does not re-date the original full-domain audit.",
     "evidence": "docs/reference/UPDATE-OPTIMIZATION-EVIDENCE-2026-10-30.json"
+  },
+  "stablePresentation": {
+    "date": "2026-10-31",
+    "head": "cf07e75e67746e94c015df06c8cdc7799fea6d99",
+    "scope": "Normal map-click input/encoding and retained presentation; supporting TSPS reconciliation only",
+    "sources_sha256": {
+      "references/rl-suite-240/sources-semantic/RenderOverview.java": "c6ce2e2b86db630d2cbb103ebc832646e3b61af0a9ca6b1fd7e744f8bb93e288",
+      "references/rl-suite-240/sources-semantic/classJS.java": "1af40ee5c7bf06f2b93114fda6f1ad59ef9bb97d1a8988b430b8d1d482666010",
+      "references/rsprox-master/protocol/osrs-240/src/main/kotlin/net/rsprox/protocol/v240/game/incoming/decoder/codec/misc/user/ClickWorldMapDecoder.kt": "d3e26b3bec7ca907ecbb5a9c745cc433dccc9bd49433565a1b8fa9133e5f189d",
+      "/Users/tylercovalt/Documents/tsps-main/client/game/worldMap/WorldMapInput.ts": "2e19f466fcca06cbbe7d4c7f5da8c3c2d409b10407ce11cf87129ef9929374fc",
+      "/Users/tylercovalt/Documents/tsps-main/client/game/worldMap/WorldMapRepaint.ts": "943ce1220e7748c63733e5cfa25ce3e530b8b7bf4945315a2a3ad07ed0cdb5f6",
+      "/Users/tylercovalt/Documents/tsps-main/client/game/worldMap/WorldMapImageCache.ts": "3ebd089426ef7de6838da387ab940980c2c183f40a63275e5b7c3bab1d400a4f",
+      "/Users/tylercovalt/Documents/tsps-main/client/game/worker/WorldMapTileJob.ts": "61d16b07d435debf97cd6ad912b06cba17521d9534ad293bf78ea6a2eebdf6e7"
+    },
+    "rust_owners_sha256": {
+      "apps/native/src/frame_limit.rs": "91ff3d4c0b3e4a4bd007c20ef39bcec64487304974098f362ec364cddbed6381",
+      "apps/native/src/performance.rs": "5b9dd92c157ece58f01f53b5e721634a15e985bb7ee73dd9f6bd6b940539cb69",
+      "apps/native/src/performance/trace.rs": "8bd2f77c7b8e0b8e925b30e917881f28f9162aac7371b87669be5c2479dd6704",
+      "apps/native/src/worldmap.rs": "f5ba5e4b4e163b73c447f849477f78cc7396104d546a97e02545ad9602c8b3ad",
+      "apps/native/src/worldmap/composition.rs": "5b62ddf230af8976ca24dbb13e22383ff7a50906b0c1f026231034da85b522be",
+      "apps/native/src/worldmap/composition/tests.rs": "665252873c05c94afe9169cc0e32072b26a62e7e66a37d3f9673956de765fc67",
+      "crates/application/src/scripts/listener_index.rs": "f50b381bbb787fb3305b9ce5ab95afad513241237ca4b7195412951f3c9eda45",
+      "crates/application/src/scripts/worldmap/input.rs": "52648ae154ac9368827b5324565f1f6839fd40bd2a0709fa204df7cf2008d65d",
+      "crates/application/src/scripts/worldmap/input/tests.rs": "b60a648061a606bdc989168c90b22b8bc5fb6a10d83fdaea9f79233f34254d6d",
+      "crates/game-state/src/interfaces.rs": "2dea541b2799ba98f3c0e676b82ff59ac57e09b11ffd5d331b694f036a394aaf",
+      "crates/game-ui/src/controller.rs": "81871feb31d2062a318d4d3716e45f0683ac24980d92bb1e6f2b19128a354514",
+      "crates/game-ui/src/flame.rs": "8845ffd78105c94a94355ae4b88d551e51875c155e828f682a1ace63aafd2166",
+      "crates/protocol/src/openrune_240/actions.rs": "ea3cbc33766e72296702479fe16323a98826d43b129c518c956f6a205f76f0ae",
+      "crates/renderer/src/timing.rs": "ff49abf6748a5a9961431aab8dadf147782cbeea1c138d329b1da079dc05dbf8",
+      "crates/renderer/src/surface.rs": "c395725dbfe6d08731d42b8a7cfc2afd298ca2cb05d7dedda8edef2ec31b12bf",
+      "crates/renderer/src/ui_canvas.rs": "b9c6980cf6d42fa9a7b89e8b2facecc0cfa5b22b21fd656648221c299beed862",
+      "crates/renderer/src/world.rs": "1ebc7deb8afa52bb43eb0f1177d8ab0e93514c13cef2090e3846594d52570994"
+    },
+    "canonical_evidence": "docs/reference/UPDATE-OPTIMIZATION-EVIDENCE-2026-10-30.json",
+    "verification": "See stablePresentation checkpoint for exact current execution; historical review fields are preserved."
+  },
+  "historicalReviewIdentity": {
+    "review_date": "2026-10-28",
+    "reviewed_rust_commit": "b0c57e072fe9365c44142e719bea30a45e93ebd4",
+    "worktree_note": "Review began with dirty native/world-map/renderer/shell changes, committed externally as bd3aae10 during inspection. No acceptance is inferred from that commit. Only documentation/tooling changed by this review.",
+    "method": "Targeted static source/caller inspection; no CodeGraph index present. Not exhaustive behavioral verification.",
+    "reviewed_files": [
+      {
+        "path": "crates/protocol/src/openrune_240/game.rs",
+        "sha256": "c60af40cb30c24a8d7616d969d2157822732b355bd42e6d98f4b336fa0fdfedc"
+      },
+      {
+        "path": "crates/protocol/src/openrune_240/actions.rs",
+        "sha256": "eacbeb9cf5cc4acc814debfc8cfadab576f4790a079cf3af21bafddc61e84b5a"
+      },
+      {
+        "path": "crates/protocol/src/openrune_240/minimap.rs",
+        "sha256": "7ae92f1f4f04aa2f2c4d24b7b7a0e173b70bd195559caf6252a297ebc0c117b6"
+      },
+      {
+        "path": "crates/protocol/src/openrune_240/npc_extended.rs",
+        "sha256": "ca5fb7c03a80400aab6ae0dae57a2bcba99b186953040172ae8a8a490f71aef7"
+      },
+      {
+        "path": "crates/protocol/src/openrune_240/player_extended.rs",
+        "sha256": "8aaefb9f578295f54861b1473af0ee75da06e4d0c8b5647f48ff76991c4021c1"
+      },
+      {
+        "path": "crates/protocol/src/openrune_240/zone.rs",
+        "sha256": "2a35474769dbd1e4ffcc15eca91383e277c76670a6ae78032a0db48f9c65452a"
+      },
+      {
+        "path": "crates/protocol/src/openrune_240/lengths.rs",
+        "sha256": "8d975badfdb592a8f60aa63268310346555bfe858171d812926faa4c239fa1c4"
+      },
+      {
+        "path": "crates/protocol/src/openrune_240/player_appearance.rs",
+        "sha256": "ac03a3ff61051e8b0b8f661e4261d34bd683cb4bd309ae35d00b17cf203ff380"
+      },
+      {
+        "path": "crates/application/src/connection.rs",
+        "sha256": "66f189aa34000d47160d2d067b86ac5d54addfceb679d2cc912f5af04b0d8eb4"
+      },
+      {
+        "path": "crates/application/src/scripts/mod.rs",
+        "sha256": "bd913655687ae9499a82e321bbb1b6a62efc8df6425a655873c5ef544a2542bf"
+      },
+      {
+        "path": "crates/application/src/scripts/queries.rs",
+        "sha256": "af52229249d6247291b37f650b7f8a25f22e4a9f4eb93c21d531ae780c4711c2"
+      },
+      {
+        "path": "crates/application/src/scripts/database.rs",
+        "sha256": "95a99de62eb4708849d36d85fb0474970b944d4a128ab8cb1144059533cf19d5"
+      },
+      {
+        "path": "crates/application/src/scripts/worldmap.rs",
+        "sha256": "52b63c80aeb37d594c31c0c659c44e42497d86e23a83ecd9b9ca0bd19ab3a6cc"
+      },
+      {
+        "path": "crates/game-state/src/entities.rs",
+        "sha256": "ecaf4c1f48176d96589ce45232475bacbf3eaacf0a36def9c709bc0192354ed8"
+      },
+      {
+        "path": "crates/game-state/src/actor_turning.rs",
+        "sha256": "07457573b5eb271d35fd9f8cc97af944a8aa4f44e7a1431f9a3591d95d01eab0"
+      },
+      {
+        "path": "crates/game-state/src/scenery.rs",
+        "sha256": "79f4a05cae73bea7ea8fd6c0f40eb586f052b89e18d21ebb17eeb1f716dd5a5b"
+      },
+      {
+        "path": "crates/model/src/entity.rs",
+        "sha256": "f3f4410318985a9993238b9b4851a8de2563754271cfdfed6af3bf61525310b9"
+      },
+      {
+        "path": "crates/model/src/widget.rs",
+        "sha256": "f72f7e09eb1b88be0696c8d7d7864652e31847c81d3a69f3fcc29d7b780aea0e"
+      },
+      {
+        "path": "crates/game-ui/src/widget_visuals.rs",
+        "sha256": "9addf451518c02e6e8580244ceeff0f112f1bcce5949409e90d12d84bc1d40f7"
+      },
+      {
+        "path": "crates/scene/src/minimap.rs",
+        "sha256": "90e469248dbe540f0fc0ee7c0227f86d323fea3b2f1b20b56b276417df8683cc"
+      },
+      {
+        "path": "crates/scene/src/world_map.rs",
+        "sha256": "a6d1f78eab4068a6633600cb3350fd573ff8c55a13361fe21c9eaa8e2c1286c4"
+      },
+      {
+        "path": "crates/cache/src/world.rs",
+        "sha256": "e134e8ac72bc359ab59f89f2e6965e4c6e20353a4fa70576d3fa83a939f02245"
+      },
+      {
+        "path": "crates/cache/src/osrs240/world_map.rs",
+        "sha256": "c52a2ed8d64668ad653b2a47bd27b54eabec1b5c687790286686df1a02a814b4"
+      },
+      {
+        "path": "apps/native/src/main.rs",
+        "sha256": "6ef8e5248c0054741c32e7e1b2e59eb3727ebb7ac6cbc305602439c6a4be1297"
+      },
+      {
+        "path": "apps/native/src/widgets.rs",
+        "sha256": "b968d591d04a7346fe4f73ca20701af9309d892404fddf85c487789b1e35403b"
+      },
+      {
+        "path": "apps/native/src/interaction.rs",
+        "sha256": "7588c536697fa8060f25374a178f2ab03905a2938941b676dfc7308a762ddbed"
+      },
+      {
+        "path": "apps/native/src/network.rs",
+        "sha256": "bad0e9d9447b943b0e6c4bdc6b1e117163dabac77c2fd67aa53d1254ccf78a36"
+      },
+      {
+        "path": "apps/web/src/lib.rs",
+        "sha256": "cfea015d76164266511e0a8ab02ae5aa4275fc4b9c03dbab0d532271d98259c4"
+      },
+      {
+        "path": "crates/audio/src/lib.rs",
+        "sha256": "2ea875900ecc428b1f7d42c3043b96f6f70c3a4cab1380076d19071ee337e231"
+      },
+      {
+        "path": "docs/adr/ADR-0007-on-demand-gpu-shell.md",
+        "sha256": "c36158fab6d5e42ce6d5c15a8fd67c1876c36666cd889b7dc6fb2df75eb6a9c0"
+      },
+      {
+        "path": "docs/reference/client-240/inputs/client-packets.tsv",
+        "sha256": "2ba5e2855fca01ffa3ce62a63ee41ee38b407c6572a65ec1532a749412a2ca57"
+      },
+      {
+        "path": "docs/reference/client-240/inputs/server-packets.tsv",
+        "sha256": "02964eb784f4a18ba070d41f5ef158aad260e3db0b0c2ba02038817b1ca2db3b"
+      },
+      {
+        "path": "references/rl-suite-240/sources-semantic/classDF.java",
+        "sha256": "b7af3a17c6a25711d1cc600bc7cae03ab0e34982180c3c055fec246bc45a368c"
+      },
+      {
+        "path": "references/rl-suite-240/sources-semantic/classAS.java",
+        "sha256": "818472abec022e35e8b1dd463f1240a845e4005ca6eb28447b3a60e25340cde8"
+      },
+      {
+        "path": "references/rl-suite-240/sources-semantic/classKN.java",
+        "sha256": "6fa5c6b80e286eef23eecd6546e84c43d3bf0b37c16e55d846341e90aa36eedb"
+      },
+      {
+        "path": "references/rl-suite-240/sources-semantic/Friend.java",
+        "sha256": "83d5f7bfc273583b890c071829a663ef6f57c3ed4c5697dc159a4312c59fd52a"
+      },
+      {
+        "path": "references/rl-suite-240/sources-semantic/classBB.java",
+        "sha256": "9b299f51dce52286186c8d8ce9d5fc5bd5c48d73abf448cd1a24490dee75409a"
+      },
+      {
+        "path": "crates/cache/src/osrs240/script_opcodes.rs",
+        "sha256": "a4f12b6d84c9f9c5d332a0de709791c1bda4132dc7dfbe687884f276bb5f0330"
+      },
+      {
+        "path": "crates/cache/src/script.rs",
+        "sha256": "70ecd32d010253da212c8e4b264791bd785a571b9ea3d6fcb4ed6082f31c8c49"
+      },
+      {
+        "path": "crates/plugin-bridge/src/project.rs",
+        "sha256": "c85ac1cd97d00b10122c6bbbd92063ee4fb66af3da546c5b7c40d2383b0170d7"
+      },
+      {
+        "path": "crates/plugin-bridge/src/diff.rs",
+        "sha256": "d46d0be4448bf8aac9d87a89d93bf54f2b714092fcf2d54824db9a86fb0aa669"
+      },
+      {
+        "path": "crates/plugin-api/src/events.rs",
+        "sha256": "880b34a5b95357ef5cd6d65d402a76c1761dee9d5d65fc15a8d51eba399c8ccb"
+      },
+      {
+        "path": "crates/input/src/lib.rs",
+        "sha256": "720f8058ab2a0e6fc0f2aee3ca9e7b62a9739dda473c04580a320e37932c28e7"
+      },
+      {
+        "path": "crates/plugin-runtime-web/src/lib.rs",
+        "sha256": "f6fd0055359abd767dff9f655eae6e9f76e84916b9098e95151e4c4d21ce8a6c"
+      },
+      {
+        "path": "apps/native/src/input_activity.rs",
+        "sha256": "75d17a1c6da906b61626aff59d0f14c49554c113eeec069c75fe88b4059eec93"
+      },
+      {
+        "path": "crates/cache/src/osrs240/script_tables.rs",
+        "sha256": "60cff2319dc06ec450d9d605425bef9e0d29055176b0b0f74aa29cc7c3a85fa2"
+      },
+      {
+        "path": "crates/cache/src/osrs240/mod.rs",
+        "sha256": "bc292181057fde4bbd7c95965d215b98e21bb44a52951d08fb9e905c0c54b8ae"
+      },
+      {
+        "path": "references/rsprox-master/protocol/osrs-240/src/main/kotlin/net/rsprox/protocol/v240/game/outgoing/decoder/prot/GameServerProtId.kt",
+        "sha256": "bb39207b4e429bc0f68253e2863425b1c8d2e50b15f5a6e4dd64b17ab527b3bb"
+      },
+      {
+        "path": "references/rsprox-master/protocol/osrs-240/src/main/kotlin/net/rsprox/protocol/v240/game/incoming/decoder/prot/GameClientProtId.kt",
+        "sha256": "61b501f0443cb4dd0621b3e2670c9bc93037ff5091259a4dd1c60a01eb5c11f9"
+      },
+      {
+        "path": "references/open-runelite-rev-240/cache/src/main/java/net/runelite/cache/ConfigType.java",
+        "sha256": "04e76c9e77ef58b621546f69907e568b9192ed7134c1174efc6490fa1ae6bc0b"
+      },
+      {
+        "path": "references/open-runelite-rev-240/cache/src/main/java/net/runelite/cache/IndexType.java",
+        "sha256": "99c9a8144cec4306b350cf215c96e15aed9846f4c5a8272400780bc8f5bb081a"
+      },
+      {
+        "path": "references/rl-suite-240/sources-semantic/client.java",
+        "sha256": "7c61d35b0f260c2cd8fbf1ae4436b6ef19954c93f79e13b27657c465c544043e"
+      },
+      {
+        "path": "references/rl-suite-240/sources-semantic/Menu.java",
+        "sha256": "071651eef9b1470e65accf4ac4611c59e258fef30a4b94380da27f7d6cdd49c8"
+      },
+      {
+        "path": "references/rl-suite-240/sources-semantic/classQP.java",
+        "sha256": "a1dd92f91c1236847ca051f64d140a90fec2973e7b9326b3f937fd7158a1816a"
+      },
+      {
+        "path": "references/rl-suite-240/sources-semantic/classCN.java",
+        "sha256": "c410d7563b8ec84e5c9a62111fce07e5b02a9620107105892689f6be002f86be"
+      },
+      {
+        "path": "references/rl-suite-240/sources-semantic/classCZ.java",
+        "sha256": "6db98e11ffaefc30f42b5fc6c3610e09dbbd8f1e2346e3b32c1c767ee1b8da0b"
+      },
+      {
+        "path": "references/rl-suite-240/sources-semantic/classEY.java",
+        "sha256": "3fb94c039b0acc0e9c2773db2a98327ea6e6cf514239723192b6c285970e6268"
+      },
+      {
+        "path": "references/rl-suite-240/sources-semantic/classJB.java",
+        "sha256": "11d0f1e395b2161edad1cdc259bdb97fcf9f79e1515e4032756eb2d143e4e4cf"
+      },
+      {
+        "path": "references/rl-suite-240/sources-semantic/classFK.java",
+        "sha256": "d9cc5fb9aa9dec0dc73915bf2e998fdea708804862c0d87812af631e18291533"
+      },
+      {
+        "path": "references/runelite-melxin-235/runescape-client/src/main/java/Client.java",
+        "sha256": "72af4f9723a9704ff23faa7d862e287048e54ec49760f44e1137aca451830a9d"
+      },
+      {
+        "path": "references/runelite-melxin-235/runescape-client/src/main/java/Menu.java",
+        "sha256": "01a73d640030b4350a52877634d70ecee77a6880226da3a7cacfb1038fe4f665"
+      }
+    ],
+    "packet_coverage_counts": {
+      "missing-encoder": 98,
+      "encoded-subset": 19,
+      "framed-unhandled": 110,
+      "semantic-subset": 31,
+      "rejected": 1,
+      "partial": 7,
+      "codec-context": 2,
+      "unassigned": 1
+    },
+    "validation": "See REVISION-240-delivery.md for documentation checks. Cargo/live/Java/GPU/visual checks not run by this review."
+  },
+  "documentationSweep": {
+    "date": "2026-11-01",
+    "head": "e2ce6f64c9cbfcd957c219fe27f4c94e7883e8fe",
+    "scope": "Current documentation authority/status/roadmap cleanup; preserve original implementation and evidence",
+    "initial_artifact": "target/docs-sweep-20261101/baseline.json",
+    "archive_manifest": "docs/archive/MANIFEST.json",
+    "archived_checkpoints": 42,
+    "superseded_snapshots": 2,
+    "relocated_template": 1,
+    "original_hashes_checked_against_initial_baseline": true,
+    "historical_json_paths": "Retained verbatim; resolve originals through archive manifest",
+    "prior_api_validation": "docs/reference/builtin-plugins/API-CONTINUATION-EVIDENCE.json; not rerun",
+    "checks": [
+      {
+        "command": [
+          "python3",
+          "tools/docs_check.py"
+        ],
+        "exit_code": 0,
+        "raw_log": "target/docs-sweep-20261101/links-archive-json.log",
+        "result": "151 Markdown files: local file links valid; 45 relocation/snapshot records intact\nHeading links, 20 JSON files and navigation valid; no remote, runtime or parity acceptance inferred"
+      },
+      {
+        "command": [
+          "python3",
+          "tools/docs_index.py",
+          "--check"
+        ],
+        "exit_code": 0,
+        "raw_log": "target/docs-sweep-20261101/navigation.log",
+        "result": "Current navigation and archive index match; no behavioral acceptance inferred"
+      },
+      {
+        "command": [
+          "python3",
+          "tools/port_matrix.py",
+          "--check"
+        ],
+        "exit_code": 0,
+        "raw_log": "target/docs-sweep-20261101/domain-packets.log",
+        "result": "59 domain rows validated; no semantic completion percentage inferred\n269 packet identities validated; dispatch audit is not end-to-end support"
+      },
+      {
+        "command": [
+          "python3",
+          "tools/port_audit.py",
+          "--check"
+        ],
+        "exit_code": 0,
+        "raw_log": "target/docs-sweep-20261101/symbols.log",
+        "result": "{\n  \"ledger_rows\": 192,\n  \"selected_rows\": 192,\n  \"statuses\": {\n    \"verified\": 12,\n    \"partial\": 84,\n    \"specified\": 45,\n    \"untriaged\": 14,\n    \"evidence-found\": 18,\n    \"implemented\": 19\n  },\n  \"verification\": {\n    \"unrecorded\": 65,\n    \"source-reviewed\": 57,\n    \"contract-tested\": 68,\n    \"live-tested\": 2\n  },\n  \"unpinned_ledger_sources\": [],\n  \"limits\": \"Declaration/source mapping is not semantic completion, passing tests, or visual parity.\"\n}"
+      },
+      {
+        "command": [
+          "python3",
+          "tools/builtin-plugins/inventory.py",
+          "--check"
+        ],
+        "exit_code": 0,
+        "raw_log": "target/docs-sweep-20261101/plugins.log",
+        "result": "{\"sources\": 87, \"settings\": 129, \"resources\": 13, \"sourceTests\": 11, \"pluginConsumerSlots\": 131}"
+      },
+      {
+        "command": [
+          "python3",
+          "tools/gpu/audit.py",
+          "--check"
+        ],
+        "exit_code": 0,
+        "raw_log": "target/docs-sweep-20261101/gpu.log",
+        "result": "GPU inventory verified: 16 settings; 83 pinned source/resource/test files.\nOpen classic gates: 9; separate future HD gates: 1; hashes/coverage are not parity or completion."
+      },
+      {
+        "command": [
+          "git",
+          "diff",
+          "--check"
+        ],
+        "exit_code": 0,
+        "raw_log": "target/docs-sweep-20261101/whitespace.log",
+        "result": "passed; no output"
+      }
+    ],
+    "not_run": [
+      "Cargo/build/tests/Clippy/Wasm",
+      "Java/source-case differentials",
+      "live reference or gameplay",
+      "scored FPS/cold/soak/latency/memory",
+      "map teleport/ordinary-account denial",
+      "ADR-0004 visual acceptance"
+    ],
+    "checked_utc": "2026-11-01T18:39:10.258856+00:00",
+    "checker_contracts": {
+      "python_tools_parsed": 3,
+      "temporary_cases": [
+        "missing local file rejects",
+        "missing Markdown heading rejects",
+        "duplicate heading suffix resolves",
+        "valid heading accepts"
+      ],
+      "result": "passed in this sweep"
+    },
+    "preservation": {
+      "original_archive_hashes_match_initial_inventory": 45,
+      "preexisting_non_documentation_statuses_preserved": true,
+      "reference_tree_changes": false,
+      "runtime_or_quality_changes": false
+    }
+  },
+  "incremental_location_continuation": {
+    "date": "2026-11-01",
+    "head": "e2ce6f64c9cbfcd957c219fe27f4c94e7883e8fe",
+    "evidence": "docs/reference/UPDATE-OPTIMIZATION-EVIDENCE-2026-10-30.json#incrementalLocations",
+    "source_manifest": "target/incremental-locations-20261101/after-source.json",
+    "status": "implementation/diagnostic slice; whole-client performance and source/runtime acceptance incomplete",
+    "note": "Original documentation-sweep hashes and claims above retain their original scope. No reference source changed."
   }
 }

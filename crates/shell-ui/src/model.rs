@@ -69,6 +69,7 @@ impl PluginPanel {
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ShellAction {
+    PluginUi(rustclient_plugin_host::PanelAction),
     Configure {
         plugin: String,
         key: String,
@@ -106,6 +107,7 @@ impl SidebarState {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ShellModel {
+    pub panels: Vec<rustclient_plugin_host::HostedPanel>,
     pub plugins: Vec<PluginPanel>,
     pub error: Option<String>,
     pub sidebar: SidebarState,
@@ -118,6 +120,7 @@ pub struct ShellModel {
 impl Default for ShellModel {
     fn default() -> Self {
         Self {
+            panels: Vec::new(),
             plugins: Vec::new(),
             error: None,
             sidebar: SidebarState::Hidden,

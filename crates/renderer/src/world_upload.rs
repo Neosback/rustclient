@@ -1,5 +1,8 @@
 //! Portable CPU preparation. The public payload owns the exact mesh it prepares.
-use crate::{RenderError, world_geometry::PreparedGeometry};
+use crate::{
+    RenderError,
+    world_geometry::{PreparedGeometry, PreparedScenery},
+};
 use rustclient_scene::WorldMesh;
 
 /// How a publication relates to the current live scene, independently of repeated cache IDs.
@@ -36,14 +39,14 @@ impl PreparedWorldMesh {
     }
 }
 pub(crate) struct WorldUpload {
-    pub geometry: PreparedGeometry,
+    pub geometry: PreparedScenery,
     pub dynamic: PreparedGeometry,
     pub textures_fingerprint: u64,
 }
 impl WorldUpload {
     pub fn prepare(mesh: &WorldMesh) -> Result<Self, RenderError> {
         Ok(Self {
-            geometry: PreparedGeometry::new(&mesh.geometry, true)?,
+            geometry: PreparedScenery::new(&mesh.geometry)?,
             dynamic: PreparedGeometry::new(&mesh.dynamic, false)?,
             textures_fingerprint: crate::world_textures::fingerprint(&mesh.textures),
         })

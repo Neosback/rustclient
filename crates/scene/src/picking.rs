@@ -134,6 +134,13 @@ pub fn pick_surface(
             hit = Some(surface_hit(geometry, vertex, distance));
         }
     }
+    for zone in geometry.location_zones.iter() {
+        if let Some(candidate) = pick_surface(&zone.geometry, origin, direction, visibility)
+            && hit.is_none_or(|old| candidate.distance < old.distance)
+        {
+            hit = Some(candidate);
+        }
+    }
     hit
 }
 

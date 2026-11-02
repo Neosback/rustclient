@@ -7,7 +7,15 @@ use wgpu::util::DeviceExt;
 mod compact;
 mod metadata;
 mod prepared;
+mod scenery;
 mod sort;
+#[cfg(not(target_arch = "wasm32"))]
+mod zone_diagnostic;
+mod zone_upload;
+pub(crate) use scenery::{PreparedScenery, SceneryGpu};
+#[cfg(not(target_arch = "wasm32"))]
+pub use zone_diagnostic::{ZoneResidencySample, verify_location_residency};
+pub use zone_upload::PreparedLocationUpdate;
 mod validation;
 pub(crate) use prepared::PreparedGeometry;
 use validation::validate;
@@ -17,9 +25,11 @@ struct TransparentTriangle {
     indices: [u32; 3],
     ordinal: usize,
     priority: u8,
+    location_order: Option<rustclient_scene::LocationOrder>,
     alpha: bool,
     points: [[i16; 3]; 3],
 }
+#[derive(Clone)]
 struct AlphaModel {
     center: Vec3,
     faces: Vec<TransparentTriangle>,
@@ -29,23 +39,26 @@ struct AlphaModel {
     /// Replaced by a scenery patch: contributes no faces to either pass.
     hidden: bool,
 }
+#[derive(Clone)]
 struct OpaqueBatch {
     indices: core::ops::Range<u32>,
     policy: ModelDepthPolicy,
 }
 /// Consecutive opaque triangles of one source model; the unit a scenery patch can hide.
+#[derive(Clone)]
 struct OpaqueRun {
     indices: core::ops::Range<u32>,
     policy: ModelDepthPolicy,
     group: Option<usize>,
 }
-#[derive(Default)]
+#[derive(Default, Clone)]
 struct GeometryData {
     opaque_count: u32,
     transparent_count: u32,
     models: Vec<AlphaModel>,
     model_order: Vec<usize>,
     model_groups: Vec<Option<usize>>,
+    location_orders: Vec<Option<rustclient_scene::LocationOrder>>,
     face_depths: Vec<super::face_priority::FaceDepth>,
     face_order: Vec<usize>,
     sorted: Vec<TransparentTriangle>,
@@ -76,12 +89,6 @@ pub(crate) struct GeometryGpu {
 impl GeometryGpu {
     pub fn new(device: &wgpu::Device, geometry: &SceneGeometry) -> Result<Self, RenderError> {
         PreparedGeometry::new(geometry, false)?.upload(device, geometry)
-    }
-    pub fn new_static(
-        device: &wgpu::Device,
-        geometry: &SceneGeometry,
-    ) -> Result<Self, RenderError> {
-        PreparedGeometry::new(geometry, true)?.upload(device, geometry)
     }
     pub fn update(
         &mut self,
@@ -148,6 +155,7 @@ impl GeometryGpu {
             cpu_remap_bytes: (self.data.vertex_remap.capacity() * size_of::<u32>()) as u64,
             ordering_runs: self.data.ordering_runs,
             ordering_reuses: self.data.ordering_reuses,
+            ..super::WorldGeometryStats::default()
         }
     }
     pub fn draw_opaque(
@@ -171,6 +179,28 @@ impl GeometryGpu {
                         pass.draw_indexed(batch.indices.clone(), 0, 0..1);
                     }
                 }
+            }
+        }
+    }
+    pub fn draw_opaque_range(
+        &self,
+        pass: &mut wgpu::RenderPass<'_>,
+        pipelines: &super::world_pipeline::WorldPipelines,
+        indices: core::ops::Range<u32>,
+        policy: ModelDepthPolicy,
+    ) {
+        pass.set_vertex_buffer(0, self.vertices.slice(..));
+        pass.set_index_buffer(self.opaque.slice(..), wgpu::IndexFormat::Uint32);
+        match policy {
+            ModelDepthPolicy::DepthWrite => {
+                pass.set_pipeline(&pipelines.opaque);
+                pass.draw_indexed(indices, 0, 0..1);
+            }
+            ModelDepthPolicy::SortedDeferredWrite => {
+                pass.set_pipeline(&pipelines.deferred_color);
+                pass.draw_indexed(indices.clone(), 0, 0..1);
+                pass.set_pipeline(&pipelines.deferred_depth);
+                pass.draw_indexed(indices, 0, 0..1);
             }
         }
     }
@@ -202,3 +232,6 @@ fn point(vertex: &SceneVertex) -> Vec3 {
 mod hidden;
 #[cfg(test)]
 mod trace;
+
+#[cfg(target_arch = "wasm32")]
+mod retirement;

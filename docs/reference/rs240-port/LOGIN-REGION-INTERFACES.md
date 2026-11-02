@@ -10,7 +10,7 @@ added 2026-10-25. Complete interface/model lifecycle parity remains open.
 The current GUI failure is a server-selected fullscreen world-map root without
 its content, rather than an unfinished first-region load. This document extends
 [GAMEFRAME-INTERFACES.md](GAMEFRAME-INTERFACES.md) and the
-[checkpoint](../../plan/GAMEFRAME-240.md).
+[checkpoint](../../archive/2026-foundation/plan/GAMEFRAME-240.md).
 
 ## Source order and Rust ownership
 

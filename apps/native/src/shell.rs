@@ -41,6 +41,7 @@ impl SidebarArrow {
 pub(super) struct Shell {
     pub panel: EguiPanel,
     ui_clock: Instant,
+    panel_actions: Vec<rustclient_plugin_host::PanelAction>,
     channel: ShellChannel,
     configuration: BuiltinConfigurations,
     pub focused: bool,
@@ -88,6 +89,7 @@ impl Shell {
             panel,
             ui_clock: Instant::now(),
             channel,
+            panel_actions: Vec::new(),
             configuration,
             focused: false,
             held: false,
@@ -382,6 +384,10 @@ impl Shell {
             let mut new_notes = None;
             let result =
                 match action {
+                    ShellAction::PluginUi(action) => {
+                        self.panel_actions.push(action);
+                        Ok(())
+                    }
                     ShellAction::ToggleSidebar => {
                         self.resize(
                             window,
@@ -509,6 +515,31 @@ impl Shell {
         }
         changed
     }
+    /// Finish pending local editor input before the application tears down its plugins.
+    pub fn prepare_close(&mut self) {
+        if let Err(error) = self
+            .panel
+            .finish_editing(self.ui_clock.elapsed().as_secs_f64())
+        {
+            self.channel.model.borrow_mut().error = Some(error);
+        }
+        for action in self.channel.drain() {
+            if let ShellAction::PluginUi(action) = action {
+                self.panel_actions.push(action);
+            } else {
+                self.channel.send(action);
+            }
+        }
+    }
+    pub fn take_panel_actions(&mut self) -> Vec<rustclient_plugin_host::PanelAction> {
+        std::mem::take(&mut self.panel_actions)
+    }
+    pub fn set_plugin_panels(&mut self, panels: &[rustclient_plugin_host::HostedPanel]) {
+        if self.channel.model.borrow().panels != panels {
+            self.channel.model.borrow_mut().panels = panels.to_vec();
+            self.panel.content_changed();
+        }
+    }
     pub fn set_plugin_statuses(
         &mut self,
         statuses: BTreeMap<String, (rustclient_plugin_host::LifecycleStatus, Option<String>)>,
@@ -567,6 +598,13 @@ impl Shell {
         let previous = self.sidebar();
         if previous == sidebar {
             return;
+        }
+        if previous == SidebarState::Panel
+            && let Err(error) = self
+                .panel
+                .finish_editing(self.ui_clock.elapsed().as_secs_f64())
+        {
+            self.channel.model.borrow_mut().error = Some(error);
         }
         let scale = window.scale_factor();
         // Capture a genuine user size before changing how much chrome is reserved. In-flight

@@ -51,7 +51,7 @@ impl NativePlugin for Fps {
         false
     }
     fn output(&mut self, call: &mut PluginCall<'_>) -> Result<PluginOutput, PluginFault> {
-        let config = call.config;
+        let config = call.config();
         let client = call.client().unwrap_or_default();
         let limit = enforced_limit(
             config.boolean("limitFps"),

@@ -1,4 +1,5 @@
-//! Local XP Tracker port from `RuneLite` (BSD-2, NOTICE). Full panel/network port remains separate.
+//! Local XP Tracker port from `RuneLite` (BSD-2, NOTICE). Local retained panel; full panel styling, account persistence and network sync remain open.
+mod panel;
 mod state;
 use crate::NativePlugin;
 use rustclient_plugin_api::{
@@ -16,8 +17,20 @@ pub(crate) struct XpTracker {
     last_cycle: Option<u64>,
     player: String,
     was_logged_in: bool,
+    panel: Option<std::sync::Arc<rustclient_plugin_api::PluginPanel>>,
+    panel_key: Option<(u64, GameStateKind, u8)>,
+    panel_dirty: bool,
 }
 impl NativePlugin for XpTracker {
+    fn game_event_interests(&self) -> rustclient_plugin_api::EventInterest {
+        use rustclient_plugin_api::{EventInterest, GameEventKind};
+        EventInterest::NONE
+            .with(GameEventKind::GameStateChanged)
+            .with(GameEventKind::ClientTick)
+            .with(GameEventKind::GameTick)
+            .with(GameEventKind::StatChanged)
+    }
+
     fn shutdown(&mut self, _call: &mut PluginCall<'_>) -> Result<(), PluginFault> {
         *self = Self::default();
         Ok(())
@@ -27,6 +40,7 @@ impl NativePlugin for XpTracker {
         *self = Self::default();
         self.skills = vec![None; 23];
         self.ready_after = 2;
+        self.panel_dirty = true;
         Ok(())
     }
     fn events(
@@ -64,9 +78,9 @@ impl NativePlugin for XpTracker {
         self.last_cycle = Some(client.cycle);
         let policy = PausePolicy {
             logged_out: !logged_in,
-            pause_after_ms: u64::try_from(call.config.integer("pauseSkillAfter")).unwrap_or(0)
+            pause_after_ms: u64::try_from(call.config().integer("pauseSkillAfter")).unwrap_or(0)
                 * 60_000,
-            reset_rate_after_ms: u64::try_from(call.config.integer("resetSkillRateAfter"))
+            reset_rate_after_ms: u64::try_from(call.config().integer("resetSkillRateAfter"))
                 .unwrap_or(0)
                 * 60_000,
         };
@@ -74,6 +88,12 @@ impl NativePlugin for XpTracker {
             skill.advance(elapsed, policy);
         }
         for event in events {
+            if matches!(
+                event,
+                GameEvent::StatChanged { .. } | GameEvent::GameStateChanged(_)
+            ) {
+                self.panel_dirty = true;
+            }
             if matches!(event, GameEvent::GameTick(_)) && logged_in && self.ready_after > 0 {
                 self.ready_after -= 1;
                 if self.ready_after == 0 {
@@ -101,7 +121,7 @@ impl NativePlugin for XpTracker {
                 if !logged_in || self.ready_after > 0 {
                     continue;
                 }
-                if call.config.boolean("hideMaxed") && level.real >= 99 {
+                if call.config().boolean("hideMaxed") && level.real >= 99 {
                     self.skills[skill.index()] = None;
                     self.recent.retain(|s| s != skill);
                     continue;
@@ -112,7 +132,7 @@ impl NativePlugin for XpTracker {
                 let tracker =
                     self.skills[skill.index()].get_or_insert_with(|| SkillTracker::new(xp));
                 if tracker.update(xp) {
-                    if call.config.boolean("prioritizeRecentXpSkills") {
+                    if call.config().boolean("prioritizeRecentXpSkills") {
                         self.recent.retain(|s| s != skill);
                         self.recent.insert(0, *skill);
                     } else if !self.recent.contains(skill) {
@@ -123,14 +143,24 @@ impl NativePlugin for XpTracker {
         }
         Ok(())
     }
+    fn panel_event(
+        &mut self,
+        call: &mut PluginCall<'_>,
+        event: &rustclient_plugin_api::PanelEvent,
+    ) -> Result<(), PluginFault> {
+        self.panel_action(call, event);
+        Ok(())
+    }
     fn output(&mut self, call: &mut PluginCall<'_>) -> Result<PluginOutput, PluginFault> {
         let client = call.client().unwrap_or_default();
         let mut output = PluginOutput::default();
+        self.publish_panel(call);
+        output.panels.extend(self.panel.iter().cloned());
         if client.state != GameStateKind::LoggedIn || self.ready_after > 0 {
             return Ok(output);
         }
         let levels = call.skills().unwrap_or_default();
-        let hide_maxed = call.config.boolean("hideMaxed");
+        let hide_maxed = call.config().boolean("hideMaxed");
         for (row, skill) in self
             .recent
             .iter()

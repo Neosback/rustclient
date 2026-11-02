@@ -34,9 +34,9 @@ pub(crate) struct Minimap {
 }
 
 impl Minimap {
-    fn stored_zoom(call: &PluginCall<'_>) -> Option<f64> {
-        call.storage
-            .load(call.plugin)
+    fn stored_zoom(call: &mut PluginCall<'_>) -> Option<f64> {
+        call.load_storage()
+            .ok()?
             .get(ZOOM_KEY)
             .and_then(|text| text.parse::<f64>().ok())
             .filter(|zoom| zoom.is_finite() && *zoom > 0.)
@@ -53,14 +53,14 @@ impl NativePlugin for Minimap {
             .then(|| Self::stored_zoom(call))
             .flatten();
         *self = Self {
-            pending_zoom: stored.filter(|_| call.config.boolean("zoom")),
+            pending_zoom: stored.filter(|_| call.config().boolean("zoom")),
             saved: stored.unwrap_or(0.),
             saved_at: None,
         };
         Ok(())
     }
     fn output(&mut self, call: &mut PluginCall<'_>) -> Result<PluginOutput, PluginFault> {
-        let config = call.config;
+        let config = call.config();
         let wheel_zoom = config.boolean("zoom");
         if wheel_zoom {
             self.save_zoom(call);
@@ -100,9 +100,13 @@ impl Minimap {
         {
             return;
         }
-        let mut values = call.storage.load(call.plugin);
+        let Ok(mut values) = call.load_storage() else {
+            return;
+        };
         values.insert(ZOOM_KEY.to_owned(), client.minimap_zoom.to_string());
-        call.storage.save(call.plugin, &values);
+        if call.save_storage(&values).is_err() {
+            return;
+        }
         self.saved = client.minimap_zoom;
         self.saved_at = Some(client.cycle);
     }

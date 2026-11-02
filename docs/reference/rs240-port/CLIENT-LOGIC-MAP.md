@@ -3,7 +3,8 @@
 Status: research navigation, reviewed 2026-10-29 at `dbb2b500`. This map does not set the order of
 work; [the roadmap](../../plan/PORTING-ROADMAP.md) does, and [PORT-MATRIX](PORT-MATRIX.md) owns
 status. This page answers one question per subsystem: **where does the stock client do this,
-and which Rust owner must reproduce it?**
+and which Rust owner must reproduce it?** Rust status not explicitly refreshed below
+is the October 29 observation; use the current matrix for current gaps.
 
 ## How to read the anchors
 
@@ -39,9 +40,9 @@ happen inside the logic cycle in a fixed order. The draw pass builds hover/menu 
 | `updateGameState` | `classJB.method6386` | `WorldMapSectionType.updateGameState` | S | `crates/game-state/src/connection.rs` |
 | Logged-in cycle | `client.method2172` (3231-4230) | `Client.doCycleLoggedIn` | S | split across `apps/native/src/main.rs`, `network.rs`, `crates/application` |
 | Logged-out cycle (login, reconnect states 40/45) | `client.method2301` | `Client.doCycleLoggedOut` | S | `crates/application/src/title.rs`; reconnect absent |
-| Packet loop: up to 100 packets per cycle, and the whole PACKET_GROUP_START group | `client.method2198` (4777) | `Client.method1357` | S | network worker decodes everything as bytes arrive (`apps/native/src/network.rs`) |
+| Packet loop: up to 100 packets per cycle, and the whole PACKET_GROUP_START group | `client.method2198` (4777) | `Client.method1357` | S | network worker decodes; application S4 admits a bounded queue, ordinary budget 100, complete groups indivisible |
 | Server packet dispatcher | `client.method2346` (4884-7409); copies at `method2199/2200/2201/2202` | `Client.method1434` | S | `crates/protocol/src/openrune_240/game.rs::receive` |
-| Outbound packet node / flush at end of cycle | `classEF.method3863` / `classMU.method7762(classHS.method6136())` | `ReflectionCheck.getPacketBufferNode` / `packetWriter.flush` | S | encoded and sent immediately by the network worker |
+| Outbound packet node / flush at end of cycle | `classEF.method3863` / `classMU.method7762(classHS.method6136())` | `ReflectionCheck.getPacketBufferNode` / `packetWriter.flush` | S | queued for the cycle outbound flush; platform worker writes prepared bytes |
 | RuneLite tick / tickEnd / serverTick / frame hooks | `client.method2126` / `method2347` / `method2383` / `method2363` | — | T1 | `crates/plugin-bridge` diff after `AdvanceCycles` |
 | Draw entry / logged-in draw | `client.vmethod237` (12987) / `client.method2187` | `Client.draw` / `Client.drawLoggedIn` | S | `apps/native/src/main.rs` redraw + `crates/renderer` |
 | Loading/"Connection lost" messages in states 25/40/45 | `classLU.method7199` from `vmethod237` | `HttpMethod.drawLoadingMessage` | S | absent |
@@ -75,11 +76,13 @@ Order inside `client.method2172` (S, relative line in the method):
     `logoutTimer = 250`). More than 50 cycles since the last write sends `NO_TIMEOUT` (980).
 12. Flush the packet writer (990).
 
-Today the Rust cycle is driven from `NativeApp::about_to_wait`. Packets are applied when winit
-delivers network events, not at a fixed point in the cycle. There is no per-cycle packet budget
-and no packet-group handling. KeepAlive is sent every 5 s, not after 50 idle write cycles. A
-15 s receive gap ends the session instead of entering the reconnect state. These are cycle
-ordering differences (matrix `client-cycle`).
+The native driver still enters through `NativeApp::about_to_wait`, but the shared
+cycle clock and bounded S4 packet queue now govern application. Ordinary packet
+budget is 100, complete groups are indivisible and outbound intents flush at the
+cycle boundary. NO_TIMEOUT follows acknowledged-write cycles. Full stage/input/
+script ordering, idle/watchdog/reconnect and browser orchestration remain open;
+see matrix `client-cycle` and `session-control`. This November 1 reconciliation
+supersedes the earlier immediate-application/5-second keepalive description.
 
 ## 2. Login, session and lifecycle
 
@@ -89,7 +92,7 @@ ordering differences (matrix `client-cycle`).
 | Pending login / response codes | `PendingLogin` | — | T1 class | `crates/protocol/src/openrune_240/login.rs` |
 | GameStateChanged | `client.method2276` | `updateGameState` | T1 | `crates/game-state/src/connection.rs` |
 | Logout / forced disconnect | — | `class30.logOut`, `class184.forceDisconnect` | 235 | `apps/native/src/network.rs` |
-| Reasoned logout, world transfer | `client.method2346` LOGOUT_WITHREASON/LOGOUT_TRANSFER | `Client.method1434` | S | protocol error; transfer discarded (`session-control`) |
+| Reasoned logout, world transfer | `client.method2346` LOGOUT_WITHREASON/LOGOUT_TRANSFER | `Client.method1434` | S | typed logout/transfer controls; native returns to title, full reason panels and actual transfer/reconnect open (`session-control`) |
 | World list | `World`, `client.method1946` WorldChanged, `World.method2517` WorldListLoad | `World` | T1 | absent (`world-list`) |
 
 ## 3. Map, regions and world views
@@ -153,7 +156,7 @@ ordering differences (matrix `client-cycle`).
 | Interface draw | `classGP.method5585`, `classGP.method5625` | `class40.drawInterface`, `class150.drawWidgets` | T1/S | `crates/game-ui/src/widgets.rs`, `widget_visuals.rs` |
 | Widget invalidation | — | `class376.invalidateWidget` | 235 | `crates/game-ui` |
 | Run script / script events | `client.method2371`, `client.method2381`, `ScriptEvent` | `LoginType.runScript`, `class141.runScriptEvent` | T1 | `crates/client-script`, `crates/application/src/scripts` |
-| Instruction dispatcher | `classBB` (control-flow flattened; see [OPCODES](../client-240/OPCODES.md)) | `ScriptOpcodes` + handlers | S | 421 of 606 named opcodes dispatched ([CS2-HOST-COVERAGE](CS2-HOST-COVERAGE.tsv)) |
+| Instruction dispatcher | `classBB` (control-flow flattened; see [OPCODES](../client-240/OPCODES.md)) | `ScriptOpcodes` + handlers | S | 487 host-dispatched rows; semantics/cases remain partial ([CS2-HOST-COVERAGE](CS2-HOST-COVERAGE.tsv)) |
 | Pause/dialog resume | — | `HealthBarDefinition.resumePauseWidget` | 235 | absent (`outbound-actions`) |
 | Write-ups | [GAMEFRAME-INTERFACES](GAMEFRAME-INTERFACES.md), [LOGIN-REGION-INTERFACES](LOGIN-REGION-INTERFACES.md) | | | |
 

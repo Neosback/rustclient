@@ -7,7 +7,7 @@
 
 Status: active navigation document.
 
-This document connects the already-audited revision-240 player/NPC wire behavior to the remaining shared actor runtime work. It does not duplicate the exact transform tables in `docs/plan/PLAYER-UPDATING-240.md` or `docs/plan/NPC-ANIMATION-240.md`.
+This document connects the already-audited revision-240 player/NPC wire behavior to the remaining shared actor runtime work. It does not duplicate the exact transform tables in `docs/archive/2026-foundation/plan/PLAYER-UPDATING-240.md` or `docs/archive/2026-foundation/plan/NPC-ANIMATION-240.md`.
 
 ## Why this runtime slice matters
 
@@ -472,8 +472,8 @@ Each trace should update the stable-symbol research ledger before implementation
 
 ## Existing evidence to keep linked
 
-- `docs/plan/PLAYER-UPDATING-240.md`
-- `docs/plan/NPC-ANIMATION-240.md`
+- `docs/archive/2026-foundation/plan/PLAYER-UPDATING-240.md`
+- `docs/archive/2026-foundation/plan/NPC-ANIMATION-240.md`
 - `docs/reference/client-240/clusters/09-spot-animation.md`
 - `docs/reference/client-240/clusters/10-hitsplats-healthbars.md`
 - `docs/reference/client-240/clusters/11-overhead-overrides.md`

@@ -22,7 +22,8 @@ use std::sync::Arc;
 /// Builds snapshots and events. One per session.
 #[derive(Default)]
 pub struct Projector {
-    previous: Option<GameSnapshot>,
+    previous: Option<Arc<GameSnapshot>>,
+    previous_domains: Option<rustclient_plugin_api::EventInterest>,
     last_cycle: Option<u64>,
     last_tick: Option<u64>,
     varbits: Option<VarbitCache>,
@@ -143,14 +144,14 @@ impl Projector {
     /// Project the current state and derive the events since the previous projection.
     ///
     /// `wanted` is the union of grants across enabled plugins; categories nobody can read are not
-    /// built. Events for categories whose grant appears later report existing contents as new.
+    /// built. Newly observed categories establish a baseline without synthetic shared events.
     pub fn project(
         &mut self,
         state: &GameState,
         frame: &Frame,
         sources: &Sources<'_>,
         wanted: &CapabilitySet,
-    ) -> (GameSnapshot, Vec<GameEvent>) {
+    ) -> (Arc<GameSnapshot>, Vec<GameEvent>) {
         self.project_with_events(state, frame, sources, wanted, true)
     }
 
@@ -163,7 +164,7 @@ impl Projector {
         sources: &Sources<'_>,
         wanted: &CapabilitySet,
         emit_events: bool,
-    ) -> (GameSnapshot, Vec<GameEvent>) {
+    ) -> (Arc<GameSnapshot>, Vec<GameEvent>) {
         self.project_interested(state, frame, sources, wanted, emit_events.then_some(wanted))
     }
 
@@ -176,10 +177,33 @@ impl Projector {
         sources: &Sources<'_>,
         wanted: &CapabilitySet,
         interest: Option<&CapabilitySet>,
-    ) -> (GameSnapshot, Vec<GameEvent>) {
+    ) -> (Arc<GameSnapshot>, Vec<GameEvent>) {
+        self.project_filtered(
+            state,
+            frame,
+            sources,
+            wanted,
+            interest,
+            rustclient_plugin_api::EventInterest::ALL,
+        )
+    }
+
+    /// Advance projection history while constructing only explicitly requested event classes.
+    /// Query domains remain independent of callback interests.
+    pub fn project_filtered(
+        &mut self,
+        state: &GameState,
+        frame: &Frame,
+        sources: &Sources<'_>,
+        wanted: &CapabilitySet,
+        interest: Option<&CapabilitySet>,
+        kinds: rustclient_plugin_api::EventInterest,
+    ) -> (Arc<GameSnapshot>, Vec<GameEvent>) {
         let snapshot = self.snapshot(state, frame, sources, wanted);
-        let index = (interest
-            .is_some_and(|grants| project::wants(grants, Capability::GameReadVars))
+        let domains = rustclient_plugin_api::EventInterest::ALL.permitted_by(wanted);
+        let kinds = kinds.intersection(self.previous_domains.unwrap_or(domains));
+        let index = (kinds.contains(rustclient_plugin_api::GameEventKind::VarbitChanged)
+            && interest.is_some_and(|grants| project::wants(grants, Capability::GameReadVars))
             && project::wants(wanted, Capability::GameReadVars))
         .then(|| self.varbit_table(sources).1);
         let empty_index = VarbitIndex::default();
@@ -196,7 +220,7 @@ impl Projector {
         let events = if interest.is_none() {
             Vec::new()
         } else if let Some(previous) = &self.previous {
-            diff::derive_interested(previous, &snapshot, index, timing, interest)
+            diff::derive_filtered(previous, &snapshot, index, timing, interest, kinds)
         } else {
             // First projection: actors present are new and the lifecycle moved out of the
             // login screen, but values and history are not replayed as changes.
@@ -210,9 +234,18 @@ impl Projector {
                 },
                 ..snapshot.clone()
             };
-            diff::derive_interested(&baseline, &snapshot, index, Timing::default(), interest)
+            diff::derive_filtered(
+                &baseline,
+                &snapshot,
+                index,
+                Timing::default(),
+                interest,
+                kinds,
+            )
         };
-        self.previous = Some(snapshot.clone());
+        self.previous_domains = Some(domains);
+        let snapshot = Arc::new(snapshot);
+        self.previous = Some(Arc::clone(&snapshot));
         (snapshot, events)
     }
 

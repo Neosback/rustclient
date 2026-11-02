@@ -29,7 +29,13 @@ pub mod world_map;
 pub use inputs::SceneryInputs;
 mod decorations;
 mod locations;
+mod zones;
 pub use locations::{PATCH_KEY_BUDGET, location_key, patch_supported};
+pub use zones::{
+    LocationModel, LocationOrder, LocationPartitions, LocationProjection, LocationZone, SceneZone,
+    build_location_zones, changed_location_zones, location_partitions, partition_locations,
+    same_location_zones,
+};
 mod mesh;
 mod model_sort;
 pub use model_sort::{ModelSortSource, ModelView, SORT_NEAR};
@@ -62,6 +68,8 @@ impl fmt::Display for SceneError {
     }
 }
 impl std::error::Error for SceneError {}
+/// Existing expanded-geometry allocation ceiling, shared by retained resource validation.
+pub const SCENE_VERTEX_LIMIT: usize = 3_000_000;
 type Result<T> = std::result::Result<T, SceneError>;
 /// Immutable catalog asset. Only `GameState`'s descriptor selects the current scene.
 pub struct SceneAsset {

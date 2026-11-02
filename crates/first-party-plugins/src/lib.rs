@@ -15,6 +15,7 @@ mod idlenotifier_animations;
 mod interfacestyles;
 mod interfacestyles_sprites;
 mod minimap;
+mod notes;
 mod npchighlight;
 mod playerindicators;
 mod roofremoval;
@@ -44,6 +45,14 @@ pub trait NativePlugin {
     fn subscribes_game_events(&self) -> bool {
         true
     }
+    /// Static subset actually consumed by this implementation.
+    fn game_event_interests(&self) -> rustclient_plugin_api::EventInterest {
+        rustclient_plugin_api::EventInterest::ALL
+    }
+    /// Source annotation priority for a class.
+    fn game_event_priority(&self, _kind: rustclient_plugin_api::GameEventKind) -> f32 {
+        0.
+    }
 
     /// Reset to a clean state; called when the plugin starts and every time it is switched on.
     ///
@@ -67,6 +76,17 @@ pub trait NativePlugin {
         Ok(())
     }
 
+    /// A host-validated interaction with a panel from this activation.
+    /// # Errors
+    /// Callback failures use the host's phase-specific fault policy.
+    fn panel_event(
+        &mut self,
+        _call: &mut PluginCall<'_>,
+        _event: &rustclient_plugin_api::PanelEvent,
+    ) -> Result<(), PluginFault> {
+        Ok(())
+    }
+
     /// Declarative output for this update.
     ///
     /// # Errors
@@ -74,7 +94,7 @@ pub trait NativePlugin {
     fn output(&mut self, call: &mut PluginCall<'_>) -> Result<PluginOutput, PluginFault>;
 }
 
-struct Adapter<T>(T);
+struct Adapter<T>(T, &'static str);
 
 impl<T: NativePlugin> PluginInstance for Adapter<T> {
     fn shutdown(&mut self, call: &mut PluginCall<'_>) -> Result<(), PluginFault> {
@@ -82,6 +102,16 @@ impl<T: NativePlugin> PluginInstance for Adapter<T> {
     }
     fn subscribes_game_events(&self) -> bool {
         self.0.subscribes_game_events()
+    }
+
+    fn game_event_interests(&self) -> rustclient_plugin_api::EventInterest {
+        self.0.game_event_interests()
+    }
+    fn game_event_source(&self) -> &str {
+        self.1
+    }
+    fn game_event_priority(&self, kind: rustclient_plugin_api::GameEventKind) -> f32 {
+        self.0.game_event_priority(kind)
     }
 
     fn init(&mut self, call: &mut PluginCall<'_>) -> Result<(), PluginFault> {
@@ -108,6 +138,14 @@ impl<T: NativePlugin> PluginInstance for Adapter<T> {
         self.0.events(call, events)
     }
 
+    fn on_panel_event(
+        &mut self,
+        call: &mut PluginCall<'_>,
+        event: &rustclient_plugin_api::PanelEvent,
+    ) -> Result<(), PluginFault> {
+        self.0.panel_event(call, event)
+    }
+
     fn output(&mut self, call: &mut PluginCall<'_>) -> Result<PluginOutput, PluginFault> {
         self.0.output(call)
     }
@@ -117,60 +155,75 @@ struct Entry {
     /// Plugin id suffix after `dev.rustclient.`.
     name: &'static str,
     capabilities: &'static [Capability],
-    build: fn() -> Box<dyn PluginInstance>,
+    build: fn(&'static str) -> Box<dyn PluginInstance>,
+    source_class: &'static str,
 }
 
-fn boxed<T: NativePlugin + 'static>(plugin: T) -> Box<dyn PluginInstance> {
-    Box::new(Adapter(plugin))
+fn boxed<T: NativePlugin + 'static>(plugin: T, source: &'static str) -> Box<dyn PluginInstance> {
+    Box::new(Adapter(plugin, source))
 }
 
 const ENTRIES: &[Entry] = &[
     Entry {
+        name: "notes",
+        source_class: "net.runelite.client.plugins.notes.NotesPlugin",
+        capabilities: &[Capability::UiPanel, Capability::StoragePlugin],
+        build: |source| boxed(notes::Notes::default(), source),
+    },
+    Entry {
         name: "xptracker",
+        source_class: "net.runelite.client.plugins.xptracker.XpTrackerPlugin",
         capabilities: &[
             Capability::GameReadSkills,
             Capability::GameReadClient,
             Capability::GameReadPlayers,
             Capability::UiOverlay,
+            Capability::UiPanel,
         ],
-        build: || boxed(xptracker::XpTracker::default()),
+        build: |source| boxed(xptracker::XpTracker::default(), source),
     },
     Entry {
         name: "roofremoval",
+        source_class: "net.runelite.client.plugins.roofremoval.RoofRemovalPlugin",
         capabilities: &[Capability::SceneControl, Capability::GameReadClient],
-        build: || boxed(roofremoval::RoofRemoval::new()),
+        build: |source| boxed(roofremoval::RoofRemoval::new(), source),
     },
     Entry {
         name: "animsmoothing",
+        source_class: "net.runelite.client.plugins.animsmoothing.AnimationSmoothingPlugin",
         capabilities: &[Capability::SceneControl],
-        build: || boxed(animsmoothing::AnimationSmoothingPlugin),
+        build: |source| boxed(animsmoothing::AnimationSmoothingPlugin, source),
     },
     Entry {
         name: "stretchedmode",
+        source_class: "net.runelite.client.plugins.stretchedmode.StretchedModePlugin",
         capabilities: &[Capability::UiViewport],
-        build: || boxed(stretchedmode::StretchedMode),
+        build: |source| boxed(stretchedmode::StretchedMode, source),
     },
     Entry {
         name: "entityhider",
+        source_class: "net.runelite.client.plugins.entityhider.EntityHiderPlugin",
         capabilities: &[
             Capability::UiEntitiesHide,
             Capability::GameReadPlayers,
             Capability::GameReadNpcs,
         ],
-        build: || boxed(entityhider::EntityHider),
+        build: |source| boxed(entityhider::EntityHider, source),
     },
     Entry {
         name: "fps",
+        source_class: "net.runelite.client.plugins.fps.FpsPlugin",
         capabilities: &[
             Capability::UiOverlay,
             Capability::ClientFrameLimit,
             Capability::GameReadClient,
             Capability::GameReadWidgets,
         ],
-        build: || boxed(fps::Fps),
+        build: |source| boxed(fps::Fps, source),
     },
     Entry {
         name: "statusbars",
+        source_class: "net.runelite.client.plugins.statusbars.StatusBarsPlugin",
         capabilities: &[
             Capability::UiOverlay,
             Capability::GameReadWidgets,
@@ -180,10 +233,11 @@ const ENTRIES: &[Entry] = &[
             Capability::GameReadVars,
             Capability::GameReadClient,
         ],
-        build: || boxed(statusbars::StatusBars::default()),
+        build: |source| boxed(statusbars::StatusBars::default(), source),
     },
     Entry {
         name: "idlenotifier",
+        source_class: "net.runelite.client.plugins.idlenotifier.IdleNotifierPlugin",
         capabilities: &[
             Capability::ClientNotify,
             Capability::GameReadClient,
@@ -192,54 +246,60 @@ const ENTRIES: &[Entry] = &[
             Capability::GameReadSkills,
             Capability::GameReadVars,
         ],
-        build: || boxed(idlenotifier::IdleNotifier::new()),
+        build: |source| boxed(idlenotifier::IdleNotifier::new(), source),
     },
     Entry {
         name: "interfacestyles",
+        source_class: "net.runelite.client.plugins.interfacestyles.InterfaceStylesPlugin",
         capabilities: &[Capability::UiSpriteOverride],
-        build: || boxed(interfacestyles::InterfaceStyles::default()),
+        build: |source| boxed(interfacestyles::InterfaceStyles::default(), source),
     },
     Entry {
         name: "npchighlight",
+        source_class: "net.runelite.client.plugins.npchighlight.NpcIndicatorsPlugin",
         capabilities: &[
             Capability::UiOverlay,
             Capability::GameReadNpcs,
             Capability::GameReadVars,
         ],
-        build: || boxed(npchighlight::NpcHighlight),
+        build: |source| boxed(npchighlight::NpcHighlight, source),
     },
     Entry {
         name: "playerindicators",
+        source_class: "net.runelite.client.plugins.playerindicators.PlayerIndicatorsPlugin",
         capabilities: &[
             Capability::UiOverlay,
             Capability::GameReadPlayers,
             Capability::GameReadVars,
         ],
-        build: || boxed(playerindicators::PlayerIndicators),
+        build: |source| boxed(playerindicators::PlayerIndicators, source),
     },
     Entry {
         name: "tileindicators",
+        source_class: "net.runelite.client.plugins.tileindicators.TileIndicatorsPlugin",
         capabilities: &[
             Capability::UiOverlay,
             Capability::GameReadClient,
             Capability::GameReadPlayers,
             Capability::GameReadVars,
         ],
-        build: || boxed(tileindicators::TileIndicators),
+        build: |source| boxed(tileindicators::TileIndicators, source),
     },
     Entry {
         name: "minimap",
+        source_class: "net.runelite.client.plugins.minimap.MinimapPlugin",
         capabilities: &[
             Capability::UiMinimap,
             Capability::GameReadClient,
             Capability::StoragePlugin,
         ],
-        build: || boxed(minimap::Minimap::default()),
+        build: |source| boxed(minimap::Minimap::default(), source),
     },
     Entry {
         name: "camera",
+        source_class: "net.runelite.client.plugins.camera.CameraPlugin",
         capabilities: &[Capability::CameraControl],
-        build: || boxed(camera::Camera),
+        build: |source| boxed(camera::Camera, source),
     },
 ];
 
@@ -270,7 +330,7 @@ pub fn register_all(set: &mut PluginSet) -> Result<(), PluginFault> {
             entry: String::new(),
         };
         let id = manifest.id.clone();
-        set.register(manifest, (entry.build)())?;
+        set.register(manifest, (entry.build)(entry.source_class))?;
         // Off until the configuration owner reports the plugin's saved state.
         set.set_enabled(&id, false)?;
     }

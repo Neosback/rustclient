@@ -182,3 +182,158 @@ fn location_queries(
     }
     Ok(())
 }
+
+pub(super) fn zones(
+    asset: &SceneAsset,
+    descriptor: SceneDescriptor,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let door = openable_location(asset, descriptor)?;
+    let key = rustclient_scene::location_key(door);
+    let mut state = super::placed_state(descriptor)?;
+    let baseline = SceneryInputs::from(state.scenery());
+    let initial = rustclient_scene::build_mesh_with_inputs(
+        asset,
+        descriptor,
+        state
+            .initial_placement()
+            .ok_or("placement missing")?
+            .position,
+        &baseline,
+    )?;
+    let mut projection = rustclient_scene::LocationProjection::new(asset, baseline);
+    let mut prepared = None;
+    let mut frames = Vec::new();
+    let mut rows = Vec::new();
+    for iteration in 0..9 {
+        let cursor = state.projection_cursor();
+        state.apply_operation(rustclient_game_state::SemanticOperation::Scenery(
+            rustclient_game_state::SceneryOperation::ChangeLocation {
+                key,
+                change: if iteration % 2 == 0 {
+                    LocationChange::Remove
+                } else {
+                    LocationChange::Inherit
+                },
+            },
+        ))?;
+        let changes = state.projection_changes(cursor);
+        if changes.missed() {
+            return Err("unexpected expired workload journal".into());
+        }
+        let committed_changes = changes.iter().count();
+        let inputs = SceneryInputs::from(state.scenery());
+        let builds = projection.zone_builds();
+        let start = Instant::now();
+        let geometry = projection.extract(asset, &inputs)?;
+        let extraction_ms = start.elapsed().as_secs_f64() * 1000.;
+        let start = Instant::now();
+        let next =
+            rustclient_renderer::PreparedLocationUpdate::prepare(&geometry, prepared.as_ref())?;
+        let prepare_ms = start.elapsed().as_secs_f64() * 1000.;
+        let zone_vertices: usize = geometry
+            .location_zones
+            .iter()
+            .map(|z| z.geometry.vertices.len())
+            .sum();
+        let start = Instant::now();
+        let unchanged = projection.extract(asset, &inputs)?;
+        let unchanged_ms = start.elapsed().as_secs_f64() * 1000.;
+        let retained = std::sync::Arc::ptr_eq(&geometry.location_zones, &unchanged.location_zones);
+        if !retained {
+            return Err("unchanged structural publication was reconstructed".into());
+        }
+        // Compare emitted triangle data as a bounded diagnostic, not a new CI pixel gate.
+        let full = rustclient_scene::build_mesh_with_inputs(
+            asset,
+            descriptor,
+            state
+                .initial_placement()
+                .ok_or("placement missing")?
+                .position,
+            &inputs,
+        )?;
+        if !equivalent_triangles(&initial.geometry, &geometry, &full) {
+            return Err(format!(
+                "zone publication differs from full source projection at sample {iteration}"
+            )
+            .into());
+        }
+        let row = serde_json::json!({"sample":iteration,"committed_changes":committed_changes,"extraction_ms":extraction_ms,"prepare_ms":prepare_ms,"unchanged_ms":unchanged_ms,"zones_built":projection.zone_builds()-builds,"retained_zone_vertices":zone_vertices,"animated_vertices":geometry.vertices.len(),"unchanged_publication_retained":retained,"exact_visible_triangles":true});
+        println!("{row}");
+        rows.push(row);
+        frames.push(geometry);
+        prepared = Some(next);
+    }
+    let gpu = pollster::block_on(rustclient_renderer::verify_location_residency(
+        &initial.geometry,
+        &frames,
+    ))?;
+    let report = serde_json::json!({"scope":"normal GameState location commits, cache-backed CPU/resource diagnostic; not live FPS or reference visual acceptance","door":format!("{key:?}"),"samples":rows,"gpu":gpu.into_iter().map(|x|serde_json::json!({"updated_zones":x.updated_zones,"unchanged_resource_revisions":x.unchanged_resource_revisions,"iterations":x.iterations,"max_enqueued_bytes":x.max_enqueued_bytes,"max_enqueue_ms":x.max_enqueue_ms,"resident_gpu_bytes":x.resident_gpu_bytes,"unchanged_update_uploaded":x.unchanged_update_uploaded})).collect::<Vec<_>>()});
+    let path = std::env::var_os("RUSTCLIENT_ZONE_REPORT").map_or_else(
+        || "target/location-zones-report.json".into(),
+        std::path::PathBuf::from,
+    );
+    std::fs::write(&path, serde_json::to_string_pretty(&report)? + "\n")?;
+    println!("{}", path.display());
+    Ok(())
+}
+fn visible_triangles(
+    geometry: &rustclient_scene::SceneGeometry,
+    hidden: &[u32],
+) -> Vec<[u8; 3 * std::mem::size_of::<rustclient_scene::SceneVertex>()]> {
+    let spans: Vec<_> = geometry
+        .models
+        .iter()
+        .zip(&geometry.model_sources)
+        .filter(|(_, id)| hidden.binary_search(id).is_ok())
+        .map(|(m, _)| m.vertices.clone())
+        .collect();
+    geometry
+        .vertices
+        .chunks_exact(3)
+        .enumerate()
+        .filter(|(i, _)| !spans.iter().any(|r| r.contains(&(i * 3))))
+        .map(|(_, triangle)| {
+            bytemuck::cast_slice::<rustclient_scene::SceneVertex, u8>(triangle)
+                .try_into()
+                .unwrap_or([0; 3 * std::mem::size_of::<rustclient_scene::SceneVertex>()])
+        })
+        .collect()
+}
+
+fn equivalent_triangles(
+    initial: &rustclient_scene::SceneGeometry,
+    geometry: &rustclient_scene::SceneGeometry,
+    full: &rustclient_scene::WorldMesh,
+) -> bool {
+    let mut visible = visible_triangles(initial, &geometry.hidden_static);
+    visible.extend(visible_triangles(geometry, &[]));
+    for zone in geometry.location_zones.iter() {
+        visible.extend(visible_triangles(&zone.geometry, &[]));
+    }
+    let mut wanted = visible_triangles(&full.geometry, &[]);
+    wanted.extend(visible_triangles(&full.dynamic, &[]));
+    visible.sort_unstable();
+    wanted.sort_unstable();
+    visible == wanted
+}
+
+fn openable_location(
+    asset: &SceneAsset,
+    descriptor: SceneDescriptor,
+) -> Result<&rustclient_cache::world::StaticLocation, Box<dyn std::error::Error>> {
+    asset
+        .sources()
+        .squares
+        .iter()
+        .flat_map(|s| &s.locations)
+        .find(|loc| {
+            descriptor.contains(loc.tile)
+                && asset
+                    .sources()
+                    .objects
+                    .get(&loc.object)
+                    .is_some_and(|d| d.actions.iter().flatten().any(|a| a == "Open"))
+        })
+        .ok_or_else(|| "no openable location".into())
+}

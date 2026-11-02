@@ -84,6 +84,42 @@ impl MinimapImage {
 /// Build the full 4px/tile minimap image for the given `SceneAsset` at `plane`.
 #[must_use]
 pub fn build_scene_minimap(asset: &SceneAsset, plane: Plane) -> MinimapImage {
+    let locations = asset
+        .sources()
+        .squares
+        .iter()
+        .flat_map(|s| s.locations.iter().copied())
+        .filter_map(|loc| resolved_object(asset, loc.object).map(|def| (loc, def)));
+    render_minimap(asset, plane, locations)
+}
+/// Render live committed location/morph facts without changing terrain shadows or game state.
+/// # Errors
+/// Propagates unresolved source morph dependencies instead of inventing missing map facts.
+pub fn build_scene_minimap_with_inputs(
+    asset: &SceneAsset,
+    plane: Plane,
+    inputs: &crate::SceneryInputs,
+) -> crate::Result<MinimapImage> {
+    let mut locations = Vec::new();
+    for loc in crate::locations::effective_locations(asset, inputs) {
+        if let Some(base) = asset.sources().objects.get(&loc.object)
+            && let Some(def) = crate::locations::resolve(asset, base, inputs)?
+        {
+            locations.push((loc, def));
+        }
+    }
+    Ok(render_minimap(asset, plane, locations))
+}
+fn render_minimap<'a>(
+    asset: &SceneAsset,
+    plane: Plane,
+    locations: impl IntoIterator<
+        Item = (
+            rustclient_cache::world::StaticLocation,
+            &'a rustclient_cache::world::ObjectDefinition,
+        ),
+    >,
+) -> MinimapImage {
     let descriptor = asset.descriptor();
     let origin = descriptor.origin();
     let width_tiles = descriptor.width() as usize;
@@ -111,79 +147,75 @@ pub fn build_scene_minimap(asset: &SceneAsset, plane: Plane) -> MinimapImage {
     }
 
     // 2. Walls, doors and map scenes, with the same plane and bridge rules as the tiles.
-    for square in &asset.sources().squares {
-        for loc in &square.locations {
-            let drawn = if loc.tile.plane == plane {
-                |settings: u8| settings & HIDDEN_BY_BRIDGE_OR_ROOF == 0
-            } else if plane.get() + 1 == loc.tile.plane.get() {
-                |settings: u8| settings & BRIDGE_DECK != 0
-            } else {
-                continue;
-            };
-            let tx = loc.tile.x - origin.x;
-            let ty = loc.tile.y - origin.y;
-            if tx < 0 || ty < 0 || tx >= width_tiles as i32 || ty >= height_tiles as i32 {
-                continue;
-            }
-            if !asset
-                .tile(loc.tile.plane, loc.tile.x, loc.tile.y)
-                .is_some_and(|tile| drawn(tile.settings))
-            {
-                continue;
-            }
-            let Some(definition) = resolved_object(asset, loc.object) else {
-                continue;
-            };
-            if loc.tile.plane == plane
-                && let Some(element) = definition.map_icon
-                && asset.sources().map_icons.contains_key(&element)
-            {
-                let [size_x, size_y] = if loc.orientation.get() & 1 == 1 {
-                    [definition.size[1], definition.size[0]]
-                } else {
-                    definition.size
-                };
-                minimap.icons.push(MinimapIcon {
-                    element,
-                    tile: (
-                        f64::from(loc.tile.x) + f64::from(size_x) / 2.,
-                        f64::from(loc.tile.y) + f64::from(size_y) / 2.,
-                    ),
-                });
-            }
-            let px = tx as usize * TILE_PX;
-            let py = (height_tiles - 1 - ty as usize) * TILE_PX;
-            let color = if definition.int1 != 0 {
-                DOOR_COLOR
-            } else {
-                WALL_COLOR
-            };
-            let rot = loc.orientation.get() & 3;
-            // Map scenes stand in for everything except wall decorations (types 4 to 8).
-            if !(4..=8).contains(&loc.shape)
-                && let Some(sprite) = definition
-                    .map_scene
-                    .and_then(|id| asset.sources().map_scenes.get(id as usize))
-            {
-                let [size_x, size_y] = if rot & 1 == 1 {
-                    [definition.size[1], definition.size[0]]
-                } else {
-                    definition.size
-                };
-                let (size_x, size_y) = (i32::from(size_x), i32::from(size_y));
-                let tile_px = TILE_PX as i32;
-                let x = tx * tile_px
-                    + (size_x * tile_px - i32::from(sprite.canvas[0])) / 2
-                    + i32::from(sprite.offset[0]);
-                let y = (height_tiles as i32 - ty - size_y) * tile_px
-                    + (size_y * tile_px - i32::from(sprite.canvas[1])) / 2
-                    + i32::from(sprite.offset[1]);
-                blit(&mut minimap, sprite, x, y);
-                continue;
-            }
-
-            draw_wall(&mut minimap, loc.shape, rot, (px, py), color);
+    for (loc, definition) in locations {
+        let drawn = if loc.tile.plane == plane {
+            |settings: u8| settings & HIDDEN_BY_BRIDGE_OR_ROOF == 0
+        } else if plane.get() + 1 == loc.tile.plane.get() {
+            |settings: u8| settings & BRIDGE_DECK != 0
+        } else {
+            continue;
+        };
+        let tx = loc.tile.x - origin.x;
+        let ty = loc.tile.y - origin.y;
+        if tx < 0 || ty < 0 || tx >= width_tiles as i32 || ty >= height_tiles as i32 {
+            continue;
         }
+        if !asset
+            .tile(loc.tile.plane, loc.tile.x, loc.tile.y)
+            .is_some_and(|tile| drawn(tile.settings))
+        {
+            continue;
+        }
+
+        if loc.tile.plane == plane
+            && let Some(element) = definition.map_icon
+            && asset.sources().map_icons.contains_key(&element)
+        {
+            let [size_x, size_y] = if loc.orientation.get() & 1 == 1 {
+                [definition.size[1], definition.size[0]]
+            } else {
+                definition.size
+            };
+            minimap.icons.push(MinimapIcon {
+                element,
+                tile: (
+                    f64::from(loc.tile.x) + f64::from(size_x) / 2.,
+                    f64::from(loc.tile.y) + f64::from(size_y) / 2.,
+                ),
+            });
+        }
+        let px = tx as usize * TILE_PX;
+        let py = (height_tiles - 1 - ty as usize) * TILE_PX;
+        let color = if definition.int1 != 0 {
+            DOOR_COLOR
+        } else {
+            WALL_COLOR
+        };
+        let rot = loc.orientation.get() & 3;
+        // Map scenes stand in for everything except wall decorations (types 4 to 8).
+        if !(4..=8).contains(&loc.shape)
+            && let Some(sprite) = definition
+                .map_scene
+                .and_then(|id| asset.sources().map_scenes.get(id as usize))
+        {
+            let [size_x, size_y] = if rot & 1 == 1 {
+                [definition.size[1], definition.size[0]]
+            } else {
+                definition.size
+            };
+            let (size_x, size_y) = (i32::from(size_x), i32::from(size_y));
+            let tile_px = TILE_PX as i32;
+            let x = tx * tile_px
+                + (size_x * tile_px - i32::from(sprite.canvas[0])) / 2
+                + i32::from(sprite.offset[0]);
+            let y = (height_tiles as i32 - ty - size_y) * tile_px
+                + (size_y * tile_px - i32::from(sprite.canvas[1])) / 2
+                + i32::from(sprite.offset[1]);
+            blit(&mut minimap, sprite, x, y);
+            continue;
+        }
+
+        draw_wall(&mut minimap, loc.shape, rot, (px, py), color);
     }
 
     minimap

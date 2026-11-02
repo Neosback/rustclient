@@ -592,8 +592,8 @@ impl IdleNotifier {
                 .unwrap_or(0),
             spec_tenths: call.varp(SA_ENERGY).unwrap_or(0),
             input: client.input_idle,
-            wait_ms: u64::try_from(call.config.integer("timeout")).unwrap_or(0),
-            config: call.config,
+            wait_ms: u64::try_from(call.config().integer("timeout")).unwrap_or(0),
+            config: call.config(),
         };
         let name = (!local.name.is_empty()).then_some(local.name.as_str());
         self.tick(&facts, name);
@@ -610,6 +610,19 @@ fn npc_at<'a>(call: &mut PluginCall<'a>, index: u16) -> Option<&'a NpcSnapshot> 
 }
 
 impl NativePlugin for IdleNotifier {
+    fn game_event_interests(&self) -> rustclient_plugin_api::EventInterest {
+        use rustclient_plugin_api::{EventInterest, GameEventKind};
+        EventInterest::NONE
+            .with(GameEventKind::GameStateChanged)
+            .with(GameEventKind::AnimationChanged)
+            .with(GameEventKind::InteractingChanged)
+            .with(GameEventKind::NpcChanged)
+            .with(GameEventKind::HitsplatApplied)
+            .with(GameEventKind::GraphicChanged)
+            .with(GameEventKind::GameTick)
+            .with(GameEventKind::VarbitChanged)
+    }
+
     fn shutdown(&mut self, _call: &mut PluginCall<'_>) -> Result<(), PluginFault> {
         *self = Self::new();
         Ok(())

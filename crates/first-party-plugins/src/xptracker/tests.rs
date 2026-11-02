@@ -137,6 +137,14 @@ fn live_plugin_suppresses_login_sync_then_emits_gain_overlay_and_resets_on_xp_lo
     assert!(
         matches!(&output.overlay[0].command,OverlayCommand::Text{text,..} if text.contains("+50 XP") && text.contains("3000/hr"))
     );
+    let panel = &output.panels[0];
+    assert_eq!(panel.document.priority, 2);
+    assert!(harness.panel_action(&snapshot, panel, "reset-rate"));
+    let reset_rate = harness.output(&snapshot);
+    assert!(
+        matches!(&reset_rate.overlay[0].command, OverlayCommand::Text { text, .. }
+        if text.contains("+50 XP") && text.contains("0/hr"))
+    );
     // A normal map load is still the same logged-in session, not a new login sync gate.
     snapshot.client.state = GameStateKind::Loading;
     snapshot.skills[0].experience = 175;
@@ -145,6 +153,13 @@ fn live_plugin_suppresses_login_sync_then_emits_gain_overlay_and_resets_on_xp_lo
     let resumed = harness.run(&snapshot, &[GameEvent::ClientTick]);
     assert!(
         matches!(&resumed.overlay[0].command,OverlayCommand::Text{text,..} if text.contains("+75 XP"))
+    );
+    assert!(harness.panel_action(&snapshot, &resumed.panels[0], "reset-all"));
+    let cleared = harness.output(&snapshot);
+    assert!(cleared.overlay.is_empty());
+    assert!(
+        !harness.panel_action(&snapshot, &resumed.panels[0], "reset-all"),
+        "prior publication is revoked"
     );
     snapshot.skills[0].experience = 10;
     assert!(harness.run(&snapshot, &[changed(10)]).overlay.is_empty());

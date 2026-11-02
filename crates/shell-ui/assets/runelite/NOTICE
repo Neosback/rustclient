@@ -15,3 +15,8 @@ the source ToggleButton recolor/flip/luminance operations (BRAND_ORANGE; 0.61).
 The diagnostic tools/sidebar/RuneLiteSidebarMetrics.java reproduces these
 transformations. Exact source and owned hashes are in
 ../../../../docs/reference/SIDEBAR-LIFECYCLE-EVIDENCE-2026-10-29.json.
+
+Notes continuation: notes_icon.png is copied unchanged from plugins/notes and
+xp_tracker_icon.png from skill_icons/overall.png in the same pinned resource tree.
+Notes sources: Copyright (c) 2018 Charlie Waters; Copyright (c) 2018 Psikoi.
+Both retain the adjacent BSD-2 license; application runtime never loads references/.

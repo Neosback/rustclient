@@ -6,6 +6,7 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+web-time = "=1.1.0"
 glam.workspace = true
 rustclient-model = { path = "../model" }
 rustclient-scene = { path = "../scene" }

@@ -6718,5 +6718,815 @@
         "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       }
     ]
+  },
+  "stablePresentation": {
+    "date": "2026-10-31",
+    "status": "validation-and-measurement-in-progress",
+    "scope": "Absolute pacing, retained title/flames, indexed listeners, bounded map pixel composition and stock240 normal map click; ranked remaining TSPS gaps",
+    "baseline": {
+      "head": "eee80bd77a3c8c314fa07ef4a1fa7b4eebbfc267",
+      "source_sha256": "d543e9086e9b6b48902030d21fbb7e321235cadffe3ebdc604378d822c9b0a54",
+      "binary_sha256": "b11b8075ac0624c8ad5cb8521dd40d307ce8b3c07f4145d18c7ae37c3f15c261",
+      "sources": {
+        "references/rl-suite-240/sources-semantic/RenderOverview.java": "c6ce2e2b86db630d2cbb103ebc832646e3b61af0a9ca6b1fd7e744f8bb93e288",
+        "references/rl-suite-240/sources-semantic/classJS.java": "1af40ee5c7bf06f2b93114fda6f1ad59ef9bb97d1a8988b430b8d1d482666010",
+        "references/rsprox-master/protocol/osrs-240/src/main/kotlin/net/rsprox/protocol/v240/game/incoming/decoder/codec/misc/user/ClickWorldMapDecoder.kt": "d3e26b3bec7ca907ecbb5a9c745cc433dccc9bd49433565a1b8fa9133e5f189d",
+        "/Users/tylercovalt/Documents/tsps-main/client/game/worldMap/WorldMapInput.ts": "2e19f466fcca06cbbe7d4c7f5da8c3c2d409b10407ce11cf87129ef9929374fc",
+        "/Users/tylercovalt/Documents/tsps-main/client/game/worldMap/WorldMapRepaint.ts": "943ce1220e7748c63733e5cfa25ce3e530b8b7bf4945315a2a3ad07ed0cdb5f6",
+        "/Users/tylercovalt/Documents/tsps-main/client/game/worldMap/WorldMapImageCache.ts": "3ebd089426ef7de6838da387ab940980c2c183f40a63275e5b7c3bab1d400a4f",
+        "/Users/tylercovalt/Documents/tsps-main/client/game/worker/WorldMapTileJob.ts": "61d16b07d435debf97cd6ad912b06cba17521d9534ad293bf78ea6a2eebdf6e7"
+      }
+    },
+    "worktree_head": "cf07e75e67746e94c015df06c8cdc7799fea6d99",
+    "shared_worktree_note": "Other work has committed checkpoints and changed GameState/map loading concurrently. Preserve those changes; command source-before/after hashes delimit verification. Earlier check attempts do not establish a frozen final snapshot.",
+    "owners_sha256": {
+      "apps/native/src/frame_limit.rs": "91ff3d4c0b3e4a4bd007c20ef39bcec64487304974098f362ec364cddbed6381",
+      "apps/native/src/performance.rs": "5b9dd92c157ece58f01f53b5e721634a15e985bb7ee73dd9f6bd6b940539cb69",
+      "apps/native/src/performance/trace.rs": "8bd2f77c7b8e0b8e925b30e917881f28f9162aac7371b87669be5c2479dd6704",
+      "apps/native/src/worldmap.rs": "f5ba5e4b4e163b73c447f849477f78cc7396104d546a97e02545ad9602c8b3ad",
+      "apps/native/src/worldmap/composition.rs": "5b62ddf230af8976ca24dbb13e22383ff7a50906b0c1f026231034da85b522be",
+      "apps/native/src/worldmap/composition/tests.rs": "665252873c05c94afe9169cc0e32072b26a62e7e66a37d3f9673956de765fc67",
+      "crates/application/src/scripts/listener_index.rs": "f50b381bbb787fb3305b9ce5ab95afad513241237ca4b7195412951f3c9eda45",
+      "crates/application/src/scripts/worldmap/input.rs": "52648ae154ac9368827b5324565f1f6839fd40bd2a0709fa204df7cf2008d65d",
+      "crates/application/src/scripts/worldmap/input/tests.rs": "b60a648061a606bdc989168c90b22b8bc5fb6a10d83fdaea9f79233f34254d6d",
+      "crates/game-state/src/interfaces.rs": "2dea541b2799ba98f3c0e676b82ff59ac57e09b11ffd5d331b694f036a394aaf",
+      "crates/game-ui/src/controller.rs": "81871feb31d2062a318d4d3716e45f0683ac24980d92bb1e6f2b19128a354514",
+      "crates/game-ui/src/flame.rs": "8845ffd78105c94a94355ae4b88d551e51875c155e828f682a1ace63aafd2166",
+      "crates/protocol/src/openrune_240/actions.rs": "ea3cbc33766e72296702479fe16323a98826d43b129c518c956f6a205f76f0ae",
+      "crates/renderer/src/timing.rs": "ff49abf6748a5a9961431aab8dadf147782cbeea1c138d329b1da079dc05dbf8",
+      "crates/renderer/src/surface.rs": "c395725dbfe6d08731d42b8a7cfc2afd298ca2cb05d7dedda8edef2ec31b12bf",
+      "crates/renderer/src/ui_canvas.rs": "b9c6980cf6d42fa9a7b89e8b2facecc0cfa5b22b21fd656648221c299beed862",
+      "crates/renderer/src/world.rs": "1ebc7deb8afa52bb43eb0f1177d8ab0e93514c13cef2090e3846594d52570994",
+      "tools/gpu/window_probe.py": "9428fb276c39ec261d068fcdf006bb5fc94d689b2cc80a1a64c1c3ff723200db",
+      "tools/gpu/frame_trace.py": "795125f075dde36044e3dbcd08d8abd5f25b4ac74325e039027e559827ece8f8"
+    },
+    "codec_source": "target/stable-60-20261031/map-codec-source.json",
+    "exploratory_validation": "target/stable-60-20261031/validation-frozen.json",
+    "final_validation": "target/stable-60-20261031/final-validation/validation-frozen.json",
+    "native_integration": [
+      {
+        "path": "target/stable-60-20261031/integration",
+        "scope": "Unscored; builds/profiling checks running and user interaction reached a game session in the second run; not title performance acceptance"
+      },
+      {
+        "path": "target/stable-60-20261031/integration-pass-timestamps",
+        "scope": "Unscored; builds/profiling checks running and user interaction reached a game session in the second run; not title performance acceptance"
+      }
+    ],
+    "reference_status": {
+      "observed": "2026-10-31",
+      "status": "connection-refused",
+      "visual_acceptance": "NOT_RUN"
+    },
+    "open_acceptance": [
+      "Three matched five-minute title runs",
+      "Three matched five-minute supported 256-actor gameplay runs",
+      "Three matched five-minute open-map interaction runs",
+      "1024 actor and uncapped characterization",
+      "Cold-resource runs and 30-minute lifecycle/memory soak",
+      "Live administrator map teleport and ordinary-account denial",
+      "Commit-to-visible latency and scanout cadence",
+      "20-percent transient CPU memory reduction; GPU/CPU residency separation",
+      "Browser gameplay and ADR0004 exact reference visuals"
+    ],
+    "performance_claim": "None until scored traces; instrumented GPU interval excludes preceding queue uploads and actual scanout",
+    "reference_trees_modified": false
+  },
+  "incrementalLocations": {
+    "date": "2026-11-01",
+    "status": "implemented slice; live performance/source/lifecycle acceptance incomplete",
+    "scope": "Ordinary normal-map GameState location commits -> dependent owning-zone preparation -> persistent GPU residency/coherent application acknowledgement. No external ABI/semantic replay or quality changes.",
+    "contract": "docs/specs/SPEC-0024-zone-updates.md",
+    "head": "e2ce6f64c9cbfcd957c219fe27f4c94e7883e8fe",
+    "source_manifest": {
+      "path": "target/incremental-locations-20261101/after-source.json",
+      "sha256": "458704103edd55f4630b007abe25aca331aa51fca74c90300faafcb0ba47f302"
+    },
+    "source_digest": "2887389e86fb86227bfc5b4f34f23a582d8b32540b96edea4f532ee96767dc76",
+    "before": {
+      "baseline": {
+        "path": "target/incremental-locations-20261101/baseline.json",
+        "sha256": "573a82f289aa4cfe1afe1a9676b790590de69c86a2488b85a58740b929866681"
+      },
+      "dirty_patch": {
+        "path": "target/incremental-locations-20261101/before.patch",
+        "sha256": "93941670951ca576e9f61d357fccb58eb2b588ddc5f7f906e64da8caac648f3b"
+      },
+      "native": {
+        "path": "target/incremental-locations-20261101/before/rustclient-native",
+        "sha256": "7d8d451bb9c22f9a217ca508fcb0434aaae5f5e85f82db5c9315713d7778792b"
+      },
+      "scene_probe": {
+        "path": "target/incremental-locations-20261101/before/scene_probe",
+        "sha256": "785308f275d315f2e67062de368d70b2f210f99cbc80494bebbce4a7be673871"
+      },
+      "cpu_log": {
+        "path": "target/incremental-locations-20261101/before/door-cpu.log",
+        "sha256": "2a12cf23d2dbdf4b6166739370e2dc6233e31e0857d03b8efc2fecacd60833de"
+      }
+    },
+    "after_binaries": {
+      "native": {
+        "path": "target/release/rustclient-native",
+        "sha256": "f880393a02b38cfcbcece0aeb5d96e51d6fe46a4e1658eff0936959683d77c4a"
+      },
+      "scene_probe": {
+        "path": "target/release/scene_probe",
+        "sha256": "9313e8e920c636a858d554478568697ff5057e7a4820dc7753db3e70e410210d"
+      }
+    },
+    "environment": {
+      "cpu": "Apple M2",
+      "memory_bytes": 8589934592,
+      "cache": "/Users/tylercovalt/Desktop/OpenRune Project/OpenRune-Server/.data/cache/LIVE",
+      "draw_distance": 184,
+      "title_physical": [
+        1530,
+        1006
+      ],
+      "dpi": 2,
+      "title_cap": 60,
+      "title_msaa": 2,
+      "title_present_mode": "Immediate",
+      "server_in_baseline": "not listening; absent",
+      "isolated": false,
+      "note": "No builds/profilers during scored window runs; desktop apps uncontrolled. Indexed resource diagnostic overlapped validation; outliers preserved. Unified-memory RSS and logical GPU buffers must not be summed."
+    },
+    "resource_diagnostic": {
+      "report": {
+        "path": "target/incremental-locations-20261101/door-zones-stream-report.json",
+        "sha256": "8bf35381863bf61dbee5089df4bd158dc297ebee6408fffc8233d1ebe5401546"
+      },
+      "log": {
+        "path": "target/incremental-locations-20261101/door-zones-stream.log",
+        "sha256": "338223c335c29057047b78155f1e8de1b9bb77a8cd5d98351affa9af5bc2d4e3"
+      },
+      "results": {
+        "door": "LocationKey { tile: WorldTile { x: 3186, y: 3268, plane: Plane(0) }, layer: Boundary }",
+        "gpu": [
+          {
+            "iterations": 1,
+            "max_enqueue_ms": 0.148167,
+            "max_enqueued_bytes": 412980,
+            "resident_gpu_bytes": 22697832,
+            "unchanged_resource_revisions": 273,
+            "unchanged_update_uploaded": false,
+            "updated_zones": 2
+          },
+          {
+            "iterations": 1,
+            "max_enqueue_ms": 12.690375,
+            "max_enqueued_bytes": 416856,
+            "resident_gpu_bytes": 22701708,
+            "unchanged_resource_revisions": 273,
+            "unchanged_update_uploaded": false,
+            "updated_zones": 2
+          },
+          {
+            "iterations": 1,
+            "max_enqueue_ms": 0.13208299999999998,
+            "max_enqueued_bytes": 412980,
+            "resident_gpu_bytes": 22697832,
+            "unchanged_resource_revisions": 273,
+            "unchanged_update_uploaded": false,
+            "updated_zones": 2
+          },
+          {
+            "iterations": 1,
+            "max_enqueue_ms": 0.161333,
+            "max_enqueued_bytes": 416856,
+            "resident_gpu_bytes": 22701708,
+            "unchanged_resource_revisions": 273,
+            "unchanged_update_uploaded": false,
+            "updated_zones": 2
+          },
+          {
+            "iterations": 1,
+            "max_enqueue_ms": 0.15291600000000002,
+            "max_enqueued_bytes": 412980,
+            "resident_gpu_bytes": 22697832,
+            "unchanged_resource_revisions": 273,
+            "unchanged_update_uploaded": false,
+            "updated_zones": 2
+          },
+          {
+            "iterations": 1,
+            "max_enqueue_ms": 0.119125,
+            "max_enqueued_bytes": 416856,
+            "resident_gpu_bytes": 22701708,
+            "unchanged_resource_revisions": 273,
+            "unchanged_update_uploaded": false,
+            "updated_zones": 2
+          },
+          {
+            "iterations": 1,
+            "max_enqueue_ms": 0.10341700000000001,
+            "max_enqueued_bytes": 412980,
+            "resident_gpu_bytes": 22697832,
+            "unchanged_resource_revisions": 273,
+            "unchanged_update_uploaded": false,
+            "updated_zones": 2
+          },
+          {
+            "iterations": 1,
+            "max_enqueue_ms": 0.11458299999999999,
+            "max_enqueued_bytes": 416856,
+            "resident_gpu_bytes": 22701708,
+            "unchanged_resource_revisions": 273,
+            "unchanged_update_uploaded": false,
+            "updated_zones": 2
+          },
+          {
+            "iterations": 1,
+            "max_enqueue_ms": 0.128875,
+            "max_enqueued_bytes": 412980,
+            "resident_gpu_bytes": 22697832,
+            "unchanged_resource_revisions": 273,
+            "unchanged_update_uploaded": false,
+            "updated_zones": 2
+          }
+        ],
+        "samples": [
+          {
+            "animated_vertices": 89445,
+            "committed_changes": 1,
+            "exact_visible_triangles": true,
+            "extraction_ms": 8.027833,
+            "prepare_ms": 1.670875,
+            "retained_zone_vertices": 32631,
+            "sample": 0,
+            "unchanged_ms": 4.421125,
+            "unchanged_publication_retained": true,
+            "zones_built": 2
+          },
+          {
+            "animated_vertices": 89445,
+            "committed_changes": 1,
+            "exact_visible_triangles": true,
+            "extraction_ms": 8.988917,
+            "prepare_ms": 1.77425,
+            "retained_zone_vertices": 32904,
+            "sample": 1,
+            "unchanged_ms": 4.4211670000000005,
+            "unchanged_publication_retained": true,
+            "zones_built": 2
+          },
+          {
+            "animated_vertices": 89445,
+            "committed_changes": 1,
+            "exact_visible_triangles": true,
+            "extraction_ms": 9.186333,
+            "prepare_ms": 1.758292,
+            "retained_zone_vertices": 32631,
+            "sample": 2,
+            "unchanged_ms": 4.374208,
+            "unchanged_publication_retained": true,
+            "zones_built": 2
+          },
+          {
+            "animated_vertices": 89445,
+            "committed_changes": 1,
+            "exact_visible_triangles": true,
+            "extraction_ms": 7.853458000000001,
+            "prepare_ms": 1.713833,
+            "retained_zone_vertices": 32904,
+            "sample": 3,
+            "unchanged_ms": 4.273833000000001,
+            "unchanged_publication_retained": true,
+            "zones_built": 2
+          },
+          {
+            "animated_vertices": 89445,
+            "committed_changes": 1,
+            "exact_visible_triangles": true,
+            "extraction_ms": 8.127333,
+            "prepare_ms": 1.674042,
+            "retained_zone_vertices": 32631,
+            "sample": 4,
+            "unchanged_ms": 4.026834,
+            "unchanged_publication_retained": true,
+            "zones_built": 2
+          },
+          {
+            "animated_vertices": 89445,
+            "committed_changes": 1,
+            "exact_visible_triangles": true,
+            "extraction_ms": 8.571833,
+            "prepare_ms": 1.831916,
+            "retained_zone_vertices": 32904,
+            "sample": 5,
+            "unchanged_ms": 4.3549169999999995,
+            "unchanged_publication_retained": true,
+            "zones_built": 2
+          },
+          {
+            "animated_vertices": 89445,
+            "committed_changes": 1,
+            "exact_visible_triangles": true,
+            "extraction_ms": 8.121875000000001,
+            "prepare_ms": 1.671208,
+            "retained_zone_vertices": 32631,
+            "sample": 6,
+            "unchanged_ms": 4.109417,
+            "unchanged_publication_retained": true,
+            "zones_built": 2
+          },
+          {
+            "animated_vertices": 89445,
+            "committed_changes": 1,
+            "exact_visible_triangles": true,
+            "extraction_ms": 7.984292000000001,
+            "prepare_ms": 1.685084,
+            "retained_zone_vertices": 32904,
+            "sample": 7,
+            "unchanged_ms": 4.1915,
+            "unchanged_publication_retained": true,
+            "zones_built": 2
+          },
+          {
+            "animated_vertices": 89445,
+            "committed_changes": 1,
+            "exact_visible_triangles": true,
+            "extraction_ms": 7.917834,
+            "prepare_ms": 1.6800000000000002,
+            "retained_zone_vertices": 32631,
+            "sample": 8,
+            "unchanged_ms": 4.265208,
+            "unchanged_publication_retained": true,
+            "zones_built": 2
+          }
+        ],
+        "scope": "normal GameState location commits, cache-backed CPU/resource diagnostic; not live FPS or reference visual acceptance"
+      },
+      "scope": "Nine alternating remove/inherit commits, actual GPU buffer equality and deferred acknowledgement; visible triangle equality against full Rust projection. Explicit queue drains outside enqueue samples; no surface, scanout or source visual claim.",
+      "time_admission_acceptance": {
+        "status": "OPEN; observed enclosing-call overrun",
+        "over_one_ms_samples": 1,
+        "total_samples": 9,
+        "worst_ms": 12.690375,
+        "note": "The diagnostic alternates deferred acknowledgement with automatic publication. Sample 1 automatic enqueue/publication took 12.690375 ms. Admission checks cannot preempt individual allocation/write/callback/publication calls or OS scheduling. No profiler was active; cause is unassigned. All raw samples retained; do not report a hard 1 ms wall-time pass."
+      }
+    },
+    "capture_comparison": {
+      "report": {
+        "path": "target/incremental-locations-20261101/stream-world-capture-comparison.json",
+        "sha256": "1251b3bb9956988cad8dd583ab990e2d7d959205997078d4e79e1ba10089d200"
+      },
+      "results": {
+        "scope": "bounded before/after Rust PNG bytes; not Java/reference visual acceptance",
+        "png_byte_identical": {
+          "compass-fixed-0.png": true,
+          "compass-fixed-1024.png": true,
+          "compass-fixed-512.png": true,
+          "compass-resizable-0.png": true,
+          "compass-resizable-1024.png": true,
+          "compass-resizable-512.png": true,
+          "gpu-deuteranopia.png": true,
+          "gpu-distance-zero.png": true,
+          "gpu-fog.png": true,
+          "gpu-msaa-off-aniso-16.png": true,
+          "minimap-fixed-0-z16.png": true,
+          "minimap-fixed-0-z32.png": true,
+          "minimap-fixed-0-z8.png": true,
+          "minimap-fixed-1024-z16.png": true,
+          "minimap-fixed-512-z16.png": true,
+          "minimap-resizable-0-z16.png": true,
+          "minimap-resizable-0-z32.png": true,
+          "minimap-resizable-0-z8.png": true,
+          "minimap-resizable-1024-z16.png": true,
+          "minimap-resizable-512-z16.png": true,
+          "orbit-hidpi.png": true,
+          "spawn.png": true
+        }
+      },
+      "scope": "Bounded Rust before/after mechanism comparison under ADR-0004; no Java runtime visual acceptance."
+    },
+    "before_title": {
+      "root": "target/incremental-locations-20261101/before/title-scored/run-yrew_yf3",
+      "report": {
+        "path": "target/incremental-locations-20261101/before/title-scored/run-yrew_yf3/report-revalidated.json",
+        "sha256": "1548d48d946a230ec0c1570c9e14657fc90c453c788eb17a79433ba3642376bf"
+      },
+      "runs": [
+        {
+          "scope": "Application present calls; display cadence and commit-to-visible latency unverified",
+          "trace": "target/incremental-locations-20261101/before/title-scored/run-yrew_yf3/1/frames.jsonl",
+          "foreground_at_start": true,
+          "occluded_at_start": false,
+          "lifecycle_changes_in_scored_window": [],
+          "warmup_seconds": 30,
+          "scored_seconds": 300,
+          "requested_cap": 60,
+          "uncapped_characterization": false,
+          "target_hz": 60,
+          "measured_refresh_millihertz": 60000,
+          "frames": 17996,
+          "presentations": 17996,
+          "presentation_hz": 59.986666666666665,
+          "instrumented_main_work_upper_p99_ms": 1.421666,
+          "render_work_upper_p99_ms": 1.421666,
+          "cpu_scope": "Render wall minus acquire/present waits plus non-overlapping measured main-thread stages between redraws; worker CPU and OS thread CPU are separate",
+          "gpu_p99_ms": 16.531208,
+          "gpu_scope": "First executed world/UI render pass through final display pass; preceding queue uploads and scanout are outside this interval",
+          "gpu_samples": 17996,
+          "gpu_valid": true,
+          "gap_p99_ms": 19.282709,
+          "gap_max_ms": 66.118125,
+          "gaps_over25_fraction": 0.002278284063125139,
+          "vertex_uploaded_bytes": 186582528,
+          "dynamic_uploaded_bytes": 2946564096,
+          "ui_raster_passes": 17996,
+          "renderer_metadata": [
+            {
+              "backend": "Metal",
+              "dpi": 2.0,
+              "effective": "EffectiveGpu { samples: 2, present_mode: Immediate, frame_cap: 60, anisotropy: 1, mipmaps: true, deviations: [] }",
+              "epoch": 1,
+              "features": "Features { features_wgpu: FeaturesWGPU(TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES), features_webgpu: FeaturesWebGPU(TIMESTAMP_QUERY) }",
+              "physical": [
+                1530,
+                1006
+              ],
+              "refresh_millihertz": 60000,
+              "schema": 1,
+              "settings": "GpuSettings { draw_distance: 184, hide_unrelated_maps: true, ui_scaling: Hybrid, material: MaterialOptions { smooth_banding: true, bright_textures: false }, anti_aliasing: Msaa2, fog_depth: 0, anisotropy: 1, color_blind: None, color_blind_intensity: 100, unlock_fps: true, vsync: Off, fps_target: 60 }",
+              "stage_names": [
+                "hover",
+                "entity_build",
+                "entity_upload",
+                "scene_upload",
+                "minimap_build",
+                "widget_projection",
+                "widget_assets",
+                "commit_scripts"
+              ],
+              "supported_features": "Features { features_wgpu: FeaturesWGPU(SHADER_FLOAT32_ATOMIC | TEXTURE_FORMAT_16BIT_NORM | TEXTURE_COMPRESSION_ASTC_HDR | TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES | MAPPABLE_PRIMARY_BUFFERS | TEXTURE_BINDING_ARRAY | BUFFER_BINDING_ARRAY | STORAGE_RESOURCE_BINDING_ARRAY | SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING | STORAGE_TEXTURE_ARRAY_NON_UNIFORM_INDEXING | PARTIALLY_BOUND_BINDING_ARRAY | ADDRESS_MODE_CLAMP_TO_ZERO | ADDRESS_MODE_CLAMP_TO_BORDER | POLYGON_MODE_LINE | VERTEX_WRITABLE_STORAGE | CLEAR_TEXTURE | MULTIVIEW | TEXTURE_ATOMIC | EXTERNAL_TEXTURE | EXPERIMENTAL_RAY_QUERY | SHADER_I16 | SHADER_INT64 | SUBGROUP | SUBGROUP_BARRIER | SHADER_INT64_ATOMIC_MIN_MAX | EXPERIMENTAL_MESH_SHADER | EXPERIMENTAL_MESH_SHADER_MULTIVIEW | PASSTHROUGH_SHADERS | SHADER_BARYCENTRICS | EXPERIMENTAL_MESH_SHADER_POINTS | MULTISAMPLE_ARRAY | EXPERIMENTAL_COOPERATIVE_MATRIX | MEMORY_DECORATION_COHERENT), features_webgpu: FeaturesWebGPU(DEPTH_CLIP_CONTROL | DEPTH32FLOAT_STENCIL8 | TEXTURE_COMPRESSION_BC | TEXTURE_COMPRESSION_BC_SLICED_3D | TEXTURE_COMPRESSION_ETC2 | TEXTURE_COMPRESSION_ASTC | TEXTURE_COMPRESSION_ASTC_SLICED_3D | TIMESTAMP_QUERY | INDIRECT_FIRST_INSTANCE | SHADER_F16 | RG11B10UFLOAT_RENDERABLE | BGRA8UNORM_STORAGE | FLOAT32_FILTERABLE | FLOAT32_BLENDABLE | DUAL_SOURCE_BLENDING | CLIP_DISTANCES | IMMEDIATES | PRIMITIVE_INDEX) }",
+              "timing_scope": "CPU stage wall times; GPU enclosing command interval; present calls are not display timestamps",
+              "type": "renderer"
+            }
+          ],
+          "gates": {
+            "trace_complete": true,
+            "rate": true,
+            "cpu_p99": true,
+            "gpu_p99": false,
+            "gap_p99": true,
+            "gaps_over25": false
+          },
+          "gate_status": {
+            "trace_complete": "pass",
+            "rate": "pass",
+            "cpu_p99": "pass",
+            "gpu_p99": "fail",
+            "gap_p99": "pass",
+            "gaps_over25": "fail"
+          },
+          "passed": false
+        },
+        {
+          "scope": "Application present calls; display cadence and commit-to-visible latency unverified",
+          "trace": "target/incremental-locations-20261101/before/title-scored/run-yrew_yf3/2/frames.jsonl",
+          "foreground_at_start": true,
+          "occluded_at_start": false,
+          "lifecycle_changes_in_scored_window": [],
+          "warmup_seconds": 30,
+          "scored_seconds": 300,
+          "requested_cap": 60,
+          "uncapped_characterization": false,
+          "target_hz": 60,
+          "measured_refresh_millihertz": 60000,
+          "frames": 17996,
+          "presentations": 17996,
+          "presentation_hz": 59.986666666666665,
+          "instrumented_main_work_upper_p99_ms": 1.240041,
+          "render_work_upper_p99_ms": 1.240041,
+          "cpu_scope": "Render wall minus acquire/present waits plus non-overlapping measured main-thread stages between redraws; worker CPU and OS thread CPU are separate",
+          "gpu_p99_ms": 16.460666,
+          "gpu_scope": "First executed world/UI render pass through final display pass; preceding queue uploads and scanout are outside this interval",
+          "gpu_samples": 17996,
+          "gpu_valid": true,
+          "gap_p99_ms": 20.094291,
+          "gap_max_ms": 62.656583,
+          "gaps_over25_fraction": 0.00144476550344521,
+          "vertex_uploaded_bytes": 186582528,
+          "dynamic_uploaded_bytes": 2948726784,
+          "ui_raster_passes": 17996,
+          "renderer_metadata": [
+            {
+              "backend": "Metal",
+              "dpi": 2.0,
+              "effective": "EffectiveGpu { samples: 2, present_mode: Immediate, frame_cap: 60, anisotropy: 1, mipmaps: true, deviations: [] }",
+              "epoch": 1,
+              "features": "Features { features_wgpu: FeaturesWGPU(TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES), features_webgpu: FeaturesWebGPU(TIMESTAMP_QUERY) }",
+              "physical": [
+                1530,
+                1006
+              ],
+              "refresh_millihertz": 60000,
+              "schema": 1,
+              "settings": "GpuSettings { draw_distance: 184, hide_unrelated_maps: true, ui_scaling: Hybrid, material: MaterialOptions { smooth_banding: true, bright_textures: false }, anti_aliasing: Msaa2, fog_depth: 0, anisotropy: 1, color_blind: None, color_blind_intensity: 100, unlock_fps: true, vsync: Off, fps_target: 60 }",
+              "stage_names": [
+                "hover",
+                "entity_build",
+                "entity_upload",
+                "scene_upload",
+                "minimap_build",
+                "widget_projection",
+                "widget_assets",
+                "commit_scripts"
+              ],
+              "supported_features": "Features { features_wgpu: FeaturesWGPU(SHADER_FLOAT32_ATOMIC | TEXTURE_FORMAT_16BIT_NORM | TEXTURE_COMPRESSION_ASTC_HDR | TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES | MAPPABLE_PRIMARY_BUFFERS | TEXTURE_BINDING_ARRAY | BUFFER_BINDING_ARRAY | STORAGE_RESOURCE_BINDING_ARRAY | SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING | STORAGE_TEXTURE_ARRAY_NON_UNIFORM_INDEXING | PARTIALLY_BOUND_BINDING_ARRAY | ADDRESS_MODE_CLAMP_TO_ZERO | ADDRESS_MODE_CLAMP_TO_BORDER | POLYGON_MODE_LINE | VERTEX_WRITABLE_STORAGE | CLEAR_TEXTURE | MULTIVIEW | TEXTURE_ATOMIC | EXTERNAL_TEXTURE | EXPERIMENTAL_RAY_QUERY | SHADER_I16 | SHADER_INT64 | SUBGROUP | SUBGROUP_BARRIER | SHADER_INT64_ATOMIC_MIN_MAX | EXPERIMENTAL_MESH_SHADER | EXPERIMENTAL_MESH_SHADER_MULTIVIEW | PASSTHROUGH_SHADERS | SHADER_BARYCENTRICS | EXPERIMENTAL_MESH_SHADER_POINTS | MULTISAMPLE_ARRAY | EXPERIMENTAL_COOPERATIVE_MATRIX | MEMORY_DECORATION_COHERENT), features_webgpu: FeaturesWebGPU(DEPTH_CLIP_CONTROL | DEPTH32FLOAT_STENCIL8 | TEXTURE_COMPRESSION_BC | TEXTURE_COMPRESSION_BC_SLICED_3D | TEXTURE_COMPRESSION_ETC2 | TEXTURE_COMPRESSION_ASTC | TEXTURE_COMPRESSION_ASTC_SLICED_3D | TIMESTAMP_QUERY | INDIRECT_FIRST_INSTANCE | SHADER_F16 | RG11B10UFLOAT_RENDERABLE | BGRA8UNORM_STORAGE | FLOAT32_FILTERABLE | FLOAT32_BLENDABLE | DUAL_SOURCE_BLENDING | CLIP_DISTANCES | IMMEDIATES | PRIMITIVE_INDEX) }",
+              "timing_scope": "CPU stage wall times; GPU enclosing command interval; present calls are not display timestamps",
+              "type": "renderer"
+            }
+          ],
+          "gates": {
+            "trace_complete": true,
+            "rate": true,
+            "cpu_p99": true,
+            "gpu_p99": false,
+            "gap_p99": false,
+            "gaps_over25": false
+          },
+          "gate_status": {
+            "trace_complete": "pass",
+            "rate": "pass",
+            "cpu_p99": "pass",
+            "gpu_p99": "fail",
+            "gap_p99": "fail",
+            "gaps_over25": "fail"
+          },
+          "passed": false
+        },
+        {
+          "scope": "Application present calls; display cadence and commit-to-visible latency unverified",
+          "trace": "target/incremental-locations-20261101/before/title-scored/run-yrew_yf3/3/frames.jsonl",
+          "foreground_at_start": true,
+          "occluded_at_start": false,
+          "lifecycle_changes_in_scored_window": [],
+          "warmup_seconds": 30,
+          "scored_seconds": 300,
+          "requested_cap": 60,
+          "uncapped_characterization": false,
+          "target_hz": 60,
+          "measured_refresh_millihertz": 60000,
+          "frames": 17997,
+          "presentations": 17997,
+          "presentation_hz": 59.99,
+          "instrumented_main_work_upper_p99_ms": 1.298125,
+          "render_work_upper_p99_ms": 1.298125,
+          "cpu_scope": "Render wall minus acquire/present waits plus non-overlapping measured main-thread stages between redraws; worker CPU and OS thread CPU are separate",
+          "gpu_p99_ms": 17.225458,
+          "gpu_scope": "First executed world/UI render pass through final display pass; preceding queue uploads and scanout are outside this interval",
+          "gpu_samples": 17997,
+          "gpu_valid": true,
+          "gap_p99_ms": 20.92425,
+          "gap_max_ms": 59.924,
+          "gaps_over25_fraction": 0.004667444574095682,
+          "vertex_uploaded_bytes": 186592896,
+          "dynamic_uploaded_bytes": 2947940352,
+          "ui_raster_passes": 17997,
+          "renderer_metadata": [
+            {
+              "backend": "Metal",
+              "dpi": 2.0,
+              "effective": "EffectiveGpu { samples: 2, present_mode: Immediate, frame_cap: 60, anisotropy: 1, mipmaps: true, deviations: [] }",
+              "epoch": 1,
+              "features": "Features { features_wgpu: FeaturesWGPU(TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES), features_webgpu: FeaturesWebGPU(TIMESTAMP_QUERY) }",
+              "physical": [
+                1530,
+                1006
+              ],
+              "refresh_millihertz": 60000,
+              "schema": 1,
+              "settings": "GpuSettings { draw_distance: 184, hide_unrelated_maps: true, ui_scaling: Hybrid, material: MaterialOptions { smooth_banding: true, bright_textures: false }, anti_aliasing: Msaa2, fog_depth: 0, anisotropy: 1, color_blind: None, color_blind_intensity: 100, unlock_fps: true, vsync: Off, fps_target: 60 }",
+              "stage_names": [
+                "hover",
+                "entity_build",
+                "entity_upload",
+                "scene_upload",
+                "minimap_build",
+                "widget_projection",
+                "widget_assets",
+                "commit_scripts"
+              ],
+              "supported_features": "Features { features_wgpu: FeaturesWGPU(SHADER_FLOAT32_ATOMIC | TEXTURE_FORMAT_16BIT_NORM | TEXTURE_COMPRESSION_ASTC_HDR | TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES | MAPPABLE_PRIMARY_BUFFERS | TEXTURE_BINDING_ARRAY | BUFFER_BINDING_ARRAY | STORAGE_RESOURCE_BINDING_ARRAY | SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING | STORAGE_TEXTURE_ARRAY_NON_UNIFORM_INDEXING | PARTIALLY_BOUND_BINDING_ARRAY | ADDRESS_MODE_CLAMP_TO_ZERO | ADDRESS_MODE_CLAMP_TO_BORDER | POLYGON_MODE_LINE | VERTEX_WRITABLE_STORAGE | CLEAR_TEXTURE | MULTIVIEW | TEXTURE_ATOMIC | EXTERNAL_TEXTURE | EXPERIMENTAL_RAY_QUERY | SHADER_I16 | SHADER_INT64 | SUBGROUP | SUBGROUP_BARRIER | SHADER_INT64_ATOMIC_MIN_MAX | EXPERIMENTAL_MESH_SHADER | EXPERIMENTAL_MESH_SHADER_MULTIVIEW | PASSTHROUGH_SHADERS | SHADER_BARYCENTRICS | EXPERIMENTAL_MESH_SHADER_POINTS | MULTISAMPLE_ARRAY | EXPERIMENTAL_COOPERATIVE_MATRIX | MEMORY_DECORATION_COHERENT), features_webgpu: FeaturesWebGPU(DEPTH_CLIP_CONTROL | DEPTH32FLOAT_STENCIL8 | TEXTURE_COMPRESSION_BC | TEXTURE_COMPRESSION_BC_SLICED_3D | TEXTURE_COMPRESSION_ETC2 | TEXTURE_COMPRESSION_ASTC | TEXTURE_COMPRESSION_ASTC_SLICED_3D | TIMESTAMP_QUERY | INDIRECT_FIRST_INSTANCE | SHADER_F16 | RG11B10UFLOAT_RENDERABLE | BGRA8UNORM_STORAGE | FLOAT32_FILTERABLE | FLOAT32_BLENDABLE | DUAL_SOURCE_BLENDING | CLIP_DISTANCES | IMMEDIATES | PRIMITIVE_INDEX) }",
+              "timing_scope": "CPU stage wall times; GPU enclosing command interval; present calls are not display timestamps",
+              "type": "renderer"
+            }
+          ],
+          "gates": {
+            "trace_complete": true,
+            "rate": true,
+            "cpu_p99": true,
+            "gpu_p99": false,
+            "gap_p99": false,
+            "gaps_over25": false
+          },
+          "gate_status": {
+            "trace_complete": "pass",
+            "rate": "pass",
+            "cpu_p99": "pass",
+            "gpu_p99": "fail",
+            "gap_p99": "fail",
+            "gaps_over25": "fail"
+          },
+          "passed": false
+        }
+      ],
+      "overall_acceptance": "FAIL: GPU and long-gap gates; measured environment lacks local server; no physical scanout evidence."
+    },
+    "validation": {
+      "status": "PASS for listed checks; scored after-title measurements pending, live/source/lifecycle/memory acceptance incomplete",
+      "rust_contracts": {
+        "passed": 347,
+        "failed": 0,
+        "ignored": 7,
+        "log": {
+          "path": "target/incremental-locations-20261101/contracts-final.log",
+          "sha256": "30ab9ceafafad9e25e51dc4f5b01f7cdeb63e1b817a0c0b2efd020b283e2b62b"
+        },
+        "command": "cargo test -p rustclient-scene -p rustclient-renderer -p rustclient-application -p rustclient-game-state -p rustclient-platform-native",
+        "scope": "Native contracts; subsequent browser-only retirement repair checked separately on Wasm."
+      },
+      "python_contracts": {
+        "passed": 10,
+        "command": "python3 -m unittest discover -s tools/gpu/tests -v",
+        "log": {
+          "path": "target/incremental-locations-20261101/python-final.log",
+          "sha256": "4c9b19eb7d47d5d4d9de0ac627d67af2c800a2847770eadbbe13bb66510f30bb"
+        }
+      },
+      "wasm_initial": "FAIL: non-Send browser GPU handles captured by completion callback; repaired with owner-thread retention and completion flags.",
+      "checks": [
+        {
+          "command": "cargo check --workspace --all-targets",
+          "status": "PASS",
+          "log": {
+            "path": "target/incremental-locations-20261101/stream-check.log",
+            "sha256": "084930e02c4976678a9a6fabc3bb6e214905e7aacae864dfe0319d92fdd668c9"
+          }
+        },
+        {
+          "command": "cargo clippy --workspace --all-targets --all-features -- -D warnings",
+          "status": "PASS",
+          "log": {
+            "path": "target/incremental-locations-20261101/stream-clippy.log",
+            "sha256": "6c35ed7c3837fd59bfb0d9d571f49b6341f04f8aeeecc82e742bf67546fd9bd3"
+          }
+        },
+        {
+          "command": "cargo check -p rustclient-web --target wasm32-unknown-unknown",
+          "status": "PASS",
+          "log": {
+            "path": "target/incremental-locations-20261101/stream-wasm.log",
+            "sha256": "8a7ba40e6d81f460da981802406c4e6085a94b750ec7856c0dbbdccc8e0f6187"
+          }
+        },
+        {
+          "command": "cargo clippy -p rustclient-web --target wasm32-unknown-unknown -- -D warnings",
+          "status": "PASS",
+          "log": {
+            "path": "target/incremental-locations-20261101/stream-clippy-wasm.log",
+            "sha256": "e518f2c026e9da93f1d15c5258837f82d0cf2472c7a2a9fe931d30bc1d5b39ab"
+          }
+        },
+        {
+          "command": "cargo build --release -p rustclient-native --bin rustclient-native --bin scene_probe",
+          "status": "PASS",
+          "log": {
+            "path": "target/incremental-locations-20261101/stream-build.log",
+            "sha256": "57ff26609e9a2b407ccba72c9075478b515df86bc88c4ff4d9d316dcfa93434b"
+          }
+        }
+      ],
+      "final_scene_renderer_contracts": {
+        "command": "cargo test -p rustclient-scene -p rustclient-renderer --lib",
+        "passed": 135,
+        "ignored": 6,
+        "log": {
+          "path": "target/incremental-locations-20261101/stream-contracts.log",
+          "sha256": "cdbdcd483a7cf268be56ec8069cf3c867e5a78063fbd10eee2111702450137f3"
+        },
+        "note": "Repeats included cases from the 347-contract run after the memory correction; do not double-count. Application/state/platform code is unchanged since its recorded passing run. Browser-only action extraction and timing/retirement repairs are covered by separate Wasm checks."
+      }
+    },
+    "remaining": [
+      "Three matched after title runs pending recording",
+      "Live doors/collision/minimap/reference acceptance",
+      "256/1024 actors, open map and uncapped workloads",
+      "Cold resources, rapid replacements and 30-minute lifecycle/memory soak",
+      "20% transient and steady process-memory targets",
+      "Minimap dirty rectangles and cold catalog clone reduction",
+      "Full decode-to-commit allocation/copy/GPU diagnostics beyond the measured stages",
+      "Meaningful numThreads, source frustum/ordering cases and browser runtime",
+      "Memory/residency/picking retention as many zones become modified",
+      "Cancellation granularity inside larger CPU preparation and full-transition correlation need lifecycle stress",
+      "Enqueue/publication tail attribution, per-call budgeting and cleanup cost; observed 12.69 ms outlier"
+    ],
+    "interpretation": "The previous ordinary-update path already had a small CPU patch. Its full-rebuild timings are a comparison oracle/recovery-path cost, not the production cost of every earlier door. New structural upload counters exclude separate animated-scenery/actor payloads; no 10x live-door or whole-client FPS claim.",
+    "reference_recheck": [
+      {
+        "path": "references/rl-suite-240/sources-semantic/classDS.java",
+        "matches_pinned": true,
+        "sha256": "ded1348b7ab3b5390f80d623521679bd8d17b85c9aaedfe24530cb0b9cc9dd33"
+      },
+      {
+        "path": "references/rl-suite-240/sources-semantic/classMI.java",
+        "matches_pinned": true,
+        "sha256": "8d73379455ef980eaa99fdd9e0c2192e1310e10eb2114ada9eacb687be74687e"
+      },
+      {
+        "path": "references/rl-suite-240/sources-semantic/classFK.java",
+        "matches_pinned": true,
+        "sha256": "d9cc5fb9aa9dec0dc73915bf2e998fdea708804862c0d87812af631e18291533"
+      },
+      {
+        "path": "references/rl-suite-240/sources-semantic/Scene.java",
+        "matches_pinned": true,
+        "sha256": "3ecf8221c7cade02cdcf8cff00774319cb626c40db07937a9c190ff96b23757e"
+      },
+      {
+        "path": "references/rl-suite-240/sources-semantic/DynamicObject.java",
+        "matches_pinned": true,
+        "sha256": "41038073a4702708e4e02c8ff00c697d51c37fc5001242404cb20368f2b82e24"
+      },
+      {
+        "path": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/gpu/GpuPlugin.java",
+        "matches_pinned": true,
+        "sha256": "9508b008327ed496d320e5f315706d8a1462e9181a6e8a91e9d6940a214849d9"
+      },
+      {
+        "path": "/Users/tylercovalt/Documents/tsps-main/client/render/webgpu/locUpdates.ts",
+        "matches_pinned": true,
+        "sha256": "19fdea8849154b300f1936782a022da787a0ec0981ab1133ff5530ec2dddf0a0"
+      },
+      {
+        "path": "/Users/tylercovalt/Documents/tsps-main/client/render/webgpu/WebGPURenderer.ts",
+        "matches_pinned": true,
+        "sha256": "39e41ba4b3a2f5288743fa49f46821df59530f3ad1a8738c15790fd453992c02"
+      }
+    ],
+    "reference_runtime_recheck": {
+      "tool": "reference_status",
+      "date": "2026-11-01",
+      "status": "unavailable",
+      "diagnostic": "Connection refused on the configured reference endpoint; this does not establish the state of every Java process."
+    },
+    "pre_stream_memory_observation": {
+      "scope": "One initial-scene resource/query process per binary; not update-transient or steady gameplay memory acceptance. macOS time -l byte counters; no builds/profilers during these probes. Other desktop apps uncontrolled.",
+      "before_log": {
+        "path": "target/incremental-locations-20261101/before/resources.log",
+        "sha256": "82a46c14a86fe3b69b9cfa4525fefb6574c81f3085baeb4b4695be1a2e35fdc8"
+      },
+      "before_gpu_buffer_bytes": 25205172,
+      "before_rss_max_bytes": 431079424,
+      "before_peak_footprint_bytes": 340034400,
+      "pre_stream_log": {
+        "path": "target/incremental-locations-20261101/resources-final.log",
+        "sha256": "0f6800f3648bcfc1cb95d2446896786bb5a6ef55cc18878db3029d5bd06fca80"
+      },
+      "pre_stream_gpu_buffer_bytes": 25206180,
+      "pre_stream_rss_max_bytes": 478773248,
+      "pre_stream_peak_footprint_bytes": 397411216,
+      "pre_stream_binaries": {
+        "native": {
+          "path": "target/incremental-locations-20261101/before-stream/rustclient-native",
+          "sha256": "a792a68b51de4a14e591321a73eeb2202c57ed80177d8b5b245a13f90b7e94ed"
+        },
+        "scene_probe": {
+          "path": "target/incremental-locations-20261101/before-stream/scene_probe",
+          "sha256": "9c392c53590edfe8450b1148f80a7a7ae5348f0b1b64e62b5bdb6a1c1c974c96"
+        }
+      },
+      "finding": "Initial zone preparation retained an extra expanded scene copy. Preparation now streams owning zones and releases expanded source after packed buffers own GPU bytes; remeasurement pending."
+    },
+    "cancelled_measurement": {
+      "root": "target/incremental-locations-20261101/after-title-scored/run-h92mf_c4",
+      "status": "incomplete; excluded from scored acceptance",
+      "reason": "Stopped owned runner/client to repair measured expanded-scene copy regression. All partial raw records retained."
+    },
+    "native_engine_digest": "a9cf59a5d00e7c36d4aeed6165e4b5e565263d17dca14d5922c765504f5894ed",
+    "streamed_preparation": {
+      "contract": "Existing renderer contract now verifies packed upload bytes survive expanded-source release. Initial partitioning streams one owning zone instead of keeping the entire expanded scene twice.",
+      "resource_log": {
+        "path": "target/incremental-locations-20261101/resources-stream.log",
+        "sha256": "dc065698f611a9bcca1b75edec0474aa8e7245c7c83d004a81792398ed19ba72"
+      },
+      "gpu_buffer_bytes": 25206180,
+      "rss_max_bytes": 315310080,
+      "peak_footprint_bytes": 342901576,
+      "baseline_gpu_buffer_bytes": 25205172,
+      "baseline_rss_max_bytes": 431079424,
+      "baseline_peak_footprint_bytes": 340034400,
+      "interpretation": "One initial resource/query process pair, not update-transient/steady gameplay acceptance. Peak RSS fell 26.86% versus baseline, but macOS peak footprint rose 0.84%. GPU numbers are requested logical buffers, excluding driver/textures/targets. No 20% update-memory or no-steady-regression claim."
+    },
+    "commands": [
+      "RUSTCLIENT_ZONE_REPORT=target/incremental-locations-20261101/door-zones-stream-report.json target/release/scene_probe CACHE --updates-zones",
+      "/usr/bin/time -l BEFORE_SCENE_PROBE CACHE --performance",
+      "/usr/bin/time -l target/release/scene_probe CACHE --performance",
+      "target/release/scene_probe CACHE target/incremental-locations-20261101/stream-world-capture",
+      "python3 tools/gpu/window_probe.py CACHE --binary target/release/rustclient-native --direct --seconds 300 --warmup 30 --repeats 3 --output target/incremental-locations-20261101/stream-title-scored"
+    ]
   }
 }

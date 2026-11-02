@@ -208,10 +208,15 @@ impl UiCanvas {
     pub fn invalidate_world(&mut self) {
         self.world_key = None;
     }
-    pub fn render(&mut self, encoder: &mut wgpu::CommandEncoder, ui: &mut UiGpu) {
+    pub fn render(
+        &mut self,
+        encoder: &mut wgpu::CommandEncoder,
+        ui: &mut UiGpu,
+        timestamps: Option<wgpu::RenderPassTimestampWrites<'_>>,
+    ) -> bool {
         ui.stats.raster_passes = 0;
         if self.raster_valid && !ui.raster_changed {
-            return;
+            return false;
         }
         self.raster_valid = true;
         ui.stats.raster_passes = 1;
@@ -227,11 +232,12 @@ impl UiCanvas {
                 },
             })],
             depth_stencil_attachment: None,
-            timestamp_writes: None,
+            timestamp_writes: timestamps,
             occlusion_query_set: None,
             multiview_mask: None,
         });
         ui.draw(&mut pass);
+        true
     }
     #[expect(
         clippy::cast_precision_loss,

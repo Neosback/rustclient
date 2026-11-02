@@ -6,7 +6,7 @@
 > supersede older gap/status lists; preserve exact source details and historical evidence.
 
 Status: active implementation audit, 2026-10-24. This extends the existing
-[gameframe checkpoint](../../plan/GAMEFRAME-240.md); it does not supersede that
+[gameframe checkpoint](../../archive/2026-foundation/plan/GAMEFRAME-240.md); it does not supersede that
 checkpoint's exact live evidence or establish visual parity.
 
 ## Current source-to-owner map

@@ -467,3 +467,153 @@ fn the_minimap_zoom_reaches_the_client_snapshot_in_pixels_per_tile() {
     }
     assert!((zoom(&state, &mut projector) - 6.5).abs() < f64::EPSILON);
 }
+
+#[test]
+fn actor_incarnations_follow_commits_and_replacements_do_not_become_change_events() {
+    let mut state = session();
+    let mut projector = Projector::new();
+    let wanted = everything();
+    let sources = Sources::default();
+    let mut frame = Frame {
+        session: 7,
+        ..Frame::default()
+    };
+    let new = NewNpc {
+        index: NpcIndex::new(42),
+        definition_id: NpcDefinitionId::new(12),
+        delta_x: 1,
+        delta_y: 1,
+        orientation: 0,
+    };
+    apply(
+        &mut state,
+        SemanticOperation::UpdateNpcs(NpcInfoUpdate {
+            new_npcs: vec![new.clone()],
+            ..Default::default()
+        }),
+    );
+    let (first, _) = projector.project(&state, &frame, &sources, &wanted);
+    let handle = first.actor_handle(ActorRef::Npc(42)).unwrap();
+    // Remove and re-add through the semantic owner before the next observer projection.
+    apply(
+        &mut state,
+        SemanticOperation::UpdateNpcs(NpcInfoUpdate {
+            removals: vec![NpcIndex::new(42)],
+            ..Default::default()
+        }),
+    );
+    apply(
+        &mut state,
+        SemanticOperation::UpdateNpcs(NpcInfoUpdate {
+            new_npcs: vec![new],
+            ..Default::default()
+        }),
+    );
+    let (replaced, events) = projector.project(&state, &frame, &sources, &wanted);
+    assert!(replaced.actor_by_handle(handle).is_none());
+    assert!(matches!(
+        events.as_slice(),
+        [GameEvent::NpcDespawned(_), GameEvent::NpcSpawned(_)]
+    ));
+    let handle = replaced.actor_handle(ActorRef::Npc(42)).unwrap();
+    frame.session = 8;
+    let (next, events) = projector.project(&state, &frame, &sources, &wanted);
+    assert!(next.actor_by_handle(handle).is_none());
+    assert!(matches!(
+        events.as_slice(),
+        [
+            GameEvent::PlayerDespawned(_),
+            GameEvent::PlayerSpawned(_),
+            GameEvent::NpcDespawned(_),
+            GameEvent::NpcSpawned(_)
+        ]
+    ));
+}
+
+#[test]
+fn exact_event_interests_do_not_reduce_queries_or_replay_suppressed_changes_later() {
+    use rustclient_plugin_api::{EventInterest, GameEventKind};
+    let mut state = session();
+    let mut projector = Projector::new();
+    let wanted = everything();
+    let frame = Frame::default();
+    let sources = Sources::default();
+    let _ = projector.project_filtered(
+        &state,
+        &frame,
+        &sources,
+        &wanted,
+        Some(&wanted),
+        EventInterest::NONE,
+    );
+    apply(
+        &mut state,
+        SemanticOperation::Scenery(SceneryOperation::SetVariable {
+            id: VarpId::new(42),
+            value: 7,
+        }),
+    );
+    let (snapshot, events) = projector.project_filtered(
+        &state,
+        &frame,
+        &sources,
+        &wanted,
+        Some(&wanted),
+        EventInterest::one(GameEventKind::StatChanged),
+    );
+    assert_eq!(snapshot.vars.varp(42), 7);
+    assert!(events.is_empty());
+    let (_, events) = projector.project_filtered(
+        &state,
+        &frame,
+        &sources,
+        &wanted,
+        Some(&wanted),
+        EventInterest::ALL,
+    );
+    assert!(
+        events.is_empty(),
+        "interest changes do not replay suppressed history"
+    );
+}
+
+#[test]
+fn renderer_loading_hints_do_not_change_semantic_lifecycle() {
+    let state = session();
+    let mut projector = Projector::new();
+    let wanted = everything();
+    let sources = Sources::default();
+    let _ = projector.project(&state, &Frame::default(), &sources, &wanted);
+    let (snapshot, events) = projector.project(
+        &state,
+        &Frame {
+            loading: true,
+            ..Frame::default()
+        },
+        &sources,
+        &wanted,
+    );
+    assert_eq!(snapshot.client.state, GameStateKind::LoggedIn);
+    assert!(
+        !events
+            .iter()
+            .any(|event| matches!(event, GameEvent::GameStateChanged(_)))
+    );
+}
+
+#[test]
+fn newly_granted_domains_baseline_existing_contents_without_shared_spawn_or_stat_events() {
+    let state = session();
+    let mut projector = Projector::new();
+    let frame = Frame::default();
+    let sources = Sources::default();
+    let _ = projector.project(&state, &frame, &sources, &CapabilitySet::none());
+    let bootstrap = projector.snapshot(&state, &frame, &sources, &everything());
+    assert!(bootstrap.local_player().is_some());
+    let (current, events) = projector.project(&state, &frame, &sources, &everything());
+    assert!(current.local_player().is_some());
+    assert!(
+        events.is_empty(),
+        "a read-grant change is not a gameplay commit: {events:?}"
+    );
+}

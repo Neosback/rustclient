@@ -56,6 +56,74 @@ fn key(panel: &mut EguiPanel, key: Key, mods: Modifiers, text: Option<String>, t
     panel.key(key, Code::Unidentified, mods, true, text);
     panel.render(time).unwrap();
 }
+
+#[test]
+fn retained_plugin_editor_commits_on_hide_and_rejects_removed_navigation() {
+    use rustclient_plugin_api::{PanelBlock, PanelIcon, PluginId, PluginPanel};
+    use rustclient_plugin_host::{ActivationId, HostedPanel};
+    use std::sync::Arc;
+    let (mut ui, channel) = fixture(Control::Boolean, ConfigValue::Boolean(false));
+    let plugin = PluginId::parse("test.notes").unwrap();
+    channel.model.borrow_mut().panels = vec![HostedPanel {
+        plugin: plugin.clone(),
+        activation: ActivationId::default(),
+        lease: rustclient_plugin_host::PanelLease::default(),
+        document: Arc::new(PluginPanel {
+            id: "notes".into(),
+            revision: 1,
+            title: "Notes".into(),
+            priority: 7,
+            icon: PanelIcon::Notes,
+            blocks: Arc::from([PanelBlock::Editor {
+                id: "text".into(),
+                text: String::new(),
+                max_bytes: 1024,
+            }]),
+        }),
+    }];
+    ui.content_changed();
+    ui.render(0.5).unwrap();
+    click(&mut ui, "panel:test.notes:notes", 1.);
+    assert!(channel.drain().contains(&ShellAction::Open));
+    assert!(
+        ui.target_bounds("editor:test.notes:text")
+            .unwrap()
+            .into_iter()
+            .all(f32::is_finite)
+    );
+    click(&mut ui, "editor:test.notes:text", 2.);
+    key(
+        &mut ui,
+        Key::Character("a".into()),
+        Modifiers::empty(),
+        Some("hello ✓".into()),
+        2.2,
+    );
+    // A shortcut may close the panel before the queued text receives a normal paint pass.
+    ui.key(
+        Key::Character("b".into()),
+        Code::Unidentified,
+        Modifiers::empty(),
+        true,
+        Some(" queued".into()),
+    );
+    ui.finish_editing(2.3).unwrap();
+    ui.set_visible(false);
+    let actions = channel.drain();
+    assert!(actions.iter().any(|a| matches!(a, ShellAction::PluginUi(action)
+        if action.plugin == plugin && matches!(&action.event.value, rustclient_plugin_api::PanelValue::Text(text) if text == "hello ✓ queued"))));
+    let retired = std::sync::Arc::downgrade(&channel.model.borrow().panels[0].document);
+    channel.model.borrow_mut().panels.clear();
+    ui.content_changed();
+    assert!(
+        retired.upgrade().is_none(),
+        "hidden retired editor documents must be released"
+    );
+    ui.set_visible(true);
+    ui.render(3.).unwrap();
+    assert!(ui.target_bounds("panel:test.notes:notes").is_none());
+    assert!(ui.target_bounds("search").is_some());
+}
 #[test]
 fn unchanged_and_hidden_world_frames_do_no_component_or_tessellation_work() {
     let (mut panel, _) = fixture(Control::Boolean, ConfigValue::Boolean(false));

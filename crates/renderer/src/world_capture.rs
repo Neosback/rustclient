@@ -72,7 +72,7 @@ pub async fn capture_world_with(
     let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
         label: Some("world capture encoder"),
     });
-    world.render_scene(&mut encoder);
+    world.render_scene(&mut encoder, None);
     encoder.copy_texture_to_buffer(
         wgpu::TexelCopyTextureInfo {
             texture: &world.target.texture,

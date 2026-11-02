@@ -3,7 +3,9 @@
 **Partial implementation. Not ready to declare the classic plugin complete or begin a parity claim for
 117HD.** The [frozen ledger](gpu-audit.json) covers all 16 source settings and 83 Java/resource/test/
 supplied-resource files. Coverage and hashes do not measure semantic completion. The owning plan is
-[BUILTIN-PLUGINS](../../plan/BUILTIN-PLUGINS.md); the source baseline remains unchanged.
+[the current roadmap](../../plan/PORTING-ROADMAP.md#phase-11-classic-gpu-completion);
+[the original plugin checkpoint](../../archive/2026-foundation/plan/BUILTIN-PLUGINS.md)
+retains historical evidence. The source baseline remains unchanged.
 
 ## Presentation diagnostics — 2026-10-31
 
@@ -200,3 +202,25 @@ Always on presentation and lifecycle statuses do not implement those missing ren
 Source-test/resource inventories and successful shader compilation do not establish plugin parity.
 117HD material paging, HDR/shadows/postprocess and budgets stay a separate later workstream. No Rust
 software rasterizer or new external GPU callback ABI is introduced.
+
+
+## Incremental normal-map locations — 2026-11-01
+
+The accepted [zone resource contract](../../specs/SPEC-0024-zone-updates.md) now has a
+native implementation. Structural changes prepare owning 8×8 zones on the existing
+bounded pool, while terrain/untouched buffers remain resident. Poses remain separate;
+related picking/minimap/geometry publish coherently after explicit acknowledgement.
+GPU staging admits at most 2 MiB or 1 ms CPU enqueue work per iteration, in chunks,
+after actor updates. Retired buffers wait for submission completion; browser handles
+stay on their owning thread behind completion flags.
+
+The bounded cache-backed diagnostic changes two zones while retaining 273 actual GPU
+buffer groups across nine GameState remove/restore commits. Unchanged publications
+upload zero bytes and visible triangle content matches full Rust projection. Twenty-two
+before/after capture PNGs are byte-identical. See the canonical
+[update audit](../UPDATE-OPTIMIZATION-2026-10-30.md) for raw identities and timing scope.
+
+This implements part of the workers/publication gate. It does not close that gate or
+make numThreads effective. Live door/dependency/source visual acceptance, large/cold
+uploads, 256/1,024 actor workloads, device-loss/browser runtime and transient/steady
+memory acceptance remain open. No classic gate or setting status is promoted here.
