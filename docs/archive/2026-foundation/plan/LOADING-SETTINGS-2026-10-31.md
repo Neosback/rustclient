@@ -259,11 +259,19 @@ nothing about steady-state frame time.
   (surface, far-ray fallback and clickbox answers equal the unreleased reference) and the
   existing indexed-versus-linear tests. `scene_probe --performance` prints the resident figures
   and checks 600 rays against the released geometry.
-- **Open, with numbers.** The world texture array is allocated at 256 layers (about 22 MB with
-  mips) because the layer is the texture id; shrinking it needs an id-to-layer map in the shader.
-  The probe's first run measured 296 MB peak RSS and every later run (including the A/B without
-  my change) 412 MB; I did not find why, so treat the absolute RSS as unreliable between
-  sessions and compare only A/B pairs.
+- **Done: the world texture array is sized to the largest texture id.** `world_textures::
+  layer_count` replaces the fixed 256 layers: 215 layers, 18,786,700 B instead of 22,369,280 B
+  (3.6 MB; `scene_probe --performance` prints both). Packing textures by count with an id-to-layer
+  map in the shader would not save more: the 240 cache has 214 of the 215 ids, and the entity
+  streams may name any of them later. The array is therefore about 19 MB for the whole cache;
+  the next reduction would be compression or on-demand layers, which change the texture path and
+  are not planned. A/B check: `scene_probe <cache> <dir>` captured 22 frames (spawn, orbit,
+  fog, color-blind, MSAA/aniso variants) with 256 forced and with 215 layers; all 22 PNGs are
+  byte-identical. The first try, a dense map in the animation buffer read by the fragment
+  shader, was dropped when the cache showed no gain.
+- **Open, with numbers.** The probe's first run measured 296 MB peak RSS and every later run
+  (including the A/B without my change) 412 MB; I did not find why, so treat the absolute RSS as
+  unreliable between sessions and compare only A/B pairs.
 
 ## Open, in order
 
@@ -276,5 +284,4 @@ nothing about steady-state frame time.
    fire each Variable/Operation/Click listener once and assert scroll survives and prompts close.
 4. Minimap: remaining dot frames (needs ground items and friend lists in `GameState`), rebuild on
    scenery change; observe the Minimap plugin live; Ground Markers.
-5. Memory and baseline FPS: texture array layers, per-cycle
-   plugin/entity work after a live profile (see "Memory and baseline FPS").
+5. Memory and baseline FPS: per-cycle plugin/entity work after a live profile (see "Memory and baseline FPS").

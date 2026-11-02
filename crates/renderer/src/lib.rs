@@ -47,6 +47,7 @@ pub use camera::{
     CameraInput, CameraTarget, CameraTuning, CameraViewport, GameplayCameraController,
     ReferenceCameraPose,
 };
+pub use world_textures::{array_bytes as texture_array_bytes, layer_count as texture_layers};
 
 mod world_capture;
 mod world_upload;

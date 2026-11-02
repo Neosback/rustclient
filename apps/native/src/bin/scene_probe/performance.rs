@@ -65,6 +65,14 @@ pub(super) fn run(mesh: &WorldMesh) -> Result<(), Box<dyn std::error::Error>> {
         }
     }
     drop(released);
+    println!(
+        "reference texture array: {} layers, {} B (the classic shader allows 256 layers, {} B)",
+        rustclient_renderer::texture_layers(mesh),
+        rustclient_renderer::texture_array_bytes(mesh),
+        rustclient_renderer::texture_array_bytes(mesh)
+            / u64::from(rustclient_renderer::texture_layers(mesh))
+            * 256,
+    );
     let resources = pollster::block_on(rustclient_renderer::capture_world_resources(mesh))?;
     println!("actual GPU world resources: {resources:?}");
     println!(

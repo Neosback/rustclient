@@ -1,6 +1,28 @@
 //! Static reference texture layers and integer box mips, uploaded once per GPU build.
 use rustclient_scene::WorldMesh;
 use wgpu::util::DeviceExt;
+
+/// Ids index the array directly (vertices carry `id + 1`), so it needs one layer per id up to the
+/// largest the mesh supplies, not the 256 the classic shader allows. A vertex naming a layer past
+/// the end samples nothing: out-of-range `textureLoad` reads zero, alpha 0, and the fragment is
+/// discarded, which is what an unwritten layer did before. The revision-240 cache numbers its
+/// textures densely (214 of the 215 ids up to the largest exist), so packing them by count with an
+/// id-to-layer map in the shader would save one layer, not the rest of the 256.
+#[must_use]
+pub fn layer_count(mesh: &WorldMesh) -> u32 {
+    mesh.textures
+        .keys()
+        .next_back()
+        .map_or(1, |id| id.get() + 1)
+}
+
+/// Resident bytes of the reference texture array: every layer with its full mip chain.
+#[must_use]
+pub fn array_bytes(mesh: &WorldMesh) -> u64 {
+    let texels: u64 = (0..8).map(|level| 1_u64 << (14 - 2 * level)).sum();
+    texels * 4 * u64::from(layer_count(mesh))
+}
+
 pub(crate) fn upload(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
@@ -12,7 +34,7 @@ pub(crate) fn upload(
         size: wgpu::Extent3d {
             width: 128,
             height: 128,
-            depth_or_array_layers: 256,
+            depth_or_array_layers: layer_count(mesh),
         },
         mip_level_count: 8,
         sample_count: 1,
@@ -75,7 +97,8 @@ pub(crate) fn upload(
     Ok((view, animations))
 }
 pub(crate) fn validate(mesh: &WorldMesh, limits: &wgpu::Limits) -> Result<(), crate::RenderError> {
-    if limits.max_texture_array_layers < 256 || limits.max_texture_dimension_2d < 128 {
+    if limits.max_texture_array_layers < layer_count(mesh) || limits.max_texture_dimension_2d < 128
+    {
         return Err(crate::RenderError::World(
             "classic texture array exceeds device limits",
         ));
@@ -195,10 +218,8 @@ mod validation_tests {
         };
         let limits = wgpu::Limits::default();
         assert!(validate(&mesh, &limits).is_ok());
+        assert_eq!(layer_count(&mesh), 1);
         let mut small = limits.clone();
-        small.max_texture_array_layers = 128;
-        assert!(validate(&mesh, &small).is_err());
-        small = limits.clone();
         small.max_texture_dimension_2d = 64;
         assert!(validate(&mesh, &small).is_err());
         let source = Source::group(IndexId(0), GroupId(0));
@@ -220,5 +241,25 @@ mod validation_tests {
         std::sync::Arc::make_mut(&mut mesh.textures).clear();
         std::sync::Arc::make_mut(&mut mesh.textures).insert(TextureId::new(255), asset);
         assert!(validate(&mesh, &limits).is_ok());
+        assert_eq!(layer_count(&mesh), 256);
+        let mut small = limits.clone();
+        small.max_texture_array_layers = 128;
+        assert!(validate(&mesh, &small).is_err());
+        // The layer is the id: a lone texture 40 needs 41 layers, not one.
+        std::sync::Arc::make_mut(&mut mesh.textures).remove(&TextureId::new(255));
+        let asset = TextureAsset {
+            image: Image::new(128, 128, vec![255; 128 * 128 * 4], source).unwrap(),
+            animation_direction: 0,
+            animation_speed: 0,
+            opaque: true,
+        };
+        std::sync::Arc::make_mut(&mut mesh.textures).insert(TextureId::new(40), asset);
+        assert_eq!(layer_count(&mesh), 41);
+        assert!(validate(&mesh, &small).is_ok());
+        // 128 x 128 texels per layer, eight mips each a quarter the size of the last.
+        assert_eq!(
+            array_bytes(&mesh),
+            41 * 4 * (16384 + 4096 + 1024 + 256 + 64 + 16 + 4 + 1)
+        );
     }
 }
