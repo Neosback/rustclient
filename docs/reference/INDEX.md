@@ -6,6 +6,9 @@ Update optimization: [prepared scene updates, indexed queries and retained poses
 Update latency: [2026-10-30 scene/actor/widget/cycle review](UPDATE-SYSTEM-2026-10-30.md),
 [frozen sources and measurements](UPDATE-SYSTEM-EVIDENCE-2026-10-30.json).
 
+Loading, prompts, interface audit, minimap and memory: [2026-10-31 to 2026-11-02 pass record](CLIENT-PASS-2026-11-02.md)
+(commands, measurements and NOT-RUN gates).
+
 This index maps pinned behavioral evidence to RustClient owners.
 [SPEC-0019](../specs/SPEC-0019-port-parity.md) defines the nearly 1:1 contract;
 [the roadmap](../plan/PORTING-ROADMAP.md) orders implementation. Reference source

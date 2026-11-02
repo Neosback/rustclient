@@ -13,6 +13,9 @@ movement, public chat and selected widget/action/script paths. Incremental-updat
 foundations now include sparse inventory changes, bounded workers, retained poses
 and UI, absolute frame deadlines and retained asynchronous world-map pixels. Normal
 map-click dispatch is implemented; live administrator teleport acceptance remains open.
+A map rebuild keeps the previous scene on screen, chatbox prompts answer the server,
+the minimap zooms, and the Tile Indicators, Minimap and Ground Markers plugins exist; none
+of these has been observed in the running client yet (see the roadmap's live backlog).
 
 Native and browser share the egui sidebar; browser gameplay is not connected.
 The in-tree plugin API has capability mediation, lifecycle identities, subscriber

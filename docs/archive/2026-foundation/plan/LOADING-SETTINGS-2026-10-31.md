@@ -105,39 +105,6 @@ Measured (`scene_probe --performance`, release, 104x104 at 3168,3168, M-series M
 | static location phases | | prepare 18 ms, seam merge 34 ms, emit 29 ms, terrain 13 ms |
 
 The probe asserts that reloading the first window warm gives the same `content_hash`.
-### Cache warm-up (stage 1c)
-
-- **Done: the window-independent definitions are decoded before the first scene load.**
-  `CacheProfile::warm_up` fills the memo's floors, kits and textures and loads config groups 6
-  (objects), 12 (sequences) and 14 (varbits), with the same advisory flag the loads use. The native
-  app submits it once from `resumed()` as a `JobPriority::Prefetch` job on the existing bounded
-  pool (`SceneView::prewarm`), which also opens the shared cache; login normally takes longer than
-  the warm-up, so the first `load_world` finds everything decoded. It spawns no thread and waits on
-  no child job (SPEC-0024).
-- `Slot::get_or_load` and the config group load are now single flight (one decode; later callers
-  wait and take the result), so a scene load that starts mid-warm-up shares the warm-up's work
-  rather than repeating it. A failed warm-up stores nothing and the load reports the error.
-- Measured (`scene_probe`, release, same 104x104 window, one run each; `RUSTCLIENT_PROBE_WARMUP=1`
-  warms first, `=concurrent` races the warm-up against the load on two threads):
-
-| Case | Total | `load_world` itself |
-|---|---|---|
-| cold, no warm-up | 218 ms | 218 ms |
-| warm-up first | 146 ms warm-up | 30 ms |
-| warm-up racing the load | 106 ms | 106 ms |
-
-- A/B: the scene asset id (`186,74,52,...`), state fingerprint and all 23 captured frames equal the
-  pre-change `cap-before` run (`diff -rq`), so the content hash is unchanged.
-- **Done: the texture fingerprint mixes eight bytes per step.** `world_textures::fingerprint`
-  decides only whether the GPU array must be rewritten between uploads in one process, so it
-  needs no fixed algorithm. On 215 synthetic 128x128 textures (release, one run) it fell from
-  19 ms to 3.5 ms; a test covers pixels, animation, ids and a tail byte past the last whole word.
-- Kept on purpose: the whole-scene `validate` at the start of `PreparedScenery::new` (13 ms). The
-  owning-zone partition indexes the source on the strength of it, so removing it would trade a
-  safety check for time on a worker thread; the per-part validation does not replace it.
-- Not done: a scoped-thread version of the model/texture decode ran in 77-146 ms but was dropped
-  for contradicting SPEC-0024. Remaining cold cost is models (window dependent).
-
 Not done: map-square decode cache, sharing `effective_locations`/`decorations::plan` between the
 static and dynamic passes (both are ~1 ms), chunked vertex packing, moving `build_scene_minimap` off
 the UI thread, cancellation checks between phases, prefetching, parallel seam merge/emit (the
@@ -292,31 +259,11 @@ nothing about steady-state frame time.
   (surface, far-ray fallback and clickbox answers equal the unreleased reference) and the
   existing indexed-versus-linear tests. `scene_probe --performance` prints the resident figures
   and checks 600 rays against the released geometry.
-- **Done: the world texture array is sized to the largest texture id.** `world_textures::
-  layer_count` replaces the fixed 256 layers: 215 layers, 18,786,700 B instead of 22,369,280 B
-  (3.6 MB; `scene_probe --performance` prints both). Packing textures by count with an id-to-layer
-  map in the shader would not save more: the 240 cache has 214 of the 215 ids, and the entity
-  streams may name any of them later. The array is therefore about 19 MB for the whole cache;
-  the next reduction would be compression or on-demand layers, which change the texture path and
-  are not planned. A/B check: `scene_probe <cache> <dir>` captured 22 frames (spawn, orbit,
-  fog, color-blind, MSAA/aniso variants) with 256 forced and with 215 layers; all 22 PNGs are
-  byte-identical. The first try, a dense map in the animation buffer read by the fragment
-  shader, was dropped when the cache showed no gain.
-- **Done: Ground Markers.** `crates/first-party-plugins/src/groundmarkers.rs` marks tiles with Shift and
-  the world menu: the plugin offers `Mark`/`Unmark` `Tile` for the hovered tile (`PluginOutput::menu_offers`,
-  capability `ui.menu.decorate`, SPEC-0004/ADR-0006), `NativeApp::add_plugin_entries` appends it below
-  "Walk here" on a Shift right-click when the menu opened on that tile, and the choice returns as
-  `MenuOptionClicked` (kind `Other(1500)`, tile in `param0`/`param1`, needs `ui.menu.swap`). Markers are
-  stored per region in the RuneLite JSON and drawn with `OverlayCommand::Tile` (`markerColor`,
-  `borderWidth`, `fillOpacity`, 32 tile limit, player's plane). Not ported: `Label` and `Color` entries
-  (they need a text prompt, a color picker and submenus), the minimap outline, the world map orb
-  import/export, instances; the schema omits `drawOnMinimap` and `showImportExport`. Tests: five plugin
-  tests (offer, toggle and persisted text, event filtering, source-shaped input, distance and region
-  edges), a host test (grant, count and text bounds) and a native test of offer selection. Nothing was
-  seen in the live client, and the menu path from right-click to click in `NativeApp` is not unit tested.
-- **Open, with numbers.** The probe's first run measured 296 MB peak RSS and every later run
-  (including the A/B without my change) 412 MB; I did not find why, so treat the absolute RSS as
-  unreliable between sessions and compare only A/B pairs.
+- **Open, with numbers.** The world texture array is allocated at 256 layers (about 22 MB with
+  mips) because the layer is the texture id; shrinking it needs an id-to-layer map in the shader.
+  The probe's first run measured 296 MB peak RSS and every later run (including the A/B without
+  my change) 412 MB; I did not find why, so treat the absolute RSS as unreliable between
+  sessions and compare only A/B pairs.
 
 ## Open, in order
 
@@ -328,6 +275,6 @@ nothing about steady-state frame time.
    touches; extend the harness with varp/inventory fixtures so state-dependent scripts can run;
    fire each Variable/Operation/Click listener once and assert scroll survives and prompts close.
 4. Minimap: remaining dot frames (needs ground items and friend lists in `GameState`), rebuild on
-   scenery change; observe the Minimap and Ground Markers plugins live; Ground Markers `Label` and
-   `Color` need a plugin text prompt and color picker.
-5. Memory and baseline FPS: per-cycle plugin/entity work after a live profile (see "Memory and baseline FPS").
+   scenery change; observe the Minimap plugin live; Ground Markers.
+5. Memory and baseline FPS: texture array layers, per-cycle
+   plugin/entity work after a live profile (see "Memory and baseline FPS").

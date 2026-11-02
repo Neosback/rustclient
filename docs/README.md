@@ -1,7 +1,7 @@
 # RustClient documentation
 
 Start with [architecture](../ARCHITECTURE.md), the [parity contract](specs/SPEC-0019-port-parity.md)
-and the [current roadmap](plan/PORTING-ROADMAP.md). Reviewed 2026-11-01; implementation
+and the [current roadmap](plan/PORTING-ROADMAP.md). Roadmap reconciled 2026-11-02; implementation
 and live acceptance remain separate. No whole-client completion percentage is claimed.
 
 ## Current owners
@@ -13,6 +13,7 @@ and live acceptance remain separate. No whole-client completion percentage is cl
 | What behavior is required? | [Spec registry](specs/README.md), [architecture](../ARCHITECTURE.md) and ADRs below |
 | What sources establish that behavior? | [Source map](reference/INDEX.md), [revision guide](reference/REVISION-240.md), [stock logic map](reference/rs240-port/CLIENT-LOGIC-MAP.md) |
 | What update/performance evidence exists? | [Update audit and scoped measurements](reference/UPDATE-OPTIMIZATION-2026-10-30.md) |
+| What did the loading, prompt, interface, minimap and memory pass establish? | [Pass record](reference/CLIENT-PASS-2026-11-02.md) and [interface audit baseline](reference/rs240-port/INTERFACE-AUDIT.tsv) |
 | What is left in classic GPU? | [GPU audit](reference/builtin-plugins/GPU-AUDIT.md) and [gate ledger](reference/builtin-plugins/gpu-audit.json) |
 | What is left for RuneLite features? | [First-party ledger](reference/builtin-plugins/FIRST-PARTY-LEDGER.md), [catalog](reference/builtin-plugins/RUNELITE-PLUGINS.tsv), [hooks/API ownership](reference/builtin-plugins/HOOK-API-OWNERS.tsv) |
 | Which TSPS ideas still transfer? | [Reconciled shortlist](reference/TSPS-GIT-SHORTLIST-2026-10-29.md#current-reconciliation--2026-10-31); stock 240 remains authoritative |

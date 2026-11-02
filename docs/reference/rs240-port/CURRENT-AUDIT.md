@@ -2,7 +2,7 @@
 
 Reviewed **2026-11-01** against HEAD `e2ce6f64c9cbfcd957c219fe27f4c94e7883e8fe`
 plus the uncommitted performance/plugin/API work and the incremental-location continuation
-below. The original documentation sweep was a source reconciliation; its evidence is
+below; the [2026-11-02 reconciliation](#reconciliation--2026-11-02) lists what changed since. The original documentation sweep was a source reconciliation; its evidence is
 distinct from the subsequent cache/GPU diagnostics and title-window measurements.
 [REVIEW-BASELINE.json](REVIEW-BASELINE.json) records the sweep scope and inspected
 identities. The earlier pasted-assessment/deob review is preserved in the
@@ -58,8 +58,8 @@ Source owners and focused evidence are linked from [PORT-MATRIX.tsv](PORT-MATRIX
 ## Inventory reconciliation
 
 The [plugin catalog](../builtin-plugins/RUNELITE-PLUGINS.tsv) contains **131 slots**:
-15 partial modules, one required GPU service, two schema-only entries and 113
-not-started entries. The consumer scanner therefore finds **115 without executable
+16 partial modules, one required GPU service, two schema-only entries and 112
+not-started entries. The consumer scanner therefore finds **114 without executable
 registration** (the two schema-only entries are included). No count means complete
 plugins. Remote-service/fork dispositions remain explicit; they are not implementation.
 
@@ -150,3 +150,25 @@ enclosing-call or live frame-time guarantee is not established. Streaming initia
 preparation removed the redundant expanded copy: peak RSS in this one initial-process
 probe fell to 315 MB, while macOS peak footprint remained about 343 MB versus 340 MB
 baseline. These different counters do not close the update-memory or steady-state gate.
+
+## Reconciliation — 2026-11-02
+
+Reviewed against HEAD `3b30b99f`. This is a roadmap and ledger reconciliation of the
+loading, prompt, interface, minimap and memory pass; it is not a new source sweep and
+[REVIEW-BASELINE.json](REVIEW-BASELINE.json) still records the 2026-11-01 inspection.
+Evidence, commands and NOT-RUN gates are in the [pass record](../CLIENT-PASS-2026-11-02.md).
+
+- **Closed to their named scope, live NOT-RUN:** previous scene kept during a map rebuild,
+  chatbox prompt answers, UI atlas growth, minimap zoom and icons, settings list builder
+  opcodes, the interface audit and its baseline, startup cache warm-up and shared decodes,
+  released CPU geometry, and the Tile Indicators, Minimap and Ground Markers plugins.
+- **Corrected here:** plugin catalog counts (16 partial modules, 112 not-started, 114
+  without executable registration); `MenuOptionClicked` is now `emitted` in the event
+  inventory (plugin menu entries only); `tools/parity_inventory.py` accepts the dispositions
+  and blocking ids the catalog had gained, and its generated inventories were rewritten.
+- **Still open from the blocker list above:** every item in it. Ground items, actor effects,
+  social state, instances and world views are unchanged and now also block the minimap's
+  item and friend dots and several plugin ports.
+- **Unexplained, needs a live observation:** the settings list returning to the top after a
+  click, and the world map buttons without sprites. Neither reproduces from the cache or the
+  probes.

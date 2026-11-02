@@ -21,9 +21,9 @@ exact evidence below remains bounded to its recorded implementation.
 
 ## Port status
 
-Catalog reconciliation, 2026-11-01: 131 slots comprise 15 partial modules, one
-required GPU service, two schema-only entries and 113 not-started entries. The last
-two groups total 115 without executable registration. Counts describe registration,
+Catalog reconciliation, 2026-11-02: 131 slots comprise 16 partial modules, one
+required GPU service, two schema-only entries and 112 not-started entries. The last
+two groups total 114 without executable registration. Counts describe registration,
 not feature/source-test completeness. Current missing dependencies and validation
 are in the continuation sections below and [the audit](../rs240-port/CURRENT-AUDIT.md).
 Older per-option results retain their recorded scope; they do not override that audit.

@@ -32,7 +32,11 @@ MATRIX = ROOT / 'docs/reference/rs240-port/PORT-MATRIX.tsv'
 PACKET_SITES_OUT = ROOT / 'docs/reference/rs240-port/DEOB-PACKET-SITES.tsv'
 
 CATEGORIES = {'client-feature', 'content-helper', 'external-service', 'developer', 'fork-specific'}
-DISPOSITIONS = {'proposed-applicable', 'needs-decision', 'required'}
+DISPOSITIONS = {
+    'applicable', 'applicable-local-service-deferred', 'fork-only-excluded',
+    'local-eligible-remote-deferred', 'needs-decision', 'proposed-applicable',
+    'remote-service-deferred', 'required',
+}
 # Events whose variant exists and is diffed from projected actor fields that the projector
 # currently hard-codes empty (crates/plugin-bridge/src/project.rs), so they cannot fire.
 SOURCE_ABSENT = {

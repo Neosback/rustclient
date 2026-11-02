@@ -78,7 +78,7 @@ mousehighlight	Mouse Tooltips	true		3	308	no	not-started	client-feature	menus|pl
 mta	Mage Training Arena	false		13	1792	no	not-started	content-helper	widgets|plugin-api	proposed-applicable	
 music	Music	true		2	567	no	not-started	client-feature	audio|var-domains	proposed-applicable	
 nightmarezone	Nightmare Zone	true		4	674	no	not-started	content-helper	widgets|var-domains|plugin-api	proposed-applicable	
-notes	Notes	true		3	305	no	partial-module	client-feature	profile-storage|sidebar-visual-acceptance	applicable	Local retained editor/navigation and scoped storage implemented; focus-loss persistence, activation-validated actions. Profile switching, source undo grouping and live visuals open; FIRST-PARTY-LEDGER.
+notes	Notes	true		3	305	no	partial-module	client-feature	persistence|sidebar	applicable	Local retained editor/navigation and scoped storage implemented; focus-loss persistence, activation-validated actions. Profile switching, source undo grouping and live visuals open; FIRST-PARTY-LEDGER.
 npchighlight	NPC Indicators	true		4	1487	no	partial-module	client-feature	menus|minimap|plugin-api	proposed-applicable	
 npcunaggroarea	NPC Aggression Timer	false		5	900	no	not-started	content-helper	plugin-api	proposed-applicable	
 objectindicators	Object Markers	false		5	1245	no	not-started	client-feature	dynamic-scenery|menus|plugin-api	proposed-applicable	

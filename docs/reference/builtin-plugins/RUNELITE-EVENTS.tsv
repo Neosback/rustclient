@@ -39,7 +39,7 @@ ItemQuantityChanged		absent
 ItemSpawned		absent	
 MenuEntryAdded	MenuEntryAdded	declared-never-emitted	no host/bridge construction outside tests
 MenuOpened	MenuOpened	declared-never-emitted	no host/bridge construction outside tests
-MenuOptionClicked	MenuOptionClicked	declared-never-emitted	no host/bridge construction outside tests
+MenuOptionClicked	MenuOptionClicked	emitted	
 MenuShouldLeftClick		absent	
 NameableNameChanged		absent	
 NpcChanged	NpcChanged	emitted	
