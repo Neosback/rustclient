@@ -13,6 +13,8 @@ pub struct Cache<S> {
     source: S,
     config_warnings: std::sync::RwLock<BTreeMap<u32, Vec<String>>>,
     config_files: std::sync::RwLock<BTreeMap<u32, BTreeMap<FileId, Vec<u8>>>>,
+    /// Serializes config group loads so concurrent callers wait for one decode, not repeat it.
+    config_loading: std::sync::Mutex<()>,
     memo: crate::memo::Memo,
     data: StorageKey,
     data_len: u64,
@@ -48,6 +50,7 @@ impl<S: ReadOnlyBlobs> Cache<S> {
             source,
             config_warnings: std::sync::RwLock::default(),
             config_files: std::sync::RwLock::default(),
+            config_loading: std::sync::Mutex::default(),
             memo: crate::memo::Memo::default(),
             data,
             data_len,
@@ -109,25 +112,18 @@ impl<S: ReadOnlyBlobs> Cache<S> {
         warnings: &mut Vec<String>,
         f: impl FnOnce(&BTreeMap<FileId, Vec<u8>>) -> Result<R>,
     ) -> Result<R> {
-        let loaded = self
-            .config_files
-            .read()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .contains_key(&group);
-        if !loaded {
-            let mut group_warnings = Vec::new();
-            let files = self
-                .group_files_policy(IndexId(2), GroupId(group), advisory, &mut group_warnings)?
-                .into_iter()
-                .collect();
-            self.config_warnings
-                .write()
-                .unwrap_or_else(std::sync::PoisonError::into_inner)
-                .insert(group, group_warnings);
+        let is_loaded = || {
             self.config_files
-                .write()
+                .read()
                 .unwrap_or_else(std::sync::PoisonError::into_inner)
-                .insert(group, files);
+                .contains_key(&group)
+        };
+        if !is_loaded() {
+            let _loading = self
+                .config_loading
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            self.load_config_group(group, advisory, is_loaded)?;
         }
         if let Some(group_warnings) = self
             .config_warnings
@@ -145,6 +141,31 @@ impl<S: ReadOnlyBlobs> Cache<S> {
             .get(&group)
             .expect("config group inserted immediately above");
         f(files)
+    }
+
+    /// Decode one config group unless another caller finished it while this one waited.
+    fn load_config_group(
+        &self,
+        group: u32,
+        advisory: bool,
+        is_loaded: impl Fn() -> bool,
+    ) -> Result<()> {
+        if !is_loaded() {
+            let mut group_warnings = Vec::new();
+            let files = self
+                .group_files_policy(IndexId(2), GroupId(group), advisory, &mut group_warnings)?
+                .into_iter()
+                .collect();
+            self.config_warnings
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .insert(group, group_warnings);
+            self.config_files
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .insert(group, files);
+        }
+        Ok(())
     }
 
     pub(crate) fn config_file(&self, group: u32, id: u32, advisory: bool) -> Result<Vec<u8>> {

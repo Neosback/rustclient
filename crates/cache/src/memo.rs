@@ -7,34 +7,49 @@ use crate::world::{FloorMaterial, KitDefinition, StaticModel, TextureAsset};
 use rustclient_model::{FloorOverlayId, FloorUnderlayId, KitId, ModelId, TextureId};
 use std::{
     collections::BTreeMap,
-    sync::{Arc, PoisonError, RwLock},
+    sync::{Arc, Mutex, PoisonError, RwLock},
 };
 
 /// Decoded models kept across loads; reaching it drops the whole set so memory stays bounded.
 const MODEL_LIMIT: usize = 4096;
 
 /// A lazily filled, shareable result. Failures are not stored, so a later load retries.
-pub(crate) struct Slot<T>(RwLock<Option<Arc<T>>>);
+///
+/// Loading is single flight: a caller that finds another load in progress waits for it and takes
+/// its result, so a background warm-up and a scene load never decode the same set twice.
+pub(crate) struct Slot<T> {
+    held: RwLock<Option<Arc<T>>>,
+    loading: Mutex<()>,
+}
 
 impl<T> Default for Slot<T> {
     fn default() -> Self {
-        Self(RwLock::new(None))
+        Self {
+            held: RwLock::new(None),
+            loading: Mutex::new(()),
+        }
     }
 }
 
 impl<T> Slot<T> {
     pub(crate) fn get_or_load<E>(&self, load: impl FnOnce() -> Result<T, E>) -> Result<Arc<T>, E> {
-        if let Some(held) = self
-            .0
-            .read()
-            .unwrap_or_else(PoisonError::into_inner)
-            .as_ref()
-        {
-            return Ok(Arc::clone(held));
+        if let Some(held) = self.peek() {
+            return Ok(held);
+        }
+        let _loading = self.loading.lock().unwrap_or_else(PoisonError::into_inner);
+        if let Some(held) = self.peek() {
+            return Ok(held);
         }
         let loaded = Arc::new(load()?);
-        *self.0.write().unwrap_or_else(PoisonError::into_inner) = Some(Arc::clone(&loaded));
+        *self.held.write().unwrap_or_else(PoisonError::into_inner) = Some(Arc::clone(&loaded));
         Ok(loaded)
+    }
+
+    fn peek(&self) -> Option<Arc<T>> {
+        self.held
+            .read()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clone()
     }
 }
 
@@ -109,5 +124,26 @@ mod tests {
             .get_or_load(|| Err::<u32, _>("must not reload a held value"))
             .unwrap();
         assert!(Arc::ptr_eq(&first, &second));
+    }
+
+    #[test]
+    fn concurrent_callers_share_one_load() {
+        let slot = Slot::<u32>::default();
+        let loads = std::sync::atomic::AtomicU32::new(0);
+        std::thread::scope(|scope| {
+            for _ in 0..4 {
+                scope.spawn(|| {
+                    let value = slot
+                        .get_or_load(|| {
+                            std::thread::sleep(std::time::Duration::from_millis(20));
+                            loads.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                            Ok::<_, &str>(9)
+                        })
+                        .unwrap();
+                    assert_eq!(*value, 9);
+                });
+            }
+        });
+        assert_eq!(loads.load(std::sync::atomic::Ordering::SeqCst), 1);
     }
 }

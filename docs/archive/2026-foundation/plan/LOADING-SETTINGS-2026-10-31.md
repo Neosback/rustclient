@@ -105,6 +105,33 @@ Measured (`scene_probe --performance`, release, 104x104 at 3168,3168, M-series M
 | static location phases | | prepare 18 ms, seam merge 34 ms, emit 29 ms, terrain 13 ms |
 
 The probe asserts that reloading the first window warm gives the same `content_hash`.
+### Cache warm-up (stage 1c)
+
+- **Done: the window-independent definitions are decoded before the first scene load.**
+  `CacheProfile::warm_up` fills the memo's floors, kits and textures and loads config groups 6
+  (objects), 12 (sequences) and 14 (varbits), with the same advisory flag the loads use. The native
+  app submits it once from `resumed()` as a `JobPriority::Prefetch` job on the existing bounded
+  pool (`SceneView::prewarm`), which also opens the shared cache; login normally takes longer than
+  the warm-up, so the first `load_world` finds everything decoded. It spawns no thread and waits on
+  no child job (SPEC-0024).
+- `Slot::get_or_load` and the config group load are now single flight (one decode; later callers
+  wait and take the result), so a scene load that starts mid-warm-up shares the warm-up's work
+  rather than repeating it. A failed warm-up stores nothing and the load reports the error.
+- Measured (`scene_probe`, release, same 104x104 window, one run each; `RUSTCLIENT_PROBE_WARMUP=1`
+  warms first, `=concurrent` races the warm-up against the load on two threads):
+
+| Case | Total | `load_world` itself |
+|---|---|---|
+| cold, no warm-up | 218 ms | 218 ms |
+| warm-up first | 146 ms warm-up | 30 ms |
+| warm-up racing the load | 106 ms | 106 ms |
+
+- A/B: the scene asset id (`186,74,52,...`), state fingerprint and all 23 captured frames equal the
+  pre-change `cap-before` run (`diff -rq`), so the content hash is unchanged.
+- Not done: a scoped-thread version of the model/texture decode ran in 77-146 ms but was dropped
+  for contradicting SPEC-0024. Remaining cold cost is models (window dependent). A cheaper texture
+  fingerprint (17 ms) and a skipped second `validate` (13 ms) in the renderer prep are untried.
+
 Not done: map-square decode cache, sharing `effective_locations`/`decorations::plan` between the
 static and dynamic passes (both are ~1 ms), chunked vertex packing, moving `build_scene_minimap` off
 the UI thread, cancellation checks between phases, prefetching, parallel seam merge/emit (the
@@ -287,7 +314,7 @@ nothing about steady-state frame time.
 
 ## Open, in order
 
-1. Load latency leftovers: parallel seam merge/emit, chunked vertex packing, minimap off the UI
+1. Load latency leftovers: texture fingerprint and redundant validate, parallel seam merge/emit, chunked vertex packing, minimap off the UI
    thread, cancellation between phases.
 2. Settings: observe the live reload-on-click (see "Not reproduced"); make text-input field
    widgets interactive (TEXT-FIELD-WIDGET); MES_TYPED 3102 if a cache script needs it.

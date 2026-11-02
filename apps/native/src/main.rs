@@ -1902,6 +1902,7 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
             Ok(window) => {
                 window.set_ime_allowed(true);
                 self.window = Some(Arc::new(window));
+                self.scene.prewarm();
                 self.create_renderer(event_loop);
             }
             Err(error) => self.fail(event_loop, &format!("window creation: {error}")),

@@ -141,6 +141,31 @@ impl CacheProfile {
         Ok(())
     }
 
+    /// Decode the window-independent definitions every scene load needs: floors, identity kits,
+    /// textures and the object, sequence and varbit config groups.
+    ///
+    /// Results land in the cache's memo and config store, so a later [`Self::load_world`] finds
+    /// them decoded and its content hash is unchanged. Safe to run concurrently with a load: both
+    /// share one decode of each set. It is advisory; a failure is left for the load to report.
+    /// # Errors
+    /// Reports the first definition set that could not be decoded.
+    pub fn warm_up<S: ReadOnlyBlobs>(self, cache: &Cache<S>) -> Result<()> {
+        let advisory = self == Self::OpenRune240;
+        cache.memo().floors.get_or_load(|| load_floors(cache))?;
+        cache
+            .memo()
+            .kits
+            .get_or_load(|| Ok::<_, CacheError>(load_kits(cache)))?;
+        cache
+            .memo()
+            .textures
+            .get_or_load(|| dependencies::textures(cache))?;
+        for group in [6, 12, 14] {
+            cache.config_group_with(group, advisory, &mut Vec::new(), |_| Ok(()))?;
+        }
+        Ok(())
+    }
+
     /// Load immutable CPU assets for a normal bounded window.
     /// # Errors
     /// Rejects missing/corrupt declared assets, unsupported encodings and invalid extents.

@@ -191,6 +191,40 @@ impl SceneView {
         })
         .clone()
     }
+    /// Open the shared cache and decode the window-independent definitions on an idle pool
+    /// worker, so the first scene load after login finds them ready. Best effort: the load
+    /// decodes whatever this did not reach, and a failure surfaces there.
+    pub fn prewarm(&mut self) {
+        let pool = match self.cpu_jobs() {
+            Ok(pool) => pool,
+            Err(error) => {
+                eprintln!("cache warm-up: {error}");
+                return;
+            }
+        };
+        let (path, profile) = (self.cache_dir.clone(), self.profile);
+        let shared_cache = Arc::clone(&self.shared_cache);
+        let job = rustclient_platform::CpuJob::new(
+            rustclient_platform::JobIdentity::default(),
+            rustclient_platform::JobPriority::Prefetch,
+            rustclient_platform::JobCancellation::default(),
+            move |_| {
+                let started = std::time::Instant::now();
+                let warmed = Self::open_shared_cache(&path, &shared_cache)
+                    .and_then(|cache| profile.warm_up(&cache).map_err(|error| error.to_string()));
+                match warmed {
+                    Ok(()) if std::env::var_os("RUSTCLIENT_FRAME_TIMINGS").is_some() => {
+                        eprintln!("cache warm-up: {} ms", started.elapsed().as_millis());
+                    }
+                    Ok(()) => {}
+                    Err(error) => eprintln!("cache warm-up: {error}"),
+                }
+            },
+        );
+        if pool.try_submit(job).is_err() {
+            eprintln!("cache warm-up: projection queue full; the scene load decodes on demand");
+        }
+    }
     pub fn start(
         &mut self,
         placement: InitialPlacement,

@@ -15,19 +15,56 @@ use rustclient_platform_native::DirectoryBlobs;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let path = std::env::args().nth(1).ok_or("cache directory required")?;
     let cache = Cache::open(DirectoryBlobs::open(path)?)?;
+    // RUSTCLIENT_PROBE_WARMUP=1 warms the cache first; =concurrent starts the warm-up on another
+    // thread and loads at once, as the app does when login races the startup warm-up.
+    let warmup = std::env::var("RUSTCLIENT_PROBE_WARMUP").ok();
     let started = std::time::Instant::now();
-    let assets = CacheProfile::OpenRune240.load_world(
-        &cache,
-        WorldTile::new(3168, 3168, Plane::MIN),
-        104,
-        104,
-        |s| {
+    let assets = std::thread::scope(|scope| -> Result<_, Box<dyn std::error::Error>> {
+        let warm = match warmup.as_deref() {
+            Some("concurrent") => {
+                let cache = &cache;
+                Some(scope.spawn(move || {
+                    CacheProfile::OpenRune240
+                        .warm_up(cache)
+                        .map(|()| started.elapsed())
+                }))
+            }
+            Some(_) => {
+                CacheProfile::OpenRune240.warm_up(&cache)?;
+                println!(
+                    "{:>7.0} ms cache warm-up",
+                    started.elapsed().as_secs_f64() * 1000.
+                );
+                None
+            }
+            None => None,
+        };
+        let loading = std::time::Instant::now();
+        let assets = CacheProfile::OpenRune240.load_world(
+            &cache,
+            WorldTile::new(3168, 3168, Plane::MIN),
+            104,
+            104,
+            |s| {
+                println!(
+                    "{:>7.0} ms loading {s}",
+                    started.elapsed().as_secs_f64() * 1000.
+                );
+            },
+        )?;
+        println!(
+            "{:>7.0} ms load_world itself",
+            loading.elapsed().as_secs_f64() * 1000.
+        );
+        if let Some(warm) = warm {
+            let finished = warm.join().map_err(|_| "warm-up panicked")??;
             println!(
-                "{:>7.0} ms loading {s}",
-                started.elapsed().as_secs_f64() * 1000.
+                "{:>7.0} ms cache warm-up (concurrent)",
+                finished.as_secs_f64() * 1000.
             );
-        },
-    )?;
+        }
+        Ok(assets)
+    })?;
     println!(
         "{:>7.0} ms world assets",
         started.elapsed().as_secs_f64() * 1000.
