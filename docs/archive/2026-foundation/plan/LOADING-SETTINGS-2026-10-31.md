@@ -128,9 +128,15 @@ The probe asserts that reloading the first window warm gives the same `content_h
 
 - A/B: the scene asset id (`186,74,52,...`), state fingerprint and all 23 captured frames equal the
   pre-change `cap-before` run (`diff -rq`), so the content hash is unchanged.
+- **Done: the texture fingerprint mixes eight bytes per step.** `world_textures::fingerprint`
+  decides only whether the GPU array must be rewritten between uploads in one process, so it
+  needs no fixed algorithm. On 215 synthetic 128x128 textures (release, one run) it fell from
+  19 ms to 3.5 ms; a test covers pixels, animation, ids and a tail byte past the last whole word.
+- Kept on purpose: the whole-scene `validate` at the start of `PreparedScenery::new` (13 ms). The
+  owning-zone partition indexes the source on the strength of it, so removing it would trade a
+  safety check for time on a worker thread; the per-part validation does not replace it.
 - Not done: a scoped-thread version of the model/texture decode ran in 77-146 ms but was dropped
-  for contradicting SPEC-0024. Remaining cold cost is models (window dependent). A cheaper texture
-  fingerprint (17 ms) and a skipped second `validate` (13 ms) in the renderer prep are untried.
+  for contradicting SPEC-0024. Remaining cold cost is models (window dependent).
 
 Not done: map-square decode cache, sharing `effective_locations`/`decorations::plan` between the
 static and dynamic passes (both are ~1 ms), chunked vertex packing, moving `build_scene_minimap` off
@@ -314,7 +320,7 @@ nothing about steady-state frame time.
 
 ## Open, in order
 
-1. Load latency leftovers: texture fingerprint and redundant validate, parallel seam merge/emit, chunked vertex packing, minimap off the UI
+1. Load latency leftovers: parallel seam merge/emit, chunked vertex packing, minimap off the UI
    thread, cancellation between phases.
 2. Settings: observe the live reload-on-click (see "Not reproduced"); make text-input field
    widgets interactive (TEXT-FIELD-WIDGET); MES_TYPED 3102 if a cache script needs it.

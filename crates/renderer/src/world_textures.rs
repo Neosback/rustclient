@@ -120,28 +120,42 @@ pub(crate) fn validate(mesh: &WorldMesh, limits: &wgpu::Limits) -> Result<(), cr
     Ok(())
 }
 
+/// Identity of the texture set's content, compared only between uploads in one process to decide
+/// whether the GPU array must be rewritten. It mixes eight bytes per step instead of one: the
+/// pixels are most of the 14 MB and a bytewise hash took 17 ms on every scene.
 pub(crate) fn fingerprint(
     textures: &std::collections::BTreeMap<
         rustclient_model::TextureId,
         rustclient_cache::world::TextureAsset,
     >,
 ) -> u64 {
+    const PRIME: u64 = 0x9E37_79B9_7F4A_7C15;
+    fn mix(hash: u64, word: u64) -> u64 {
+        let hash = (hash ^ word).wrapping_mul(PRIME);
+        hash ^ (hash >> 32)
+    }
     let mut hash = 0xCBF2_9CE4_8422_2325_u64;
     for (id, asset) in textures {
-        for byte in id
-            .get()
-            .to_le_bytes()
-            .into_iter()
-            .chain([
-                asset.animation_direction,
-                asset.animation_speed,
-                u8::from(asset.opaque),
-            ])
-            .chain(asset.image.pixels().iter().copied())
-        {
-            hash ^= u64::from(byte);
-            hash = hash.wrapping_mul(0x0000_0100_0000_01B3);
+        hash = mix(
+            hash,
+            u64::from(id.get())
+                | u64::from(asset.animation_direction) << 32
+                | u64::from(asset.animation_speed) << 40
+                | u64::from(asset.opaque) << 48,
+        );
+        let pixels = asset.image.pixels();
+        hash = mix(hash, pixels.len() as u64);
+        let mut words = pixels.chunks_exact(8);
+        for word in &mut words {
+            hash = mix(
+                hash,
+                u64::from_le_bytes(word.try_into().expect("eight bytes")),
+            );
         }
+        let mut tail = [0_u8; 8];
+        let rest = words.remainder();
+        tail[..rest.len()].copy_from_slice(rest);
+        hash = mix(hash, u64::from_le_bytes(tail));
     }
     hash
 }
@@ -261,5 +275,43 @@ mod validation_tests {
             array_bytes(&mesh),
             41 * 4 * (16384 + 4096 + 1024 + 256 + 64 + 16 + 4 + 1)
         );
+    }
+}
+
+#[cfg(test)]
+mod fingerprint_tests {
+    use super::*;
+    use rustclient_cache::{GroupId, Image, IndexId, Source, world::TextureAsset};
+    use rustclient_model::TextureId;
+    use std::collections::BTreeMap;
+
+    fn set(pixel: u8, speed: u8, id: u32) -> BTreeMap<TextureId, TextureAsset> {
+        let source = Source::group(IndexId(0), GroupId(0));
+        BTreeMap::from([(
+            TextureId::new(id),
+            TextureAsset {
+                image: Image::new(3, 3, vec![pixel; 36], source).unwrap(),
+                animation_direction: 1,
+                animation_speed: speed,
+                opaque: true,
+            },
+        )])
+    }
+
+    #[test]
+    fn fingerprint_follows_pixels_animation_and_ids() {
+        let base = fingerprint(&set(7, 2, 5));
+        assert_eq!(base, fingerprint(&set(7, 2, 5)));
+        assert_ne!(base, fingerprint(&set(8, 2, 5)));
+        assert_ne!(base, fingerprint(&set(7, 3, 5)));
+        assert_ne!(base, fingerprint(&set(7, 2, 6)));
+        assert_ne!(base, fingerprint(&BTreeMap::new()));
+        // A change in the last byte, past the final whole word, still shows.
+        let mut last = set(7, 2, 5);
+        let source = Source::group(IndexId(0), GroupId(0));
+        let mut pixels = vec![7; 36];
+        pixels[35] = 9;
+        last.get_mut(&TextureId::new(5)).unwrap().image = Image::new(3, 3, pixels, source).unwrap();
+        assert_ne!(base, fingerprint(&last));
     }
 }
