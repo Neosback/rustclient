@@ -1,5 +1,18 @@
 use super::*;
 
+/// Twelve offers with an option text past the 64 byte bound.
+fn offers() -> Vec<rustclient_plugin_api::MenuOffer> {
+    vec![
+        rustclient_plugin_api::MenuOffer {
+            option: "o".repeat(100),
+            target: "Tile".into(),
+            tile: rustclient_plugin_api::WorldPoint::new(3222, 3218, 0),
+            shift: true,
+        };
+        12
+    ]
+}
+
 fn full_output() -> PluginOutput {
     PluginOutput {
         panels: Vec::new(),
@@ -28,6 +41,7 @@ fn full_output() -> PluginOutput {
             tooltip: String::new(),
         }],
         menu_edits: vec![MenuEdit::MoveToTop { index: 0 }],
+        menu_offers: offers(),
         entities: Some(EntityVisibility {
             hidden: vec![ActorRef::Npc(5)],
             hidden_overlays: vec![ActorRef::Npc(6)],
@@ -115,6 +129,7 @@ fn outputs_without_grants_are_stripped_and_reported() {
         Capability::ClientNotify,
         Capability::UiInfobox,
         Capability::UiMenuSwap,
+        Capability::UiMenuDecorate,
         Capability::UiEntitiesHide,
         Capability::UiSpriteOverride,
         Capability::CameraControl,
@@ -142,6 +157,7 @@ fn granted_outputs_are_bounded_and_clamped() {
             Capability::ClientNotify,
             Capability::UiInfobox,
             Capability::UiMenuSwap,
+            Capability::UiMenuDecorate,
             Capability::UiEntitiesHide,
             Capability::UiSpriteOverride,
             Capability::CameraControl,
@@ -165,6 +181,9 @@ fn granted_outputs_are_bounded_and_clamped() {
     assert_eq!(merged.notifications.len(), 4);
     assert_eq!(merged.info_boxes[0].1.text.len(), 16);
     assert_eq!(merged.menu_edits, [MenuEdit::MoveToTop { index: 0 }]);
+    assert_eq!(merged.menu_offers.len(), 8);
+    assert_eq!(merged.menu_offers[0].1.option.len(), 64);
+    assert_eq!(merged.menu_offers[0].1.tile.x, 3222);
     assert_eq!(merged.entities.hidden, [ActorRef::Npc(5)]);
     assert_eq!(merged.entities.hidden_overlays, [ActorRef::Npc(6)]);
     assert!(merged.entities.hide_projectiles);

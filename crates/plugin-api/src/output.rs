@@ -399,6 +399,8 @@ pub struct PluginOutput {
     pub info_boxes: Vec<InfoBox>,
     /// Edits to the last sorted menu.
     pub menu_edits: Vec<MenuEdit>,
+    /// Entries to add to the world menu, requiring `ui.menu.decorate`.
+    pub menu_offers: Vec<crate::MenuOffer>,
     /// Actors to hide.
     pub entities: Option<EntityVisibility>,
     /// Interface sprites to replace while present.
@@ -438,6 +440,8 @@ pub mod limits {
     pub const INFO_BOXES: usize = 32;
     /// Menu edits accepted per plugin per update.
     pub const MENU_EDITS: usize = 64;
+    /// Menu offers accepted per plugin per update.
+    pub const MENU_OFFERS: usize = 8;
     /// Hidden actors accepted per plugin.
     pub const HIDDEN_ACTORS: usize = 2048;
     /// Sprite overrides accepted per plugin.

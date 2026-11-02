@@ -60,6 +60,10 @@ process; that model is rejected by invariants 1 and 4.
   (`MinimapRequest`, capability `ui.minimap`) asks for mouse-wheel zoom, a zoom level to apply once, hiding the minimap and
   per-kind map dot colors. The host clamps the zoom to 2..=8 and drops non-finite values; the client owns the zoom value,
   the sprite replacement and widget visibility. Additive within 0.2.
+- `PluginOutput::menu_offers` (`MenuOffer`, capability `ui.menu.decorate`) adds entries to the world menu for one tile, with
+  an optional Shift condition; choosing one reaches plugins holding `ui.menu.swap` as `MenuOptionClicked` with kind
+  `Other(PLUGIN_MENU_TYPE)` and the tile in `param0`/`param1`. The host clamps the count (8) and texts (64 bytes); the shell
+  owns placement and the click. Additive within 0.2; wasm plugins cannot use it (the WIT surface is unchanged).
 - First-party plugins live in `crates/first-party-plugins`, are native `PluginInstance`s, take settings from
   schema-driven configuration (`PluginCall::config`) and carry an `enabled` switch (RuneLite `enabledByDefault`).
   Their schemas are generated from the vendored `*Config.java` by `tools/builtin-plugins/first_party_schemas.py`.

@@ -28,6 +28,10 @@ recorded action-to-packet rows. This spec defines the shared model.
    read it. Plugins change it only through validated commands (ADR-0006).
 2. Entry order, sort, left-click choice and the encoded packet must match stock for the same
    committed state and pointer position.
+   Until that model exists in `application`, `NativeApp` builds the world menu and appends the
+   entries plugins offered (`PluginOutput::menu_offers`, SPEC-0004) for the tile the menu opened
+   on: after "Walk here", only on a right-click, and a chosen entry becomes a `MenuOptionClicked`
+   for the plugin at its next update. Plugin entries never encode a packet.
 3. Raw menu opcodes stay in the 240 profile. The shared model uses a typed action enum with a
    profile mapping (the same rule as packet opcodes).
 4. Platform adapters produce semantic input events only. No game decision is made in `apps/*`.

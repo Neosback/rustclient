@@ -314,4 +314,6 @@ mod tileindicators;
 
 mod minimap;
 
+mod groundmarkers;
+
 mod notes;

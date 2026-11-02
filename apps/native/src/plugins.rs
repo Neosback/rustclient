@@ -32,6 +32,8 @@ pub(super) struct Plugins {
     /// Last configuration pushed to each first-party plugin, so unchanged ones are not re-sent.
     applied: BTreeMap<String, (PluginConfig, bool)>,
     pending: BTreeMap<String, (rustclient_plugin_api::PluginId, PluginConfig, bool)>,
+    /// Plugin menu entries chosen since the last update, delivered as `MenuOptionClicked`.
+    menu_clicks: Vec<rustclient_plugin_api::MenuEntry>,
 }
 
 /// Shell-owned facts and cache definitions the projector consults.
@@ -41,6 +43,10 @@ pub(super) struct Inputs<'a> {
 }
 
 impl Plugins {
+    /// A plugin-offered world menu entry was chosen; the next update delivers it.
+    pub(super) fn menu_chosen(&mut self, entry: rustclient_plugin_api::MenuEntry) {
+        self.menu_clicks.push(entry);
+    }
     /// Whether a running plugin may read client facts, which include the tile under the pointer.
     pub(super) fn reads_client(&self) -> bool {
         self.set
@@ -77,6 +83,7 @@ impl Plugins {
                 unsupported_reported: false,
                 applied: BTreeMap::new(),
                 pending: BTreeMap::new(),
+                menu_clicks: Vec::new(),
             };
         }
         match NativeRuntime::new() {
@@ -124,6 +131,7 @@ impl Plugins {
             unsupported_reported: false,
             applied: BTreeMap::new(),
             pending: BTreeMap::new(),
+            menu_clicks: Vec::new(),
         }
     }
 
@@ -239,7 +247,7 @@ impl Plugins {
         }
         let wanted = self.set.granted();
         let interest = self.set.game_event_interest();
-        let (snapshot, events) = self.projector.project_filtered(
+        let (snapshot, mut events) = self.projector.project_filtered(
             state,
             &inputs.frame,
             &inputs.sources,
@@ -249,8 +257,14 @@ impl Plugins {
         );
         if wanted.is_empty() && interest.is_none() {
             self.output = HostOutput::default();
+            self.menu_clicks.clear();
             return;
         }
+        events.extend(
+            std::mem::take(&mut self.menu_clicks)
+                .into_iter()
+                .map(rustclient_plugin_api::GameEvent::MenuOptionClicked),
+        );
         let view = SnapshotView(&snapshot);
         for action in actions {
             self.set

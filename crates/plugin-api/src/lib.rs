@@ -24,7 +24,7 @@ pub use game::{
     Skill, SkillLevel, VarbitDef, Vars, WidgetSnapshot, WorldPoint,
 };
 pub use manifest::{ManifestError, PluginManifest};
-pub use menu::{MenuEdit, MenuEntry, MenuKind};
+pub use menu::{MenuEdit, MenuEntry, MenuKind, MenuOffer, PLUGIN_MENU_TYPE};
 pub use output::{
     ActorAnchor, AnimationSmoothing, CameraCommand, EntityVisibility, HorizontalAlign, InfoBox,
     LayeredOverlay, MinimapRequest, Notification, NotificationKind, OverlayCommand, OverlayLayer,

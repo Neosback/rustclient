@@ -38,6 +38,7 @@ PLUGIN_LIST = [
     ("npchighlight", "npchighlight"),
     ("tileindicators", "tileindicators"),
     ("minimap", "minimap"),
+    ("groundmarkers", "groundmarkers"),
     ("playerindicators", "playerindicators"),
     ("idlenotifier", "idlenotifier"),
     ("camera", "camera"),
@@ -207,6 +208,7 @@ def parse_config(plugin_dir, rel_dir, supported=None):
             "name": unquote(attrs.get("name", '"' + m[3] + '"')),
             "position": int(attrs.get("position", "0")),
         }
+    strings = dict(re.findall(r'\bString\s+(\w+)\s*=\s*"([^"]*)"\s*;', text))
     items = []
     for m in re.finditer(r"@ConfigItem\(", text):
         start = m.start()
@@ -236,6 +238,7 @@ def parse_config(plugin_dir, rel_dir, supported=None):
         units = re.search(r'@Units\(([^)]*)\)', annotations)
         default_expr = (re.search(r"return\s+(.*?);", body or "", re.S) or [None, ""])[1].strip()
         key = unquote(attrs.get("keyName", ""))
+        key = strings.get(key, key)
         if attrs.get("hidden", "false") == "true" or not key or (supported is not None and key not in supported):
             continue
         section = attrs.get("section")
@@ -315,6 +318,9 @@ def main():
             # Only controls with an implemented local-overlay effect are exposed.
             supported = {"hideMaxed", "pauseSkillAfter", "resetSkillRateAfter", "prioritizeRecentXpSkills"}
             meta["description"] = "Local session XP, rates and actions overlay and panel. Full panel controls, account persistence and network sync are pending."
+        if suffix == "groundmarkers":
+            # drawOnMinimap and showImportExport have no effect yet (no minimap outline, no world map orb).
+            supported = {"markerColor", "borderWidth", "fillOpacity"}
         sections, items = parse_config(plugin_dir, rel, supported)
         settings = [{
             "key": "enabled",

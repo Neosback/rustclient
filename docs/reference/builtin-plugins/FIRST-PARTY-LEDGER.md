@@ -38,6 +38,7 @@ Older per-option results retain their recorded scope; they do not override that 
 | camera | partial | zoom limits and scroll zoom, shake, mouse remaps |
 | npchighlight | partial | menu tagging, outline, dead/pet filters, respawn timer, minimap names |
 | tileindicators | partial | sub-tile destination point (whole-tile `MapDestination` only) |
+| groundmarkers | partial | `Label` and `Color` menu entries, minimap outline, world map orb import/export/clear, instance translation; labels are kept but not drawn |
 | minimap | partial | saved zoom applied only while `zoom` is on; wheel zoom hit area is the minimap rectangle |
 | playerindicators | partial | relationship lists (party, friends, chat, clan, team), rank icons, coloured menu, minimap names |
 | interfacestyles | partial | widget overrides (2005 side stones), HD health bars, menu options, cross sprites, always-stack |
@@ -317,6 +318,27 @@ Known differences:
 - Turning the plugin off or lifting `hideMinimap` writes `hidden = false` for the minimap and orbs; the stock `MINIMAP_TOGGLE` hide
   returns at the next top-level redraw script rather than being kept (the source re-applies `vanillaHideMinimap`).
 - Wasm plugins cannot request minimap changes (the WIT surface is unchanged).
+
+## groundmarkers
+
+Sources: `plugins/groundmarkers/{GroundMarkerPlugin,GroundMarkerConfig,GroundMarkerOverlay,GroundMarkerPoint,ColorTileMarker}.java`.
+
+| Source | Rust owner | Implemented | Verified |
+| --- | --- | --- | --- |
+| Shift + menu on a walk tile: `Mark` / `Unmark` `Tile` (`onMenuEntryAdded`, `markTile`) | `PluginOutput::menu_offers` for the hovered tile; `NativeApp::add_plugin_entries`; click returns as `MenuOptionClicked` | yes | unit: offer text, toggle, persistence; native: offer selection by tile and Shift; not seen live |
+| Markers per region under `region_<id>`, the source JSON (`regionId`, `regionX`, `regionY`, `z`, `color`, `label`) with `java.awt.Color` as `{"value": signed ARGB}` | plugin storage (`storage.plugin`) | yes | unit: written text, source-shaped input kept, bad regions ignored |
+| Tile outline and fill, 32 tile draw limit, plane check (`GroundMarkerOverlay`) | `OverlayCommand::Tile`; `markerColor` (yellow), `borderWidth` (2), `fillOpacity` (50, black fill) | yes | unit: color, fill, width, the 31/32 tile edge, plane, neighbouring region |
+| Marker without a color follows `markerColor` | plugin | yes | unit |
+
+Known differences:
+
+- `Label` and `Color` (Pick, Reset all, existing colors) are not offered: they need a chatbox text prompt, a color picker and menu
+  submenus. A label written by RuneLite is kept and written back but not drawn, as the overlay command set has no text at a tile.
+- `drawOnMinimap` and `showImportExport` are not in the schema: there is no minimap tile outline and no world map orb menu.
+- Instances (`WorldPoint.toLocalInstance`) and boat world views are not translated; markers draw only on the static world.
+- The menu offer is made for the tile under the pointer one update earlier, and is shown when it equals the tile the menu opened on.
+- JSON object keys are written in sorted order; RuneLite's Gson writes them in declaration order. Both read back.
+- Wasm plugins cannot add menu entries (the WIT surface is unchanged).
 
 ## interfacestyles
 

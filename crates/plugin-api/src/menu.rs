@@ -40,6 +40,27 @@ pub struct MenuEntry {
     pub deprioritized: bool,
 }
 
+/// `MenuAction.RUNELITE`: the raw client type of an entry a plugin added, as [`MenuKind::Other`].
+pub const PLUGIN_MENU_TYPE: u16 = 1500;
+
+/// An entry a plugin asks the host to add to the world menu (`Client.createMenuEntry`).
+///
+/// The host adds it, below the other entries, only while the menu is opened on `tile` and, when
+/// `shift` is set, only while Shift is held. Choosing it delivers a `MenuOptionClicked` event whose
+/// entry has this option and target, kind `Other(PLUGIN_MENU_TYPE)`, and the tile in `param0` and
+/// `param1` as world x and y. Offers are redeclared every update; a stale one never stays.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MenuOffer {
+    /// Option text, at most 64 bytes.
+    pub option: String,
+    /// Target text, at most 64 bytes.
+    pub target: String,
+    /// The world tile the menu must be opened on. The plane is the local player's.
+    pub tile: crate::WorldPoint,
+    /// Offer the entry only while Shift is held.
+    pub shift: bool,
+}
+
 /// An edit a plugin asks the host to apply to the entries of the last `PostMenuSort` event.
 ///
 /// `index` addresses the entry list delivered with that event; the host drops directives whose

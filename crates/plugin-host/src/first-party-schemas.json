@@ -1695,6 +1695,79 @@
   ]
  },
  {
+  "plugin": "dev.rustclient.groundmarkers",
+  "name": "Ground Markers",
+  "version": 1,
+  "description": "Enable marking of tiles using the Shift key",
+  "tags": [
+   "overlay",
+   "tiles"
+  ],
+  "required": false,
+  "settings": [
+   {
+    "key": "enabled",
+    "label": "Enabled",
+    "description": "Switch Ground Markers on or off.",
+    "section": "",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": true
+    },
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/groundmarkers/GroundMarkerPlugin.java#PluginDescriptor.enabledByDefault"
+   },
+   {
+    "key": "markerColor",
+    "label": "Tile color",
+    "description": "The default color for marked tiles.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/groundmarkers/GroundMarkerConfig.java#markerColor",
+    "control": {
+     "type": "color"
+    },
+    "default": {
+     "type": "color",
+     "value": 4294967040
+    }
+   },
+   {
+    "key": "borderWidth",
+    "label": "Border width",
+    "description": "Width of the marked tile border.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/groundmarkers/GroundMarkerConfig.java#borderWidth",
+    "control": {
+     "type": "decimal",
+     "min": -1000000000,
+     "max": 1000000000
+    },
+    "default": {
+     "type": "decimal",
+     "value": 2000
+    }
+   },
+   {
+    "key": "fillOpacity",
+    "label": "Fill opacity",
+    "description": "Opacity of the tile fill color.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/groundmarkers/GroundMarkerConfig.java#fillOpacity",
+    "control": {
+     "type": "integer",
+     "min": -2147483648,
+     "max": 255
+    },
+    "default": {
+     "type": "integer",
+     "value": 50
+    }
+   }
+  ]
+ },
+ {
   "plugin": "dev.rustclient.playerindicators",
   "name": "Player Indicators",
   "version": 1,

@@ -101,7 +101,7 @@ owning subsystem. Plugins never call the renderer or mutate `GameState`.
 
 **Capabilities.** Each query, event class and output kind maps to one capability and is checked at the host boundary:
 `game.read.{players,npcs,inventory,widgets,vars,chat,skills,client}`, `ui.{overlay,menu.swap,entities.hide,
-sprite.override,infobox,viewport}`, `scene.control`, `camera.control`, `client.notify`, `client.frame_limit`, `ui.minimap`. `ui.panel`, `ui.menu.decorate`,
+sprite.override,infobox,viewport,menu.decorate}`, `scene.control`, `camera.control`, `client.notify`, `client.frame_limit`, `ui.minimap`. `ui.panel`,
 `network.http`, `interaction.request` are reserved: no 0.2 operation exists for them, so granting them changes nothing.
 The first denial of each capability per plugin is logged; repeats are silent.
 
@@ -118,6 +118,11 @@ shell to present at most that many frames per second; the host clamps it and the
 `minimap` (capability `ui.minimap`) asks for mouse-wheel zoom on the minimap, a zoom level to apply once (clamped to 2..=8 pixels per tile),
 hiding the minimap and orbs, and one replacement color per map dot kind; the shell owns the zoom value, the sprite replacement and the
 widget visibility, and `ClientSnapshot::minimap_zoom` reports the current level.
+`menu_offers` (capability `ui.menu.decorate`, at most 8 per update, texts at most 64 bytes) asks the shell to add `Client.createMenuEntry`-style
+entries to the world menu opened on a given tile, optionally only while Shift is held. They are redeclared every update, are appended
+below "Walk here" (never the left-click default), and choosing one delivers `MenuOptionClicked` with kind
+`Other(PLUGIN_MENU_TYPE = 1500)`, the offer's option and target, and the tile's world x and y in `param0`/`param1`, to plugins that hold
+`ui.menu.swap`. The shell delivers that event only for plugin entries; the stock menu entries are not yet projected to plugins.
 
 **First-party plugins and configuration.** In-tree ports live in `crates/first-party-plugins` (one module each) and
 implement `NativePlugin`, which adapts to `PluginInstance`. Their settings are schema-driven like the required services:

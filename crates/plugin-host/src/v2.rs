@@ -7,9 +7,9 @@
 use crate::{HostView, LogSink, PluginCall, PluginSet, PluginStorage};
 use rustclient_plugin_api::{
     CameraCommand, Capability, CapabilitySet, ChatLine, EntityVisibility, GameSnapshot, InfoBox,
-    ItemStack, LayeredOverlay, LogLevel, MenuEdit, MinimapRequest, Notification, OverlayCommand,
-    PlayerPosition, PlayerSnapshot, PluginId, PluginOutput, RoofArea, SceneFlags, SkillLevel,
-    SpriteOverride, Stretch, WidgetSnapshot, limits,
+    ItemStack, LayeredOverlay, LogLevel, MenuEdit, MenuOffer, MinimapRequest, Notification,
+    OverlayCommand, PlayerPosition, PlayerSnapshot, PluginId, PluginOutput, RoofArea, SceneFlags,
+    SkillLevel, SpriteOverride, Stretch, WidgetSnapshot, limits,
 };
 use std::collections::BTreeMap;
 use std::collections::BTreeSet;
@@ -265,6 +265,8 @@ pub struct HostOutput {
     pub info_boxes: Vec<(PluginId, InfoBox)>,
     /// Menu edits in plugin load order.
     pub menu_edits: Vec<MenuEdit>,
+    /// Menu offers in plugin load order.
+    pub menu_offers: Vec<(PluginId, MenuOffer)>,
     /// Union of every plugin's hidden actors and effects.
     pub entities: EntityVisibility,
     /// Sprite replacements; a later plugin wins for the same sprite.
@@ -299,6 +301,8 @@ impl HostOutput {
         self.info_boxes
             .extend(output.info_boxes.into_iter().map(|b| (plugin.clone(), b)));
         self.menu_edits.extend(output.menu_edits);
+        self.menu_offers
+            .extend(output.menu_offers.into_iter().map(|o| (plugin.clone(), o)));
         if let Some(entities) = output.entities {
             for actor in entities.hidden {
                 if !self.entities.hidden.contains(&actor) {
@@ -380,6 +384,28 @@ fn bound_camera(commands: Vec<CameraCommand>) -> Vec<CameraCommand> {
             other => Some(other),
         })
         .collect()
+}
+
+/// The menu edit and menu offer part of [`validate`].
+fn validate_menus(refuse: &mut impl FnMut(Capability, bool) -> bool, output: &mut PluginOutput) {
+    if refuse(Capability::UiMenuSwap, !output.menu_edits.is_empty()) {
+        output.menu_edits.clear();
+    }
+    output.menu_edits.truncate(limits::MENU_EDITS);
+    for edit in &mut output.menu_edits {
+        if let MenuEdit::SetOption { option, .. } = edit {
+            truncate(option, 64);
+        }
+    }
+
+    if refuse(Capability::UiMenuDecorate, !output.menu_offers.is_empty()) {
+        output.menu_offers.clear();
+    }
+    output.menu_offers.truncate(limits::MENU_OFFERS);
+    for offer in &mut output.menu_offers {
+        truncate(&mut offer.option, 64);
+        truncate(&mut offer.target, 64);
+    }
 }
 
 /// The scene, viewport and frame-pacing part of [`validate`].
@@ -485,15 +511,7 @@ pub(crate) fn validate(
         truncate(&mut info.tooltip, limits::TEXT_BYTES);
     }
 
-    if refuse(Capability::UiMenuSwap, !output.menu_edits.is_empty()) {
-        output.menu_edits.clear();
-    }
-    output.menu_edits.truncate(limits::MENU_EDITS);
-    for edit in &mut output.menu_edits {
-        if let MenuEdit::SetOption { option, .. } = edit {
-            truncate(option, 64);
-        }
-    }
+    validate_menus(&mut refuse, &mut output);
 
     if refuse(Capability::UiEntitiesHide, output.entities.is_some()) {
         output.entities = None;

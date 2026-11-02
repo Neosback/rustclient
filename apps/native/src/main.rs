@@ -114,6 +114,8 @@ struct NativeApp {
     state: GameState,
     ui: TitleUi,
     context_menu: rustclient_game_ui::ContextMenu<interaction::WorldChoice>,
+    /// The plugin entries of the world menu that was last opened, by `WorldChoice::Plugin` slot.
+    plugin_menu: Vec<rustclient_plugin_api::MenuEntry>,
     click_cross: Option<(Instant, interaction::CrossKind, f32, f32)>,
     hover: Option<interaction::HoverText>,
     /// Scene-local tile under the pointer, tracked while a plugin asks for hovered-roof removal.
@@ -614,6 +616,7 @@ impl NativeApp {
             state: GameState::new(),
             ui,
             context_menu: rustclient_game_ui::ContextMenu::default(),
+            plugin_menu: Vec::new(),
             click_cross: None,
             hover: None,
             roof_hover: None,

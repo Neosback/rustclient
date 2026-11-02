@@ -15,6 +15,10 @@ pub(super) enum WorldChoice {
         scene: SceneDescriptor,
         destination: WorldTile,
     },
+    /// An entry a plugin offered, by its slot in `NativeApp::plugin_menu` from when the menu opened.
+    Plugin {
+        slot: usize,
+    },
 }
 
 /// Which click-cross animation to play: yellow for movement, red for an interaction.
@@ -450,6 +454,11 @@ impl NativeApp {
                 self.send_walk_destination(scene, destination, None)?;
                 self.show_cross(CrossKind::Walk, x, y);
             }
+            WorldChoice::Plugin { slot } => {
+                if let Some(entry) = self.plugin_menu.get(slot) {
+                    self.plugins.menu_chosen(entry.clone());
+                }
+            }
         }
         Ok(())
     }
@@ -512,6 +521,34 @@ impl NativeApp {
             ));
         }
         Ok(entries)
+    }
+    /// Append the entries plugins offered for the tile this menu was opened on (SPEC-0004
+    /// `menu_offers`): below "Walk here", so they never become the left-click default, and only
+    /// while Shift is held when the offer asks for it. The captured entries stay in `plugin_menu`
+    /// until the next menu opens, so a click delivers what the menu showed.
+    fn add_plugin_entries(
+        &mut self,
+        entries: &mut Vec<(String, WorldChoice, Option<WorldTarget>)>,
+    ) {
+        self.plugin_menu.clear();
+        let Some(tile) = entries.iter().find_map(|(_, choice, _)| match choice {
+            WorldChoice::Walk { destination, .. } => Some(*destination),
+            _ => None,
+        }) else {
+            return;
+        };
+        self.plugin_menu = offered_entries(
+            &self.plugins.output().menu_offers,
+            self.modifiers.shift_key(),
+            (tile.x, tile.y),
+        );
+        for (slot, entry) in self.plugin_menu.iter().enumerate() {
+            entries.push((
+                format!("{} {}", entry.option, entry.target),
+                WorldChoice::Plugin { slot },
+                None,
+            ));
+        }
     }
     /// A world or widget menu is open (SPEC-0021 input arbitration).
     pub(super) fn menu_open(&self) -> bool {
@@ -637,8 +674,9 @@ impl NativeApp {
             return Ok(true);
         }
         self.context_menu.close();
-        let entries = self.world_entries(window, x, y)?;
+        let mut entries = self.world_entries(window, x, y)?;
         if right {
+            self.add_plugin_entries(&mut entries);
             if let Some(assets) = &self.assets {
                 self.context_menu.open(
                     x,
@@ -664,6 +702,32 @@ impl NativeApp {
             _ => Ok(false),
         }
     }
+}
+
+/// The menu entries for the offers made for the tile at `tile`; an offer that asks for Shift needs
+/// it held. Each entry is a `MenuOptionClicked` payload of the plugin menu type naming the tile.
+fn offered_entries(
+    offers: &[(
+        rustclient_plugin_api::PluginId,
+        rustclient_plugin_api::MenuOffer,
+    )],
+    shift: bool,
+    tile: (i32, i32),
+) -> Vec<rustclient_plugin_api::MenuEntry> {
+    offers
+        .iter()
+        .map(|(_, offer)| offer)
+        .filter(|offer| (!offer.shift || shift) && (offer.tile.x, offer.tile.y) == tile)
+        .map(|offer| rustclient_plugin_api::MenuEntry {
+            option: offer.option.clone(),
+            target: offer.target.clone(),
+            kind: rustclient_plugin_api::MenuKind::Other(rustclient_plugin_api::PLUGIN_MENU_TYPE),
+            identifier: 0,
+            param0: offer.tile.x,
+            param1: offer.tile.y,
+            deprioritized: false,
+        })
+        .collect()
 }
 
 fn plain_label(label: &str) -> String {
@@ -746,5 +810,34 @@ pub(super) fn project_pointer_overlays(
                 clip,
             );
         }
+    }
+}
+
+#[cfg(test)]
+mod plugin_menu_tests {
+    use super::offered_entries;
+    use rustclient_plugin_api::{MenuKind, MenuOffer, PLUGIN_MENU_TYPE, PluginId, WorldPoint};
+
+    fn offer(x: i32, shift: bool) -> (PluginId, MenuOffer) {
+        (
+            PluginId::parse("dev.rustclient.groundmarkers").unwrap(),
+            MenuOffer {
+                option: "Mark".into(),
+                target: "Tile".into(),
+                tile: WorldPoint::new(x, 3218, 0),
+                shift,
+            },
+        )
+    }
+
+    #[test]
+    fn offers_show_only_for_their_tile_and_with_shift_when_they_ask_for_it() {
+        let offers = [offer(3222, true), offer(3223, true), offer(3222, false)];
+        assert_eq!(offered_entries(&offers, false, (3222, 3218)).len(), 1);
+        let shown = offered_entries(&offers, true, (3222, 3218));
+        assert_eq!(shown.len(), 2);
+        assert_eq!(shown[0].kind, MenuKind::Other(PLUGIN_MENU_TYPE));
+        assert_eq!((shown[0].param0, shown[0].param1), (3222, 3218));
+        assert!(offered_entries(&offers, true, (1, 1)).is_empty());
     }
 }

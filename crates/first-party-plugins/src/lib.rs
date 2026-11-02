@@ -10,6 +10,7 @@ mod animsmoothing;
 mod camera;
 mod entityhider;
 mod fps;
+mod groundmarkers;
 mod idlenotifier;
 mod idlenotifier_animations;
 mod interfacestyles;
@@ -294,6 +295,19 @@ const ENTRIES: &[Entry] = &[
             Capability::StoragePlugin,
         ],
         build: |source| boxed(minimap::Minimap::default(), source),
+    },
+    Entry {
+        name: "groundmarkers",
+        source_class: "net.runelite.client.plugins.groundmarkers.GroundMarkerPlugin",
+        capabilities: &[
+            Capability::UiOverlay,
+            Capability::UiMenuDecorate,
+            Capability::UiMenuSwap,
+            Capability::GameReadClient,
+            Capability::GameReadPlayers,
+            Capability::StoragePlugin,
+        ],
+        build: |source| boxed(groundmarkers::GroundMarkers::default(), source),
     },
     Entry {
         name: "camera",
