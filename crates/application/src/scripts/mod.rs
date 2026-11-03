@@ -13,6 +13,7 @@ mod lifecycle;
 mod lifecycle_tests;
 mod listener_index;
 mod queries;
+mod services;
 #[cfg(test)]
 mod test_support;
 mod visuals;
@@ -774,6 +775,7 @@ impl<S: ReadOnlyBlobs> Host for ScriptHost<'_, S> {
             || database::instruction(self, op, s)?
             || item_search::instruction(self, op, s)?
             || queries::instruction(self, op, n, s)?
+            || services::instruction(self, op, s)?
             || worldmap::instruction(self, op, s)?
         {
             return Ok(());

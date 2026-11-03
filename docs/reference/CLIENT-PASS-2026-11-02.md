@@ -200,6 +200,7 @@ as accepted gaps.
 
 First run (970 groups): 4 failed to load, 195 aborted a script, 1 had missing assets. Now:
 936 ok, 33 script-errors, 1 missing-assets, 0 load errors, 0 missing sprites or fonts anywhere.
+After the services slice below: 951 ok, 18 script-errors, 1 missing-assets.
 
 Fixed from the first run:
 
@@ -225,11 +226,18 @@ Findings that need other work:
   live, the cause is at upload (atlas) or in a state the audit cannot see. Largest sprite area of
   any group is 768 195 px (group 100), well under the 2048x2048 atlas, so one group alone does not
   overflow it.
-- Still aborting (33 groups, all in the baseline): ops tied to server state or features not
-  ported (`INVOTHER_*`, `STOCKMARKET_*`, `WORLDLIST_FETCH`, `CLANPROFILE_FIND`, `CLAN_GETCHATOWNERNAME`,
-  `IGNORE_COUNT`, `FROMDATE`, `MOBILE_WIFIAVAILABLE`, `CC_SETFILLCOLOUR`, `*_SETNPCHEAD`,
-  `CC_SETPLAYERHEAD_SELF`, opcodes 2310/3129/3644/4036/7601, dynamic widget type 12), plus database
-  and child-index errors that depend on the row a live server would pass.
+- Services slice (2026-11-03): `INVOTHER_*` (the `INV_*` family at container + 32768),
+  `FROMDATE` (UTC), `MOBILE_WIFIAVAILABLE`/`BATTERYCHARGING`/`BATTERYLEVEL`, and, in
+  `scripts/services.rs`, `STOCKMARKET_*` (eight empty offers), `IGNORE_COUNT` (-1, not loaded),
+  `CLAN_GETCHATOWNERNAME` (empty), `CLANPROFILE_FIND` (0) and `WORLDLIST_FETCH` (0, never ready)
+  now answer with the reference's own initial state. 33 groups fell to 18. These are not
+  behaviour for a live server: when a packet fills one of these tables the arm moves to its
+  `GameState` owner.
+- Still aborting (18 groups, all in the baseline): `CC_SETFILLCOLOUR` (the second fill colour and
+  gradient fields the rectangle body does not carry), `IF_/CC_SETNPCHEAD` and
+  `CC_SETPLAYERHEAD_SELF` (chat-head models), opcodes 2310/3129/3644/4036/7601/8011 (unnamed),
+  dynamic widget type 12, and database, child-index and stack errors in scripts 8943, 4445, 7962,
+  8690 and 3100 that depend on rows or widgets a live server supplies.
 - Item 2360 (group 426) has no inventory model in the cache.
 
 ## Minimap (stage 4, first part)

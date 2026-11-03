@@ -54,6 +54,46 @@ fn vector_contains(values: &[String], value: &str, ignore_case: bool) -> bool {
         .iter()
         .any(|held| same_text(held, value, ignore_case))
 }
+/// Reference `BufferProvider.method13367`: the `INVOTHER_*` family is the `INV_*` family on the
+/// containers the server sends at id + 32768.
+const INVOTHER_BASE: i32 = 32768;
+fn inventory_container(op: Opcode, container: i32) -> Result<u32> {
+    if matches!(
+        op,
+        Opcode::InvotherGetobj | Opcode::InvotherGetnum | Opcode::InvotherTotal
+    ) {
+        id(container
+            .checked_add(INVOTHER_BASE)
+            .ok_or("inventory container id")?)
+    } else {
+        id(container)
+    }
+}
+/// Reference `classJF.method6405` (`FROMDATE`): `d-Mon-yyyy` for the day `days + 11745` after
+/// 1970-01-01. The reference formats through the machine's default calendar zone; this host has
+/// no zone input, so the date is UTC.
+fn format_day_number(days: i32) -> String {
+    const MONTHS: [&str; 12] = [
+        "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+    ];
+    // Civil-from-days over the proleptic Gregorian calendar, in i64 so no input overflows.
+    let z = i64::from(days) + 11_745 + 719_468;
+    let era = z.div_euclid(146_097);
+    let day_of_era = z.rem_euclid(146_097);
+    let year_of_era =
+        (day_of_era - day_of_era / 1_460 + day_of_era / 36_524 - day_of_era / 146_096) / 365;
+    let day_of_year = day_of_era - (365 * year_of_era + year_of_era / 4 - year_of_era / 100);
+    let shifted_month = (5 * day_of_year + 2) / 153;
+    let day = day_of_year - (153 * shifted_month + 2) / 5 + 1;
+    let month = if shifted_month < 10 {
+        shifted_month + 3
+    } else {
+        shifted_month - 9
+    };
+    let year = year_of_era + era * 400 + i64::from(month <= 2);
+    let name = MONTHS[usize::try_from(month - 1).unwrap_or(0)];
+    format!("{day}-{name}-{year}")
+}
 fn id(n: i32) -> Result<u32> {
     u32::try_from(n).map_err(|_| "negative definition ID".into())
 }
@@ -694,6 +734,13 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
             i32::try_from(h.state.scenery().cycle().get()).map_err(|_| "client cycle overflow")?,
         ),
         Clienttype | OnMobile | Opcode::ViewportGetx | Opcode::ViewportGety => Some(0),
+        // `classSU.method10737`: the desktop client reports wifi and charging as the literal 1.
+        Opcode::MobileWifiavailable | Opcode::MobileBatterycharging => Some(1),
+        Opcode::Fromdate => {
+            let days = s.int()?;
+            s.push_object(ScriptValue::Text(format_day_number(days)));
+            None
+        }
         Getwindowmode => Some(
             h.resources
                 .profile
@@ -741,27 +788,27 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
                 h.state.interfaces().mounts().contains_key(&widget),
             ))
         }
-        InvGetobj | InvGetnum => {
+        InvGetobj | InvGetnum | Opcode::InvotherGetobj | Opcode::InvotherGetnum => {
             let [container, slot] = s.ints()?;
             let stack = h
                 .state
                 .inventories()
-                .get(InventoryId::new(id(container)?))
+                .get(InventoryId::new(inventory_container(op, container)?))
                 .and_then(|a| usize::try_from(slot).ok().and_then(|i| a.get(i)))
                 .copied()
                 .flatten();
-            Some(if op == InvGetobj {
+            Some(if matches!(op, InvGetobj | Opcode::InvotherGetobj) {
                 stack.map_or(-1, |i| i.item.get().cast_signed())
             } else {
                 stack.map_or(0, |i| i.amount.cast_signed())
             })
         }
-        InvTotal => {
+        InvTotal | Opcode::InvotherTotal => {
             let [container, item] = s.ints()?;
             let total = h
                 .state
                 .inventories()
-                .get(InventoryId::new(id(container)?))
+                .get(InventoryId::new(inventory_container(op, container)?))
                 .unwrap_or(&[])
                 .iter()
                 .flatten()
@@ -956,7 +1003,8 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
                 _ => return Ok(false),
             }
         }
-        GetVarclansetting | GetVarclan => Some(-1),
+        // No clan setting is received, and `classSU.method10737` reports no battery level: -1.
+        GetVarclansetting | GetVarclan | Opcode::MobileBatterylevel => Some(-1),
         ViewportGeteffectivesize => {
             let viewport = h
                 .resources
@@ -1495,6 +1543,75 @@ mod tests {
         scripts.reset();
         assert!(scripts.take_sound_effects().is_empty());
         assert!(run(&mut scripts, &mut state, Opcode::SoundSynth, &[-1, 1, 0]).is_err());
+    }
+
+    #[test]
+    fn invother_reads_the_containers_at_the_other_inventory_offset() {
+        let (mut scripts, mut state) = (scripts(), state());
+        let stack = |item, amount| {
+            Some(rustclient_model::ItemStack {
+                item: rustclient_model::ItemDefinitionId::new(item),
+                amount,
+            })
+        };
+        for (id, slots) in [
+            (7, vec![stack(995, 3)]),
+            (
+                7 + INVOTHER_BASE.cast_unsigned(),
+                vec![None, stack(995, 40)],
+            ),
+        ] {
+            state
+                .apply_operation(SemanticOperation::Inventory(
+                    rustclient_model::InventoryUpdate::Replace {
+                        id: InventoryId::new(id),
+                        slots,
+                    },
+                ))
+                .unwrap();
+        }
+        assert_eq!(
+            run(&mut scripts, &mut state, Opcode::InvGetnum, &[7, 0]).unwrap(),
+            [3]
+        );
+        assert_eq!(
+            run(&mut scripts, &mut state, Opcode::InvotherGetobj, &[7, 1]).unwrap(),
+            [995]
+        );
+        assert_eq!(
+            run(&mut scripts, &mut state, Opcode::InvotherGetnum, &[7, 1]).unwrap(),
+            [40]
+        );
+        assert_eq!(
+            run(&mut scripts, &mut state, Opcode::InvotherTotal, &[7, 995]).unwrap(),
+            [40]
+        );
+        assert_eq!(
+            run(&mut scripts, &mut state, Opcode::InvotherGetobj, &[7, 0]).unwrap(),
+            [-1]
+        );
+        assert!(
+            run(
+                &mut scripts,
+                &mut state,
+                Opcode::InvotherTotal,
+                &[i32::MAX, 1]
+            )
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn fromdate_formats_the_reference_day_number() {
+        // Day 0 is 11745 days after the Unix epoch; expectations from Python's `datetime`.
+        assert_eq!(format_day_number(0), "27-Feb-2002");
+        assert_eq!(format_day_number(1), "28-Feb-2002");
+        assert_eq!(format_day_number(-11745), "1-Jan-1970");
+        assert_eq!(format_day_number(-11686), "1-Mar-1970");
+        assert_eq!(format_day_number(-11321), "1-Mar-1971");
+        assert_eq!(format_day_number(-729), "29-Feb-2000");
+        assert_eq!(format_day_number(35796), "1-Mar-2100");
+        assert_eq!(format_day_number(8343), "31-Dec-2024");
     }
 
     #[test]

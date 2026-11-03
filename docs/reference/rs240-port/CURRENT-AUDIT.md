@@ -63,8 +63,8 @@ not-started entries. The consumer scanner therefore finds **114 without executab
 registration** (the two schema-only entries are included). No count means complete
 plugins. Remote-service/fork dispositions remain explicit; they are not implementation.
 
-The [CS2 inventory](CS2-HOST-COVERAGE.tsv) currently records 487 host-dispatched,
-140 named-unhandled, 300 unnamed-cache-used and 440 unnamed-unused opcode rows.
+The [CS2 inventory](CS2-HOST-COVERAGE.tsv) currently records 508 host-dispatched,
+119 named-unhandled, 300 unnamed-cache-used and 440 unnamed-unused opcode rows.
 Names from different sources are not a stable completion denominator. Dispatch
 requires downstream semantics and source cases before it can count as verified behavior.
 
