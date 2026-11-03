@@ -498,3 +498,97 @@ fn model_setup_key_scope_and_script_continuation_reach_existing_semantic_owners(
             .is_some()
     );
 }
+
+#[test]
+fn fill_and_head_ops_are_runtime_overrides_that_reset_with_the_group() {
+    let mut scripts = test_support::scripts();
+    let mut state = GameState::new();
+    let id = WidgetId::new(InterfaceId::new(1), 0);
+    scripts.interfaces.insert(
+        id.interface,
+        InterfaceDefinition::from_widgets(id.interface, vec![component(id)]).unwrap(),
+    );
+    state
+        .apply_operation(SemanticOperation::BeginSession {
+            revision: Revision::with_subrevision(240, 2),
+        })
+        .unwrap();
+    state
+        .apply_operation(SemanticOperation::Interface(InterfaceUpdate::SetRoot(
+            Some(id.interface),
+        )))
+        .unwrap();
+    let address = WidgetAddress::component(id);
+    let mut context = Context {
+        active: [Some(address); 2],
+        ..Context::default()
+    };
+    let mut run = |scripts: &mut _, state: &mut GameState, op, ints: &[i32]| {
+        let mut stacks = Stacks::default();
+        stacks.integers = ints.to_vec();
+        widgets::instruction(
+            &mut ScriptHost {
+                resources: scripts,
+                state,
+            },
+            op,
+            0,
+            &mut stacks,
+            &mut context,
+        )
+        .unwrap();
+        stacks.integers
+    };
+    let fresh = state.semantic_fingerprint();
+    assert_eq!(
+        run(&mut scripts, &mut state, Opcode::CcGetfillcolour, &[]),
+        [0]
+    );
+    run(
+        &mut scripts,
+        &mut state,
+        Opcode::CcSetfillcolour,
+        &[0x12_34_56],
+    );
+    run(
+        &mut scripts,
+        &mut state,
+        Opcode::CcSetfilltransparency,
+        &[0x1_80],
+    );
+    // An id the client has no gradient for changes nothing.
+    run(&mut scripts, &mut state, Opcode::CcSetgradient, &[2]);
+    run(&mut scripts, &mut state, Opcode::CcSetgradient, &[9]);
+    let fill = state.interfaces().runtime()[&address].fill.unwrap();
+    assert_eq!(
+        (fill.end_color, fill.end_transparency, fill.gradient),
+        (0x12_34_56, 0x80, FillGradient::VerticalFade)
+    );
+    assert_eq!(
+        run(&mut scripts, &mut state, Opcode::CcGetfillcolour, &[]),
+        [0x12_34_56]
+    );
+    // A head and an item or model are exclusive sources.
+    run(&mut scripts, &mut state, Opcode::CcSetnpchead, &[3_000]);
+    assert_eq!(
+        state.interfaces().runtime()[&address].head,
+        Some(WidgetHead::Npc(NpcDefinitionId::new(3_000)))
+    );
+    run(&mut scripts, &mut state, Opcode::CcSetplayerheadSelf, &[]);
+    assert_eq!(
+        state.interfaces().runtime()[&address].head,
+        Some(WidgetHead::LocalPlayer)
+    );
+    run(&mut scripts, &mut state, Opcode::CcSetobject, &[995, 5]);
+    let runtime = &state.interfaces().runtime()[&address];
+    assert_eq!((runtime.head, runtime.item.is_some()), (None, true));
+    run(&mut scripts, &mut state, Opcode::CcSetnpchead, &[-1]);
+    assert_eq!(state.interfaces().runtime()[&address].head, None);
+    run(&mut scripts, &mut state, Opcode::CcSetnpchead, &[7]);
+    assert_ne!(state.semantic_fingerprint(), fresh);
+    assert!(state.interfaces().runtime()[&address].item.is_none());
+    state
+        .apply_operation(SemanticOperation::Interface(InterfaceUpdate::SetRoot(None)))
+        .unwrap();
+    assert!(!state.interfaces().runtime().contains_key(&address));
+}

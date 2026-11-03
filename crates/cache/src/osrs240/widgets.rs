@@ -273,8 +273,12 @@ fn body(r: &mut Reader<'_>, kind: u8, modes: [i8; 2], source: Source) -> Result<
                 id => Some(ModelId::new(id)),
             },
             offset: [i32::from(r.i16()?), i32::from(r.i16()?)],
-            angles: [r.u16()?, r.u16()?, r.u16()?],
-            zoom: r.u16()?,
+            angles: [
+                i32::from(r.u16()?),
+                i32::from(r.u16()?),
+                i32::from(r.u16()?),
+            ],
+            zoom: i32::from(r.u16()?),
             sequence: optional(r.u16()?).map(SequenceId::new),
             orthographic: r.u8()? == 1,
             sizing: [

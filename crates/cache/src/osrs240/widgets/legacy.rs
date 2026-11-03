@@ -179,8 +179,8 @@ pub fn decode_legacy(
         let secondary = model(&mut r)?;
         let sequence = optional(r.u16()?).map(SequenceId::new);
         let secondary_sequence = optional(r.u16()?).map(SequenceId::new);
-        let zoom = r.u16()?;
-        let angles = [r.u16()?, r.u16()?, 0];
+        let zoom = i32::from(r.u16()?);
+        let angles = [i32::from(r.u16()?), i32::from(r.u16()?), 0];
         body = WidgetBody::Model {
             model: main,
             offset: [0; 2],

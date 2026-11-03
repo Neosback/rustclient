@@ -4,6 +4,7 @@ pub mod arbitration;
 mod context_menu;
 mod controller;
 mod draw;
+mod fill_gradient;
 mod flame;
 pub mod gameframe;
 pub mod overhead;

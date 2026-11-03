@@ -1,8 +1,8 @@
 //! CPU images and fonts retained independently of live widget state and GPU resources.
-use crate::{Rect, UiFrame, UiImageId};
+use crate::{Rect, UiFrame, UiImageId, fill_gradient::Gradient};
 use rustclient_cache::{BitmapFont, Image, widget::InterfaceDefinition};
 use rustclient_game_state::GameState;
-use rustclient_model::{FontId, InterfaceId, SpriteId, WidgetBody, WidgetContent};
+use rustclient_model::{FillGradient, FontId, InterfaceId, SpriteId, WidgetBody, WidgetContent};
 use std::collections::BTreeMap;
 #[derive(Default)]
 pub struct WidgetVisualAssets {
@@ -274,6 +274,36 @@ pub fn project_widgets_with_retained_tree(
                 filled,
                 transparency,
             } => {
+                let gradient = state
+                    .interfaces()
+                    .runtime()
+                    .get(&node.address)
+                    .and_then(|runtime| runtime.fill)
+                    .filter(|fill| filled && fill.gradient != FillGradient::Solid)
+                    .map(|fill| Gradient {
+                        kind: fill.gradient,
+                        top: color,
+                        bottom: fill.end_color,
+                        transparency: [transparency, fill.end_transparency],
+                    });
+                if let Some(gradient) = gradient {
+                    let height = u32::try_from(node.bounds.height).unwrap_or(0);
+                    if height > 0 {
+                        let row_height = rect.height / f(node.bounds.height);
+                        for (index, row) in gradient.rows(height).enumerate() {
+                            if let Some(row) = row {
+                                let y = rect.y + row_height * f(i32::try_from(index).unwrap_or(0));
+                                frame.image_tinted(
+                                    UiImageId::White,
+                                    Rect::new(rect.x, y, rect.width, row_height),
+                                    clip,
+                                    rgba(row.color, row.alpha),
+                                );
+                            }
+                        }
+                    }
+                    continue;
+                }
                 if frame.viewport_overlay.absorb(
                     overlay_viewport,
                     rect,

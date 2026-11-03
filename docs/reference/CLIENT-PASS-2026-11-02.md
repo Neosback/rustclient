@@ -200,7 +200,8 @@ as accepted gaps.
 
 First run (970 groups): 4 failed to load, 195 aborted a script, 1 had missing assets. Now:
 936 ok, 33 script-errors, 1 missing-assets, 0 load errors, 0 missing sprites or fonts anywhere.
-After the services slice below: 951 ok, 18 script-errors, 1 missing-assets.
+After the services slice below: 951 ok, 18 script-errors, 1 missing-assets. After the fill and head
+slice: 954 ok, 15 script-errors, 1 missing-assets.
 
 Fixed from the first run:
 
@@ -233,11 +234,20 @@ Findings that need other work:
   now answer with the reference's own initial state. 33 groups fell to 18. These are not
   behaviour for a live server: when a packet fills one of these tables the arm moves to its
   `GameState` owner.
-- Still aborting (18 groups, all in the baseline): `CC_SETFILLCOLOUR` (the second fill colour and
-  gradient fields the rectangle body does not carry), `IF_/CC_SETNPCHEAD` and
-  `CC_SETPLAYERHEAD_SELF` (chat-head models), opcodes 2310/3129/3644/4036/7601/8011 (unnamed),
-  dynamic widget type 12, and database, child-index and stack errors in scripts 8943, 4445, 7962,
-  8690 and 3100 that depend on rows or widgets a live server supplies.
+- Fill and head slice (2026-11-03): `CC_SETFILLCOLOUR`, and the two unnamed ops beside it that the
+  cache uses (1124 and 1125, named `CC_SETFILLTRANSPARENCY` and `CC_SETGRADIENT` from their
+  handlers; the `IF_` forms 2124 and 2125 likewise), are script-only overrides in
+  `WidgetRuntime::fill` (the cache widget format carries none of them). `CC_GETFILLCOLOUR` reads
+  it back. The widget painter draws a gradient rectangle row by row with the reference weights
+  (`classYW.method13738`/`method13804`, `game-ui/src/fill_gradient.rs`); only the row maths is
+  tested, not a pixel capture. `CC_SETNPCHEAD` and `CC_SETPLAYERHEAD_SELF` record the head as the
+  widget's model source in `WidgetRuntime::head` (exclusive with an item or a model id); **no
+  head model is drawn yet**, because model widgets are not painted at all. Model angles and zoom
+  widened from `u16` to `i32` (the reference stores plain ints and a script passes -1).
+- Still aborting (15 groups, all in the baseline): unnamed opcodes 2310, 3129 (two groups), 3644,
+  4036, 6754, 7601 and 8011, dynamic widget type 12 (two groups), and database, child-index and
+  stack errors in scripts 8943, 4445, 7962, 8690 and 3100 that depend on rows or widgets a live
+  server supplies.
 - Item 2360 (group 426) has no inventory model in the cache.
 
 ## Minimap (stage 4, first part)

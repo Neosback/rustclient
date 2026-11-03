@@ -65,8 +65,8 @@ pub enum WidgetBody {
     Model {
         model: Option<ModelId>,
         offset: [i32; 2],
-        angles: [u16; 3],
-        zoom: u16,
+        angles: [i32; 3],
+        zoom: i32,
         sequence: Option<SequenceId>,
         orthographic: bool,
         sizing: [u16; 3],
@@ -188,6 +188,54 @@ pub struct WidgetDrag {
     pub threshold: i32,
     pub scrollbar: bool,
 }
+/// How a filled rectangle blends from its colour to `end_color` down its height (reference
+/// `classGP` rectangle painting; the ids are those of `CC_SETGRADIENT`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum FillGradient {
+    /// One colour with the rectangle's own transparency.
+    #[default]
+    Solid,
+    /// Opaque blend from the rectangle colour (top) to the end colour (bottom).
+    Vertical,
+    /// As `Vertical`, with transparency blending from the rectangle's to `end_transparency`.
+    VerticalFade,
+}
+impl FillGradient {
+    /// The script id; `None` for an id the client has no gradient for.
+    #[must_use]
+    pub const fn from_id(id: i32) -> Option<Self> {
+        match id {
+            0 => Some(Self::Solid),
+            1 => Some(Self::Vertical),
+            2 => Some(Self::VerticalFade),
+            _ => None,
+        }
+    }
+    #[must_use]
+    pub const fn id(self) -> i32 {
+        match self {
+            Self::Solid => 0,
+            Self::Vertical => 1,
+            Self::VerticalFade => 2,
+        }
+    }
+}
+/// The second colour, second transparency and gradient a script gives a rectangle. The cache
+/// widget format carries none of these; they exist only as script overrides.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct RectangleFill {
+    pub end_color: u32,
+    pub end_transparency: u8,
+    pub gradient: FillGradient,
+}
+/// Model source a script selects for a model widget by head instead of by model id.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WidgetHead {
+    /// `CC_SETNPCHEAD`: the chat head of an NPC definition.
+    Npc(crate::NpcDefinitionId),
+    /// `CC_SETPLAYERHEAD_SELF`: the chat head of the local player's appearance.
+    LocalPlayer,
+}
 /// Only mutable overrides; immutable defaults remain in the cache definition.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct WidgetRuntime {
@@ -208,6 +256,10 @@ pub struct WidgetRuntime {
     pub listeners: BTreeMap<WidgetListener, Option<Vec<ScriptValue>>>,
     pub triggers: BTreeMap<WidgetListener, Vec<i32>>,
     pub item: Option<(crate::ItemDefinitionId, u32)>,
+    /// Chat head selected for a model widget; exclusive with `item` and a model id.
+    pub head: Option<WidgetHead>,
+    /// Script-set second colour and gradient of a rectangle.
+    pub fill: Option<RectangleFill>,
     /// Per-slot key bindings; empty until a script binds a key.
     pub op_keys: BTreeMap<u8, WidgetOpKeys>,
 }

@@ -162,6 +162,18 @@ pub(super) fn write(f: &mut StableFingerprint64, state: &InterfaceState) {
             f.write_u32(id.get());
             f.write_u32(n);
         });
+        option(f, value.head, |f, head| match head {
+            rustclient_model::WidgetHead::Npc(id) => {
+                f.write_u8(0);
+                f.write_u32(id.get());
+            }
+            rustclient_model::WidgetHead::LocalPlayer => f.write_u8(1),
+        });
+        option(f, value.fill, |f, fill| {
+            f.write_u32(fill.end_color);
+            f.write_u8(fill.end_transparency);
+            f.write_u8(u8::try_from(fill.gradient.id()).unwrap_or(0));
+        });
         f.write_u64(value.listeners.len() as u64);
         for (kind, args) in &value.listeners {
             listener(f, *kind);

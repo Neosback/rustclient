@@ -2,8 +2,9 @@ use super::{Result, ScriptHost};
 use rustclient_cache::script::Opcode;
 use rustclient_client_script::{Context, Stacks};
 use rustclient_model::{
-    FontId, InterfaceUpdate, ItemDefinitionId, ScriptValue, SpriteId, WidgetAddress, WidgetBody,
-    WidgetListener, WidgetOpKeys, WidgetOperation, WidgetProperty,
+    FillGradient, FontId, InterfaceUpdate, ItemDefinitionId, NpcDefinitionId, ScriptValue,
+    SpriteId, WidgetAddress, WidgetBody, WidgetHead, WidgetListener, WidgetOpKeys, WidgetOperation,
+    WidgetProperty,
 };
 use rustclient_platform::ReadOnlyBlobs;
 #[expect(
@@ -472,6 +473,25 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
                 }
                 runtime.body = Some(body);
             }
+            // `classBB.method807`: the second colour, second transparency and gradient the
+            // rectangle painter in `classGP` blends towards; the cache format carries none.
+            Opcode::CcSetfillcolour => {
+                let value = s.int()?;
+                runtime.fill.get_or_insert_with(Default::default).end_color = value.cast_unsigned();
+            }
+            Opcode::CcSetfilltransparency => {
+                let value = s.int()?;
+                runtime
+                    .fill
+                    .get_or_insert_with(Default::default)
+                    .end_transparency = low_byte(value);
+            }
+            Opcode::CcSetgradient => {
+                // An id with no gradient leaves the widget as it was.
+                if let Some(gradient) = FillGradient::from_id(s.int()?) {
+                    runtime.fill.get_or_insert_with(Default::default).gradient = gradient;
+                }
+            }
             CcSetfill => {
                 let value = s.int()?;
                 if let WidgetBody::Rectangle { filled, .. } = &mut body {
@@ -531,7 +551,20 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
                     *model = u32::try_from(id).ok().map(rustclient_model::ModelId::new);
                 }
                 runtime.item = None;
+                runtime.head = None;
                 runtime.body = Some(body);
+            }
+            // `classBB.method809`/`method810`: a head is a model source of its own; the widget
+            // draws the chat head of the NPC definition or of the local player's appearance.
+            Opcode::CcSetnpchead => {
+                runtime.head = u32::try_from(s.int()?)
+                    .ok()
+                    .map(|id| WidgetHead::Npc(NpcDefinitionId::new(id)));
+                runtime.item = None;
+            }
+            Opcode::CcSetplayerheadSelf => {
+                runtime.head = Some(WidgetHead::LocalPlayer);
+                runtime.item = None;
             }
             Opcode::CcSetmodelangle => {
                 let [x, y, angle_x, angle_y, angle_z, scale] = s.ints()?;
@@ -543,12 +576,8 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
                 } = &mut body
                 {
                     *offset = [x, y];
-                    *angles = [
-                        model_scalar(angle_x)?,
-                        model_scalar(angle_y)?,
-                        model_scalar(angle_z)?,
-                    ];
-                    *zoom = model_scalar(scale)?;
+                    *angles = [angle_x, angle_y, angle_z];
+                    *zoom = scale;
                 }
                 runtime.body = Some(body);
             }
@@ -570,6 +599,7 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
             }
             CcSetobject | CcSetobjectNonum | CcSetobjectAlwaysNum => {
                 let [id, count] = s.ints()?;
+                runtime.head = None;
                 runtime.item = u32::try_from(id)
                     .ok()
                     .map(|id| (ItemDefinitionId::new(id), count.max(0).cast_unsigned()));
@@ -719,6 +749,11 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
                 ));
                 return Ok(true);
             }
+            Opcode::CcGetfillcolour => {
+                s.integers
+                    .push(runtime.fill.map_or(0, |fill| fill.end_color.cast_signed()));
+                return Ok(true);
+            }
             CcGetinvobject | CcGetinvcount => {
                 s.integers.push(runtime.item.map_or(
                     if op == CcGetinvobject { -1 } else { 0 },
@@ -754,10 +789,10 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
                 s.integers
                     .push(if let WidgetBody::Model { angles, zoom, .. } = body {
                         match op {
-                            Opcode::CcGetmodelzoom => i32::from(zoom),
-                            Opcode::CcGetmodelangleX => i32::from(angles[0]),
-                            Opcode::CcGetmodelangleY => i32::from(angles[1]),
-                            _ => i32::from(angles[2]),
+                            Opcode::CcGetmodelzoom => zoom,
+                            Opcode::CcGetmodelangleX => angles[0],
+                            Opcode::CcGetmodelangleY => angles[1],
+                            _ => angles[2],
                         }
                     } else {
                         0
@@ -884,9 +919,6 @@ pub(super) fn pop_value(
         Some(ScriptValueType::Text) => Some(ScriptValue::Text(stacks.text()?)),
         None => None,
     })
-}
-fn model_scalar(value: i32) -> Result<u16> {
-    u16::try_from(value).map_err(|_| "widget model scalar outside retained range".into())
 }
 
 #[cfg(test)]

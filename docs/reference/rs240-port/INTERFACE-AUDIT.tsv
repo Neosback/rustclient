@@ -308,11 +308,11 @@ group	status	widgets	runtime	script_errors	sprites	missing_sprites	fonts	missing
 306	ok	6	53	0	1	0	0	0	0	0	9156	2	0
 307	ok	1	29	0	0	0	0	0	0	0	8604	0	0
 308	ok	9	1	0	2	0	0	0	0	0	9604	5	0
-309	script-errors	6	13	1	11	0	1	0	0	0	29612	62	0
+309	ok	6	16	0	11	0	1	0	1	0	30764	63	0
 310	ok	20	0	0	1	0	2	0	0	0	29718	241	0
 311	ok	83	207	0	54	0	3	0	0	0	86155	1639	0
 312	ok	39	61	0	20	0	2	0	0	0	41592	166	0
-313	script-errors	2	3	1	0	0	0	0	0	0	8604	1	0
+313	ok	2	3	0	0	0	0	0	0	0	8604	124	0
 314	ok	2	0	0	1	0	0	0	0	0	9156	1	0
 315	ok	28	1	0	0	0	1	0	0	0	21620	32	0
 316	ok	2	0	0	1	0	0	0	0	0	9156	1	0
@@ -515,7 +515,7 @@ group	status	widgets	runtime	script_errors	sprites	missing_sprites	fonts	missing
 513	ok	4	8	0	1	0	1	0	0	0	23239	45	0
 514	ok	3	0	0	0	0	0	0	0	0	8604	1	0
 515	ok	2	0	0	0	0	0	0	0	0	8604	1	0
-516	script-errors	32	312	1	18	0	2	0	0	0	45079	493	0
+516	ok	32	425	0	27	0	2	0	0	0	45952	717	0
 517	ok	1	0	0	0	0	0	0	0	0	8604	0	0
 518	ok	6	13	0	11	0	2	0	0	0	38967	233	0
 519	ok	3	2	0	2	0	0	0	0	0	9486	2	0
@@ -937,7 +937,7 @@ group	status	widgets	runtime	script_errors	sprites	missing_sprites	fonts	missing
 935	script-errors	51	71	3	12	0	3	0	0	0	45491	344	0
 936	ok	5	7	0	0	0	0	0	0	0	8604	3	0
 937	ok	40	58	0	28	0	3	0	0	0	44315	841	0
-938	script-errors	17	68	1	18	0	3	0	0	0	51347	855	0
+938	script-errors	17	92	1	26	0	3	0	0	0	51779	1164	0
 939	ok	42	0	0	1	0	1	0	0	0	15196	41	0
 940	ok	2	0	0	0	0	0	0	0	0	8604	1	0
 941	ok	7	0	0	1	0	0	0	0	0	9045	1	0
