@@ -21,19 +21,59 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
     use Opcode::{
         ClanGetchatcount, ClanGetchatdisplayname, ClanGetchatminkick, ClanGetchatownername,
         ClanGetchatrank, ClanGetchatusername, ClanGetchatuserrank, ClanGetchatuserworld,
-        ClanIsfriend, ClanIsself, ClanprofileFind, FriendschatApplysort, FriendschatClearsort,
-        IgnoreCount, StockmarketGetoffercompletedcount, StockmarketGetoffercompletedgold,
-        StockmarketGetoffercount, StockmarketGetofferitem, StockmarketGetofferprice,
-        StockmarketGetoffertype, StockmarketIsofferadding, StockmarketIsofferempty,
-        StockmarketIsofferfinished, StockmarketIsofferstable, WorldlistFetch,
+        ClanIsfriend, ClanIsself, ClanprofileFind, FriendApplysort, FriendClearsort,
+        FriendSortName, FriendSortNameText, FriendSortOnline, FriendSortOnlineName,
+        FriendSortOnlineRank, FriendSortOwnworld, FriendSortOwnworldName, FriendSortOwnworldRank,
+        FriendSortRank, FriendSortSecondary, FriendSortWorld, FriendschatApplysort,
+        FriendschatClearsort, FriendschatSortName, FriendschatSortNameText, FriendschatSortOnline,
+        FriendschatSortOnlineName, FriendschatSortOnlineRank, FriendschatSortOwnworld,
+        FriendschatSortOwnworldName, FriendschatSortOwnworldRank, FriendschatSortRank,
+        FriendschatSortSecondary, FriendschatSortWorld, IgnoreApplysort, IgnoreClearsort,
+        IgnoreCount, IgnoreSortName, IgnoreSortNameText, StockmarketGetoffercompletedcount,
+        StockmarketGetoffercompletedgold, StockmarketGetoffercount, StockmarketGetofferitem,
+        StockmarketGetofferprice, StockmarketGetoffertype, StockmarketIsofferadding,
+        StockmarketIsofferempty, StockmarketIsofferfinished, StockmarketIsofferstable,
+        WorldlistFetch,
     };
     match op {
         // `classHU.method6157`: -1 until the ignore list has loaded.
         IgnoreCount => s.integers.push(-1),
-        // `classHU.method6157` 3644 clears the friends chat member sort comparator and 3655 sorts
-        // the members by it, each only `if (classIB.field2933 != null)`. That field is the channel
-        // `ClanGetchatownername` reads; none is ever joined, so there is nothing to clear or sort.
-        FriendschatClearsort | FriendschatApplysort => {}
+        // `classHU.method6157` 3628-3657 set, clear (`NameableContainer.method10309`) or apply
+        // (`method10284`) the comparator of the friends list (`classQQ.field5595.field593`), the
+        // ignore list (`field591`) or the friends chat members (`classIB.field2933`). The friends
+        // chat ones run only `if (classIB.field2933 != null)`, the channel `ClanGetchatownername`
+        // reads; none is ever joined. The friends and ignore lists always exist in the reference
+        // but this client never receives their members (`FriendCount` answers -2), so there is
+        // nothing to order. The setting forms still take their one boolean (ascending) from the
+        // stack; the comparator choice is dropped until those lists are filled from packets.
+        FriendClearsort | FriendApplysort | IgnoreClearsort | IgnoreApplysort
+        | FriendschatClearsort | FriendschatApplysort => {}
+        FriendSortName
+        | FriendSortNameText
+        | FriendSortWorld
+        | FriendSortRank
+        | FriendSortOnline
+        | FriendSortOnlineName
+        | FriendSortOnlineRank
+        | FriendSortOwnworld
+        | FriendSortOwnworldName
+        | FriendSortOwnworldRank
+        | IgnoreSortName
+        | IgnoreSortNameText
+        | FriendschatSortName
+        | FriendschatSortNameText
+        | FriendschatSortWorld
+        | FriendschatSortRank
+        | FriendschatSortOnline
+        | FriendschatSortOnlineName
+        | FriendschatSortOnlineRank
+        | FriendschatSortOwnworld
+        | FriendschatSortOwnworldName
+        | FriendschatSortOwnworldRank
+        | FriendSortSecondary
+        | FriendschatSortSecondary => {
+            s.int()?;
+        }
         // `classHU.method6157` 3611, 3625: the channel's display name and owner, the empty string
         // without a channel; 3613 reads a member's name by index and answers the same.
         ClanGetchatdisplayname | ClanGetchatownername => {
@@ -148,6 +188,52 @@ mod tests {
         let (integers, text) =
             run(&mut scripts, &mut state, Opcode::FriendschatApplysort, &[]).unwrap();
         assert!(integers.is_empty() && text.is_empty());
+    }
+
+    #[test]
+    fn list_sorts_take_their_direction_and_leave_nothing() {
+        let (mut scripts, mut state) = (scripts(), GameState::new());
+        let ops = [
+            (3628, Opcode::FriendClearsort, false),
+            (3629, Opcode::FriendSortName, true),
+            (3630, Opcode::FriendSortNameText, true),
+            (3631, Opcode::FriendSortWorld, true),
+            (3632, Opcode::FriendSortRank, true),
+            (3633, Opcode::FriendSortOnline, true),
+            (3634, Opcode::FriendSortOnlineName, true),
+            (3635, Opcode::FriendSortOnlineRank, true),
+            (3636, Opcode::FriendSortOwnworld, true),
+            (3637, Opcode::FriendSortOwnworldName, true),
+            (3638, Opcode::FriendSortOwnworldRank, true),
+            (3639, Opcode::FriendApplysort, false),
+            (3640, Opcode::IgnoreClearsort, false),
+            (3641, Opcode::IgnoreSortName, true),
+            (3642, Opcode::IgnoreSortNameText, true),
+            (3643, Opcode::IgnoreApplysort, false),
+            (3645, Opcode::FriendschatSortName, true),
+            (3646, Opcode::FriendschatSortNameText, true),
+            (3647, Opcode::FriendschatSortWorld, true),
+            (3648, Opcode::FriendschatSortRank, true),
+            (3649, Opcode::FriendschatSortOnline, true),
+            (3650, Opcode::FriendschatSortOnlineName, true),
+            (3651, Opcode::FriendschatSortOnlineRank, true),
+            (3652, Opcode::FriendschatSortOwnworld, true),
+            (3653, Opcode::FriendschatSortOwnworldName, true),
+            (3654, Opcode::FriendschatSortOwnworldRank, true),
+            (3656, Opcode::FriendSortSecondary, true),
+            (3657, Opcode::FriendschatSortSecondary, true),
+        ];
+        for (_, op, takes_direction) in ops {
+            let given: &[i32] = if takes_direction { &[1] } else { &[] };
+            let (integers, text) = run(&mut scripts, &mut state, op, given).unwrap();
+            assert!(integers.is_empty() && text.is_empty(), "{op:?}");
+            // The setting forms read one boolean, so an empty stack is an error.
+            assert_eq!(
+                run(&mut scripts, &mut state, op, &[]).is_err(),
+                takes_direction,
+                "{op:?}"
+            );
+        }
     }
 
     #[test]

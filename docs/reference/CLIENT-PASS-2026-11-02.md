@@ -259,9 +259,22 @@ Findings that need other work:
   `CLAN_ISSELF`, `CLAN_ISFRIEND`) now answer the no-channel state; `CLAN_KICKUSER`,
   `CLAN_JOINCHAT` and `CLAN_LEAVECHAT` still need their outbound packets. Op 7601 stays
   unhandled on purpose: the reference's handler for the whole 7600 range (`classNF.method7882`)
-  returns 2, its "not handled" result, so script 7166 cannot run there either. Unnamed and still
-  unhandled in the same handler: the friends chat sort ops 3645-3654 and 3657 and the friends and
-  ignore list ones (3628-3643, 3656), whose comparator keys are not yet named.
+  returns 2, its "not handled" result, so script 7166 cannot run there either.
+- Sort family (2026-11-04): the rest of `classHU.method6157` 3628-3657 is named from the
+  comparator classes. Each list has a clear and an apply op (`FRIEND_`/`IGNORE_`/`FRIENDSCHAT_`
+  `CLEARSORT`/`APPLYSORT`: 3628/3639, 3640/3643, 3644/3655) and setting ops that take one boolean
+  (ascending) and install a comparator: name (`classYC`) and name text (`classYS`) on all three;
+  world (`classEV`), rank (`classEA`), online first (`classED`), online then name (`classES`),
+  online then rank (`classEK`), own world first (`classEJ`), own world then name (`classEL`) and
+  own world then rank (`classEH`) on the friends list (3631-3638) and friends chat (3647-3654);
+  and a second numeric `ChatPlayer` key (`classEG`, field 5669, 3656/3657) called
+  `*_SORT_SECONDARY` because its meaning is not established. Names are ours. The host pops the
+  boolean and drops it: the friends chat guards on a channel that never exists, and the friends
+  and ignore lists never receive members (`FRIEND_COUNT` answers -2), so there is nothing to
+  order. The comparator choice must move to a `GameState` owner when those packets arrive. No
+  audit group changed (960 ok, 9 script-errors); CS2 coverage is now 565 host-dispatched, 102
+  named-unhandled, 270 unnamed-cache-used and 430 unnamed-unused (19 of the 28 ops are used by
+  cache scripts).
 - Still aborting (9 groups, all in the baseline): op 7601 (reference-unhandled), dynamic widget
   type 12 (two groups), and database, child-index, stack and string-stack errors in scripts 8943,
   4445, 7962, 8690, 3100 and 1451 that depend on rows, widgets or a serialised array string

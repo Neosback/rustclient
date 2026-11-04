@@ -583,36 +583,36 @@ opcode	adapter_name	runelite_name	evidence_status	host_status	live_uses	scanned_
 3625	ClanGetchatownername	CLAN_GETCHATOWNERNAME	adapter	host-dispatched		classBB.method865,classHU.method6157
 3626	ClanIsfriend	CLAN_ISFRIEND	adapter	host-dispatched		classHU.method6157
 3627	ClanIsignore	CLAN_ISIGNORE	adapter	named-unhandled		classBB.method865,classHU.method6157
-3628			handler-only	unnamed-cache-used	2	classBB.method865,classHU.method6157
-3629			handler-only	unnamed-cache-used	2	classBB.method865,classHU.method6157
-3630			handler-only	unnamed-cache-used	10	classHU.method6157
-3631			handler-only	unnamed-cache-used	2	classBB.method865,classHU.method6157
-3632			handler-only	unnamed-cache-used	6	classBB.method865,classHU.method6157
-3633			handler-only	unnamed-cache-used	6	classBB.method865,classHU.method6157
-3634			handler-only	unnamed-unused		classBB.method865,classHU.method6157
-3635			handler-only	unnamed-unused		classBB.method865,classHU.method6157
-3636			handler-only	unnamed-cache-used	2	classBB.method865,classHU.method6157
-3637			handler-only	unnamed-unused		classHU.method6157
-3638			handler-only	unnamed-unused		classHU.method6157
-3639			handler-only	unnamed-cache-used	2	classBB.method865,classHU.method6157
-3640			handler-only	unnamed-cache-used	1	classHU.method6157
-3641			handler-only	unnamed-cache-used	1	classHU.method6157
-3642			handler-only	unnamed-cache-used	2	classHU.method6157
-3643			handler-only	unnamed-cache-used	1	classBB.method865,classHU.method6157
+3628	FriendClearsort		handler-only	host-dispatched	2	classBB.method865,classHU.method6157
+3629	FriendSortName		handler-only	host-dispatched	2	classBB.method865,classHU.method6157
+3630	FriendSortNameText		handler-only	host-dispatched	10	classHU.method6157
+3631	FriendSortWorld		handler-only	host-dispatched	2	classBB.method865,classHU.method6157
+3632	FriendSortRank		handler-only	host-dispatched	6	classBB.method865,classHU.method6157
+3633	FriendSortOnline		handler-only	host-dispatched	6	classBB.method865,classHU.method6157
+3634	FriendSortOnlineName		handler-only	host-dispatched		classBB.method865,classHU.method6157
+3635	FriendSortOnlineRank		handler-only	host-dispatched		classBB.method865,classHU.method6157
+3636	FriendSortOwnworld		handler-only	host-dispatched	2	classBB.method865,classHU.method6157
+3637	FriendSortOwnworldName		handler-only	host-dispatched		classHU.method6157
+3638	FriendSortOwnworldRank		handler-only	host-dispatched		classHU.method6157
+3639	FriendApplysort		handler-only	host-dispatched	2	classBB.method865,classHU.method6157
+3640	IgnoreClearsort		handler-only	host-dispatched	1	classHU.method6157
+3641	IgnoreSortName		handler-only	host-dispatched	1	classHU.method6157
+3642	IgnoreSortNameText		handler-only	host-dispatched	2	classHU.method6157
+3643	IgnoreApplysort		handler-only	host-dispatched	1	classBB.method865,classHU.method6157
 3644	FriendschatClearsort		handler-only	host-dispatched	1	classHU.method6157
-3645			handler-only	unnamed-cache-used	1	classBB.method865,classHU.method6157
-3646			handler-only	unnamed-cache-used	18	classBB.method865,classHU.method6157
-3647			handler-only	unnamed-cache-used	6	classHU.method6157
-3648			handler-only	unnamed-cache-used	10	classBB.method865,classHU.method6157
-3649			handler-only	unnamed-unused		classHU.method6157
-3650			handler-only	unnamed-unused		classBB.method865,classHU.method6157
-3651			handler-only	unnamed-unused		classBB.method865,classHU.method6157
-3652			handler-only	unnamed-cache-used	6	classHU.method6157
-3653			handler-only	unnamed-unused		classBB.method865,classHU.method6157
-3654			handler-only	unnamed-unused		classBB.method865,classHU.method6157
+3645	FriendschatSortName		handler-only	host-dispatched	1	classBB.method865,classHU.method6157
+3646	FriendschatSortNameText		handler-only	host-dispatched	18	classBB.method865,classHU.method6157
+3647	FriendschatSortWorld		handler-only	host-dispatched	6	classHU.method6157
+3648	FriendschatSortRank		handler-only	host-dispatched	10	classBB.method865,classHU.method6157
+3649	FriendschatSortOnline		handler-only	host-dispatched		classHU.method6157
+3650	FriendschatSortOnlineName		handler-only	host-dispatched		classBB.method865,classHU.method6157
+3651	FriendschatSortOnlineRank		handler-only	host-dispatched		classBB.method865,classHU.method6157
+3652	FriendschatSortOwnworld		handler-only	host-dispatched	6	classHU.method6157
+3653	FriendschatSortOwnworldName		handler-only	host-dispatched		classBB.method865,classHU.method6157
+3654	FriendschatSortOwnworldRank		handler-only	host-dispatched		classBB.method865,classHU.method6157
 3655	FriendschatApplysort		handler-only	host-dispatched	1	classBB.method865,classHU.method6157
-3656			handler-only	unnamed-cache-used	2	classBB.method865,classHU.method6157
-3657			handler-only	unnamed-cache-used	6	classHU.method6157
+3656	FriendSortSecondary		handler-only	host-dispatched	2	classBB.method865,classHU.method6157
+3657	FriendschatSortSecondary		handler-only	host-dispatched	6	classHU.method6157
 3700			unknown	unnamed-cache-used	21	
 3701			unknown	unnamed-cache-used	4	
 3702			unknown	unnamed-cache-used	2	
