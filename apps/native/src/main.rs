@@ -1721,6 +1721,35 @@ impl NativeApp {
             });
         }
     }
+    /// Decode the config groups scripts read (enums, structs, database rows, ...) on the CPU pool.
+    /// Otherwise the first script to read one decodes the whole group on the thread that runs the
+    /// client cycle, a stall of about 30 ms for the database rows (`script_probe --cycle-cost`).
+    fn warm_script_definitions(
+        &mut self,
+        scripts: &rustclient_application::scripts::ClientScripts<DirectoryBlobs>,
+    ) {
+        let pool = match self.scene.cpu_jobs() {
+            Ok(pool) => pool,
+            Err(error) => {
+                eprintln!("script definition warm-up: {error}");
+                return;
+            }
+        };
+        let (cache, profile) = (scripts.shared_cache(), self.widget_cache_profile);
+        let job = rustclient_platform::CpuJob::new(
+            rustclient_platform::JobIdentity::default(),
+            rustclient_platform::JobPriority::Prefetch,
+            rustclient_platform::JobCancellation::default(),
+            move |_| {
+                if let Err(error) = profile.warm_script_definitions(&cache) {
+                    eprintln!("script definition warm-up: {error}");
+                }
+            },
+        );
+        if rustclient_platform::CpuJobExecutor::try_submit(&*pool, job).is_err() {
+            eprintln!("script definition warm-up: projection queue full; scripts decode on use");
+        }
+    }
     fn finish_scene(
         &mut self,
         event_loop: &ActiveEventLoop,
@@ -1943,6 +1972,7 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                     if let Err(e) = scripts.synchronize(&self.state) {
                         eprintln!("script definitions: {e}");
                     }
+                    self.warm_script_definitions(&scripts);
                     self.scripts = Some(scripts);
                 }
                 Err(e) => self.fail(event_loop, &format!("script cache: {e}")),

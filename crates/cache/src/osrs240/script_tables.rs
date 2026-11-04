@@ -22,19 +22,29 @@ impl CacheProfile {
         kind: DefinitionKind,
         id: u32,
     ) -> Result<Vec<u8>> {
-        let group = match kind {
-            DefinitionKind::Enum => 8,
-            DefinitionKind::Struct => 34,
-            DefinitionKind::Parameter => 11,
-            DefinitionKind::Inventory => 5,
-            DefinitionKind::Varbit => 14,
-            DefinitionKind::Item => 10,
-        };
-        cache.config_file(
-            group,
-            id,
-            self == CacheProfile::OpenRune240 && matches!(group, 5 | 10 | 11 | 14),
-        )
+        let group = kind.group();
+        cache.config_file(group, id, self.script_group_advisory(group))
+    }
+    /// The advisory (tolerate-and-report) policy a revision applies to a script config group.
+    /// Database rows and tables (groups 38, 39) are strict.
+    fn script_group_advisory(self, group: u32) -> bool {
+        self == CacheProfile::OpenRune240 && matches!(group, 5 | 9 | 10 | 11 | 14)
+    }
+    /// Decode every config group the interpreter reads definitions from. The first definition of
+    /// a group decodes the whole group, tens of milliseconds for the database row group, so a
+    /// caller that runs scripts on a frame-time thread calls this beforehand on a worker.
+    /// # Errors
+    /// Reports the first group that could not be decoded.
+    pub fn warm_script_definitions<S: ReadOnlyBlobs>(self, cache: &Cache<S>) -> Result<()> {
+        for group in SCRIPT_CONFIG_GROUPS {
+            cache.config_group_with(
+                group,
+                self.script_group_advisory(group),
+                &mut Vec::new(),
+                |_| Ok(()),
+            )?;
+        }
+        Ok(())
     }
     /// # Errors
     /// Rejects unsupported enum fields and excessive entry counts.
@@ -149,6 +159,22 @@ pub enum DefinitionKind {
     Inventory,
     Varbit,
     Item,
+}
+/// Config groups scripts read: inventories, enums, NPCs (`NC_NAME`), items, parameters, varbits,
+/// structs, then database rows and tables.
+const SCRIPT_CONFIG_GROUPS: [u32; 9] = [5, 8, 9, 10, 11, 14, 34, 38, 39];
+impl DefinitionKind {
+    /// The index-2 config group holding this kind of definition.
+    fn group(self) -> u32 {
+        match self {
+            Self::Enum => 8,
+            Self::Struct => 34,
+            Self::Parameter => 11,
+            Self::Inventory => 5,
+            Self::Varbit => 14,
+            Self::Item => 10,
+        }
+    }
 }
 impl CacheProfile {
     /// # Errors
@@ -340,5 +366,44 @@ pub fn decode_parameter_default(bytes: &[u8], source: Source) -> Result<ScriptVa
             Err(source.error("parameter", "unsupported script variable type"))
         }
         _ => Ok(ScriptValue::Int(number)),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn warm_up_covers_every_group_scripts_read_definitions_from() {
+        for kind in [
+            DefinitionKind::Enum,
+            DefinitionKind::Struct,
+            DefinitionKind::Parameter,
+            DefinitionKind::Inventory,
+            DefinitionKind::Varbit,
+            DefinitionKind::Item,
+        ] {
+            assert!(SCRIPT_CONFIG_GROUPS.contains(&kind.group()), "{kind:?}");
+        }
+        // Database rows and tables (`load_db_row`, `load_db_table`) and NPC names (`NC_NAME`).
+        for group in [9, 38, 39] {
+            assert!(SCRIPT_CONFIG_GROUPS.contains(&group), "{group}");
+        }
+        let mut sorted = SCRIPT_CONFIG_GROUPS;
+        sorted.sort_unstable();
+        assert!(
+            sorted.windows(2).all(|pair| pair[0] != pair[1]),
+            "duplicates"
+        );
+    }
+
+    #[test]
+    fn database_groups_are_strict_and_definition_groups_advisory() {
+        let profile = CacheProfile::OpenRune240;
+        assert!(profile.script_group_advisory(DefinitionKind::Item.group()));
+        assert!(profile.script_group_advisory(9));
+        assert!(!profile.script_group_advisory(8));
+        assert!(!profile.script_group_advisory(38));
+        assert!(!profile.script_group_advisory(39));
     }
 }

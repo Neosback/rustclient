@@ -414,3 +414,30 @@ stage attributions on a busy host, not a valid baseline, and the live frame trac
 - **Still NOT-RUN:** a frame trace of the main thread (per-cycle plugin and entity work, widget
   and inventory granularity), cancellation between phases, chunked vertex packing, the quiet-host
   baseline, and every live observation.
+
+### Script host on the cycle thread (2026-11-04)
+
+`script_probe <cache> --execute 548 --cycle-cost [--prewarm]` times the script host on the
+mounted interfaces: 500 client-cycle commits plus layouts, and a change to every variable a
+listener watches. Release build, host load average about 5, only group 548 mounted (no server
+sub-interfaces), so this is a lower bound for a real session and not a live trace.
+
+- **Steady state is cheap:** the cycle commit is p50 0.007 ms, p99 0.03-0.04 ms, max 0.10-0.25 ms;
+  `resize_widgets` p50 0.000 ms; a watched variable change plus the next cycle is p50 0.29-0.33 ms.
+- **First use is not:** the first change to varp 1021 cost 29.5-33.5 ms (repeat 0.3 ms). Timing
+  each host op found `DbGetrowtable` at 31 ms; setup also showed `Enum` at 13-16 ms and
+  `GetVarbit` at 3.5 ms. The cause is the cache: the first read of any config group decodes the
+  whole group, and `ClientScripts` has its own `Cache`, so the scene and title warm-ups never
+  covered the groups scripts read (enums 8, structs 34, parameters 11, inventories 5, items 10,
+  varbits 14, NPCs 9, database rows 38 and tables 39). A 30 ms stall is above the 25 ms gap gate.
+- **Done:** `CacheProfile::warm_script_definitions` decodes those nine groups (130-148 ms of
+  worker time). `ClientScripts` now holds an `Arc<Cache>` (`shared_cache()`), and the app submits
+  the warm-up as a prefetch job on the CPU pool when `ScriptsReady` arrives, so it runs beside the
+  title screen and never on the cycle thread. A script that needs a group first waits for its
+  single decode. With `--prewarm` before mounting, the first-change maximum is 0.31-0.41 ms
+  (three runs each way). Two tests guard the group list. Warming inside the title-loader thread
+  was tried and rejected: the title loads in about 45-55 ms and scripts plus warm-up take about
+  150 ms, so the title would have appeared roughly 85 ms later.
+- **Not measured:** that the pool job finishes before the first script runs in a real login (it
+  has to win only the first few seconds of title time), main-thread cost of plugins, entity
+  staging, hover picking and widget projection, and anything with a live session.

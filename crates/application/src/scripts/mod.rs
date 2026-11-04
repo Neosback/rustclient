@@ -54,7 +54,7 @@ struct QueuedScript {
     resize_depth: u8,
 }
 pub struct ClientScripts<S> {
-    pub cache: Cache<S>,
+    pub cache: Arc<Cache<S>>,
     pub profile: CacheProfile,
     pub(crate) interfaces: BTreeMap<InterfaceId, InterfaceDefinition>,
     catalog_revision: u64,
@@ -96,7 +96,7 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
     #[must_use]
     pub fn new(cache: Cache<S>, profile: CacheProfile) -> Self {
         Self {
-            cache,
+            cache: Arc::new(cache),
             profile,
             interfaces: BTreeMap::new(),
             catalog_revision: 0,
@@ -125,6 +125,13 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
             widget_iteration: widget_iteration::WidgetIteration::default(),
             listener_index: listener_index::ListenerIndex::default(),
         }
+    }
+    /// The cache these scripts read, shared so a worker can decode the config groups scripts
+    /// will read (`CacheProfile::warm_script_definitions`) beside them: a group is decoded
+    /// once, and a script that needs it first waits for that decode.
+    #[must_use]
+    pub fn shared_cache(&self) -> Arc<Cache<S>> {
+        Arc::clone(&self.cache)
     }
     /// Immutable definitions; mutations remain inside the catalog owner.
     #[must_use]

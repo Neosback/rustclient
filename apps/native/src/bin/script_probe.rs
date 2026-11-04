@@ -251,6 +251,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     if std::env::args().any(|a| a == "--execute") {
         let mut runtime = rustclient_application::scripts::ClientScripts::new(cache, profile);
+        if std::env::args().any(|a| a == "--prewarm") {
+            let started = std::time::Instant::now();
+            runtime.initialize_world_map()?;
+            println!(
+                "initialize_world_map: {:.2} ms",
+                started.elapsed().as_secs_f64() * 1000.
+            );
+            let started = std::time::Instant::now();
+            profile.warm_script_definitions(&runtime.cache)?;
+            println!(
+                "warm_definitions: {:.2} ms (off the cycle thread in the client)",
+                started.elapsed().as_secs_f64() * 1000.
+            );
+        }
         let mut state = rustclient_game_state::GameState::new();
         let revision = rustclient_model::Revision::with_subrevision(240, 2);
         if std::env::args().any(|a| a == "--click-sim" || a == "--tab-sim") {
@@ -304,6 +318,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 [73, 74, 222, 1338, 1339, 1340, 1341]
                     .map(|id| (id, state.interfaces().client_variables().get(&id)))
             );
+        }
+        if std::env::args().any(|a| a == "--cycle-cost") {
+            cycle_cost(&mut runtime, &mut state)?;
         }
         if std::env::args().any(|a| a == "--prompt-sim") {
             prompt_sim(&mut runtime, &mut state)?;
@@ -493,6 +510,92 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 /// Change every variable the mounted interfaces listen to, as a server update after a settings
 /// click would, and report the listener errors and how the widget tree and scroll positions react.
+/// Main-thread cost of the script host on the mounted interfaces: the client-cycle commit and
+/// widget layout every 20 ms cycle, and the commit of each variable that a listener watches.
+/// Only the groups named after `--execute` are mounted, not the sub-interfaces a server opens.
+fn cycle_cost<S: rustclient_platform::ReadOnlyBlobs>(
+    runtime: &mut rustclient_application::scripts::ClientScripts<S>,
+    state: &mut rustclient_game_state::GameState,
+) -> Result<(), Box<dyn std::error::Error>> {
+    use rustclient_game_state::{SceneryOperation, SemanticOperation};
+    use rustclient_model::{VarpId, WidgetListener};
+    use std::time::Instant;
+    fn report(label: &str, mut samples: Vec<f64>) {
+        samples.sort_by(f64::total_cmp);
+        let at = |percent: usize| samples[(samples.len() - 1) * percent / 100];
+        println!(
+            "{label}: n={} p50={:.4} p95={:.4} p99={:.4} max={:.4} ms",
+            samples.len(),
+            at(50),
+            at(95),
+            at(99),
+            at(100)
+        );
+    }
+    let (mut commits, mut layouts) = (Vec::new(), Vec::new());
+    for _ in 0..500 {
+        let started = Instant::now();
+        runtime.commit(
+            state,
+            SemanticOperation::Scenery(SceneryOperation::AdvanceCycles(1)),
+        )?;
+        commits.push(started.elapsed().as_secs_f64() * 1000.);
+        let started = Instant::now();
+        runtime.resize_widgets(state)?;
+        layouts.push(started.elapsed().as_secs_f64() * 1000.);
+    }
+    println!(
+        "{} runtime widgets, {} groups mounted",
+        state.interfaces().runtime().len(),
+        state.interfaces().groups().len()
+    );
+    report("cycle commit (timer listeners)", commits);
+    report("resize_widgets", layouts);
+    let mut triggers = BTreeSet::new();
+    for group in state.interfaces().groups() {
+        if let Some(definition) = runtime.interfaces().get(&group) {
+            for widget in definition.widgets().values() {
+                triggers.extend(widget.variable_triggers.iter().copied());
+            }
+        }
+    }
+    for widget in state.interfaces().runtime().values() {
+        if let Some(ids) = widget.triggers.get(&WidgetListener::Variable) {
+            triggers.extend(ids.iter().copied());
+        }
+    }
+    // The first pass runs each listener script for the first time (script decode included); the
+    // second is the steady cost of the same change.
+    for pass in ["first change", "repeat change"] {
+        let mut timed = Vec::new();
+        for &id in triggers.iter().filter(|id| **id >= 0) {
+            let varp = VarpId::new(u32::try_from(id)?);
+            let value = state.scenery().variable(varp).wrapping_add(1);
+            let started = Instant::now();
+            runtime.commit(
+                state,
+                SemanticOperation::Scenery(SceneryOperation::SetVariable { id: varp, value }),
+            )?;
+            let first = started.elapsed().as_secs_f64() * 1000.;
+            let started = Instant::now();
+            runtime.commit(
+                state,
+                SemanticOperation::Scenery(SceneryOperation::AdvanceCycles(1)),
+            )?;
+            runtime.resize_widgets(state)?;
+            timed.push((first + started.elapsed().as_secs_f64() * 1000., id));
+        }
+        let costs: Vec<f64> = timed.iter().map(|(cost, _)| *cost).collect();
+        if !costs.is_empty() {
+            report(&format!("watched variable, {pass} + next cycle"), costs);
+            timed.sort_by(|a, b| b.0.total_cmp(&a.0));
+            for (cost, id) in timed.iter().take(3) {
+                println!("  slowest: varp {id} {cost:.3} ms");
+            }
+        }
+    }
+    Ok(())
+}
 fn variable_sim<S: rustclient_platform::ReadOnlyBlobs>(
     runtime: &mut rustclient_application::scripts::ClientScripts<S>,
     state: &mut rustclient_game_state::GameState,
