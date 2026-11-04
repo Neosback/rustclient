@@ -390,10 +390,14 @@ stage attributions on a busy host, not a valid baseline, and the live frame trac
   p50 2.68 ms, p95 2.88 ms (20 builds, `scene_probe --performance` now prints it). It runs on the
   event loop at scene arrival and on a plane change. That is a few milliseconds at rare events, so
   moving it to the pool is smaller than the other open items and was not done.
-- **Not changed:** per-location preparation (55 ms) is pure and parallelisable, but
-  `locations::build` is documented to run on a pool worker without nested jobs; splitting it
-  across pool workers needs a scheduling design (SPEC-0024 forbids scoped or nested threads) and
-  is the largest remaining worker-side item, then emit (21-28 ms) and terrain (12-13 ms).
+- **Decided against: parallel per-location preparation (55 ms).** A throwaway scoped-thread
+  experiment (not committed) measured 53-62 ms with 1 worker, 35-36 ms with 2, 25-26 ms with 3
+  and 21-30 ms with 4, so the ceiling is about 30 ms of a roughly 330 ms worker-side load, and
+  only worker latency, not main-thread frame time. SPEC-0024 forbids nested per-rebuild threads
+  and pool workers waiting on child jobs, and a pool version needs `'static` ownership of the
+  asset, inputs and jobs (`unsafe` is denied) plus a spec amendment. Skipped on 2026-11-04; revisit
+  only if worker latency becomes the measured bottleneck. Emit (21-28 ms) and terrain (12-13 ms)
+  are the other serial stages of similar size.
 - **Still NOT-RUN:** a frame trace of the main thread (per-cycle plugin and entity work, widget
   and inventory granularity), cancellation between phases, chunked vertex packing, the quiet-host
   baseline, and every live observation.
