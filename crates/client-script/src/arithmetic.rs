@@ -13,8 +13,9 @@ use rustclient_model::ScriptValue;
 pub(super) fn instruction(op: Opcode, s: &mut Stacks) -> Result<bool> {
     use Opcode::{
         Add, And, Append, AppendNum, AppendSignnum, Clearbit, Compare, Div, Escape, GetbitRange,
-        Interpolate, Invpow, Lowercase, Max, Min, Mod, Multiply, Or, Pow, Removetags, Scale,
-        Setbit, StringIndexofString, StringLength, Sub, Substring, Testbit, Tostring,
+        Interpolate, Invpow, Lowercase, Max, Min, Mod, Multiply, Or, ParseintOrMinusone, Pow,
+        Removetags, Scale, Setbit, StringIndexofString, StringLength, Sub, Substring, Testbit,
+        Tostring,
     };
     let result = match op {
         Add | Sub | Multiply | Div | Mod | And | Or | Setbit | Clearbit | Testbit | Pow
@@ -105,6 +106,7 @@ pub(super) fn instruction(op: Opcode, s: &mut Stacks) -> Result<bool> {
             s.push_object(ScriptValue::Text(a.to_lowercase()));
             None
         }
+        ParseintOrMinusone => Some(parse_int_or_minus_one(&s.text()?)),
         StringLength => {
             let a = s.text()?;
             Some(i32::try_from(a.encode_utf16().count()).map_err(|_| "text size")?)
@@ -237,5 +239,58 @@ fn power(a: i32, b: i32, op: Opcode) -> i32 {
         i32::MAX
     } else {
         f64::from(a).powf(1.0 / f64::from(b)) as i32
+    }
+}
+/// Opcode 4036: the reference checks the text with `classMQ.method7683` and, only when it holds a
+/// whole decimal integer, parses it with `classOH.method8481`; anything else is -1. Both read UTF-16
+/// units with one optional leading sign, accept ASCII digits only and reject overflow by dividing the
+/// wrapped product back, so `-2147483648` parses and `2147483648` does not.
+fn parse_int_or_minus_one(text: &str) -> i32 {
+    let (mut value, mut negative, mut digits) = (0_i32, false, false);
+    for (index, unit) in text.encode_utf16().enumerate() {
+        if index == 0 && matches!(unit, 0x2b | 0x2d) {
+            negative = unit == 0x2d;
+            continue;
+        }
+        let Some(digit) = char::from_u32(unit.into()).and_then(|c| c.to_digit(10)) else {
+            return -1;
+        };
+        let digit = i32::try_from(digit).unwrap_or_default();
+        let next = value
+            .wrapping_mul(10)
+            .wrapping_add(if negative { -digit } else { digit });
+        if next / 10 != value {
+            return -1;
+        }
+        (value, digits) = (next, true);
+    }
+    if digits { value } else { -1 }
+}
+#[cfg(test)]
+mod tests {
+    use super::parse_int_or_minus_one as parse;
+
+    #[test]
+    fn parse_matches_the_reference_decimal_reader() {
+        for (text, expected) in [
+            ("123", 123),
+            ("-5", -5),
+            ("+7", 7),
+            ("007", 7),
+            ("2147483647", i32::MAX),
+            ("-2147483648", i32::MIN),
+            ("2147483648", -1),
+            ("-2147483649", -1),
+            ("", -1),
+            ("-", -1),
+            ("+", -1),
+            ("1+2", -1),
+            ("--1", -1),
+            ("12a", -1),
+            (" 1", -1),
+            ("\u{663}", -1),
+        ] {
+            assert_eq!(parse(text), expected, "{text:?}");
+        }
     }
 }

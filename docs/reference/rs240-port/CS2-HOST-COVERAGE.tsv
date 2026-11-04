@@ -156,7 +156,7 @@ opcode	adapter_name	runelite_name	evidence_status	host_status	live_uses	scanned_
 1307	CcClearops	CC_CLEAROPS	adapter	host-dispatched		classBB.method812,classBB.method813,classQI.method9633
 1308			handler-only	unnamed-unused		classBB.method811,classBB.method812,classBB.method813,classQI.method9633
 1309	CcDiscardRetiredFlag		adapter	host-dispatched		classBB.method812,classBB.method813,classQI.method9633
-1310			handler-only	unnamed-unused		classBB.method812,classBB.method813,classQI.method9633
+1310	CcClearop		handler-only	host-dispatched		classBB.method812,classBB.method813,classQI.method9633
 1311			handler-only	unnamed-cache-used	1	classBB.method811,classBB.method812,classBB.method813,classQI.method9633
 1312	CcSettargetpriority		adapter	host-dispatched		classBB.method812,classQI.method9633
 1350	CcSetopkey	CC_SETOPKEY	adapter	host-dispatched		classBB.method812,classBB.method813,classQI.method9633
@@ -307,7 +307,7 @@ opcode	adapter_name	runelite_name	evidence_status	host_status	live_uses	scanned_
 2306	IfSettargetverb	IF_SETTARGETVERB	adapter	host-dispatched		
 2307	IfClearops	IF_CLEAROPS	adapter	host-dispatched		
 2309	IfDiscardRetiredFlag		adapter-unconfirmed	host-dispatched		
-2310			unknown	unnamed-cache-used	1	
+2310	IfClearop		unknown	host-dispatched	1	
 2311			unknown	unnamed-cache-used	4	
 2312	IfSettargetpriority		adapter-unconfirmed	host-dispatched		
 2350	IfSetopkey	IF_SETOPKEY	adapter	host-dispatched		
@@ -431,7 +431,7 @@ opcode	adapter_name	runelite_name	evidence_status	host_status	live_uses	scanned_
 3126	Setshowloadingmessages	SETSHOWLOADINGMESSAGES	adapter	host-dispatched		classBB.method852,classBB.method853,classBB.method854,classKU.method6609
 3127	Settaptodrop	SETTAPTODROP	adapter	host-dispatched		classBB.method852,classBB.method853,classKU.method6609
 3128	Gettaptodrop	GETTAPTODROP	adapter	host-dispatched		classBB.method853,classBB.method854,classKU.method6609
-3129			handler-only	unnamed-cache-used	9	classBB.method852,classBB.method853,classBB.method854,classBB.method855,classKU.method6609
+3129	CamSetkeypanspeeds		handler-only	host-dispatched	9	classBB.method852,classBB.method853,classBB.method854,classBB.method855,classKU.method6609
 3130	DiscardMobileOffsets		adapter	host-dispatched		classBB.method852,classBB.method853,classBB.method855,classKU.method6609
 3131	DiscardMobileFlag		adapter	host-dispatched		classBB.method852,classBB.method853,classBB.method854,classKU.method6609
 3132	Getcanvassize	GETCANVASSIZE	adapter	host-dispatched		classBB.method852,classBB.method853,classKU.method6609
@@ -566,22 +566,22 @@ opcode	adapter_name	runelite_name	evidence_status	host_status	live_uses	scanned_
 3607	IgnoreAdd	IGNORE_ADD	adapter	named-unhandled		classHU.method6157
 3608	IgnoreDel	IGNORE_DEL	adapter	named-unhandled		classHU.method6157
 3609	FriendTest	FRIEND_TEST	adapter	named-unhandled		classBB.method865,classHU.method6157
-3611	ClanGetchatdisplayname	CLAN_GETCHATDISPLAYNAME	adapter	named-unhandled		classBB.method865,classHU.method6157
-3612	ClanGetchatcount	CLAN_GETCHATCOUNT	adapter	named-unhandled		classHU.method6157
-3613	ClanGetchatusername	CLAN_GETCHATUSERNAME	adapter	named-unhandled		classHU.method6157
-3614	ClanGetchatuserworld	CLAN_GETCHATUSERWORLD	adapter	named-unhandled		classHU.method6157
-3615	ClanGetchatuserrank	CLAN_GETCHATUSERRANK	adapter	named-unhandled		classBB.method865,classHU.method6157
-3616	ClanGetchatminkick	CLAN_GETCHATMINKICK	adapter	named-unhandled		classHU.method6157
+3611	ClanGetchatdisplayname	CLAN_GETCHATDISPLAYNAME	adapter	host-dispatched		classBB.method865,classHU.method6157
+3612	ClanGetchatcount	CLAN_GETCHATCOUNT	adapter	host-dispatched		classHU.method6157
+3613	ClanGetchatusername	CLAN_GETCHATUSERNAME	adapter	host-dispatched		classHU.method6157
+3614	ClanGetchatuserworld	CLAN_GETCHATUSERWORLD	adapter	host-dispatched		classHU.method6157
+3615	ClanGetchatuserrank	CLAN_GETCHATUSERRANK	adapter	host-dispatched		classBB.method865,classHU.method6157
+3616	ClanGetchatminkick	CLAN_GETCHATMINKICK	adapter	host-dispatched		classHU.method6157
 3617	ClanKickuser	CLAN_KICKUSER	adapter	named-unhandled		classHU.method6157
-3618	ClanGetchatrank	CLAN_GETCHATRANK	adapter	named-unhandled		classHU.method6157
+3618	ClanGetchatrank	CLAN_GETCHATRANK	adapter	host-dispatched		classHU.method6157
 3619	ClanJoinchat	CLAN_JOINCHAT	adapter	named-unhandled		classBB.method865,classHU.method6157
 3620	ClanLeavechat	CLAN_LEAVECHAT	adapter	named-unhandled		classBB.method865,classHU.method6157
 3621	IgnoreCount	IGNORE_COUNT	adapter	host-dispatched		classBB.method865,classHU.method6157
 3622	IgnoreGetname	IGNORE_GETNAME	adapter	named-unhandled		classBB.method865,classHU.method6157
 3623	IgnoreTest	IGNORE_TEST	adapter	named-unhandled		classBB.method865,classHU.method6157
-3624	ClanIsself	CLAN_ISSELF	adapter	named-unhandled		classBB.method865,classHU.method6157
+3624	ClanIsself	CLAN_ISSELF	adapter	host-dispatched		classBB.method865,classHU.method6157
 3625	ClanGetchatownername	CLAN_GETCHATOWNERNAME	adapter	host-dispatched		classBB.method865,classHU.method6157
-3626	ClanIsfriend	CLAN_ISFRIEND	adapter	named-unhandled		classHU.method6157
+3626	ClanIsfriend	CLAN_ISFRIEND	adapter	host-dispatched		classHU.method6157
 3627	ClanIsignore	CLAN_ISIGNORE	adapter	named-unhandled		classBB.method865,classHU.method6157
 3628			handler-only	unnamed-cache-used	2	classBB.method865,classHU.method6157
 3629			handler-only	unnamed-cache-used	2	classBB.method865,classHU.method6157
@@ -599,7 +599,7 @@ opcode	adapter_name	runelite_name	evidence_status	host_status	live_uses	scanned_
 3641			handler-only	unnamed-cache-used	1	classHU.method6157
 3642			handler-only	unnamed-cache-used	2	classHU.method6157
 3643			handler-only	unnamed-cache-used	1	classBB.method865,classHU.method6157
-3644			handler-only	unnamed-cache-used	1	classHU.method6157
+3644	FriendschatClearsort		handler-only	host-dispatched	1	classHU.method6157
 3645			handler-only	unnamed-cache-used	1	classBB.method865,classHU.method6157
 3646			handler-only	unnamed-cache-used	18	classBB.method865,classHU.method6157
 3647			handler-only	unnamed-cache-used	6	classHU.method6157
@@ -610,7 +610,7 @@ opcode	adapter_name	runelite_name	evidence_status	host_status	live_uses	scanned_
 3652			handler-only	unnamed-cache-used	6	classHU.method6157
 3653			handler-only	unnamed-unused		classBB.method865,classHU.method6157
 3654			handler-only	unnamed-unused		classBB.method865,classHU.method6157
-3655			handler-only	unnamed-cache-used	1	classBB.method865,classHU.method6157
+3655	FriendschatApplysort		handler-only	host-dispatched	1	classBB.method865,classHU.method6157
 3656			handler-only	unnamed-cache-used	2	classBB.method865,classHU.method6157
 3657			handler-only	unnamed-cache-used	6	classHU.method6157
 3700			unknown	unnamed-cache-used	21	
@@ -706,7 +706,7 @@ opcode	adapter_name	runelite_name	evidence_status	host_status	live_uses	scanned_
 4033			handler-only	unnamed-unused		classBB.method873,classMC.method7575
 4034			handler-only	unnamed-unused		classBB.method873,classMC.method7575
 4035			handler-only	unnamed-cache-used	10	classBB.method873,classMC.method7575
-4036			handler-only	unnamed-cache-used	4	classBB.method873,classMC.method7575
+4036	ParseintOrMinusone		handler-only	host-dispatched	4	classBB.method873,classMC.method7575
 4037			handler-only	unnamed-unused		classBB.method873,classMC.method7575
 4038			handler-only	unnamed-unused		classBB.method873,classMC.method7575
 4039			handler-only	unnamed-unused		classBB.method873,classMC.method7575
@@ -915,7 +915,7 @@ opcode	adapter_name	runelite_name	evidence_status	host_status	live_uses	scanned_
 6751			unknown	unnamed-cache-used	58	
 6752			unknown	unnamed-cache-used	58	
 6753			unknown	unnamed-cache-used	20	
-6754			handler-only	unnamed-cache-used	16	classBB.method901,classBB.method902,classBB.method903,classOY.method8858
+6754	NcName		handler-only	host-dispatched	16	classBB.method901,classBB.method902,classBB.method903,classOY.method8858
 6758			unknown	unnamed-cache-used	12	
 6761			unknown	unnamed-cache-used	1	
 6762			unknown	unnamed-cache-used	5	
@@ -1100,7 +1100,7 @@ opcode	adapter_name	runelite_name	evidence_status	host_status	live_uses	scanned_
 8008			handler-only	unnamed-unused		classBB.method923,classBB.method924,classFW.method5091
 8009			handler-only	unnamed-cache-used	3	classBB.method923,classBB.method924,classFW.method5091
 8010			handler-only	unnamed-cache-used	7	classBB.method924,classFW.method5091
-8011			handler-only	unnamed-cache-used	3	classBB.method924,classFW.method5091
+8011	ArrayFillSequence		handler-only	host-dispatched	3	classBB.method924,classFW.method5091
 8012			handler-only	unnamed-cache-used	2	classBB.method924,classFW.method5091
 8013			handler-only	unnamed-unused		classBB.method923,classBB.method924,classFW.method5091
 8014			handler-only	unnamed-cache-used	2	classBB.method923,classBB.method924,classFW.method5091

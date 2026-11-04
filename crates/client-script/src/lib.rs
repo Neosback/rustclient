@@ -260,6 +260,42 @@ impl Stacks {
         }
         Ok(())
     }
+    /// Writes `first`, `first + step`, `first + 2 * step`... over `count` elements from `start`
+    /// (reference opcode 8011, `classCN.method2543`). A negative start counts from zero and a
+    /// count that is negative, wraps or runs past the end stops at the end of the array.
+    ///
+    /// # Errors
+    /// Returns an error for a null, read-only, non-array or text-array operand.
+    pub fn fill_array_sequence(
+        &mut self,
+        object: &Object,
+        first: i32,
+        step: i32,
+        range: [i32; 2],
+    ) -> Result<()> {
+        let id = self.writable(object)?;
+        let Array::Integers(elements) = &mut self.arrays[id] else {
+            return Err("array element type".into());
+        };
+        let [start, count] = range;
+        let start = start.max(0);
+        let end = start.wrapping_add(count);
+        let end = if count >= 0 && end >= 0 {
+            usize::try_from(end).map_or(elements.len(), |end| end.min(elements.len()))
+        } else {
+            elements.len()
+        };
+        let mut value = first;
+        for element in elements
+            .iter_mut()
+            .take(end)
+            .skip(usize::try_from(start).unwrap_or(0))
+        {
+            *element = value;
+            value = value.wrapping_add(step);
+        }
+        Ok(())
+    }
     fn array(&self, object: &Object) -> Result<Option<&Array>> {
         match object {
             Object::Null => Ok(None),

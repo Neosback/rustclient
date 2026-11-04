@@ -1,6 +1,6 @@
 //! Revision-owned enum, parameter, inventory and item definitions for CS2.
 use crate::{Cache, CacheProfile, FileId, GroupId, IndexId, Source, error::Result, reader::Reader};
-use rustclient_model::{ItemDefinitionId, ScriptValue};
+use rustclient_model::{ItemDefinitionId, NpcDefinitionId, ScriptValue};
 use rustclient_platform::ReadOnlyBlobs;
 use std::collections::BTreeMap;
 #[derive(Debug)]
@@ -110,6 +110,35 @@ impl CacheProfile {
                 file: Some(FileId(id.get())),
             },
         )
+    }
+    /// The name script op `NC_NAME` reads for NPC definition `id`. The reference builds a
+    /// definition even when the file is absent (or the id negative) and its name then keeps the
+    /// default `"null"`, as it does for a definition without a name opcode.
+    ///
+    /// # Errors
+    /// Rejects malformed NPC definitions with exact source context.
+    pub fn script_npc_name<S: ReadOnlyBlobs>(self, cache: &Cache<S>, id: i32) -> Result<String> {
+        const DEFAULT_NAME: &str = "null";
+        let Ok(id) = u32::try_from(id) else {
+            return Ok(DEFAULT_NAME.into());
+        };
+        let advisory = self == CacheProfile::OpenRune240;
+        let bytes = cache.config_group_with(9, advisory, &mut Vec::new(), |files| {
+            Ok(files.get(&FileId(id)).cloned())
+        })?;
+        let Some(bytes) = bytes else {
+            return Ok(DEFAULT_NAME.into());
+        };
+        let definition = super::definitions::npc(
+            &bytes,
+            NpcDefinitionId::new(id),
+            Source {
+                index: IndexId(2),
+                group: Some(GroupId(9)),
+                file: Some(FileId(id)),
+            },
+        )?;
+        Ok(definition.name.unwrap_or_else(|| DEFAULT_NAME.into()))
     }
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]

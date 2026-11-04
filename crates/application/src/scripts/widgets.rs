@@ -20,11 +20,11 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
     c: &mut Context,
 ) -> Result<bool> {
     use Opcode::{
-        CcClearops, CcClone, CcCreate, CcCreateNested, CcCreateSibling, CcDelete, CcDeleteall,
-        CcFind, CcGetcolour, CcGetheight, CcGethide, CcGetid, CcGetinvcount, CcGetinvobject,
-        CcGetlayer, CcGetop, CcGetopbase, CcGetparam, CcGetscrollheight, CcGetscrollwidth,
-        CcGetscrollx, CcGetscrolly, CcGettext, CcGettrans, CcGetwidth, CcGetx, CcGety,
-        CcSet2Dangle, CcSetcolour, CcSetdragdeadtime, CcSetdragdeadzone, CcSetdraggable,
+        CcClearop, CcClearops, CcClone, CcCreate, CcCreateNested, CcCreateSibling, CcDelete,
+        CcDeleteall, CcFind, CcGetcolour, CcGetheight, CcGethide, CcGetid, CcGetinvcount,
+        CcGetinvobject, CcGetlayer, CcGetop, CcGetopbase, CcGetparam, CcGetscrollheight,
+        CcGetscrollwidth, CcGetscrollx, CcGetscrolly, CcGettext, CcGettrans, CcGetwidth, CcGetx,
+        CcGety, CcSet2Dangle, CcSetcolour, CcSetdragdeadtime, CcSetdragdeadzone, CcSetdraggable,
         CcSetdraggablebehavior, CcSetfill, CcSetgraphic, CcSetgraphicshadow, CcSethide,
         CcSetnoclickthrough, CcSetobject, CcSetobjectAlwaysNum, CcSetobjectNonum, CcSetop,
         CcSetopbase, CcSetoutline, CcSetparam, CcSetposition, CcSetscrollpos, CcSetscrollsize,
@@ -644,6 +644,23 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
                 actions[slot] = text;
             }
             CcClearops => runtime.actions = Some(Vec::new()),
+            // `classBB.method812`: clears operation `n` (1-based, 1..=10) of a widget that has an
+            // operation array, and does nothing otherwise.
+            CcClearop => {
+                let slot = s.int()?.wrapping_sub(1);
+                let live = runtime.actions.as_ref().unwrap_or(&widget.actions);
+                if let Ok(slot) = usize::try_from(slot)
+                    && slot <= 9
+                    && !live.is_empty()
+                {
+                    let actions = runtime
+                        .actions
+                        .get_or_insert_with(|| widget.actions.clone());
+                    if let Some(action) = actions.get_mut(slot) {
+                        action.clear();
+                    }
+                }
+            }
             CcSetopbase => runtime.data_text = Some(s.text()?),
             CcSettargetverb => {
                 s.text()?;

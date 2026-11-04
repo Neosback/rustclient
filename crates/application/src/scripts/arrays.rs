@@ -148,6 +148,13 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
             s.remove_array_range(&array, at, count)?;
             return Ok(true);
         }
+        Opcode::ArrayFillSequence => {
+            // Stack: first value, start index, count on top; the array is below them.
+            let [first, start, count] = s.ints()?;
+            let array = s.object()?;
+            s.fill_array_sequence(&array, first, 1, [start, count])?;
+            return Ok(true);
+        }
         Opcode::ArraySort => {
             // Stack: keys, companion (or null) on top.
             let companion = s.object()?;

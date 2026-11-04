@@ -201,7 +201,8 @@ as accepted gaps.
 First run (970 groups): 4 failed to load, 195 aborted a script, 1 had missing assets. Now:
 936 ok, 33 script-errors, 1 missing-assets, 0 load errors, 0 missing sprites or fonts anywhere.
 After the services slice below: 951 ok, 18 script-errors, 1 missing-assets. After the fill and head
-slice: 954 ok, 15 script-errors, 1 missing-assets.
+slice: 954 ok, 15 script-errors, 1 missing-assets. After the naming slice: 960 ok, 9 script-errors,
+1 missing-assets.
 
 Fixed from the first run:
 
@@ -244,10 +245,27 @@ Findings that need other work:
   widget's model source in `WidgetRuntime::head` (exclusive with an item or a model id); **no
   head model is drawn yet**, because model widgets are not painted at all. Model angles and zoom
   widened from `u16` to `i32` (the reference stores plain ints and a script passes -1).
-- Still aborting (15 groups, all in the baseline): unnamed opcodes 2310, 3129 (two groups), 3644,
-  4036, 6754, 7601 and 8011, dynamic widget type 12 (two groups), and database, child-index and
-  stack errors in scripts 8943, 4445, 7962, 8690 and 3100 that depend on rows or widgets a live
-  server supplies.
+- Naming slice (2026-11-03): the seven unnamed ops that aborted groups were read from the deob
+  handlers and named. `CC_CLEAROP`/`IF_CLEAROP` (1310, 2310: blank operation 1..10 of a widget that
+  has operations, `classBB.method812`), `CAM_SETKEYPANSPEEDS` (3129: stores the arrow-key camera
+  pan speeds `client.field842`/`field952`, read by `classZJ`; the pair is taken and dropped
+  because no camera pan consumes it), `FRIENDSCHAT_CLEARSORT`/`FRIENDSCHAT_APPLYSORT` (3644, 3655:
+  clear and run the member sort comparator, a no-op without a channel), `PARSEINT_OR_MINUSONE`
+  (4036: the reference's decimal reader, -1 for anything that is not a whole `i32`),
+  `NC_NAME` (6754: NPC definition name, `"null"` when absent, through
+  `CacheProfile::script_npc_name`) and `ARRAY_FILL_SEQUENCE` (8011: `first, first+1, ...` over a
+  clamped range of an int array, `Stacks::fill_array_sequence`). Names are ours, taken from what
+  each handler does, not from a reference table. The friends chat channel queries (`CLAN_GETCHAT*`,
+  `CLAN_ISSELF`, `CLAN_ISFRIEND`) now answer the no-channel state; `CLAN_KICKUSER`,
+  `CLAN_JOINCHAT` and `CLAN_LEAVECHAT` still need their outbound packets. Op 7601 stays
+  unhandled on purpose: the reference's handler for the whole 7600 range (`classNF.method7882`)
+  returns 2, its "not handled" result, so script 7166 cannot run there either. Unnamed and still
+  unhandled in the same handler: the friends chat sort ops 3645-3654 and 3657 and the friends and
+  ignore list ones (3628-3643, 3656), whose comparator keys are not yet named.
+- Still aborting (9 groups, all in the baseline): op 7601 (reference-unhandled), dynamic widget
+  type 12 (two groups), and database, child-index, stack and string-stack errors in scripts 8943,
+  4445, 7962, 8690, 3100 and 1451 that depend on rows, widgets or a serialised array string
+  a live server supplies (script 1451 writes past an array sized from an unset string).
 - Item 2360 (group 426) has no inventory model in the cache.
 
 ## Minimap (stage 4, first part)

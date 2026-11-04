@@ -103,3 +103,32 @@ fn arrays_are_bounded_and_typed() {
     assert!(s.insert_array(&big, 0, ScriptValue::Int(1)).is_err());
     assert!(s.resize_array(&big, 5001).is_err());
 }
+
+#[test]
+fn fill_sequence_counts_up_inside_the_clamped_range() {
+    let mut s = Stacks::default();
+    let array = ints(&mut s, &[9; 6]);
+    // Plain range, then a start below zero, a count that runs past the end, and a negative one.
+    s.fill_array_sequence(&array, 10, 1, [1, 3]).unwrap();
+    assert_eq!(contents(&mut s, &array), [9, 10, 11, 12, 9, 9]);
+    s.fill_array_sequence(&array, 0, 5, [-4, 2]).unwrap();
+    assert_eq!(contents(&mut s, &array), [0, 5, 11, 12, 9, 9]);
+    s.fill_array_sequence(&array, 100, 1, [4, 50]).unwrap();
+    assert_eq!(contents(&mut s, &array), [0, 5, 11, 12, 100, 101]);
+    s.fill_array_sequence(&array, 7, -1, [3, -1]).unwrap();
+    assert_eq!(contents(&mut s, &array), [0, 5, 11, 7, 6, 5]);
+    // A start beyond the end writes nothing.
+    s.fill_array_sequence(&array, 1, 1, [6, 2]).unwrap();
+    assert_eq!(contents(&mut s, &array), [0, 5, 11, 7, 6, 5]);
+}
+
+#[test]
+fn fill_sequence_rejects_null_read_only_and_text_arrays() {
+    let mut s = Stacks::default();
+    assert!(s.fill_array_sequence(&Object::Null, 0, 1, [0, 1]).is_err());
+    let text = s.new_array(true, 0, 2).unwrap();
+    assert!(s.fill_array_sequence(&text, 0, 1, [0, 1]).is_err());
+    let frozen = ints(&mut s, &[1, 2]);
+    s.freeze_array(&frozen);
+    assert!(s.fill_array_sequence(&frozen, 0, 1, [0, 2]).is_err());
+}

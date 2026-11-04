@@ -465,8 +465,22 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
             Some(entry.map_or(-1, u32::cast_signed))
         }
 
-        Opcode::DiscardMobileOffsets => {
+        // `DiscardMobileOffsets` drops its pair outright. `CamSetkeypanspeeds` (`classKU.method6609`)
+        // stores the pair as the arrow-key camera pan speeds, plain and with the modifier held
+        // (`client.field842`/`field952`, read by `classZJ`); no camera pan consumes them here yet.
+        Opcode::DiscardMobileOffsets | Opcode::CamSetkeypanspeeds => {
             s.ints::<2>()?;
+            None
+        }
+        // `classOY.method8858`: the definition's name, `"null"` when it has none or is absent.
+        Opcode::NcName => {
+            let id = s.int()?;
+            let name = h
+                .resources
+                .profile
+                .script_npc_name(&h.resources.cache, id)
+                .map_err(|e| e.to_string())?;
+            s.push_object(ScriptValue::Text(name));
             None
         }
         // Deob classTK.method10981 only sets the disconnect-vs-reconnect hint.
@@ -1650,5 +1664,32 @@ mod tests {
             )
             .is_err()
         );
+    }
+
+    #[test]
+    fn camera_key_speeds_take_their_pair_and_leave_nothing() {
+        let (mut scripts, mut state) = (scripts(), state());
+        let out = run(
+            &mut scripts,
+            &mut state,
+            Opcode::CamSetkeypanspeeds,
+            &[3, 9],
+        )
+        .unwrap();
+        assert!(out.is_empty());
+        assert!(run(&mut scripts, &mut state, Opcode::CamSetkeypanspeeds, &[3]).is_err());
+    }
+
+    #[test]
+    fn a_negative_npc_id_names_the_default_definition() {
+        let (mut scripts, mut state) = (scripts(), state());
+        let mut stacks = Stacks::default();
+        stacks.integers.push(-1);
+        let mut host = ScriptHost {
+            resources: &mut scripts,
+            state: &mut state,
+        };
+        assert!(instruction(&mut host, Opcode::NcName, 0, &mut stacks).unwrap());
+        assert_eq!(stacks.text().unwrap(), "null");
     }
 }

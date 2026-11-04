@@ -592,3 +592,64 @@ fn fill_and_head_ops_are_runtime_overrides_that_reset_with_the_group() {
         .unwrap();
     assert!(!state.interfaces().runtime().contains_key(&address));
 }
+
+#[test]
+fn clearing_one_operation_blanks_only_that_one_slot() {
+    let mut scripts = test_support::scripts();
+    let mut state = GameState::new();
+    let id = WidgetId::new(InterfaceId::new(1), 0);
+    let mut widget = component(id);
+    widget.actions = vec!["Use".into(), "Drop".into(), "Examine".into()];
+    scripts.interfaces.insert(
+        id.interface,
+        InterfaceDefinition::from_widgets(id.interface, vec![widget]).unwrap(),
+    );
+    state
+        .apply_operation(SemanticOperation::BeginSession {
+            revision: Revision::with_subrevision(240, 2),
+        })
+        .unwrap();
+    state
+        .apply_operation(SemanticOperation::Interface(InterfaceUpdate::SetRoot(
+            Some(id.interface),
+        )))
+        .unwrap();
+    let address = WidgetAddress::component(id);
+    let mut context = Context {
+        active: [Some(address); 2],
+        ..Context::default()
+    };
+    let mut clear = |scripts: &mut _, state: &mut GameState, slot: i32| {
+        let mut stacks = Stacks::default();
+        stacks.integers = vec![slot];
+        widgets::instruction(
+            &mut ScriptHost {
+                resources: scripts,
+                state,
+            },
+            Opcode::CcClearop,
+            0,
+            &mut stacks,
+            &mut context,
+        )
+        .unwrap();
+    };
+    // Slots outside 1..=10 leave the widget's own operations alone.
+    for slot in [0, 11, -3] {
+        clear(&mut scripts, &mut state, slot);
+    }
+    assert!(
+        state
+            .interfaces()
+            .runtime()
+            .get(&address)
+            .is_none_or(|runtime| runtime.actions.is_none())
+    );
+    clear(&mut scripts, &mut state, 2);
+    // A slot past the stored operations has nothing to clear.
+    clear(&mut scripts, &mut state, 9);
+    assert_eq!(
+        state.interfaces().runtime()[&address].actions.as_deref(),
+        Some(["Use".to_owned(), String::new(), "Examine".to_owned()].as_slice())
+    );
+}

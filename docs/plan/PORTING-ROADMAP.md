@@ -24,7 +24,7 @@ pass, so every "Done" row also appears in the live backlog below.
 | Chatbox prompts | CS2 3104/3105/3106/3115 queue `RESUME_P_*` packets 62/70/54/3 with the stock integer parse; packet 111 is encoded without a script op | `2ab7b78a` |
 | UI atlas | Tallest-first packing and growth 2048 to 4096 within device limits; one oversized widget-asset batch no longer fails every later request | `c8b4db66` |
 | Settings list builders | Minimap zoom ops decode from real cache scripts (opcode table was unsorted), `Mes`, `TEXT_SWITCH`, `DEVICEOPTION_GETRANGE`, `STRINGVECTOR_*` and the text-input configuration ops are handled; no unsupported op remains in the builders' closure | `ca1cad46` |
-| Interface audit | `interface_audit` mounts all 970 groups of index 3 and checks a committed baseline: 954 ok, 15 script-error, 1 missing-assets, 0 load errors, 0 missing sprites or fonts | `8902c824`; [baseline](../reference/rs240-port/INTERFACE-AUDIT.tsv) |
+| Interface audit | `interface_audit` mounts all 970 groups of index 3 and checks a committed baseline: 960 ok, 9 script-error, 1 missing-assets, 0 load errors, 0 missing sprites or fonts | `8902c824`; [baseline](../reference/rs240-port/INTERFACE-AUDIT.tsv) |
 | Minimap | Zoom ops 7250-7254 change what is drawn and where clicks land; mapfunction icons; NPC and player dots | `6b8cdbc8` |
 | Plugins added | Tile Indicators, Minimap (wheel zoom, saved zoom, dot colors, hide), Ground Markers (Mark/Unmark through plugin-offered menu entries); API 0.2 gained, additively, `ui.minimap`, `ClientSnapshot` pointer/destination tiles and `PluginOutput::menu_offers` | `b38258e1`, `2e4563eb`, `eef04e4b`; ADR-0006 |
 | Scene load latency | Decoded textures, floors, kits and models shared across loads; startup cache warm-up on a `Prefetch` pool job; single-flight memo and config loads; cheaper texture fingerprint. First `load_world` 218 ms to about 30 ms once warmed; scene asset id and 23 captured frames unchanged | `657ba8d1`, `546f2ef4`, `3b30b99f` |
@@ -34,7 +34,7 @@ pass, so every "Done" row also appears in the live backlog below.
 
 | Area | State | What is missing | Owner row |
 | --- | --- | --- | --- |
-| Interface host | Partial | 15 audit groups still abort (unnamed 2310/3129/3644/4036/6754/7601/8011, dynamic widget type 12, five scripts that need server rows); chat heads are recorded on the widget but not drawn, as no model widget is painted; stock market, ignore, clan and world-list queries answer their unloaded state until packets fill a `GameState` owner; interactive text-input fields (`TEXT-FIELD-WIDGET`); translucent models (`MODEL-TRANSPARENCY`); widget mutation packets; harness fixtures for varps, inventories and friends | scripts, widgets, widget-mutations |
+| Interface host | Partial | 9 audit groups still abort (op 7601, which the reference does not handle either; dynamic widget type 12; six scripts that need server rows or a varcstr a session sets); the friends chat sort family 3645-3654 and 3657 is unnamed and unhandled (no channel exists to sort), as are 3628-3643 and 3656 for the friends and ignore lists; chat heads are recorded on the widget but not drawn, as no model widget is painted; stock market, ignore, friends chat channel and world-list queries answer their unloaded state until packets fill a `GameState` owner; interactive text-input fields (`TEXT-FIELD-WIDGET`); translucent models (`MODEL-TRANSPARENCY`); widget mutation packets; harness fixtures for varps, inventories and friends | scripts, widgets, widget-mutations |
 | Minimap | Partial | Item, friend, team, friends-chat and clan dots (need ground items and social state in `GameState`); rebuild on scenery change; HD minimap has no source in `references/` | minimap |
 | World map | Partial | Alignment and wrapping, hover and element menus, smoothing, flash, staff shortcut; button-sprite failure cause not established | world-map |
 | Load pipeline | Partial | Parallel seam merge and emit (about 63 ms, serial); chunked vertex packing; minimap build off the UI thread; cancellation between phases; map-square decode cache; instances, extended bounds, world views | normal-maps, instances, worldviews |
@@ -235,7 +235,7 @@ only after source correctness and CPU/GPU/latency/memory measurements show a ben
 **Owners:** GameState interfaces, client-script, application host and game-ui.
 **Contract:** [SPEC-0025](../specs/SPEC-0025-interface-script-host.md), scoped acceptance.
 
-**Status: partial.** Chatbox prompts answer the server; the settings list builders run without unsupported ops; `interface_audit` baselines 954 of 970 groups clean (15 script-error, 1 missing-assets). Open: the 15 groups, text-input widgets, translucent models, widget mutation packets, listener lifetime.
+**Status: partial.** Chatbox prompts answer the server; the settings list builders run without unsupported ops; `interface_audit` baselines 960 of 970 groups clean (9 script-error, 1 missing-assets). Open: the 9 groups, text-input widgets, translucent models, widget mutation packets, listener lifetime.
 
 Keep IF1/CS1, indexed item search, deferred operations, listener indexing and retained
 paint foundations. Complete widget mutation packets, inventory bindings/model widgets,
