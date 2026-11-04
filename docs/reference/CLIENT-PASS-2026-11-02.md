@@ -364,3 +364,36 @@ nothing about steady-state frame time.
 - **Open, with numbers.** The probe's first run measured 296 MB peak RSS and every later run
   (including the A/B without my change) 412 MB; I did not find why, so treat the absolute RSS as
   unreliable between sessions and compare only A/B pairs.
+
+## Frame-time tails (roadmap row 2, first slice)
+
+Offline, release build, `scene_probe` on the 240 cache for the 104x104 window at (3168, 3168).
+The machine was not quiet (load average 4.8-5.9 from unrelated desktop processes), so these are
+stage attributions on a busy host, not a valid baseline, and the live frame trace is NOT-RUN.
+
+- **Worker stage split of `build_mesh` (temporary timing, removed again):** terrain 12-13 ms,
+  static locations 107-119 ms, dynamic locations 4.5-4.8 ms. Inside the static pass: effective
+  locations 0.1-0.2 ms, decoration plan 0.9-1.0 ms, per-location preparation 55-58 ms (8,285
+  jobs, pure), **seam merge 30.5-31.1 ms**, emit 21-28 ms.
+- **Done: seam merge now builds each model's vertex position table once.** `seams::merge` rebuilt a
+  `BTreeMap` of the right-hand model's positions for every neighbouring pair; it now keeps one
+  sorted `(position, vertex)` table per model, built on first use, and binary searches it. The
+  match order (ascending vertex index per position) is unchanged. Seam merge fell from
+  30.5-31.1 ms to 10.1-12.4 ms (four runs). The mesh vertex bytes (static and dynamic) hash
+  identically before and after (`eae2a92db161c5a8`, a temporary hash over `GeometryData.vertices`,
+  not committed). New contract test `smooth_models_on_neighbouring_tiles_light_their_shared_corner_
+  identically` shows a merged seam lights both models' shared corner alike and an unmerged one does
+  not.
+- **Tried and dropped: reserving the vertex buffer before emit.** Emit measured 26-36 ms against
+  21-28 ms without it, so the doubling copies are not the cost.
+- **Measured, not changed: minimap build on the event loop.** `build_scene_minimap` takes
+  p50 2.68 ms, p95 2.88 ms (20 builds, `scene_probe --performance` now prints it). It runs on the
+  event loop at scene arrival and on a plane change. That is a few milliseconds at rare events, so
+  moving it to the pool is smaller than the other open items and was not done.
+- **Not changed:** per-location preparation (55 ms) is pure and parallelisable, but
+  `locations::build` is documented to run on a pool worker without nested jobs; splitting it
+  across pool workers needs a scheduling design (SPEC-0024 forbids scoped or nested threads) and
+  is the largest remaining worker-side item, then emit (21-28 ms) and terrain (12-13 ms).
+- **Still NOT-RUN:** a frame trace of the main thread (per-cycle plugin and entity work, widget
+  and inventory granularity), cancellation between phases, chunked vertex packing, the quiet-host
+  baseline, and every live observation.

@@ -4,6 +4,23 @@
 use crate::locations::PreparedModel;
 use std::collections::{BTreeMap, BTreeSet};
 
+/// A model's lit vertices as `(position, vertex index)`, sorted so equal positions are one run
+/// in ascending index order. Positions and vertex counts are fixed once a model is prepared
+/// (merging only writes `merged` and face render types), so one table serves every pairing.
+type Positions = Vec<((i32, i32, i32), usize)>;
+
+fn positions_of(model: &PreparedModel) -> Positions {
+    let mut positions: Positions = model
+        .points
+        .iter()
+        .enumerate()
+        .filter(|(index, _)| model.normals.vertices[*index].count != 0)
+        .map(|(index, p)| ((p.x, p.y, p.z), index))
+        .collect();
+    positions.sort_unstable();
+    positions
+}
+
 fn footprint(model: &PreparedModel) -> [u8; 2] {
     if matches!(model.loc.shape, 10 | 11) {
         model.size
@@ -35,7 +52,9 @@ pub(crate) fn merge(models: &mut [PreparedModel]) -> crate::Result<()> {
             }
         }
     }
-    let mut positions = BTreeMap::<(i32, i32, i32), Vec<usize>>::new();
+    let mut positions = std::iter::repeat_with(|| None)
+        .take(models.len())
+        .collect::<Vec<Option<Positions>>>();
     let mut matched_a = Vec::new();
     let mut matched_b = Vec::new();
     let mut candidates = BTreeSet::new();
@@ -67,11 +86,12 @@ pub(crate) fn merge(models: &mut [PreparedModel]) -> crate::Result<()> {
                 continue;
             };
             let (left, right) = models.split_at_mut(b);
+            let table = positions[b].get_or_insert_with(|| positions_of(&right[0]));
             pair(
                 &mut left[a],
                 &mut right[0],
                 hide,
-                &mut positions,
+                table,
                 &mut matched_a,
                 &mut matched_b,
             );
@@ -117,16 +137,10 @@ fn pair(
     a: &mut PreparedModel,
     b: &mut PreparedModel,
     hide: bool,
-    positions: &mut BTreeMap<(i32, i32, i32), Vec<usize>>,
+    positions: &Positions,
     matched_a: &mut Vec<bool>,
     matched_b: &mut Vec<bool>,
 ) {
-    positions.clear();
-    for (index, p) in b.points.iter().enumerate() {
-        if b.normals.vertices[index].count != 0 {
-            positions.entry((p.x, p.y, p.z)).or_default().push(index);
-        }
-    }
     matched_a.clear();
     matched_a.resize(a.points.len(), false);
     matched_b.clear();
@@ -136,18 +150,21 @@ fn pair(
         if a.normals.vertices[i].count == 0 {
             continue;
         }
-        if let Some(indices) = positions.get(&(p.x, p.y, p.z)) {
-            for &j in indices {
-                a.merged[i]
-                    .get_or_insert(a.normals.vertices[i])
-                    .add(b.normals.vertices[j]);
-                b.merged[j]
-                    .get_or_insert(b.normals.vertices[j])
-                    .add(a.normals.vertices[i]);
-                matched_a[i] = true;
-                matched_b[j] = true;
-                matches += 1;
+        let key = (p.x, p.y, p.z);
+        let first = positions.partition_point(|(position, _)| *position < key);
+        for &(position, j) in &positions[first..] {
+            if position != key {
+                break;
             }
+            a.merged[i]
+                .get_or_insert(a.normals.vertices[i])
+                .add(b.normals.vertices[j]);
+            b.merged[j]
+                .get_or_insert(b.normals.vertices[j])
+                .add(a.normals.vertices[i]);
+            matched_a[i] = true;
+            matched_b[j] = true;
+            matches += 1;
         }
     }
     if hide && matches >= 3 {

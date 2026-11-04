@@ -1207,3 +1207,57 @@ fn authored_zero_scale_collapses_the_axis_without_placement_or_depth_corrections
     let point = locations::transform(ModelPoint::new(128, -256, 384), &def, 10, 0, false).unwrap();
     assert_eq!(point, ModelPoint::new(1, -2, 0));
 }
+
+#[test]
+fn smooth_models_on_neighbouring_tiles_light_their_shared_corner_identically() {
+    // A flat floor plate and an upright plate meet at one corner. Merged seam normals give
+    // both models the same summed normal there, so the corner is lit alike; unmerged, the two
+    // face directions light it differently.
+    let corner_colours = |upright_is_smooth: bool| {
+        let mut a = assets();
+        for (id, points, smooth) in [
+            (1, [(-64, 0, -64), (64, 0, -64), (64, 0, 64)], true),
+            (
+                2,
+                [(-64, 128, 64), (-64, 0, 64), (64, 128, 64)],
+                upright_is_smooth,
+            ),
+        ] {
+            let mut object = definition();
+            object.id = ObjectDefinitionId::new(id);
+            object.models = vec![ModelReference {
+                id: ModelId::new(id),
+                shape: None,
+            }];
+            object.recolors.clear();
+            object.non_flat_shading = smooth;
+            a.objects.insert(ObjectDefinitionId::new(id), object);
+            let mut model = triangle(points);
+            // Mid-lightness grey, so shading is not clamped away.
+            model.faces[0].color = 64;
+            a.models.insert(ModelId::new(id), model);
+        }
+        let mut upright = located(2, 10);
+        upright.tile = WorldTile::new(1, 0, Plane::MIN);
+        let mut plate = located(1, 10);
+        plate.tile = WorldTile::new(0, 0, Plane::MIN);
+        a.squares[0].locations = vec![plate, upright];
+        let a = scene(a);
+        let mesh = build_mesh(&a, a.descriptor(), WorldTile::new(0, 0, Plane::MIN)).unwrap();
+        // Tile 0 centres at 64 and tile 1 at 192, and ground there is 128 units higher, so
+        // the upright plate is lowered to meet the floor plate at (128, -64, 128).
+        let colours: Vec<_> = mesh
+            .geometry
+            .vertices
+            .iter()
+            .filter(|v| v.position[..3] == [128, -64, 128])
+            .map(|v| v.abhsl)
+            .collect();
+        assert_eq!(colours.len(), 2, "both plates reach the shared corner");
+        colours
+    };
+    let merged = corner_colours(true);
+    assert_eq!(merged[0], merged[1]);
+    let separate = corner_colours(false);
+    assert_ne!(separate[0], separate[1]);
+}

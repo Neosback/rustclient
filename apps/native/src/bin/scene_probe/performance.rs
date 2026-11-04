@@ -1,8 +1,24 @@
 //! Explicit live-cache resource/query diagnostic, requiring no server or account.
-use rustclient_scene::{ScenePickIndex, SceneVisibility, WorldMesh};
+use rustclient_model::Plane;
+use rustclient_scene::{SceneAsset, ScenePickIndex, SceneVisibility, WorldMesh};
 use std::time::Instant;
 
-pub(super) fn run(mesh: &WorldMesh) -> Result<(), Box<dyn std::error::Error>> {
+pub(super) fn run(scene: &SceneAsset, mesh: &WorldMesh) -> Result<(), Box<dyn std::error::Error>> {
+    // The minimap is built on the event loop at scene arrival and on every plane change, so its
+    // cost is a frame-time tail whenever that happens.
+    let mut samples = (0..20)
+        .map(|_| {
+            let started = Instant::now();
+            let image = rustclient_scene::minimap::build_scene_minimap(scene, Plane::MIN);
+            std::hint::black_box(&image);
+            started.elapsed().as_secs_f64() * 1000.
+        })
+        .collect::<Vec<_>>();
+    samples.sort_by(f64::total_cmp);
+    println!(
+        "minimap build ms p50={:.3} p95={:.3} max={:.3} (20 builds)",
+        samples[10], samples[18], samples[19]
+    );
     let started = Instant::now();
     let index = ScenePickIndex::new(&mesh.geometry)?;
     println!(

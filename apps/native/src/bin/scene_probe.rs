@@ -197,7 +197,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
     if std::env::args().nth(2).as_deref() == Some("--performance") {
-        performance::run(&mesh)?;
+        performance::run(&scene, &mesh)?;
         return Ok(());
     }
     if let Some(path) = std::env::args().nth(2) {
