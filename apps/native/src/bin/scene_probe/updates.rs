@@ -290,7 +290,9 @@ fn visible_triangles(
         .collect();
     geometry
         .vertices
-        .chunks_exact(3)
+        .as_chunks::<3>()
+        .0
+        .iter()
         .enumerate()
         .filter(|(i, _)| !spans.iter().any(|r| r.contains(&(i * 3))))
         .map(|(_, triangle)| {
