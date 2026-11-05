@@ -73,6 +73,13 @@ process; that model is rejected by invariants 1 and 4.
   `MenuEdit::Swap { first, second }` is added, additively within 0.2, so Menu Entry Swapper's exchange semantics port
   one to one; WIT `menu-edit` gains `swap(tuple<u32, u32>)`. `ScriptPostFired(script id)` is emitted once per finished
   script invocation, failed ones included, as the stock interpreter catches failures inside `runScript`.
+- Ground items and drawn outputs (2026-11-05), additive within 0.2: capability `game.read.ground_items`,
+  `GameSnapshot::ground_items` (`GroundItemSnapshot` with the definition's name, value and stackability) read through
+  `PluginCall::ground_items`, and `ItemSpawned`, `ItemDespawned` and `ItemQuantityChanged` derived from consecutive
+  snapshots (an unchanged id sequence on a tile is an in-place count). `OverlayCommand::TileText` draws text centred
+  above a tile (`Perspective.getCanvasTextLocation`), `InfoBox::sprite` names the box image. The native shell now draws
+  info boxes (`InfoBoxOverlay` layout) and `MinimapDot` commands (the `renderMinimapLocation` dot). Camera target and
+  zoom-limit commands still have no consumer.
 
 ## Rejected
 

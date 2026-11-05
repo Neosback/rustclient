@@ -34,6 +34,7 @@ pub fn project(
             OverlayCommand::Tile { .. }
                 | OverlayCommand::ActorHull { .. }
                 | OverlayCommand::ActorText { .. }
+                | OverlayCommand::TileText { .. }
         )
     }) {
         return;
@@ -103,20 +104,60 @@ pub fn project(
                     HorizontalAlign::Center => edge - (width / 2.).floor(),
                     HorizontalAlign::Right => edge - width,
                 };
-                draw_text(
-                    frame,
-                    assets,
-                    text,
-                    left + 1.,
-                    baseline + 1.,
-                    BLACK,
-                    view.clip,
-                );
-                draw_text(frame, assets, text, left, baseline, color(*argb), view.clip);
+                shadowed(frame, assets, text, (left, baseline), *argb, view.clip);
+            }
+            OverlayCommand::TileText {
+                tile,
+                text,
+                z_offset,
+                y_offset,
+                argb,
+            } => {
+                if let Some(point) = tile_centre(&view, loaded, tile, *z_offset, visibility) {
+                    centred_label(
+                        frame,
+                        assets,
+                        text,
+                        (point.0, point.1 + y_offset),
+                        *argb,
+                        view.clip,
+                    );
+                }
             }
             _ => {}
         }
     }
+}
+
+/// Shadowed text centred on `x` with its baseline at `y` (`Perspective.getCanvasTextLocation`).
+fn centred_label(
+    frame: &mut UiFrame,
+    assets: &TitleAssets,
+    text: &str,
+    (x, y): (i32, i32),
+    argb: u32,
+    clip: Rect,
+) {
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "screen coordinates are bounded by the viewport"
+    )]
+    let (x, y) = (x as f32, y as f32);
+    let left = x - (text_width(assets, text) / 2.).floor();
+    shadowed(frame, assets, text, (left, y), argb, clip);
+}
+
+/// Text with the one-pixel black shadow `TextComponent` draws under it.
+fn shadowed(
+    frame: &mut UiFrame,
+    assets: &TitleAssets,
+    text: &str,
+    (left, baseline): (f32, f32),
+    argb: u32,
+    clip: Rect,
+) {
+    draw_text(frame, assets, text, left + 1., baseline + 1., BLACK, clip);
+    draw_text(frame, assets, text, left, baseline, color(argb), clip);
 }
 
 /// The posed model anchor of `actor`, if it is in the scene and admitted by the current scene visibility.
@@ -190,6 +231,31 @@ fn tile_polygon(
             screen(view, [fine[0], height, fine[1]])
         })
         .collect()
+}
+
+/// The centre of `tile` at its ground height, raised by `z_offset`, on screen.
+fn tile_centre(
+    view: &WorldView,
+    loaded: &rustclient_application::LoadedScene,
+    tile: &rustclient_plugin_api::WorldPoint,
+    z_offset: i32,
+    visibility: &rustclient_scene::SceneVisibility,
+) -> Option<(i32, i32)> {
+    if tile.plane > visibility.top_level
+        || !visibility.shows_tile(loaded.asset.draw_tile([tile.x, tile.y]))
+    {
+        return None;
+    }
+    let origin = loaded.asset.descriptor().origin();
+    let fine = [
+        (tile.x - origin.x) * 128 + 64,
+        (tile.y - origin.y) * 128 + 64,
+    ];
+    let height = loaded
+        .asset
+        .ground_height(Plane::new(tile.plane)?, fine)
+        .ok()?;
+    screen(view, [fine[0], height - z_offset, fine[1]])
 }
 
 /// The lowest point of the actor's posed model (largest scene y, since y points up negatively).

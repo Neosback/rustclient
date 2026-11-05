@@ -74,6 +74,70 @@ const NPC_EVENTS: EventInterest = ACTOR_CHANGES
     .with(GameEventKind::NpcDespawned)
     .with(GameEventKind::NpcChanged);
 
+const GROUND_ITEM_EVENTS: EventInterest = EventInterest::one(GameEventKind::ItemSpawned)
+    .with(GameEventKind::ItemDespawned)
+    .with(GameEventKind::ItemQuantityChanged);
+
+/// Ground item events per tile. A pile whose ids are unchanged position by position changed
+/// quantities in place (`OBJ_COUNT` keeps the item's deque position); otherwise items are matched
+/// by id and quantity, oldest first, and the unmatched ones despawn or spawn. Despawns come
+/// before spawns, tile by tile in ascending order.
+fn ground_items(prev: &GameSnapshot, next: &GameSnapshot, events: &mut Events) {
+    use rustclient_plugin_api::GroundItemSnapshot;
+    fn by_tile(items: &[GroundItemSnapshot]) -> BTreeMap<(u8, i32, i32), Vec<&GroundItemSnapshot>> {
+        let mut out: BTreeMap<_, Vec<_>> = BTreeMap::new();
+        for item in items {
+            out.entry((item.tile.plane, item.tile.x, item.tile.y))
+                .or_default()
+                .push(item);
+        }
+        out
+    }
+    if prev.ground_items == next.ground_items {
+        return;
+    }
+    let (old, new) = (by_tile(&prev.ground_items), by_tile(&next.ground_items));
+    let tiles: BTreeSet<_> = old.keys().chain(new.keys()).copied().collect();
+    let empty = Vec::new();
+    for tile in tiles {
+        let (before, after) = (
+            old.get(&tile).unwrap_or(&empty),
+            new.get(&tile).unwrap_or(&empty),
+        );
+        if before.len() == after.len() && before.iter().zip(after).all(|(a, b)| a.id == b.id) {
+            for (a, b) in before.iter().zip(after) {
+                if a.quantity != b.quantity {
+                    events.emit(GameEventKind::ItemQuantityChanged, || {
+                        GameEvent::ItemQuantityChanged {
+                            item: Box::new((*b).clone()),
+                            old: a.quantity,
+                        }
+                    });
+                }
+            }
+            continue;
+        }
+        let mut unmatched: Vec<Option<&GroundItemSnapshot>> =
+            after.iter().copied().map(Some).collect();
+        for item in before {
+            match unmatched
+                .iter_mut()
+                .find(|slot| slot.is_some_and(|s| s.id == item.id && s.quantity == item.quantity))
+            {
+                Some(slot) => *slot = None,
+                None => events.emit(GameEventKind::ItemDespawned, || {
+                    GameEvent::ItemDespawned(Box::new((*item).clone()))
+                }),
+            }
+        }
+        for item in unmatched.into_iter().flatten() {
+            events.emit(GameEventKind::ItemSpawned, || {
+                GameEvent::ItemSpawned(Box::new(item.clone()))
+            });
+        }
+    }
+}
+
 pub(crate) fn derive_filtered(
     prev: &GameSnapshot,
     next: &GameSnapshot,
@@ -137,6 +201,9 @@ pub(crate) fn derive_filtered(
     }
     if wants(Capability::GameReadChat) && (kinds.contains(GameEventKind::ChatMessage)) {
         chat(prev, next, &mut events);
+    }
+    if wants(Capability::GameReadGroundItems) && kinds.intersects(GROUND_ITEM_EVENTS) {
+        ground_items(prev, next, &mut events);
     }
     events.values
 }

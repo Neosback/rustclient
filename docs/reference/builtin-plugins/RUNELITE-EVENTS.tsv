@@ -34,9 +34,9 @@ GroundObjectSpawned		absent
 HitsplatApplied	HitsplatApplied	declared-source-absent	ActorState.hitsplats is always empty: no hitsplat state in GameState
 InteractingChanged	InteractingChanged	declared-source-absent	ActorState.interacting is always None: no target-facing state in GameState
 ItemContainerChanged	ItemContainerChanged	emitted	
-ItemDespawned		absent	
-ItemQuantityChanged		absent	
-ItemSpawned		absent	
+ItemDespawned	ItemDespawned	emitted	
+ItemQuantityChanged	ItemQuantityChanged	emitted	
+ItemSpawned	ItemSpawned	emitted	
 MenuEntryAdded	MenuEntryAdded	emitted	
 MenuOpened	MenuOpened	emitted	
 MenuOptionClicked	MenuOptionClicked	emitted	

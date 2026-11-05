@@ -99,7 +99,9 @@ containers, widgets, chat. The projector (`rustclient-plugin-bridge`) retains on
 **Output.** `PluginOutput` is level-triggered per update: overlay primitives (layered), notifications, info boxes, menu
 edits, entity visibility, sprite overrides, camera commands, scene flags, stretch. The host validates every item
 against grants and bounds (`plugin_api::limits`), merges across plugins in load order and passes the result to the
-owning subsystem. Plugins never call the renderer or mutate `GameState`.
+owning subsystem. The native shell draws screen, world (`Tile`, `ActorHull`, `ActorText`, `TileText`) and minimap
+(`MinimapDot`) overlay commands and info boxes; camera target and zoom-limit commands are validated but not applied.
+Ground items are readable with `game.read.ground_items` (SPEC-0029). Plugins never call the renderer or mutate `GameState`.
 
 **Capabilities.** Each query, event class and output kind maps to one capability and is checked at the host boundary:
 `game.read.{players,npcs,inventory,widgets,vars,chat,skills,client}`, `ui.{overlay,menu.swap,entities.hide,

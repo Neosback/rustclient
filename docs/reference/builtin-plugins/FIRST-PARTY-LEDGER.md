@@ -21,8 +21,8 @@ exact evidence below remains bounded to its recorded implementation.
 
 ## Port status
 
-Catalog reconciliation, 2026-11-05: 131 slots comprise 17 partial modules, one
-required GPU service, one schema-only entry and 112 not-started entries. The last
+Catalog reconciliation, 2026-11-05: 131 slots comprise 18 partial modules, one
+required GPU service, one schema-only entry and 111 not-started entries. The last
 two groups total 114 without executable registration. Counts describe registration,
 not feature/source-test completeness. Current missing dependencies and validation
 are in the continuation sections below and [the audit](../rs240-port/CURRENT-AUDIT.md).
@@ -42,6 +42,7 @@ Older per-option results retain their recorded scope; they do not override that 
 | minimap | partial | saved zoom applied only while `zoom` is on; wheel zoom hit area is the minimap rectangle |
 | playerindicators | partial | relationship lists (party, friends, chat, clan, team), rank icons, coloured menu, minimap names |
 | interfacestyles | partial | widget overrides (2005 side stones), HD health bars, menu options, cross sprites, always-stack |
+| grounditems | partial | GE prices (price service), menu recolouring and deprioritising, tile highlights, hotkey, notifications, loot beams, despawn timers, per-item colours |
 | menuentryswapper | partial | built-in world swaps only: custom left/shift-click swaps, Shift-dependent swaps, hint-arrow exemption, dead NPC removal, bank/UI swaps; widget menus do not reach the menu stage |
 | devtools | not-implemented | widget, variable and script views are not exposed to plugins |
 | xptracker | partial | local core/overlay and retained totals/reset panel exist; full source panel/menu, stable account persistence and real-time clock remain open; external sync deferred |
@@ -260,6 +261,29 @@ Known differences:
 
 - The local-position tile styles draw at the server tile because the snapshot carries no sub-tile position, so they equal the true-tile
   styles while an NPC stands still and lag by up to a tile while it walks.
+
+## grounditems
+
+Sources: `plugins/grounditems/{GroundItemsPlugin,GroundItemsOverlay,GroundItemsConfig,ItemList,ItemThreshold}.java`,
+`util/QuantityFormatter.java`. State: SPEC-0029; projection `plugin-bridge::project::ground_items`; drawing
+`apps/native/src/world_overlays.rs` (`TileText`).
+
+| Source | Rust owner | Implemented | Verified |
+| --- | --- | --- | --- |
+| `collectedGroundItems`: per tile and id, quantities summed; within `MAX_DISTANCE` 2500 of the player | `first-party-plugins::grounditems` | yes | harness: merge, distance |
+| `ItemList`/`ItemThreshold`: CSV names, `*` wildcards, `<n`/`>n`; exact beats wildcard, highlight beats hide | `Threshold`, `matches`, `wildcard` | yes | unit |
+| `getHighlighted`/`isHidden`/`getItemColor`: value tiers (insane, high, medium, low), hide under value, untradeable rule | `label_colour` | yes, GE value 0 | harness: highlight list, tier colour, default hidden list |
+| Ownership filter (`ALL`, `TAKEABLE`, `DROPS`) with the `IRONMAN` varbit | `GroundItems::output` | yes | not tested |
+| Label `name (qty) (HA: n gp)`, price modes, coins without price, `QuantityFormatter` | `GroundItems::output`, `stack_size` | yes, HA only | unit, harness |
+| Text 20 units above the ground, labels on a tile 15 px apart | `OverlayCommand::TileText` | yes | harness: offsets; not seen on screen |
+
+Known differences:
+
+- Grand Exchange prices need the price service, so GE values are 0: GE price text never shows and the value tiers and
+  hide rule use high alchemy values only.
+- Ground item piles are not drawn (SPEC-0029), so labels float above an empty tile.
+- Menu recolouring and deprioritising, tile highlights, the hotkey, notifications, loot beams, despawn timers and per-item
+  colours are not ported. No row has been compared with the live reference client.
 
 ## menuentryswapper
 

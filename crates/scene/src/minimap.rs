@@ -576,6 +576,29 @@ fn recolored_dot(
     })
 }
 
+/// The dot `OverlayUtil.renderMinimapLocation` draws for a plugin: the same 4x5 replacement
+/// shape (a black disc under a coloured one, one pixel higher) in `argb`'s colour.
+#[must_use]
+pub fn plugin_dot(argb: u32) -> Option<rustclient_cache::Sprite> {
+    let template = rustclient_cache::Sprite {
+        id: rustclient_model::SpriteId::new(0),
+        frame: 0,
+        canvas: [0, 0],
+        offset: [0, 0],
+        image: rustclient_cache::Image::new(
+            1,
+            1,
+            vec![0; 4],
+            rustclient_cache::Source::group(
+                rustclient_cache::IndexId(8),
+                rustclient_cache::GroupId(0),
+            ),
+        )
+        .ok()?,
+    };
+    recolored_dot(&template, argb)
+}
+
 /// Draw `dots` over a composed minimap (`mask_width * mask_height` RGBA bytes).
 ///
 /// Each dot is placed by the inverse of the rotation `compose_minimap` samples through, then
@@ -758,6 +781,17 @@ pub fn compose_compass(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn plugin_dots_use_the_runelite_shape_in_the_requested_colour() {
+        let dot = plugin_dot(0xff12_3456).unwrap();
+        assert_eq!((dot.image.width(), dot.canvas), (4, [4, 5]));
+        let pixels = dot.image.pixels();
+        // Row 0: transparent corners around the coloured top of the disc.
+        assert_eq!(&pixels[..8], &[0, 0, 0, 0, 0x12, 0x34, 0x56, 255]);
+        // Row 4: the near-black rim of the shadow disc.
+        assert_eq!(&pixels[(4 * 4 + 1) * 4..(4 * 4 + 2) * 4], &[0, 0, 1, 255]);
+    }
 
     fn opaque_mask(width: usize, height: usize) -> Vec<u8> {
         // Alpha zero is the visible span in the reference mask sprites.

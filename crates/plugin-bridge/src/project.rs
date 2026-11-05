@@ -49,6 +49,48 @@ pub struct Sources<'a> {
     pub varbits: Option<&'a BTreeMap<VarbitId, VarbitDefinition>>,
     /// Interface definitions for widget bounds and text.
     pub interfaces: Option<&'a BTreeMap<InterfaceId, InterfaceDefinition>>,
+    /// Item definition facts for ground items; `None` for an item whose definition is not
+    /// loaded yet.
+    pub items: Option<&'a dyn Fn(rustclient_model::ItemDefinitionId) -> Option<ItemFacts<'a>>>,
+}
+
+/// What a ground item snapshot needs from an item definition (`ItemComposition`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ItemFacts<'a> {
+    /// Name; a noted item's unnoted name.
+    pub name: Option<&'a str>,
+    /// Store value; a noted item's unnoted value.
+    pub cost: i32,
+    pub stackable: bool,
+    pub noted: bool,
+}
+
+/// Every ground item, by tile then pile order.
+pub(crate) fn ground_items<'a>(
+    state: &GameState,
+    items: Option<&'a dyn Fn(rustclient_model::ItemDefinitionId) -> Option<ItemFacts<'a>>>,
+) -> Vec<rustclient_plugin_api::GroundItemSnapshot> {
+    state
+        .ground_items()
+        .piles()
+        .flat_map(|(tile, pile)| {
+            pile.iter().map(move |item| {
+                let facts = items.and_then(|resolve| resolve(item.item));
+                rustclient_plugin_api::GroundItemSnapshot {
+                    tile: rustclient_plugin_api::WorldPoint::new(tile.x, tile.y, tile.plane.get()),
+                    id: item.item.get(),
+                    quantity: item.quantity,
+                    name: facts.and_then(|facts| facts.name).map(str::to_owned),
+                    cost: facts.map_or(0, |facts| facts.cost),
+                    stackable: facts.is_some_and(|facts| facts.stackable),
+                    noted: facts.is_some_and(|facts| facts.noted),
+                    ownership: item.ownership.0,
+                    public_tick: item.public_at.get(),
+                    despawn_tick: item.despawn_at.get(),
+                }
+            })
+        })
+        .collect()
 }
 
 /// Standard OSRS experience table: the level a given experience total reaches, capped at 99.

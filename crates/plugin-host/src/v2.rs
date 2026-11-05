@@ -242,6 +242,17 @@ impl<'a> PluginCall<'a> {
         Ok(self.snapshot().map_or(&[][..], |game| &game.widgets))
     }
 
+    /// Items on the ground, by tile then pile order. Requires `game.read.ground_items`.
+    ///
+    /// # Errors
+    /// [`CapabilityDenied`] when the grant is missing.
+    pub fn ground_items(
+        &mut self,
+    ) -> Result<&'a [rustclient_plugin_api::GroundItemSnapshot], CapabilityDenied> {
+        self.require(Capability::GameReadGroundItems)?;
+        Ok(self.snapshot().map_or(&[][..], |game| &game.ground_items))
+    }
+
     /// Retained chat lines. Requires `game.read.chat`.
     ///
     /// # Errors
@@ -475,7 +486,9 @@ pub(crate) fn validate(
     }
     output.overlay.truncate(limits::OVERLAY_COMMANDS);
     output.overlay.retain_mut(|item| match &mut item.command {
-        OverlayCommand::Text { text, .. } | OverlayCommand::ActorText { text, .. } => {
+        OverlayCommand::Text { text, .. }
+        | OverlayCommand::ActorText { text, .. }
+        | OverlayCommand::TileText { text, .. } => {
             truncate(text, limits::TEXT_BYTES);
             true
         }

@@ -28,7 +28,6 @@ pub(super) struct Plugins {
     last_frame: Frame,
     projector: Projector,
     output: HostOutput,
-    unsupported_reported: bool,
     /// Last configuration pushed to each first-party plugin, so unchanged ones are not re-sent.
     applied: BTreeMap<String, (PluginConfig, bool)>,
     pending: BTreeMap<String, (rustclient_plugin_api::PluginId, PluginConfig, bool)>,
@@ -108,7 +107,6 @@ impl Plugins {
                 last_frame: Frame::default(),
                 projector: Projector::new(),
                 output: HostOutput::default(),
-                unsupported_reported: false,
                 applied: BTreeMap::new(),
                 pending: BTreeMap::new(),
                 menu_clicks: Vec::new(),
@@ -157,7 +155,6 @@ impl Plugins {
             last_frame: Frame::default(),
             projector: Projector::new(),
             output: HostOutput::default(),
-            unsupported_reported: false,
             applied: BTreeMap::new(),
             pending: BTreeMap::new(),
             menu_clicks: Vec::new(),
@@ -439,7 +436,6 @@ impl Plugins {
                 px(i32::try_from(size.height).unwrap_or(i32::MAX)),
             )
         });
-        let mut skipped = false;
         for item in &self.output.overlay {
             match &item.command {
                 OverlayCommand::Text {
@@ -489,12 +485,94 @@ impl Plugins {
                 OverlayCommand::Line { from, to, argb } => {
                     draw_line(frame, canvas, *from, *to, *argb);
                 }
-                _ => skipped = true,
+                // World-anchored commands are projected by `world_overlays`; minimap dots are
+                // drawn into the minimap image.
+                OverlayCommand::Tile { .. }
+                | OverlayCommand::ActorHull { .. }
+                | OverlayCommand::ActorText { .. }
+                | OverlayCommand::TileText { .. }
+                | OverlayCommand::MinimapDot { .. } => {}
             }
         }
-        if skipped && !self.unsupported_reported {
-            self.unsupported_reported = true;
-            eprintln!("plugin overlay: world-anchored primitives are not drawn by this client yet");
+        self.draw_info_boxes(assets, sprites, frame, canvas);
+    }
+
+    /// `RuneLite` `InfoBoxOverlay`: 35-pixel boxes, one pixel apart, four per row, from the
+    /// world view's top-left snap corner (5 pixels in, 20 down to clear the mouse-over text).
+    /// Each box is `InfoBoxComponent`: the standard translucent background with its darker outer
+    /// and lighter inner stroke, the image centred, the caption centred 3 pixels above the bottom.
+    fn draw_info_boxes(
+        &self,
+        assets: &TitleAssets,
+        sprites: &WidgetVisualAssets,
+        frame: &mut UiFrame,
+        canvas: Rect,
+    ) {
+        const SIZE: f32 = 35.;
+        const GAP: f32 = 1.;
+        const WRAP: usize = 4;
+        // `ComponentConstants.STANDARD_BACKGROUND_COLOR` and `BackgroundComponent`'s strokes.
+        const BACKGROUND: [u8; 4] = [70, 61, 50, 156];
+        const OUTER: [u8; 4] = [56, 48, 40, 218];
+        const INNER: [u8; 4] = [84, 73, 60, 218];
+        let Some(viewport) = frame.world_viewport else {
+            return;
+        };
+        let (left, top) = (viewport.x + 5., viewport.y + 20.);
+        for (slot, (_, info)) in self.output.info_boxes.iter().enumerate() {
+            #[expect(clippy::cast_precision_loss, reason = "at most a few dozen boxes")]
+            let (column, row) = ((slot % WRAP) as f32, (slot / WRAP) as f32);
+            let (x, y) = (left + column * (SIZE + GAP), top + row * (SIZE + GAP));
+            frame.fill_rect(Rect::new(x, y, SIZE, SIZE), BACKGROUND, canvas);
+            for (inset, stroke) in [(0., OUTER), (1., INNER)] {
+                let (sx, sy, side) = (x + inset, y + inset, SIZE - 2. * inset);
+                for edge in [
+                    Rect::new(sx, sy, side, 1.),
+                    Rect::new(sx, sy + side - 1., side, 1.),
+                    Rect::new(sx, sy, 1., side),
+                    Rect::new(sx + side - 1., sy, 1., side),
+                ] {
+                    frame.fill_rect(edge, stroke, canvas);
+                }
+            }
+            if let Some(id) = info.sprite.map(UiImageId::Sprite)
+                && let Some(image) = sprites.images.get(&id)
+            {
+                #[expect(clippy::cast_precision_loss, reason = "small sprite extents")]
+                let (width, height) = (image.width() as f32, image.height() as f32);
+                frame.image(
+                    id,
+                    Rect::new(
+                        x + ((SIZE - width) / 2.).floor(),
+                        y + ((SIZE - height) / 2.).floor(),
+                        width,
+                        height,
+                    ),
+                    canvas,
+                );
+            }
+            if !info.text.is_empty() {
+                let text_x = x + ((SIZE - text_width(assets, &info.text)) / 2.).floor();
+                let baseline = y + SIZE - 3.;
+                draw_text(
+                    frame,
+                    assets,
+                    &info.text,
+                    text_x + 1.,
+                    baseline + 1.,
+                    [0, 0, 0, 255],
+                    canvas,
+                );
+                draw_text(
+                    frame,
+                    assets,
+                    &info.text,
+                    text_x,
+                    baseline,
+                    color(info.argb),
+                    canvas,
+                );
+            }
         }
     }
 }

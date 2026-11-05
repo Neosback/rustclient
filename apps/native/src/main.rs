@@ -233,6 +233,20 @@ impl NativeApp {
         let variables = self.state.scenery().variables();
         let catalog = &self.scene.entity_catalog;
         let resolve = |id| asset.and_then(|asset| catalog.resolve_npc(asset, id, variables));
+        // Stock `genCert` gives a noted item its unnoted name and price.
+        let items = |id| {
+            let def = catalog.item(id)?;
+            let unnoted = def
+                .note_template
+                .and(def.note)
+                .and_then(|note| catalog.item(note));
+            Some(rustclient_plugin_bridge::ItemFacts {
+                name: catalog.item_name(id),
+                cost: unnoted.map_or(def.cost, |unnoted| unnoted.cost),
+                stackable: def.stackable || def.note_template.is_some(),
+                noted: def.note_template.is_some(),
+            })
+        };
         let inputs = plugins::Inputs {
             frame: rustclient_plugin_bridge::Frame {
                 session: self.connection_generation.checked_add(1).unwrap_or(0),
@@ -246,6 +260,7 @@ impl NativeApp {
             sources: rustclient_plugin_bridge::Sources {
                 npcs: Some(&resolve),
                 varbits: asset.map(|asset| &asset.sources().varbits),
+                items: Some(&items),
                 interfaces: self
                     .scripts
                     .as_ref()
@@ -1368,6 +1383,28 @@ impl NativeApp {
                             (dot.tile.0.to_bits(), dot.tile.1.to_bits(), dot.frame)
                                 .hash(&mut hasher);
                         }
+                        let plugin_dots: Vec<_> = self
+                            .plugins
+                            .output()
+                            .overlay
+                            .iter()
+                            .filter_map(|item| match item.command {
+                                rustclient_plugin_api::OverlayCommand::MinimapDot {
+                                    tile,
+                                    argb,
+                                } if i32::from(tile.plane)
+                                    == self
+                                        .state
+                                        .entities()
+                                        .local_player()
+                                        .map_or(-1, |p| i32::from(p.tile.plane.get())) =>
+                                {
+                                    Some(((tile.x, tile.y), argb))
+                                }
+                                _ => None,
+                            })
+                            .collect();
+                        plugin_dots.hash(&mut hasher);
                         let key = hasher.finish();
                         if key != self.minimap_key || self.minimap_pixels.is_empty() {
                             self.minimap_key = key;
@@ -1414,6 +1451,28 @@ impl NativeApp {
                                         zoom_quarters: minimap_settings.zoom_quarters,
                                     },
                                 );
+                                // Plugin dots (`OverlayCommand::MinimapDot`) above the cache's.
+                                for ((x, y), argb) in &plugin_dots {
+                                    if let Some(sprite) =
+                                        rustclient_scene::minimap::plugin_dot(*argb)
+                                    {
+                                        rustclient_scene::minimap::draw_marker(
+                                            &mut self.minimap_pixels,
+                                            &mask.pixels,
+                                            [mask.size[0] as usize, mask.size[1] as usize],
+                                            &sprite,
+                                            (
+                                                f64::from(x - origin.x) + 0.5,
+                                                f64::from(y - origin.y) + 0.5,
+                                            ),
+                                            rustclient_scene::minimap::MinimapView {
+                                                camera: relative,
+                                                angle,
+                                                zoom_quarters: minimap_settings.zoom_quarters,
+                                            },
+                                        );
+                                    }
+                                }
                             }
                             if let (Some(destination), Some(sprite)) =
                                 (destination, self.widget_assets.destination_flag.as_ref())

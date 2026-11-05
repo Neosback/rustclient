@@ -10,7 +10,7 @@ mod diff;
 mod project;
 
 pub use diff::{Timing, VarbitIndex, derive};
-pub use project::{Frame, Sources, level_for_experience};
+pub use project::{Frame, ItemFacts, Sources, level_for_experience};
 
 use rustclient_game_state::GameState;
 use rustclient_plugin_api::{
@@ -138,6 +138,9 @@ impl Projector {
         }
         if project::wants(wanted, Capability::GameReadChat) {
             snapshot.chat = project::chat(state);
+        }
+        if project::wants(wanted, Capability::GameReadGroundItems) {
+            snapshot.ground_items = project::ground_items(state, sources.items);
         }
         if project::wants(wanted, Capability::GameReadWidgets) {
             snapshot.widget_groups = project::widget_groups(state);

@@ -10,6 +10,7 @@ mod animsmoothing;
 mod camera;
 mod entityhider;
 mod fps;
+mod grounditems;
 mod groundmarkers;
 mod idlenotifier;
 mod idlenotifier_animations;
@@ -286,6 +287,17 @@ const ENTRIES: &[Entry] = &[
             Capability::GameReadVars,
         ],
         build: |source| boxed(tileindicators::TileIndicators, source),
+    },
+    Entry {
+        name: "grounditems",
+        source_class: "net.runelite.client.plugins.grounditems.GroundItemsPlugin",
+        capabilities: &[
+            Capability::UiOverlay,
+            Capability::GameReadGroundItems,
+            Capability::GameReadPlayers,
+            Capability::GameReadVars,
+        ],
+        build: |source| boxed(grounditems::GroundItems, source),
     },
     Entry {
         name: "menuentryswapper",

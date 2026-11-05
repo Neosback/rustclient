@@ -3479,5 +3479,578 @@
     }
    }
   ]
+ },
+ {
+  "plugin": "dev.rustclient.grounditems",
+  "name": "Ground Items",
+  "version": 1,
+  "description": "Highlight ground items and/or show price information",
+  "tags": [
+   "grand",
+   "exchange",
+   "high",
+   "alchemy",
+   "prices",
+   "highlight",
+   "overlay",
+   "lootbeam"
+  ],
+  "required": false,
+  "settings": [
+   {
+    "key": "enabled",
+    "label": "Enabled",
+    "description": "Switch Ground Items on or off.",
+    "section": "",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": true
+    },
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/grounditems/GroundItemsPlugin.java#PluginDescriptor.enabledByDefault"
+   },
+   {
+    "key": "showHighlightedOnly",
+    "label": "Show highlighted items only",
+    "description": "Configures whether or not to draw items only on your highlighted list.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/grounditems/GroundItemsConfig.java#showHighlightedOnly",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "dontHideUntradeables",
+    "label": "Do not hide untradeables",
+    "description": "Configures whether or not untradeable items ignore hiding under settings.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/grounditems/GroundItemsConfig.java#dontHideUntradeables",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": true
+    }
+   },
+   {
+    "key": "showMenuItemQuantities",
+    "label": "Show menu item quantities",
+    "description": "Configures whether or not to show the item quantities in the menu.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/grounditems/GroundItemsConfig.java#showMenuItemQuantities",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": true
+    }
+   },
+   {
+    "key": "recolorMenuHiddenItems",
+    "label": "Recolor menu hidden items",
+    "description": "Configures whether or not hidden items in right-click menu will be recolored.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/grounditems/GroundItemsConfig.java#recolorMenuHiddenItems",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "deprioritizeHiddenItems",
+    "label": "Deprioritize menu hidden items",
+    "description": "Depriotizies the menu options for items which are hidden, requiring a right-click to pick up.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/grounditems/GroundItemsConfig.java#deprioritizeHiddenItems",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "highlightTiles",
+    "label": "Highlight tiles",
+    "description": "Configures whether or not to highlight tiles containing ground items.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/grounditems/GroundItemsConfig.java#highlightTiles",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "notifyHighlightedDrops",
+    "label": "Notify for highlighted drops",
+    "description": "Configures whether or not to notify for drops on your highlighted list.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/grounditems/GroundItemsConfig.java#notifyHighlightedDrops",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "notifyTier",
+    "label": "Notify tier",
+    "description": "Configures which price tiers will trigger a notification on drop.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/grounditems/GroundItemsConfig.java#notifyTier",
+    "control": {
+     "type": "choice",
+     "options": [
+      "OFF",
+      "LOW",
+      "MEDIUM",
+      "HIGH",
+      "INSANE"
+     ]
+    },
+    "default": {
+     "type": "choice",
+     "value": "OFF"
+    }
+   },
+   {
+    "key": "priceDisplayMode",
+    "label": "Price display mode",
+    "description": "Configures which price types are shown alongside ground item name.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/grounditems/GroundItemsConfig.java#priceDisplayMode",
+    "control": {
+     "type": "choice",
+     "options": [
+      "HA",
+      "GE",
+      "BOTH",
+      "OFF"
+     ]
+    },
+    "default": {
+     "type": "choice",
+     "value": "BOTH"
+    }
+   },
+   {
+    "key": "itemHighlightMode",
+    "label": "Item highlight mode",
+    "description": "Configures how ground items will be highlighted.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/grounditems/GroundItemsConfig.java#itemHighlightMode",
+    "control": {
+     "type": "choice",
+     "options": [
+      "NONE",
+      "OVERLAY",
+      "MENU",
+      "BOTH"
+     ]
+    },
+    "default": {
+     "type": "choice",
+     "value": "BOTH"
+    }
+   },
+   {
+    "key": "menuHighlightMode",
+    "label": "Menu highlight mode",
+    "description": "Configures what to highlight in right-click menu.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/grounditems/GroundItemsConfig.java#menuHighlightMode",
+    "control": {
+     "type": "choice",
+     "options": [
+      "OPTION",
+      "NAME",
+      "BOTH"
+     ]
+    },
+    "default": {
+     "type": "choice",
+     "value": "NAME"
+    }
+   },
+   {
+    "key": "highlightValueCalculation",
+    "label": "Highlight value calculation",
+    "description": "Configures which coin value is used to determine highlight color.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/grounditems/GroundItemsConfig.java#valueCalculationMode",
+    "control": {
+     "type": "choice",
+     "options": [
+      "HA",
+      "GE",
+      "HIGHEST"
+     ]
+    },
+    "default": {
+     "type": "choice",
+     "value": "HIGHEST"
+    }
+   },
+   {
+    "key": "hideUnderValue",
+    "label": "Hide under value",
+    "description": "Configures hidden ground items under both GE and HA value.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/grounditems/GroundItemsConfig.java#getHideUnderValue",
+    "control": {
+     "type": "integer",
+     "min": -2147483648,
+     "max": 2147483647
+    },
+    "default": {
+     "type": "integer",
+     "value": 0
+    }
+   },
+   {
+    "key": "defaultColor",
+    "label": "Default items",
+    "description": "Configures the color for default, non-highlighted items.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/grounditems/GroundItemsConfig.java#defaultColor",
+    "control": {
+     "type": "color"
+    },
+    "default": {
+     "type": "color",
+     "value": 4294967295
+    }
+   },
+   {
+    "key": "highlightedColor",
+    "label": "Highlighted items",
+    "description": "Configures the color for highlighted items.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/grounditems/GroundItemsConfig.java#highlightedColor",
+    "control": {
+     "type": "color"
+    },
+    "default": {
+     "type": "color",
+     "value": 4289331455
+    }
+   },
+   {
+    "key": "hiddenColor",
+    "label": "Hidden items",
+    "description": "Configures the color for hidden items in right-click menu and when holding ALT.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/grounditems/GroundItemsConfig.java#hiddenColor",
+    "control": {
+     "type": "color"
+    },
+    "default": {
+     "type": "color",
+     "value": 4286611584
+    }
+   },
+   {
+    "key": "lowValueColor",
+    "label": "Low value items",
+    "description": "Configures the color for low value items.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/grounditems/GroundItemsConfig.java#lowValueColor",
+    "control": {
+     "type": "color"
+    },
+    "default": {
+     "type": "color",
+     "value": 4284920575
+    }
+   },
+   {
+    "key": "lowValuePrice",
+    "label": "Low value price",
+    "description": "Configures the start price for low value items.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/grounditems/GroundItemsConfig.java#lowValuePrice",
+    "control": {
+     "type": "integer",
+     "min": -2147483648,
+     "max": 2147483647
+    },
+    "default": {
+     "type": "integer",
+     "value": 20000
+    }
+   },
+   {
+    "key": "mediumValueColor",
+    "label": "Medium value items",
+    "description": "Configures the color for medium value items.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/grounditems/GroundItemsConfig.java#mediumValueColor",
+    "control": {
+     "type": "color"
+    },
+    "default": {
+     "type": "color",
+     "value": 4288282521
+    }
+   },
+   {
+    "key": "mediumValuePrice",
+    "label": "Medium value price",
+    "description": "Configures the start price for medium value items.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/grounditems/GroundItemsConfig.java#mediumValuePrice",
+    "control": {
+     "type": "integer",
+     "min": -2147483648,
+     "max": 2147483647
+    },
+    "default": {
+     "type": "integer",
+     "value": 100000
+    }
+   },
+   {
+    "key": "highValueColor",
+    "label": "High value items",
+    "description": "Configures the color for high value items.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/grounditems/GroundItemsConfig.java#highValueColor",
+    "control": {
+     "type": "color"
+    },
+    "default": {
+     "type": "color",
+     "value": 4294940160
+    }
+   },
+   {
+    "key": "highValuePrice",
+    "label": "High value price",
+    "description": "Configures the start price for high value items.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/grounditems/GroundItemsConfig.java#highValuePrice",
+    "control": {
+     "type": "integer",
+     "min": -2147483648,
+     "max": 2147483647
+    },
+    "default": {
+     "type": "integer",
+     "value": 1000000
+    }
+   },
+   {
+    "key": "insaneValueColor",
+    "label": "Insane value items",
+    "description": "Configures the color for insane value items.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/grounditems/GroundItemsConfig.java#insaneValueColor",
+    "control": {
+     "type": "color"
+    },
+    "default": {
+     "type": "color",
+     "value": 4294928050
+    }
+   },
+   {
+    "key": "insaneValuePrice",
+    "label": "Insane value price",
+    "description": "Configures the start price for insane value items.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/grounditems/GroundItemsConfig.java#insaneValuePrice",
+    "control": {
+     "type": "integer",
+     "min": -2147483648,
+     "max": 2147483647
+    },
+    "default": {
+     "type": "integer",
+     "value": 10000000
+    }
+   },
+   {
+    "key": "ownershipFilterMode",
+    "label": "Ownership filter",
+    "description": "Show all items, takeable items, or only your or your group's drops.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/grounditems/GroundItemsConfig.java#ownershipFilterMode",
+    "control": {
+     "type": "choice",
+     "options": [
+      "ALL",
+      "TAKEABLE",
+      "DROPS"
+     ]
+    },
+    "default": {
+     "type": "choice",
+     "value": "ALL"
+    }
+   },
+   {
+    "key": "doubleTapDelay",
+    "label": "Double-tap delay",
+    "description": "Delay for the double-tap ALT to hide ground items. 0 to disable.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/grounditems/GroundItemsConfig.java#doubleTapDelay",
+    "control": {
+     "type": "integer",
+     "min": -2147483648,
+     "max": 2147483647
+    },
+    "default": {
+     "type": "integer",
+     "value": 250
+    }
+   },
+   {
+    "key": "collapseEntries",
+    "label": "Collapse ground item menu",
+    "description": "Collapses ground item menu entries together and appends count.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/grounditems/GroundItemsConfig.java#collapseEntries",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "groundItemTimers",
+    "label": "Despawn timer",
+    "description": "Shows despawn timers for items you've dropped and received as loot.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/grounditems/GroundItemsConfig.java#groundItemTimers",
+    "control": {
+     "type": "choice",
+     "options": [
+      "OFF",
+      "PIE",
+      "TICKS",
+      "SECONDS"
+     ]
+    },
+    "default": {
+     "type": "choice",
+     "value": "OFF"
+    }
+   },
+   {
+    "key": "textOutline",
+    "label": "Text outline",
+    "description": "Use an outline around text instead of a text shadow.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/grounditems/GroundItemsConfig.java#textOutline",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "showLootbeamForHighlighted",
+    "label": "Highlighted item lootbeams",
+    "description": "Configures lootbeams to show for all highlighted items.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/grounditems/GroundItemsConfig.java#showLootbeamForHighlighted",
+    "control": {
+     "type": "boolean"
+    },
+    "default": {
+     "type": "boolean",
+     "value": false
+    }
+   },
+   {
+    "key": "showLootbeamTier",
+    "label": "Lootbeam tier",
+    "description": "Configures which price tiers will trigger a lootbeam.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/grounditems/GroundItemsConfig.java#showLootbeamTier",
+    "control": {
+     "type": "choice",
+     "options": [
+      "OFF",
+      "LOW",
+      "MEDIUM",
+      "HIGH",
+      "INSANE"
+     ]
+    },
+    "default": {
+     "type": "choice",
+     "value": "HIGH"
+    }
+   },
+   {
+    "key": "hotkey",
+    "label": "Hotkey",
+    "description": "Configures the hotkey used by the Ground Items plugin.",
+    "section": "",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/grounditems/GroundItemsConfig.java#hotkey",
+    "control": {
+     "type": "hotkey"
+    },
+    "default": {
+     "type": "hotkey",
+     "value": {
+      "key": "",
+      "modifiers": 0
+     }
+    }
+   },
+   {
+    "key": "highlightedItems",
+    "label": "Highlighted items",
+    "description": "Configures specifically highlighted ground items. Format: item1, item2, item3",
+    "section": "Item lists",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/grounditems/GroundItemsConfig.java#getHighlightItems",
+    "control": {
+     "type": "text",
+     "max_len": 4096
+    },
+    "default": {
+     "type": "text",
+     "value": ""
+    }
+   },
+   {
+    "key": "hiddenItems",
+    "label": "Hidden items",
+    "description": "Configures hidden ground items. Format: item1, item2, item3",
+    "section": "Item lists",
+    "source": "references/open-runelite-rev-240/runelite-client/src/main/java/net/runelite/client/plugins/grounditems/GroundItemsConfig.java#getHiddenItems",
+    "control": {
+     "type": "text",
+     "max_len": 4096
+    },
+    "default": {
+     "type": "text",
+     "value": "Vial, Ashes, Coins, Bones, Bucket, Jug, Seaweed"
+    }
+   }
+  ]
  }
 ]

@@ -316,4 +316,6 @@ mod minimap;
 
 mod groundmarkers;
 
+mod grounditems;
+
 mod notes;

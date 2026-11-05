@@ -44,7 +44,7 @@ friendlist	Friend List	true		2	298	no	not-started	client-feature	private-clan-ch
 friendnotes	Friend Notes	true		4	544	no	not-started	client-feature	private-clan-chat|plugin-api	proposed-applicable	
 gpu	GPU	true		21	6512	no	required-service	client-feature	gpu|materials|depth	required	required in RustClient
 grandexchange	Grand Exchange	true		14	2584	yes	not-started	external-service	widgets|scripts|plugin-api	local-eligible-remote-deferred	Approved scope includes independently verified local behavior and user-initiated host actions; background/account/public-provider integration deferred. Feature/member/test closure remains source-audit pending.
-grounditems	Ground Items	true		17	2793	no	not-started	client-feature	ground-items|menus|plugin-api	proposed-applicable	
+grounditems	Ground Items	true		17	2793	no	partial-module	client-feature	ground-items|menus|plugin-api	proposed-applicable	
 groundmarkers	Ground Markers	true		7	1131	no	partial-module	client-feature	plugin-api	proposed-applicable	tile overlays + persisted markers
 herbiboars	Herbiboar	true		7	1032	no	not-started	content-helper	dynamic-scenery|plugin-api	proposed-applicable	
 hiscore	HiScore	true		4	1397	no	not-started	external-service	plugin-api	remote-service-deferred	Approved scope defers account/cloud, provider, telemetry and remote integrations. A separable local feature must still be source-audited; this disposition is not implementation or case closure.

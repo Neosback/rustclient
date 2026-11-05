@@ -139,6 +139,7 @@ fn state_operations_project_to_snapshots_and_ordered_events() {
         npcs: Some(&resolve),
         varbits: Some(&varbits),
         interfaces: None,
+        items: None,
     };
     let frame = Frame {
         fps: 50,

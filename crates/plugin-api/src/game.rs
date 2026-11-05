@@ -470,6 +470,31 @@ pub struct ClientSnapshot {
     pub minimap_zoom: f64,
 }
 
+/// One item lying on a tile (`RuneLite` `TileItem` with its `ItemComposition` facts).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GroundItemSnapshot {
+    /// The tile the item lies on.
+    pub tile: WorldPoint,
+    /// Item id.
+    pub id: u32,
+    /// Stack size.
+    pub quantity: u32,
+    /// Definition name (a noted item's unnoted name); `None` until the definition is loaded.
+    pub name: Option<String>,
+    /// Store value (`ItemComposition.getPrice`); 0 until the definition is loaded.
+    pub cost: i32,
+    /// Whether the item stacks.
+    pub stackable: bool,
+    /// Whether the item is a bank note.
+    pub noted: bool,
+    /// `TileItem.getOwnership`: 0 none, 1 self, 2 other, 3 group.
+    pub ownership: u8,
+    /// Game tick at which the item becomes visible to everyone.
+    pub public_tick: u64,
+    /// Game tick at which the server despawns the item.
+    pub despawn_tick: u64,
+}
+
 /// One consistent view of the committed game, built once per update and shared by all plugins.
 ///
 /// Fields a plugin cannot read without the matching capability are still present here; the
@@ -496,6 +521,8 @@ pub struct GameSnapshot {
     pub widgets: Arc<[WidgetSnapshot]>,
     /// Chat lines retained by the client, oldest first.
     pub chat: Vec<ChatLine>,
+    /// Ground items, by tile then in pile order (oldest first).
+    pub ground_items: Vec<GroundItemSnapshot>,
 }
 
 impl GameSnapshot {

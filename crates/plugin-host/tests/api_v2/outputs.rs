@@ -39,6 +39,7 @@ fn full_output() -> PluginOutput {
             text: "123456789012345678".into(),
             argb: 0,
             tooltip: String::new(),
+            sprite: None,
         }],
         menu_edits: vec![MenuEdit::MoveToTop { index: 0 }],
         menu_offers: offers(),

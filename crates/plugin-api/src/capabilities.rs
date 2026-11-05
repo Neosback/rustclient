@@ -57,11 +57,13 @@ pub enum Capability {
     ClientFrameLimit,
     /// Zoom the minimap and recolor its dots (API 0.2).
     UiMinimap,
+    /// Read the items lying on the ground (API 0.2, additive).
+    GameReadGroundItems,
 }
 
 impl Capability {
     /// Every capability understood by this client, in stable order.
-    pub const ALL: [Self; 24] = [
+    pub const ALL: [Self; 25] = [
         Self::GameReadPlayers,
         Self::GameReadNpcs,
         Self::GameReadInventory,
@@ -86,6 +88,7 @@ impl Capability {
         Self::ClientNotify,
         Self::ClientFrameLimit,
         Self::UiMinimap,
+        Self::GameReadGroundItems,
     ];
 
     /// Canonical dotted name used by manifests and diagnostics.
@@ -116,6 +119,7 @@ impl Capability {
             Self::ClientNotify => "client.notify",
             Self::ClientFrameLimit => "client.frame_limit",
             Self::UiMinimap => "ui.minimap",
+            Self::GameReadGroundItems => "game.read.ground_items",
         }
     }
 

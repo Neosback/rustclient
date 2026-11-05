@@ -43,6 +43,7 @@ PLUGIN_LIST = [
     ("idlenotifier", "idlenotifier"),
     ("camera", "camera"),
     ("menuentryswapper", "menuentryswapper"),
+    ("grounditems", "grounditems"),
 ]
 
 JAVA_COLORS = {
@@ -199,7 +200,9 @@ def parse_config(plugin_dir, rel_dir, supported=None):
     raw = path.read_text()
     text = strip_comments(raw)
     consts = constants(text, sorted(plugin_dir.glob("*.java")))
-    enum_files = sorted(plugin_dir.glob("*.java")) + sorted((PLUGINS / "config").glob("*.java")) + [PLUGINS / "Notification.java"]
+    # Plugins keep option enums beside the config or in a `config/` subpackage.
+    enum_files = [path for path in sorted(plugin_dir.rglob("*.java")) + sorted((PLUGINS / "config").glob("*.java"))
+                  + [PLUGINS / "Notification.java"] if path.is_file()]
     sections = {}
     for m in re.finditer(r"@ConfigSection\((.*?)\)\s*(?:public\s+)?(?:static\s+)?(?:final\s+)?String\s+(\w+)\s*=\s*\"([^\"]+)\"", text, re.S):
         attrs = attributes(m[1])

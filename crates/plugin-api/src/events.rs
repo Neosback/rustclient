@@ -5,8 +5,8 @@
 //! longer contains it.
 
 use crate::{
-    ActorRef, Capability, ChatLine, GameStateKind, Hitsplat, MenuEntry, NpcSnapshot,
-    PlayerSnapshot, Skill, SkillLevel,
+    ActorRef, Capability, ChatLine, GameStateKind, GroundItemSnapshot, Hitsplat, MenuEntry,
+    NpcSnapshot, PlayerSnapshot, Skill, SkillLevel,
 };
 
 /// Which variable class changed.
@@ -128,6 +128,17 @@ pub enum GameEvent {
     MenuOptionClicked(MenuEntry),
     /// A client script finished running.
     ScriptPostFired(u32),
+    /// An item appeared on the ground.
+    ItemSpawned(Box<GroundItemSnapshot>),
+    /// An item left the ground; carries its last snapshot.
+    ItemDespawned(Box<GroundItemSnapshot>),
+    /// A ground item's stack size changed in place.
+    ItemQuantityChanged {
+        /// The item with its new quantity.
+        item: Box<GroundItemSnapshot>,
+        /// Quantity before the change.
+        old: u32,
+    },
 }
 
 impl GameEvent {
@@ -165,6 +176,9 @@ impl GameEvent {
             | Self::MenuOpened(_)
             | Self::PostMenuSort(_)
             | Self::MenuOptionClicked(_) => Some(Capability::UiMenuSwap),
+            Self::ItemSpawned(_) | Self::ItemDespawned(_) | Self::ItemQuantityChanged { .. } => {
+                Some(Capability::GameReadGroundItems)
+            }
         }
     }
 }

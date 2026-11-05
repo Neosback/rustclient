@@ -181,6 +181,7 @@ fn snapshot() -> GameSnapshot {
             name: String::new(),
             text: "Welcome".into(),
         }],
+        ground_items: Vec::new(),
     }
 }
 
