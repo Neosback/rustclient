@@ -164,3 +164,38 @@ fn zero_location_scale_is_authored_geometry_not_an_invalid_footprint() {
     assert_eq!(definition.scale, [1, 1, 0]);
     assert!(definitions::object(&[14, 0, 0], ObjectDefinitionId::new(1), source).is_err());
 }
+
+#[test]
+fn item_ground_actions_cost_and_count_variants_follow_the_reference_defaults() {
+    use rustclient_cache::osrs240::definitions::item;
+    use rustclient_model::ItemDefinitionId;
+    let source = Source::group(IndexId(2), GroupId(10));
+    let plain = item(&[0], ItemDefinitionId::new(1), source).unwrap();
+    assert_eq!(
+        plain.ground_actions,
+        [None, None, Some("Take".into()), None, None]
+    );
+    assert_eq!(plain.cost, 1);
+    assert!(plain.count_variants.is_empty());
+
+    let mut bytes = vec![12, 0, 0, 0x01, 0xf4]; // cost 500
+    bytes.extend_from_slice(&[30]);
+    bytes.extend_from_slice(b"Light\0");
+    bytes.extend_from_slice(&[32]);
+    bytes.extend_from_slice(b"Hidden\0"); // "Hidden" removes the default Take
+    bytes.extend_from_slice(&[101, 0x03, 0xe4, 0, 2]); // slot 1: item 996 at count 2
+    bytes.push(0);
+    let coins = item(&bytes, ItemDefinitionId::new(995), source).unwrap();
+    assert_eq!(coins.cost, 500);
+    assert_eq!(
+        coins.ground_actions,
+        [Some("Light".into()), None, None, None, None]
+    );
+    assert_eq!(
+        coins.count_variants,
+        [
+            (ItemDefinitionId::new(0), 0),
+            (ItemDefinitionId::new(996), 2)
+        ]
+    );
+}

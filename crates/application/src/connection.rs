@@ -1,5 +1,7 @@
 //! Shared interpretation of authenticated profile updates as semantic operations.
-use rustclient_game_state::{AuthenticatedPlayer, InitialPlacement, SemanticOperation};
+use rustclient_game_state::{
+    AuthenticatedPlayer, GroundItemOperation, InitialPlacement, SemanticOperation,
+};
 use rustclient_model::TickSpan;
 use rustclient_protocol::{LoginSession, Result, ServerProfile, ServerUpdate, SessionCodec};
 /// Narrow connection decoder, storing only wire phase/ciphers rather than game truth.
@@ -112,6 +114,25 @@ impl ConnectionDecoder {
         Ok(connected)
     }
 }
+/// `UPDATE_ZONE_FULL_FOLLOWS`: reset the zone's location changes and empty its ground item
+/// deques, as the stock handler does.
+fn zone_reset(
+    offset: rustclient_model::TileOffset,
+    plane: rustclient_model::Plane,
+) -> [SemanticOperation; 2] {
+    [
+        SemanticOperation::Scenery(rustclient_game_state::SceneryOperation::ResetLocationArea {
+            offset,
+            plane,
+            size: [8, 8],
+        }),
+        SemanticOperation::GroundItems(GroundItemOperation::ResetArea {
+            offset,
+            plane,
+            size: [8, 8],
+        }),
+    ]
+}
 fn translate(update: ServerUpdate, mut deliver: impl FnMut(ConnectionInput), connected: &mut bool) {
     match update {
         ServerUpdate::ChatFilters(values) => deliver(ConnectionInput::Operation(
@@ -151,14 +172,13 @@ fn translate(update: ServerUpdate, mut deliver: impl FnMut(ConnectionInput), con
             SemanticOperation::ResetActorAnimations,
         )),
         ServerUpdate::LocationZoneReset(origin) => {
-            deliver(ConnectionInput::Operation(SemanticOperation::Scenery(
-                rustclient_game_state::SceneryOperation::ResetLocationArea {
-                    offset: origin.offset,
-                    plane: origin.plane,
-                    size: [8, 8],
-                },
-            )));
+            for operation in zone_reset(origin.offset, origin.plane) {
+                deliver(ConnectionInput::Operation(operation));
+            }
         }
+        ServerUpdate::GroundItem(update) => deliver(ConnectionInput::Operation(
+            SemanticOperation::GroundItems(GroundItemOperation::Update(update)),
+        )),
         ServerUpdate::Location(location) => deliver(ConnectionInput::Operation(
             SemanticOperation::Scenery(rustclient_game_state::SceneryOperation::UpdateLocation {
                 offset: location.offset,

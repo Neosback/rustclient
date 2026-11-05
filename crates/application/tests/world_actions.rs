@@ -178,7 +178,7 @@ fn npc_batch_identity_permissions_delay_and_replay_reject_stale_actions_atomical
         state.entities().npcs()[&NpcIndex::new(42)].instance,
         match target {
             WorldTarget::Npc { instance, .. } => instance,
-            WorldTarget::Location { .. } => unreachable!(),
+            WorldTarget::Location { .. } | WorldTarget::GroundItem { .. } => unreachable!(),
         }
     );
     let mut replay = GameState::new();
@@ -316,4 +316,80 @@ fn plane_transitions_reuse_scene_asset_and_validate_walk_and_actions_on_upper_pl
         .expect("NPC action on upper plane validates against shared SceneAsset");
     assert_eq!(actions.len(), 1);
     assert_eq!(actions[0].0, "Attack <col=ffff00>Guard");
+}
+
+#[test]
+fn ground_item_options_follow_the_definition_mask_and_revalidate_against_the_pile() {
+    use rustclient_game_state::GroundItemOperation;
+    use rustclient_model::{
+        GroundItemOwnership, GroundItemPosition, GroundItemUpdate, ItemDefinitionId,
+    };
+    let asset = asset();
+    let mut catalog = EntityCatalog::default();
+    // Name "Coins", ground op 1 "Light", op 3 left at the default "Take".
+    let def = definitions::item(
+        b"\x02Coins\0\x1eLight\0\0",
+        ItemDefinitionId::new(995),
+        Source::group(IndexId(2), GroupId(10)),
+    )
+    .unwrap();
+    let mut batch = EntityAssets::default();
+    batch.items.insert(def.id, def);
+    assert!(catalog.merge(&asset, batch).is_empty());
+    let mut state = GameState::new();
+    let mut recorded = Vec::new();
+    let tile = WorldTile::new(4, 3, Plane::MIN);
+    for operation in [
+        SemanticOperation::AuthenticateSession {
+            revision: ServerProfile::OPENRUNE_240_2.revision(),
+            player: AuthenticatedPlayer {
+                profile: ServerProfile::OPENRUNE_240_2.id(),
+                player: PlayerIndex::new(1),
+                member: false,
+                staff_level: 0,
+            },
+        },
+        SemanticOperation::EstablishInitialPlacement(InitialPlacement {
+            position: WorldTile::new(3, 3, Plane::MIN),
+            map_anchor: WorldTile::new(3, 3, Plane::MIN),
+            area: None,
+        }),
+        SemanticOperation::InstallScene(asset.descriptor()),
+        SemanticOperation::GroundItems(GroundItemOperation::Update(GroundItemUpdate::Add {
+            position: GroundItemPosition::Absolute(tile),
+            item: ItemDefinitionId::new(995),
+            quantity: 50,
+            // The server hides op 1.
+            ops: ActionMask::new([false, true, true, true, true]),
+            ownership: GroundItemOwnership::NONE,
+            ticks_until_public: 0,
+            ticks_until_despawn: 100,
+            never_public: false,
+        })),
+    ] {
+        apply(&mut state, &mut recorded, operation);
+    }
+    let target = WorldTarget::GroundItem {
+        tile,
+        item: ItemDefinitionId::new(995),
+    };
+    let actions = world_actions(&state, &asset, &catalog, asset.descriptor(), target).unwrap();
+    let labels: Vec<_> = actions.iter().map(|(label, _)| label.as_str()).collect();
+    assert_eq!(labels, ["Take <col=ff9040>Coins"]);
+    assert!(matches!(
+        validate_world_action(&state, &asset, &catalog, actions[0].1, true).unwrap(),
+        ClientIntent::GroundItemAction { tile: t, item, slot, control: true }
+            if t == tile && item.get() == 995 && slot == ActionSlot::new(2).unwrap()
+    ));
+    // Once the server deletes the item the selected entry no longer validates.
+    apply(
+        &mut state,
+        &mut recorded,
+        SemanticOperation::GroundItems(GroundItemOperation::Update(GroundItemUpdate::Delete {
+            position: GroundItemPosition::Absolute(tile),
+            item: ItemDefinitionId::new(995),
+            quantity: 50,
+        })),
+    );
+    assert!(validate_world_action(&state, &asset, &catalog, actions[0].1, false).is_err());
 }

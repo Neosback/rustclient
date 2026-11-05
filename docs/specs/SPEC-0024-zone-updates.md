@@ -18,6 +18,8 @@ location lifetime/readiness, replacement/collision and renderable construction.
 Pinned RuneLite GpuPlugin.invalidateZone/onPostClientTick/rebuild supply the 8×8
 resource mechanism. Source anchors are indexed in the existing update audit.
 Initial-bake shadows and other load-only effects must not be repeated for live updates.
+Ground item zone bodies and the zone reset's ground item half are owned by
+[SPEC-0029](SPEC-0029-ground-items.md).
 
 ## Resource and publication contract
 

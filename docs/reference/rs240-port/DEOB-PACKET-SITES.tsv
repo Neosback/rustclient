@@ -21,7 +21,7 @@ client-to-server	18	-	missing-encoder	0	-
 client-to-server	19	-	missing-encoder	0	-
 client-to-server	20	-	missing-encoder	0	-
 client-to-server	21	OPPLAYER2	missing-encoder	4	classQP.method9746:516|client.method1966:27126|client.method1967:27712|client.method1968:28298
-client-to-server	22	OPOBJ3_V2	missing-encoder	3	classHU.method6158:156|client.method1970:17258|client.method1971:28731
+client-to-server	22	OPOBJ3_V2	encoded-subset	3	classHU.method6158:156|client.method1970:17258|client.method1971:28731
 client-to-server	23	-	missing-encoder	0	-
 client-to-server	24	-	missing-encoder	0	-
 client-to-server	25	OPWORLDENTITY6	missing-encoder	4	classQP.method9746:756|client.method1966:27242|client.method1967:27828|client.method1968:28414
@@ -64,7 +64,7 @@ client-to-server	61	MOVE_MINIMAPCLICK	encoded-subset	4	classXP.method12927:34|cl
 client-to-server	62	RESUME_P_COUNTDIALOG	encoded-subset	5	classBB.method852:5643|classBB.method853:6021|classBB.method854:6399|classBB.method855:6777|classKU.method6609:214
 client-to-server	63	OPNPCT	missing-encoder	4	classQP.method9746:653|client.method1966:27195|client.method1967:27781|client.method1968:28367
 client-to-server	64	OPPLAYER4	missing-encoder	6	classLN.method7171:174|classQP.method9746:372|client.method1966:27040|client.method1967:27626|client.method1968:28212|client.method1976:29026
-client-to-server	65	OPOBJ4_V2	missing-encoder	3	classHU.method6158:186|client.method1970:17276|client.method1971:28749
+client-to-server	65	OPOBJ4_V2	encoded-subset	3	classHU.method6158:186|client.method1970:17276|client.method1971:28749
 client-to-server	66	FRIENDCHAT_SETRANK	missing-encoder	1	classCR.method2565:355
 client-to-server	67	FRIENDLIST_ADD	missing-encoder	6	classBW.method1305:314|classBW.method1306:845|classBW.method1307:874|classBW.method1308:903|classBW.method1309:932|classBW.method1310:967
 client-to-server	68	OPLOCT	missing-encoder	4	classQP.method9746:988|client.method1966:27370|client.method1967:27956|client.method1968:28542
@@ -74,7 +74,7 @@ client-to-server	71	EXIT_FREECAM	missing-encoder	4	classZJ.method14096:723|clien
 client-to-server	72	-	missing-encoder	0	-
 client-to-server	73	OPNPC5_V2	encoded-subset	3	classSW.method10742:178|client.method1974:21796|client.method1975:28991
 client-to-server	74	OPLOC1_V2	encoded-subset	2	classIK.method6263:108|client.method1973:28794
-client-to-server	75	OPOBJ5_V2	missing-encoder	3	classHU.method6158:220|client.method1970:17294|client.method1971:28767
+client-to-server	75	OPOBJ5_V2	encoded-subset	3	classHU.method6158:220|client.method1970:17294|client.method1971:28767
 client-to-server	76	MEMBERSHIP_PROMOTION_ELIGIBILITY	missing-encoder	0	-
 client-to-server	77	OPLOC5_V2	encoded-subset	2	classIK.method6263:236|client.method1973:28866
 client-to-server	78	CLICKWORLDMAP	encoded-subset	2	RenderOverview.method12463:2620|RenderOverview.method12464:3760
@@ -111,8 +111,8 @@ client-to-server	108	MESSAGE_PRIVATE	missing-encoder	4	classBB.method878:8801|cl
 client-to-server	109	SET_HEADING	missing-encoder	8	classCF.method1459:365|classQP.method9746:1037|client.method1719:11594|client.method1720:11629|client.method1721:14015|client.method1966:27407|+2 more
 client-to-server	110	HISCORE_REQUEST	missing-encoder	0	-
 client-to-server	111	RESUME_P_COUNTDIALOG_LONG	encoded-subset	5	classBB.method852:5708|classBB.method853:6086|classBB.method854:6464|classBB.method855:6842|classKU.method6609:354
-client-to-server	112	OPOBJ1_V2	missing-encoder	3	classHU.method6158:88|client.method1970:17222|client.method1971:28695
-client-to-server	113	OPOBJ2_V2	missing-encoder	3	classHU.method6158:122|client.method1970:17240|client.method1971:28713
+client-to-server	112	OPOBJ1_V2	encoded-subset	3	classHU.method6158:88|client.method1970:17222|client.method1971:28695
+client-to-server	113	OPOBJ2_V2	encoded-subset	3	classHU.method6158:122|client.method1970:17240|client.method1971:28713
 client-to-server	114	EVENT_MOUSE_MOVE	missing-encoder	2	client.method2172:3379|client.method2173:42954
 client-to-server	115	FRIENDLIST_DEL	missing-encoder	5	classBW.method1325:381|classBW.method1326:403|classBW.method1327:694|classBW.method1328:1169|classBW.method1329:1261
 client-to-server	116	OPLOCU	missing-encoder	4	classQP.method9746:781|client.method1966:27259|client.method1967:27845|client.method1968:28431
@@ -168,7 +168,7 @@ server-to-client	48	LOC_MERGE	framed-unhandled	5	client.method2346:6509|client.m
 server-to-client	49	UPDATE_ZONE_PARTIAL_ENCLOSED	partial	5	client.method2346:7329|client.method2199:16510|client.method2200:39313|client.method2201:46377|client.method2202:48876
 server-to-client	50	IF_SETPLAYERMODEL_OBJ	framed-unhandled	5	client.method2346:5031|client.method2199:14256|client.method2200:37059|client.method2201:44122|client.method2202:46622
 server-to-client	51	IF_MOVESUB	semantic-subset	5	client.method2346:7170|client.method2199:16357|client.method2200:39160|client.method2201:46224|client.method2202:48723
-server-to-client	52	OBJ_CUSTOMISE_SPECIFIC	framed-unhandled	5	client.method2346:5008|client.method2199:14233|client.method2200:37036|client.method2201:44099|client.method2202:46599
+server-to-client	52	OBJ_CUSTOMISE_SPECIFIC	semantic-subset	5	client.method2346:5008|client.method2199:14233|client.method2200:37036|client.method2201:44099|client.method2202:46599
 server-to-client	53	SITE_SETTINGS	framed-unhandled	5	client.method2346:6223|client.method2199:15423|client.method2200:38226|client.method2201:45290|client.method2202:47789
 server-to-client	54	IF_SETHIDE	semantic-subset	5	client.method2346:5192|client.method2199:14413|client.method2200:37216|client.method2201:44279|client.method2202:46779
 server-to-client	55	HIDELOCOPS	framed-unhandled	5	client.method2346:7083|client.method2199:16270|client.method2200:39073|client.method2201:46137|client.method2202:48636
@@ -202,10 +202,10 @@ server-to-client	82	ACCOUNT_FLAGS	framed-unhandled	5	client.method2346:6278|clie
 server-to-client	83	PLAYER_SPOTANIM_SPECIFIC	framed-unhandled	5	client.method2346:5844|client.method2199:15057|client.method2200:37860|client.method2201:44924|client.method2202:47423
 server-to-client	84	LOC_ANIM_SPECIFIC	semantic-subset	5	client.method2346:5640|client.method2199:14854|client.method2200:37657|client.method2201:44721|client.method2202:47220
 server-to-client	85	SET_PLAYER_OP	framed-unhandled	5	client.method2346:5426|client.method2199:14642|client.method2200:37445|client.method2201:44508|client.method2202:47008
-server-to-client	86	OBJ_DEL_SPECIFIC	framed-unhandled	5	client.method2346:6786|client.method2199:15975|client.method2200:38778|client.method2201:45842|client.method2202:48341
-server-to-client	87	OBJ_ENABLED_OPS_SPECIFIC	framed-unhandled	5	client.method2346:6804|client.method2199:15993|client.method2200:38796|client.method2201:45860|client.method2202:48359
+server-to-client	86	OBJ_DEL_SPECIFIC	semantic-subset	5	client.method2346:6786|client.method2199:15975|client.method2200:38778|client.method2201:45842|client.method2202:48341
+server-to-client	87	OBJ_ENABLED_OPS_SPECIFIC	semantic-subset	5	client.method2346:6804|client.method2199:15993|client.method2200:38796|client.method2201:45860|client.method2202:48359
 server-to-client	88	UPDATE_FRIENDCHAT_CHANNEL_FULL_V2	framed-unhandled	5	client.method2346:6515|client.method2199:15707|client.method2200:38510|client.method2201:45574|client.method2202:48073
-server-to-client	89	OBJ_UNCUSTOMISE_SPECIFIC	framed-unhandled	5	client.method2346:6260|client.method2199:15457|client.method2200:38260|client.method2201:45324|client.method2202:47823
+server-to-client	89	OBJ_UNCUSTOMISE_SPECIFIC	semantic-subset	5	client.method2346:6260|client.method2199:15457|client.method2200:38260|client.method2201:45324|client.method2202:47823
 server-to-client	90	MAP_ANIM_SPECIFIC	framed-unhandled	5	client.method2346:7134|client.method2199:16321|client.method2200:39124|client.method2201:46188|client.method2202:48687
 server-to-client	91	PLAYER_INFO	partial	5	client.method2346:5166|client.method2199:14387|client.method2200:37190|client.method2201:44253|client.method2202:46753
 server-to-client	92	SERVER_TICK_END	semantic-subset	5	client.method2346:6027|client.method2199:15232|client.method2200:38035|client.method2201:45099|client.method2202:47598
@@ -230,7 +230,7 @@ server-to-client	110	HIDENPCOPS	framed-unhandled	5	client.method2346:6752|client
 server-to-client	111	SET_NPC_UPDATE_ORIGIN	codec-context	5	client.method2346:7007|client.method2199:16194|client.method2200:38997|client.method2201:46061|client.method2202:48560
 server-to-client	112	HIDEOBJOPS	framed-unhandled	5	client.method2346:6407|client.method2199:15604|client.method2200:38407|client.method2201:45471|client.method2202:47970
 server-to-client	113	CAM_SHAKE	framed-unhandled	5	client.method2346:5339|client.method2199:14556|client.method2200:37359|client.method2201:44422|client.method2202:46922
-server-to-client	114	OBJ_ADD_SPECIFIC	framed-unhandled	5	client.method2346:5143|client.method2199:14364|client.method2200:37167|client.method2201:44230|client.method2202:46730
+server-to-client	114	OBJ_ADD_SPECIFIC	semantic-subset	5	client.method2346:5143|client.method2199:14364|client.method2200:37167|client.method2201:44230|client.method2202:46730
 server-to-client	115	SEND_PING	semantic-subset	5	client.method2346:6993|client.method2199:16180|client.method2200:38983|client.method2201:46047|client.method2202:48546
 server-to-client	116	IF_CLOSESUB	semantic-subset	5	client.method2346:7245|client.method2199:16432|client.method2200:39235|client.method2201:46299|client.method2202:48798
 server-to-client	117	NPC_ANIM_SPECIFIC	framed-unhandled	5	client.method2346:4969|client.method2199:14194|client.method2200:36999|client.method2201:44062|client.method2202:46560
@@ -240,7 +240,7 @@ server-to-client	120	UPDATE_RUNENERGY	semantic-subset	5	client.method2346:6769|c
 server-to-client	121	RESET_INTERACTION_MODE	framed-unhandled	5	client.method2346:6459|client.method2199:15655|client.method2200:38458|client.method2201:45522|client.method2202:48021
 server-to-client	122	MINIMAP_TOGGLE	framed-unhandled	5	client.method2346:7014|client.method2199:16201|client.method2200:39004|client.method2201:46068|client.method2202:48567
 server-to-client	123	LOC_ANIM	semantic-subset	5	client.method2346:5040|client.method2199:14265|client.method2200:37068|client.method2201:44131|client.method2202:46631
-server-to-client	124	OBJ_COUNT_SPECIFIC	framed-unhandled	5	client.method2346:5210|client.method2199:14431|client.method2200:37234|client.method2201:44297|client.method2202:46797
+server-to-client	124	OBJ_COUNT_SPECIFIC	semantic-subset	5	client.method2346:5210|client.method2199:14431|client.method2200:37234|client.method2201:44297|client.method2202:46797
 server-to-client	125	REFLECTION_CHECKER	framed-unhandled	5	client.method2346:5380|client.method2199:14596|client.method2200:37399|client.method2201:44462|client.method2202:46962
 server-to-client	126	UPDATE_ZONE_FULL_FOLLOWS	partial	5	client.method2346:6229|client.method2199:15429|client.method2200:38232|client.method2201:45296|client.method2202:47795
 server-to-client	127	VARP_SMALL	semantic-subset	5	client.method2346:6626|client.method2199:15817|client.method2200:38620|client.method2201:45684|client.method2202:48183

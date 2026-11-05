@@ -77,6 +77,7 @@ pub struct GameState {
     pub(crate) scenery: crate::SceneryState,
     pub(crate) interfaces: crate::InterfaceState,
     pub(crate) inventories: crate::InventoryState,
+    pub(crate) ground_items: crate::GroundItemsState,
     pub(crate) entities: crate::WorldEntitiesState,
     pub(crate) selected_tab: Option<usize>,
     pub(crate) destination: Option<rustclient_model::MapDestination>,
@@ -104,6 +105,7 @@ impl GameState {
             scenery: crate::SceneryState::default(),
             entities: crate::WorldEntitiesState::default(),
             inventories: crate::InventoryState::default(),
+            ground_items: crate::GroundItemsState::default(),
             interfaces: crate::InterfaceState::default(),
             selected_tab: Some(3),
             destination: None,
@@ -233,6 +235,8 @@ impl GameState {
         self.placement = Some(placement);
         self.retired_scene = self.scene.take().or(self.retired_scene);
         self.scenery.clear_map_locations();
+        // Stock rebuilds empty every tile deque with the old window.
+        self.ground_items.clear();
         Ok((placement, true))
     }
     pub(crate) fn authenticate_session(
@@ -357,6 +361,7 @@ impl GameState {
         self.scenery = crate::SceneryState::default();
         self.entities = crate::WorldEntitiesState::default();
         self.inventories = crate::InventoryState::default();
+        self.ground_items = crate::GroundItemsState::default();
         self.interfaces = crate::InterfaceState::default();
         self.selected_tab = Some(3);
         self.destination = None;
@@ -389,6 +394,7 @@ impl GameState {
         self.scenery = crate::SceneryState::default();
         self.entities = crate::WorldEntitiesState::default();
         self.inventories = crate::InventoryState::default();
+        self.ground_items = crate::GroundItemsState::default();
         self.interfaces = crate::InterfaceState::default();
         self.selected_tab = Some(3);
         self.destination = None;

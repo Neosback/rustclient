@@ -39,12 +39,12 @@ fn authentication_and_initial_placement_replay_exactly_and_reset_on_disconnect()
         stream.push(commit);
         envelopes.push(ReplayEnvelope::new(operation, commit));
     }
-    // Schema 30 adds rectangle gradient fills and widget head sources.
+    // Schema 31 adds ground item piles and their delta bit.
     assert_eq!(
         state.semantic_fingerprint().get(),
-        8_639_949_442_682_587_824
+        13_148_953_745_949_219_775
     );
-    assert_eq!(stream.finish().get(), 17_319_256_775_601_337_766);
+    assert_eq!(stream.finish().get(), 17_200_996_954_286_869_230);
     assert_eq!(state.lifecycle(), SessionLifecycle::Active);
     assert_eq!(state.authenticated_player(), Some(player()));
     assert_eq!(state.initial_placement(), Some(placement()));

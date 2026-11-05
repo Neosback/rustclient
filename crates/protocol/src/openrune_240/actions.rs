@@ -113,6 +113,73 @@ pub(super) fn location(
     Ok((opcode, out))
 }
 
+/// `OPOBJ1_V2..OPOBJ5_V2`: per-op field order and transforms from the rsprox 240
+/// `OpObj{1..5}V2Decoder`s. The sub-op byte is 0 (no sub-op), as for NPC and location ops.
+pub(super) fn ground_item(
+    tile: WorldTile,
+    item: rustclient_model::ItemDefinitionId,
+    slot: ActionSlot,
+    control: bool,
+) -> Result<(u8, Vec<u8>)> {
+    let coordinate = |value| {
+        u32::try_from(value)
+            .map_err(|_| {
+                ProtocolError::new("ground item action encode", "negative world coordinate")
+            })
+            .and_then(bounded)
+    };
+    let (x, y, id) = (
+        coordinate(tile.x)?,
+        coordinate(tile.y)?,
+        bounded(item.get())?,
+    );
+    let control = u8::from(control);
+    let mut out = Vec::with_capacity(8);
+    let opcode = match slot.get() {
+        0 => {
+            out.push(0); // sub-op, g1Alt2
+            out.extend_from_slice(&be_add(x));
+            out.extend_from_slice(&le_add(y));
+            out.push(128_u8.wrapping_sub(control));
+            out.extend_from_slice(&id.to_be_bytes());
+            112
+        }
+        1 => {
+            out.push(0); // sub-op, g1Alt2
+            out.extend_from_slice(&y.to_be_bytes());
+            out.extend_from_slice(&be_add(id));
+            out.extend_from_slice(&be_add(x));
+            out.push(control.wrapping_add(128));
+            113
+        }
+        2 => {
+            out.extend_from_slice(&be_add(x));
+            out.push(control.wrapping_neg());
+            out.push(0); // sub-op, g1
+            out.extend_from_slice(&id.to_le_bytes());
+            out.extend_from_slice(&y.to_be_bytes());
+            22
+        }
+        3 => {
+            out.push(0); // sub-op, g1Alt2
+            out.push(128_u8.wrapping_sub(control));
+            out.extend_from_slice(&le_add(y));
+            out.extend_from_slice(&be_add(id));
+            out.extend_from_slice(&x.to_le_bytes());
+            65
+        }
+        _ => {
+            out.extend_from_slice(&le_add(id));
+            out.push(0); // sub-op, g1
+            out.extend_from_slice(&x.to_le_bytes());
+            out.push(128_u8.wrapping_sub(control));
+            out.extend_from_slice(&be_add(y));
+            75
+        }
+    };
+    Ok((opcode, out))
+}
+
 /// 240 widget button, indexed operation and continuation families.
 pub(super) fn widget(action: rustclient_model::WidgetAction) -> Result<(u8, Vec<u8>)> {
     let widget = action.address.widget;
@@ -325,6 +392,89 @@ mod tests {
                 .unwrap()
                 .1,
             vec![0xff, 0xff, 0xff, 0x3f]
+        );
+    }
+
+    /// Decode an `OPOBJ*_V2` body the way the rsprox 240 decoders read it:
+    /// returns `(sub-op, x, y, control, id)`.
+    fn decode_ground_item(opcode: u8, body: &[u8]) -> (u8, u16, u16, bool, u16) {
+        let mut r = crate::wire::Reader::new(body, "test");
+        let g1 = |r: &mut crate::wire::Reader<'_>| r.u8().unwrap();
+        let g1_alt1 = |r: &mut crate::wire::Reader<'_>| r.u8_add().unwrap();
+        let g1_alt2 = |r: &mut crate::wire::Reader<'_>| r.u8_neg().unwrap();
+        let g1_alt3 = |r: &mut crate::wire::Reader<'_>| r.u8_sub().unwrap();
+        let g2 = |r: &mut crate::wire::Reader<'_>| r.u16().unwrap();
+        let g2_alt1 = |r: &mut crate::wire::Reader<'_>| r.u16_le().unwrap();
+        let g2_alt2 = |r: &mut crate::wire::Reader<'_>| r.u16_add().unwrap();
+        let g2_alt3 = |r: &mut crate::wire::Reader<'_>| r.u16_add_le().unwrap();
+        let out = match opcode {
+            112 => {
+                let subop = g1_alt2(&mut r);
+                let x = g2_alt2(&mut r);
+                let y = g2_alt3(&mut r);
+                let control = g1_alt3(&mut r) == 1;
+                (subop, x, y, control, g2(&mut r))
+            }
+            113 => {
+                let subop = g1_alt2(&mut r);
+                let y = g2(&mut r);
+                let id = g2_alt2(&mut r);
+                let x = g2_alt2(&mut r);
+                (subop, x, y, g1_alt1(&mut r) == 1, id)
+            }
+            22 => {
+                let x = g2_alt2(&mut r);
+                let control = g1_alt2(&mut r) == 1;
+                let subop = g1(&mut r);
+                let id = g2_alt1(&mut r);
+                (subop, x, g2(&mut r), control, id)
+            }
+            65 => {
+                let subop = g1_alt2(&mut r);
+                let control = g1_alt3(&mut r) == 1;
+                let y = g2_alt3(&mut r);
+                let id = g2_alt2(&mut r);
+                (subop, g2_alt1(&mut r), y, control, id)
+            }
+            75 => {
+                let id = g2_alt3(&mut r);
+                let subop = g1(&mut r);
+                let x = g2_alt1(&mut r);
+                let control = g1_alt3(&mut r) == 1;
+                (subop, x, g2_alt2(&mut r), control, id)
+            }
+            _ => unreachable!(),
+        };
+        assert_eq!(r.offset, body.len(), "OPOBJ body is 8 bytes");
+        out
+    }
+
+    #[test]
+    fn ground_item_ops_round_trip_through_the_reference_decoders() {
+        let tile = WorldTile::new(3222, 3218, rustclient_model::Plane::MIN);
+        let item = rustclient_model::ItemDefinitionId::new(995);
+        for (slot, opcode) in [(0, 112), (1, 113), (2, 22), (3, 65), (4, 75)] {
+            for control in [false, true] {
+                let (encoded, body) =
+                    ground_item(tile, item, ActionSlot::new(slot).unwrap(), control).unwrap();
+                assert_eq!(encoded, opcode);
+                assert_eq!(body.len(), 8);
+                assert_eq!(
+                    decode_ground_item(opcode, &body),
+                    (0, 3222, 3218, control, 995),
+                    "op {}",
+                    slot + 1
+                );
+            }
+        }
+        assert!(
+            ground_item(
+                WorldTile::new(-1, 0, rustclient_model::Plane::MIN),
+                item,
+                ActionSlot::new(0).unwrap(),
+                false
+            )
+            .is_err()
         );
     }
 }

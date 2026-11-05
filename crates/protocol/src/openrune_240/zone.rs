@@ -19,6 +19,7 @@ pub struct LocationUpdate {
 pub(super) enum ZoneUpdate {
     Animation(LocAnimUpdate),
     Location(LocationUpdate),
+    GroundItem(rustclient_model::GroundItemUpdate),
 }
 #[derive(Default)]
 pub(super) struct ZoneDecoder {
@@ -187,6 +188,12 @@ impl ZoneDecoder {
                     && let Some(update) = decoder.animation(bytes)?
                 {
                     updates.push(ZoneUpdate::Animation(update));
+                } else if let Some(update) = super::ground_items::zone(
+                    opcode,
+                    bytes,
+                    decoder.origin.expect("parsed header"),
+                )? {
+                    updates.push(ZoneUpdate::GroundItem(update));
                 }
             }
         }

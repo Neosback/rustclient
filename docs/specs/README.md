@@ -48,6 +48,7 @@ record exact validation and open gates. Do not weaken accepted requirements to m
 | [SPEC-0023-map-loading-state](SPEC-0023-map-loading-state.md) | Accepted retained-scene slice | Keep prior scene until replacement; instances/world views/teardown remain open. |
 | [SPEC-0024-zone-updates](SPEC-0024-zone-updates.md) | Accepted incremental-location milestone | Typed zone resources, bounded preparation/upload and coherent publication; live/scored acceptance remains open. |
 | [SPEC-0025-interface-script-host](SPEC-0025-interface-script-host.md) | Accepted scoped slice | Item search, IF1, deferred operations and interface/script audits; full host acceptance open. |
+| [SPEC-0029-ground-items](SPEC-0029-ground-items.md) | Accepted ground-item state milestone | Authoritative piles, zone/specific wire updates, menus, OPOBJ actions and minimap dots; pile rendering and live acceptance open. |
 
 ## Reserved, not yet authored
 

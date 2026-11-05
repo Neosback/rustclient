@@ -11,7 +11,7 @@ use crate::{GameState, OperationCommit, SemanticEvent, SessionLifecycle};
 ///
 /// Any change to field ordering, tags, integer encoding, or fingerprint
 /// algorithm that changes canonical output must increment this version.
-pub const SEMANTIC_FINGERPRINT_VERSION: u16 = 30;
+pub const SEMANTIC_FINGERPRINT_VERSION: u16 = 31;
 
 const FNV_OFFSET_BASIS: u64 = 0xCBF2_9CE4_8422_2325;
 const FNV_PRIME: u64 = 0x0000_0100_0000_01B3;
@@ -438,7 +438,48 @@ impl GameState {
                 &entities.sequence_timings,
             );
         }
+        write_ground_items(&mut fingerprint, self.ground_items());
         StateFingerprint(fingerprint.finish())
+    }
+}
+
+fn write_ground_items(fingerprint: &mut StableFingerprint64, items: &crate::GroundItemsState) {
+    fingerprint.write_u64(items.piles().len() as u64);
+    for (tile, pile) in items.piles() {
+        write_tile(fingerprint, tile);
+        fingerprint.write_u64(pile.len() as u64);
+        for item in pile {
+            fingerprint.write_u32(item.item.get());
+            fingerprint.write_u32(item.quantity);
+            for enabled in item.ops.enabled() {
+                fingerprint.write_u8(u8::from(enabled));
+            }
+            fingerprint.write_u8(item.ownership.0);
+            fingerprint.write_u64(item.public_at.get());
+            fingerprint.write_u64(item.despawn_at.get());
+            fingerprint.write_u8(u8::from(item.never_public));
+            match item.customisation {
+                None => fingerprint.write_u8(0),
+                Some(custom) => {
+                    fingerprint.write_u8(1);
+                    fingerprint.write_u32(
+                        custom
+                            .model
+                            .map_or(u32::MAX, rustclient_model::ModelId::get),
+                    );
+                    for pair in [custom.recolour, custom.retexture] {
+                        match pair {
+                            None => fingerprint.write_u8(0),
+                            Some((index, value)) => {
+                                fingerprint.write_u8(1);
+                                fingerprint.write_u16(index);
+                                fingerprint.write_u16(value);
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -713,6 +754,7 @@ fn write_commit(fingerprint: &mut StableFingerprint64, commit: OperationCommit) 
     fingerprint.write_u8(u8::from(delta.gameframe_changed()));
     fingerprint.write_u8(u8::from(delta.inventory_changed()));
     fingerprint.write_u8(u8::from(delta.interfaces_changed()));
+    fingerprint.write_u8(u8::from(delta.ground_items_changed()));
 }
 
 #[expect(
@@ -724,6 +766,17 @@ fn write_event(fingerprint: &mut StableFingerprint64, event: SemanticEvent) {
         SemanticEvent::DestinationChanged(destination) => {
             fingerprint.write_u8(21);
             write_destination(fingerprint, destination);
+        }
+        SemanticEvent::GroundItemsChanged { tile } => {
+            fingerprint.write_u8(24);
+            write_tile(fingerprint, tile);
+        }
+        SemanticEvent::GroundItemAreaReset { origin, size } => {
+            fingerprint.write_u8(25);
+            write_tile(fingerprint, origin);
+            for value in size {
+                fingerprint.write_u32(value);
+            }
         }
         SemanticEvent::LocationAreaReset { origin, size } => {
             fingerprint.write_u8(20);

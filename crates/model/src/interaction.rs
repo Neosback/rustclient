@@ -81,6 +81,11 @@ pub enum WorldTarget {
         definition: crate::ObjectDefinitionId,
         resolved: crate::ObjectDefinitionId,
     },
+    /// An item in the pile on `tile`; the first such item with this id when the action runs.
+    GroundItem {
+        tile: crate::WorldTile,
+        item: crate::ItemDefinitionId,
+    },
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct WorldAction {

@@ -1123,6 +1123,21 @@ impl NativeApp {
             )
         };
         let mut dots = Vec::new();
+        // Stock draws the red item dot (mapdots frame 0) at the centre of every tile on the
+        // local player's plane with a pile, before NPC and player dots.
+        if let Some(plane) = entities.local_player().map(|player| player.tile.plane) {
+            for (tile, _) in self.state.ground_items().piles() {
+                if tile.plane == plane {
+                    dots.push(MinimapDot {
+                        tile: (
+                            f64::from(tile.x - origin.x) + 0.5,
+                            f64::from(tile.y - origin.y) + 0.5,
+                        ),
+                        frame: 0,
+                    });
+                }
+            }
+        }
         for player in entities.players().values() {
             if Some(player.index) == local {
                 continue;
@@ -2728,6 +2743,7 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                         &loaded.asset,
                         self.state.entities(),
                         self.state.scenery(),
+                        self.state.ground_items(),
                     )
                 {
                     let in_flight = request.clone();

@@ -414,6 +414,7 @@ impl NativeApp {
                 self.state.entities().npcs().get(&index).map(|npc| npc.tile)
             }
             WorldTarget::Location { key, .. } => Some(key.tile),
+            WorldTarget::GroundItem { tile, .. } => Some(tile),
         };
         connection.send(network::Outbound {
             world_action: Some(action),
@@ -514,6 +515,29 @@ impl NativeApp {
                 &self.scene_visibility(window),
             )
         {
+            // Items on the tile under the pointer (deviation GROUND-ITEM-TILE-PICK: piles are
+            // not drawn yet, so the tile stands in for the pile's model bounds). Stock inserts
+            // the pile oldest first and shows the last insertion on top, so the newest item's
+            // options come first; an item whose definition is still loading is skipped.
+            for item in self.state.ground_items().pile(destination).iter().rev() {
+                let target = WorldTarget::GroundItem {
+                    tile: destination,
+                    item: item.item,
+                };
+                if let Ok(actions) = rustclient_application::world_actions(
+                    &self.state,
+                    &loaded.asset,
+                    &self.scene.entity_catalog,
+                    scene,
+                    target,
+                ) {
+                    entries.extend(
+                        actions.into_iter().map(|(label, action)| {
+                            (label, WorldChoice::Action(action), Some(target))
+                        }),
+                    );
+                }
+            }
             entries.push((
                 "Walk here".to_owned(),
                 WorldChoice::Walk { scene, destination },
@@ -656,6 +680,7 @@ impl NativeApp {
             target: name.to_owned(),
             target_color: match target {
                 Some(WorldTarget::Npc { .. }) => [255, 255, 0, 255],
+                Some(WorldTarget::GroundItem { .. }) => [255, 144, 64, 255],
                 _ => [0, 255, 255, 255],
             },
         })

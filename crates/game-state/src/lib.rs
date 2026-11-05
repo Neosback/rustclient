@@ -35,6 +35,10 @@ mod projection;
 pub use projection::{ActorProjectionKey, ProjectionChange, ProjectionChanges, ProjectionCursor};
 mod destination;
 mod fingerprint;
+mod ground_items;
+pub use ground_items::{
+    GROUND_ITEM_LIMIT, GroundItem, GroundItemError, GroundItemOperation, GroundItemsState,
+};
 mod operation;
 mod replay;
 mod scenery;

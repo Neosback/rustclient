@@ -617,6 +617,9 @@ pub fn item(bytes: &[u8], id: ItemDefinitionId, source: Source) -> Result<ItemDe
         bought: None,
         bought_template: None,
         inventory_actions: [None, None, None, None, Some("Drop".into())],
+        ground_actions: [None, None, Some("Take".into()), None, None],
+        cost: 1,
+        count_variants: Vec::new(),
         parameters: BTreeMap::new(),
         placeholder: None,
         placeholder_template: None,
@@ -650,7 +653,12 @@ pub fn item(bytes: &[u8], id: ItemDefinitionId, source: Source) -> Result<ItemDe
             149 => out.placeholder_template = Some(ItemDefinitionId::new(u32::from(r.u16()?))),
             148 => out.placeholder = Some(ItemDefinitionId::new(u32::from(r.u16()?))),
             35..=39 => out.inventory_actions[usize::from(op - 35)] = Some(r.string_value()?),
-            3 | 30..=34 => r.string()?,
+            30..=34 => {
+                let action = r.string_value()?;
+                out.ground_actions[usize::from(op - 30)] =
+                    (!action.eq_ignore_ascii_case("hidden")).then_some(action);
+            }
+            3 => r.string()?,
             75 | 90..=94 | 99 | 110..=112 => {
                 r.u16()?;
             }
@@ -660,7 +668,14 @@ pub fn item(bytes: &[u8], id: ItemDefinitionId, source: Source) -> Result<ItemDe
                 r.u8()?;
             }
             100..=109 => {
-                r.take(4)?;
+                let slot = usize::from(op - 100);
+                let item = ItemDefinitionId::new(u32::from(r.u16()?));
+                let count = r.u16()?;
+                if out.count_variants.len() <= slot {
+                    out.count_variants
+                        .resize(slot + 1, (ItemDefinitionId::new(0), 0));
+                }
+                out.count_variants[slot] = (item, count);
             }
             43 => {
                 r.u8()?;
@@ -686,7 +701,8 @@ pub fn item(bytes: &[u8], id: ItemDefinitionId, source: Source) -> Result<ItemDe
                 out.icon_model =
                     (model != u32::MAX && model != 65535).then_some(ModelId::new(model));
             }
-            12 | 51..=54 => {
+            12 => out.cost = r.u32()?.cast_signed(),
+            51..=54 => {
                 r.u32()?;
             }
             13 => out.equip_slot = Some(r.u8()?),

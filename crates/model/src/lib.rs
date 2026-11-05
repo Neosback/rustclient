@@ -17,8 +17,12 @@ pub use minimap::{
 mod destination;
 pub use destination::MapDestination;
 pub mod entity;
+mod ground_item;
 pub mod ids;
 mod interaction;
+pub use ground_item::{
+    GroundItemCustomisation, GroundItemOwnership, GroundItemPosition, GroundItemUpdate,
+};
 pub use interaction::{
     ActionMask, ActionSlot, NpcInstanceId, PlayerInstanceId, TileOffset, WorldAction, WorldTarget,
 };

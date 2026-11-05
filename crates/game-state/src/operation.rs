@@ -18,6 +18,8 @@ pub enum SemanticOperation {
     ChatFilterText(String),
     ChatFilters([Option<u8>; 3]),
     Scenery(crate::SceneryOperation),
+    /// Ground item changes and zone resets.
+    GroundItems(crate::GroundItemOperation),
     PlayerStatus(rustclient_model::PlayerStatusUpdate),
     Inventory(rustclient_model::InventoryUpdate),
     Interface(rustclient_model::InterfaceUpdate),
@@ -62,6 +64,7 @@ pub enum OperationError {
     /// Entity transition validation failed.
     EntityUpdate(crate::EntityUpdateError),
     Scenery(crate::SceneryError),
+    GroundItems(crate::GroundItemError),
     Inventory(crate::InventoryError),
     Interface(crate::InterfaceError),
     /// Authenticated bootstrap transition failed.
@@ -80,6 +83,7 @@ impl fmt::Display for OperationError {
             Self::Chat(error) => error.fmt(formatter),
             Self::EntityUpdate(error) => error.fmt(formatter),
             Self::Scenery(error) => error.fmt(formatter),
+            Self::GroundItems(error) => error.fmt(formatter),
             Self::Inventory(error) => error.fmt(formatter),
             Self::Interface(error) => error.fmt(formatter),
             Self::Connection(error) => error.fmt(formatter),
@@ -96,6 +100,7 @@ impl std::error::Error for OperationError {
             Self::Chat(error) => Some(error),
             Self::EntityUpdate(error) => Some(error),
             Self::Scenery(error) => Some(error),
+            Self::GroundItems(error) => Some(error),
             Self::Inventory(error) => Some(error),
             Self::Interface(error) => Some(error),
             Self::Connection(error) => Some(error),
@@ -251,6 +256,7 @@ impl GameState {
                 })
             }
             SemanticOperation::Scenery(op) => self.apply_scenery(op),
+            SemanticOperation::GroundItems(op) => self.apply_ground_items(op),
             SemanticOperation::Inventory(update) => self.apply_inventory(update),
             SemanticOperation::Interface(update) => self.apply_interface(update),
             SemanticOperation::UpdatePlayers(update) => self.apply_update_players(&update),

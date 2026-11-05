@@ -280,6 +280,13 @@ pub enum ClientIntent {
         slot: rustclient_model::ActionSlot,
         control: bool,
     },
+    /// A ground option (`OPOBJ1..5`) on an item lying on `tile`.
+    GroundItemAction {
+        tile: WorldTile,
+        item: rustclient_model::ItemDefinitionId,
+        slot: rustclient_model::ActionSlot,
+        control: bool,
+    },
 }
 impl ClientIntent {
     /// Encode only after validating all fields, before advancing the cipher.
@@ -334,6 +341,12 @@ impl ClientIntent {
                 slot,
                 control,
             } => super::actions::location(tile, object, slot, control)?,
+            Self::GroundItemAction {
+                tile,
+                item,
+                slot,
+                control,
+            } => super::actions::ground_item(tile, item, slot, control)?,
             Self::MinimapWalk {
                 destination,
                 invert_run,
@@ -424,6 +437,8 @@ pub enum ServerUpdate {
     LocationAnim(LocAnimUpdate),
     Location(super::zone::LocationUpdate),
     LocationZoneReset(super::zone::ZoneOrigin),
+    /// A ground item ("obj") change, from a zone body or an `OBJ_*_SPECIFIC` packet.
+    GroundItem(rustclient_model::GroundItemUpdate),
     Tick,
     LoggedOut,
     Control(super::control::SessionControl),
@@ -680,6 +695,7 @@ impl SessionCodec {
                         super::zone::ZoneUpdate::Location(location) => {
                             ServerUpdate::Location(location)
                         }
+                        super::zone::ZoneUpdate::GroundItem(item) => ServerUpdate::GroundItem(item),
                     });
                 }
                 ServerUpdate::Deferred
@@ -692,6 +708,10 @@ impl SessionCodec {
                 .zones
                 .animation(&packet.payload)?
                 .map_or(ServerUpdate::Deferred, ServerUpdate::LocationAnim),
+            52 | 86 | 87 | 89 | 114 | 124 => {
+                super::ground_items::specific(packet.opcode, &packet.payload)?
+                    .map_or(ServerUpdate::Deferred, ServerUpdate::GroundItem)
+            }
             84 => {
                 let update = decode_loc_anim_specific(&packet.payload)?;
                 update.map_or(ServerUpdate::Deferred, ServerUpdate::LocationAnim)

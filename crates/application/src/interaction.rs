@@ -109,11 +109,11 @@ pub fn world_actions(
                     .map_or(ActionMask::ALL, |o| o.enabled),
             )
         }
+        WorldTarget::GroundItem { tile, item } => {
+            ground_item_target(state, catalog, scene, player_plane, tile, item)?
+        }
     };
-    let target_color = match target {
-        WorldTarget::Npc { .. } => "ffff00",
-        WorldTarget::Location { .. } => "ffff",
-    };
+    let target_color = target_color(target);
     Ok(actions
         .iter()
         .enumerate()
@@ -129,7 +129,7 @@ pub fn world_actions(
                     .get(&key)
                     .and_then(|o| o.labels[index].as_ref())
                     .or(verb.as_ref()),
-                WorldTarget::Npc { .. } => verb.as_ref(),
+                WorldTarget::Npc { .. } | WorldTarget::GroundItem { .. } => verb.as_ref(),
             }?;
             if verb.is_empty() {
                 return None;
@@ -144,6 +144,49 @@ pub fn world_actions(
             ))
         })
         .collect())
+}
+/// The `<col=...>` tag of a target's name: NPCs yellow, locations cyan, ground items orange
+/// (`colorStartTag(16748608)`).
+const fn target_color(target: rustclient_model::WorldTarget) -> &'static str {
+    match target {
+        rustclient_model::WorldTarget::Npc { .. } => "ffff00",
+        rustclient_model::WorldTarget::Location { .. } => "ffff",
+        rustclient_model::WorldTarget::GroundItem { .. } => "ff9040",
+    }
+}
+/// Name, ground options and enabled mask of the first item with id `item` on `tile`.
+fn ground_item_target<'a>(
+    state: &GameState,
+    catalog: &'a rustclient_scene::entity_mesh::EntityCatalog,
+    scene: SceneDescriptor,
+    player_plane: rustclient_model::Plane,
+    tile: WorldTile,
+    item: rustclient_model::ItemDefinitionId,
+) -> Result<
+    (
+        &'a str,
+        &'a [Option<String>; 5],
+        rustclient_model::ActionMask,
+    ),
+    String,
+> {
+    if tile.plane != player_plane || !scene.contains_footprint(tile) {
+        return Err("ground item is outside the current map or plane".into());
+    }
+    let on_ground = state
+        .ground_items()
+        .pile(tile)
+        .iter()
+        .find(|entry| entry.item == item)
+        .ok_or("ground item was removed")?;
+    let def = catalog
+        .item(item)
+        .ok_or("ground item definition is not loaded yet")?;
+    Ok((
+        catalog.item_name(item).unwrap_or("null"),
+        &def.ground_actions,
+        on_ground.ops,
+    ))
 }
 /// Revalidate the selected menu entry immediately before creating an outbound intent.
 /// # Errors
@@ -173,6 +216,12 @@ pub fn validate_world_action(
         } => ClientIntent::LocationAction {
             tile: key.tile,
             object: definition,
+            slot: action.slot,
+            control,
+        },
+        WorldTarget::GroundItem { tile, item } => ClientIntent::GroundItemAction {
+            tile,
+            item,
             slot: action.slot,
             control,
         },
