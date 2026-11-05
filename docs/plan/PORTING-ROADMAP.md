@@ -1,11 +1,12 @@
 # OSRS 240 / RuneLite roadmap
 
-Canonical execution order, reconciled **2026-11-02** against `3b30b99f`. Full parity is
+Canonical execution order, reconciled **2026-11-05** against `2386fc28`. Full parity is
 incomplete and no completion percentage is claimed. The [current audit](../reference/rs240-port/CURRENT-AUDIT.md)
 records the inspected baseline and acceptance limits; the [domain matrix](../reference/rs240-port/PORT-MATRIX.md)
 owns detailed status. This roadmap replaces the October 29 execution plan and the original
 foundation plan; their evidence remains in the [archive](../archive/README.md). The
-[2026-10-31 to 2026-11-02 pass record](../reference/CLIENT-PASS-2026-11-02.md) holds the commands,
+[2026-10-31 to 2026-11-02 pass record](../reference/CLIENT-PASS-2026-11-02.md) and the
+[2026-11-05 pass record](../reference/CLIENT-PASS-2026-11-05.md) hold the commands,
 measurements and NOT-RUN gates behind the "Done" rows below.
 
 How to read status here: **Done** means the named scope has code plus cache, probe or unit
@@ -29,18 +30,24 @@ pass, so every "Done" row also appears in the live backlog below.
 | Plugins added | Tile Indicators, Minimap (wheel zoom, saved zoom, dot colors, hide), Ground Markers (Mark/Unmark through plugin-offered menu entries); API 0.2 gained, additively, `ui.minimap`, `ClientSnapshot` pointer/destination tiles and `PluginOutput::menu_offers` | `b38258e1`, `2e4563eb`, `eef04e4b`; ADR-0006 |
 | Scene load latency | Decoded textures, floors, kits and models shared across loads; startup cache warm-up on a `Prefetch` pool job; single-flight memo and config loads; cheaper texture fingerprint. First `load_world` 218 ms to about 30 ms once warmed; scene asset id and 23 captured frames unchanged | `657ba8d1`, `546f2ef4`, `3b30b99f` |
 | Memory | Vertex remap and the uploaded static triangles are released (picking runs on a compact copy); texture array sized to the largest id (3.6 MB saved) | `8233aef3`, `e2ce6f64`, `2f6d3c19` |
+| Ground items | Authoritative piles from all six zone bodies and six `*_SPECIFIC` packets, stock matching and resets, world menu options, `OPOBJ1..5`, minimap item dots, plugin snapshot and events; piles not drawn (deviations `GROUND-ITEM-TILE-PICK`, `GROUND-ITEM-PILES-UNDRAWN`) | SPEC-0029; `9ff06076`, `2ed41e23` |
+| Plugin menu stage | `MenuEntryAdded`/`MenuOpened`/`PostMenuSort` emitted synchronously, `menu_edits` (with additive `Swap`) applied to the left click, mouse-over text and opened menu; every chosen entry reaches `MenuOptionClicked`; `ScriptPostFired` emitted | SPEC-0021; `8bb32a1d` |
+| Plugin outputs drawn | Info boxes, `MinimapDot`, new `TileText`; plugins added: Menu Entry Swapper (built-in swaps), Ground Items (text overlay, HA values) | ADR-0006; `8bb32a1d`, `2ed41e23` |
+| CS2 server-state ops | `INVOTHER_*`, unloaded friend/clan/world-list/stock-market answers, 3129/3644/4036, `FROMDATE`, rectangle gradient fills, head sources retained | `f26dae55`; audit baseline not regenerated |
+| Per-cycle plugin work | Unchanged snapshot domains carried forward and not diffed, keyed on the `GameState` journal; equivalence-tested against full rebuilds | `ad4429f2`; unmeasured |
+| Scene load | Seam merge by sorted merge join; emit capacity reserved; cancellation between load phases; redundant opaque binds skipped | `2386fc28`; unmeasured |
 
 ### Partial or open
 
 | Area | State | What is missing | Owner row |
 | --- | --- | --- | --- |
-| Interface host | Partial | 33 audit groups still abort on server-state ops (`INVOTHER_*`, `STOCKMARKET_*`, `WORLDLIST_FETCH`, clan, ignore, `*_SETNPCHEAD`, 2310/3129/3644/4036/7601); interactive text-input fields (`TEXT-FIELD-WIDGET`); translucent models (`MODEL-TRANSPARENCY`); widget mutation packets; harness fixtures for varps, inventories and friends | scripts, widgets, widget-mutations |
+| Interface host | Partial | The 2026-11-05 ops are answered but `interface_audit` was not re-run, so the 33-group baseline is stale; still open: 2310 (sub-ops), 7601 (post-240 op), model widget painting (heads, translucency), interactive text-input fields (`TEXT-FIELD-WIDGET`); translucent models (`MODEL-TRANSPARENCY`); widget mutation packets; harness fixtures for varps, inventories and friends | scripts, widgets, widget-mutations |
 | Minimap | Partial | Item, friend, team, friends-chat and clan dots (need ground items and social state in `GameState`); rebuild on scenery change; HD minimap has no source in `references/` | minimap |
 | World map | Partial | Alignment and wrapping, hover and element menus, smoothing, flash, staff shortcut; button-sprite failure cause not established | world-map |
-| Load pipeline | Partial | Parallel seam merge and emit (about 63 ms, serial); chunked vertex packing; minimap build off the UI thread; cancellation between phases; map-square decode cache; instances, extended bounds, world views | normal-maps, instances, worldviews |
-| Plugins | Partial | 16 partial modules of 131 catalog slots; Ground Markers `Label` and `Color`, import and export, minimap outline; everything blocked on ground items, actor effects, social state and provider services | first-party, plugin-api |
-| Frame time | Open | Per-cycle plugin and entity work skip-when-unchanged, hover pick prefilter, spatial culling of the static scene; all need a live profile first | update-latency |
-| Gameplay facts | Open | Ground items, actor effects and facing, projectiles, social and trading, audio, world list | ground-items, actor-effects, facing, private-clan-chat, audio |
+| Load pipeline | Partial | Seam merge is now a serial merge join and phases cancel, both unmeasured; parallel merge/emit only if a profile still shows it; chunked vertex packing; minimap build off the UI thread; map-square decode cache; instances, extended bounds, world views | normal-maps, instances, worldviews |
+| Plugins | Partial | 18 partial modules of 131 catalog slots; widget menus do not run the menu stage; camera target/zoom-limit commands unconsumed; GE price service; Ground Markers `Label` and `Color`, import and export, minimap outline; blocked on actor effects, social state and provider services | first-party, plugin-api |
+| Frame time | Open | Plugin projection reuse landed unmeasured; entity skip-when-unchanged, a hover pick prefilter over emitted-triangle bounds (clickbox bounds are unsafe), static-run culling outside the admission window; all need a live profile first | update-latency |
+| Gameplay facts | Open | Ground item pile models; actor effects and facing, projectiles, social and trading, Grand Exchange offers, audio, world list | ground-items, actor-effects, facing, private-clan-chat, audio |
 | Browser | Open | Shared sidebar and Wasm probes only; no playable browser client | browser |
 
 ### Issues and unexplained behavior
@@ -58,8 +65,12 @@ Everything above is unobserved in the running client. In priority order: walk ac
 boundary (no black frame, delayed box); change a setting and scroll; type into a numeric, name
 and string prompt; open the world map and look at its buttons; minimap wheel zoom, saved zoom
 across a restart, dot colors, hide; Tile Indicators; Ground Markers Shift right-click, toggle
-and restart persistence; first scene load after login (warm-up) and a door open. Record each
-result in the pass record or its successor, not in this file.
+and restart persistence; first scene load after login (warm-up) and a door open. From the
+2026-11-05 pass: drop, pick up and stack items (menu options, minimap dots, count changes, despawn,
+region entry); Menu Entry Swapper on a banker and a fairy ring; Ground Items labels; any plugin info
+box; Grand Exchange and settings interfaces mounting with gradient rectangles. Then re-run
+`interface_audit --check` and `scene_probe --performance`. Record each result in the pass record or
+its successor, not in this file.
 
 ## What is already in place
 
@@ -99,9 +110,9 @@ semantic systems. Do not label a reduced workload the full 256-actor gate.
 | --- | --- | --- |
 | 1 | Observe the shipped pass live (backlog above) and resolve the open issues it raises: settings scroll, world-map buttons, prompt typing. | Written observations with build identity; each issue closed, reproduced with a capture, or re-scoped. |
 | 2 | Valid current-machine baseline, then the largest measured tails: seam merge and emit, chunked vertex packing, minimap off the UI thread, cancellation between phases, per-cycle plugin and entity skip-when-unchanged, remaining widget and inventory granularity. | Matched raw traces; `scene_probe --performance` and frame traces before and after; no unrelated world reconstruction or upload for chat or inventory; failed uploads remain pending. |
-| 3 | Interface and script host: burn down the 33 audit groups in order of how many groups each op touches, widget mutation packets, text-input widgets, then listener lifetime. | `interface_audit --check` baseline falls; CS2 ledger rows move; fixtures for varps, inventories and friends added to the harness. |
-| 4 | Authoritative ground items, then actor and combat facts (selected rejected NPC masks, rich facing, effects, lifetimes, reset and index reuse). Ground items also unlock the minimap's item dots and later plugin ports. | Exact 240 and selected RSProt cases to GameState transitions, replay and fingerprints, menus and rendering, reachable plugin facts. No guessed interaction or synthetic hooks. |
-| 5 | Shared input, menu and script stage ownership and provider services; then port applicable plugin slices by dependency. | Correct stage and order, capabilities, source-case dispositions, actual visual consumers. |
+| 3 | Interface and script host: re-run the audit against the 2026-11-05 ops, then burn down what remains, widget mutation packets, model widget painting, text-input widgets, then listener lifetime. | `interface_audit --check` baseline falls; CS2 ledger rows move; fixtures for varps, inventories and friends added to the harness. |
+| 4 | Ground item pile models (top three by value, count variants, customisation) and model-bound picking; then actor and combat facts (selected rejected NPC masks, rich facing, effects, lifetimes, reset and index reuse). | Exact 240 and selected RSProt cases to GameState transitions, replay and fingerprints, menus and rendering, reachable plugin facts. No guessed interaction or synthetic hooks. |
+| 5 | Widget menus through the plugin menu stage, Shift and key state for plugins, provider services (definitions, prices, clock); then port applicable plugin slices by dependency. | Correct stage and order, capabilities, source-case dispositions, actual visual consumers. |
 | 6 | Classic GPU gates, map and session systems (instances, world views, extended bounds), then browser gameplay and release acceptance. | Per-gate source evidence and native and browser lifecycle results; ADR-0004 visual comparison. Inventory or build success alone cannot close a gate. |
 
 ## Workstreams and dependencies
@@ -184,7 +195,7 @@ unintegrated remain blockers. Coordinate types and reset ordering precede view c
 **Owners:** GameState projection journal → application/scene preparation → renderer.
 **Contract:** [SPEC-0024](../specs/SPEC-0024-zone-updates.md), accepted incremental-location slice; ground items and complete zone semantics remain separate obligations.
 
-**Status: partial.** Owning-zone slice done; decoded assets are shared across loads and warmed at startup. Ground items, temporary merges and live acceptance are open.
+**Status: partial.** Owning-zone slice done; decoded assets are shared across loads and warmed at startup. Ground item state, menus and actions are done (SPEC-0029); pile models, temporary merges and live acceptance are open.
 
 Server location add/change/delete and animation are present. The accepted slice now
 implements 8×8 owning-zone preparation and persistent residency for ordinary replacements.
@@ -208,7 +219,7 @@ after their submissions complete. Do not add another model or semantic cache.
 **Contract:** [SPEC-0021](../specs/SPEC-0021-input-menus.md); input arbitration accepted,
 full menu/input contract still draft.
 
-**Status: partial.** Arbitration is accepted and implemented; the `shared-input` row is still `incorrect` (winit-bound logic in `NativeApp`). Plugin-offered world menu entries now exist (`PluginOutput::menu_offers`, click returns as `MenuOptionClicked` kind `Other(1500)`); the NativeApp path from right-click to click has no unit test.
+**Status: partial.** Arbitration is accepted and implemented; the `shared-input` row is still `incorrect` (winit-bound logic in `NativeApp`). The plugin menu stage is accepted and implemented for world menus (SPEC-0021): row projection lives in `application::menu` and edit application in `plugin-host::menu`, both unit-tested without `NativeApp`; widget menus do not run it yet.
 
 Move reusable winit-bound picking/menu/key/hover logic out of NativeApp. Finish
 player/ground-item actions, targeting/sub-ops, drag/drop packets, dialogue resumes,
@@ -303,7 +314,7 @@ separate future scope. GPU remains an always-on service; software rendering is d
 **Owners:** existing API/bridge/host/first-party/runtime/shared-shell crates.
 **Contract:** SPEC-0004/0011 and ADR-0006.
 
-**Status: partial.** Tile Indicators, Minimap and Ground Markers join the earlier ports (16 partial modules of 131 slots). `MenuOptionClicked` is emitted from the menu owner for plugin entries only; the rest of the menu and script hooks are declared, not emitted.
+**Status: partial.** Menu Entry Swapper and Ground Items join the earlier ports (18 partial modules of 131 slots). The menu hooks, `MenuOptionClicked` for every entry, `ScriptPostFired` and the ground item events are emitted; info boxes, minimap dots and tile text are drawn. Camera target commands remain unconsumed.
 
 Keep implemented private call authority, grants, activation/publication identities,
 subscriber routing and immutable retained panels. Complete authoritative hook-stage
