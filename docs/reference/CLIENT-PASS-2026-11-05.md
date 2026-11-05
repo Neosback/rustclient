@@ -118,3 +118,34 @@ python3 tools/docs_check.py                                     pass
   and no plugin emits them yet.
 - **Batched plugin event dispatch:** the routing tests make one callback per event an explicit
   contract (`event_routing.rs`).
+
+## Continuation (same day): actor effects, camera targets, Shift/clock, widget menus
+
+Commits on `claude/gracious-johnson-m90ttn` after `c890f759`:
+
+| Change | Evidence |
+| --- | --- |
+| Hitmarks, health bars and spot animations retained as actor state (SPEC-0022): `openrune_240::actor_effects` decoders replace the skip code, `ActorEffectsState` on players and NPCs with cycle-stamped lifetimes, plugin snapshot fields and the existing `HitsplatApplied`/`GraphicChanged` diff; fingerprint schema 32; deviations `HITSPLAT-DEFAULT-DURATION`, `HEADBAR-DEFAULT-DURATION`, `HEADBAR-FILL-UNITS` | protocol golden bytes for every block class, GameState lifetime/expiry/index-reuse/replay test, bridge snapshot-and-event test |
+| Plugin camera targets applied (`YawTarget`, `PitchTarget`, `ZoomTarget`, `ZoomLimits`); additive `ClientSnapshot::shift_held` and `wall_time_ms`; Menu Entry Swapper Shift-dependent swaps; deviation `CAMERA-TARGET-EASING` | camera easing test, Shift swap test |
+| Widget menus run the plugin menu stage with `CC_OP` row conventions; shared `apply_edited_menu` | row projection and reordering unit test; no live inventory |
+
+Validation of the final commit: `cargo fmt --all --check`, `cargo clippy --workspace --all-targets
+-- -D warnings`, `cargo test --workspace --no-fail-fast` (812 passed, 0 failed), both wasm checks and the
+five documentation tools all pass.
+
+Still NOT-RUN: `interface_audit`, `scene_probe`, GPU, and every live check (real hitsplat traffic, camera
+feel, widget menu swaps on a real inventory).
+
+Deferred, with reasons:
+
+- **Ground item piles in the scene** (and pick-by-model): needs the item resize opcodes (110-112,
+  skipped by the definition decoder), the stock three-item stack ordering and a GPU/visual comparison;
+  none of it can be verified without a cache and an adapter. The semantic state, menu, minimap dots and
+  plugin API from the previous pass stand; deviations `GROUND-ITEM-PILES-UNDRAWN` and
+  `GROUND-ITEM-TILE-PICK` remain open.
+- **The interaction target** (`FACE_PATHING_ENTITY`): the player/NPC facing blocks are consumed as
+  angles; the entity-target mask and writer order are not established, so `ActorState::interacting`
+  stays empty and Idle Notifier's interaction branch stays dormant.
+- **Plugin snapshot reuse for actors:** every client cycle changes the entity domain while any actor
+  exists, so the carry-forward in `ad4429f2` saves players and NPCs only when no actor is present; it
+  saves vars, containers, chat and ground items as designed.

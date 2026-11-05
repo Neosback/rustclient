@@ -1,6 +1,6 @@
 # OSRS 240 / RuneLite roadmap
 
-Canonical execution order, reconciled **2026-11-05** against `2386fc28`. Full parity is
+Canonical execution order, reconciled **2026-11-05** against the actor-effects, camera and widget-menu commits after `c890f759`. Full parity is
 incomplete and no completion percentage is claimed. The [current audit](../reference/rs240-port/CURRENT-AUDIT.md)
 records the inspected baseline and acceptance limits; the [domain matrix](../reference/rs240-port/PORT-MATRIX.md)
 owns detailed status. This roadmap replaces the October 29 execution plan and the original
@@ -31,6 +31,7 @@ pass, so every "Done" row also appears in the live backlog below.
 | Scene load latency | Decoded textures, floors, kits and models shared across loads; startup cache warm-up on a `Prefetch` pool job; single-flight memo and config loads; cheaper texture fingerprint. First `load_world` 218 ms to about 30 ms once warmed; scene asset id and 23 captured frames unchanged | `657ba8d1`, `546f2ef4`, `3b30b99f` |
 | Memory | Vertex remap and the uploaded static triangles are released (picking runs on a compact copy); texture array sized to the largest id (3.6 MB saved) | `8233aef3`, `e2ce6f64`, `2f6d3c19` |
 | Ground items | Authoritative piles from all six zone bodies and six `*_SPECIFIC` packets, stock matching and resets, world menu options, `OPOBJ1..5`, minimap item dots, plugin snapshot and events; piles not drawn (deviations `GROUND-ITEM-TILE-PICK`, `GROUND-ITEM-PILES-UNDRAWN`) | SPEC-0029; `9ff06076`, `2ed41e23` |
+| Actor effects | Hitmarks, health bars and spot animations retained per actor with cycle-stamped lifetimes, reaching plugin snapshots and the existing events; interaction target, drawing, projectiles, tint and freeze open | SPEC-0022 |
 | Plugin menu stage | `MenuEntryAdded`/`MenuOpened`/`PostMenuSort` emitted synchronously, `menu_edits` (with additive `Swap`) applied to the left click, mouse-over text and opened menu; every chosen entry reaches `MenuOptionClicked`; `ScriptPostFired` emitted | SPEC-0021; `8bb32a1d` |
 | Plugin outputs drawn | Info boxes, `MinimapDot`, new `TileText`; plugins added: Menu Entry Swapper (built-in swaps), Ground Items (text overlay, HA values) | ADR-0006; `8bb32a1d`, `2ed41e23` |
 | CS2 server-state ops | `INVOTHER_*`, unloaded friend/clan/world-list/stock-market answers, 3129/3644/4036, `FROMDATE`, rectangle gradient fills, head sources retained | `f26dae55`; audit baseline not regenerated |
@@ -47,7 +48,7 @@ pass, so every "Done" row also appears in the live backlog below.
 | Load pipeline | Partial | Seam merge is now a serial merge join and phases cancel, both unmeasured; parallel merge/emit only if a profile still shows it; chunked vertex packing; minimap build off the UI thread; map-square decode cache; instances, extended bounds, world views | normal-maps, instances, worldviews |
 | Plugins | Partial | 18 partial modules of 131 catalog slots; GE price service; actor interaction target; Ground Markers `Label` and `Color`, import and export, minimap outline; blocked on actor effects, social state and provider services | first-party, plugin-api |
 | Frame time | Open | Plugin projection reuse landed unmeasured; entity skip-when-unchanged, a hover pick prefilter over emitted-triangle bounds (clickbox bounds are unsafe), static-run culling outside the admission window; all need a live profile first | update-latency |
-| Gameplay facts | Open | Ground item pile models; actor effects and facing, projectiles, social and trading, Grand Exchange offers, audio, world list | ground-items, actor-effects, facing, private-clan-chat, audio |
+| Gameplay facts | Open | Ground item pile models; actor facing and interaction target, drawn effects, projectiles, social and trading, Grand Exchange offers, audio, world list | ground-items, actor-effects, facing, private-clan-chat, audio |
 | Browser | Open | Shared sidebar and Wasm probes only; no playable browser client | browser |
 
 ### Issues and unexplained behavior
@@ -168,9 +169,9 @@ services survive login/logout and renderer reconstruction; activation is not a s
 ### Phase 2: valid inbound actor traffic
 
 **Owners:** selected protocol adapter → existing GameState player/NPC collections.
-**Spec reservation:** SPEC-0022, actor synchronization/effects, not yet authored.
+**Spec:** [SPEC-0022](../specs/SPEC-0022-actor-effects.md) covers effect facts; rich facing and the interaction target remain open.
 
-**Status: open.** Selected rejected NPC blocks remain rejected; several blocks are consumed without retained facts.
+**Status: partial.** Hitmark, health bar and spot animation blocks are decoded and retained. Selected rejected NPC blocks remain rejected; freeze, tint, transparency and facing-entity blocks are consumed without retained facts.
 
 Port selected rejected BAS/head/body NPC blocks in exact writer order. Retain
 consumed-only appearance, freeze, facing and customization facts with their source
@@ -230,9 +231,9 @@ infer these from frame-end snapshots. Test focus, keyboard/IME, clipboard and cl
 ### Phase 6: actor effects and facing
 
 **Owners:** existing GameState actor/effect owners, scene poses and UI overlays.
-**Dependency:** phase 2 facts; planned SPEC-0022.
+**Dependency:** phase 2 facts; [SPEC-0022](../specs/SPEC-0022-actor-effects.md).
 
-**Status: open.** Depends on phase 2 facts.
+**Status: partial.** Hitmark, health bar and spot animation facts are retained and projected (SPEC-0022). Open: drawing them, the interaction target and rich facing, projectiles, tint, freeze, the `limit`-driven splat replacement, definition-driven durations.
 
 Complete source-rich target facing/apply/reset policy, interaction slowdown, animation
 readiness/freeze/callbacks, delayed spot animations, hitsplats/health bars, tint and
