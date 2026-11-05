@@ -115,7 +115,15 @@ Rows project to the plugin `MenuEntry` with `RuneLite` identifiers (`application
 NPC index for NPC options, the object id and scene tile for location options, the item id and
 scene tile for ground item options, and the scene tile for "Walk here". Choosing any entry,
 stock or plugin-offered, delivers `MenuOptionClicked` at the next plugin update; consuming the
-click is not offered yet. Widget menus do not run the stage yet.
+click is not offered yet.
+
+Widget menus (inventory, equipment, bank and every interface with actions) run the same stage.
+Their rows project with `RuneLite` `CC_OP` conventions (`application::menu::widget_menu_entry`):
+`MenuKind::WidgetOption(op)` with the one-based operation index as identifier, the child index (-1
+for the widget itself) in `param0` and the packed widget id in `param1`. Operations beyond ten, continue
+and button clicks map to `MenuKind::Other`. The mouse-over text, the left click (first row) and the
+opened menu use the edited list, and choosing a row delivers `MenuOptionClicked`. A widget menu
+whose rows are all removed swallows the click.
 
 ### Selection modes
 

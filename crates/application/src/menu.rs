@@ -47,6 +47,51 @@ fn scene_xy(scene: SceneDescriptor, tile: WorldTile) -> (i32, i32) {
     )
 }
 
+/// The plugin record for a widget menu row (`MenuAction.CC_OP`): the option is the action text,
+/// the identifier is the one-based operation index, `param0` the child index (-1 for the widget
+/// itself) and `param1` the packed widget id. Operations beyond ten, continue and button clicks
+/// have no `CC_OP` equivalent and map to `MenuKind::Other`.
+#[must_use]
+pub fn widget_menu_entry(label: &str, action: rustclient_model::WidgetAction) -> MenuEntry {
+    let widget = action.address.widget;
+    let (kind, identifier) = match action.operation.index() {
+        Some(index) if index < 10 => (MenuKind::WidgetOption(index + 1), i32::from(index) + 1),
+        Some(index) => (MenuKind::Other(57), i32::from(index) + 1),
+        None => (MenuKind::Other(30), 0),
+    };
+    MenuEntry {
+        option: split_label(label).0.to_owned(),
+        target: split_label(label).1.to_owned(),
+        kind,
+        identifier,
+        param0: action.address.child.map_or(-1, u32::cast_signed),
+        param1: i32::try_from((widget.interface.get() << 16) | widget.component)
+            .unwrap_or(i32::MAX),
+        deprioritized: false,
+    }
+}
+
+/// Reorder `items` by `edited.order` (dropping removed ones) and relabel those with a replaced
+/// option through `relabel`. `items` are the rows the stage was run over, in the same order.
+pub fn apply_edited_menu<T>(
+    items: Vec<T>,
+    edited: &rustclient_plugin_host::EditedMenu,
+    relabel: impl Fn(&mut T, &str),
+) -> Vec<T> {
+    let mut slots: Vec<Option<T>> = items.into_iter().map(Some).collect();
+    edited
+        .order
+        .iter()
+        .filter_map(|&index| {
+            let mut item = slots.get_mut(index)?.take()?;
+            if let Some(option) = edited.options.get(&index) {
+                relabel(&mut item, option);
+            }
+            Some(item)
+        })
+        .collect()
+}
+
 /// The plugin record for a row labelled `label`.
 #[must_use]
 pub fn plugin_menu_entry(label: &str, row: WorldMenuRow) -> MenuEntry {
@@ -151,6 +196,74 @@ mod tests {
         assert_eq!(
             (walk.kind, walk.option.as_str(), walk.param0, walk.param1),
             (MenuKind::Walk, "Walk here", 10, 5)
+        );
+    }
+
+    #[test]
+    fn widget_rows_use_cc_op_identifiers_and_reorder_by_the_edited_menu() {
+        use rustclient_model::{InterfaceId, WidgetAddress, WidgetId, WidgetOperation};
+        let action = |op: u8, child: Option<u32>| rustclient_model::WidgetAction {
+            address: WidgetAddress {
+                widget: WidgetId::new(InterfaceId::new(149), 0),
+                child,
+            },
+            operation: WidgetOperation::new(op).unwrap(),
+            item: None,
+            interface_epoch: 1,
+        };
+        let wield = widget_menu_entry("Wield <col=ff9040>Whip", action(1, Some(3)));
+        assert_eq!(
+            (wield.kind, wield.identifier, wield.param0, wield.param1),
+            (MenuKind::WidgetOption(2), 2, 3, 149 << 16)
+        );
+        assert_eq!(
+            (wield.option.as_str(), wield.target.as_str()),
+            ("Wield", "<col=ff9040>Whip")
+        );
+        let widget_itself = widget_menu_entry("Bank", action(0, None));
+        assert_eq!(
+            (widget_itself.param0, widget_itself.kind),
+            (-1, MenuKind::WidgetOption(1))
+        );
+        let beyond = widget_menu_entry("Far", action(10, None));
+        assert_eq!(beyond.kind, MenuKind::Other(57));
+        assert_eq!(
+            widget_menu_entry(
+                "Continue",
+                rustclient_model::WidgetAction {
+                    operation: WidgetOperation::CONTINUE,
+                    ..action(0, None)
+                }
+            )
+            .kind,
+            MenuKind::Other(30)
+        );
+
+        let edited = rustclient_plugin_host::apply_menu_edits(
+            3,
+            &[
+                rustclient_plugin_api::MenuEdit::MoveToTop { index: 2 },
+                rustclient_plugin_api::MenuEdit::Remove { index: 1 },
+                rustclient_plugin_api::MenuEdit::SetOption {
+                    index: 0,
+                    option: "Equip".into(),
+                },
+            ],
+        );
+        let rows = vec![
+            ("Wield <col=ffff>A".to_owned(), 0),
+            ("Drop <col=ffff>A".to_owned(), 1),
+            ("Use <col=ffff>A".to_owned(), 2),
+        ];
+        let rows = apply_edited_menu(rows, &edited, |(label, _), option| {
+            *label = relabel(label, option);
+        });
+        assert_eq!(
+            rows,
+            [
+                ("Use <col=ffff>A".to_owned(), 2),
+                ("Equip <col=ffff>A".to_owned(), 0)
+            ]
         );
     }
 }

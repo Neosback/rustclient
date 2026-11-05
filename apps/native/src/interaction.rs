@@ -578,22 +578,11 @@ impl NativeApp {
             return Ok(entries);
         }
         let edited = self.plugins.menu_stage(&records, opened);
-        let mut slots: Vec<_> = entries.into_iter().map(Some).collect();
-        Ok(edited
-            .order
-            .iter()
-            .filter_map(|&index| {
-                let (label, choice, target) = slots.get_mut(index)?.take()?;
-                Some(match edited.options.get(&index) {
-                    Some(option) => (
-                        rustclient_application::menu::relabel(&label, option),
-                        choice,
-                        target,
-                    ),
-                    None => (label, choice, target),
-                })
-            })
-            .collect())
+        Ok(rustclient_application::menu::apply_edited_menu(
+            entries,
+            &edited,
+            |(label, _, _), option| *label = rustclient_application::menu::relabel(label, option),
+        ))
     }
     /// The plugin API record of one world menu row.
     fn menu_record(&self, label: &str, choice: WorldChoice) -> rustclient_plugin_api::MenuEntry {
@@ -691,6 +680,7 @@ impl NativeApp {
         }
         let (x, y) = self.cursor?;
         let (x, y) = self.ui_pointer(window, x, y);
+        let mut widget_entries = None;
         if let Some(scripts) = &self.scripts {
             for node in self.widget_tree.nodes.iter().rev() {
                 if !node.bounds.rect().contains(x, y) || !node.clip.rect().contains(x, y) {
@@ -706,20 +696,15 @@ impl NativeApp {
                 if widget.content == rustclient_model::WidgetContent::WorldViewport {
                     break;
                 }
-                if let Some((label, _)) = rustclient_application::widget_actions(
+                let entries = rustclient_application::widget_actions(
                     &self.state,
                     scripts.interfaces(),
                     node.address,
                 )
-                .ok()?
-                .into_iter()
-                .next()
-                {
-                    return Some(HoverText {
-                        verb: plain_label(&label),
-                        target: String::new(),
-                        target_color: [255; 4],
-                    });
+                .ok()?;
+                if !entries.is_empty() {
+                    widget_entries = Some(entries);
+                    break;
                 }
                 if matches!(
                     widget.body,
@@ -731,6 +716,17 @@ impl NativeApp {
                     return None;
                 }
             }
+        }
+        if let Some(entries) = widget_entries {
+            let (label, _) = self
+                .stage_widget_entries(entries, false)
+                .into_iter()
+                .next()?;
+            return Some(HoverText {
+                verb: plain_label(&label),
+                target: String::new(),
+                target_color: [255; 4],
+            });
         }
         let (label, _, target) = self
             .edited_world_entries(window, x, y, false)

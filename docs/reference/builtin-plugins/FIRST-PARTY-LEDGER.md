@@ -43,7 +43,7 @@ Older per-option results retain their recorded scope; they do not override that 
 | playerindicators | partial | relationship lists (party, friends, chat, clan, team), rank icons, coloured menu, minimap names |
 | interfacestyles | partial | widget overrides (2005 side stones), HD health bars, menu options, cross sprites, always-stack |
 | grounditems | partial | GE prices (price service), menu recolouring and deprioritising, tile highlights, hotkey, notifications, loot beams, despawn timers, per-item colours |
-| menuentryswapper | partial | built-in world swaps only: custom left/shift-click swaps, Shift-dependent swaps, hint-arrow exemption, dead NPC removal, bank/UI swaps; widget menus do not reach the menu stage |
+| menuentryswapper | partial | built-in swaps only: custom left/shift-click swaps, the "Walk here" shift options, hint-arrow exemption, dead NPC removal, bank/UI swaps |
 | devtools | not-implemented | widget, variable and script views are not exposed to plugins |
 | xptracker | partial | local core/overlay and retained totals/reset panel exist; full source panel/menu, stable account persistence and real-time clock remain open; external sync deferred |
 | notes | partial | local retained editor, source navigation and scoped storage exist; profile switching, exact source undo grouping and live visual acceptance remain open |
@@ -298,8 +298,9 @@ Sources: `plugins/menuentryswapper/{MenuEntrySwapperPlugin,MenuEntrySwapperConfi
 
 Known differences:
 
-- Only world menus (NPCs, locations, ground items, "Walk here") run the menu stage, so the item and interface swaps in
-  the table have no menu to act on yet.
+- World menus and widget menus (inventory, equipment, interfaces) run the menu stage. Item swaps such as `wear -> rub`
+  therefore act on inventory menus, but they have not been seen against a real inventory; the custom Swap submenu,
+  bank/deposit shift modes and per-component UI swaps are not ported.
 - Shift state comes from `ClientSnapshot::shift_held` at menu build time. The Shift-dependent GE abort, shop buy/sell and stairs swaps are ported; the shop and GE ones have no menu to act on until widget menus reach the stage. The three "Walk here" shift options are not ported.
 - Custom left-click and shift-click swaps, the hint-arrow NPC exemption, dead NPC removal and bank/UI swaps are not ported.
 - No row has been compared with the live reference client.

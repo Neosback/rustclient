@@ -281,13 +281,44 @@ impl NativeApp {
             self.widget_tree_key = key;
         }
     }
+    /// Run the plugin menu stage over a widget's actions (SPEC-0021): hooks, ordered edits and
+    /// relabels. The rows are remembered so choosing one reaches plugins as `MenuOptionClicked`.
+    pub(super) fn stage_widget_entries(
+        &mut self,
+        entries: Vec<(String, WidgetAction)>,
+        opened: bool,
+    ) -> Vec<(String, WidgetAction)> {
+        let records: Vec<_> = entries
+            .iter()
+            .map(|(label, action)| rustclient_application::menu::widget_menu_entry(label, *action))
+            .collect();
+        self.widget_menu_records = entries
+            .iter()
+            .zip(&records)
+            .map(|((_, action), record)| (*action, record.clone()))
+            .collect();
+        if entries.is_empty() || !self.plugins.wants_menu_stage() {
+            return entries;
+        }
+        let edited = self.plugins.menu_stage(&records, opened);
+        rustclient_application::menu::apply_edited_menu(entries, &edited, |(label, _), option| {
+            *label = rustclient_application::menu::relabel(label, option);
+        })
+    }
+    /// A widget menu entry was chosen: deliver it to plugins, then run it.
+    fn choose_widget_action(&mut self, action: WidgetAction) -> Result<(), String> {
+        if let Some((_, record)) = self.widget_menu_records.iter().find(|(a, _)| *a == action) {
+            self.plugins.menu_chosen(record.clone());
+        }
+        self.send_widget_action(action)
+    }
     pub(super) fn widget_click(&mut self, x: f32, y: f32, right: bool) -> Result<bool, String> {
         if self.state.interfaces().root().is_none() {
             return Ok(false);
         }
         if self.widget_menu.is_open() && !right {
             if let Some(action) = self.widget_menu.click(x, y) {
-                self.send_widget_action(action)?;
+                self.choose_widget_action(action)?;
             }
             return Ok(true);
         }
@@ -299,6 +330,7 @@ impl NativeApp {
         if self.widget_tree.nodes.is_empty() {
             return Ok(true);
         }
+        let mut staged = None;
         for node in self.widget_tree.nodes.iter().rev() {
             if !node.bounds.rect().contains(x, y) || !node.clip.rect().contains(x, y) {
                 continue;
@@ -329,23 +361,8 @@ impl NativeApp {
                 node.address,
             )?;
             if !entries.is_empty() {
-                if right {
-                    if let Some(assets) = &self.assets {
-                        self.widget_menu.open(
-                            x,
-                            y,
-                            entries,
-                            &assets.fonts[2],
-                            &self.widget_assets.font_icons,
-                            self.state.interfaces().window().canvas,
-                        );
-                        self.context_menu.close();
-                        self.cancel_gestures();
-                    }
-                } else if let Some((_, action)) = entries.first() {
-                    self.send_widget_action(*action)?;
-                }
-                return Ok(true);
+                staged = Some(entries);
+                break;
             }
             if matches!(
                 widget.body,
@@ -368,6 +385,26 @@ impl NativeApp {
                 }
                 return Ok(true);
             }
+        }
+        if let Some(entries) = staged {
+            let entries = self.stage_widget_entries(entries, right);
+            if right {
+                if let Some(assets) = &self.assets {
+                    self.widget_menu.open(
+                        x,
+                        y,
+                        entries,
+                        &assets.fonts[2],
+                        &self.widget_assets.font_icons,
+                        self.state.interfaces().window().canvas,
+                    );
+                    self.context_menu.close();
+                    self.cancel_gestures();
+                }
+            } else if let Some((_, action)) = entries.first() {
+                self.choose_widget_action(*action)?;
+            }
+            return Ok(true);
         }
         Ok(false)
     }

@@ -118,6 +118,11 @@ struct NativeApp {
     plugin_menu: Vec<rustclient_plugin_api::MenuEntry>,
     /// Plugin records of the stock entries of the last built world menu, for `MenuOptionClicked`.
     menu_records: Vec<(interaction::WorldChoice, rustclient_plugin_api::MenuEntry)>,
+    /// Plugin records of the rows of the last widget menu stage, for `MenuOptionClicked`.
+    widget_menu_records: Vec<(
+        rustclient_model::WidgetAction,
+        rustclient_plugin_api::MenuEntry,
+    )>,
     click_cross: Option<(Instant, interaction::CrossKind, f32, f32)>,
     hover: Option<interaction::HoverText>,
     /// Scene-local tile under the pointer, tracked while a plugin asks for hovered-roof removal.
@@ -653,6 +658,7 @@ impl NativeApp {
             context_menu: rustclient_game_ui::ContextMenu::default(),
             plugin_menu: Vec::new(),
             menu_records: Vec::new(),
+            widget_menu_records: Vec::new(),
             click_cross: None,
             hover: None,
             roof_hover: None,
