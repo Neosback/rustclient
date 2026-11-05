@@ -109,6 +109,8 @@ interface types {
         hovered-tile: option<world-point>,
         destination: option<world-point>,
         minimap-zoom: f64,
+        shift-held: bool,
+        wall-time-ms: u64,
     }
 
     variant menu-kind {

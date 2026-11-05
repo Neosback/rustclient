@@ -8,11 +8,13 @@
 //! is being mutated. This module replays that walk over the delivered entries and returns the
 //! exchanges as [`MenuEdit::Swap`] directives.
 //!
+//! Shift state comes from `ClientSnapshot::shift_held` when the menu is built, as the source reads
+//! `isKeyPressed(KC_SHIFT)` then.
+//!
 //! Not ported: custom left-click and shift-click swaps (they need the "Swap" submenu and per-id
-//! configuration), Shift-dependent swaps (GE abort, shop buy/sell, shift-click stairs and the
-//! three "Walk here" shift options), the hint-arrow NPC exemption, removing dead NPC entries,
-//! bank and UI swaps. Only world menus reach the menu stage today, so item swaps such as
-//! `wear -> rub` are carried in the table but have no menu to act on yet.
+//! configuration), the three "Walk here" shift options, the hint-arrow NPC exemption, removing dead
+//! NPC entries, bank and UI swaps. Only world menus reach the menu stage today, so item, shop and
+//! Grand Exchange swaps are carried in the table but have no menu to act on yet.
 
 use crate::NativePlugin;
 use rustclient_plugin_api::{
@@ -48,7 +50,7 @@ struct Swap {
     target: Target,
     swapped: &'static str,
     strict: bool,
-    enabled: fn(&PluginConfig) -> bool,
+    enabled: fn(&PluginConfig, bool) -> bool,
 }
 
 const ESSENCE_MINE_NPCS: &[&str] = &[
@@ -131,19 +133,19 @@ const JEWELLERY_BOX_DESTINATIONS: &[&str] = &[
 
 macro_rules! flag {
     ($key:literal) => {
-        |config: &PluginConfig| config.boolean($key)
+        |config: &PluginConfig, _shift: bool| config.boolean($key)
     };
 }
 macro_rules! mode {
     ($key:literal, $value:literal) => {
-        |config: &PluginConfig| config.choice($key) == $value
+        |config: &PluginConfig, _shift: bool| config.choice($key) == $value
     };
 }
 const fn strict(
     option: &'static str,
     target: Target,
     swapped: &'static str,
-    enabled: fn(&PluginConfig) -> bool,
+    enabled: fn(&PluginConfig, bool) -> bool,
 ) -> Swap {
     Swap {
         option,
@@ -156,7 +158,7 @@ const fn strict(
 const fn contains(
     option: &'static str,
     swapped: &'static str,
-    enabled: fn(&PluginConfig) -> bool,
+    enabled: fn(&PluginConfig, bool) -> bool,
 ) -> Swap {
     Swap {
         option,
@@ -301,12 +303,16 @@ const SWAPS: &[Swap] = &[
         mode!("swapFairyRing", "LAST_DESTINATION"),
     ),
     contains("tree", "configure", mode!("swapFairyRing", "CONFIGURE")),
-    contains("configure", "last-destination", |config: &PluginConfig| {
-        matches!(
-            config.choice("swapFairyRing"),
-            "LAST_DESTINATION" | "ZANARIS"
-        )
-    }),
+    contains(
+        "configure",
+        "last-destination",
+        |config: &PluginConfig, _shift: bool| {
+            matches!(
+                config.choice("swapFairyRing"),
+                "LAST_DESTINATION" | "ZANARIS"
+            )
+        },
+    ),
     contains("tree", "zanaris", mode!("swapFairyRing", "ZANARIS")),
     strict("check", Target::Any, "reset", flag!("swapBoxTrap")),
     strict("dismantle", Target::Any, "reset", flag!("swapBoxTrap")),
@@ -465,20 +471,49 @@ const SWAPS: &[Swap] = &[
         mode!("swapGEItemCollect", "BANK"),
     ),
     strict("tan 1", Target::Any, "tan all", flag!("swapTan")),
-    // Shift is not visible to plugins, so the left-click stairs mode applies.
-    strict(
-        "climb",
-        Target::Any,
-        "climb-up",
-        mode!("swapStairsLeftClick", "CLIMB_UP"),
-    ),
-    strict(
-        "climb",
-        Target::Any,
-        "climb-down",
-        mode!("swapStairsLeftClick", "CLIMB_DOWN"),
-    ),
+    strict("climb", Target::Any, "climb-up", |config, shift| {
+        stairs(config, shift) == "CLIMB_UP"
+    }),
+    strict("climb", Target::Any, "climb-down", |config, shift| {
+        stairs(config, shift) == "CLIMB_DOWN"
+    }),
+    strict("view offer", Target::Any, "abort offer", |config, shift| {
+        shift && config.boolean("swapGEAbort")
+    }),
+    strict("value", Target::Any, "buy 1", |config, shift| {
+        shift && config.choice("shopBuy") == "BUY_1"
+    }),
+    strict("value", Target::Any, "buy 5", |config, shift| {
+        shift && config.choice("shopBuy") == "BUY_5"
+    }),
+    strict("value", Target::Any, "buy 10", |config, shift| {
+        shift && config.choice("shopBuy") == "BUY_10"
+    }),
+    strict("value", Target::Any, "buy 50", |config, shift| {
+        shift && config.choice("shopBuy") == "BUY_50"
+    }),
+    strict("value", Target::Any, "sell 1", |config, shift| {
+        shift && config.choice("shopSell") == "SELL_1"
+    }),
+    strict("value", Target::Any, "sell 5", |config, shift| {
+        shift && config.choice("shopSell") == "SELL_5"
+    }),
+    strict("value", Target::Any, "sell 10", |config, shift| {
+        shift && config.choice("shopSell") == "SELL_10"
+    }),
+    strict("value", Target::Any, "sell 50", |config, shift| {
+        shift && config.choice("shopSell") == "SELL_50"
+    }),
 ];
+
+/// The stairs mode in force: the Shift-click mode while Shift is held, else the left-click one.
+fn stairs(config: &PluginConfig, shift: bool) -> &str {
+    config.choice(if shift {
+        "swapStairsShiftClick"
+    } else {
+        "swapStairsLeftClick"
+    })
+}
 
 /// Every swap keyed by `option`, in source order, including the list-expanded rows.
 fn swaps_for(option: &str) -> impl Iterator<Item = Swap> + '_ {
@@ -534,7 +569,7 @@ fn plain(text: &str) -> String {
 }
 
 /// Replay `onPostMenuSort`'s built-in swaps over `entries` (top first) and return the exchanges.
-fn swap_edits(entries: &[MenuEntry], config: &PluginConfig) -> Vec<MenuEdit> {
+fn swap_edits(entries: &[MenuEntry], config: &PluginConfig, shift: bool) -> Vec<MenuEdit> {
     // The source's array is bottom first: position 0 is the bottom entry.
     let mut slots: Vec<(usize, String, String)> = entries
         .iter()
@@ -546,7 +581,7 @@ fn swap_edits(entries: &[MenuEntry], config: &PluginConfig) -> Vec<MenuEdit> {
     for position in 0..slots.len() {
         let (_, option, target) = slots[position].clone();
         for swap in swaps_for(&option) {
-            if !swap.target.matches(&target) || !(swap.enabled)(config) {
+            if !swap.target.matches(&target) || !(swap.enabled)(config, shift) {
                 continue;
             }
             // `findIndex`: the top-most entry below this one with the swapped option and target.
@@ -587,7 +622,8 @@ impl NativePlugin for MenuEntrySwapper {
     ) -> Result<(), PluginFault> {
         for event in events {
             if let GameEvent::PostMenuSort(entries) = event {
-                self.edits = swap_edits(entries, call.config());
+                let shift = call.client().is_ok_and(|client| client.shift_held);
+                self.edits = swap_edits(entries, call.config(), shift);
             }
         }
         Ok(())
@@ -636,7 +672,14 @@ mod tests {
         PluginConfig::of(&configuration)
     }
     fn swapped(entries: &[MenuEntry], config: &PluginConfig) -> Vec<String> {
-        let edited = apply_menu_edits(entries.len(), &swap_edits(entries, config));
+        swapped_with_shift(entries, config, false)
+    }
+    fn swapped_with_shift(
+        entries: &[MenuEntry],
+        config: &PluginConfig,
+        shift: bool,
+    ) -> Vec<String> {
+        let edited = apply_menu_edits(entries.len(), &swap_edits(entries, config, shift));
         edited
             .order
             .iter()
@@ -697,5 +740,27 @@ mod tests {
             swapped(&nexus, &config(&[("swapPortalNexus", Flag(true))]))[0],
             "Teleport Menu"
         );
+    }
+
+    #[test]
+    fn shift_selects_the_stairs_mode_and_gates_shop_and_offer_swaps() {
+        let stairs = [
+            entry("Climb", "<col=ffff>Staircase"),
+            entry("Climb-up", "<col=ffff>Staircase"),
+            entry("Climb-down", "<col=ffff>Staircase"),
+        ];
+        let modes = config(&[
+            ("swapStairsLeftClick", Choice("CLIMB_UP".into())),
+            ("swapStairsShiftClick", Choice("CLIMB_DOWN".into())),
+        ]);
+        assert_eq!(swapped_with_shift(&stairs, &modes, false)[0], "Climb-up");
+        assert_eq!(swapped_with_shift(&stairs, &modes, true)[0], "Climb-down");
+        let shop = [
+            entry("Value", "<col=ff9040>Bread"),
+            entry("Buy 5", "<col=ff9040>Bread"),
+        ];
+        let buy = config(&[("shopBuy", Choice("BUY_5".into()))]);
+        assert_eq!(swapped_with_shift(&shop, &buy, false)[0], "Value");
+        assert_eq!(swapped_with_shift(&shop, &buy, true)[0], "Buy 5");
     }
 }

@@ -38,6 +38,10 @@ pub struct Frame {
     pub input_idle: Option<InputIdle>,
     /// Tile under the pointer in the game view, when the shell tracks the pointer.
     pub hovered_tile: Option<rustclient_model::WorldTile>,
+    /// Whether a Shift key is held.
+    pub shift_held: bool,
+    /// Platform wall-clock milliseconds since the Unix epoch; `0` when unavailable.
+    pub wall_time_ms: u64,
 }
 
 /// Immutable cache definitions the projection consults.
@@ -169,6 +173,8 @@ pub(crate) fn client(state: &GameState, frame: &Frame) -> ClientSnapshot {
                 WorldPoint::new(destination.x, destination.y, player.tile.plane.get())
             }),
         minimap_zoom: f64::from(state.interfaces().minimap().zoom_quarters) / 4.,
+        shift_held: frame.shift_held,
+        wall_time_ms: frame.wall_time_ms,
     }
 }
 

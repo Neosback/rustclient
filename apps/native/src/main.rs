@@ -256,6 +256,12 @@ impl NativeApp {
                 camera: camera.unwrap_or_default(),
                 input_idle: Some(self.input_activity.idle(Instant::now())),
                 hovered_tile: self.hovered_world_tile(),
+                shift_held: self.modifiers.shift_key(),
+                wall_time_ms: std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map_or(0, |elapsed| {
+                        u64::try_from(elapsed.as_millis()).unwrap_or(u64::MAX)
+                    }),
             },
             sources: rustclient_plugin_bridge::Sources {
                 npcs: Some(&resolve),
@@ -436,7 +442,12 @@ impl NativeApp {
                 CameraCommand::InvertYaw(on) => tuning.invert_yaw = on,
                 CameraCommand::InvertPitch(on) => tuning.invert_pitch = on,
                 CameraCommand::RelaxPitch(on) => tuning.relax_pitch = on,
-                _ => {}
+                CameraCommand::YawTarget(angle) => {
+                    tuning.yaw_target = u16::try_from(angle.rem_euclid(2048)).ok();
+                }
+                CameraCommand::PitchTarget(angle) => tuning.pitch_target = Some(angle),
+                CameraCommand::ZoomTarget(zoom) => tuning.zoom_target = Some(zoom),
+                CameraCommand::ZoomLimits { min, max } => tuning.zoom_limits = Some((min, max)),
             }
         }
         if let Some(camera) = &mut self.scene.camera {
@@ -2325,6 +2336,8 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                 }
             }
             WindowEvent::ModifiersChanged(modifiers) => {
+                // Plugins build the menu with Shift state, so the hovered menu must be rebuilt.
+                self.hover_dirty = true;
                 self.modifiers = modifiers.state();
                 if let Some(scripts) = &mut self.scripts {
                     scripts.modifiers = [

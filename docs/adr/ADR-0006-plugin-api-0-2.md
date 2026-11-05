@@ -78,8 +78,11 @@ process; that model is rejected by invariants 1 and 4.
   `PluginCall::ground_items`, and `ItemSpawned`, `ItemDespawned` and `ItemQuantityChanged` derived from consecutive
   snapshots (an unchanged id sequence on a tile is an in-place count). `OverlayCommand::TileText` draws text centred
   above a tile (`Perspective.getCanvasTextLocation`), `InfoBox::sprite` names the box image. The native shell now draws
-  info boxes (`InfoBoxOverlay` layout) and `MinimapDot` commands (the `renderMinimapLocation` dot). Camera target and
-  zoom-limit commands still have no consumer.
+  info boxes (`InfoBoxOverlay` layout) and `MinimapDot` commands (the `renderMinimapLocation` dot).
+- Input state and camera targets (2026-11-05), additive within 0.2: `ClientSnapshot::shift_held` (the shell's modifier
+  state) and `wall_time_ms` (the platform clock; `GameState` never reads it). `CameraCommand::{YawTarget, PitchTarget,
+  ZoomTarget, ZoomLimits}` are now applied by the native camera (`CameraTuning`, deviation `CAMERA-TARGET-EASING`).
+  Menu Entry Swapper's Shift-dependent swaps read `shift_held`.
 
 ## Rejected
 

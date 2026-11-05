@@ -46,6 +46,14 @@ pub struct CameraTuning {
     pub invert_pitch: bool,
     /// Allow pitch above the vanilla 383 limit, up to 512.
     pub relax_pitch: bool,
+    /// Ease the yaw toward this angle (0..2048) while no key or middle-drag turns the camera.
+    pub yaw_target: Option<u16>,
+    /// Ease the pitch toward this angle, kept within the permitted pitch range.
+    pub pitch_target: Option<i32>,
+    /// Ease the zoom scale toward this value.
+    pub zoom_target: Option<i32>,
+    /// Clamp the zoom scale (script-driven or eased) to `(min, max)`.
+    pub zoom_limits: Option<(i32, i32)>,
 }
 impl Default for CameraTuning {
     fn default() -> Self {
@@ -54,6 +62,10 @@ impl Default for CameraTuning {
             invert_yaw: false,
             invert_pitch: false,
             relax_pitch: false,
+            yaw_target: None,
+            pitch_target: None,
+            zoom_target: None,
+            zoom_limits: None,
         }
     }
 }
@@ -77,6 +89,11 @@ impl CameraTuning {
         let current = velocity as f32;
         (current + (target * self.speed - current) / 2.) as i32
     }
+}
+/// One eased step toward a target `diff` units away: an eighth of it, at least one unit.
+const fn eased_step(diff: i32) -> i32 {
+    let step = diff / 8;
+    if step == 0 { diff.signum() } else { step }
 }
 /// Logical viewport shared by projection and pointer queries.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -147,6 +164,8 @@ pub struct GameplayCameraController {
     clicked: [i32; 2],
     zoom_height: i32,
     zoom_width: i32,
+    /// Eased zoom scale while a plugin asks for a zoom target.
+    zoom_eased: Option<i32>,
     tuning: CameraTuning,
 }
 impl GameplayCameraController {
@@ -164,6 +183,7 @@ impl GameplayCameraController {
             clicked: [0; 2],
             zoom_height: 256,
             zoom_width: 320,
+            zoom_eased: None,
             tuning: CameraTuning::default(),
         }
     }
@@ -281,6 +301,26 @@ impl GameplayCameraController {
         }
         self.yaw = (self.yaw + self.yaw_velocity / 2) & 2047;
         self.pitch = (self.pitch + self.pitch_velocity / 2).clamp(128, self.tuning.pitch_max());
+        self.follow_plugin_targets(input);
+    }
+    /// Plugin yaw, pitch and zoom targets (deviation `CAMERA-TARGET-EASING`): each client cycle the
+    /// camera covers an eighth of the remaining distance, at least one unit, and never fights a
+    /// held turn key or a middle-button drag.
+    fn follow_plugin_targets(&mut self, input: CameraInput) {
+        let turning_yaw = input.left || input.right || input.middle;
+        let turning_pitch = input.up || input.down || input.middle;
+        if let Some(target) = self.tuning.yaw_target.filter(|_| !turning_yaw) {
+            let diff = ((i32::from(target) - self.yaw + 1024).rem_euclid(2048)) - 1024;
+            self.yaw = (self.yaw + eased_step(diff)) & 2047;
+        }
+        if let Some(target) = self.tuning.pitch_target.filter(|_| !turning_pitch) {
+            let target = target.clamp(128, self.tuning.pitch_max());
+            self.pitch += eased_step(target - self.pitch);
+        }
+        self.zoom_eased = self.tuning.zoom_target.map(|target| {
+            let current = self.zoom_eased.unwrap_or(self.zoom_height);
+            current + eased_step(target - current)
+        });
     }
     /// Apply verified `VIEWPORT_SETZOOM` values. Wheel-script policy belongs above
     /// this arithmetic boundary and must supply the script's positive values.
@@ -296,7 +336,12 @@ impl GameplayCameraController {
     pub fn pose(self, viewport: CameraViewport) -> ReferenceCameraPose {
         let pitch = self.pitch.max(self.terrain_distance / 256);
         let factor = (viewport.height - 334).clamp(0, 100);
-        let zoom = (self.zoom_width - self.zoom_height) * factor / 100 + self.zoom_height;
+        let mut zoom = self
+            .zoom_eased
+            .unwrap_or((self.zoom_width - self.zoom_height) * factor / 100 + self.zoom_height);
+        if let Some((min, max)) = self.tuning.zoom_limits {
+            zoom = zoom.clamp(min.min(max), max);
+        }
         let distance = (pitch * 3 + 600) * zoom / 256;
         let (sin_pitch, cos_pitch) = trig((2048 - pitch) & 2047);
         let mut offset = [
@@ -562,5 +607,60 @@ mod tests {
         assert_eq!(camera.pitch, 512);
         camera.set_tuning(CameraTuning::default());
         assert_eq!(camera.pitch, 383);
+    }
+
+    #[test]
+    fn plugin_targets_ease_yaw_the_short_way_pitch_within_limits_and_zoom_within_clamps() {
+        let target = CameraTarget {
+            x: 6848,
+            height: -240,
+            z: 6464,
+            terrain_drop: 0,
+        };
+        let mut camera = GameplayCameraController::new(target);
+        let idle = CameraInput::default();
+        camera.set_tuning(CameraTuning {
+            yaw_target: Some(2000),
+            pitch_target: Some(900),
+            zoom_target: Some(512),
+            zoom_limits: Some((200, 400)),
+            ..CameraTuning::default()
+        });
+        for _ in 0..200 {
+            camera.step(target, idle);
+        }
+        let pose = camera.pose(CameraViewport::new(765, 503));
+        // Yaw 0 to 2000 is 48 units the short way round, and it settles exactly on the target.
+        assert_eq!(pose.yaw, 2000);
+        // The pitch target is clamped to the vanilla 383 limit.
+        assert_eq!(pose.pitch, 383);
+        // The eased zoom reached 512 and the limits clamp the effective scale.
+        assert_eq!(camera.zoom_eased, Some(512));
+        let mut at_limit = GameplayCameraController::new(target);
+        at_limit.set_tuning(CameraTuning {
+            yaw_target: Some(2000),
+            pitch_target: Some(900),
+            zoom_target: Some(400),
+            ..CameraTuning::default()
+        });
+        for _ in 0..200 {
+            at_limit.step(target, idle);
+        }
+        assert_eq!(
+            pose.position,
+            at_limit.pose(CameraViewport::new(765, 503)).position,
+            "a 512 target under a 400 limit sits where a 400 target does"
+        );
+        // A held turn key suspends the yaw target.
+        camera.set_tuning(CameraTuning {
+            yaw_target: Some(0),
+            ..CameraTuning::default()
+        });
+        let before = camera.yaw;
+        camera.step(target, CameraInput { left: true, ..idle });
+        assert_ne!(camera.yaw, before - eased_step(-before));
+        // No target: nothing is eased and the script zoom applies again.
+        camera.step(target, idle);
+        assert_eq!(camera.zoom_eased, None);
     }
 }

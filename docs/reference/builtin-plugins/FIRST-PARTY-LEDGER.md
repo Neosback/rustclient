@@ -300,7 +300,7 @@ Known differences:
 
 - Only world menus (NPCs, locations, ground items, "Walk here") run the menu stage, so the item and interface swaps in
   the table have no menu to act on yet.
-- Shift state is not visible to plugins: Shift-only swaps are omitted and the stairs swap uses the left-click mode.
+- Shift state comes from `ClientSnapshot::shift_held` at menu build time. The Shift-dependent GE abort, shop buy/sell and stairs swaps are ported; the shop and GE ones have no menu to act on until widget menus reach the stage. The three "Walk here" shift options are not ported.
 - Custom left-click and shift-click swaps, the hint-arrow NPC exemption, dead NPC removal and bank/UI swaps are not ported.
 - No row has been compared with the live reference client.
 
