@@ -15,6 +15,7 @@ mod listener_index;
 mod queries;
 #[cfg(test)]
 mod test_support;
+mod unmodelled;
 mod visuals;
 mod wheel;
 #[cfg(test)]
@@ -774,6 +775,7 @@ impl<S: ReadOnlyBlobs> Host for ScriptHost<'_, S> {
             || database::instruction(self, op, s)?
             || item_search::instruction(self, op, s)?
             || queries::instruction(self, op, n, s)?
+            || unmodelled::instruction(self, op, s)?
             || worldmap::instruction(self, op, s)?
         {
             return Ok(());

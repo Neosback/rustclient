@@ -54,6 +54,21 @@ fn vector_contains(values: &[String], value: &str, ignore_case: bool) -> bool {
         .iter()
         .any(|held| same_text(held, value, ignore_case))
 }
+/// The inventory an `INV_*` or `INVOTHER_*` operand names. `INVOTHER_*` adds 32768, the offset
+/// the protocol adapter gives inventories of another player (235 `class101`).
+fn inventory(op: Opcode, container: i32) -> Result<InventoryId> {
+    let base = id(container)?;
+    Ok(InventoryId::new(
+        if matches!(
+            op,
+            Opcode::InvotherGetobj | Opcode::InvotherGetnum | Opcode::InvotherTotal
+        ) {
+            base.checked_add(32_768).ok_or("inventory id overflow")?
+        } else {
+            base
+        },
+    ))
+}
 fn id(n: i32) -> Result<u32> {
     u32::try_from(n).map_err(|_| "negative definition ID".into())
 }
@@ -741,27 +756,27 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
                 h.state.interfaces().mounts().contains_key(&widget),
             ))
         }
-        InvGetobj | InvGetnum => {
+        InvGetobj | InvGetnum | Opcode::InvotherGetobj | Opcode::InvotherGetnum => {
             let [container, slot] = s.ints()?;
             let stack = h
                 .state
                 .inventories()
-                .get(InventoryId::new(id(container)?))
+                .get(inventory(op, container)?)
                 .and_then(|a| usize::try_from(slot).ok().and_then(|i| a.get(i)))
                 .copied()
                 .flatten();
-            Some(if op == InvGetobj {
+            Some(if matches!(op, InvGetobj | Opcode::InvotherGetobj) {
                 stack.map_or(-1, |i| i.item.get().cast_signed())
             } else {
                 stack.map_or(0, |i| i.amount.cast_signed())
             })
         }
-        InvTotal => {
+        InvTotal | Opcode::InvotherTotal => {
             let [container, item] = s.ints()?;
             let total = h
                 .state
                 .inventories()
-                .get(InventoryId::new(id(container)?))
+                .get(inventory(op, container)?)
                 .unwrap_or(&[])
                 .iter()
                 .flatten()
@@ -1533,5 +1548,31 @@ mod tests {
             )
             .is_err()
         );
+    }
+
+    #[test]
+    fn invother_ops_read_the_other_player_inventory_offset() {
+        let (mut scripts, mut state) = (scripts(), state());
+        let stack = |item, amount| {
+            Some(rustclient_model::ItemStack {
+                item: rustclient_model::ItemDefinitionId::new(item),
+                amount,
+            })
+        };
+        state
+            .apply_operation(SemanticOperation::Inventory(
+                rustclient_model::InventoryUpdate::Replace {
+                    id: InventoryId::new(93 + 32_768),
+                    slots: vec![stack(995, 50), None, stack(995, 7)],
+                },
+            ))
+            .unwrap();
+        let mut ask = |op, ints: &[i32]| run(&mut scripts, &mut state, op, ints).unwrap();
+        assert_eq!(ask(Opcode::InvotherGetobj, &[93, 0]), [995]);
+        assert_eq!(ask(Opcode::InvotherGetobj, &[93, 1]), [-1]);
+        assert_eq!(ask(Opcode::InvotherGetnum, &[93, 2]), [7]);
+        assert_eq!(ask(Opcode::InvotherTotal, &[93, 995]), [57]);
+        // The local inventory with the same id is a different container.
+        assert_eq!(ask(Opcode::InvGetobj, &[93, 0]), [-1]);
     }
 }

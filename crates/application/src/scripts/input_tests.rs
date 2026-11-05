@@ -498,3 +498,145 @@ fn model_setup_key_scope_and_script_continuation_reach_existing_semantic_owners(
             .is_some()
     );
 }
+
+/// Run `instructions` as one script against a single widget whose body is `body`.
+fn run_widget_script(
+    body: WidgetBody,
+    instructions: &[(Opcode, i32)],
+) -> rustclient_model::WidgetRuntime {
+    let mut scripts = test_support::scripts();
+    let mut state = GameState::new();
+    let id = WidgetId::new(InterfaceId::new(1), 0);
+    let mut widget = component(id);
+    widget.body = body;
+    scripts.interfaces.insert(
+        id.interface,
+        InterfaceDefinition::from_widgets(id.interface, vec![widget]).unwrap(),
+    );
+    scripts.scripts.insert(
+        ScriptId::new(90008),
+        Arc::new(Script {
+            id: ScriptId::new(90008),
+            name: String::new(),
+            locals: [0; 3],
+            arguments: [0; 3],
+            switches: vec![],
+            instructions: instructions
+                .iter()
+                .copied()
+                .chain([(Opcode::Return, 0)])
+                .map(|(opcode, integer)| Instruction {
+                    opcode,
+                    integer,
+                    text: None,
+                    long: 0,
+                    array_default: None,
+                })
+                .collect(),
+        }),
+    );
+    state
+        .apply_operation(SemanticOperation::BeginSession {
+            revision: REVISION_240,
+        })
+        .unwrap();
+    state
+        .apply_operation(SemanticOperation::Interface(InterfaceUpdate::SetRoot(
+            Some(id.interface),
+        )))
+        .unwrap();
+    scripts
+        .enqueue(
+            ScriptRequest {
+                id: ScriptId::new(90008),
+                arguments: vec![],
+            },
+            None,
+        )
+        .unwrap();
+    assert!(scripts.drain(&mut state).is_empty());
+    state.interfaces().runtime()[&WidgetAddress::component(id)].clone()
+}
+
+#[test]
+fn fill_colour_bottom_transparency_and_fill_mode_reach_the_rectangle() {
+    let runtime = run_widget_script(
+        WidgetBody::Rectangle {
+            color: 0x00ff_0000,
+            filled: true,
+            transparency: 0,
+            fill_color: 0,
+            bottom_transparency: 0,
+            fill_mode: rustclient_model::RectangleFill::Solid,
+        },
+        &[
+            (Opcode::Iconst, 0x0000_00ff),
+            (Opcode::Iconst, 65536),
+            (Opcode::IfSetfillcolour, 0),
+            (Opcode::Iconst, 200),
+            (Opcode::Iconst, 65536),
+            (Opcode::IfSetbottomtrans, 0),
+            (Opcode::Iconst, 2),
+            (Opcode::Iconst, 65536),
+            (Opcode::IfSetfillmode, 0),
+            // An unknown ordinal leaves the mode unchanged.
+            (Opcode::Iconst, 9),
+            (Opcode::Iconst, 65536),
+            (Opcode::IfSetfillmode, 0),
+        ],
+    );
+    assert_eq!(
+        runtime.body,
+        Some(WidgetBody::Rectangle {
+            color: 0x00ff_0000,
+            filled: true,
+            transparency: 0,
+            fill_color: 0x0000_00ff,
+            bottom_transparency: 200,
+            fill_mode: rustclient_model::RectangleFill::GradientAlpha,
+        })
+    );
+}
+
+#[test]
+fn head_ops_set_the_model_source_and_set_model_clears_it() {
+    let model = || WidgetBody::Model {
+        model: None,
+        offset: [0; 2],
+        angles: [0; 3],
+        zoom: 100,
+        sequence: None,
+        orthographic: false,
+        sizing: [0; 3],
+    };
+    let npc = run_widget_script(
+        model(),
+        &[
+            (Opcode::Iconst, 3080),
+            (Opcode::Iconst, 65536),
+            (Opcode::IfSetnpchead, 0),
+        ],
+    );
+    assert_eq!(
+        npc.head,
+        Some(rustclient_model::WidgetHead::Npc(
+            rustclient_model::NpcDefinitionId::new(3080)
+        ))
+    );
+    let player = run_widget_script(
+        model(),
+        &[(Opcode::Iconst, 65536), (Opcode::IfSetplayerheadSelf, 0)],
+    );
+    assert_eq!(player.head, Some(rustclient_model::WidgetHead::LocalPlayer));
+    let cleared = run_widget_script(
+        model(),
+        &[
+            (Opcode::Iconst, 65536),
+            (Opcode::IfSetplayerheadSelf, 0),
+            (Opcode::Iconst, 3374),
+            (Opcode::Iconst, 65536),
+            (Opcode::IfSetmodel, 0),
+        ],
+    );
+    assert_eq!(cleared.head, None);
+}

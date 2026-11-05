@@ -80,6 +80,9 @@ impl CacheProfile {
                 color: 0,
                 filled: false,
                 transparency: 0,
+                fill_color: 0,
+                bottom_transparency: 0,
+                fill_mode: rustclient_model::RectangleFill::Solid,
             }),
             4 => Ok(WidgetBody::Text {
                 font: None,

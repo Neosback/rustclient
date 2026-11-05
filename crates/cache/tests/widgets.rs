@@ -61,8 +61,15 @@ fn if3_family_retains_revision_240_geometry_models_actions_and_typed_listeners()
                 color,
                 filled,
                 transparency,
+                fill_color,
+                bottom_transparency,
+                fill_mode,
             } => {
                 assert_eq!(kind, 3);
+                assert_eq!(
+                    (fill_color, bottom_transparency, fill_mode),
+                    (0, 0, rustclient_model::RectangleFill::Solid)
+                );
                 assert_eq!((color, filled, transparency), (0x0012_3456, true, 64));
             }
             WidgetBody::Text { font, text, .. } => {

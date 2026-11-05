@@ -12,9 +12,10 @@ use rustclient_model::ScriptValue;
 )]
 pub(super) fn instruction(op: Opcode, s: &mut Stacks) -> Result<bool> {
     use Opcode::{
-        Add, And, Append, AppendNum, AppendSignnum, Clearbit, Compare, Div, Escape, GetbitRange,
-        Interpolate, Invpow, Lowercase, Max, Min, Mod, Multiply, Or, Pow, Removetags, Scale,
-        Setbit, StringIndexofString, StringLength, Sub, Substring, Testbit, Tostring,
+        Add, And, Append, AppendNum, AppendSignnum, Clearbit, Compare, Div, Escape, Fromdate,
+        GetbitRange, Interpolate, Invpow, Lowercase, Max, Min, Mod, Multiply, Or, Pow, Removetags,
+        Scale, Setbit, StringIndexofString, StringLength, Sub, Substring, Testbit, TextParseInt,
+        Tostring,
     };
     let result = match op {
         Add | Sub | Multiply | Div | Mod | And | Or | Setbit | Clearbit | Testbit | Pow
@@ -78,6 +79,14 @@ pub(super) fn instruction(op: Opcode, s: &mut Stacks) -> Result<bool> {
         Tostring => {
             let n = s.int()?;
             s.push_object(ScriptValue::Text(n.to_string()));
+            None
+        }
+        // `isNumber(text, 10, true)` then `parseInt`: an optional leading sign, at least one
+        // digit and no overflow, which is exactly what `str::parse::<i32>` accepts.
+        TextParseInt => Some(s.text()?.parse::<i32>().unwrap_or(-1)),
+        Fromdate => {
+            let days = s.int()?;
+            s.push_object(ScriptValue::Text(from_date(days)));
             None
         }
         AppendNum | AppendSignnum => {
@@ -237,5 +246,75 @@ fn power(a: i32, b: i32, op: Opcode) -> i32 {
         i32::MAX
     } else {
         f64::from(a).powf(1.0 / f64::from(b)) as i32
+    }
+}
+
+/// `FROMDATE`: the reference formats `86400000 * (11745 + days)` milliseconds with
+/// `Calendar.getInstance()` as `day-Mon-year`. `RustClient` formats the UTC date so the result
+/// does not depend on the host time zone (deviation `FROMDATE-UTC`).
+fn from_date(days: i32) -> String {
+    const MONTHS: [&str; 12] = [
+        "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+    ];
+    // Days since 1970-01-01 to a proleptic Gregorian civil date (Hinnant's `civil_from_days`).
+    let z = i64::from(days) + 11_745 + 719_468;
+    let era = z.div_euclid(146_097);
+    let doe = z.rem_euclid(146_097);
+    let yoe = (doe - doe / 1_460 + doe / 36_524 - doe / 146_096) / 365;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let day = doy - (153 * mp + 2) / 5 + 1;
+    let month = if mp < 10 { mp + 3 } else { mp - 9 };
+    let year = yoe + era * 400 + i64::from(month <= 2);
+    let name = MONTHS[usize::try_from(month - 1).unwrap_or(0)];
+    format!("{day}-{name}-{year}")
+}
+
+#[cfg(test)]
+mod date_tests {
+    use super::*;
+
+    fn run(op: Opcode, ints: &[i32], texts: &[&str]) -> Stacks {
+        let mut s = Stacks::default();
+        s.integers.extend_from_slice(ints);
+        for text in texts {
+            s.push_object(ScriptValue::Text((*text).to_owned()));
+        }
+        assert!(instruction(op, &mut s).unwrap());
+        s
+    }
+
+    #[test]
+    fn from_date_counts_days_from_the_reference_epoch() {
+        // Day 0 is 1970-01-01 + 11745 days = 2002-02-27, the reference's runedate origin.
+        for (days, text) in [
+            (0, "27-Feb-2002"),
+            (1, "28-Feb-2002"),
+            (2, "1-Mar-2002"),
+            (-11_745, "1-Jan-1970"),
+            (8_037, "29-Feb-2024"),
+        ] {
+            let mut s = run(Opcode::Fromdate, &[days], &[]);
+            assert_eq!(s.text().unwrap(), text, "day {days}");
+        }
+    }
+
+    #[test]
+    fn text_parse_int_accepts_signed_decimals_and_rejects_everything_else() {
+        for (text, value) in [
+            ("42", 42),
+            ("-7", -7),
+            ("+5", 5),
+            ("2147483647", i32::MAX),
+            ("-2147483648", i32::MIN),
+            ("2147483648", -1),
+            ("", -1),
+            ("-", -1),
+            ("1k", -1),
+            (" 1", -1),
+        ] {
+            let s = run(Opcode::TextParseInt, &[], &[text]);
+            assert_eq!(s.integers, [value], "{text:?}");
+        }
     }
 }

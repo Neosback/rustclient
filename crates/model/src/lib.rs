@@ -74,8 +74,9 @@ pub use scene::{MapAnchor, SceneAssetId, SceneDescriptor};
 
 mod widget;
 pub use widget::{
-    PositionMode, SizeMode, WidgetAddress, WidgetBody, WidgetContent, WidgetDefinition, WidgetDrag,
-    WidgetKey, WidgetLayout, WidgetListener, WidgetOpKeys, WidgetRuntime,
+    PositionMode, RectangleFill, SizeMode, WidgetAddress, WidgetBody, WidgetContent,
+    WidgetDefinition, WidgetDrag, WidgetHead, WidgetKey, WidgetLayout, WidgetListener,
+    WidgetOpKeys, WidgetRuntime,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

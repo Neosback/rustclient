@@ -856,6 +856,9 @@ mod tests {
                     color: 0,
                     filled: true,
                     transparency: 0,
+                    fill_color: 0,
+                    bottom_transparency: 0,
+                    fill_mode: rustclient_model::RectangleFill::Solid,
                 },
             }))
             .unwrap();

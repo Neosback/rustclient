@@ -75,6 +75,10 @@ pub enum Opcode {
     CcSetscrollsize,
     CcResumePausebutton,
     CcSetfillcolour,
+    /// 1124, unnamed in the reference: sets `transparencyBot` (235 `class575`).
+    CcSetbottomtrans,
+    /// 1125, unnamed in the reference: sets `fillMode` by ordinal, ignoring unknown ones.
+    CcSetfillmode,
     CcSetlinedirection,
     CcSetmodeltransparent,
     CcSetobject,
@@ -179,6 +183,10 @@ pub enum Opcode {
     IfSetscrollsize,
     IfResumePausebutton,
     IfSetfillcolour,
+    /// 2124, unnamed in the reference: `IF_` form of 1124.
+    IfSetbottomtrans,
+    /// 2125, unnamed in the reference: `IF_` form of 1125.
+    IfSetfillmode,
     IfSetlinedirection,
     IfSetmodeltransparent,
     IfSetobject,
@@ -603,6 +611,15 @@ pub enum Opcode {
     IfSettargetpriority,
     DiscardMobileOffsets,
     DiscardMobileFlag,
+    /// 3129, unnamed in the reference: sets the oculus orb's normal and slowed speeds
+    /// (240 `classKU.method6609`; 235 `class431` stores `Client.oculusOrbNormalSpeed/SlowedSpeed`).
+    SetOculusOrbSpeed,
+    /// 3644, unnamed in the reference: drops the friends-chat member sort comparator
+    /// (240 `classHU.method6157`; 235 `Buddy` calls `friendsChat.removeComparator()`).
+    FriendsChatClearSort,
+    /// 4036, unnamed in the reference: pops a string and pushes its base-10 value, or -1 when it
+    /// is not a number (240 `classMC.method7575`; 235 `VerticalAlignment`).
+    TextParseInt,
     CcSetonkeypress,
     IfSetonkeypress,
     CcSetonkeyrelease,
@@ -698,6 +715,8 @@ impl Opcode {
             Self::IfSetscrollsize => (Self::CcSetscrollsize, true),
             Self::IfResumePausebutton => (Self::CcResumePausebutton, true),
             Self::IfSetfillcolour => (Self::CcSetfillcolour, true),
+            Self::IfSetbottomtrans => (Self::CcSetbottomtrans, true),
+            Self::IfSetfillmode => (Self::CcSetfillmode, true),
             Self::IfSetlinedirection => (Self::CcSetlinedirection, true),
             Self::IfSetmodeltransparent => (Self::CcSetmodeltransparent, true),
             Self::IfSetobject => (Self::CcSetobject, true),

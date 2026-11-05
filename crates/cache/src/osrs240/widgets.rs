@@ -242,6 +242,9 @@ fn body(r: &mut Reader<'_>, kind: u8, modes: [i8; 2], source: Source) -> Result<
             color: r.u32()?,
             filled: r.u8()? == 1,
             transparency: r.u8()?,
+            fill_color: 0,
+            bottom_transparency: 0,
+            fill_mode: rustclient_model::RectangleFill::Solid,
         },
         4 => WidgetBody::Text {
             font: optional(r.u16()?).map(FontId::new),

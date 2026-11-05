@@ -39,12 +39,12 @@ fn authentication_and_initial_placement_replay_exactly_and_reset_on_disconnect()
         stream.push(commit);
         envelopes.push(ReplayEnvelope::new(operation, commit));
     }
-    // Schema 29 retains placement action overrides and widget key dispatch scope.
+    // Schema 30 adds rectangle gradient fills and widget head sources.
     assert_eq!(
         state.semantic_fingerprint().get(),
-        7_173_393_852_060_750_725
+        8_639_949_442_682_587_824
     );
-    assert_eq!(stream.finish().get(), 1_360_232_279_156_113_563);
+    assert_eq!(stream.finish().get(), 17_319_256_775_601_337_766);
     assert_eq!(state.lifecycle(), SessionLifecycle::Active);
     assert_eq!(state.authenticated_player(), Some(player()));
     assert_eq!(state.initial_placement(), Some(placement()));

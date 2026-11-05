@@ -34,6 +34,29 @@ pub enum WidgetContent {
     WorldMapOverview,
     Other(u16),
 }
+/// Reference `FillMode`: how a filled rectangle widget is shaded.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum RectangleFill {
+    /// One colour, `color`, at `transparency` (`FillMode.SOLID`, ordinal 0).
+    #[default]
+    Solid,
+    /// Opaque vertical gradient from `color` at the top to `fill_color` at the bottom (ordinal 1).
+    Gradient,
+    /// Vertical gradient that also blends `transparency` to `bottom_transparency` (ordinal 2).
+    GradientAlpha,
+}
+impl RectangleFill {
+    /// The fill mode with the reference ordinal `value`, if any (`findEnumerated`).
+    #[must_use]
+    pub const fn from_ordinal(value: i32) -> Option<Self> {
+        match value {
+            0 => Some(Self::Solid),
+            1 => Some(Self::Gradient),
+            2 => Some(Self::GradientAlpha),
+            _ => None,
+        }
+    }
+}
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum WidgetBody {
     Container {
@@ -43,7 +66,14 @@ pub enum WidgetBody {
     Rectangle {
         color: u32,
         filled: bool,
+        /// Top (or uniform) transparency, `transparencyTop`.
         transparency: u8,
+        /// Bottom colour of a gradient fill, `color2` (`CC_SETFILLCOLOUR`).
+        fill_color: u32,
+        /// Bottom transparency of a gradient-alpha fill, `transparencyBot` (CS2 1124).
+        bottom_transparency: u8,
+        /// How a filled rectangle is shaded (CS2 1125).
+        fill_mode: RectangleFill,
     },
     Text {
         font: Option<FontId>,
@@ -210,4 +240,15 @@ pub struct WidgetRuntime {
     pub item: Option<(crate::ItemDefinitionId, u32)>,
     /// Per-slot key bindings; empty until a script binds a key.
     pub op_keys: BTreeMap<u8, WidgetOpKeys>,
+    /// A chathead the model comes from instead of `WidgetBody::Model::model` (reference
+    /// `modelType` 2 and 3); cleared by `CC_SETMODEL`.
+    pub head: Option<WidgetHead>,
+}
+/// The head a model widget shows (`CC_SETNPCHEAD`, `CC_SETPLAYERHEAD_SELF`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WidgetHead {
+    /// The chathead of an NPC definition (`modelType` 2).
+    Npc(crate::NpcDefinitionId),
+    /// The local player's head (`modelType` 3).
+    LocalPlayer,
 }

@@ -3,6 +3,7 @@ use crate::InterfaceState;
 use rustclient_model::{InterfaceId, InterfaceMountKind, WidgetId, WidgetPermissions};
 /// Tag introducing the optional per-widget key-binding section.
 const OP_KEYS_SECTION: u8 = 0xA5;
+const HEAD_SECTION: u8 = 0xA6;
 /// Tag introducing the optional device-preference section.
 const DEVICE_PREFERENCES_SECTION: u8 = 0xA6;
 const MINIMAP_SECTION: u8 = 0xA7;
@@ -199,6 +200,17 @@ pub(super) fn write(f: &mut StableFingerprint64, state: &InterfaceState) {
                 f.write_u8(u8::from(keys.ignore_held));
             }
         }
+        // Appended section: absent heads encode as nothing.
+        if let Some(head) = value.head {
+            f.write_u8(HEAD_SECTION);
+            match head {
+                rustclient_model::WidgetHead::Npc(id) => {
+                    f.write_u8(0);
+                    f.write_u32(id.get());
+                }
+                rustclient_model::WidgetHead::LocalPlayer => f.write_u8(1),
+            }
+        }
     }
     f.write_u64(state.client_variables().len() as u64);
     for (id, value) in state.client_variables() {
@@ -301,6 +313,20 @@ fn listener(f: &mut StableFingerprint64, v: rustclient_model::WidgetListener) {
         Scroll => 17,
     });
 }
+fn rectangle_fill(
+    f: &mut StableFingerprint64,
+    fill_color: u32,
+    bottom_transparency: u8,
+    fill_mode: rustclient_model::RectangleFill,
+) {
+    f.write_u32(fill_color);
+    f.write_u8(bottom_transparency);
+    f.write_u8(match fill_mode {
+        rustclient_model::RectangleFill::Solid => 0,
+        rustclient_model::RectangleFill::Gradient => 1,
+        rustclient_model::RectangleFill::GradientAlpha => 2,
+    });
+}
 fn body(f: &mut StableFingerprint64, b: &rustclient_model::WidgetBody) {
     use rustclient_model::WidgetBody;
     match b {
@@ -318,11 +344,15 @@ fn body(f: &mut StableFingerprint64, b: &rustclient_model::WidgetBody) {
             color,
             filled,
             transparency,
+            fill_color,
+            bottom_transparency,
+            fill_mode,
         } => {
             f.write_u8(1);
             f.write_u32(*color);
             f.write_u8(u8::from(*filled));
             f.write_u8(*transparency);
+            rectangle_fill(f, *fill_color, *bottom_transparency, *fill_mode);
         }
         WidgetBody::Text {
             font,

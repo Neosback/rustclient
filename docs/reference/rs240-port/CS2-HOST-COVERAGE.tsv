@@ -105,9 +105,9 @@ opcode	adapter_name	runelite_name	evidence_status	host_status	live_uses	scanned_
 1120	CcSetscrollsize	CC_SETSCROLLSIZE	adapter	host-dispatched		classBB.method808,classCD.method1429
 1121	CcResumePausebutton	CC_RESUME_PAUSEBUTTON	adapter	host-dispatched		classBB.method807,classCD.method1429
 1122	CcSetsecondarygraphic		adapter	host-dispatched		classBB.method807,classCD.method1429
-1123	CcSetfillcolour	CC_SETFILLCOLOUR	adapter	named-unhandled		classBB.method807,classCD.method1429
-1124			handler-only	unnamed-cache-used	12	classBB.method807,classCD.method1429
-1125			handler-only	unnamed-cache-used	2	classBB.method807,classBB.method808,classCD.method1429
+1123	CcSetfillcolour	CC_SETFILLCOLOUR	adapter	host-dispatched		classBB.method807,classCD.method1429
+1124	CcSetbottomtrans		handler-only	host-dispatched	12	classBB.method807,classCD.method1429
+1125	CcSetfillmode		handler-only	host-dispatched	2	classBB.method807,classBB.method808,classCD.method1429
 1126	CcSetlinedirection	CC_SETLINEDIRECTION	adapter	host-dispatched		classBB.method807,classBB.method808,classCD.method1429
 1127	CcSetmodeltransparent	CC_SETMODELTRANSPARENT	adapter	host-dispatched		classCD.method1429
 1128			unknown	unnamed-cache-used	17	
@@ -136,8 +136,8 @@ opcode	adapter_name	runelite_name	evidence_status	host_status	live_uses	scanned_
 1151			handler-only	unnamed-cache-used	10	classBB.method807,classBB.method808,classCD.method1429
 1152			handler-only	unnamed-cache-used	2	classBB.method807,classBB.method808,classCD.method1429
 1200	CcSetobject	CC_SETOBJECT	adapter	host-dispatched		classBB.method809,classBB.method810,classKD.method6504
-1201	CcSetnpchead	CC_SETNPCHEAD	adapter	named-unhandled		classBB.method809,classBB.method810,classKD.method6504
-1202	CcSetplayerheadSelf	CC_SETPLAYERHEAD_SELF	adapter	named-unhandled		classBB.method810,classKD.method6504
+1201	CcSetnpchead	CC_SETNPCHEAD	adapter	host-dispatched		classBB.method809,classBB.method810,classKD.method6504
+1202	CcSetplayerheadSelf	CC_SETPLAYERHEAD_SELF	adapter	host-dispatched		classBB.method810,classKD.method6504
 1205	CcSetobjectNonum	CC_SETOBJECT_NONUM	adapter	host-dispatched		classBB.method810,classKD.method6504
 1207			handler-only	unnamed-unused		classBB.method809,classBB.method810,classKD.method6504
 1208			handler-only	unnamed-unused		classBB.method810,classKD.method6504
@@ -286,14 +286,14 @@ opcode	adapter_name	runelite_name	evidence_status	host_status	live_uses	scanned_
 2120	IfSetscrollsize	IF_SETSCROLLSIZE	adapter	host-dispatched		
 2121	IfResumePausebutton	IF_RESUME_PAUSEBUTTON	adapter	host-dispatched		
 2122	IfSetsecondarygraphic		adapter-unconfirmed	host-dispatched		
-2123	IfSetfillcolour	IF_SETFILLCOLOUR	adapter	named-unhandled		
-2124			unknown	unnamed-cache-used	8	
-2125			unknown	unnamed-cache-used	4	
+2123	IfSetfillcolour	IF_SETFILLCOLOUR	adapter	host-dispatched		
+2124	IfSetbottomtrans		unknown	host-dispatched	8	
+2125	IfSetfillmode		unknown	host-dispatched	4	
 2126	IfSetlinedirection	IF_SETLINEDIRECTION	adapter	host-dispatched		
 2127	IfSetmodeltransparent	IF_SETMODELTRANSPARENT	adapter	host-dispatched		
 2200	IfSetobject	IF_SETOBJECT	adapter	host-dispatched		
-2201	IfSetnpchead	IF_SETNPCHEAD	adapter	named-unhandled		
-2202	IfSetplayerheadSelf	IF_SETPLAYERHEAD_SELF	adapter	named-unhandled		
+2201	IfSetnpchead	IF_SETNPCHEAD	adapter	host-dispatched		
+2202	IfSetplayerheadSelf	IF_SETPLAYERHEAD_SELF	adapter	host-dispatched		
 2205	IfSetobjectNonum	IF_SETOBJECT_NONUM	adapter	host-dispatched		
 2212	IfSetobjectAlwaysNum	IF_SETOBJECT_ALWAYS_NUM	adapter	host-dispatched		
 2214			unknown	unnamed-cache-used	2	
@@ -431,7 +431,7 @@ opcode	adapter_name	runelite_name	evidence_status	host_status	live_uses	scanned_
 3126	Setshowloadingmessages	SETSHOWLOADINGMESSAGES	adapter	host-dispatched		classBB.method852,classBB.method853,classBB.method854,classKU.method6609
 3127	Settaptodrop	SETTAPTODROP	adapter	host-dispatched		classBB.method852,classBB.method853,classKU.method6609
 3128	Gettaptodrop	GETTAPTODROP	adapter	host-dispatched		classBB.method853,classBB.method854,classKU.method6609
-3129			handler-only	unnamed-cache-used	9	classBB.method852,classBB.method853,classBB.method854,classBB.method855,classKU.method6609
+3129	SetOculusOrbSpeed		handler-only	host-dispatched	9	classBB.method852,classBB.method853,classBB.method854,classBB.method855,classKU.method6609
 3130	DiscardMobileOffsets		adapter	host-dispatched		classBB.method852,classBB.method853,classBB.method855,classKU.method6609
 3131	DiscardMobileFlag		adapter	host-dispatched		classBB.method852,classBB.method853,classBB.method854,classKU.method6609
 3132	Getcanvassize	GETCANVASSIZE	adapter	host-dispatched		classBB.method852,classBB.method853,classKU.method6609
@@ -529,9 +529,9 @@ opcode	adapter_name	runelite_name	evidence_status	host_status	live_uses	scanned_
 3310	Coordz	COORDZ	adapter	host-dispatched		BufferProvider.method13367
 3311	Coordy	COORDY	adapter	host-dispatched		BufferProvider.method13367
 3312	MapMembers	MAP_MEMBERS	adapter	host-dispatched		BufferProvider.method13367
-3313	InvotherGetobj	INVOTHER_GETOBJ	adapter	named-unhandled		BufferProvider.method13367
-3314	InvotherGetnum	INVOTHER_GETNUM	adapter	named-unhandled		BufferProvider.method13367
-3315	InvotherTotal	INVOTHER_TOTAL	adapter	named-unhandled		BufferProvider.method13367
+3313	InvotherGetobj	INVOTHER_GETOBJ	adapter	host-dispatched		BufferProvider.method13367
+3314	InvotherGetnum	INVOTHER_GETNUM	adapter	host-dispatched		BufferProvider.method13367
+3315	InvotherTotal	INVOTHER_TOTAL	adapter	host-dispatched		BufferProvider.method13367
 3316	Staffmodlevel	STAFFMODLEVEL	adapter	host-dispatched		BufferProvider.method13367
 3317	Reboottimer	REBOOTTIMER	adapter	host-dispatched		BufferProvider.method13367
 3318	MapWorld	MAP_WORLD	adapter	host-dispatched		BufferProvider.method13367
@@ -576,11 +576,11 @@ opcode	adapter_name	runelite_name	evidence_status	host_status	live_uses	scanned_
 3618	ClanGetchatrank	CLAN_GETCHATRANK	adapter	named-unhandled		classHU.method6157
 3619	ClanJoinchat	CLAN_JOINCHAT	adapter	named-unhandled		classBB.method865,classHU.method6157
 3620	ClanLeavechat	CLAN_LEAVECHAT	adapter	named-unhandled		classBB.method865,classHU.method6157
-3621	IgnoreCount	IGNORE_COUNT	adapter	named-unhandled		classBB.method865,classHU.method6157
+3621	IgnoreCount	IGNORE_COUNT	adapter	host-dispatched		classBB.method865,classHU.method6157
 3622	IgnoreGetname	IGNORE_GETNAME	adapter	named-unhandled		classBB.method865,classHU.method6157
 3623	IgnoreTest	IGNORE_TEST	adapter	named-unhandled		classBB.method865,classHU.method6157
 3624	ClanIsself	CLAN_ISSELF	adapter	named-unhandled		classBB.method865,classHU.method6157
-3625	ClanGetchatownername	CLAN_GETCHATOWNERNAME	adapter	named-unhandled		classBB.method865,classHU.method6157
+3625	ClanGetchatownername	CLAN_GETCHATOWNERNAME	adapter	host-dispatched		classBB.method865,classHU.method6157
 3626	ClanIsfriend	CLAN_ISFRIEND	adapter	named-unhandled		classHU.method6157
 3627	ClanIsignore	CLAN_ISIGNORE	adapter	named-unhandled		classBB.method865,classHU.method6157
 3628			handler-only	unnamed-cache-used	2	classBB.method865,classHU.method6157
@@ -599,7 +599,7 @@ opcode	adapter_name	runelite_name	evidence_status	host_status	live_uses	scanned_
 3641			handler-only	unnamed-cache-used	1	classHU.method6157
 3642			handler-only	unnamed-cache-used	2	classHU.method6157
 3643			handler-only	unnamed-cache-used	1	classBB.method865,classHU.method6157
-3644			handler-only	unnamed-cache-used	1	classHU.method6157
+3644	FriendsChatClearSort		handler-only	host-dispatched	1	classHU.method6157
 3645			handler-only	unnamed-cache-used	1	classBB.method865,classHU.method6157
 3646			handler-only	unnamed-cache-used	18	classBB.method865,classHU.method6157
 3647			handler-only	unnamed-cache-used	6	classHU.method6157
@@ -650,17 +650,17 @@ opcode	adapter_name	runelite_name	evidence_status	host_status	live_uses	scanned_
 3859	ActiveclanchannelKickuser	ACTIVECLANCHANNEL_KICKUSER	adapter	named-unhandled		WorldEntityConfig.method8536,classBB.method869,classBB.method870,classBB.method871
 3860	ActiveclanchannelGetuserslot	ACTIVECLANCHANNEL_GETUSERSLOT	adapter	named-unhandled		WorldEntityConfig.method8536,classBB.method869,classBB.method870,classBB.method871
 3861	ActiveclanchannelGetsorteduserslot	ACTIVECLANCHANNEL_GETSORTEDUSERSLOT	adapter	named-unhandled		WorldEntityConfig.method8536,classBB.method869,classBB.method871
-3890	ClanprofileFind	CLANPROFILE_FIND	adapter	named-unhandled		WorldEntityConfig.method8536,classBB.method869,classBB.method871
-3903	StockmarketGetoffertype	STOCKMARKET_GETOFFERTYPE	adapter	named-unhandled		classBB.method872,classGL.method5528
-3904	StockmarketGetofferitem	STOCKMARKET_GETOFFERITEM	adapter	named-unhandled		classBB.method872,classGL.method5528
-3905	StockmarketGetofferprice	STOCKMARKET_GETOFFERPRICE	adapter	named-unhandled		classBB.method872,classGL.method5528
-3906	StockmarketGetoffercount	STOCKMARKET_GETOFFERCOUNT	adapter	named-unhandled		classBB.method872,classGL.method5528
-3907	StockmarketGetoffercompletedcount	STOCKMARKET_GETOFFERCOMPLETEDCOUNT	adapter	named-unhandled		classBB.method872,classGL.method5528
-3908	StockmarketGetoffercompletedgold	STOCKMARKET_GETOFFERCOMPLETEDGOLD	adapter	named-unhandled		classBB.method872,classGL.method5528
-3910	StockmarketIsofferempty	STOCKMARKET_ISOFFEREMPTY	adapter	named-unhandled		classBB.method872,classGL.method5528
-3911	StockmarketIsofferstable	STOCKMARKET_ISOFFERSTABLE	adapter	named-unhandled		classBB.method872,classGL.method5528
-3912	StockmarketIsofferfinished	STOCKMARKET_ISOFFERFINISHED	adapter	named-unhandled		classBB.method872,classGL.method5528
-3913	StockmarketIsofferadding	STOCKMARKET_ISOFFERADDING	adapter	named-unhandled		classBB.method872,classGL.method5528
+3890	ClanprofileFind	CLANPROFILE_FIND	adapter	host-dispatched		WorldEntityConfig.method8536,classBB.method869,classBB.method871
+3903	StockmarketGetoffertype	STOCKMARKET_GETOFFERTYPE	adapter	host-dispatched		classBB.method872,classGL.method5528
+3904	StockmarketGetofferitem	STOCKMARKET_GETOFFERITEM	adapter	host-dispatched		classBB.method872,classGL.method5528
+3905	StockmarketGetofferprice	STOCKMARKET_GETOFFERPRICE	adapter	host-dispatched		classBB.method872,classGL.method5528
+3906	StockmarketGetoffercount	STOCKMARKET_GETOFFERCOUNT	adapter	host-dispatched		classBB.method872,classGL.method5528
+3907	StockmarketGetoffercompletedcount	STOCKMARKET_GETOFFERCOMPLETEDCOUNT	adapter	host-dispatched		classBB.method872,classGL.method5528
+3908	StockmarketGetoffercompletedgold	STOCKMARKET_GETOFFERCOMPLETEDGOLD	adapter	host-dispatched		classBB.method872,classGL.method5528
+3910	StockmarketIsofferempty	STOCKMARKET_ISOFFEREMPTY	adapter	host-dispatched		classBB.method872,classGL.method5528
+3911	StockmarketIsofferstable	STOCKMARKET_ISOFFERSTABLE	adapter	host-dispatched		classBB.method872,classGL.method5528
+3912	StockmarketIsofferfinished	STOCKMARKET_ISOFFERFINISHED	adapter	host-dispatched		classBB.method872,classGL.method5528
+3913	StockmarketIsofferadding	STOCKMARKET_ISOFFERADDING	adapter	host-dispatched		classBB.method872,classGL.method5528
 3914	TradingpostSortbyName	TRADINGPOST_SORTBY_NAME	adapter	named-unhandled		classBB.method872,classGL.method5528
 3915	TradingpostSortbyPrice	TRADINGPOST_SORTBY_PRICE	adapter	named-unhandled		classBB.method872,classGL.method5528
 3916	TradingpostSortfilterbyWorld	TRADINGPOST_SORTFILTERBY_WORLD	adapter	named-unhandled		classBB.method872,classGL.method5528
@@ -706,7 +706,7 @@ opcode	adapter_name	runelite_name	evidence_status	host_status	live_uses	scanned_
 4033			handler-only	unnamed-unused		classBB.method873,classMC.method7575
 4034			handler-only	unnamed-unused		classBB.method873,classMC.method7575
 4035			handler-only	unnamed-cache-used	10	classBB.method873,classMC.method7575
-4036			handler-only	unnamed-cache-used	4	classBB.method873,classMC.method7575
+4036	TextParseInt		handler-only	host-dispatched	4	classBB.method873,classMC.method7575
 4037			handler-only	unnamed-unused		classBB.method873,classMC.method7575
 4038			handler-only	unnamed-unused		classBB.method873,classMC.method7575
 4039			handler-only	unnamed-unused		classBB.method873,classMC.method7575
@@ -734,7 +734,7 @@ opcode	adapter_name	runelite_name	evidence_status	host_status	live_uses	scanned_
 4101	Append	APPEND	adapter	host-dispatched		classBB.method874,classBB.method875,classBB.method876,classJF.method6405
 4102	AppendSignnum	APPEND_SIGNNUM	adapter	host-dispatched		classBB.method874,classBB.method875,classBB.method876,classJF.method6405
 4103	Lowercase	LOWERCASE	adapter	host-dispatched		classBB.method875,classBB.method876,classJF.method6405
-4104	Fromdate	FROMDATE	adapter	named-unhandled		classBB.method875,classBB.method876,classJF.method6405
+4104	Fromdate	FROMDATE	adapter	host-dispatched		classBB.method875,classBB.method876,classJF.method6405
 4105	TextGender	TEXT_GENDER	adapter	named-unhandled		
 4106	Tostring	TOSTRING	adapter	host-dispatched		classBB.method875,classBB.method876,classJF.method6405
 4107	Compare	COMPARE	adapter	host-dispatched		classBB.method875,classBB.method876,classJF.method6405
@@ -831,7 +831,7 @@ opcode	adapter_name	runelite_name	evidence_status	host_status	live_uses	scanned_
 6223	Getcanvasheight		adapter	host-dispatched		classBB.method894,classBB.method895,classLO.method7180
 6231			unknown	unnamed-cache-used	2	
 6232			unknown	unnamed-cache-used	5	
-6500	WorldlistFetch	WORLDLIST_FETCH	adapter	named-unhandled		classBB.method896,classBB.method897,classSU.method10737
+6500	WorldlistFetch	WORLDLIST_FETCH	adapter	host-dispatched		classBB.method896,classBB.method897,classSU.method10737
 6501	WorldlistStart	WORLDLIST_START	adapter	named-unhandled		classBB.method896,classBB.method897,classSU.method10737
 6502	WorldlistNext	WORLDLIST_NEXT	adapter	named-unhandled		classBB.method896,classBB.method897,classSU.method10737
 6506	WorldlistSpecific	WORLDLIST_SPECIFIC	adapter	named-unhandled		classBB.method896,classBB.method897,classSU.method10737
@@ -850,7 +850,7 @@ opcode	adapter_name	runelite_name	evidence_status	host_status	live_uses	scanned_
 6523			handler-only	unnamed-cache-used	1	classBB.method896,classBB.method897,classSU.method10737
 6524	MobileBatterylevel	MOBILE_BATTERYLEVEL	adapter	named-unhandled		classBB.method896,classBB.method897,classSU.method10737
 6525	MobileBatterycharging	MOBILE_BATTERYCHARGING	adapter	named-unhandled		classBB.method896,classBB.method897,classSU.method10737
-6526	MobileWifiavailable	MOBILE_WIFIAVAILABLE	adapter	named-unhandled		classBB.method896,classBB.method897,classSU.method10737
+6526	MobileWifiavailable	MOBILE_WIFIAVAILABLE	adapter	host-dispatched		classBB.method896,classBB.method897,classSU.method10737
 6527			handler-only	unnamed-cache-used	2	classBB.method896,classBB.method897,classSU.method10737
 6528			handler-only	unnamed-unused		classBB.method896,classBB.method897,classSU.method10737
 6531	ClientBuild		adapter	host-dispatched		classBB.method896,classBB.method897,classSU.method10737

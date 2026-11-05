@@ -479,6 +479,37 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
                 }
                 runtime.body = Some(body);
             }
+            // 235 `class575`: 1123 sets `color2`, 1124 `transparencyBot`, 1125 `fillMode` by
+            // ordinal (an unknown ordinal leaves the mode unchanged). Each is stored for any
+            // widget type in the reference; only rectangles draw them.
+            Opcode::CcSetfillcolour => {
+                let value = s.int()?.cast_unsigned();
+                if let WidgetBody::Rectangle { fill_color, .. } = &mut body {
+                    *fill_color = value;
+                }
+                runtime.body = Some(body);
+            }
+            Opcode::CcSetbottomtrans => {
+                let value = s.int()?;
+                if let WidgetBody::Rectangle {
+                    bottom_transparency,
+                    ..
+                } = &mut body
+                {
+                    *bottom_transparency = u8::try_from(value).map_err(|_| "transparency")?;
+                }
+                runtime.body = Some(body);
+            }
+            Opcode::CcSetfillmode => {
+                let value = s.int()?;
+                if let (WidgetBody::Rectangle { fill_mode, .. }, Some(mode)) = (
+                    &mut body,
+                    rustclient_model::RectangleFill::from_ordinal(value),
+                ) {
+                    *fill_mode = mode;
+                }
+                runtime.body = Some(body);
+            }
             CcSetgraphic => {
                 let value = s.int()?;
                 if let WidgetBody::Sprite { sprite, .. } = &mut body {
@@ -531,6 +562,7 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
                     *model = u32::try_from(id).ok().map(rustclient_model::ModelId::new);
                 }
                 runtime.item = None;
+                runtime.head = None;
                 runtime.body = Some(body);
             }
             Opcode::CcSetmodelangle => {
@@ -568,8 +600,22 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
                 }
                 runtime.body = Some(body);
             }
+            // 235 `Varcs`: model type 2 with the NPC id, or type 3 for the local player. Model
+            // widgets are not painted yet, so the head is retained state only (deviation
+            // `WIDGET-HEAD-MODELS`).
+            Opcode::CcSetnpchead => {
+                let id = s.int()?;
+                runtime.head = u32::try_from(id).ok().map(|id| {
+                    rustclient_model::WidgetHead::Npc(rustclient_model::NpcDefinitionId::new(id))
+                });
+            }
+            Opcode::CcSetplayerheadSelf => {
+                runtime.head = Some(rustclient_model::WidgetHead::LocalPlayer);
+            }
             CcSetobject | CcSetobjectNonum | CcSetobjectAlwaysNum => {
                 let [id, count] = s.ints()?;
+                // `modelType` 4 replaces any head.
+                runtime.head = None;
                 runtime.item = u32::try_from(id)
                     .ok()
                     .map(|id| (ItemDefinitionId::new(id), count.max(0).cast_unsigned()));

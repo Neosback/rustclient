@@ -64,6 +64,9 @@ fn widget_actions_reject_reused_children_changed_items_and_revoked_permissions()
                 color: 0,
                 filled: true,
                 transparency: 0,
+                fill_color: 0,
+                bottom_transparency: 0,
+                fill_mode: rustclient_model::RectangleFill::Solid,
             },
         },
     );
