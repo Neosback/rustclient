@@ -684,3 +684,85 @@ fn carrying_unchanged_domains_forward_matches_rebuilding_every_projection() {
         assert_eq!(a_events, b_events);
     }
 }
+
+#[test]
+fn hitmarks_health_bars_and_spot_animations_reach_snapshots_and_events() {
+    use rustclient_model::{
+        ActorEffects, ActorSpotAnim, Headbar, HeadbarFill, Hitmark, SpotAnimationId,
+    };
+    let sources = Sources::default();
+    let frame = Frame::default();
+    let wanted = everything();
+    let mut projector = Projector::new();
+    let mut state = session();
+    apply(
+        &mut state,
+        SemanticOperation::UpdateNpcs(NpcInfoUpdate {
+            origin: Some(TileOffset { x: -1, y: -1 }),
+            new_npcs: vec![NewNpc {
+                index: NpcIndex::new(42),
+                definition_id: NpcDefinitionId::new(12),
+                delta_x: 1,
+                delta_y: 1,
+                orientation: 0,
+            }],
+            ..Default::default()
+        }),
+    );
+    let _ = projector.project(&state, &frame, &sources, &wanted);
+    apply(
+        &mut state,
+        SemanticOperation::UpdateNpcs(NpcInfoUpdate {
+            attributes: vec![NpcAttributeUpdate {
+                index: NpcIndex::new(42),
+                changes: vec![NpcProperty::Effects(ActorEffects {
+                    hitmarks: vec![Hitmark {
+                        kind: 12,
+                        amount: 9,
+                        delay: 0,
+                        limit: 0,
+                    }],
+                    headbars: vec![Headbar {
+                        kind: 2,
+                        fill: Some(HeadbarFill {
+                            start_time: 0,
+                            end_time: 0,
+                            start_fill: 22,
+                            end_fill: 22,
+                        }),
+                    }],
+                    spotanims: vec![ActorSpotAnim {
+                        slot: 0,
+                        id: Some(SpotAnimationId::new(246)),
+                        height: 92,
+                        delay: 0,
+                        looping: false,
+                    }],
+                })],
+            }],
+            ..Default::default()
+        }),
+    );
+    let (snapshot, events) = projector.project(&state, &frame, &sources, &wanted);
+    let actor = &snapshot.npc(42).expect("npc").actor;
+    assert_eq!(actor.graphic, Some(246));
+    assert_eq!(
+        (actor.hitsplats[0].kind, actor.hitsplats[0].amount),
+        (12, 9)
+    );
+    assert_eq!(
+        (actor.healthbars[0].kind, actor.healthbars[0].amount),
+        (2, Some(22))
+    );
+    assert!(events.iter().any(|event| matches!(
+        event,
+        GameEvent::HitsplatApplied { actor: ActorRef::Npc(42), hitsplat } if hitsplat.amount == 9
+    )));
+    assert!(events.iter().any(|event| matches!(
+        event,
+        GameEvent::GraphicChanged {
+            actor: ActorRef::Npc(42),
+            graphic: Some(246)
+        }
+    )));
+}

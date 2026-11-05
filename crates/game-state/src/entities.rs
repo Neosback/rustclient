@@ -62,6 +62,8 @@ pub struct PlayerEntity {
     pub sequence_timing_resolved: bool,
     pub animation_cycle: u32,
     pub locomotion: Locomotion,
+    /// Hitmarks, health bars and spot animations (SPEC-0022).
+    pub effects: crate::ActorEffectsState,
 }
 
 /// Authoritative live NPC entity.
@@ -87,6 +89,8 @@ pub struct NpcEntity {
     pub actions: rustclient_model::ActionMask,
     pub locomotion: Locomotion,
     pub animation_cycle: u32,
+    /// Hitmarks, health bars and spot animations (SPEC-0022).
+    pub effects: crate::ActorEffectsState,
 }
 
 /// Authoritative collection of active entities in the current session.
@@ -261,6 +265,7 @@ impl WorldEntitiesState {
                     .turning
                     .advance(player.orientation, &mut player.current_orientation);
                 crate::ActorOverhead::advance(&mut player.overhead, 1);
+                player.effects.expire(current_cycle);
                 player.animation_cycle = player.animation_cycle.wrapping_add(1);
                 let timing = player
                     .sequence
@@ -282,6 +287,7 @@ impl WorldEntitiesState {
                 npc.turning
                     .advance(npc.orientation, &mut npc.current_orientation);
                 crate::ActorOverhead::advance(&mut npc.overhead, 1);
+                npc.effects.expire(current_cycle);
                 npc.animation_cycle = npc.animation_cycle.wrapping_add(1);
                 let timing = npc
                     .sequence
@@ -360,6 +366,7 @@ impl WorldEntitiesState {
                 sequence: rustclient_model::ActorSequenceSlot::default(),
                 sequence_timing_resolved: false,
                 animation_cycle: 0,
+                effects: crate::ActorEffectsState::default(),
                 locomotion: Locomotion::Idle,
             });
 
@@ -414,6 +421,13 @@ impl WorldEntitiesState {
             &update.sequence_policies,
             &update.sequence_timings,
         ) || local_changed;
+        // Effects arrive in the same packet as the entries and moves they belong to, so they apply
+        // after the roster is final. A block for an actor not in the scene is dropped.
+        for block in &update.effects {
+            if let Some(player) = self.players.get_mut(&block.index) {
+                changed |= player.effects.apply(&block.effects, cycle);
+            }
+        }
         if let Some(rate) = update.turn_rate {
             for player in self.players.values_mut() {
                 changed |= player.turning.rate() != Some(rate);

@@ -283,6 +283,7 @@ impl GameState {
                     sequence: rustclient_model::ActorSequenceSlot::default(),
                     sequence_timing_resolved: false,
                     animation_cycle: 0,
+                    effects: crate::ActorEffectsState::default(),
                     locomotion: crate::Locomotion::Idle,
                 },
             );

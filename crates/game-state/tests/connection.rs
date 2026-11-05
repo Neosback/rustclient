@@ -39,12 +39,12 @@ fn authentication_and_initial_placement_replay_exactly_and_reset_on_disconnect()
         stream.push(commit);
         envelopes.push(ReplayEnvelope::new(operation, commit));
     }
-    // Schema 31 adds ground item piles and their delta bit.
+    // Schema 32 adds actor hitmarks, health bars and spot animations.
     assert_eq!(
         state.semantic_fingerprint().get(),
-        13_148_953_745_949_219_775
+        10_830_516_857_486_687_810
     );
-    assert_eq!(stream.finish().get(), 17_200_996_954_286_869_230);
+    assert_eq!(stream.finish().get(), 9_958_465_589_811_584_451);
     assert_eq!(state.lifecycle(), SessionLifecycle::Active);
     assert_eq!(state.authenticated_player(), Some(player()));
     assert_eq!(state.initial_placement(), Some(placement()));

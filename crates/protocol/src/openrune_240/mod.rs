@@ -1,6 +1,7 @@
 //! `OpenRune` 240.2 desktop adapter, pinned to `RSProt` 1.0.0-ALPHA-20260825.
 //! See SPEC-0014 and tests/fixtures/PROVENANCE.md for exact evidence and scope.
 mod actions;
+mod actor_effects;
 pub(crate) mod bit_reader;
 pub(crate) mod control;
 pub(crate) mod game;

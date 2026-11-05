@@ -184,7 +184,47 @@ fn overhead(value: Option<&rustclient_game_state::ActorOverhead>) -> Option<Stri
     value.map(|overhead| overhead.text.text.clone())
 }
 
-pub(crate) fn player(entity: &PlayerEntity, local: bool) -> PlayerSnapshot {
+/// The plugin-visible graphic, hitsplats and health bars of an actor at client cycle `now`.
+///
+/// Hitsplats are those whose delay has elapsed (`cycle` is the cycle they arrived on); a health
+/// bar that has not started or has run out reports no amount. The graphic is the lowest occupied
+/// spot animation slot.
+fn effects(
+    state: &rustclient_game_state::ActorEffectsState,
+    now: rustclient_model::ClientCycle,
+) -> (
+    Option<u32>,
+    Vec<rustclient_plugin_api::Hitsplat>,
+    Vec<rustclient_plugin_api::Healthbar>,
+) {
+    let graphic = state.spotanims().next().map(|(_, anim)| anim.id.get());
+    let hitsplats = state
+        .hitmarks()
+        .iter()
+        .filter(|hit| hit.shown_at() <= now)
+        .map(|hit| rustclient_plugin_api::Hitsplat {
+            kind: hit.kind,
+            amount: i32::from(hit.amount),
+            cycle: u32::try_from(hit.applied.get()).unwrap_or(u32::MAX),
+        })
+        .collect();
+    let healthbars = state
+        .headbars()
+        .iter()
+        .map(|track| rustclient_plugin_api::Healthbar {
+            kind: track.kind,
+            amount: track.fill_at(now).map(u16::from),
+        })
+        .collect();
+    (graphic, hitsplats, healthbars)
+}
+
+pub(crate) fn player(
+    entity: &PlayerEntity,
+    local: bool,
+    now: rustclient_model::ClientCycle,
+) -> PlayerSnapshot {
+    let (graphic, hitsplats, healthbars) = effects(&entity.effects, now);
     let appearance = entity.appearance.as_ref();
     let movement = appearance.map(|appearance| appearance.movement_sequences);
     let pose = movement.and_then(|movement| match entity.locomotion {
@@ -201,11 +241,11 @@ pub(crate) fn player(entity: &PlayerEntity, local: bool) -> PlayerSnapshot {
             orientation: entity.current_orientation,
             animation: sequence(entity.sequence.sequence),
             pose: sequence(pose),
-            graphic: None,
+            graphic,
             overhead_text: overhead(entity.overhead.as_ref()),
             interacting: None,
-            hitsplats: Vec::new(),
-            healthbars: Vec::new(),
+            hitsplats,
+            healthbars,
         },
         name: appearance
             .map(|a| a.display_name.clone())
@@ -217,7 +257,12 @@ pub(crate) fn player(entity: &PlayerEntity, local: bool) -> PlayerSnapshot {
     }
 }
 
-pub(crate) fn npc(entity: &NpcEntity, definition: Option<&NpcDefinition>) -> NpcSnapshot {
+pub(crate) fn npc(
+    entity: &NpcEntity,
+    definition: Option<&NpcDefinition>,
+    now: rustclient_model::ClientCycle,
+) -> NpcSnapshot {
+    let (graphic, hitsplats, healthbars) = effects(&entity.effects, now);
     let pose = definition.and_then(|def| match entity.locomotion {
         Locomotion::Idle | Locomotion::Turn => def.idle_sequence,
         Locomotion::Walk => def.walk_sequence,
@@ -232,11 +277,11 @@ pub(crate) fn npc(entity: &NpcEntity, definition: Option<&NpcDefinition>) -> Npc
             orientation: entity.current_orientation,
             animation: sequence(entity.sequence.sequence),
             pose: sequence(pose),
-            graphic: None,
+            graphic,
             overhead_text: overhead(entity.overhead.as_ref()),
             interacting: None,
-            hitsplats: Vec::new(),
-            healthbars: Vec::new(),
+            hitsplats,
+            healthbars,
         },
         id: entity.definition_id.get(),
         name: entity

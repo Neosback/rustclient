@@ -258,6 +258,7 @@ impl WorldEntitiesState {
                     sequence: rustclient_model::ActorSequenceSlot::default(),
                     sequence_timing_resolved: false,
                     animation_cycle: 0,
+                    effects: crate::ActorEffectsState::default(),
                     name: None,
                     actions: rustclient_model::ActionMask::ALL,
                     locomotion: Locomotion::Idle,
@@ -349,6 +350,9 @@ impl WorldEntitiesState {
                     NpcProperty::Actions(actions) => {
                         changed |= npc.actions != *actions;
                         npc.actions = *actions;
+                    }
+                    NpcProperty::Effects(effects) => {
+                        changed |= npc.effects.apply(effects, cycle);
                     }
                 }
             }

@@ -11,7 +11,7 @@ use crate::{GameState, OperationCommit, SemanticEvent, SessionLifecycle};
 ///
 /// Any change to field ordering, tags, integer encoding, or fingerprint
 /// algorithm that changes canonical output must increment this version.
-pub const SEMANTIC_FINGERPRINT_VERSION: u16 = 31;
+pub const SEMANTIC_FINGERPRINT_VERSION: u16 = 32;
 
 const FNV_OFFSET_BASIS: u64 = 0xCBF2_9CE4_8422_2325;
 const FNV_PRIME: u64 = 0x0000_0100_0000_01B3;
@@ -320,6 +320,7 @@ impl GameState {
                 }
             }
             fingerprint.write_u32(player.animation_cycle);
+            write_actor_effects(&mut fingerprint, &player.effects);
             fingerprint.write_u8(match player.locomotion {
                 crate::Locomotion::Idle => 0,
                 crate::Locomotion::Walk => 1,
@@ -397,6 +398,7 @@ impl GameState {
                 }
             }
             fingerprint.write_u32(npc.animation_cycle);
+            write_actor_effects(&mut fingerprint, &npc.effects);
             match npc.sequence.sequence {
                 None => fingerprint.write_u8(0),
                 Some(seq) => {
@@ -440,6 +442,36 @@ impl GameState {
         }
         write_ground_items(&mut fingerprint, self.ground_items());
         StateFingerprint(fingerprint.finish())
+    }
+}
+
+fn write_actor_effects(fingerprint: &mut StableFingerprint64, effects: &crate::ActorEffectsState) {
+    fingerprint.write_u64(effects.hitmarks().len() as u64);
+    for hit in effects.hitmarks() {
+        for value in [hit.kind, hit.amount, hit.delay, hit.limit] {
+            fingerprint.write_u16(value);
+        }
+        fingerprint.write_u64(hit.applied.get());
+    }
+    fingerprint.write_u64(effects.headbars().len() as u64);
+    for track in effects.headbars() {
+        fingerprint.write_u16(track.kind);
+        fingerprint.write_u64(track.updates.len() as u64);
+        for update in &track.updates {
+            fingerprint.write_u64(update.cycle.get());
+            fingerprint.write_u8(update.start_fill);
+            fingerprint.write_u8(update.end_fill);
+            fingerprint.write_u16(update.duration);
+        }
+    }
+    fingerprint.write_u64(effects.spotanims().count() as u64);
+    for (slot, anim) in effects.spotanims() {
+        fingerprint.write_u8(slot);
+        fingerprint.write_u32(anim.id.get());
+        fingerprint.write_u16(anim.height);
+        fingerprint.write_u16(anim.delay);
+        fingerprint.write_u8(u8::from(anim.looping));
+        fingerprint.write_u64(anim.applied.get());
     }
 }
 

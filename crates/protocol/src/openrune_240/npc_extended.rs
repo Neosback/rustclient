@@ -45,12 +45,12 @@ pub(super) fn decode_attributes(r: &mut Reader<'_>, index: NpcIndex) -> Result<N
         ));
     }
     let mut changes = Vec::new();
+    let mut effects = rustclient_model::ActorEffects::default();
     if mask & 0x200 != 0 {
         r.take(8)?;
     }
     if mask & 2 != 0 {
-        let count = 128_u8.wrapping_sub(r.u8()?);
-        r.take(usize::from(count) * 8)?;
+        super::actor_effects::npc_spotanims(r, &mut effects)?;
     }
     if mask & 0x0001_0000 != 0 {
         let flags = r.u8()?.wrapping_sub(128);
@@ -102,12 +102,7 @@ pub(super) fn decode_attributes(r: &mut Reader<'_>, index: NpcIndex) -> Result<N
         });
     }
     if mask & 0x0002_0000 != 0 {
-        let count = r.u8()?.wrapping_sub(128);
-        for _ in 0..count {
-            for _ in 0..4 {
-                smart(r)?;
-            }
-        }
+        super::actor_effects::npc_hitmarks(r, &mut effects)?;
     }
     if mask & 0x8000 != 0 {
         r.take(7)?;
@@ -130,18 +125,10 @@ pub(super) fn decode_attributes(r: &mut Reader<'_>, index: NpcIndex) -> Result<N
         }
     }
     if mask & 0x0100_0000 != 0 {
-        let count = r.u8()?.wrapping_sub(128);
-        for _ in 0..count {
-            smart(r)?;
-            let end = smart(r)?;
-            if end != 32767 {
-                smart(r)?;
-                r.u8()?;
-                if end > 0 {
-                    r.u8()?;
-                }
-            }
-        }
+        super::actor_effects::npc_headbars(r, &mut effects)?;
+    }
+    if !effects.is_empty() {
+        changes.push(NpcProperty::Effects(effects));
     }
     Ok(NpcAttributeUpdate { index, changes })
 }

@@ -149,6 +149,12 @@ impl PlayerInfoDecoder {
                             update,
                         }),
                 );
+            if !values.effects.is_empty() {
+                update.effects.push(rustclient_model::PlayerEffects {
+                    index: rustclient_model::PlayerIndex::new(u32::try_from(index).unwrap_or(0)),
+                    effects: values.effects.clone(),
+                });
+            }
             let speed = values.temporary_speed.or(values.persistent_speed);
             if let Some((_, _, override_speed)) = pending_moves.iter_mut().find(|m| m.0 == index) {
                 *override_speed = speed;

@@ -258,7 +258,9 @@ impl Projector {
             snapshot.players = entities
                 .players
                 .values()
-                .map(|entity| project::player(entity, Some(entity.index) == local))
+                .map(|entity| {
+                    project::player(entity, Some(entity.index) == local, state.scenery().cycle())
+                })
                 .collect();
             snapshot.players.sort_by_key(|player| player.actor.index);
         }
@@ -274,6 +276,7 @@ impl Projector {
                         sources
                             .npcs
                             .and_then(|resolve| resolve(entity.definition_id)),
+                        state.scenery().cycle(),
                     )
                 })
                 .collect();

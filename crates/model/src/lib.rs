@@ -6,6 +6,7 @@
 
 #![forbid(unsafe_code)]
 
+mod actor_effects;
 mod brightness;
 pub mod coords;
 mod minimap;
@@ -46,6 +47,9 @@ mod sequence;
 mod sequence_timing;
 pub mod time;
 
+pub use actor_effects::{
+    ActorEffects, ActorSpotAnim, Headbar, HeadbarFill, Hitmark, PlayerEffects,
+};
 pub use coords::{
     FINE_UNITS_PER_TILE, FineCoord, MAX_PLANE, ModelPoint, Plane, REGION_SIZE_TILES, RegionCoord,
     RegionTile, SceneTile, WorldFinePoint, WorldTile,

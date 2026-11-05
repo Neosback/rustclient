@@ -1,6 +1,6 @@
 //! Selected `RSProt` desktop-240 writer order, corroborated by rl-suite-240 classDF.method3050.
 //! Older PlayerUpdateManager.method2946 is a different revision, including its mask extensions.
-use super::info_fields::{face, smart};
+use super::info_fields::face;
 use super::player_appearance::{decode_appearance, sequence_id};
 use crate::{ProtocolError, Result, wire::Reader};
 use rustclient_model::{ExactMove, MoveSpeed, PlayerAppearance, SequenceChange};
@@ -31,6 +31,7 @@ pub(super) struct Extended {
     pub persistent_speed: Option<MoveSpeed>,
     pub exact_move: Option<ExactMove>,
     pub speech: Vec<rustclient_model::SpeechUpdate>,
+    pub effects: rustclient_model::ActorEffects,
 }
 pub(super) fn decode_extended(
     r: &mut Reader<'_>,
@@ -45,31 +46,13 @@ pub(super) fn decode_extended(
         ));
     }
     if mask & 0x20 != 0 {
-        let count = r.u8_add()?;
-        // slot(-), id(BE+), height/delay(BE), loop(128-value).
-        for _ in 0..count {
-            r.u8_neg()?;
-            r.u16_add()?;
-            r.take(4)?;
-            r.u8_sub()?;
-        }
+        super::actor_effects::player_spotanims(r, &mut out.effects)?;
     }
     if mask & 0x1000 != 0 {
         out.speech.push(super::speech::public(r, chat)?);
     }
     if mask & 0x20000 != 0 {
-        let count = r.u8_sub()?;
-        for _ in 0..count {
-            smart(r)?;
-            let end = smart(r)?;
-            if end != 32767 {
-                smart(r)?;
-                r.u8()?;
-                if end > 0 {
-                    r.u8_neg()?;
-                }
-            }
-        }
+        super::actor_effects::player_headbars(r, &mut out.effects)?;
     }
     if mask & 4 != 0 {
         let length = usize::from(r.u8_sub()?);
@@ -99,12 +82,7 @@ pub(super) fn decode_extended(
         r.take(7)?;
     }
     if mask & 0x0010_0000 != 0 {
-        let count = r.u8()?;
-        for _ in 0..count {
-            for _ in 0..4 {
-                smart(r)?;
-            }
-        }
+        super::actor_effects::player_hitmarks(r, &mut out.effects)?;
     }
     if mask & 0x8000 != 0 {
         out.exact_move = Some(ExactMove {

@@ -207,7 +207,7 @@ server-to-client	87	OBJ_ENABLED_OPS_SPECIFIC	7	selected-rsprot	semantic-subset	c
 server-to-client	88	UPDATE_FRIENDCHAT_CHANNEL_FULL_V2	-2	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
 server-to-client	89	OBJ_UNCUSTOMISE_SPECIFIC	10	selected-rsprot	semantic-subset	crates/protocol/src/openrune_240/ground_items.rs	Clears the retained customisation of the first matching item; live acceptance NOT-RUN.
 server-to-client	90	MAP_ANIM_SPECIFIC	8	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
-server-to-client	91	PLAYER_INFO	-2	selected-rsprot	partial	crates/protocol/src/openrune_240/game.rs	Retained movement/selected attributes; rejected/consumed actor masks remain open.
+server-to-client	91	PLAYER_INFO	-2	selected-rsprot	partial	crates/protocol/src/openrune_240/game.rs	Retained movement, appearance, speech and hitmark/health bar/spot animation blocks; freeze, tint, transparency, name extras and the interaction target remain consumed or rejected.
 server-to-client	92	SERVER_TICK_END	0	selected-rsprot	semantic-subset	crates/protocol/src/openrune_240/game.rs	Inspect all payload branches and downstream state/reset/projection.
 server-to-client	93	NPC_INFO_LARGE_V5	-2	selected-rsprot	framed-unhandled	crates/protocol/src/openrune_240/game.rs	No gameplay support inferred from framing; establish exact source consumer and Rust owner.
 server-to-client	94	VARP_LARGE	6	selected-rsprot	semantic-subset	crates/protocol/src/openrune_240/game.rs	Inspect all payload branches and downstream state/reset/projection.
