@@ -77,6 +77,13 @@ impl ProjectionChanges<'_> {
     pub const fn missed_domains(&self) -> StateDelta {
         self.missed_domains
     }
+    /// Every domain that changed since the cursor: expired domains plus each retained change's.
+    #[must_use]
+    pub fn changed_domains(&self) -> StateDelta {
+        self.iter().fold(self.missed_domains, |delta, change| {
+            delta.union(change.domains())
+        })
+    }
     pub fn iter(&self) -> impl Iterator<Item = ProjectionChange> + '_ {
         self.history.range(self.start..).copied()
     }

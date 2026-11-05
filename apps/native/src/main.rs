@@ -261,6 +261,9 @@ impl NativeApp {
                 npcs: Some(&resolve),
                 varbits: asset.map(|asset| &asset.sources().varbits),
                 items: Some(&items),
+                // NPC names and ground item facts change only when definitions arrive or the
+                // scene (and with it the asset NPCs resolve against) is replaced.
+                revision: catalog.generation() ^ self.map_epoch.rotate_left(32),
                 interfaces: self
                     .scripts
                     .as_ref()
@@ -1209,6 +1212,7 @@ impl NativeApp {
         if self.occluded {
             return;
         }
+        let mut frame_visibility: Option<rustclient_scene::SceneVisibility> = None;
         // GPU pacing and an optional FPS plugin share the existing presentation clock.
         let policy = self.presentation_limit();
         let deadline = self.frame_limit.deadline(policy);
@@ -1271,6 +1275,8 @@ impl NativeApp {
                     self.entered_world = true;
                 }
                 let visibility = self.scene_visibility(&window);
+                // The renderer below draws with the same predicate; compute it once per frame.
+                frame_visibility = Some(visibility.clone());
                 actor_overlays::project(
                     &self.scene,
                     &self.state,
@@ -1560,7 +1566,9 @@ impl NativeApp {
                 self.widget_menu
                     .project(assets, &self.widget_assets.font_icons, &mut self.frame);
             }
-            let visibility = self.scene_visibility(&window);
+            let visibility = frame_visibility
+                .take()
+                .unwrap_or_else(|| self.scene_visibility(&window));
             self.renderer.as_mut().map(|renderer| {
                 if let (Some(descriptor), Some(camera)) =
                     (self.state.displayed_scene(), self.scene.camera)

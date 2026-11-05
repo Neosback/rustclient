@@ -28,6 +28,103 @@ pub struct Projector {
     last_tick: Option<u64>,
     varbits: Option<VarbitCache>,
     widgets: Option<WidgetCache>,
+    /// Journal position of the previous projection, so unchanged domains can be carried forward.
+    cursor: Option<rustclient_game_state::ProjectionCursor>,
+    /// Grants, source revision and varbit table identity the previous projection used.
+    reuse_key: Option<ReuseKey>,
+    /// Testing switch: rebuild every domain, as before reuse existed.
+    rebuild_always: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ReuseKey {
+    /// Shell session identity: a new connection generation never reuses a previous journal.
+    session: u64,
+    wanted: CapabilitySet,
+    revision: u64,
+    varbits: (usize, usize),
+}
+
+/// Snapshot domains whose committed state, grants and sources did not change since the previous
+/// projection. Their data moves forward unchanged and their events are not derived.
+#[derive(Debug, Clone, Copy, Default)]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "one independent carry-forward decision per snapshot domain"
+)]
+struct Reuse {
+    /// Players, the local player index and skills (`ENTITIES`).
+    entities: bool,
+    /// NPCs: entities, the varps their morphs read, and NPC definitions.
+    npcs: bool,
+    vars: bool,
+    containers: bool,
+    chat: bool,
+    ground_items: bool,
+}
+impl Reuse {
+    /// Event classes that only reused domains produce; they are not derived.
+    fn skipped_kinds(self) -> rustclient_plugin_api::EventInterest {
+        use rustclient_plugin_api::{EventInterest, GameEventKind as K};
+        let mut kinds = EventInterest::NONE;
+        let actor = [
+            K::AnimationChanged,
+            K::GraphicChanged,
+            K::InteractingChanged,
+            K::HitsplatApplied,
+            K::OverheadTextChanged,
+        ];
+        if self.entities && self.npcs {
+            for kind in actor {
+                kinds = kinds.with(kind);
+            }
+        }
+        if self.entities {
+            for kind in [
+                K::PlayerSpawned,
+                K::PlayerDespawned,
+                K::PlayerChanged,
+                K::StatChanged,
+            ] {
+                kinds = kinds.with(kind);
+            }
+        }
+        if self.npcs {
+            for kind in [K::NpcSpawned, K::NpcDespawned, K::NpcChanged] {
+                kinds = kinds.with(kind);
+            }
+        }
+        if self.vars {
+            kinds = kinds.with(K::VarbitChanged);
+        }
+        if self.containers {
+            kinds = kinds.with(K::ItemContainerChanged);
+        }
+        if self.chat {
+            kinds = kinds.with(K::ChatMessage);
+        }
+        if self.ground_items {
+            kinds = kinds
+                .with(K::ItemSpawned)
+                .with(K::ItemDespawned)
+                .with(K::ItemQuantityChanged);
+        }
+        kinds
+    }
+}
+
+/// Move a field out of the previous snapshot when nothing else holds it, else clone it.
+fn carry<T: Clone + Default>(
+    previous: &mut Option<Arc<GameSnapshot>>,
+    field: impl Fn(&mut GameSnapshot) -> &mut T,
+) -> T {
+    let Some(previous) = previous.as_mut() else {
+        return T::default();
+    };
+    match Arc::get_mut(previous) {
+        Some(unique) => std::mem::take(field(unique)),
+        None => field(&mut (**previous).clone()).clone(),
+    }
 }
 
 /// Varbit table plus its reverse index, keyed by the identity of the source table.
@@ -95,13 +192,67 @@ impl Projector {
         sources: &Sources<'_>,
         wanted: &CapabilitySet,
     ) -> GameSnapshot {
+        self.build(state, frame, sources, wanted, Reuse::default())
+    }
+
+    /// Rebuild every domain on every projection, disabling reuse (for equivalence tests).
+    pub fn set_rebuild_always(&mut self, rebuild: bool) {
+        self.rebuild_always = rebuild;
+    }
+
+    /// The domains that may be carried forward, given the journal since the previous projection.
+    fn reusable(
+        &self,
+        state: &GameState,
+        frame: &Frame,
+        sources: &Sources<'_>,
+        wanted: &CapabilitySet,
+    ) -> Reuse {
+        let key = ReuseKey {
+            session: frame.session,
+            wanted: wanted.clone(),
+            revision: sources.revision,
+            varbits: sources.varbits.map_or((0, 0), |table| {
+                (std::ptr::from_ref(table) as usize, table.len())
+            }),
+        };
+        let (Some(cursor), Some(_)) = (self.cursor, &self.previous) else {
+            return Reuse::default();
+        };
+        if self.rebuild_always || self.reuse_key.as_ref() != Some(&key) {
+            return Reuse::default();
+        }
+        let changed = state.projection_changes(cursor).changed_domains();
+        let entities = !changed.entities_changed();
+        Reuse {
+            entities,
+            npcs: entities && !changed.scenery_changed(),
+            vars: !changed.scenery_changed(),
+            containers: !changed.inventory_changed(),
+            chat: !changed.chat_changed(),
+            ground_items: !changed.ground_items_changed(),
+        }
+    }
+
+    fn build(
+        &mut self,
+        state: &GameState,
+        frame: &Frame,
+        sources: &Sources<'_>,
+        wanted: &CapabilitySet,
+        reuse: Reuse,
+    ) -> GameSnapshot {
         let client = project::client(state, frame);
         let mut snapshot = GameSnapshot {
             client,
             ..GameSnapshot::default()
         };
         let entities = state.entities();
-        if project::wants(wanted, Capability::GameReadPlayers) {
+        if reuse.entities {
+            snapshot.local_player = self.previous.as_ref().and_then(|p| p.local_player);
+            snapshot.players = carry(&mut self.previous, |s| &mut s.players);
+            snapshot.skills = carry(&mut self.previous, |s| &mut s.skills);
+        } else if project::wants(wanted, Capability::GameReadPlayers) {
             let local = entities.local_player_index;
             snapshot.local_player = local.and_then(|index| u16::try_from(index.get()).ok());
             snapshot.players = entities
@@ -111,7 +262,9 @@ impl Projector {
                 .collect();
             snapshot.players.sort_by_key(|player| player.actor.index);
         }
-        if project::wants(wanted, Capability::GameReadNpcs) {
+        if reuse.npcs {
+            snapshot.npcs = carry(&mut self.previous, |s| &mut s.npcs);
+        } else if project::wants(wanted, Capability::GameReadNpcs) {
             snapshot.npcs = entities
                 .npcs
                 .values()
@@ -126,20 +279,28 @@ impl Projector {
                 .collect();
             snapshot.npcs.sort_by_key(|npc| npc.actor.index);
         }
-        if project::wants(wanted, Capability::GameReadSkills) {
+        if !reuse.entities && project::wants(wanted, Capability::GameReadSkills) {
             snapshot.skills = project::skills(state);
         }
-        if project::wants(wanted, Capability::GameReadVars) {
+        if reuse.vars {
+            snapshot.vars = carry(&mut self.previous, |s| &mut s.vars);
+        } else if project::wants(wanted, Capability::GameReadVars) {
             let (table, _) = self.varbit_table(sources);
             snapshot.vars = project::vars(state, &table);
         }
-        if project::wants(wanted, Capability::GameReadInventory) {
+        if reuse.containers {
+            snapshot.containers = carry(&mut self.previous, |s| &mut s.containers);
+        } else if project::wants(wanted, Capability::GameReadInventory) {
             snapshot.containers = project::containers(state);
         }
-        if project::wants(wanted, Capability::GameReadChat) {
+        if reuse.chat {
+            snapshot.chat = carry(&mut self.previous, |s| &mut s.chat);
+        } else if project::wants(wanted, Capability::GameReadChat) {
             snapshot.chat = project::chat(state);
         }
-        if project::wants(wanted, Capability::GameReadGroundItems) {
+        if reuse.ground_items {
+            snapshot.ground_items = carry(&mut self.previous, |s| &mut s.ground_items);
+        } else if project::wants(wanted, Capability::GameReadGroundItems) {
             snapshot.ground_items = project::ground_items(state, sources.items);
         }
         if project::wants(wanted, Capability::GameReadWidgets) {
@@ -208,9 +369,22 @@ impl Projector {
         interest: Option<&CapabilitySet>,
         kinds: rustclient_plugin_api::EventInterest,
     ) -> (Arc<GameSnapshot>, Vec<GameEvent>) {
-        let snapshot = self.snapshot(state, frame, sources, wanted);
+        let reuse = self.reusable(state, frame, sources, wanted);
+        let snapshot = self.build(state, frame, sources, wanted, reuse);
+        self.cursor = Some(state.projection_cursor());
+        self.reuse_key = Some(ReuseKey {
+            session: frame.session,
+            wanted: wanted.clone(),
+            revision: sources.revision,
+            varbits: sources.varbits.map_or((0, 0), |table| {
+                (std::ptr::from_ref(table) as usize, table.len())
+            }),
+        });
         let domains = rustclient_plugin_api::EventInterest::ALL.permitted_by(wanted);
         let kinds = kinds.intersection(self.previous_domains.unwrap_or(domains));
+        // Carried-forward domains equal the previous projection, so they produce no events; their
+        // fields were moved out of `previous` and must not be compared.
+        let kinds = kinds.difference(reuse.skipped_kinds());
         let index = (kinds.contains(rustclient_plugin_api::GameEventKind::VarbitChanged)
             && interest.is_some_and(|grants| project::wants(grants, Capability::GameReadVars))
             && project::wants(wanted, Capability::GameReadVars))

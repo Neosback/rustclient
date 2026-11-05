@@ -140,6 +140,7 @@ fn state_operations_project_to_snapshots_and_ordered_events() {
         varbits: Some(&varbits),
         interfaces: None,
         items: None,
+        revision: 0,
     };
     let frame = Frame {
         fps: 50,
@@ -617,4 +618,69 @@ fn newly_granted_domains_baseline_existing_contents_without_shared_spawn_or_stat
         events.is_empty(),
         "a read-grant change is not a gameplay commit: {events:?}"
     );
+}
+
+#[test]
+fn carrying_unchanged_domains_forward_matches_rebuilding_every_projection() {
+    let npc_definition = definitions::npc(
+        b"\x02Banker\0\x20Bank\0\0",
+        NpcDefinitionId::new(12),
+        Source::group(IndexId(2), GroupId(9)),
+    )
+    .expect("definition");
+    let npcs: BTreeMap<NpcDefinitionId, NpcDefinition> =
+        BTreeMap::from([(npc_definition.id, npc_definition)]);
+    let resolve = |id: NpcDefinitionId| npcs.get(&id);
+    let sources = Sources {
+        npcs: Some(&resolve),
+        ..Sources::default()
+    };
+    let frame = Frame::default();
+    let wanted = everything();
+    let (mut reusing, mut rebuilding) = (Projector::new(), Projector::new());
+    rebuilding.set_rebuild_always(true);
+    let mut state = session();
+    let steps: Vec<Option<SemanticOperation>> = vec![
+        None,
+        Some(SemanticOperation::UpdateNpcs(NpcInfoUpdate {
+            origin: Some(TileOffset { x: -1, y: -1 }),
+            new_npcs: vec![NewNpc {
+                index: NpcIndex::new(42),
+                definition_id: NpcDefinitionId::new(12),
+                delta_x: 1,
+                delta_y: 1,
+                orientation: 0,
+            }],
+            ..Default::default()
+        })),
+        None,
+        Some(SemanticOperation::Scenery(SceneryOperation::SetVariable {
+            id: VarpId::new(172),
+            value: 3,
+        })),
+        Some(SemanticOperation::GameMessage(GameMessage {
+            channel: ChatChannelId::new(0),
+            sender: String::new(),
+            text: "Hello".into(),
+        })),
+        None,
+        Some(SemanticOperation::Inventory(InventoryUpdate::Replace {
+            id: InventoryId::new(93),
+            slots: vec![Some(rustclient_model::ItemStack {
+                item: ItemDefinitionId::new(995),
+                amount: 5,
+            })],
+        })),
+        Some(SemanticOperation::AdvanceTick(TickSpan::new(1))),
+        None,
+    ];
+    for step in steps {
+        if let Some(operation) = step {
+            apply(&mut state, operation);
+        }
+        let (a, a_events) = reusing.project(&state, &frame, &sources, &wanted);
+        let (b, b_events) = rebuilding.project(&state, &frame, &sources, &wanted);
+        assert_eq!(format!("{a:?}"), format!("{b:?}"));
+        assert_eq!(a_events, b_events);
+    }
 }

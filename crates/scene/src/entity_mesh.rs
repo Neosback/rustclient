@@ -43,6 +43,8 @@ pub struct EntityCatalog {
     requested_npcs: BTreeSet<NpcDefinitionId>,
     requested_items: BTreeSet<ItemDefinitionId>,
     requested_sequences: BTreeSet<SequenceId>,
+    /// Bumped by every merge, so projections of definitions can tell when they may differ.
+    generation: u64,
 }
 
 enum NpcResolution<'a> {
@@ -75,6 +77,12 @@ impl EntityCatalog {
         for id in &request.sequences {
             self.requested_sequences.remove(id);
         }
+    }
+
+    /// Changes whenever a definition batch is merged.
+    #[must_use]
+    pub const fn generation(&self) -> u64 {
+        self.generation
     }
 
     /// A decoded item definition, once a request for it has been merged.
@@ -202,6 +210,7 @@ impl EntityCatalog {
     /// Returns advisories for cached-model animations that could not be prepared for playback;
     /// those sequences are then drawn in rest pose.
     pub fn merge(&mut self, asset: &SceneAsset, mut assets: EntityAssets) -> Vec<String> {
+        self.generation = self.generation.wrapping_add(1);
         self.poses.clear();
         let failures = std::sync::Arc::make_mut(&mut self.animations).merge(asset, &mut assets);
         self.npcs.extend(assets.npcs);

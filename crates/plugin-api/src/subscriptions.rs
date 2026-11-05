@@ -180,6 +180,11 @@ impl EventInterest {
     pub const fn intersection(self, other: Self) -> Self {
         Self(self.0 & other.0)
     }
+    /// Classes in this set and not in `other`.
+    #[must_use]
+    pub const fn difference(self, other: Self) -> Self {
+        Self(self.0 & !other.0)
+    }
     /// Whether the sets share any class.
     #[must_use]
     pub const fn intersects(self, other: Self) -> bool {

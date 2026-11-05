@@ -52,6 +52,10 @@ pub struct Sources<'a> {
     /// Item definition facts for ground items; `None` for an item whose definition is not
     /// loaded yet.
     pub items: Option<&'a dyn Fn(rustclient_model::ItemDefinitionId) -> Option<ItemFacts<'a>>>,
+    /// Identity of what `npcs` and `items` resolve. Change it whenever they could answer
+    /// differently (a definition batch arrived), so unchanged NPC and ground item projections are
+    /// rebuilt instead of carried forward.
+    pub revision: u64,
 }
 
 /// What a ground item snapshot needs from an item definition (`ItemComposition`).
