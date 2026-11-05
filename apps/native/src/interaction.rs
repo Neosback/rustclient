@@ -7,7 +7,7 @@ use std::time::Instant;
 use winit::window::Window;
 
 /// One entry of the world right-click menu.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum WorldChoice {
     Action(WorldAction),
     /// Captured world tile and map identity from when the menu was opened.
@@ -446,6 +446,9 @@ impl NativeApp {
         x: f32,
         y: f32,
     ) -> Result<(), String> {
+        if let Some((_, record)) = self.menu_records.iter().find(|(c, _)| *c == choice) {
+            self.plugins.menu_chosen(record.clone());
+        }
         match choice {
             WorldChoice::Action(action) => {
                 self.send_world_action(action)?;
@@ -546,6 +549,63 @@ impl NativeApp {
         }
         Ok(entries)
     }
+    /// The world menu after the plugin menu stage (SPEC-0021): `MenuEntryAdded` for each entry,
+    /// `MenuOpened` when `opened`, then `PostMenuSort`, whose subscribers' edits reorder, remove
+    /// or relabel entries. The left click, the mouse-over text and the opened menu all use this
+    /// one list. Plugin-offered entries are added only to an opened menu.
+    fn edited_world_entries(
+        &mut self,
+        window: &Window,
+        x: f32,
+        y: f32,
+        opened: bool,
+    ) -> Result<Vec<(String, WorldChoice, Option<WorldTarget>)>, String> {
+        let mut entries = self.world_entries(window, x, y)?;
+        if opened {
+            self.add_plugin_entries(&mut entries);
+        }
+        let records: Vec<_> = entries
+            .iter()
+            .map(|(label, choice, _)| self.menu_record(label, *choice))
+            .collect();
+        self.menu_records = entries
+            .iter()
+            .zip(&records)
+            .filter(|((_, choice, _), _)| !matches!(choice, WorldChoice::Plugin { .. }))
+            .map(|((_, choice, _), record)| (*choice, record.clone()))
+            .collect();
+        if entries.is_empty() || !self.plugins.wants_menu_stage() {
+            return Ok(entries);
+        }
+        let edited = self.plugins.menu_stage(&records, opened);
+        let mut slots: Vec<_> = entries.into_iter().map(Some).collect();
+        Ok(edited
+            .order
+            .iter()
+            .filter_map(|&index| {
+                let (label, choice, target) = slots.get_mut(index)?.take()?;
+                Some(match edited.options.get(&index) {
+                    Some(option) => (
+                        rustclient_application::menu::relabel(&label, option),
+                        choice,
+                        target,
+                    ),
+                    None => (label, choice, target),
+                })
+            })
+            .collect())
+    }
+    /// The plugin API record of one world menu row.
+    fn menu_record(&self, label: &str, choice: WorldChoice) -> rustclient_plugin_api::MenuEntry {
+        use rustclient_application::menu::{WorldMenuRow, plugin_menu_entry};
+        match choice {
+            WorldChoice::Action(action) => plugin_menu_entry(label, WorldMenuRow::Action(action)),
+            WorldChoice::Walk { scene, destination } => {
+                plugin_menu_entry(label, WorldMenuRow::Walk { scene, destination })
+            }
+            WorldChoice::Plugin { slot } => self.plugin_menu[slot].clone(),
+        }
+    }
     /// Append the entries plugins offered for the tile this menu was opened on (SPEC-0004
     /// `menu_offers`): below "Walk here", so they never become the left-click default, and only
     /// while Shift is held when the offer asks for it. The captured entries stay in `plugin_menu`
@@ -620,7 +680,7 @@ impl NativeApp {
             window.request_redraw();
         }
     }
-    fn hover_at(&self, window: &Window) -> Option<HoverText> {
+    fn hover_at(&mut self, window: &Window) -> Option<HoverText> {
         if self.context_menu.is_open()
             || self.widget_menu.is_open()
             || self.state.loaded_scene().is_none()
@@ -672,7 +732,11 @@ impl NativeApp {
                 }
             }
         }
-        let (label, _, target) = self.world_entries(window, x, y).ok()?.into_iter().next()?;
+        let (label, _, target) = self
+            .edited_world_entries(window, x, y, false)
+            .ok()?
+            .into_iter()
+            .next()?;
         let label = plain_label(&label);
         let (verb, name) = label.split_once(' ').unwrap_or((&label, ""));
         Some(HoverText {
@@ -699,9 +763,8 @@ impl NativeApp {
             return Ok(true);
         }
         self.context_menu.close();
-        let mut entries = self.world_entries(window, x, y)?;
+        let entries = self.edited_world_entries(window, x, y, right)?;
         if right {
-            self.add_plugin_entries(&mut entries);
             if let Some(assets) = &self.assets {
                 self.context_menu.open(
                     x,

@@ -73,6 +73,8 @@ pub struct ClientScripts<S> {
     string_vectors: BTreeMap<i32, Vec<String>>,
     random: crate::SplitMix64Random,
     sound_effects: Vec<SoundEffectRequest>,
+    /// Ids of invocations that finished since the host last took them (`ScriptPostFired`).
+    completed: Vec<rustclient_model::ScriptId>,
     db: database::DbState,
     item_search: item_search::ItemSearch,
     huffman: Option<rustclient_protocol::Huffman>,
@@ -86,6 +88,8 @@ pub struct ClientScripts<S> {
     widget_iteration: widget_iteration::WidgetIteration,
     listener_index: listener_index::ListenerIndex,
 }
+/// Most finished-script ids retained between [`ClientScripts::take_completed_scripts`] calls.
+pub const COMPLETED_SCRIPT_LIMIT: usize = 1024;
 /// Seed used until the host supplies one; scripts that roll dice behave identically across runs.
 const DEFAULT_RANDOM_SEED: u64 = 0x2400_0001;
 impl<S: ReadOnlyBlobs> ClientScripts<S> {
@@ -113,6 +117,7 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
             string_vectors: BTreeMap::new(),
             random: crate::SplitMix64Random::new(crate::RandomSeed::new(DEFAULT_RANDOM_SEED)),
             sound_effects: Vec::new(),
+            completed: Vec::new(),
             db: database::DbState::default(),
             item_search: item_search::ItemSearch::default(),
             huffman: None,
@@ -513,6 +518,7 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
         self.effects.clear();
         self.string_vectors.clear();
         self.sound_effects.clear();
+        self.completed.clear();
         self.db.reset();
         self.item_search = item_search::ItemSearch::default();
         self.world_map.reset();
@@ -520,6 +526,13 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
     /// Sound effects requested since the last call, in script order.
     pub fn take_sound_effects(&mut self) -> Vec<SoundEffectRequest> {
         std::mem::take(&mut self.sound_effects)
+    }
+    /// Ids of the script invocations that finished since the last call, in run order
+    /// (`RuneLite` `ScriptPostFired`). The stock interpreter catches script failures inside
+    /// `runScript`, so failed invocations finish too. At most [`COMPLETED_SCRIPT_LIMIT`] are
+    /// kept between calls; later ones are dropped.
+    pub fn take_completed_scripts(&mut self) -> Vec<rustclient_model::ScriptId> {
+        std::mem::take(&mut self.completed)
     }
     /// Drain validated outbound effects produced by load/timer/server scripts.
     pub fn take_intents(&mut self) -> Vec<rustclient_protocol::ClientIntent> {
@@ -643,11 +656,12 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
                 }
             }
         }
+        let id = request.id;
         let mut host = ScriptHost {
             resources: self,
             state,
         };
-        if let Err(error) = execute(
+        let outcome = execute(
             &mut host,
             request,
             Context {
@@ -656,7 +670,11 @@ impl<S: ReadOnlyBlobs> ClientScripts<S> {
                 ..Context::default()
             },
             Limits::default(),
-        ) {
+        );
+        if self.completed.len() < COMPLETED_SCRIPT_LIMIT {
+            self.completed.push(id);
+        }
+        if let Err(error) = outcome {
             errors.push(error.to_string());
         }
         // The stock interpreter flushes this queue after the invocation, including failed scripts.

@@ -63,8 +63,9 @@ pub struct MenuOffer {
 
 /// An edit a plugin asks the host to apply to the entries of the last `PostMenuSort` event.
 ///
-/// `index` addresses the entry list delivered with that event; the host drops directives whose
-/// index is out of range or whose menu has since changed.
+/// Indexes address the entry list delivered with that event, top first; the host drops
+/// directives whose index is out of range. Edits apply in order, each to the order the earlier
+/// ones produced, so a later edit of the same entry wins.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MenuEdit {
     /// Make the entry the left-click default.
@@ -81,6 +82,15 @@ pub enum MenuEdit {
     Deprioritize {
         /// Entry index.
         index: usize,
+    },
+    /// Exchange the positions of two entries (`RuneLite` Menu Entry Swapper's `swap`).
+    ///
+    /// Added additively to API 0.2 (ADR-0006).
+    Swap {
+        /// First entry index.
+        first: usize,
+        /// Second entry index.
+        second: usize,
     },
     /// Replace the entry's option text.
     SetOption {

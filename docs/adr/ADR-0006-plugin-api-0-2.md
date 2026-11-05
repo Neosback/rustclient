@@ -68,6 +68,12 @@ process; that model is rejected by invariants 1 and 4.
   schema-driven configuration (`PluginCall::config`) and carry an `enabled` switch (RuneLite `enabledByDefault`).
   Their schemas are generated from the vendored `*Config.java` by `tools/builtin-plugins/first_party_schemas.py`.
 
+- Menu stage (2026-11-05): `MenuEntryAdded`, `MenuOpened` and `PostMenuSort` are emitted by a synchronous host stage
+  and `PostMenuSort` subscribers' `menu_edits` are applied in order to the delivered list (SPEC-0021).
+  `MenuEdit::Swap { first, second }` is added, additively within 0.2, so Menu Entry Swapper's exchange semantics port
+  one to one; WIT `menu-edit` gains `swap(tuple<u32, u32>)`. `ScriptPostFired(script id)` is emitted once per finished
+  script invocation, failed ones included, as the stock interpreter catches failures inside `runScript`.
+
 ## Rejected
 
 - Exposing `&GameState` or a read-only clone: second representation of the same semantic concept and a leak of internal

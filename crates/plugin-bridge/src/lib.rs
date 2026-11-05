@@ -52,6 +52,12 @@ impl Projector {
         Self::default()
     }
 
+    /// The most recent projection, for synchronous stages between updates (the menu stage).
+    #[must_use]
+    pub fn latest(&self) -> Option<Arc<GameSnapshot>> {
+        self.previous.clone()
+    }
+
     /// Forget history; the next projection reports the world as freshly loaded.
     pub fn reset(&mut self) {
         *self = Self::default();

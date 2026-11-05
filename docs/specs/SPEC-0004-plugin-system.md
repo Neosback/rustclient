@@ -56,7 +56,9 @@ a reusable slot. Public lifetime handles bind session, actor kind/slot and incar
 unknown identity is explicit. Replacing an actor in one slot yields despawn then
 spawn, even if its appearance is identical. Projection metadata cannot create
 missing combat facts. Later source-stage hooks supplement snapshot differences;
-declared menu/script hooks remain unavailable until their owners emit them.
+the menu hooks are emitted by the synchronous menu stage (SPEC-0021) and
+`ScriptPostFired` by the script host once per finished invocation, delivered at the next
+update.
 
 Acceptance includes event-major ordering, source priority/ties, kind/grant filtering,
 route invalidation on unload/re-register, per-callback fault isolation, actor index
@@ -101,8 +103,8 @@ owning subsystem. Plugins never call the renderer or mutate `GameState`.
 
 **Capabilities.** Each query, event class and output kind maps to one capability and is checked at the host boundary:
 `game.read.{players,npcs,inventory,widgets,vars,chat,skills,client}`, `ui.{overlay,menu.swap,entities.hide,
-sprite.override,infobox,viewport,menu.decorate}`, `scene.control`, `camera.control`, `client.notify`, `client.frame_limit`, `ui.minimap`. `ui.panel`,
-`network.http`, `interaction.request` are reserved: no 0.2 operation exists for them, so granting them changes nothing.
+sprite.override,infobox,viewport,menu.decorate}`, `scene.control`, `camera.control`, `client.notify`, `client.frame_limit`, `ui.minimap`, `ui.panel`. `network.http` and `interaction.request` are reserved: no 0.2 operation exists for
+them, so granting them changes nothing.
 The first denial of each capability per plugin is logged; repeats are silent.
 
 **Scene output.** `scene` carries RuneLite-style roof removal mode bits (`ROOF_FLAG_POSITION=1`, `HOVERED=2`,
@@ -122,7 +124,9 @@ widget visibility, and `ClientSnapshot::minimap_zoom` reports the current level.
 entries to the world menu opened on a given tile, optionally only while Shift is held. They are redeclared every update, are appended
 below "Walk here" (never the left-click default), and choosing one delivers `MenuOptionClicked` with kind
 `Other(PLUGIN_MENU_TYPE = 1500)`, the offer's option and target, and the tile's world x and y in `param0`/`param1`, to plugins that hold
-`ui.menu.swap`. The shell delivers that event only for plugin entries; the stock menu entries are not yet projected to plugins.
+`ui.menu.swap`. Stock world menu entries are projected too, and choosing one delivers `MenuOptionClicked` the same way.
+`menu_edits` are collected synchronously from `PostMenuSort` subscribers during the menu stage (SPEC-0021); the
+level-triggered `menu_edits` of an ordinary update are not applied.
 
 **First-party plugins and configuration.** In-tree ports live in `crates/first-party-plugins` (one module each) and
 implement `NativePlugin`, which adapts to `PluginInstance`. Their settings are schema-driven like the required services:

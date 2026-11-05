@@ -136,6 +136,7 @@ interface types {
         move-to-top(u32),
         remove(u32),
         deprioritize(u32),
+        swap(tuple<u32, u32>),
         set-option(tuple<u32, string>),
     }
 

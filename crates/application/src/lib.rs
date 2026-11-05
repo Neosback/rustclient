@@ -7,6 +7,7 @@
 
 pub mod builtin_config;
 mod interaction;
+pub mod menu;
 pub mod shell_preferences;
 pub use interaction::{validate_walk, validate_world_action, world_actions};
 

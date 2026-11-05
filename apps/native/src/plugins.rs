@@ -34,6 +34,8 @@ pub(super) struct Plugins {
     pending: BTreeMap<String, (rustclient_plugin_api::PluginId, PluginConfig, bool)>,
     /// Plugin menu entries chosen since the last update, delivered as `MenuOptionClicked`.
     menu_clicks: Vec<rustclient_plugin_api::MenuEntry>,
+    /// Scripts finished since the last update, delivered as `ScriptPostFired`.
+    scripts_finished: Vec<rustclient_model::ScriptId>,
 }
 
 /// Shell-owned facts and cache definitions the projector consults.
@@ -43,9 +45,35 @@ pub(super) struct Inputs<'a> {
 }
 
 impl Plugins {
-    /// A plugin-offered world menu entry was chosen; the next update delivers it.
+    /// Script invocations that finished, in run order; the next update delivers them as
+    /// `ScriptPostFired`.
+    pub(super) fn scripts_finished(&mut self, ids: Vec<rustclient_model::ScriptId>) {
+        self.scripts_finished.extend(ids);
+    }
+    /// A world menu entry was chosen; the next update delivers it as `MenuOptionClicked`.
     pub(super) fn menu_chosen(&mut self, entry: rustclient_plugin_api::MenuEntry) {
         self.menu_clicks.push(entry);
+    }
+    /// Whether any running plugin subscribes to a menu hook.
+    pub(super) fn wants_menu_stage(&self) -> bool {
+        self.set.wants_menu_stage()
+    }
+    /// Run the synchronous menu stage over `entries` against the latest projection.
+    pub(super) fn menu_stage(
+        &mut self,
+        entries: &[rustclient_plugin_api::MenuEntry],
+        opened: bool,
+    ) -> rustclient_plugin_host::EditedMenu {
+        let Some(snapshot) = self.projector.latest() else {
+            return rustclient_plugin_host::EditedMenu::identity(entries.len());
+        };
+        self.set.menu_stage(
+            entries,
+            opened,
+            &SnapshotView(&snapshot),
+            &mut self.storage,
+            &mut self.logs,
+        )
     }
     /// Whether a running plugin may read client facts, which include the tile under the pointer.
     pub(super) fn reads_client(&self) -> bool {
@@ -84,6 +112,7 @@ impl Plugins {
                 applied: BTreeMap::new(),
                 pending: BTreeMap::new(),
                 menu_clicks: Vec::new(),
+                scripts_finished: Vec::new(),
             };
         }
         match NativeRuntime::new() {
@@ -132,6 +161,7 @@ impl Plugins {
             applied: BTreeMap::new(),
             pending: BTreeMap::new(),
             menu_clicks: Vec::new(),
+            scripts_finished: Vec::new(),
         }
     }
 
@@ -258,8 +288,16 @@ impl Plugins {
         if wanted.is_empty() && interest.is_none() {
             self.output = HostOutput::default();
             self.menu_clicks.clear();
+            self.scripts_finished.clear();
             return;
         }
+        // Scripts ran inside the cycle's packet and input stages, before this end-of-cycle
+        // projection; clicks were chosen after the previous one.
+        events.extend(
+            std::mem::take(&mut self.scripts_finished)
+                .into_iter()
+                .map(|id| rustclient_plugin_api::GameEvent::ScriptPostFired(id.get())),
+        );
         events.extend(
             std::mem::take(&mut self.menu_clicks)
                 .into_iter()

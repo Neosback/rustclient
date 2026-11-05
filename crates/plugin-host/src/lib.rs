@@ -11,10 +11,12 @@
 
 pub mod configuration;
 mod lifecycle;
+pub mod menu;
 mod panels;
 pub mod required;
 mod subscriptions;
 pub use lifecycle::{ActivationId, LifecycleStatus};
+pub use menu::{EditedMenu, apply_menu_edits};
 pub use panels::{HostedPanel, PanelAction, PanelLease};
 mod v2;
 

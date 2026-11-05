@@ -21,8 +21,8 @@ exact evidence below remains bounded to its recorded implementation.
 
 ## Port status
 
-Catalog reconciliation, 2026-11-02: 131 slots comprise 16 partial modules, one
-required GPU service, two schema-only entries and 112 not-started entries. The last
+Catalog reconciliation, 2026-11-05: 131 slots comprise 17 partial modules, one
+required GPU service, one schema-only entry and 112 not-started entries. The last
 two groups total 114 without executable registration. Counts describe registration,
 not feature/source-test completeness. Current missing dependencies and validation
 are in the continuation sections below and [the audit](../rs240-port/CURRENT-AUDIT.md).
@@ -42,7 +42,7 @@ Older per-option results retain their recorded scope; they do not override that 
 | minimap | partial | saved zoom applied only while `zoom` is on; wheel zoom hit area is the minimap rectangle |
 | playerindicators | partial | relationship lists (party, friends, chat, clan, team), rank icons, coloured menu, minimap names |
 | interfacestyles | partial | widget overrides (2005 side stones), HD health bars, menu options, cross sprites, always-stack |
-| menuentryswapper | not-implemented | the right-click menu is not exposed to plugins (entries, `PostMenuSort`, edits) |
+| menuentryswapper | partial | built-in world swaps only: custom left/shift-click swaps, Shift-dependent swaps, hint-arrow exemption, dead NPC removal, bank/UI swaps; widget menus do not reach the menu stage |
 | devtools | not-implemented | widget, variable and script views are not exposed to plugins |
 | xptracker | partial | local core/overlay and retained totals/reset panel exist; full source panel/menu, stable account persistence and real-time clock remain open; external sync deferred |
 | notes | partial | local retained editor, source navigation and scoped storage exist; profile switching, exact source undo grouping and live visual acceptance remain open |
@@ -260,6 +260,25 @@ Known differences:
 
 - The local-position tile styles draw at the server tile because the snapshot carries no sub-tile position, so they equal the true-tile
   styles while an NPC stands still and lag by up to a tile while it walks.
+
+## menuentryswapper
+
+Sources: `plugins/menuentryswapper/{MenuEntrySwapperPlugin,MenuEntrySwapperConfig}.java`. Menu stage:
+`plugin-host::menu`, `application::menu`, `apps/native/src/interaction.rs` (SPEC-0021 "Plugin menu stage").
+
+| Source | Rust owner | Implemented | Verified |
+| --- | --- | --- | --- |
+| `setupSwaps` built-in table (talk-to family, travel, quick, fishing, house portal, fairy ring, box traps, birdhouses, admire, jewellery box, portal nexus, private, pick, item wear/wield/equip, bones, herbs, GE collect, tan, stairs left-click) | `first-party-plugins::menuentryswapper::SWAPS` with the source's option multimap order and config keys | yes | unit: bank swap on/off and target match, non-strict fairy ring, house portal mode, portal nexus |
+| `onPostMenuSort` bottom-to-top walk, `findIndex` (top-most entry below with the swapped option and same target), in-place `swap` | `swap_edits` replays the walk and returns `MenuEdit::Swap` | yes | unit, through `apply_menu_edits` |
+| Menu hooks delivered before the menu is used | `PluginSet::menu_stage` | yes | host: hook order, grant gating, edit application |
+
+Known differences:
+
+- Only world menus (NPCs, locations, ground items, "Walk here") run the menu stage, so the item and interface swaps in
+  the table have no menu to act on yet.
+- Shift state is not visible to plugins: Shift-only swaps are omitted and the stairs swap uses the left-click mode.
+- Custom left-click and shift-click swaps, the hint-arrow NPC exemption, dead NPC removal and bank/UI swaps are not ported.
+- No row has been compared with the live reference client.
 
 ## playerindicators
 

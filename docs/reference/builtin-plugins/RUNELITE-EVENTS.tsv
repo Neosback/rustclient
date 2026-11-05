@@ -37,8 +37,8 @@ ItemContainerChanged	ItemContainerChanged	emitted
 ItemDespawned		absent	
 ItemQuantityChanged		absent	
 ItemSpawned		absent	
-MenuEntryAdded	MenuEntryAdded	declared-never-emitted	no host/bridge construction outside tests
-MenuOpened	MenuOpened	declared-never-emitted	no host/bridge construction outside tests
+MenuEntryAdded	MenuEntryAdded	emitted	
+MenuOpened	MenuOpened	emitted	
 MenuOptionClicked	MenuOptionClicked	emitted	
 MenuShouldLeftClick		absent	
 NameableNameChanged		absent	
@@ -54,7 +54,7 @@ PostAnimation		absent
 PostClientTick		absent	
 PostHealthBarConfig		absent	
 PostItemComposition		absent	
-PostMenuSort	PostMenuSort	declared-never-emitted	no host/bridge construction outside tests
+PostMenuSort	PostMenuSort	emitted	
 PostObjectComposition		absent	
 PostStructComposition		absent	
 PreMapLoad	PreMapLoad	emitted	
@@ -62,7 +62,7 @@ ProjectileMoved		absent
 RemovedFriend		absent	
 ResizeableChanged	ResizeableChanged	emitted	
 ScriptCallbackEvent		absent	
-ScriptPostFired	ScriptPostFired	declared-never-emitted	no host/bridge construction outside tests
+ScriptPostFired	ScriptPostFired	emitted	
 ScriptPreFired		absent	
 SoundEffectPlayed		absent	
 StatChanged	StatChanged	emitted	

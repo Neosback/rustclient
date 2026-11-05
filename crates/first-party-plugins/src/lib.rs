@@ -15,6 +15,7 @@ mod idlenotifier;
 mod idlenotifier_animations;
 mod interfacestyles;
 mod interfacestyles_sprites;
+mod menuentryswapper;
 mod minimap;
 mod notes;
 mod npchighlight;
@@ -285,6 +286,12 @@ const ENTRIES: &[Entry] = &[
             Capability::GameReadVars,
         ],
         build: |source| boxed(tileindicators::TileIndicators, source),
+    },
+    Entry {
+        name: "menuentryswapper",
+        source_class: "net.runelite.client.plugins.menuentryswapper.MenuEntrySwapperPlugin",
+        capabilities: &[Capability::UiMenuSwap],
+        build: |source| boxed(menuentryswapper::MenuEntrySwapper::default(), source),
     },
     Entry {
         name: "minimap",

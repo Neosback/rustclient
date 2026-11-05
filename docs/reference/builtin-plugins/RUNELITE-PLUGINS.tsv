@@ -69,7 +69,7 @@ loginscreen	Login Screen	true		3	563	yes	not-started	client-feature	login	propos
 logouttimer	Logout Timer	false		2	126	no	not-started	client-feature	login|plugin-api	proposed-applicable	
 loottracker	Loot Tracker	true		13	3637	yes	not-started	external-service	ground-items|actor-effects|plugin-api	local-eligible-remote-deferred	Approved scope includes independently verified local behavior and user-initiated host actions; background/account/public-provider integration deferred. Feature/member/test closure remains source-audit pending.
 lowmemory	Low Detail	false		2	182	no	not-started	client-feature	gpu	proposed-applicable	
-menuentryswapper	Menu Entry Swapper	false		11	3106	no	schema-only	client-feature	menus|plugin-api	proposed-applicable	
+menuentryswapper	Menu Entry Swapper	false		11	3106	no	partial-module	client-feature	menus|plugin-api	proposed-applicable	
 metronome	Metronome	false		2	174	no	not-started	client-feature	audio|plugin-api	proposed-applicable	
 minimap	Minimap	true		3	429	no	partial-module	client-feature	minimap|plugin-api	proposed-applicable	
 mining	Mining	false		8	930	no	not-started	content-helper	dynamic-scenery|plugin-api	proposed-applicable	
