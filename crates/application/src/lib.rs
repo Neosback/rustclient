@@ -28,8 +28,8 @@ pub use sequence_policy::SequencePolicyResolver;
 
 mod scene;
 pub use scene::{
-    LoadedScene, extend_location_resources_from_cache, load_scene, load_scene_from_cache,
-    load_scene_with_inputs, reproject_scene, reproject_scene_from_cache,
+    LoadedScene, extend_location_resources_from_cache, load_scene, load_scene_cancellable,
+    load_scene_from_cache, load_scene_with_inputs, reproject_scene, reproject_scene_from_cache,
 };
 
 pub mod scripts;

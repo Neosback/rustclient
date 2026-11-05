@@ -1,6 +1,6 @@
 //! Native scene worker and disposable camera state.
 use crate::LoadEvent;
-use rustclient_application::{LoadedScene, load_scene_from_cache};
+use rustclient_application::{LoadedScene, load_scene_cancellable};
 use rustclient_cache::{Cache, CacheProfile, osrs240::entity_assets::EntityRequest};
 use rustclient_game_state::InitialPlacement;
 use rustclient_platform::CpuJobExecutor;
@@ -249,14 +249,21 @@ impl SceneView {
             self.structural_scope.clone(),
             move |cancellation| {
                 let result = Self::open_shared_cache(&path, &shared_cache).and_then(|cache| {
-                    load_scene_from_cache(&cache, profile, placement, &inputs, |message| {
-                        if !cancellation.is_cancelled() {
-                            let _ = proxy.send_event(LoadEvent::SceneProgress(
-                                generation,
-                                message.to_owned(),
-                            ));
-                        }
-                    })
+                    load_scene_cancellable(
+                        &cache,
+                        profile,
+                        placement,
+                        &inputs,
+                        |message| {
+                            if !cancellation.is_cancelled() {
+                                let _ = proxy.send_event(LoadEvent::SceneProgress(
+                                    generation,
+                                    message.to_owned(),
+                                ));
+                            }
+                        },
+                        &|| cancellation.is_cancelled(),
+                    )
                 });
                 if cancellation.is_cancelled() {
                     return;

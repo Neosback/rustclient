@@ -1207,3 +1207,18 @@ fn authored_zero_scale_collapses_the_axis_without_placement_or_depth_corrections
     let point = locations::transform(ModelPoint::new(128, -256, 384), &def, 10, 0, false).unwrap();
     assert_eq!(point, ModelPoint::new(1, -2, 0));
 }
+
+#[test]
+fn a_cancelled_build_stops_with_an_error_and_an_uncancelled_one_matches_the_plain_build() {
+    let a = scene(assets());
+    let spawn = WorldTile::new(0, 0, Plane::MIN);
+    let inputs = crate::SceneryInputs::default();
+    assert!(
+        crate::build_mesh_cancellable(&a, a.descriptor(), spawn, &inputs, &|| true)
+            .is_err_and(|error| error.to_string().contains("cancelled"))
+    );
+    let plain = build_mesh(&a, a.descriptor(), spawn).unwrap();
+    let kept =
+        crate::build_mesh_cancellable(&a, a.descriptor(), spawn, &inputs, &|| false).unwrap();
+    assert_eq!(plain.geometry.vertices, kept.geometry.vertices);
+}

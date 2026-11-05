@@ -498,12 +498,14 @@ impl SceneryGpu {
         pass: &mut wgpu::RenderPass<'_>,
         pipelines: &crate::world_pipeline::WorldPipelines,
     ) {
+        let mut bound = super::OpaqueBindings::default();
         for run in &self.opaque {
             self.resource(run.zone).draw_opaque_range(
                 pass,
                 pipelines,
                 run.indices.clone(),
                 run.policy,
+                &mut bound,
             );
         }
     }
