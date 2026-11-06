@@ -6,6 +6,7 @@
 #![forbid(unsafe_code)]
 
 pub mod builtin_config;
+pub mod client_preferences;
 mod interaction;
 pub mod menu;
 pub mod shell_preferences;

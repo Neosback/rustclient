@@ -203,6 +203,8 @@ struct NativeApp {
     shell: shell::Shell,
     storage: Option<DirectoryStorage>,
     saved_preferences: TitlePreferences,
+    /// Machine-local preferences: where the window was left.
+    client_preferences: rustclient_application::client_preferences::ClientPreferences,
     modifiers: ModifiersState,
     cursor: Option<(f64, f64)>,
     ime_preedit: bool,
@@ -642,6 +644,14 @@ impl NativeApp {
                 }
             })
             .unwrap_or_default();
+        let client_preferences = storage
+            .as_ref()
+            .and_then(|store| {
+                rustclient_application::client_preferences::ClientPreferences::load(store)
+                    .map_err(|error| eprintln!("using default client preferences: {error}"))
+                    .ok()
+            })
+            .unwrap_or_default();
         let mut ui = TitleUi::new(preferences.clone());
         ui.set_online(options.connection.is_some());
         let mut plugins = plugins::Plugins::load(
@@ -723,6 +733,7 @@ impl NativeApp {
             plugins,
             storage,
             saved_preferences: preferences,
+            client_preferences,
             modifiers: ModifiersState::default(),
             cursor: None,
             ime_preedit: false,
@@ -1840,6 +1851,93 @@ impl NativeApp {
             });
         }
     }
+    /// Apply the window placement saved by the last run, if it still fits the monitors.
+    fn restore_window_placement(
+        &self,
+        event_loop: &ActiveEventLoop,
+        attributes: winit::window::WindowAttributes,
+    ) -> winit::window::WindowAttributes {
+        use rustclient_application::client_preferences::MonitorRect;
+        let min = (765 + self.shell.width(), 503);
+        let Some(placement) = self
+            .client_preferences
+            .window
+            .and_then(|placement| placement.sanitized(min))
+        else {
+            return attributes;
+        };
+        let monitors: Vec<MonitorRect> = event_loop
+            .available_monitors()
+            .map(|monitor| {
+                let position = monitor.position();
+                let size = monitor.size();
+                MonitorRect {
+                    x: position.x,
+                    y: position.y,
+                    width: size.width,
+                    height: size.height,
+                }
+            })
+            .collect();
+        let mut attributes = attributes
+            .with_inner_size(winit::dpi::PhysicalSize::new(
+                placement.width,
+                placement.height,
+            ))
+            .with_maximized(placement.maximized);
+        if placement.reachable(&monitors) {
+            attributes = attributes
+                .with_position(winit::dpi::PhysicalPosition::new(placement.x, placement.y));
+        }
+        attributes
+    }
+    /// Remember where the window is. A maximized window keeps the restored size it had before.
+    fn save_window_placement(&mut self, window: &Window) {
+        use rustclient_application::client_preferences::WindowPlacement;
+        let maximized = window.is_maximized();
+        let placement = match (maximized, window.outer_position()) {
+            (false, Ok(position)) => {
+                let size = window.inner_size();
+                Some(WindowPlacement {
+                    x: position.x,
+                    y: position.y,
+                    width: size.width,
+                    height: size.height,
+                    maximized: false,
+                })
+            }
+            (true, _) => self
+                .client_preferences
+                .window
+                .map(|placement| WindowPlacement {
+                    maximized: true,
+                    ..placement
+                })
+                .or_else(|| {
+                    let size = window.inner_size();
+                    window
+                        .outer_position()
+                        .ok()
+                        .map(|position| WindowPlacement {
+                            x: position.x,
+                            y: position.y,
+                            width: size.width,
+                            height: size.height,
+                            maximized: true,
+                        })
+                }),
+            (false, Err(_)) => None,
+        };
+        let Some(placement) = placement else {
+            return;
+        };
+        self.client_preferences.window = Some(placement);
+        if let Some(storage) = &self.storage
+            && let Err(error) = self.client_preferences.save(storage)
+        {
+            eprintln!("{error}");
+        }
+    }
     /// A scene load failed: retry once, then end the session at the title with the reason.
     fn scene_load_failed(&mut self, error: &str) {
         eprintln!("spawn scene: {error}");
@@ -2031,6 +2129,7 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
             .with_title(format!("RustClient — {}", self.load_status))
             .with_inner_size(LogicalSize::new(765. + f64::from(self.shell.width()), 503.))
             .with_min_inner_size(LogicalSize::new(765. + f64::from(self.shell.width()), 503.));
+        let attributes = self.restore_window_placement(event_loop, attributes);
         match event_loop.create_window(attributes) {
             Ok(window) => {
                 window.set_ime_allowed(true);
@@ -2282,6 +2381,7 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
         }
         match event {
             WindowEvent::CloseRequested => {
+                self.save_window_placement(&window);
                 self.shell.prepare_close();
                 self.update_plugins();
                 self.disconnect();
