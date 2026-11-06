@@ -260,7 +260,14 @@ fn open_session(
             .map_err(|e| failure(LoginFailure::CacheMismatch, e.to_string()))?,
     );
     emit(NetworkEvent::Operation(0, 0, authenticated));
-    let sequence_policies = SequencePolicyResolver::new(cache, options.cache_profile);
+    let cache = std::sync::Arc::new(cache);
+    let shape_cache = std::sync::Arc::clone(&cache);
+    let profile = options.cache_profile;
+    decoder.set_npc_shapes(Box::new(move |id| {
+        rustclient_cache::osrs240::npc_path_policy::customisation_shape(&shape_cache, profile, id)
+            .ok()
+    }));
+    let sequence_policies = SequencePolicyResolver::shared(cache, profile);
     Ok((stream, decoder, sequence_policies))
 }
 #[expect(

@@ -41,6 +41,10 @@ impl ConnectionDecoder {
     pub fn set_chat_codec(&mut self, codec: rustclient_protocol::Huffman) {
         self.codec.set_chat_codec(codec);
     }
+    /// Supply the cache-backed NPC recolour and retexture counts that size customisation blocks.
+    pub fn set_npc_shapes(&mut self, shapes: rustclient_protocol::NpcShapeLookup) {
+        self.codec.set_npc_shapes(shapes);
+    }
     /// Profile packet count for diagnostics; not semantic time.
     #[must_use]
     pub const fn framed_packets(&self) -> u64 {

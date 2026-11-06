@@ -100,6 +100,31 @@ pub(super) fn player_spotanims(r: &mut Reader<'_>, out: &mut ActorEffects) -> Re
     }
     Ok(())
 }
+/// Player `SPOTANIM_OLD` (0x80000): `g1Alt3` count; slot `g1Alt1`, id `g2Alt1`, height/delay
+/// `g4Alt1`. The old form carries no loop flag.
+pub(super) fn player_spotanims_old(r: &mut Reader<'_>, out: &mut ActorEffects) -> Result<()> {
+    let count = r.u8_sub()?;
+    for _ in 0..usize::from(count).min(MAX_ENTRIES) {
+        let slot = r.u8_add()?;
+        let id = r.u16_le()?;
+        let height_delay = le32(r)?;
+        out.spotanims.push(spot(slot, id, height_delay, false));
+    }
+    Ok(())
+}
+/// NPC `SPOTANIM_OLD` (0x400000): `g1Alt1` count; slot `g1`, id `g2Alt3`, height/delay `g4Alt3`.
+pub(super) fn npc_spotanims_old(r: &mut Reader<'_>, out: &mut ActorEffects) -> Result<()> {
+    let count = r.u8_add()?;
+    for _ in 0..usize::from(count).min(MAX_ENTRIES) {
+        let slot = r.u8()?;
+        let id = r.u16_add_le()?;
+        let b = r.take(4)?;
+        // `g4Alt3` (stock `method13303`): read positions 1, 0, 3, 2 most-significant first.
+        let height_delay = u32::from_be_bytes([b[1], b[0], b[3], b[2]]);
+        out.spotanims.push(spot(slot, id, height_delay, false));
+    }
+    Ok(())
+}
 /// NPC `HITMARKS` (0x20000): `g1Alt1` count.
 pub(super) fn npc_hitmarks(r: &mut Reader<'_>, out: &mut ActorEffects) -> Result<()> {
     let count = r.u8_add()?;

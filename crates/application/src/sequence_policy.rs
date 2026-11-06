@@ -17,7 +17,7 @@ use std::collections::{BTreeMap, BTreeSet};
 /// It owns no live actor state. The authoritative update remains a [`SemanticOperation`]; this
 /// service only enriches entity updates with immutable definition-derived inputs.
 pub struct SequencePolicyResolver<S> {
-    cache: Cache<S>,
+    cache: std::sync::Arc<Cache<S>>,
     profile: CacheProfile,
     policies: BTreeMap<SequenceId, SequencePolicy>,
     timings: BTreeMap<SequenceId, SequenceTiming>,
@@ -27,6 +27,11 @@ pub struct SequencePolicyResolver<S> {
 impl<S: ReadOnlyBlobs> SequencePolicyResolver<S> {
     #[must_use]
     pub fn new(cache: Cache<S>, profile: CacheProfile) -> Self {
+        Self::shared(std::sync::Arc::new(cache), profile)
+    }
+    /// Build over a cache another decoder also reads, so the config groups are decoded once.
+    #[must_use]
+    pub fn shared(cache: std::sync::Arc<Cache<S>>, profile: CacheProfile) -> Self {
         Self {
             cache,
             profile,

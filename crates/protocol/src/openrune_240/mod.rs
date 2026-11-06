@@ -14,7 +14,7 @@ pub(crate) mod js5;
 mod lengths;
 pub(crate) mod loc_anim;
 pub(crate) mod login;
-mod npc_extended;
+pub(crate) mod npc_extended;
 pub(crate) mod npc_info;
 mod player_appearance;
 mod player_extended;

@@ -37,6 +37,26 @@ pub fn resolve_movement<S: ReadOnlyBlobs>(
     definitions::npc_movement_policy(&bytes, id, source)
 }
 
+/// Recolour and retexture counts of one NPC definition, which size the customisation blocks of
+/// the NPC info packet.
+///
+/// # Errors
+/// Returns source-aware cache/decode errors for missing or malformed NPC definitions.
+pub fn customisation_shape<S: ReadOnlyBlobs>(
+    cache: &Cache<S>,
+    profile: CacheProfile,
+    id: NpcDefinitionId,
+) -> Result<(usize, usize)> {
+    let source = Source {
+        index: IndexId(2),
+        group: Some(GroupId(9)),
+        file: Some(FileId(id.get())),
+    };
+    let bytes = cache.config_file(9, id.get(), profile == CacheProfile::OpenRune240)?;
+    let definition = definitions::npc(&bytes, id, source)?;
+    Ok((definition.recolors.len(), definition.retextures.len()))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

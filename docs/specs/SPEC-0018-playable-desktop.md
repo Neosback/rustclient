@@ -70,7 +70,10 @@ origins to typed offsets from the current map anchor. GameState resolves the wor
 origin and validates the complete NPC batch (duplicates, membership, limits and
 coordinate arithmetic) before committing any part. Removals precede additions;
 attributes then apply in source order. Unmodeled cosmetic fields may be consumed
-only with a verified layout; unsupported customization masks fail explicitly.
+only with a verified layout. The 240 model customisation, base animation set, old spot
+animation and player name-extras blocks are consumed with their exact widths and not retained;
+the V2 recolour and retexture lists are sized by the NPC definition, which the decoder gets from a
+cache-backed lookup and fails explicitly without. Bits outside the 240 layout still fail.
 
 NPC names, action visibility, locomotion and delayed action-sequence playback are
 semantic state. Action sequences use the existing ActorSequenceSlot owner; base

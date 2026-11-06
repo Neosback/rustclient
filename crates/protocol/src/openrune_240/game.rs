@@ -511,6 +511,10 @@ impl SessionCodec {
             new_unhandled: Vec::new(),
         }
     }
+    /// Supply the cache-backed NPC recolour and retexture counts that size customisation blocks.
+    pub fn set_npc_shapes(&mut self, shapes: super::npc_extended::NpcShapeLookup) {
+        self.npcs.set_shapes(shapes);
+    }
     /// Packets received per opcode that this adapter consumes without decoding (diagnostic).
     #[must_use]
     pub const fn unhandled_opcodes(&self) -> &std::collections::BTreeMap<u16, u64> {
