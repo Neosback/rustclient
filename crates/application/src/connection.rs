@@ -86,6 +86,7 @@ impl ConnectionDecoder {
                 stage: "connection consumer",
                 detail: "script or session-control consumer required".into(),
                 transport: None,
+                rejection: None,
             });
         }
         Ok(connected)

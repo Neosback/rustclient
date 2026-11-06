@@ -21,12 +21,14 @@ pub mod entity;
 mod ground_item;
 pub mod ids;
 mod interaction;
+mod login_rejection;
 pub use ground_item::{
     GroundItemCustomisation, GroundItemOwnership, GroundItemPosition, GroundItemUpdate,
 };
 pub use interaction::{
     ActionMask, ActionSlot, NpcInstanceId, PlayerInstanceId, TileOffset, WorldAction, WorldTarget,
 };
+pub use login_rejection::LoginRejection;
 mod interface;
 pub use interface::{
     CanvasSize, ClientSetting, InterfaceMount, InterfaceMountKind, InterfaceUpdate, ScriptRequest,

@@ -990,7 +990,11 @@ fn write_title(fingerprint: &mut StableFingerprint64, screen: TitleScreen) {
                     LoginFailure::Protocol => 3,
                     LoginFailure::Disconnected => 4,
                     LoginFailure::SceneLoad => 5,
+                    LoginFailure::Rejected(_) => 6,
                 });
+                if let LoginFailure::Rejected(rejection) = failure {
+                    fingerprint.write_u8(rejection.stable_id());
+                }
             }
         }
         TitleScreen::Information(info) => {

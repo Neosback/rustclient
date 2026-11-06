@@ -231,6 +231,8 @@ fn open_session(
         failure(
             if e.transport.is_some() {
                 LoginFailure::Connection
+            } else if let Some(rejection) = e.rejection {
+                LoginFailure::Rejected(rejection)
             } else if e.stage == "authentication" {
                 LoginFailure::Authentication
             } else {

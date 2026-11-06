@@ -188,3 +188,36 @@ fn oversized_canvas_is_rejected_before_encoding() {
         .is_err()
     );
 }
+#[test]
+fn refusal_codes_reach_the_caller_as_typed_rejections() {
+    use rustclient_model::LoginRejection;
+    for (code, expected) in [
+        (6, LoginRejection::ClientOutOfDate),
+        (7, LoginRejection::WorldFull),
+        (56, LoginRejection::TwoFactorRequired),
+        (200, LoginRejection::Other),
+    ] {
+        let mut stream = Memory {
+            input: VecDeque::from([code]),
+            output: Vec::new(),
+            chunk: 8,
+        };
+        let error = pollster::block_on(authenticate(
+            &mut stream,
+            LoginAttempt {
+                profile: ServerProfile::OPENRUNE_240_2,
+                key: &key(),
+                credentials: credentials(),
+                entropy: entropy(),
+                crcs: &[0; 23],
+                window: WindowMetrics::default(),
+            },
+            || false,
+            |_| {},
+        ))
+        .err()
+        .unwrap();
+        assert_eq!(error.rejection, Some(expected), "code {code}");
+        assert_eq!(error.stage, "authentication");
+    }
+}

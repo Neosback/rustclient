@@ -202,7 +202,7 @@ pub async fn authenticate(
                         "trailing message bytes",
                     ));
                 }
-                return Err(ProtocolError::new(
+                let mut error = ProtocolError::new(
                     "authentication",
                     if lines
                         .first()
@@ -212,7 +212,9 @@ pub async fn authenticate(
                     } else {
                         "server rejected the account details (response 29)"
                     },
-                ));
+                );
+                error.rejection = Some(rustclient_model::LoginRejection::Other);
+                return Err(error);
             }
             2 => {
                 let session = login_success(stream, incoming, outgoing).await?;
@@ -434,7 +436,9 @@ fn rejected(code: u8) -> ProtocolError {
         61 => "server requested alternate login (unsupported)",
         _ => "unsupported or rejected login response",
     };
-    ProtocolError::new("authentication", format!("{detail} (response {code})"))
+    let mut error = ProtocolError::new("authentication", format!("{detail} (response {code})"));
+    error.rejection = Some(rustclient_model::LoginRejection::from_code(code));
+    error
 }
 pub(crate) fn solve_proof(bytes: &[u8], cancelled: &mut impl FnMut() -> bool) -> Result<u64> {
     if bytes.len() < 4
