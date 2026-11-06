@@ -35,3 +35,32 @@ Not done, with reasons:
 - A loopback login server (RSA and ISAAC): the loop is tested through `session_loop`; the login handshake keeps
   its own protocol tests.
 - The unhandled opcode counts are in the codec only; nothing surfaces them in a panel yet.
+
+## Session lifecycle (Wave 2, partly)
+
+- [ADR-0008](../adr/ADR-0008-login-reconnect-and-world-transfer.md) is **Proposed**: the `Reconnecting`
+  state, the retry policy, credential rules and world transfer. No reconnect code exists; it needs a
+  server to verify the reconnect login against.
+- Closed: `NativeTcp` resolves host names (bounded to four addresses, malformed names refused before any
+  lookup); the preferences folder follows the platform (an existing `~/.rustclient` is kept); a missing cache
+  names the folder it expected. Evidence: unit tests for address candidates and the folder choice. The
+  developer-machine cache paths in `options.rs` are still tried first, deliberately.
+
+## Examine (Wave 3, partly)
+
+- `ActionSlot::EXAMINE` and an Examine row after every NPC, object and ground item action; `OPNPC6` (101),
+  `OPLOC6` (105) and `OPOBJ6` (9) are encoded; plugins see `MenuKind::Other(1002..=1004)`.
+  Evidence: golden bytes for the three packets, application tests that rows exist and validate (including
+  stale-target rejection through the existing revalidation). Deviation `EXAMINE-BASE-IDS` records that the
+  definition ids sent are the base ones and unverified against a live server.
+
+## Not started in this pass
+
+Player options (`OPPLAYER1..8`, `SET_PLAYER_OP`, a player pick target), `IF_BUTTOND`/`IF_SUBOP`, F-keys and
+clipboard paste, item/spell targeting, combat visuals, instances, piles, model widgets, social, audio,
+sandbox limits, fuzzing and CI. They remain as written in the roadmap; nothing above should be read as
+having moved them.
+
+Validation of the final commit: `cargo fmt --all --check`, `cargo clippy --workspace --all-targets -- -D
+warnings`, `cargo test --workspace --no-fail-fast` (838 passed, 0 failed), both wasm checks and the five
+documentation tools pass. `interface_audit`, `scene_probe`, GPU and live checks remain NOT-RUN.
