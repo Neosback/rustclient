@@ -47,7 +47,8 @@ display time), `HEADBAR-FILL-UNITS` (raw fill, linear, no definition step), reco
 
 Drawing hitsplats and health bars, the `limit`-driven replacement of full splat lists, projectiles,
 tint, freeze, transparency, `FACE_PATHING_ENTITY` (the interaction target; `ActorState::interacting`
-stays empty until its mask and writer order are established), BAS/body/head customisation.
+stays empty until its mask and writer order are established). BAS, body and head customisation, old
+spot animations and player name extras are consumed with exact widths (SPEC-0018) but not retained.
 
 ## Acceptance
 
