@@ -92,6 +92,41 @@ pub fn apply_edited_menu<T>(
         .collect()
 }
 
+/// `MenuAction.EXAMINE_OBJECT`, `EXAMINE_NPC` and `EXAMINE_ITEM_GROUND` raw client types.
+const EXAMINE_OBJECT: u16 = 1002;
+const EXAMINE_NPC: u16 = 1003;
+const EXAMINE_ITEM_GROUND: u16 = 1004;
+fn examine_entry(option: &str, target: &str, action: WorldAction) -> MenuEntry {
+    let (kind, identifier, (param0, param1)) = match action.target {
+        WorldTarget::Npc { index, .. } => (
+            EXAMINE_NPC,
+            i32::try_from(index.get()).unwrap_or(i32::MAX),
+            (0, 0),
+        ),
+        WorldTarget::Location {
+            key, definition, ..
+        } => (
+            EXAMINE_OBJECT,
+            definition.get().cast_signed(),
+            scene_xy(action.scene, key.tile),
+        ),
+        WorldTarget::GroundItem { tile, item } => (
+            EXAMINE_ITEM_GROUND,
+            item.get().cast_signed(),
+            scene_xy(action.scene, tile),
+        ),
+    };
+    MenuEntry {
+        option: option.to_owned(),
+        target: target.to_owned(),
+        kind: MenuKind::Other(kind),
+        identifier,
+        param0,
+        param1,
+        deprioritized: false,
+    }
+}
+
 /// The plugin record for a row labelled `label`.
 #[must_use]
 pub fn plugin_menu_entry(label: &str, row: WorldMenuRow) -> MenuEntry {
@@ -102,6 +137,9 @@ pub fn plugin_menu_entry(label: &str, row: WorldMenuRow) -> MenuEntry {
         }
         WorldMenuRow::Action(action) => {
             let op = action.slot.get() + 1;
+            if action.slot.is_examine() {
+                return examine_entry(option, target, action);
+            }
             match action.target {
                 WorldTarget::Npc { index, .. } => (
                     MenuKind::NpcOption(op),
@@ -185,6 +223,26 @@ mod tests {
                 param1: 5,
                 deprioritized: false,
             }
+        );
+        let examine = plugin_menu_entry(
+            "Examine <col=ff9040>Coins",
+            WorldMenuRow::Action(WorldAction {
+                scene,
+                target: WorldTarget::GroundItem {
+                    tile,
+                    item: ItemDefinitionId::new(995),
+                },
+                slot: ActionSlot::EXAMINE,
+            }),
+        );
+        assert_eq!(
+            (
+                examine.kind,
+                examine.identifier,
+                examine.param0,
+                examine.param1
+            ),
+            (MenuKind::Other(1004), 995, 10, 5)
         );
         let walk = plugin_menu_entry(
             "Walk here",

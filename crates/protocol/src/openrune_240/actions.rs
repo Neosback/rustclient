@@ -478,3 +478,56 @@ mod tests {
         );
     }
 }
+
+/// `OPNPC6` (101): the NPC definition id, `g2Alt2`.
+pub(super) fn examine_npc(definition: rustclient_model::NpcDefinitionId) -> Result<(u8, Vec<u8>)> {
+    Ok((101, be_add(bounded(definition.get())?).to_vec()))
+}
+/// `OPLOC6` (105): the object definition id, `g2Alt1`.
+pub(super) fn examine_location(object: ObjectDefinitionId) -> Result<(u8, Vec<u8>)> {
+    Ok((105, bounded(object.get())?.to_le_bytes().to_vec()))
+}
+/// `OPOBJ6` (9): item id `g2Alt1`, tile y `g2Alt3`, tile x `g2`.
+pub(super) fn examine_ground_item(
+    tile: WorldTile,
+    item: rustclient_model::ItemDefinitionId,
+) -> Result<(u8, Vec<u8>)> {
+    let coordinate = |value| {
+        u32::try_from(value)
+            .map_err(|_| ProtocolError::new("examine encode", "negative world coordinate"))
+            .and_then(bounded)
+    };
+    let mut out = Vec::with_capacity(6);
+    out.extend_from_slice(&bounded(item.get())?.to_le_bytes());
+    out.extend_from_slice(&le_add(coordinate(tile.y)?));
+    out.extend_from_slice(&coordinate(tile.x)?.to_be_bytes());
+    Ok((9, out))
+}
+
+#[cfg(test)]
+mod examine_tests {
+    use super::*;
+    use rustclient_model::{ItemDefinitionId, NpcDefinitionId, Plane};
+
+    #[test]
+    fn examine_packets_use_the_240_field_transforms() {
+        assert_eq!(
+            examine_npc(NpcDefinitionId::new(0x0102)).unwrap(),
+            (101, vec![0x01, 0x02 + 128])
+        );
+        assert_eq!(
+            examine_location(ObjectDefinitionId::new(0x0102)).unwrap(),
+            (105, vec![0x02, 0x01])
+        );
+        // Item 0x0102, y 0x0304 (g2Alt3: low byte + 128 first), x 0x0506 (big-endian).
+        assert_eq!(
+            examine_ground_item(
+                WorldTile::new(0x0506, 0x0304, Plane::MIN),
+                ItemDefinitionId::new(0x0102)
+            )
+            .unwrap(),
+            (9, vec![0x02, 0x01, 0x04 + 128, 0x03, 0x05, 0x06])
+        );
+        assert!(examine_npc(NpcDefinitionId::new(70_000)).is_err());
+    }
+}

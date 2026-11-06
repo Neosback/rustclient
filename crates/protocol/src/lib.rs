@@ -6,7 +6,8 @@ mod wire;
 pub use crypto::Isaac;
 pub use openrune_240::control::SessionControl;
 pub use openrune_240::game::{
-    Bootstrap, ChatIntent, ClientIntent, GameFramer, GamePacket, PacketBatch, decode_bootstrap,
+    Bootstrap, ChatIntent, ClientIntent, ExamineTarget, GameFramer, GamePacket, PacketBatch,
+    decode_bootstrap,
 };
 pub use openrune_240::huffman::Huffman;
 pub use openrune_240::js5::verify_cache;

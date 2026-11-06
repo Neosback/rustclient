@@ -287,6 +287,18 @@ pub enum ClientIntent {
         slot: rustclient_model::ActionSlot,
         control: bool,
     },
+    /// "Examine" on an NPC, object or ground item (`OPNPC6`, `OPLOC6`, `OPOBJ6`).
+    Examine(ExamineTarget),
+}
+/// What an Examine names: the server answers with the definition's examine text.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ExamineTarget {
+    Npc(rustclient_model::NpcDefinitionId),
+    Location(rustclient_model::ObjectDefinitionId),
+    GroundItem {
+        tile: WorldTile,
+        item: rustclient_model::ItemDefinitionId,
+    },
 }
 impl ClientIntent {
     /// Encode only after validating all fields, before advancing the cipher.
@@ -347,6 +359,15 @@ impl ClientIntent {
                 slot,
                 control,
             } => super::actions::ground_item(tile, item, slot, control)?,
+            Self::Examine(ExamineTarget::Npc(definition)) => {
+                super::actions::examine_npc(definition)?
+            }
+            Self::Examine(ExamineTarget::Location(object)) => {
+                super::actions::examine_location(object)?
+            }
+            Self::Examine(ExamineTarget::GroundItem { tile, item }) => {
+                super::actions::examine_ground_item(tile, item)?
+            }
             Self::MinimapWalk {
                 destination,
                 invert_run,

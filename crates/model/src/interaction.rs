@@ -1,8 +1,17 @@
 //! Typed action slots shared by definitions, semantic entities and validated intents.
-/// One of the five definition-authored world actions, in cache/menu order.
+/// One of the five definition-authored world actions, in cache/menu order, or the client-added
+/// Examine entry that follows them.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ActionSlot(u8);
 impl ActionSlot {
+    /// The "Examine" entry every NPC, object and ground item has after its own actions. It is not
+    /// a definition slot, so [`ActionSlot::new`] never returns it and masks never hide it.
+    pub const EXAMINE: Self = Self(5);
+    /// Whether this is [`ActionSlot::EXAMINE`].
+    #[must_use]
+    pub const fn is_examine(self) -> bool {
+        self.0 == 5
+    }
     #[must_use]
     pub const fn new(index: u8) -> Option<Self> {
         if index < 5 { Some(Self(index)) } else { None }
@@ -27,7 +36,7 @@ impl ActionMask {
     }
     #[must_use]
     pub const fn allows(self, slot: ActionSlot) -> bool {
-        self.0[slot.index()]
+        slot.is_examine() || self.0[slot.index()]
     }
     #[must_use]
     pub const fn enabled(self) -> [bool; 5] {
@@ -108,6 +117,7 @@ mod tests {
             assert!(ActionMask::ALL.allows(slot));
         }
         assert_eq!(ActionSlot::new(5), None);
+        assert!(ActionSlot::EXAMINE.is_examine() && mask.allows(ActionSlot::EXAMINE));
         assert_eq!(ActionSlot::new(u8::MAX), None);
         assert_eq!(NpcInstanceId::new(u64::MAX).get(), u64::MAX);
     }

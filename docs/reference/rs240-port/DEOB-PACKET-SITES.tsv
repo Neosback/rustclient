@@ -8,7 +8,7 @@ client-to-server	5	-	missing-encoder	0	-
 client-to-server	6	-	missing-encoder	0	-
 client-to-server	7	IDLE	missing-encoder	2	client.method2172:4163|client.method2173:43345
 client-to-server	8	OPLOC3_V2	encoded-subset	2	classIK.method6263:172|client.method1973:28830
-client-to-server	9	OPOBJ6	missing-encoder	4	classQP.method9746:426|client.method1966:27074|client.method1967:27660|client.method1968:28246
+client-to-server	9	OPOBJ6	encoded-subset	4	classQP.method9746:426|client.method1966:27074|client.method1967:27660|client.method1968:28246
 client-to-server	10	OPWORLDENTITYT	missing-encoder	4	classQP.method9746:1016|client.method1966:27390|client.method1967:27976|client.method1968:28562
 client-to-server	11	IF_BUTTON	encoded-subset	12	classQP.method9746:184|classQP.method9746:590|classQP.method9746:1109|client.method1966:26955|client.method1966:27160|client.method1966:27455|+6 more
 client-to-server	12	REFLECTION_CHECK_REPLY	missing-encoder	2	client.method2172:3268|client.method2173:42905
@@ -100,11 +100,11 @@ client-to-server	97	FRIENDCHAT_JOIN_LEAVE	missing-encoder	4	classIJ.method6260:3
 client-to-server	98	CLOSE_MODAL	encoded-subset	4	classTB.method10780:94|client.method2062:8156|client.method2063:34561|client.method2064:34782
 client-to-server	99	NO_TIMEOUT	encoded-subset	6	classDI.method3364:4571|client.method2172:4210|client.method1851:24307|client.method1852:26808|client.method1853:39636|client.method2173:43369
 client-to-server	100	CLANSETTINGS_FULL_REQUEST	missing-encoder	2	client.method2218:10804|client.method2219:49203
-client-to-server	101	OPNPC6	missing-encoder	4	classQP.method9746:1067|client.method1966:27425|client.method1967:28011|client.method1968:28597
+client-to-server	101	OPNPC6	encoded-subset	4	classQP.method9746:1067|client.method1966:27425|client.method1967:28011|client.method1968:28597
 client-to-server	102	MOVE_GAMECLICK	encoded-subset	2	client.method2172:4062|client.method2173:43285
 client-to-server	103	DETECT_MODIFIED_CLIENT	missing-encoder	1	client.method1854:21050
 client-to-server	104	-	missing-encoder	0	-
-client-to-server	105	OPLOC6	missing-encoder	4	classQP.method9746:844|client.method1966:27294|client.method1967:27880|client.method1968:28466
+client-to-server	105	OPLOC6	encoded-subset	4	classQP.method9746:844|client.method1966:27294|client.method1967:27880|client.method1968:28466
 client-to-server	106	-	missing-encoder	0	-
 client-to-server	107	OPNPCU	missing-encoder	5	classQP.method9746:919|client.method1966:27337|client.method1967:27923|client.method1968:28509|client.method2220:49536
 client-to-server	108	MESSAGE_PRIVATE	missing-encoder	4	classBB.method878:8801|classBB.method879:9452|classBB.method880:14482|classQO.method9743:443

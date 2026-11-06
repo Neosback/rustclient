@@ -14,7 +14,7 @@ use rustclient_model::{
     NpcMovement, NpcProperty, Plane, PlayerIndex, RegionCoord, SequenceId, TileOffset, WorldTarget,
     WorldTile,
 };
-use rustclient_protocol::{ClientIntent, ServerProfile};
+use rustclient_protocol::{ClientIntent, ExamineTarget, ServerProfile};
 use rustclient_scene::{SceneAsset, entity_mesh::EntityCatalog};
 use std::collections::BTreeMap;
 fn asset() -> SceneAsset {
@@ -116,8 +116,15 @@ fn npc_batch_identity_permissions_delay_and_replay_reject_stale_actions_atomical
         resolved: npc.definition_id,
     };
     let actions = world_actions(&state, &asset, &catalog, asset.descriptor(), target).unwrap();
-    assert_eq!(actions.len(), 1);
+    // The definition's own action, then the client-added Examine.
+    assert_eq!(actions.len(), 2);
     assert_eq!(actions[0].0, "Bank <col=ffff00>Banker");
+    assert_eq!(actions[1].0, "Examine <col=ffff00>Banker");
+    assert!(actions[1].1.slot.is_examine());
+    assert!(matches!(
+        validate_world_action(&state, &asset, &catalog, actions[1].1, false).unwrap(),
+        ClientIntent::Examine(ExamineTarget::Npc(definition)) if definition == npc.definition_id
+    ));
     let selected = actions[0].1;
     assert!(
         matches!(validate_world_action(&state,&asset,&catalog,selected,false).unwrap(),ClientIntent::NpcAction {index,slot,..} if index==NpcIndex::new(42) && slot==ActionSlot::new(2).unwrap())
@@ -314,8 +321,9 @@ fn plane_transitions_reuse_scene_asset_and_validate_walk_and_actions_on_upper_pl
     };
     let actions = world_actions(&state, &asset, &catalog, active_scene, target)
         .expect("NPC action on upper plane validates against shared SceneAsset");
-    assert_eq!(actions.len(), 1);
+    assert_eq!(actions.len(), 2);
     assert_eq!(actions[0].0, "Attack <col=ffff00>Guard");
+    assert_eq!(actions[1].0, "Examine <col=ffff00>Guard");
 }
 
 #[test]
@@ -375,7 +383,15 @@ fn ground_item_options_follow_the_definition_mask_and_revalidate_against_the_pil
     };
     let actions = world_actions(&state, &asset, &catalog, asset.descriptor(), target).unwrap();
     let labels: Vec<_> = actions.iter().map(|(label, _)| label.as_str()).collect();
-    assert_eq!(labels, ["Take <col=ff9040>Coins"]);
+    assert_eq!(
+        labels,
+        ["Take <col=ff9040>Coins", "Examine <col=ff9040>Coins"]
+    );
+    assert!(matches!(
+        validate_world_action(&state, &asset, &catalog, actions[1].1, false).unwrap(),
+        ClientIntent::Examine(ExamineTarget::GroundItem { tile: t, item })
+            if t == tile && item.get() == 995
+    ));
     assert!(matches!(
         validate_world_action(&state, &asset, &catalog, actions[0].1, true).unwrap(),
         ClientIntent::GroundItemAction { tile: t, item, slot, control: true }

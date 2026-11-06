@@ -1,7 +1,7 @@
 //! Shared validation between pointer intents and revision encoders.
 use rustclient_game_state::GameState;
 use rustclient_model::{SceneDescriptor, WorldTile};
-use rustclient_protocol::ClientIntent;
+use rustclient_protocol::{ClientIntent, ExamineTarget};
 use rustclient_scene::SceneAsset;
 
 /// Validate a movement click against the currently committed map and entities.
@@ -64,28 +64,14 @@ pub fn world_actions(
             instance,
             definition,
             resolved,
-        } => {
-            let npc = state
-                .entities()
-                .npcs()
-                .get(&index)
-                .filter(|npc| {
-                    npc.instance == instance
-                        && npc.definition_id == definition
-                        && npc.tile.plane == player_plane
-                        && scene.contains_footprint(npc.tile)
-                })
-                .ok_or("NPC target is stale")?;
-            let def = catalog
-                .resolve_npc(asset, definition, state.scenery().variables())
-                .filter(|def| def.id == resolved && def.interactable)
-                .ok_or("NPC definition changed or is unavailable")?;
-            (
-                npc.name.as_deref().or(def.name.as_deref()).unwrap_or("NPC"),
-                &def.actions,
-                npc.actions,
-            )
-        }
+        } => npc_target(
+            state,
+            asset,
+            catalog,
+            scene,
+            player_plane,
+            (index, instance, definition, resolved),
+        )?,
         WorldTarget::Location {
             key,
             definition,
@@ -114,7 +100,7 @@ pub fn world_actions(
         }
     };
     let target_color = target_color(target);
-    Ok(actions
+    let mut rows: Vec<(String, rustclient_model::WorldAction)> = actions
         .iter()
         .enumerate()
         .filter_map(|(index, verb)| {
@@ -143,7 +129,59 @@ pub fn world_actions(
                 },
             ))
         })
-        .collect())
+        .collect();
+    // Examine follows the definition's own actions, as in the stock menu.
+    rows.push((
+        format!("Examine <col={target_color}>{name}"),
+        WorldAction {
+            scene,
+            target,
+            slot: ActionSlot::EXAMINE,
+        },
+    ));
+    Ok(rows)
+}
+/// Name, definition actions and enabled mask of a still-present, interactable NPC.
+fn npc_target<'a>(
+    state: &'a GameState,
+    asset: &SceneAsset,
+    catalog: &'a rustclient_scene::entity_mesh::EntityCatalog,
+    scene: SceneDescriptor,
+    player_plane: rustclient_model::Plane,
+    (index, instance, definition, resolved): (
+        rustclient_model::NpcIndex,
+        rustclient_model::NpcInstanceId,
+        rustclient_model::NpcDefinitionId,
+        rustclient_model::NpcDefinitionId,
+    ),
+) -> Result<
+    (
+        &'a str,
+        &'a [Option<String>; 5],
+        rustclient_model::ActionMask,
+    ),
+    String,
+> {
+    let npc = state
+        .entities()
+        .npcs()
+        .get(&index)
+        .filter(|npc| {
+            npc.instance == instance
+                && npc.definition_id == definition
+                && npc.tile.plane == player_plane
+                && scene.contains_footprint(npc.tile)
+        })
+        .ok_or("NPC target is stale")?;
+    let def = catalog
+        .resolve_npc(asset, definition, state.scenery().variables())
+        .filter(|def| def.id == resolved && def.interactable)
+        .ok_or("NPC definition changed or is unavailable")?;
+    Ok((
+        npc.name.as_deref().or(def.name.as_deref()).unwrap_or("NPC"),
+        &def.actions,
+        npc.actions,
+    ))
 }
 /// The `<col=...>` tag of a target's name: NPCs yellow, locations cyan, ground items orange
 /// (`colorStartTag(16748608)`).
@@ -204,6 +242,13 @@ pub fn validate_world_action(
         .any(|(_, entry)| entry.slot == action.slot)
     {
         return Err("selected action is no longer available".into());
+    }
+    if action.slot.is_examine() {
+        return Ok(ClientIntent::Examine(match action.target {
+            WorldTarget::Npc { definition, .. } => ExamineTarget::Npc(definition),
+            WorldTarget::Location { definition, .. } => ExamineTarget::Location(definition),
+            WorldTarget::GroundItem { tile, item } => ExamineTarget::GroundItem { tile, item },
+        }));
     }
     Ok(match action.target {
         WorldTarget::Npc { index, .. } => ClientIntent::NpcAction {
