@@ -29,10 +29,12 @@ pub use surface::{
 mod camera;
 mod face_priority;
 mod material_options;
+mod profile;
 mod settings;
 mod transparency;
 mod world;
 pub use material_options::MaterialOptions;
+pub use profile::{Negotiation, ProfileId, ProfileRequirements, ProfileSelection, negotiate};
 pub use settings::{
     AntiAliasing, ColorBlind, Deviation, EffectiveGpu, GpuCapabilities, GpuPreference, GpuSettings,
     UiScaling, VsyncMode,
