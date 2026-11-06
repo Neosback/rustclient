@@ -202,8 +202,8 @@ impl NativeApp {
         match scripts.dispatch_listener(&mut self.state, address, kind, event) {
             Ok(Some(outcome)) => {
                 for error in outcome.errors {
-                    if self.reported_script_errors.len() < 256
-                        && self.reported_script_errors.insert(error.clone())
+                    if self.scratch.reported_script_errors.len() < 256
+                        && self.scratch.reported_script_errors.insert(error.clone())
                     {
                         eprintln!("widget listener {kind:?}: {error}");
                     }

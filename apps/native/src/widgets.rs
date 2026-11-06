@@ -9,6 +9,7 @@ impl NativeApp {
     pub(super) fn widget_sprites_missing(&self) -> bool {
         self.plugins.requested_sprites().any(|sprite| {
             !self
+                .scratch
                 .widget_requested
                 .sprites
                 .contains(&rustclient_model::SpriteId::new(sprite))
@@ -115,7 +116,7 @@ impl NativeApp {
                 .map(rustclient_model::SpriteId::new),
         );
         // Everything loaded stays loaded (the cache is immutable); only new visuals are decoded.
-        let request = request.missing_from(&self.widget_requested);
+        let request = request.missing_from(&self.scratch.widget_requested);
         if request.is_empty() {
             self.widget_asset_key = Some(key);
             return;
@@ -243,8 +244,8 @@ impl NativeApp {
                 self.widget_paint = Some(projection.dependencies);
                 self.frame.seal_widgets();
                 for error in projection.diagnostics {
-                    if self.reported_script_errors.len() < 256
-                        && self.reported_script_errors.insert(error.clone())
+                    if self.scratch.reported_script_errors.len() < 256
+                        && self.scratch.reported_script_errors.insert(error.clone())
                     {
                         eprintln!("widget projection: {error}");
                     }
