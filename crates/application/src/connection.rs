@@ -46,6 +46,15 @@ impl ConnectionDecoder {
     pub const fn framed_packets(&self) -> u64 {
         self.codec.framed_packets()
     }
+    /// Per-opcode counts of server packets consumed without decoding (diagnostic).
+    #[must_use]
+    pub const fn unhandled_opcodes(&self) -> &std::collections::BTreeMap<u16, u64> {
+        self.codec.unhandled_opcodes()
+    }
+    /// Opcodes first seen since the last call, so each can be logged once.
+    pub fn take_new_unhandled(&mut self) -> Vec<u16> {
+        self.codec.take_new_unhandled()
+    }
     #[must_use]
     pub const fn awaiting_initial_rebuild(&self) -> bool {
         self.codec.awaiting_initial_rebuild()

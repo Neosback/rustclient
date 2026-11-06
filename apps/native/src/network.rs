@@ -361,6 +361,12 @@ fn run(
                         ));
                     })
                     .map_err(|e| failure(LoginFailure::Protocol, e.to_string()))?;
+                for opcode in decoder.take_new_unhandled() {
+                    eprintln!(
+                        "server opcode {opcode} is not decoded by this client yet (first seen; {} distinct so far)",
+                        decoder.unhandled_opcodes().len()
+                    );
+                }
                 if let Some(error) = policy_error {
                     return Err(failure(
                         LoginFailure::CacheMismatch,

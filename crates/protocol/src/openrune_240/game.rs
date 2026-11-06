@@ -484,6 +484,11 @@ pub struct SessionCodec {
     npcs: NpcInfoDecoder,
     zones: super::zone::ZoneDecoder,
     group: Option<PacketGroup>,
+    /// Packets of opcodes this adapter does not decode yet, counted per opcode. The map is
+    /// bounded by the opcode space (at most 256 entries).
+    unhandled: std::collections::BTreeMap<u16, u64>,
+    /// Opcodes first seen since the last `take_new_unhandled`, in arrival order.
+    new_unhandled: Vec<u16>,
 }
 impl SessionCodec {
     #[must_use]
@@ -502,7 +507,18 @@ impl SessionCodec {
             npcs: NpcInfoDecoder::default(),
             zones: super::zone::ZoneDecoder::default(),
             group: None,
+            unhandled: std::collections::BTreeMap::new(),
+            new_unhandled: Vec::new(),
         }
+    }
+    /// Packets received per opcode that this adapter consumes without decoding (diagnostic).
+    #[must_use]
+    pub const fn unhandled_opcodes(&self) -> &std::collections::BTreeMap<u16, u64> {
+        &self.unhandled
+    }
+    /// Opcodes seen for the first time since the previous call, so a caller can log each once.
+    pub fn take_new_unhandled(&mut self) -> Vec<u16> {
+        std::mem::take(&mut self.new_unhandled)
     }
     /// Supply the selected cache's immutable Huffman codec before receiving player chat.
     pub fn set_chat_codec(&mut self, codec: super::huffman::Huffman) {
@@ -728,7 +744,14 @@ impl SessionCodec {
             26 | 37 | 56 | 115 => {
                 ServerUpdate::Control(super::control::decode(packet.opcode, &packet.payload)?)
             }
-            _ => ServerUpdate::Deferred,
+            opcode => {
+                let count = self.unhandled.entry(opcode).or_insert(0);
+                if *count == 0 {
+                    self.new_unhandled.push(opcode);
+                }
+                *count = count.saturating_add(1);
+                ServerUpdate::Deferred
+            }
         };
         let is_logout = matches!(&update, ServerUpdate::LoggedOut)
             || matches!(&update, ServerUpdate::Control(control) if control.terminates_session());
