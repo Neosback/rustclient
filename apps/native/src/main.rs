@@ -1,4 +1,6 @@
 #![forbid(unsafe_code)]
+#[macro_use]
+mod diagnostics;
 mod actor_overlays;
 mod camera_input;
 mod capture;
@@ -3111,6 +3113,7 @@ fn run() -> Result<(), String> {
     if options.capture_dir.is_some() {
         return capture::run(&options);
     }
+    diagnostics::install(options.preferences_dir.join("crash"));
     let event_loop = EventLoop::<LoadEvent>::with_user_event()
         .build()
         .map_err(|e| format!("event loop: {e}"))?;
