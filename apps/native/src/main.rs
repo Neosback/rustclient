@@ -1827,6 +1827,25 @@ impl NativeApp {
             });
         }
     }
+    /// A scene load failed: retry once, then end the session at the title with the reason.
+    fn scene_load_failed(&mut self, error: &str) {
+        eprintln!("spawn scene: {error}");
+        match self.scene.note_load_failure() {
+            scene::SceneFailure::Retry => {
+                eprintln!("spawn scene: retrying the load once");
+                // `start_pending_scene` runs again on the next cycle.
+                if let Some(window) = &self.window {
+                    window.request_redraw();
+                }
+            }
+            scene::SceneFailure::Abort => {
+                self.apply_network_event(network::NetworkEvent::Failed(
+                    rustclient_game_state::LoginFailure::SceneLoad,
+                    format!("scene load failed twice: {error}"),
+                ));
+            }
+        }
+    }
     fn finish_scene(
         &mut self,
         event_loop: &ActiveEventLoop,
@@ -1921,12 +1940,7 @@ impl NativeApp {
                     window.request_redraw();
                 }
             }
-            Err(error) => {
-                eprintln!("spawn scene: {error}");
-                if let Some(window) = &self.window {
-                    window.set_title(&format!("RustClient - scene load failed: {error}"));
-                }
-            }
+            Err(error) => self.scene_load_failed(&error),
         }
     }
 

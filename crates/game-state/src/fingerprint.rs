@@ -989,6 +989,7 @@ fn write_title(fingerprint: &mut StableFingerprint64, screen: TitleScreen) {
                     LoginFailure::CacheMismatch => 2,
                     LoginFailure::Protocol => 3,
                     LoginFailure::Disconnected => 4,
+                    LoginFailure::SceneLoad => 5,
                 });
             }
         }

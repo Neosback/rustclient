@@ -55,4 +55,6 @@ pub enum LoginFailure {
     CacheMismatch,
     Protocol,
     Disconnected,
+    /// The map the server sent could not be loaded from the cache.
+    SceneLoad,
 }

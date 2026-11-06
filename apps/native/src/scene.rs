@@ -32,6 +32,8 @@ pub struct SceneView {
     pub shared_cache: SharedCacheSlot,
     pub loading: bool,
     pub attempted: bool,
+    /// Failed loads since the last session reset; see [`SceneView::note_load_failure`].
+    pub load_failures: u8,
     /// Set while a window-changing rebuild's replacement loads and `loaded` is still the scene
     /// being drawn (SPEC-0023); the instant it began delays the loading box.
     pub replacing: Option<std::time::Instant>,
@@ -66,6 +68,28 @@ pub struct SceneView {
     pub hidden_models: rustclient_scene::entity_mesh::HiddenActors,
     pub hidden_overlays: rustclient_scene::entity_mesh::HiddenActors,
 }
+/// What to do after a scene load fails.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SceneFailure {
+    /// Load again; the failure may have been transient.
+    Retry,
+    /// Give up: end the session and tell the player.
+    Abort,
+}
+/// Automatic reloads before a failing scene ends the session.
+const MAX_SCENE_RETRIES: u8 = 1;
+/// The failure count after one more failure and the action it calls for.
+const fn record_load_failure(failures: u8) -> (u8, SceneFailure) {
+    let failures = failures.saturating_add(1);
+    (
+        failures,
+        if failures <= MAX_SCENE_RETRIES {
+            SceneFailure::Retry
+        } else {
+            SceneFailure::Abort
+        },
+    )
+}
 impl Drop for SceneView {
     fn drop(&mut self) {
         self.structural_scope.cancel();
@@ -85,6 +109,7 @@ impl SceneView {
             shared_cache: Arc::new(OnceLock::new()),
             loading: false,
             attempted: false,
+            load_failures: 0,
             replacing: None,
             awaiting_world: None,
             loaded: None,
@@ -149,6 +174,7 @@ impl SceneView {
         self.entity_loader = None;
         self.loading = false;
         self.attempted = false;
+        self.load_failures = 0;
         self.replacing = None;
         self.loaded = None;
         self.animator = None;
@@ -224,6 +250,17 @@ impl SceneView {
         if pool.try_submit(job).is_err() {
             eprintln!("cache warm-up: projection queue full; the scene load decodes on demand");
         }
+    }
+    /// Record a failed scene load. The first failure re-arms the load (a transient fault such as
+    /// a full projection queue or a cache read hiccup should not strand the player on a loading
+    /// screen); the next one means the world cannot be built and the session must end.
+    pub fn note_load_failure(&mut self) -> SceneFailure {
+        let (failures, action) = record_load_failure(self.load_failures);
+        self.load_failures = failures;
+        if action == SceneFailure::Retry {
+            self.attempted = false;
+        }
+        action
     }
     pub fn start(
         &mut self,
@@ -538,6 +575,16 @@ pub fn loading_box_due(displayed: bool, replacing_for: Option<std::time::Duratio
 mod tests {
     use super::*;
     use std::time::Duration;
+
+    #[test]
+    fn a_scene_load_is_retried_once_and_then_ends_the_session() {
+        let (failures, action) = record_load_failure(0);
+        assert_eq!(action, SceneFailure::Retry);
+        let (failures, action) = record_load_failure(failures);
+        assert_eq!(action, SceneFailure::Abort);
+        assert_eq!(record_load_failure(failures).1, SceneFailure::Abort);
+        assert_eq!(record_load_failure(u8::MAX).1, SceneFailure::Abort);
+    }
 
     #[test]
     fn loading_box_covers_an_empty_viewport_and_a_slow_replacement_only() {

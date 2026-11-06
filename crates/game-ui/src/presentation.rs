@@ -413,6 +413,11 @@ fn login_lines(status: LoginStatus) -> [&'static str; 3] {
                 "Your session has ended.",
                 "Please log in again.",
             ],
+            LoginFailure::SceneLoad => [
+                "The game world could not be loaded.",
+                "Check the cache path and profile.",
+                "See client diagnostics for the reason.",
+            ],
         },
         LoginStatus::Prompt => ["", "Enter your username/email & password.", ""],
         LoginStatus::UsernameRequired => ["", "Please enter your username/email.", ""],
