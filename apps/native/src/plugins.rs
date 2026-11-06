@@ -310,6 +310,14 @@ impl Plugins {
         self.output = self
             .set
             .collect_output(&view, &mut self.storage, &mut self.logs);
+        self.report_storage_errors();
+    }
+
+    /// Log plugin configuration files that could not be read or saved.
+    fn report_storage_errors(&self) {
+        for error in self.storage.take_errors() {
+            eprintln!("{error}");
+        }
     }
 
     /// Dispatch `Stopped` once when the session ends.
@@ -342,6 +350,7 @@ impl Plugins {
             &mut self.logs,
         );
         self.output = self.set.retained_output();
+        self.report_storage_errors();
     }
 
     pub(super) fn statuses(
