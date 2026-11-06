@@ -531,3 +531,90 @@ mod examine_tests {
         assert!(examine_npc(NpcDefinitionId::new(70_000)).is_err());
     }
 }
+
+/// `OPPLAYER1..8`: field order and transforms from the rsprox 240 `OpPlayer{1..8}Decoder`s.
+/// Opcodes 57, 21, 36, 64, 52, 4, 50 and 41.
+pub(super) fn player(
+    index: rustclient_model::PlayerIndex,
+    slot: rustclient_model::PlayerOpSlot,
+    control: bool,
+) -> Result<(u8, Vec<u8>)> {
+    let index = bounded(index.get())?;
+    let control = u8::from(control);
+    let mut out = Vec::with_capacity(3);
+    let opcode = match slot.get() {
+        1 => {
+            out.push(control.wrapping_neg()); // g1Alt2
+            out.extend_from_slice(&index.to_be_bytes());
+            57
+        }
+        2 => {
+            out.push(128_u8.wrapping_sub(control)); // g1Alt3
+            out.extend_from_slice(&index.to_le_bytes());
+            21
+        }
+        3 => {
+            out.extend_from_slice(&be_add(index)); // g2Alt2
+            out.push(control.wrapping_add(128)); // g1Alt1
+            36
+        }
+        4 => {
+            out.push(128_u8.wrapping_sub(control));
+            out.extend_from_slice(&index.to_be_bytes());
+            64
+        }
+        5 => {
+            out.extend_from_slice(&be_add(index));
+            out.push(control.wrapping_add(128));
+            52
+        }
+        6 => {
+            out.push(control.wrapping_add(128));
+            out.extend_from_slice(&index.to_le_bytes());
+            4
+        }
+        7 => {
+            out.push(control.wrapping_add(128));
+            out.extend_from_slice(&index.to_le_bytes());
+            50
+        }
+        _ => {
+            out.extend_from_slice(&be_add(index));
+            out.push(control); // g1
+            41
+        }
+    };
+    Ok((opcode, out))
+}
+
+#[cfg(test)]
+mod player_tests {
+    use super::*;
+    use rustclient_model::{PlayerIndex, PlayerOpSlot};
+
+    #[test]
+    fn every_player_option_uses_its_240_opcode_and_field_transforms() {
+        let index = PlayerIndex::new(0x0102);
+        let encode =
+            |slot, control| player(index, PlayerOpSlot::new(slot).unwrap(), control).unwrap();
+        // Control off, then on, for each slot.
+        assert_eq!(encode(1, false), (57, vec![0, 0x01, 0x02]));
+        assert_eq!(encode(1, true), (57, vec![255, 0x01, 0x02]));
+        assert_eq!(encode(2, true), (21, vec![127, 0x02, 0x01]));
+        assert_eq!(encode(3, true), (36, vec![0x01, 0x02 + 128, 129]));
+        assert_eq!(encode(4, false), (64, vec![128, 0x01, 0x02]));
+        assert_eq!(encode(5, false), (52, vec![0x01, 0x02 + 128, 128]));
+        assert_eq!(encode(6, true), (4, vec![129, 0x02, 0x01]));
+        assert_eq!(encode(7, false), (50, vec![128, 0x02, 0x01]));
+        assert_eq!(encode(8, true), (41, vec![0x01, 0x02 + 128, 1]));
+        assert!(PlayerOpSlot::new(0).is_none() && PlayerOpSlot::new(9).is_none());
+        assert!(
+            player(
+                PlayerIndex::new(70_000),
+                PlayerOpSlot::new(1).unwrap(),
+                false
+            )
+            .is_err()
+        );
+    }
+}

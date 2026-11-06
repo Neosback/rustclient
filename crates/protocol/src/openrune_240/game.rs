@@ -289,6 +289,12 @@ pub enum ClientIntent {
     },
     /// "Examine" on an NPC, object or ground item (`OPNPC6`, `OPLOC6`, `OPOBJ6`).
     Examine(ExamineTarget),
+    /// An option on another player (`OPPLAYER1..8`).
+    PlayerAction {
+        index: rustclient_model::PlayerIndex,
+        slot: rustclient_model::PlayerOpSlot,
+        control: bool,
+    },
 }
 /// What an Examine names: the server answers with the definition's examine text.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -359,6 +365,11 @@ impl ClientIntent {
                 slot,
                 control,
             } => super::actions::ground_item(tile, item, slot, control)?,
+            Self::PlayerAction {
+                index,
+                slot,
+                control,
+            } => super::actions::player(index, slot, control)?,
             Self::Examine(ExamineTarget::Npc(definition)) => {
                 super::actions::examine_npc(definition)?
             }
@@ -677,7 +688,7 @@ impl SessionCodec {
                 ServerUpdate::ChatFilters(values)
             }
             73 => ServerUpdate::GameMessage(super::chat::decode(&packet.payload)?),
-            19 | 63 | 66 | 120 => {
+            19 | 63 | 66 | 85 | 120 => {
                 ServerUpdate::PlayerStatus(super::scripts::status(packet.opcode, &packet.payload)?)
             }
             10 => ServerUpdate::Script(super::scripts::decode(&packet.payload)?),

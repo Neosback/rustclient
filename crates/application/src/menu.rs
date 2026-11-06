@@ -115,6 +115,8 @@ fn examine_entry(option: &str, target: &str, action: WorldAction) -> MenuEntry {
             item.get().cast_signed(),
             scene_xy(action.scene, tile),
         ),
+        // Players have no Examine entry.
+        WorldTarget::Player { .. } => (EXAMINE_NPC, 0, (0, 0)),
     };
     MenuEntry {
         option: option.to_owned(),
@@ -137,6 +139,17 @@ pub fn plugin_menu_entry(label: &str, row: WorldMenuRow) -> MenuEntry {
         }
         WorldMenuRow::Action(action) => {
             let op = action.slot.get() + 1;
+            if let WorldTarget::Player { index, op, .. } = action.target {
+                return MenuEntry {
+                    option: option.to_owned(),
+                    target: target.to_owned(),
+                    kind: MenuKind::PlayerOption(op.get()),
+                    identifier: i32::try_from(index.get()).unwrap_or(i32::MAX),
+                    param0: 0,
+                    param1: 0,
+                    deprioritized: false,
+                };
+            }
             if action.slot.is_examine() {
                 return examine_entry(option, target, action);
             }
@@ -158,6 +171,7 @@ pub fn plugin_menu_entry(label: &str, row: WorldMenuRow) -> MenuEntry {
                     item.get().cast_signed(),
                     scene_xy(action.scene, tile),
                 ),
+                WorldTarget::Player { .. } => unreachable!("handled above"),
             }
         }
     };

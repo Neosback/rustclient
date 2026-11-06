@@ -11,7 +11,7 @@ use crate::{GameState, OperationCommit, SemanticEvent, SessionLifecycle};
 ///
 /// Any change to field ordering, tags, integer encoding, or fingerprint
 /// algorithm that changes canonical output must increment this version.
-pub const SEMANTIC_FINGERPRINT_VERSION: u16 = 33;
+pub const SEMANTIC_FINGERPRINT_VERSION: u16 = 34;
 
 const FNV_OFFSET_BASIS: u64 = 0xCBF2_9CE4_8422_2325;
 const FNV_PRIME: u64 = 0x0000_0100_0000_01B3;
@@ -271,6 +271,19 @@ impl GameState {
             fingerprint.write_u32(skill.experience);
             fingerprint.write_bytes(&skill.current.to_le_bytes());
             fingerprint.write_bytes(&skill.invisible.to_le_bytes());
+        }
+        for slot in 1..=8 {
+            match entities.player_option(slot) {
+                None => fingerprint.write_u8(0),
+                Some(option) => {
+                    fingerprint.write_u8(1);
+                    fingerprint.write_u8(u8::from(option.priority));
+                    fingerprint.write_u32(
+                        u32::try_from(option.text.len()).expect("bounded player option"),
+                    );
+                    fingerprint.write_bytes(option.text.as_bytes());
+                }
+            }
         }
         match entities.local_player_index() {
             None => fingerprint.write_u8(0),

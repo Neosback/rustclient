@@ -415,6 +415,12 @@ impl NativeApp {
             }
             WorldTarget::Location { key, .. } => Some(key.tile),
             WorldTarget::GroundItem { tile, .. } => Some(tile),
+            WorldTarget::Player { index, .. } => self
+                .state
+                .entities()
+                .players()
+                .get(&index)
+                .map(|player| player.tile),
         };
         connection.send(network::Outbound {
             world_action: Some(action),
@@ -522,6 +528,34 @@ impl NativeApp {
             // not drawn yet, so the tile stands in for the pile's model bounds). Stock inserts
             // the pile oldest first and shows the last insertion on top, so the newest item's
             // options come first; an item whose definition is still loading is skipped.
+            // Other players standing on that tile (deviation PLAYER-TILE-PICK: players are matched
+            // by tile because their models are not part of the pick geometry yet), in index order.
+            let standing: Vec<_> = self
+                .state
+                .entities()
+                .players()
+                .values()
+                .filter(|player| player.tile == destination)
+                .map(|player| (player.index, player.instance))
+                .collect();
+            for (index, instance) in standing {
+                let target = WorldTarget::Player {
+                    index,
+                    instance,
+                    op: rustclient_model::PlayerOpSlot::new(1).expect("slot 1"),
+                };
+                if let Ok(actions) = rustclient_application::world_actions(
+                    &self.state,
+                    &loaded.asset,
+                    &self.scene.entity_catalog,
+                    scene,
+                    target,
+                ) {
+                    entries.extend(actions.into_iter().map(|(label, action)| {
+                        (label, WorldChoice::Action(action), Some(action.target))
+                    }));
+                }
+            }
             for item in self.state.ground_items().pile(destination).iter().rev() {
                 let target = WorldTarget::GroundItem {
                     tile: destination,
@@ -741,6 +775,7 @@ impl NativeApp {
             target_color: match target {
                 Some(WorldTarget::Npc { .. }) => [255, 255, 0, 255],
                 Some(WorldTarget::GroundItem { .. }) => [255, 144, 64, 255],
+                Some(WorldTarget::Player { .. }) => [255, 255, 255, 255],
                 _ => [0, 255, 255, 255],
             },
         })

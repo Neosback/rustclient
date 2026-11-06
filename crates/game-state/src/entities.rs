@@ -115,6 +115,8 @@ pub struct WorldEntitiesState {
     reboot_message: String,
     energy: u16,
     weight: i16,
+    /// Options other players' menus carry, slots 1..=8 at indexes 0..=7.
+    player_options: [Option<rustclient_model::PlayerOption>; 8],
 }
 
 /// Convert movement direction (0..7) to (dx, dy).
@@ -171,6 +173,13 @@ impl WorldEntitiesState {
     pub const fn run_weight(&self) -> i16 {
         self.weight
     }
+    /// The server-set option in `slot` (1..=8) of other players' menus.
+    #[must_use]
+    pub fn player_option(&self, slot: u8) -> Option<&rustclient_model::PlayerOption> {
+        self.player_options
+            .get(usize::from(slot).checked_sub(1)?)
+            .and_then(Option::as_ref)
+    }
     pub(crate) fn status(
         &mut self,
         update: rustclient_model::PlayerStatusUpdate,
@@ -211,6 +220,20 @@ impl WorldEntitiesState {
             PlayerStatusUpdate::RunWeight(n) => {
                 let changed = self.weight != n;
                 self.weight = n;
+                changed
+            }
+            PlayerStatusUpdate::PlayerOption {
+                slot,
+                text,
+                priority,
+            } => {
+                if !(1..=8).contains(&slot) || text.as_ref().is_some_and(|t| t.len() > 256) {
+                    return Err(EntityUpdateError::InvalidMovement);
+                }
+                let next = text.map(|text| rustclient_model::PlayerOption { text, priority });
+                let cell = &mut self.player_options[usize::from(slot) - 1];
+                let changed = *cell != next;
+                *cell = next;
                 changed
             }
         })

@@ -54,6 +54,16 @@ Not done, with reasons:
   stale-target rejection through the existing revalidation). Deviation `EXAMINE-BASE-IDS` records that the
   definition ids sent are the base ones and unverified against a live server.
 
+## Interaction target and player options (deob closeout, 2026-11-06)
+
+- Facing blocks are retained per actor and projected as `ActorState::interacting` (SPEC-0022; schema 33).
+  Open: the facing-target orientation resolver.
+- `SET_PLAYER_OP` (85) is decoded into GameState (schema 34) and `OPPLAYER1..8` are encoded; the world menu
+  lists every server-set option for other players standing on the hovered tile (deviation `PLAYER-TILE-PICK`).
+  Evidence: golden bytes for the packet and all eight encoders, state replay test, application test through
+  validation and stale-incarnation rejection. The relative-level colour of the name suffix is not implemented.
+  Hide-ops (110/55/112), hint arrows and logout reason panels are still open.
+
 ## Not started in this pass
 
 Player options (`OPPLAYER1..8`, `SET_PLAYER_OP`, a player pick target), `IF_BUTTOND`/`IF_SUBOP`, F-keys and

@@ -25,6 +25,24 @@ impl ActionSlot {
         self.0 as usize
     }
 }
+/// One of the eight options on another player's menu (`OPPLAYER1..8`), numbered from 1.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct PlayerOpSlot(u8);
+impl PlayerOpSlot {
+    #[must_use]
+    pub const fn new(slot: u8) -> Option<Self> {
+        if slot >= 1 && slot <= 8 {
+            Some(Self(slot))
+        } else {
+            None
+        }
+    }
+    /// The slot number, 1..=8.
+    #[must_use]
+    pub const fn get(self) -> u8 {
+        self.0
+    }
+}
 /// Server-controlled visibility of definition-authored world actions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ActionMask([bool; 5]);
@@ -89,6 +107,13 @@ pub enum WorldTarget {
         key: crate::LocationKey,
         definition: crate::ObjectDefinitionId,
         resolved: crate::ObjectDefinitionId,
+    },
+    /// Another player. The target names the player, not one option: listing it yields every
+    /// option the server set (`SET_PLAYER_OP`), and each listed action carries its own `op`.
+    Player {
+        index: crate::PlayerIndex,
+        instance: PlayerInstanceId,
+        op: PlayerOpSlot,
     },
     /// An item in the pile on `tile`; the first such item with this id when the action runs.
     GroundItem {

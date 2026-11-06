@@ -30,7 +30,8 @@ pub use ground_item::{
     GroundItemCustomisation, GroundItemOwnership, GroundItemPosition, GroundItemUpdate,
 };
 pub use interaction::{
-    ActionMask, ActionSlot, NpcInstanceId, PlayerInstanceId, TileOffset, WorldAction, WorldTarget,
+    ActionMask, ActionSlot, NpcInstanceId, PlayerInstanceId, PlayerOpSlot, TileOffset, WorldAction,
+    WorldTarget,
 };
 pub use login_rejection::LoginRejection;
 mod interface;
@@ -111,6 +112,19 @@ pub enum PlayerStatusUpdate {
     },
     RunEnergy(u16),
     RunWeight(i16),
+    /// `SET_PLAYER_OP`: the option on other players' menus in `slot` (1..=8); `None` removes it.
+    PlayerOption {
+        slot: u8,
+        text: Option<String>,
+        /// The stock flag byte was non-zero (the option is not deprioritized).
+        priority: bool,
+    },
+}
+/// One option the server put on other players' menus.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PlayerOption {
+    pub text: String,
+    pub priority: bool,
 }
 
 /// Server-provided game message, before local history identity is assigned.
