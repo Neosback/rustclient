@@ -34,6 +34,7 @@ execution authority. Optional HD research is outside classic completion.
 - [ADR-0005-readable-client-names](adr/ADR-0005-readable-client-names.md)
 - [ADR-0006-plugin-api-0-2](adr/ADR-0006-plugin-api-0-2.md)
 - [ADR-0007-on-demand-gpu-shell](adr/ADR-0007-on-demand-gpu-shell.md)
+- [ADR-0008-login-reconnect-and-world-transfer](adr/ADR-0008-login-reconnect-and-world-transfer.md)
 - [README](adr/README.md)
 
 ## Coverage and provenance
