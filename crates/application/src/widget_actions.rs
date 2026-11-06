@@ -93,6 +93,44 @@ pub fn widget_actions(
     }
     Ok(actions)
 }
+/// The intent for dropping `selected` on `target`: both must still be displayed and still hold
+/// the items the drop was chosen with. Whether the server accepts the swap is its decision.
+/// # Errors
+/// Rejects stale topology, hidden widgets and changed items.
+pub fn validate_widget_drag(
+    state: &GameState,
+    assets: &BTreeMap<InterfaceId, InterfaceDefinition>,
+    drag: rustclient_model::WidgetDragDrop,
+) -> Result<ClientIntent, String> {
+    if drag.selected.address == drag.target.address {
+        return Err("a widget cannot be dropped on itself".into());
+    }
+    let tree = WidgetTree::build(
+        state.interfaces(),
+        assets,
+        rustclient_game_ui::widgets::WidgetBounds::canvas(state.interfaces()),
+    )
+    .map_err(|e| e.to_string())?;
+    for end in [drag.selected, drag.target] {
+        if !tree
+            .nodes
+            .iter()
+            .any(|w| w.address == end.address && w.clip.width > 0 && w.clip.height > 0)
+        {
+            return Err("dragged widget is no longer displayed".into());
+        }
+        let current = state
+            .interfaces()
+            .runtime()
+            .get(&end.address)
+            .and_then(|r| r.item)
+            .map(|(id, _)| id);
+        if current != end.item {
+            return Err("dragged item changed".into());
+        }
+    }
+    Ok(ClientIntent::WidgetDrag(drag))
+}
 /// # Errors
 /// Rejects stale topology, removed children, changed items, hidden widgets and revoked operations.
 pub fn validate_widget_action(
@@ -143,4 +181,42 @@ pub fn validate_widget_action(
             .is_some_and(|index| permissions.enabled_operations & (1_u32 << index) != 0)
     };
     Ok(permitted.then_some(ClientIntent::WidgetAction(action)))
+}
+
+#[cfg(test)]
+mod drag_tests {
+    use super::*;
+    use rustclient_model::{
+        ItemDefinitionId, WidgetAddress, WidgetDragDrop, WidgetDragEnd, WidgetId,
+    };
+
+    fn end(component: u32, item: Option<u32>) -> WidgetDragEnd {
+        WidgetDragEnd {
+            address: WidgetAddress {
+                widget: WidgetId::new(InterfaceId::new(149), component),
+                child: Some(0),
+            },
+            item: item.map(ItemDefinitionId::new),
+        }
+    }
+
+    #[test]
+    fn a_drop_on_itself_or_on_widgets_that_are_not_displayed_is_refused() {
+        let state = GameState::new();
+        let assets = BTreeMap::new();
+        let same = WidgetDragDrop {
+            selected: end(0, Some(1)),
+            target: end(0, Some(1)),
+        };
+        assert!(
+            validate_widget_drag(&state, &assets, same)
+                .unwrap_err()
+                .contains("itself")
+        );
+        let missing = WidgetDragDrop {
+            selected: end(0, Some(1)),
+            target: end(1, None),
+        };
+        assert!(validate_widget_drag(&state, &assets, missing).is_err());
+    }
 }

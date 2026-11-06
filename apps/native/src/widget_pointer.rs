@@ -330,6 +330,11 @@ impl NativeApp {
             if let Some(mouse) = self.drag_mouse(held, address, x, y) {
                 self.fire_listener(address, WidgetListener::DragComplete, mouse, target);
             }
+            // Stock sends `IF_BUTTOND` after the `onDragComplete` script has run (classPQ), so
+            // the items are read after the script's own changes.
+            if let Some(target) = target {
+                self.send_widget_drop(address, target);
+            }
         }
     }
     /// One 20 ms client cycle of pointer listeners: repeats while held, drags and hover changes.

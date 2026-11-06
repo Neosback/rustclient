@@ -876,6 +876,16 @@ impl NativeApp {
                     .is_ok()
                 })
             }
+            rustclient_protocol::ClientIntent::WidgetDrag(drag) => {
+                self.scripts.as_ref().is_some_and(|scripts| {
+                    rustclient_application::validate_widget_drag(
+                        &self.state,
+                        scripts.interfaces(),
+                        *drag,
+                    )
+                    .is_ok()
+                })
+            }
             _ => true,
         }
     }

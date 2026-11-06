@@ -64,6 +64,13 @@ Not done, with reasons:
   validation and stale-incarnation rejection. The relative-level colour of the name suffix is not implemented.
   Hide-ops (110/55/112), hint arrows and logout reason panels are still open.
 
+## Widget drag and drop (deob closeout)
+
+`IF_BUTTOND` (39) is encoded (`classTM.method10984` write order, rsprox `IfButtonDDecoder` transforms) and
+sent when a dragged widget is released over another, after the `onDragComplete` script as in `classPQ`.
+Both ends are revalidated (displayed, same items). Evidence: golden bytes and a refusal test; no live
+inventory swap. `IF_SUBOP` (95) waits for CS2 sub-op support (op 2310), so its encoder is not added alone.
+
 ## Not started in this pass
 
 Player options (`OPPLAYER1..8`, `SET_PLAYER_OP`, a player pick target), `IF_BUTTOND`/`IF_SUBOP`, F-keys and

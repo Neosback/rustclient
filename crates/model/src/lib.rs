@@ -37,8 +37,8 @@ pub use login_rejection::LoginRejection;
 mod interface;
 pub use interface::{
     CanvasSize, ClientSetting, InterfaceMount, InterfaceMountKind, InterfaceUpdate, ScriptRequest,
-    ScriptValue, WidgetAction, WidgetEventRange, WidgetKeyScope, WidgetOperation,
-    WidgetPermissions, WidgetProperty, WindowMetrics, WindowMode,
+    ScriptValue, WidgetAction, WidgetDragDrop, WidgetDragEnd, WidgetEventRange, WidgetKeyScope,
+    WidgetOperation, WidgetPermissions, WidgetProperty, WindowMetrics, WindowMode,
 };
 mod inventory;
 pub use inventory::{InventorySlotUpdate, InventoryUpdate, ItemStack};

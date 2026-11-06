@@ -38,7 +38,7 @@ client-to-server	35	OPNPC4_V2	encoded-subset	3	classSW.method10742:143|client.me
 client-to-server	36	OPPLAYER3	encoded-subset	4	classQP.method9746:1148|client.method1966:27475|client.method1967:28061|client.method1968:28647
 client-to-server	37	CLANCHANNEL_KICKUSER	missing-encoder	4	MessageNode.method1493:86|client.method2077:35066|client.method2078:35110|client.method2079:35140
 client-to-server	38	OPOBJT	missing-encoder	4	classQP.method9746:276|client.method1966:26984|client.method1967:27570|client.method1968:28156
-client-to-server	39	IF_BUTTOND	missing-encoder	5	classTM.method10984:84|client.method1994:29871|client.method1995:29956|client.method1996:29972|client.method1997:30001
+client-to-server	39	IF_BUTTOND	encoded-subset	5	classTM.method10984:84|client.method1994:29871|client.method1995:29956|client.method1996:29972|client.method1997:30001
 client-to-server	40	EVENT_MOUSE_CLICK_V2	missing-encoder	5	client.method2176:4296|client.method2177:26663|client.method2178:43411|client.method2179:43445|client.method2180:43479
 client-to-server	41	OPPLAYER8	encoded-subset	4	classQP.method9746:463|client.method1966:27103|client.method1967:27689|client.method1968:28275
 client-to-server	42	OPPLAYERU	missing-encoder	4	classQP.method9746:132|client.method1966:26931|client.method1967:27517|client.method1968:28103

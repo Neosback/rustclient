@@ -289,6 +289,8 @@ pub enum ClientIntent {
     },
     /// "Examine" on an NPC, object or ground item (`OPNPC6`, `OPLOC6`, `OPOBJ6`).
     Examine(ExamineTarget),
+    /// A widget dropped on another (`IF_BUTTOND`).
+    WidgetDrag(rustclient_model::WidgetDragDrop),
     /// An option on another player (`OPPLAYER1..8`).
     PlayerAction {
         index: rustclient_model::PlayerIndex,
@@ -370,6 +372,7 @@ impl ClientIntent {
                 slot,
                 control,
             } => super::actions::player(index, slot, control)?,
+            Self::WidgetDrag(drag) => super::actions::widget_drag(drag)?,
             Self::Examine(ExamineTarget::Npc(definition)) => {
                 super::actions::examine_npc(definition)?
             }

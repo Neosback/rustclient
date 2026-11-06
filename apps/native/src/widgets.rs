@@ -212,6 +212,49 @@ impl NativeApp {
         self.request_widget_assets();
         Ok(())
     }
+    /// A dragged widget was released over `target`: tell the server, if both ends are still shown
+    /// and the connection is up (`IF_BUTTOND`).
+    pub(super) fn send_widget_drop(
+        &mut self,
+        selected: rustclient_model::WidgetAddress,
+        target: rustclient_model::WidgetAddress,
+    ) {
+        let (Some(scripts), Some(connection)) = (&self.scripts, &self.connection) else {
+            return;
+        };
+        let item = |address: rustclient_model::WidgetAddress| {
+            self.state
+                .interfaces()
+                .runtime()
+                .get(&address)
+                .and_then(|runtime| runtime.item)
+                .map(|(id, _)| id)
+        };
+        let drop = rustclient_model::WidgetDragDrop {
+            selected: rustclient_model::WidgetDragEnd {
+                address: selected,
+                item: item(selected),
+            },
+            target: rustclient_model::WidgetDragEnd {
+                address: target,
+                item: item(target),
+            },
+        };
+        match rustclient_application::validate_widget_drag(&self.state, scripts.interfaces(), drop)
+        {
+            Ok(intent) => {
+                if let Err(error) = connection.send(network::Outbound {
+                    world_action: None,
+                    map_epoch: self.map_epoch,
+                    interface_epoch: Some(self.interface_epoch),
+                    intent,
+                }) {
+                    eprintln!("widget drop: {error}");
+                }
+            }
+            Err(error) => eprintln!("widget drop rejected: {error}"),
+        }
+    }
     /// Retain widget commands until one of the actual paint dependencies changes.
     pub(super) fn project_game_widgets(&mut self) {
         let dragged = self.dragged_widget();

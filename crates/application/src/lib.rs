@@ -36,4 +36,4 @@ pub use scene::{
 pub mod scripts;
 
 mod widget_actions;
-pub use widget_actions::{validate_widget_action, widget_actions};
+pub use widget_actions::{validate_widget_action, validate_widget_drag, widget_actions};

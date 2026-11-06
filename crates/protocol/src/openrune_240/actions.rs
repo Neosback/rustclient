@@ -618,3 +618,84 @@ mod player_tests {
         );
     }
 }
+
+/// `IF_BUTTOND` (39): a widget dropped on another. Stock `classTM.method10984` writes, in this
+/// order and matching the rsprox 240 `IfButtonDDecoder`: the dragged child (`g2Alt2`), the target's
+/// packed component id (`g4`), the target child (`g2`), the dragged packed id (`g4`), the target
+/// item (`g2Alt2`) and the dragged item (`g2Alt3`). A missing child or item is 65535.
+pub(super) fn widget_drag(drag: rustclient_model::WidgetDragDrop) -> Result<(u8, Vec<u8>)> {
+    let field = |end: &rustclient_model::WidgetDragEnd| -> Result<(u32, u16, u16)> {
+        let widget = end.address.widget;
+        let child = end.address.child.map_or(Ok(65535), bounded)?;
+        let item = end.item.map_or(Ok(65535), |id| bounded(id.get()))?;
+        if widget.interface.get() >= 65535 || widget.component >= 65535 {
+            return Err(ProtocolError::new(
+                "widget drag encode",
+                "address outside profile range",
+            ));
+        }
+        Ok((
+            (widget.interface.get() << 16) | widget.component,
+            child,
+            item,
+        ))
+    };
+    let (selected_id, selected_child, selected_item) = field(&drag.selected)?;
+    let (target_id, target_child, target_item) = field(&drag.target)?;
+    let mut out = Vec::with_capacity(16);
+    out.extend(be_add(selected_child));
+    out.extend(target_id.to_be_bytes());
+    out.extend(target_child.to_be_bytes());
+    out.extend(selected_id.to_be_bytes());
+    out.extend(be_add(target_item));
+    out.extend(le_add(selected_item));
+    Ok((39, out))
+}
+
+#[cfg(test)]
+mod drag_tests {
+    use super::*;
+    use rustclient_model::{
+        InterfaceId, ItemDefinitionId, WidgetAddress, WidgetDragDrop, WidgetDragEnd, WidgetId,
+    };
+
+    fn end(interface: u32, component: u32, child: Option<u32>, item: Option<u32>) -> WidgetDragEnd {
+        WidgetDragEnd {
+            address: WidgetAddress {
+                widget: WidgetId::new(InterfaceId::new(interface), component),
+                child,
+            },
+            item: item.map(ItemDefinitionId::new),
+        }
+    }
+
+    #[test]
+    fn drag_encodes_the_240_field_order_and_transforms() {
+        // Dragged 149:0 child 3 holding item 0x0102; dropped on 149:0 child 5 holding nothing.
+        let drag = WidgetDragDrop {
+            selected: end(149, 0, Some(3), Some(0x0102)),
+            target: end(149, 0, Some(5), None),
+        };
+        let packed = (149_u32 << 16).to_be_bytes();
+        let mut expected = vec![0, 3 + 128]; // selected child, g2Alt2
+        expected.extend(packed); // target packed id
+        expected.extend([0, 5]); // target child
+        expected.extend(packed); // selected packed id
+        expected.extend([0xff, 0xff_u8.wrapping_add(128)]); // target item 65535, g2Alt2
+        expected.extend([0x02_u8.wrapping_add(128), 0x01]); // selected item, g2Alt3
+        assert_eq!(widget_drag(drag).unwrap(), (39, expected));
+        // Whole-component ends use child 65535.
+        let plain = WidgetDragDrop {
+            selected: end(1, 2, None, None),
+            target: end(3, 4, None, None),
+        };
+        let (_, bytes) = widget_drag(plain).unwrap();
+        assert_eq!(&bytes[..2], &[0xff, 0xff_u8.wrapping_add(128)]);
+        assert_eq!(bytes.len(), 16);
+        let too_big = WidgetDragDrop {
+            selected: end(1, 2, Some(70_000), None),
+            target: end(3, 4, None, None),
+        };
+        assert!(widget_drag(too_big).is_err());
+    }
+}
