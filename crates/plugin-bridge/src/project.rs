@@ -225,10 +225,29 @@ fn effects(
     (graphic, hitsplats, healthbars)
 }
 
+/// The actor `facing` makes its owner interact with, if it is still in the scene (`RuneLite`'s
+/// `Actor.getInteracting` is null for a target that has left).
+pub(crate) fn interacting(
+    facing: Option<&rustclient_model::FacingBlock>,
+    entities: &rustclient_game_state::WorldEntitiesState,
+) -> Option<rustclient_plugin_api::ActorRef> {
+    use rustclient_model::Interaction;
+    match facing?.interaction()? {
+        Interaction::Npc(index) if entities.npcs.contains_key(&index) => Some(
+            rustclient_plugin_api::ActorRef::Npc(u16::try_from(index.get()).ok()?),
+        ),
+        Interaction::Player(index) if entities.players.contains_key(&index) => Some(
+            rustclient_plugin_api::ActorRef::Player(u16::try_from(index.get()).ok()?),
+        ),
+        _ => None,
+    }
+}
+
 pub(crate) fn player(
     entity: &PlayerEntity,
     local: bool,
     now: rustclient_model::ClientCycle,
+    interacting: Option<rustclient_plugin_api::ActorRef>,
 ) -> PlayerSnapshot {
     let (graphic, hitsplats, healthbars) = effects(&entity.effects, now);
     let appearance = entity.appearance.as_ref();
@@ -249,7 +268,7 @@ pub(crate) fn player(
             pose: sequence(pose),
             graphic,
             overhead_text: overhead(entity.overhead.as_ref()),
-            interacting: None,
+            interacting,
             hitsplats,
             healthbars,
         },
@@ -267,6 +286,7 @@ pub(crate) fn npc(
     entity: &NpcEntity,
     definition: Option<&NpcDefinition>,
     now: rustclient_model::ClientCycle,
+    interacting: Option<rustclient_plugin_api::ActorRef>,
 ) -> NpcSnapshot {
     let (graphic, hitsplats, healthbars) = effects(&entity.effects, now);
     let pose = definition.and_then(|def| match entity.locomotion {
@@ -285,7 +305,7 @@ pub(crate) fn npc(
             pose: sequence(pose),
             graphic,
             overhead_text: overhead(entity.overhead.as_ref()),
-            interacting: None,
+            interacting,
             hitsplats,
             healthbars,
         },

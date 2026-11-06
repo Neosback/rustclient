@@ -46,9 +46,9 @@ pass, so every "Done" row also appears in the live backlog below.
 | Minimap | Partial | Item, friend, team, friends-chat and clan dots (need ground items and social state in `GameState`); rebuild on scenery change; HD minimap has no source in `references/` | minimap |
 | World map | Partial | Alignment and wrapping, hover and element menus, smoothing, flash, staff shortcut; button-sprite failure cause not established | world-map |
 | Load pipeline | Partial | Seam merge is now a serial merge join and phases cancel, both unmeasured; parallel merge/emit only if a profile still shows it; chunked vertex packing; minimap build off the UI thread; map-square decode cache; instances, extended bounds, world views | normal-maps, instances, worldviews |
-| Plugins | Partial | 18 partial modules of 131 catalog slots; GE price service; actor interaction target; Ground Markers `Label` and `Color`, import and export, minimap outline; blocked on actor effects, social state and provider services | first-party, plugin-api |
+| Plugins | Partial | 18 partial modules of 131 catalog slots; GE price service; Ground Markers `Label` and `Color`, import and export, minimap outline; blocked on actor effects, social state and provider services | first-party, plugin-api |
 | Frame time | Open | Plugin projection reuse landed unmeasured; entity skip-when-unchanged, a hover pick prefilter over emitted-triangle bounds (clickbox bounds are unsafe), static-run culling outside the admission window; all need a live profile first | update-latency |
-| Gameplay facts | Open | Ground item pile models; actor facing and interaction target, drawn effects, projectiles, social and trading, Grand Exchange offers, audio, world list | ground-items, actor-effects, facing, private-clan-chat, audio |
+| Gameplay facts | Open | Ground item pile models; the facing-target orientation resolver, drawn effects, projectiles, social and trading, Grand Exchange offers, audio, world list | ground-items, actor-effects, facing, private-clan-chat, audio |
 | Browser | Open | Shared sidebar and Wasm probes only; no playable browser client | browser |
 
 ### Issues and unexplained behavior
@@ -169,7 +169,7 @@ services survive login/logout and renderer reconstruction; activation is not a s
 ### Phase 2: valid inbound actor traffic
 
 **Owners:** selected protocol adapter → existing GameState player/NPC collections.
-**Spec:** [SPEC-0022](../specs/SPEC-0022-actor-effects.md) covers effect facts; rich facing and the interaction target remain open.
+**Spec:** [SPEC-0022](../specs/SPEC-0022-actor-effects.md) covers effect facts; the facing block and interaction target are retained; the orientation resolver remains open.
 
 **Status: partial.** Hitmark, health bar and spot animation blocks are decoded and retained. Selected rejected NPC blocks remain rejected; freeze, tint, transparency and facing-entity blocks are consumed without retained facts.
 
@@ -233,7 +233,7 @@ infer these from frame-end snapshots. Test focus, keyboard/IME, clipboard and cl
 **Owners:** existing GameState actor/effect owners, scene poses and UI overlays.
 **Dependency:** phase 2 facts; [SPEC-0022](../specs/SPEC-0022-actor-effects.md).
 
-**Status: partial.** Hitmark, health bar and spot animation facts are retained and projected (SPEC-0022). Open: drawing them, the interaction target and rich facing, projectiles, tint, freeze, the `limit`-driven splat replacement, definition-driven durations.
+**Status: partial.** Hitmark, health bar and spot animation facts are retained and projected (SPEC-0022). The facing block and the interaction target are retained and projected (`InteractingChanged`). Open: drawing the effects, the facing-target orientation resolver, projectiles, tint, freeze, the `limit`-driven splat replacement, definition-driven durations.
 
 Complete source-rich target facing/apply/reset policy, interaction slowdown, animation
 readiness/freeze/callbacks, delayed spot animations, hitsplats/health bars, tint and

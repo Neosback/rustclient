@@ -766,3 +766,74 @@ fn hitmarks_health_bars_and_spot_animations_reach_snapshots_and_events() {
         }
     )));
 }
+
+#[test]
+fn an_npc_facing_a_present_actor_is_interacting_and_the_change_is_an_event() {
+    use rustclient_model::{FacingBlock, FacingEntityKind, FacingTarget, FacingWalkPolicy};
+    let sources = Sources::default();
+    let frame = Frame::default();
+    let wanted = everything();
+    let mut projector = Projector::new();
+    let mut state = session();
+    apply(
+        &mut state,
+        SemanticOperation::UpdateNpcs(NpcInfoUpdate {
+            origin: Some(TileOffset { x: -1, y: -1 }),
+            new_npcs: vec![NewNpc {
+                index: NpcIndex::new(42),
+                definition_id: NpcDefinitionId::new(12),
+                delta_x: 1,
+                delta_y: 1,
+                orientation: 0,
+            }],
+            ..Default::default()
+        }),
+    );
+    let _ = projector.project(&state, &frame, &sources, &wanted);
+    let target = |kind, index| FacingBlock {
+        target: FacingTarget::Entity {
+            kind,
+            index: Some(index),
+            fallback_angle: 0,
+        },
+        walk: FacingWalkPolicy::CancelOnWalk,
+        instant: false,
+    };
+    let face = |state: &mut GameState, block| {
+        apply(
+            state,
+            SemanticOperation::UpdateNpcs(NpcInfoUpdate {
+                attributes: vec![NpcAttributeUpdate {
+                    index: NpcIndex::new(42),
+                    changes: vec![NpcProperty::FacingBlock(block)],
+                }],
+                ..Default::default()
+            }),
+        );
+    };
+    // Attacking the local player (index 1, present in the session).
+    face(&mut state, target(FacingEntityKind::Player, 1));
+    let (snapshot, events) = projector.project(&state, &frame, &sources, &wanted);
+    assert_eq!(
+        snapshot.npc(42).unwrap().actor.interacting,
+        Some(ActorRef::Player(1))
+    );
+    assert!(events.iter().any(|event| matches!(
+        event,
+        GameEvent::InteractingChanged {
+            source: ActorRef::Npc(42),
+            target: Some(ActorRef::Player(1))
+        }
+    )));
+    // A target that is not in the scene is not an interaction (RuneLite returns null).
+    face(&mut state, target(FacingEntityKind::Npc, 500));
+    let (snapshot, events) = projector.project(&state, &frame, &sources, &wanted);
+    assert_eq!(snapshot.npc(42).unwrap().actor.interacting, None);
+    assert!(events.iter().any(|event| matches!(
+        event,
+        GameEvent::InteractingChanged {
+            source: ActorRef::Npc(42),
+            target: None
+        }
+    )));
+}

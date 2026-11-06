@@ -259,6 +259,7 @@ impl WorldEntitiesState {
                     sequence_timing_resolved: false,
                     animation_cycle: 0,
                     effects: crate::ActorEffectsState::default(),
+                    facing: None,
                     name: None,
                     actions: rustclient_model::ActionMask::ALL,
                     locomotion: Locomotion::Idle,
@@ -340,6 +341,10 @@ impl WorldEntitiesState {
                     NpcProperty::Facing(angle) => {
                         changed |= npc.orientation != *angle;
                         npc.orientation = *angle;
+                    }
+                    NpcProperty::FacingBlock(block) => {
+                        changed |= npc.facing != Some(*block);
+                        npc.facing = Some(*block);
                     }
                     NpcProperty::Name(name) => {
                         if npc.name != *name {

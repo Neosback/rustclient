@@ -27,12 +27,12 @@ GameStateChanged	GameStateChanged	emitted
 GameTick	GameTick	emitted	
 GrandExchangeOfferChanged		absent	
 GrandExchangeSearched		absent	
-GraphicChanged	GraphicChanged	declared-source-absent	ActorState.graphic is always None: no spot-animation state in GameState
+GraphicChanged	GraphicChanged	emitted	
 GraphicsObjectCreated		absent	
 GroundObjectDespawned		absent	
 GroundObjectSpawned		absent	
-HitsplatApplied	HitsplatApplied	declared-source-absent	ActorState.hitsplats is always empty: no hitsplat state in GameState
-InteractingChanged	InteractingChanged	declared-source-absent	ActorState.interacting is always None: no target-facing state in GameState
+HitsplatApplied	HitsplatApplied	emitted	
+InteractingChanged	InteractingChanged	emitted	
 ItemContainerChanged	ItemContainerChanged	emitted	
 ItemDespawned	ItemDespawned	emitted	
 ItemQuantityChanged	ItemQuantityChanged	emitted	

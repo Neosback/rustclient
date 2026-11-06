@@ -64,6 +64,8 @@ pub struct PlayerEntity {
     pub locomotion: Locomotion,
     /// Hitmarks, health bars and spot animations (SPEC-0022).
     pub effects: crate::ActorEffectsState,
+    /// The last facing block the server sent (entity, area, angle or cleared).
+    pub facing: Option<rustclient_model::FacingBlock>,
 }
 
 /// Authoritative live NPC entity.
@@ -91,6 +93,8 @@ pub struct NpcEntity {
     pub animation_cycle: u32,
     /// Hitmarks, health bars and spot animations (SPEC-0022).
     pub effects: crate::ActorEffectsState,
+    /// The last facing block the server sent (entity, area, angle or cleared).
+    pub facing: Option<rustclient_model::FacingBlock>,
 }
 
 /// Authoritative collection of active entities in the current session.
@@ -367,6 +371,7 @@ impl WorldEntitiesState {
                 sequence_timing_resolved: false,
                 animation_cycle: 0,
                 effects: crate::ActorEffectsState::default(),
+                facing: None,
                 locomotion: Locomotion::Idle,
             });
 
@@ -426,6 +431,12 @@ impl WorldEntitiesState {
         for block in &update.effects {
             if let Some(player) = self.players.get_mut(&block.index) {
                 changed |= player.effects.apply(&block.effects, cycle);
+            }
+        }
+        for block in &update.facings {
+            if let Some(player) = self.players.get_mut(&block.index) {
+                changed |= player.facing != Some(block.block);
+                player.facing = Some(block.block);
             }
         }
         if let Some(rate) = update.turn_rate {

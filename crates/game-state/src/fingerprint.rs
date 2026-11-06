@@ -11,7 +11,7 @@ use crate::{GameState, OperationCommit, SemanticEvent, SessionLifecycle};
 ///
 /// Any change to field ordering, tags, integer encoding, or fingerprint
 /// algorithm that changes canonical output must increment this version.
-pub const SEMANTIC_FINGERPRINT_VERSION: u16 = 32;
+pub const SEMANTIC_FINGERPRINT_VERSION: u16 = 33;
 
 const FNV_OFFSET_BASIS: u64 = 0xCBF2_9CE4_8422_2325;
 const FNV_PRIME: u64 = 0x0000_0100_0000_01B3;
@@ -321,6 +321,7 @@ impl GameState {
             }
             fingerprint.write_u32(player.animation_cycle);
             write_actor_effects(&mut fingerprint, &player.effects);
+            write_facing(&mut fingerprint, player.facing.as_ref());
             fingerprint.write_u8(match player.locomotion {
                 crate::Locomotion::Idle => 0,
                 crate::Locomotion::Walk => 1,
@@ -399,6 +400,7 @@ impl GameState {
             }
             fingerprint.write_u32(npc.animation_cycle);
             write_actor_effects(&mut fingerprint, &npc.effects);
+            write_facing(&mut fingerprint, npc.facing.as_ref());
             match npc.sequence.sequence {
                 None => fingerprint.write_u8(0),
                 Some(seq) => {
@@ -445,6 +447,57 @@ impl GameState {
     }
 }
 
+fn write_facing(
+    fingerprint: &mut StableFingerprint64,
+    facing: Option<&rustclient_model::FacingBlock>,
+) {
+    use rustclient_model::{FacingEntityKind, FacingTarget, FacingWalkPolicy};
+    let Some(block) = facing else {
+        fingerprint.write_u8(0);
+        return;
+    };
+    fingerprint.write_u8(1);
+    fingerprint.write_u8(match block.walk {
+        FacingWalkPolicy::CancelOnWalk => 0,
+        FacingWalkPolicy::TurnOnWalk => 1,
+    });
+    fingerprint.write_u8(u8::from(block.instant));
+    match block.target {
+        FacingTarget::Entity {
+            kind,
+            index,
+            fallback_angle,
+        } => {
+            fingerprint.write_u8(0);
+            fingerprint.write_u8(match kind {
+                FacingEntityKind::None => 0,
+                FacingEntityKind::Npc => 1,
+                FacingEntityKind::Player => 2,
+                FacingEntityKind::WorldEntity => 3,
+            });
+            fingerprint.write_u8(u8::from(index.is_some()));
+            fingerprint.write_u32(index.unwrap_or(0));
+            fingerprint.write_u16(fallback_angle);
+        }
+        FacingTarget::Area {
+            x,
+            z,
+            size_x,
+            size_z,
+        } => {
+            fingerprint.write_u8(1);
+            fingerprint.write_u16(x);
+            fingerprint.write_u16(z);
+            fingerprint.write_u8(size_x);
+            fingerprint.write_u8(size_z);
+        }
+        FacingTarget::Angle(angle) => {
+            fingerprint.write_u8(2);
+            fingerprint.write_u16(angle);
+        }
+        FacingTarget::Cleared => fingerprint.write_u8(3),
+    }
+}
 fn write_actor_effects(fingerprint: &mut StableFingerprint64, effects: &crate::ActorEffectsState) {
     fingerprint.write_u64(effects.hitmarks().len() as u64);
     for hit in effects.hitmarks() {

@@ -29,6 +29,7 @@ pub(super) struct Extended {
     pub sequence: SequenceChange,
     pub sequence_delay: u8,
     pub facing: Option<u16>,
+    pub facing_block: Option<rustclient_model::FacingBlock>,
     pub temporary_speed: Option<MoveSpeed>,
     pub persistent_speed: Option<MoveSpeed>,
     pub exact_move: Option<ExactMove>,
@@ -67,7 +68,9 @@ pub(super) fn decode_extended(
     }
     if mask & 0x40 != 0 {
         let flag = r.u8()?;
-        out.facing = face(r, flag)?;
+        let block = face(r, flag)?;
+        out.facing = super::info_fields::angle_of(&block);
+        out.facing_block = Some(block);
     }
     if mask & 0x200 != 0 {
         // NAME_EXTRAS: the text before the name, after the name and after the combat level.
@@ -270,5 +273,22 @@ mod name_extras_tests {
                 "prefix {length}"
             );
         }
+    }
+
+    #[test]
+    fn a_player_facing_an_npc_is_interacting_with_it() {
+        // Mask 0x40, flag g1 0 (entity target), type 1 (NPC), index 7, fallback angle 0.
+        let bytes = [0x40, 0, 1, 0, 7, 0];
+        let mut reader = Reader::new(&bytes, "fixture");
+        let out = decode_extended(&mut reader, None).unwrap();
+        assert_eq!(reader.offset, bytes.len());
+        assert_eq!(
+            out.facing_block.and_then(|block| block.interaction()),
+            Some(rustclient_model::Interaction::Npc(
+                rustclient_model::NpcIndex::new(7)
+            ))
+        );
+        // An entity target sets no orientation of its own.
+        assert_eq!(out.facing, None);
     }
 }

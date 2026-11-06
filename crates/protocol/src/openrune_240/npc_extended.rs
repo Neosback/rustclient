@@ -153,9 +153,11 @@ pub(super) fn decode_attributes(
     }
     if mask & 0x80 != 0 {
         let flag = r.u8()?.wrapping_sub(128);
-        if let Some(angle) = face(r, flag)? {
+        let block = face(r, flag)?;
+        if let Some(angle) = super::info_fields::angle_of(&block) {
             changes.push(NpcProperty::Facing(angle));
         }
+        changes.push(NpcProperty::FacingBlock(block));
     }
     if mask & 0x0100_0000 != 0 {
         super::actor_effects::npc_headbars(r, &mut effects)?;
@@ -362,5 +364,75 @@ mod tests {
                 looping: false,
             }]
         );
+    }
+
+    #[test]
+    fn facing_blocks_keep_their_entity_area_angle_or_cleared_payload() {
+        use rustclient_model::{FacingBlock, FacingEntityKind, FacingTarget, FacingWalkPolicy};
+        let facing = |bytes: &[u8]| {
+            let update = consume(bytes).unwrap();
+            let [NpcProperty::FacingBlock(block), ..] = update.changes.as_slice() else {
+                // An angle block also emits the plain orientation change first.
+                let Some(NpcProperty::FacingBlock(block)) = update.changes.last() else {
+                    panic!("no facing block in {:?}", update.changes);
+                };
+                return *block;
+            };
+            *block
+        };
+        // Mask 0x80. Flag g1Alt1: walk 0, kind 0 (entity), control bit 6 -> 0x40 + 128.
+        // Entity type 2 (player), index 5 as two bytes, fallback angle 10.
+        let entity = facing(&[0x80, 0xc0, 2, 0, 5, 10]);
+        assert_eq!(
+            entity,
+            FacingBlock {
+                target: FacingTarget::Entity {
+                    kind: FacingEntityKind::Player,
+                    index: Some(5),
+                    fallback_angle: 10,
+                },
+                walk: FacingWalkPolicy::CancelOnWalk,
+                instant: true,
+            }
+        );
+        assert_eq!(
+            entity.interaction(),
+            Some(rustclient_model::Interaction::Player(
+                rustclient_model::PlayerIndex::new(5)
+            ))
+        );
+        // The null index 32767 and the four-byte form (top bit set, masked off).
+        let null = facing(&[0x80, 128, 1, 0x7f, 0xff, 0]);
+        assert!(matches!(
+            null.target,
+            FacingTarget::Entity { index: None, .. }
+        ));
+        assert_eq!(null.interaction(), None);
+        let wide = facing(&[0x80, 128, 1, 0x80, 0, 0, 9, 0]);
+        assert!(matches!(
+            wide.target,
+            FacingTarget::Entity { index: Some(9), .. }
+        ));
+        // Area (kind 1, walk policy 1): x 3, z 4, extents packed as 2 | 3 << 4.
+        let area = facing(&[0x80, 128 + 8 + 1, 3, 4, 0x32]);
+        assert_eq!(
+            area.target,
+            FacingTarget::Area {
+                x: 3,
+                z: 4,
+                size_x: 2,
+                size_z: 3,
+            }
+        );
+        assert_eq!(area.walk, FacingWalkPolicy::TurnOnWalk);
+        // Angle (kind 2) and cleared (kind 3).
+        assert_eq!(
+            facing(&[0x80, 128 + 16, 100]).target,
+            FacingTarget::Angle(100)
+        );
+        assert_eq!(facing(&[0x80, 128 + 24]).target, FacingTarget::Cleared);
+        // An unknown walk policy or entity type is refused.
+        assert!(consume(&[0x80, 128 + 2, 0]).is_err());
+        assert!(consume(&[0x80, 128, 9, 0, 0, 0]).is_err());
     }
 }

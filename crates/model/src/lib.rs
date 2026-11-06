@@ -7,6 +7,10 @@
 #![forbid(unsafe_code)]
 
 mod actor_effects;
+mod facing;
+pub use facing::{
+    FacingBlock, FacingEntityKind, FacingTarget, FacingWalkPolicy, Interaction, PlayerFacing,
+};
 mod brightness;
 pub mod coords;
 mod minimap;
