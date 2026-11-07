@@ -61,10 +61,16 @@ pub enum GameEventKind {
     MenuOptionClicked,
     /// The `ScriptPostFired` event class.
     ScriptPostFired,
+    /// The `ItemSpawned` event class.
+    ItemSpawned,
+    /// The `ItemDespawned` event class.
+    ItemDespawned,
+    /// The `ItemQuantityChanged` event class.
+    ItemQuantityChanged,
 }
 impl GameEventKind {
     /// All currently supported declarations, in stable declaration order.
-    pub const ALL: [Self; 28] = [
+    pub const ALL: [Self; 31] = [
         Self::GameStateChanged,
         Self::ClientTick,
         Self::GameTick,
@@ -93,6 +99,9 @@ impl GameEventKind {
         Self::PostMenuSort,
         Self::MenuOptionClicked,
         Self::ScriptPostFired,
+        Self::ItemSpawned,
+        Self::ItemDespawned,
+        Self::ItemQuantityChanged,
     ];
     /// Stable host routing index, unrelated to revision-specific packet ids.
     #[must_use]
@@ -130,6 +139,9 @@ impl GameEventKind {
             | Self::MenuOpened
             | Self::PostMenuSort
             | Self::MenuOptionClicked => Capability::UiMenuSwap,
+            Self::ItemSpawned | Self::ItemDespawned | Self::ItemQuantityChanged => {
+                Capability::GameReadGroundItems
+            }
         };
         grants.contains(required)
     }
@@ -167,6 +179,11 @@ impl EventInterest {
     #[must_use]
     pub const fn intersection(self, other: Self) -> Self {
         Self(self.0 & other.0)
+    }
+    /// Classes in this set and not in `other`.
+    #[must_use]
+    pub const fn difference(self, other: Self) -> Self {
+        Self(self.0 & !other.0)
     }
     /// Whether the sets share any class.
     #[must_use]
@@ -220,6 +237,9 @@ impl GameEvent {
             Self::PostMenuSort(_) => GameEventKind::PostMenuSort,
             Self::MenuOptionClicked(_) => GameEventKind::MenuOptionClicked,
             Self::ScriptPostFired(_) => GameEventKind::ScriptPostFired,
+            Self::ItemSpawned(_) => GameEventKind::ItemSpawned,
+            Self::ItemDespawned(_) => GameEventKind::ItemDespawned,
+            Self::ItemQuantityChanged { .. } => GameEventKind::ItemQuantityChanged,
         }
     }
 }

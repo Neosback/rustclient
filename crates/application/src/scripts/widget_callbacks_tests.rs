@@ -394,6 +394,17 @@ fn operation_listener_failure_reports_diagnostics_but_preserves_source_permissio
     );
 }
 
+fn filled_rectangle() -> WidgetBody {
+    WidgetBody::Rectangle {
+        color: 0,
+        filled: true,
+        transparency: 0,
+        fill_color: 0,
+        bottom_transparency: 0,
+        fill_mode: rustclient_model::RectangleFill::Solid,
+    }
+}
+
 #[test]
 fn listener_index_retains_order_and_ignores_visual_changes_but_tracks_child_replacement() {
     let (mut scripts, mut state, id) = setup();
@@ -439,11 +450,7 @@ fn listener_index_retains_order_and_ignores_visual_changes_but_tracks_child_repl
             parent_child: None,
             index: 0,
             reject_replace: false,
-            body: WidgetBody::Rectangle {
-                color: 0,
-                filled: true,
-                transparency: 0,
-            },
+            body: filled_rectangle(),
         }))
         .unwrap();
     let mut value = state.interfaces().runtime().get(&child).unwrap().clone();
@@ -482,11 +489,7 @@ fn listener_index_retains_order_and_ignores_visual_changes_but_tracks_child_repl
             parent_child: None,
             index: 0,
             reject_replace: false,
-            body: WidgetBody::Rectangle {
-                color: 0,
-                filled: true,
-                transparency: 0,
-            },
+            body: filled_rectangle(),
         }))
         .unwrap();
     scripts.notify(&state, WidgetListener::Timer, None).unwrap();

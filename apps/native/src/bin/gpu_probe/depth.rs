@@ -136,7 +136,7 @@ pub fn capture(path: &Path) -> Result<()> {
     save(path, "depth-deferred", &sorted)?;
     // Reversing the submitted faces excludes them before priority thresholds, not just in raster.
     let original = mesh.geometry.clone();
-    for triangle in mesh.geometry.vertices.chunks_exact_mut(3) {
+    for triangle in mesh.geometry.vertices.as_chunks_mut::<3>().0 {
         triangle.swap(1, 2);
     }
     let back = render(&mesh, camera)?;

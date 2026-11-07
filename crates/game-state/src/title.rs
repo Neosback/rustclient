@@ -55,4 +55,8 @@ pub enum LoginFailure {
     CacheMismatch,
     Protocol,
     Disconnected,
+    /// The map the server sent could not be loaded from the cache.
+    SceneLoad,
+    /// The server refused the login for a reason the player can act on.
+    Rejected(rustclient_model::LoginRejection),
 }

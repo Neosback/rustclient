@@ -86,19 +86,36 @@ impl Options {
                 _ => return Err(format!("unknown option {arg:?}; use --help")),
             }
         }
+        let preferences_dir = preferences_dir
+            .or_else(|| {
+                default_preferences_dir(
+                    std::env::consts::OS,
+                    |name| std::env::var_os(name),
+                    std::path::Path::exists,
+                )
+            })
+            .ok_or("--preferences-dir is required when no home directory can be found")?;
+        // Development checkouts keep the server beside the client; the player-facing default is a
+        // `cache` folder in the preferences directory.
+        let searched: Vec<PathBuf> = [
+            "/Users/tylercovalt/Desktop/OpenRune Project/OpenRune-Server/.data/cache/LIVE",
+            "/Users/tylercovalt/Desktop/LIVE",
+            "../OpenRune-Server/.data/cache/LIVE",
+        ]
+        .iter()
+        .map(PathBuf::from)
+        .chain([preferences_dir.join("cache")])
+        .collect();
         let cache_dir = cache_dir
             .or_else(|| std::env::var_os("RUSTCLIENT_CACHE_DIR").map(PathBuf::from))
-            .or_else(|| {
-                [
-                    "/Users/tylercovalt/Desktop/OpenRune Project/OpenRune-Server/.data/cache/LIVE",
-                    "/Users/tylercovalt/Desktop/LIVE",
-                    "../OpenRune-Server/.data/cache/LIVE",
-                ]
-                .iter()
-                .map(PathBuf::from)
-                .find(|p| p.exists())
-            })
-            .ok_or("--cache-dir is required (or set RUSTCLIENT_CACHE_DIR); use --help")?;
+            .or_else(|| searched.iter().find(|p| p.exists()).cloned())
+            .ok_or_else(|| {
+                format!(
+                    "no game cache found. Pass --cache-dir, set RUSTCLIENT_CACHE_DIR, or put the \
+                     cache in {}; use --help",
+                    preferences_dir.join("cache").display()
+                )
+            })?;
 
         let profile = profile
             .or_else(|| {
@@ -129,11 +146,6 @@ impl Options {
             }
         }
 
-        let preferences_dir = preferences_dir
-            .or_else(|| {
-                std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".rustclient"))
-            })
-            .ok_or("--preferences-dir is required when HOME is unavailable")?;
         let plugins_dir = plugins_dir.unwrap_or_else(|| preferences_dir.join("plugins"));
         let connection = match (server_profile, public_key) {
             (None, None) if !endpoint_option => None,
@@ -166,5 +178,76 @@ impl Options {
         println!(
             "RustClient desktop title\n\ncargo run -p rustclient-native\n\nOptions:\n  --cache-dir PATH                       cache directory (auto-detected if omitted)\n  --cache-profile osrs-240|openrune-240  use openrune-240 for the server repack (auto-detected)\n  --server-profile openrune-240.2 --rsa-public-key PATH  enable dev server login (auto-detected)\n  --offline                              disable automatic dev server login\n  --server-host IP --server-port PORT    defaults: 127.0.0.1:43594\n  --preferences-dir PATH                 override local preferences directory\n  --plugins-dir PATH                     plugin package directory (default: <preferences-dir>/plugins)\n  --capture-dir PATH                     capture deterministic GPU frames and verify rebuild, then exit"
         );
+    }
+}
+
+/// Where preferences live when `--preferences-dir` is not given: an existing legacy `~/.rustclient`
+/// first, so earlier runs keep their data, then the platform's per-user application folder.
+fn default_preferences_dir(
+    os: &str,
+    env: impl Fn(&str) -> Option<std::ffi::OsString>,
+    exists: impl Fn(&std::path::Path) -> bool,
+) -> Option<PathBuf> {
+    let home = env("HOME")
+        .or_else(|| env("USERPROFILE"))
+        .map(PathBuf::from);
+    if let Some(legacy) = home.as_ref().map(|home| home.join(".rustclient"))
+        && exists(&legacy)
+    {
+        return Some(legacy);
+    }
+    match os {
+        "windows" => env("APPDATA").map(|dir| PathBuf::from(dir).join("RustClient")),
+        "macos" => home.map(|home| home.join("Library/Application Support/RustClient")),
+        _ => env("XDG_CONFIG_HOME")
+            .map(|dir| PathBuf::from(dir).join("rustclient"))
+            .or_else(|| home.map(|home| home.join(".config/rustclient"))),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::{collections::HashMap, ffi::OsString, path::Path};
+
+    fn env<'a>(pairs: &'a [(&'a str, &'a str)]) -> impl Fn(&str) -> Option<OsString> + 'a {
+        let map: HashMap<_, _> = pairs.iter().copied().collect();
+        move |name| map.get(name).map(OsString::from)
+    }
+
+    #[test]
+    fn preferences_follow_the_platform_and_keep_an_existing_legacy_folder() {
+        let home = [("HOME", "/home/a")];
+        assert_eq!(
+            default_preferences_dir("linux", env(&home), |_| false),
+            Some(PathBuf::from("/home/a/.config/rustclient"))
+        );
+        assert_eq!(
+            default_preferences_dir(
+                "linux",
+                env(&[("HOME", "/home/a"), ("XDG_CONFIG_HOME", "/x")]),
+                |_| false
+            ),
+            Some(PathBuf::from("/x/rustclient"))
+        );
+        assert_eq!(
+            default_preferences_dir("macos", env(&home), |_| false),
+            Some(PathBuf::from(
+                "/home/a/Library/Application Support/RustClient"
+            ))
+        );
+        assert_eq!(
+            default_preferences_dir("windows", env(&[("APPDATA", "C:/Users/a/AppData")]), |_| {
+                false
+            }),
+            Some(PathBuf::from("C:/Users/a/AppData/RustClient"))
+        );
+        // Earlier runs wrote to ~/.rustclient; keep using it.
+        assert_eq!(
+            default_preferences_dir("linux", env(&home), |path| path
+                == Path::new("/home/a/.rustclient")),
+            Some(PathBuf::from("/home/a/.rustclient"))
+        );
+        assert_eq!(default_preferences_dir("linux", env(&[]), |_| false), None);
     }
 }

@@ -11,7 +11,7 @@ use crate::{GameState, OperationCommit, SemanticEvent, SessionLifecycle};
 ///
 /// Any change to field ordering, tags, integer encoding, or fingerprint
 /// algorithm that changes canonical output must increment this version.
-pub const SEMANTIC_FINGERPRINT_VERSION: u16 = 29;
+pub const SEMANTIC_FINGERPRINT_VERSION: u16 = 34;
 
 const FNV_OFFSET_BASIS: u64 = 0xCBF2_9CE4_8422_2325;
 const FNV_PRIME: u64 = 0x0000_0100_0000_01B3;
@@ -272,6 +272,19 @@ impl GameState {
             fingerprint.write_bytes(&skill.current.to_le_bytes());
             fingerprint.write_bytes(&skill.invisible.to_le_bytes());
         }
+        for slot in 1..=8 {
+            match entities.player_option(slot) {
+                None => fingerprint.write_u8(0),
+                Some(option) => {
+                    fingerprint.write_u8(1);
+                    fingerprint.write_u8(u8::from(option.priority));
+                    fingerprint.write_u32(
+                        u32::try_from(option.text.len()).expect("bounded player option"),
+                    );
+                    fingerprint.write_bytes(option.text.as_bytes());
+                }
+            }
+        }
         match entities.local_player_index() {
             None => fingerprint.write_u8(0),
             Some(idx) => {
@@ -320,6 +333,8 @@ impl GameState {
                 }
             }
             fingerprint.write_u32(player.animation_cycle);
+            write_actor_effects(&mut fingerprint, &player.effects);
+            write_facing(&mut fingerprint, player.facing.as_ref());
             fingerprint.write_u8(match player.locomotion {
                 crate::Locomotion::Idle => 0,
                 crate::Locomotion::Walk => 1,
@@ -397,6 +412,8 @@ impl GameState {
                 }
             }
             fingerprint.write_u32(npc.animation_cycle);
+            write_actor_effects(&mut fingerprint, &npc.effects);
+            write_facing(&mut fingerprint, npc.facing.as_ref());
             match npc.sequence.sequence {
                 None => fingerprint.write_u8(0),
                 Some(seq) => {
@@ -438,7 +455,129 @@ impl GameState {
                 &entities.sequence_timings,
             );
         }
+        write_ground_items(&mut fingerprint, self.ground_items());
         StateFingerprint(fingerprint.finish())
+    }
+}
+
+fn write_facing(
+    fingerprint: &mut StableFingerprint64,
+    facing: Option<&rustclient_model::FacingBlock>,
+) {
+    use rustclient_model::{FacingEntityKind, FacingTarget, FacingWalkPolicy};
+    let Some(block) = facing else {
+        fingerprint.write_u8(0);
+        return;
+    };
+    fingerprint.write_u8(1);
+    fingerprint.write_u8(match block.walk {
+        FacingWalkPolicy::CancelOnWalk => 0,
+        FacingWalkPolicy::TurnOnWalk => 1,
+    });
+    fingerprint.write_u8(u8::from(block.instant));
+    match block.target {
+        FacingTarget::Entity {
+            kind,
+            index,
+            fallback_angle,
+        } => {
+            fingerprint.write_u8(0);
+            fingerprint.write_u8(match kind {
+                FacingEntityKind::None => 0,
+                FacingEntityKind::Npc => 1,
+                FacingEntityKind::Player => 2,
+                FacingEntityKind::WorldEntity => 3,
+            });
+            fingerprint.write_u8(u8::from(index.is_some()));
+            fingerprint.write_u32(index.unwrap_or(0));
+            fingerprint.write_u16(fallback_angle);
+        }
+        FacingTarget::Area {
+            x,
+            z,
+            size_x,
+            size_z,
+        } => {
+            fingerprint.write_u8(1);
+            fingerprint.write_u16(x);
+            fingerprint.write_u16(z);
+            fingerprint.write_u8(size_x);
+            fingerprint.write_u8(size_z);
+        }
+        FacingTarget::Angle(angle) => {
+            fingerprint.write_u8(2);
+            fingerprint.write_u16(angle);
+        }
+        FacingTarget::Cleared => fingerprint.write_u8(3),
+    }
+}
+fn write_actor_effects(fingerprint: &mut StableFingerprint64, effects: &crate::ActorEffectsState) {
+    fingerprint.write_u64(effects.hitmarks().len() as u64);
+    for hit in effects.hitmarks() {
+        for value in [hit.kind, hit.amount, hit.delay, hit.limit] {
+            fingerprint.write_u16(value);
+        }
+        fingerprint.write_u64(hit.applied.get());
+    }
+    fingerprint.write_u64(effects.headbars().len() as u64);
+    for track in effects.headbars() {
+        fingerprint.write_u16(track.kind);
+        fingerprint.write_u64(track.updates.len() as u64);
+        for update in &track.updates {
+            fingerprint.write_u64(update.cycle.get());
+            fingerprint.write_u8(update.start_fill);
+            fingerprint.write_u8(update.end_fill);
+            fingerprint.write_u16(update.duration);
+        }
+    }
+    fingerprint.write_u64(effects.spotanims().count() as u64);
+    for (slot, anim) in effects.spotanims() {
+        fingerprint.write_u8(slot);
+        fingerprint.write_u32(anim.id.get());
+        fingerprint.write_u16(anim.height);
+        fingerprint.write_u16(anim.delay);
+        fingerprint.write_u8(u8::from(anim.looping));
+        fingerprint.write_u64(anim.applied.get());
+    }
+}
+
+fn write_ground_items(fingerprint: &mut StableFingerprint64, items: &crate::GroundItemsState) {
+    fingerprint.write_u64(items.piles().len() as u64);
+    for (tile, pile) in items.piles() {
+        write_tile(fingerprint, tile);
+        fingerprint.write_u64(pile.len() as u64);
+        for item in pile {
+            fingerprint.write_u32(item.item.get());
+            fingerprint.write_u32(item.quantity);
+            for enabled in item.ops.enabled() {
+                fingerprint.write_u8(u8::from(enabled));
+            }
+            fingerprint.write_u8(item.ownership.0);
+            fingerprint.write_u64(item.public_at.get());
+            fingerprint.write_u64(item.despawn_at.get());
+            fingerprint.write_u8(u8::from(item.never_public));
+            match item.customisation {
+                None => fingerprint.write_u8(0),
+                Some(custom) => {
+                    fingerprint.write_u8(1);
+                    fingerprint.write_u32(
+                        custom
+                            .model
+                            .map_or(u32::MAX, rustclient_model::ModelId::get),
+                    );
+                    for pair in [custom.recolour, custom.retexture] {
+                        match pair {
+                            None => fingerprint.write_u8(0),
+                            Some((index, value)) => {
+                                fingerprint.write_u8(1);
+                                fingerprint.write_u16(index);
+                                fingerprint.write_u16(value);
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -713,6 +852,7 @@ fn write_commit(fingerprint: &mut StableFingerprint64, commit: OperationCommit) 
     fingerprint.write_u8(u8::from(delta.gameframe_changed()));
     fingerprint.write_u8(u8::from(delta.inventory_changed()));
     fingerprint.write_u8(u8::from(delta.interfaces_changed()));
+    fingerprint.write_u8(u8::from(delta.ground_items_changed()));
 }
 
 #[expect(
@@ -724,6 +864,17 @@ fn write_event(fingerprint: &mut StableFingerprint64, event: SemanticEvent) {
         SemanticEvent::DestinationChanged(destination) => {
             fingerprint.write_u8(21);
             write_destination(fingerprint, destination);
+        }
+        SemanticEvent::GroundItemsChanged { tile } => {
+            fingerprint.write_u8(24);
+            write_tile(fingerprint, tile);
+        }
+        SemanticEvent::GroundItemAreaReset { origin, size } => {
+            fingerprint.write_u8(25);
+            write_tile(fingerprint, origin);
+            for value in size {
+                fingerprint.write_u32(value);
+            }
         }
         SemanticEvent::LocationAreaReset { origin, size } => {
             fingerprint.write_u8(20);
@@ -904,7 +1055,12 @@ fn write_title(fingerprint: &mut StableFingerprint64, screen: TitleScreen) {
                     LoginFailure::CacheMismatch => 2,
                     LoginFailure::Protocol => 3,
                     LoginFailure::Disconnected => 4,
+                    LoginFailure::SceneLoad => 5,
+                    LoginFailure::Rejected(_) => 6,
                 });
+                if let LoginFailure::Rejected(rejection) = failure {
+                    fingerprint.write_u8(rejection.stable_id());
+                }
             }
         }
         TitleScreen::Information(info) => {

@@ -39,11 +39,9 @@ DISPOSITIONS = {
 }
 # Events whose variant exists and is diffed from projected actor fields that the projector
 # currently hard-codes empty (crates/plugin-bridge/src/project.rs), so they cannot fire.
-SOURCE_ABSENT = {
-    'GraphicChanged': 'ActorState.graphic is always None: no spot-animation state in GameState',
-    'InteractingChanged': 'ActorState.interacting is always None: no target-facing state in GameState',
-    'HitsplatApplied': 'ActorState.hitsplats is always empty: no hitsplat state in GameState',
-}
+# Events a plugin can subscribe to whose source state is not retained yet. Empty: graphics,
+# hitsplats and the interaction target are all retained and projected.
+SOURCE_ABSENT: dict[str, str] = {}
 
 
 def tsv(rows, header):

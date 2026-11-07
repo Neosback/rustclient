@@ -44,7 +44,7 @@ impl Subscription {
 #[derive(Default)]
 pub(crate) struct Routes {
     key: Option<(u64, usize)>,
-    classes: [Vec<usize>; GameEventKind::ALL.len()],
+    pub(crate) classes: [Vec<usize>; GameEventKind::ALL.len()],
 }
 impl Routes {
     fn prepare(&mut self, registration: u64, plugins: &[LoadedPlugin]) {

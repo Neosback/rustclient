@@ -202,8 +202,8 @@ impl NativeApp {
         match scripts.dispatch_listener(&mut self.state, address, kind, event) {
             Ok(Some(outcome)) => {
                 for error in outcome.errors {
-                    if self.reported_script_errors.len() < 256
-                        && self.reported_script_errors.insert(error.clone())
+                    if self.scratch.reported_script_errors.len() < 256
+                        && self.scratch.reported_script_errors.insert(error.clone())
                     {
                         eprintln!("widget listener {kind:?}: {error}");
                     }
@@ -329,6 +329,11 @@ impl NativeApp {
                 .find(|candidate| *candidate != address);
             if let Some(mouse) = self.drag_mouse(held, address, x, y) {
                 self.fire_listener(address, WidgetListener::DragComplete, mouse, target);
+            }
+            // Stock sends `IF_BUTTOND` after the `onDragComplete` script has run (classPQ), so
+            // the items are read after the script's own changes.
+            if let Some(target) = target {
+                self.send_widget_drop(address, target);
             }
         }
     }

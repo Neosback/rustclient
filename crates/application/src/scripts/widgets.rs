@@ -2,8 +2,8 @@ use super::{Result, ScriptHost};
 use rustclient_cache::script::Opcode;
 use rustclient_client_script::{Context, Stacks};
 use rustclient_model::{
-    FillGradient, FontId, InterfaceUpdate, ItemDefinitionId, NpcDefinitionId, ScriptValue,
-    SpriteId, WidgetAddress, WidgetBody, WidgetHead, WidgetListener, WidgetOpKeys, WidgetOperation,
+    FontId, InterfaceUpdate, ItemDefinitionId, NpcDefinitionId, ScriptValue, SpriteId,
+    WidgetAddress, WidgetBody, WidgetHead, WidgetListener, WidgetOpKeys, WidgetOperation,
     WidgetProperty,
 };
 use rustclient_platform::ReadOnlyBlobs;
@@ -473,29 +473,41 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
                 }
                 runtime.body = Some(body);
             }
-            // `classBB.method807`: the second colour, second transparency and gradient the
-            // rectangle painter in `classGP` blends towards; the cache format carries none.
-            Opcode::CcSetfillcolour => {
-                let value = s.int()?;
-                runtime.fill.get_or_insert_with(Default::default).end_color = value.cast_unsigned();
-            }
-            Opcode::CcSetfilltransparency => {
-                let value = s.int()?;
-                runtime
-                    .fill
-                    .get_or_insert_with(Default::default)
-                    .end_transparency = low_byte(value);
-            }
-            Opcode::CcSetgradient => {
-                // An id with no gradient leaves the widget as it was.
-                if let Some(gradient) = FillGradient::from_id(s.int()?) {
-                    runtime.fill.get_or_insert_with(Default::default).gradient = gradient;
-                }
-            }
             CcSetfill => {
                 let value = s.int()?;
                 if let WidgetBody::Rectangle { filled, .. } = &mut body {
                     *filled = value == 1;
+                }
+                runtime.body = Some(body);
+            }
+            // 235 `class575`: 1123 sets `color2`, 1124 `transparencyBot`, 1125 `fillMode` by
+            // ordinal (an unknown ordinal leaves the mode unchanged). Each is stored for any
+            // widget type in the reference; only rectangles draw them.
+            Opcode::CcSetfillcolour => {
+                let value = s.int()?.cast_unsigned();
+                if let WidgetBody::Rectangle { fill_color, .. } = &mut body {
+                    *fill_color = value;
+                }
+                runtime.body = Some(body);
+            }
+            Opcode::CcSetbottomtrans => {
+                let value = s.int()?;
+                if let WidgetBody::Rectangle {
+                    bottom_transparency,
+                    ..
+                } = &mut body
+                {
+                    *bottom_transparency = u8::try_from(value).map_err(|_| "transparency")?;
+                }
+                runtime.body = Some(body);
+            }
+            Opcode::CcSetfillmode => {
+                let value = s.int()?;
+                if let (WidgetBody::Rectangle { fill_mode, .. }, Some(mode)) = (
+                    &mut body,
+                    rustclient_model::RectangleFill::from_ordinal(value),
+                ) {
+                    *fill_mode = mode;
                 }
                 runtime.body = Some(body);
             }
@@ -599,6 +611,7 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
             }
             CcSetobject | CcSetobjectNonum | CcSetobjectAlwaysNum => {
                 let [id, count] = s.ints()?;
+                // `modelType` 4 replaces any head.
                 runtime.head = None;
                 runtime.item = u32::try_from(id)
                     .ok()
@@ -767,8 +780,10 @@ pub(super) fn instruction<S: ReadOnlyBlobs>(
                 return Ok(true);
             }
             Opcode::CcGetfillcolour => {
-                s.integers
-                    .push(runtime.fill.map_or(0, |fill| fill.end_color.cast_signed()));
+                s.integers.push(match &body {
+                    WidgetBody::Rectangle { fill_color, .. } => fill_color.cast_signed(),
+                    _ => 0,
+                });
                 return Ok(true);
             }
             CcGetinvobject | CcGetinvcount => {

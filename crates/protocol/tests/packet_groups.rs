@@ -144,3 +144,22 @@ fn group_byte_count_includes_smart_opcodes_and_variable_length_prefixes() {
         ]
     );
 }
+
+#[test]
+fn unhandled_opcodes_are_counted_and_reported_once_while_decoded_ones_are_not() {
+    let mut cipher = Isaac::new([0; 4]);
+    let mut bytes = packet(&mut cipher, 151, &[0; 8]);
+    bytes.extend(packet(&mut cipher, 92, &[]));
+    bytes.extend(packet(&mut cipher, 151, &[0; 8]));
+    let mut codec = codec();
+    codec.receive_batches(&bytes, |_| {}).unwrap();
+    assert_eq!(codec.unhandled_opcodes().get(&151), Some(&2));
+    assert!(!codec.unhandled_opcodes().contains_key(&92));
+    assert_eq!(codec.take_new_unhandled(), [151]);
+    // A known-unhandled opcode is announced only the first time it is seen.
+    let mut more = packet(&mut cipher, 151, &[0; 8]);
+    more.extend(packet(&mut cipher, 92, &[]));
+    codec.receive_batches(&more, |_| {}).unwrap();
+    assert!(codec.take_new_unhandled().is_empty());
+    assert_eq!(codec.unhandled_opcodes().get(&151), Some(&3));
+}

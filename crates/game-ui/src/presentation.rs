@@ -4,6 +4,7 @@ use crate::{
 };
 use rustclient_cache::{BitmapFont, Sprite, TitleAssets, cp1252};
 use rustclient_game_state::{GameState, LoginFailure, LoginStatus, TitleInformation, TitleScreen};
+use rustclient_model::LoginRejection;
 
 const CLIP: Rect = Rect::new(0., 0., 765., 503.);
 const WHITE: [u8; 4] = [255; 4];
@@ -384,6 +385,122 @@ fn title_chrome(assets: &TitleAssets, frame: &mut UiFrame) {
     sprite(frame, UiImageId::TitleBox, &assets.title_box, 202., 171.);
 }
 
+/// The stock client's three-line message for a refused login.
+#[expect(
+    clippy::too_many_lines,
+    reason = "one text table row per refusal keeps each message beside its variant"
+)]
+fn rejection_lines(rejection: LoginRejection) -> [&'static str; 3] {
+    match rejection {
+        LoginRejection::InvalidCredentials => ["Invalid username or password.", "", ""],
+        LoginRejection::AccountDisabled => [
+            "Your account has been disabled.",
+            "Please check your message-centre for details.",
+            "",
+        ],
+        LoginRejection::AlreadyLoggedIn => [
+            "Your account has not logged out from its last",
+            "session or the last session timed out.",
+            "Please try again in a few minutes.",
+        ],
+        LoginRejection::ClientOutOfDate => [
+            "RuneScape has been updated!",
+            "Please download the latest client.",
+            "",
+        ],
+        LoginRejection::WorldFull => ["This world is full.", "Please use a different world.", ""],
+        LoginRejection::ServerOffline => ["Unable to connect.", "Login server offline.", ""],
+        LoginRejection::LoginLimit => [
+            "Login limit exceeded.",
+            "Too many connections from your address.",
+            "",
+        ],
+        LoginRejection::BadSession => ["Unable to connect.", "Bad session id.", ""],
+        LoginRejection::PasswordCompromised => [
+            "We suspect someone knows your password.",
+            "Press 'change your password' on front page.",
+            "",
+        ],
+        LoginRejection::MembersWorld => [
+            "You need a members' account to use this world.",
+            "Please subscribe, or use a different world.",
+            "",
+        ],
+        LoginRejection::CouldNotComplete => [
+            "Could not complete login.",
+            "Please try using a different world.",
+            "",
+        ],
+        LoginRejection::ServerUpdating => [
+            "The server is being updated.",
+            "Please wait 1 minute and try again.",
+            "",
+        ],
+        LoginRejection::TooManyAttempts => [
+            "Too many incorrect logins from your address.",
+            "Please wait 5 minutes before trying again.",
+            "",
+        ],
+        LoginRejection::MembersArea => [
+            "You are standing in a members-only area.",
+            "To play on this world move to a free area first.",
+            "",
+        ],
+        LoginRejection::AccountLocked => [
+            "Account locked as we suspect it has been stolen.",
+            "Press 'recover a locked account' on front page.",
+            "",
+        ],
+        LoginRejection::ClosedBeta => [
+            "This world is running a closed beta.",
+            "Sorry invited players only.",
+            "Please use a different world.",
+        ],
+        LoginRejection::InvalidLoginServer => [
+            "Invalid loginserver requested.",
+            "Please try using a different world.",
+            "",
+        ],
+        LoginRejection::ProfileTransfer => [
+            "You have only just left another world.",
+            "Your profile will be transferred in a moment.",
+            "Please try again in a few seconds.",
+        ],
+        LoginRejection::MalformedPacket => ["Malformed login packet.", "Please try again.", ""],
+        LoginRejection::NoReply => [
+            "No reply from loginserver.",
+            "Please wait 1 minute and try again.",
+            "",
+        ],
+        LoginRejection::ProfileError => {
+            ["Error loading your profile.", "Please contact support.", ""]
+        }
+        LoginRejection::UnexpectedResponse => [
+            "Unexpected loginserver response.",
+            "Please try using a different world.",
+            "",
+        ],
+        LoginRejection::AddressBlocked => [
+            "This computer's address has been blocked",
+            "as it was used to break our rules.",
+            "",
+        ],
+        LoginRejection::ServiceUnavailable => {
+            ["Service unavailable.", "Please try again later.", ""]
+        }
+        LoginRejection::TwoFactorRequired => [
+            "This account needs two-factor authentication.",
+            "That is not supported by this client yet.",
+            "",
+        ],
+        LoginRejection::Other => [
+            "Login was rejected by the server.",
+            "Check your account and password.",
+            "See diagnostics for the reason.",
+        ],
+    }
+}
+
 fn login_lines(status: LoginStatus) -> [&'static str; 3] {
     match status {
         LoginStatus::Connecting => ["Connecting to server...", "Please wait", ""],
@@ -412,6 +529,12 @@ fn login_lines(status: LoginStatus) -> [&'static str; 3] {
                 "Disconnected from server.",
                 "Your session has ended.",
                 "Please log in again.",
+            ],
+            LoginFailure::Rejected(rejection) => rejection_lines(rejection),
+            LoginFailure::SceneLoad => [
+                "The game world could not be loaded.",
+                "Check the cache path and profile.",
+                "See client diagnostics for the reason.",
             ],
         },
         LoginStatus::Prompt => ["", "Enter your username/email & password.", ""],
@@ -555,3 +678,16 @@ fn coordinate(value: f32) -> i32 {
 
 // Assert that the dynamic upload shape remains an explicit part of the projection contract.
 const _: u32 = Flames::WIDTH;
+
+#[cfg(test)]
+mod rejection_tests {
+    use super::*;
+
+    #[test]
+    fn every_login_response_code_has_a_message() {
+        for code in 0..=u8::MAX {
+            let lines = rejection_lines(LoginRejection::from_code(code));
+            assert!(!lines[0].is_empty(), "code {code}");
+        }
+    }
+}

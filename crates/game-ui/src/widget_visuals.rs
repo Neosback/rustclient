@@ -1,8 +1,8 @@
 //! CPU images and fonts retained independently of live widget state and GPU resources.
-use crate::{Rect, UiFrame, UiImageId, fill_gradient::Gradient};
+use crate::{Rect, UiFrame, UiImageId};
 use rustclient_cache::{BitmapFont, Image, widget::InterfaceDefinition};
 use rustclient_game_state::GameState;
-use rustclient_model::{FillGradient, FontId, InterfaceId, SpriteId, WidgetBody, WidgetContent};
+use rustclient_model::{FontId, InterfaceId, SpriteId, WidgetBody, WidgetContent};
 use std::collections::BTreeMap;
 #[derive(Default)]
 pub struct WidgetVisualAssets {
@@ -273,34 +273,21 @@ pub fn project_widgets_with_retained_tree(
                 color,
                 filled,
                 transparency,
+                fill_color,
+                bottom_transparency,
+                fill_mode,
             } => {
-                let gradient = state
-                    .interfaces()
-                    .runtime()
-                    .get(&node.address)
-                    .and_then(|runtime| runtime.fill)
-                    .filter(|fill| filled && fill.gradient != FillGradient::Solid)
-                    .map(|fill| Gradient {
-                        kind: fill.gradient,
-                        top: color,
-                        bottom: fill.end_color,
-                        transparency: [transparency, fill.end_transparency],
-                    });
-                if let Some(gradient) = gradient {
-                    let height = u32::try_from(node.bounds.height).unwrap_or(0);
-                    if height > 0 {
-                        let row_height = rect.height / f(node.bounds.height);
-                        for (index, row) in gradient.rows(height).enumerate() {
-                            if let Some(row) = row {
-                                let y = rect.y + row_height * f(i32::try_from(index).unwrap_or(0));
-                                frame.image_tinted(
-                                    UiImageId::White,
-                                    Rect::new(rect.x, y, rect.width, row_height),
-                                    clip,
-                                    rgba(row.color, row.alpha),
-                                );
-                            }
-                        }
+                if filled && fill_mode != rustclient_model::RectangleFill::Solid {
+                    let opacity = (fill_mode == rustclient_model::RectangleFill::GradientAlpha)
+                        .then_some((255 - transparency, 255 - bottom_transparency));
+                    for (row, rows, tint) in gradient_rows(rect.height, color, fill_color, opacity)
+                    {
+                        frame.image_tinted(
+                            UiImageId::White,
+                            Rect::new(rect.x, rect.y + row, rect.width, rows),
+                            clip,
+                            tint,
+                        );
                     }
                     continue;
                 }
@@ -567,6 +554,59 @@ fn sprite_placement(
         clip: Some(bounds),
     })
 }
+/// The rows of a vertical gradient fill, as `(first row, row count, colour)` runs of equal colour.
+///
+/// Mirrors `Rasterizer2D_fillRectangleGradient(Alpha)`: a 16.16 position advances by
+/// `65536 / height` per row and blends `top` toward `bottom` with 8-bit weights; with `opacity`
+/// the row alpha blends the top and bottom opacities the same way and fully transparent rows are
+/// skipped.
+fn gradient_rows(
+    height: f32,
+    top: u32,
+    bottom: u32,
+    opacity: Option<(u8, u8)>,
+) -> Vec<(f32, f32, [u8; 4])> {
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "widget heights are small non-negative logical pixel counts"
+    )]
+    let rows = height.round().max(0.) as u32;
+    let mut out: Vec<(f32, f32, [u8; 4])> = Vec::new();
+    if rows == 0 {
+        return out;
+    }
+    let step = 65_536 / rows;
+    let mut position = 0_u32;
+    for row in 0..rows {
+        let lower = position >> 8;
+        let upper = (65_536 - position) >> 8;
+        let blend = (((lower * (bottom & 0x00ff_00ff) + upper * (top & 0x00ff_00ff))
+            & 0xff00_ff00)
+            .wrapping_add(
+                (lower * (bottom & 0x0000_ff00) + upper * (top & 0x0000_ff00)) & 0x00ff_0000,
+            ))
+            >> 8;
+        let alpha = opacity.map_or(255, |(a, b)| {
+            ((upper * u32::from(a) + lower * u32::from(b)) & 0xff00) >> 8
+        });
+        position += step;
+        if alpha == 0 {
+            continue;
+        }
+        #[expect(clippy::cast_possible_truncation, reason = "alpha is masked to 8 bits")]
+        let tint = rgba(blend, alpha as u8);
+        #[expect(clippy::cast_precision_loss, reason = "row counts are small")]
+        let y = row as f32;
+        match out.last_mut() {
+            Some((start, count, last)) if *last == tint && (*start + *count - y).abs() < 0.5 => {
+                *count += 1.;
+            }
+            _ => out.push((y, 1., tint)),
+        }
+    }
+    out
+}
 fn rgba(color: u32, alpha: u8) -> [u8; 4] {
     let [_, r, g, b] = color.to_be_bytes();
     [r, g, b, alpha]
@@ -757,5 +797,43 @@ mod tests {
         assert_eq!(assets.sprite_frames[&SpriteId::new(7)].canvas, [4, 4]);
         assert!(!assets.images.contains_key(&UiImageId::Sprite(8)));
         assert!(!assets.sprite_frames.contains_key(&SpriteId::new(8)));
+    }
+}
+
+#[cfg(test)]
+mod gradient_tests {
+    use super::gradient_rows;
+
+    #[test]
+    fn gradient_rows_follow_the_reference_fixed_point_blend() {
+        // Two rows: the first is pure top, the second is half way (position 32768, both weights
+        // 128), so each channel is 255 * 128 >> 8 = 127.
+        let rows = gradient_rows(2., 0x00ff_0000, 0x0000_00ff, None);
+        assert_eq!(
+            rows,
+            [(0., 1., [255, 0, 0, 255]), (1., 1., [127, 0, 127, 255])]
+        );
+    }
+
+    #[test]
+    fn equal_rows_merge_and_transparent_rows_are_skipped() {
+        // A power-of-two height keeps the weights summing to 256, so equal ends stay exact and
+        // every row merges into one quad.
+        let solid = gradient_rows(8., 0x0012_3456, 0x0012_3456, None);
+        assert_eq!(solid, [(0., 8., [0x12, 0x34, 0x56, 255])]);
+        // Other heights truncate both weights; the reference darkens those rows by one step.
+        let truncated = gradient_rows(10., 0x0012_3456, 0x0012_3456, None);
+        assert_eq!(
+            truncated,
+            [
+                (0., 1., [0x12, 0x34, 0x56, 255]),
+                (1., 9., [0x11, 0x33, 0x55, 255])
+            ]
+        );
+        // Fully transparent at both ends draws nothing.
+        assert!(gradient_rows(4., 0, 0x00ff_ffff, Some((0, 0))).is_empty());
+        // Opacity ramps from the top value toward the bottom one.
+        let ramp = gradient_rows(2., 0, 0, Some((255, 0)));
+        assert_eq!(ramp, [(0., 1., [0, 0, 0, 255]), (1., 1., [0, 0, 0, 127])]);
     }
 }

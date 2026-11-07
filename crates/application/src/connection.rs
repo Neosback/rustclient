@@ -1,5 +1,7 @@
 //! Shared interpretation of authenticated profile updates as semantic operations.
-use rustclient_game_state::{AuthenticatedPlayer, InitialPlacement, SemanticOperation};
+use rustclient_game_state::{
+    AuthenticatedPlayer, GroundItemOperation, InitialPlacement, SemanticOperation,
+};
 use rustclient_model::TickSpan;
 use rustclient_protocol::{LoginSession, Result, ServerProfile, ServerUpdate, SessionCodec};
 /// Narrow connection decoder, storing only wire phase/ciphers rather than game truth.
@@ -39,10 +41,23 @@ impl ConnectionDecoder {
     pub fn set_chat_codec(&mut self, codec: rustclient_protocol::Huffman) {
         self.codec.set_chat_codec(codec);
     }
+    /// Supply the cache-backed NPC recolour and retexture counts that size customisation blocks.
+    pub fn set_npc_shapes(&mut self, shapes: rustclient_protocol::NpcShapeLookup) {
+        self.codec.set_npc_shapes(shapes);
+    }
     /// Profile packet count for diagnostics; not semantic time.
     #[must_use]
     pub const fn framed_packets(&self) -> u64 {
         self.codec.framed_packets()
+    }
+    /// Per-opcode counts of server packets consumed without decoding (diagnostic).
+    #[must_use]
+    pub const fn unhandled_opcodes(&self) -> &std::collections::BTreeMap<u16, u64> {
+        self.codec.unhandled_opcodes()
+    }
+    /// Opcodes first seen since the last call, so each can be logged once.
+    pub fn take_new_unhandled(&mut self) -> Vec<u16> {
+        self.codec.take_new_unhandled()
     }
     #[must_use]
     pub const fn awaiting_initial_rebuild(&self) -> bool {
@@ -71,6 +86,7 @@ impl ConnectionDecoder {
                 stage: "connection consumer",
                 detail: "script or session-control consumer required".into(),
                 transport: None,
+                rejection: None,
             });
         }
         Ok(connected)
@@ -112,6 +128,25 @@ impl ConnectionDecoder {
         Ok(connected)
     }
 }
+/// `UPDATE_ZONE_FULL_FOLLOWS`: reset the zone's location changes and empty its ground item
+/// deques, as the stock handler does.
+fn zone_reset(
+    offset: rustclient_model::TileOffset,
+    plane: rustclient_model::Plane,
+) -> [SemanticOperation; 2] {
+    [
+        SemanticOperation::Scenery(rustclient_game_state::SceneryOperation::ResetLocationArea {
+            offset,
+            plane,
+            size: [8, 8],
+        }),
+        SemanticOperation::GroundItems(GroundItemOperation::ResetArea {
+            offset,
+            plane,
+            size: [8, 8],
+        }),
+    ]
+}
 fn translate(update: ServerUpdate, mut deliver: impl FnMut(ConnectionInput), connected: &mut bool) {
     match update {
         ServerUpdate::ChatFilters(values) => deliver(ConnectionInput::Operation(
@@ -151,14 +186,13 @@ fn translate(update: ServerUpdate, mut deliver: impl FnMut(ConnectionInput), con
             SemanticOperation::ResetActorAnimations,
         )),
         ServerUpdate::LocationZoneReset(origin) => {
-            deliver(ConnectionInput::Operation(SemanticOperation::Scenery(
-                rustclient_game_state::SceneryOperation::ResetLocationArea {
-                    offset: origin.offset,
-                    plane: origin.plane,
-                    size: [8, 8],
-                },
-            )));
+            for operation in zone_reset(origin.offset, origin.plane) {
+                deliver(ConnectionInput::Operation(operation));
+            }
         }
+        ServerUpdate::GroundItem(update) => deliver(ConnectionInput::Operation(
+            SemanticOperation::GroundItems(GroundItemOperation::Update(update)),
+        )),
         ServerUpdate::Location(location) => deliver(ConnectionInput::Operation(
             SemanticOperation::Scenery(rustclient_game_state::SceneryOperation::UpdateLocation {
                 offset: location.offset,

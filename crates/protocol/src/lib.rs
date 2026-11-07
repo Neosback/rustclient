@@ -6,7 +6,8 @@ mod wire;
 pub use crypto::Isaac;
 pub use openrune_240::control::SessionControl;
 pub use openrune_240::game::{
-    Bootstrap, ChatIntent, ClientIntent, GameFramer, GamePacket, PacketBatch, decode_bootstrap,
+    Bootstrap, ChatIntent, ClientIntent, ExamineTarget, GameFramer, GamePacket, PacketBatch,
+    decode_bootstrap,
 };
 pub use openrune_240::huffman::Huffman;
 pub use openrune_240::js5::verify_cache;
@@ -47,6 +48,7 @@ impl ServerProfile {
 }
 pub use openrune_240::game::{ServerUpdate, SessionCodec, VariableUpdate};
 pub use openrune_240::loc_anim::LocAnimUpdate;
+pub use openrune_240::npc_extended::NpcShapeLookup;
 pub use openrune_240::npc_info::{NewNpc, NpcInfoUpdate, NpcMovement};
 pub use openrune_240::player_info::{PlayerInfoUpdate, PlayerMovement};
 

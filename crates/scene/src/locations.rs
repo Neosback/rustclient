@@ -174,6 +174,13 @@ fn emit_prepared(
     prepared: Vec<PreparedModel>,
     scope: Scope<'_>,
 ) -> Result<()> {
+    if matches!(scope, Scope::Static) {
+        // One upfront allocation instead of repeated doubling (and its copies) while about two
+        // million vertices are appended. Hidden faces make this an upper bound; the static
+        // vertices are partitioned and released after upload, so the slack is transient.
+        let faces: usize = prepared.iter().map(|model| model.model.faces.len()).sum();
+        mesh.geometry.vertices.reserve(faces.saturating_mul(3));
+    }
     for model in prepared {
         if let Scope::Patch(patch) = scope
             && !patch.emit.contains(&(model.source as usize))

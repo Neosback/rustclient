@@ -7,7 +7,7 @@ use std::time::Instant;
 use winit::window::Window;
 
 /// One entry of the world right-click menu.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum WorldChoice {
     Action(WorldAction),
     /// Captured world tile and map identity from when the menu was opened.
@@ -414,6 +414,13 @@ impl NativeApp {
                 self.state.entities().npcs().get(&index).map(|npc| npc.tile)
             }
             WorldTarget::Location { key, .. } => Some(key.tile),
+            WorldTarget::GroundItem { tile, .. } => Some(tile),
+            WorldTarget::Player { index, .. } => self
+                .state
+                .entities()
+                .players()
+                .get(&index)
+                .map(|player| player.tile),
         };
         connection.send(network::Outbound {
             world_action: Some(action),
@@ -445,6 +452,9 @@ impl NativeApp {
         x: f32,
         y: f32,
     ) -> Result<(), String> {
+        if let Some((_, record)) = self.menu_records.iter().find(|(c, _)| *c == choice) {
+            self.plugins.menu_chosen(record.clone());
+        }
         match choice {
             WorldChoice::Action(action) => {
                 self.send_world_action(action)?;
@@ -514,6 +524,57 @@ impl NativeApp {
                 &self.scene_visibility(window),
             )
         {
+            // Items on the tile under the pointer (deviation GROUND-ITEM-TILE-PICK: piles are
+            // not drawn yet, so the tile stands in for the pile's model bounds). Stock inserts
+            // the pile oldest first and shows the last insertion on top, so the newest item's
+            // options come first; an item whose definition is still loading is skipped.
+            // Other players standing on that tile (deviation PLAYER-TILE-PICK: players are matched
+            // by tile because their models are not part of the pick geometry yet), in index order.
+            let standing: Vec<_> = self
+                .state
+                .entities()
+                .players()
+                .values()
+                .filter(|player| player.tile == destination)
+                .map(|player| (player.index, player.instance))
+                .collect();
+            for (index, instance) in standing {
+                let target = WorldTarget::Player {
+                    index,
+                    instance,
+                    op: rustclient_model::PlayerOpSlot::new(1).expect("slot 1"),
+                };
+                if let Ok(actions) = rustclient_application::world_actions(
+                    &self.state,
+                    &loaded.asset,
+                    &self.scene.entity_catalog,
+                    scene,
+                    target,
+                ) {
+                    entries.extend(actions.into_iter().map(|(label, action)| {
+                        (label, WorldChoice::Action(action), Some(action.target))
+                    }));
+                }
+            }
+            for item in self.state.ground_items().pile(destination).iter().rev() {
+                let target = WorldTarget::GroundItem {
+                    tile: destination,
+                    item: item.item,
+                };
+                if let Ok(actions) = rustclient_application::world_actions(
+                    &self.state,
+                    &loaded.asset,
+                    &self.scene.entity_catalog,
+                    scene,
+                    target,
+                ) {
+                    entries.extend(
+                        actions.into_iter().map(|(label, action)| {
+                            (label, WorldChoice::Action(action), Some(target))
+                        }),
+                    );
+                }
+            }
             entries.push((
                 "Walk here".to_owned(),
                 WorldChoice::Walk { scene, destination },
@@ -521,6 +582,52 @@ impl NativeApp {
             ));
         }
         Ok(entries)
+    }
+    /// The world menu after the plugin menu stage (SPEC-0021): `MenuEntryAdded` for each entry,
+    /// `MenuOpened` when `opened`, then `PostMenuSort`, whose subscribers' edits reorder, remove
+    /// or relabel entries. The left click, the mouse-over text and the opened menu all use this
+    /// one list. Plugin-offered entries are added only to an opened menu.
+    fn edited_world_entries(
+        &mut self,
+        window: &Window,
+        x: f32,
+        y: f32,
+        opened: bool,
+    ) -> Result<Vec<(String, WorldChoice, Option<WorldTarget>)>, String> {
+        let mut entries = self.world_entries(window, x, y)?;
+        if opened {
+            self.add_plugin_entries(&mut entries);
+        }
+        let records: Vec<_> = entries
+            .iter()
+            .map(|(label, choice, _)| self.menu_record(label, *choice))
+            .collect();
+        self.menu_records = entries
+            .iter()
+            .zip(&records)
+            .filter(|((_, choice, _), _)| !matches!(choice, WorldChoice::Plugin { .. }))
+            .map(|((_, choice, _), record)| (*choice, record.clone()))
+            .collect();
+        if entries.is_empty() || !self.plugins.wants_menu_stage() {
+            return Ok(entries);
+        }
+        let edited = self.plugins.menu_stage(&records, opened);
+        Ok(rustclient_application::menu::apply_edited_menu(
+            entries,
+            &edited,
+            |(label, _, _), option| *label = rustclient_application::menu::relabel(label, option),
+        ))
+    }
+    /// The plugin API record of one world menu row.
+    fn menu_record(&self, label: &str, choice: WorldChoice) -> rustclient_plugin_api::MenuEntry {
+        use rustclient_application::menu::{WorldMenuRow, plugin_menu_entry};
+        match choice {
+            WorldChoice::Action(action) => plugin_menu_entry(label, WorldMenuRow::Action(action)),
+            WorldChoice::Walk { scene, destination } => {
+                plugin_menu_entry(label, WorldMenuRow::Walk { scene, destination })
+            }
+            WorldChoice::Plugin { slot } => self.plugin_menu[slot].clone(),
+        }
     }
     /// Append the entries plugins offered for the tile this menu was opened on (SPEC-0004
     /// `menu_offers`): below "Walk here", so they never become the left-click default, and only
@@ -596,7 +703,7 @@ impl NativeApp {
             window.request_redraw();
         }
     }
-    fn hover_at(&self, window: &Window) -> Option<HoverText> {
+    fn hover_at(&mut self, window: &Window) -> Option<HoverText> {
         if self.context_menu.is_open()
             || self.widget_menu.is_open()
             || self.state.loaded_scene().is_none()
@@ -607,6 +714,7 @@ impl NativeApp {
         }
         let (x, y) = self.cursor?;
         let (x, y) = self.ui_pointer(window, x, y);
+        let mut widget_entries = None;
         if let Some(scripts) = &self.scripts {
             for node in self.widget_tree.nodes.iter().rev() {
                 if !node.bounds.rect().contains(x, y) || !node.clip.rect().contains(x, y) {
@@ -622,20 +730,15 @@ impl NativeApp {
                 if widget.content == rustclient_model::WidgetContent::WorldViewport {
                     break;
                 }
-                if let Some((label, _)) = rustclient_application::widget_actions(
+                let entries = rustclient_application::widget_actions(
                     &self.state,
                     scripts.interfaces(),
                     node.address,
                 )
-                .ok()?
-                .into_iter()
-                .next()
-                {
-                    return Some(HoverText {
-                        verb: plain_label(&label),
-                        target: String::new(),
-                        target_color: [255; 4],
-                    });
+                .ok()?;
+                if !entries.is_empty() {
+                    widget_entries = Some(entries);
+                    break;
                 }
                 if matches!(
                     widget.body,
@@ -648,7 +751,22 @@ impl NativeApp {
                 }
             }
         }
-        let (label, _, target) = self.world_entries(window, x, y).ok()?.into_iter().next()?;
+        if let Some(entries) = widget_entries {
+            let (label, _) = self
+                .stage_widget_entries(entries, false)
+                .into_iter()
+                .next()?;
+            return Some(HoverText {
+                verb: plain_label(&label),
+                target: String::new(),
+                target_color: [255; 4],
+            });
+        }
+        let (label, _, target) = self
+            .edited_world_entries(window, x, y, false)
+            .ok()?
+            .into_iter()
+            .next()?;
         let label = plain_label(&label);
         let (verb, name) = label.split_once(' ').unwrap_or((&label, ""));
         Some(HoverText {
@@ -656,6 +774,8 @@ impl NativeApp {
             target: name.to_owned(),
             target_color: match target {
                 Some(WorldTarget::Npc { .. }) => [255, 255, 0, 255],
+                Some(WorldTarget::GroundItem { .. }) => [255, 144, 64, 255],
+                Some(WorldTarget::Player { .. }) => [255, 255, 255, 255],
                 _ => [0, 255, 255, 255],
             },
         })
@@ -674,9 +794,8 @@ impl NativeApp {
             return Ok(true);
         }
         self.context_menu.close();
-        let mut entries = self.world_entries(window, x, y)?;
+        let entries = self.edited_world_entries(window, x, y, right)?;
         if right {
-            self.add_plugin_entries(&mut entries);
             if let Some(assets) = &self.assets {
                 self.context_menu.open(
                     x,

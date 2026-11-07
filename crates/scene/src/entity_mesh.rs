@@ -43,6 +43,8 @@ pub struct EntityCatalog {
     requested_npcs: BTreeSet<NpcDefinitionId>,
     requested_items: BTreeSet<ItemDefinitionId>,
     requested_sequences: BTreeSet<SequenceId>,
+    /// Bumped by every merge, so projections of definitions can tell when they may differ.
+    generation: u64,
 }
 
 enum NpcResolution<'a> {
@@ -77,7 +79,33 @@ impl EntityCatalog {
         }
     }
 
-    /// Definitions that live entities reference and no earlier request covered.
+    /// Changes whenever a definition batch is merged.
+    #[must_use]
+    pub const fn generation(&self) -> u64 {
+        self.generation
+    }
+
+    /// A decoded item definition, once a request for it has been merged.
+    #[must_use]
+    pub fn item(&self, id: ItemDefinitionId) -> Option<&ItemDefinition> {
+        self.items.get(&id)
+    }
+
+    /// The name stock shows for an item: its own, or for a noted item its unnoted form's
+    /// (`ItemComposition.genCert` copies the name).
+    #[must_use]
+    pub fn item_name(&self, id: ItemDefinitionId) -> Option<&str> {
+        let def = self.items.get(&id)?;
+        if def.note_template.is_some() {
+            return def
+                .note
+                .and_then(|note| self.items.get(&note))
+                .and_then(|note| note.name.as_deref());
+        }
+        def.name.as_deref()
+    }
+
+    /// Definitions that live entities and ground items reference and no earlier request covered.
     ///
     /// Each id is requested once; the loader never retries absent or undecodable assets.
     pub fn request_missing(
@@ -85,8 +113,28 @@ impl EntityCatalog {
         asset: &SceneAsset,
         entities: &WorldEntitiesState,
         scenery: &rustclient_game_state::SceneryState,
+        ground_items: &rustclient_game_state::GroundItemsState,
     ) -> Option<EntityRequest> {
         let mut request = EntityRequest::default();
+        // Ground items need their own definition and, for a noted item, the unnoted one's name.
+        let noted = ground_items
+            .piles()
+            .flat_map(|(_, pile)| pile.iter().map(|item| item.item))
+            .filter_map(|id| {
+                self.items
+                    .get(&id)
+                    .and_then(|def| def.note_template.and(def.note))
+            })
+            .collect::<Vec<_>>();
+        for id in ground_items
+            .piles()
+            .flat_map(|(_, pile)| pile.iter().map(|item| item.item))
+            .chain(noted)
+        {
+            if self.requested_items.insert(id) {
+                request.items.insert(id);
+            }
+        }
         let mut want_sequence = |id: SequenceId, requested: &mut BTreeSet<SequenceId>| {
             if asset
                 .sources()
@@ -162,6 +210,7 @@ impl EntityCatalog {
     /// Returns advisories for cached-model animations that could not be prepared for playback;
     /// those sequences are then drawn in rest pose.
     pub fn merge(&mut self, asset: &SceneAsset, mut assets: EntityAssets) -> Vec<String> {
+        self.generation = self.generation.wrapping_add(1);
         self.poses.clear();
         let failures = std::sync::Arc::make_mut(&mut self.animations).merge(asset, &mut assets);
         self.npcs.extend(assets.npcs);

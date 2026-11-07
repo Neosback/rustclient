@@ -14,6 +14,7 @@ and live acceptance remain separate. No whole-client completion percentage is cl
 | What sources establish that behavior? | [Source map](reference/INDEX.md), [revision guide](reference/REVISION-240.md), [stock logic map](reference/rs240-port/CLIENT-LOGIC-MAP.md) |
 | What update/performance evidence exists? | [Update audit and scoped measurements](reference/UPDATE-OPTIMIZATION-2026-10-30.md) |
 | What did the loading, prompt, interface, minimap and memory pass establish? | [Pass record](reference/CLIENT-PASS-2026-11-02.md) and [interface audit baseline](reference/rs240-port/INTERFACE-AUDIT.tsv) |
+| What did the plugin-hook, ground-item and efficiency pass establish? | [Pass record](reference/CLIENT-PASS-2026-11-05.md), [ground items spec](specs/SPEC-0029-ground-items.md) |
 | What is left in classic GPU? | [GPU audit](reference/builtin-plugins/GPU-AUDIT.md) and [gate ledger](reference/builtin-plugins/gpu-audit.json) |
 | What is left for RuneLite features? | [First-party ledger](reference/builtin-plugins/FIRST-PARTY-LEDGER.md), [catalog](reference/builtin-plugins/RUNELITE-PLUGINS.tsv), [hooks/API ownership](reference/builtin-plugins/HOOK-API-OWNERS.tsv) |
 | Which TSPS ideas still transfer? | [Reconciled shortlist](reference/TSPS-GIT-SHORTLIST-2026-10-29.md#current-reconciliation--2026-10-31); stock 240 remains authoritative |
@@ -33,6 +34,8 @@ execution authority. Optional HD research is outside classic completion.
 - [ADR-0005-readable-client-names](adr/ADR-0005-readable-client-names.md)
 - [ADR-0006-plugin-api-0-2](adr/ADR-0006-plugin-api-0-2.md)
 - [ADR-0007-on-demand-gpu-shell](adr/ADR-0007-on-demand-gpu-shell.md)
+- [ADR-0008-login-reconnect-and-world-transfer](adr/ADR-0008-login-reconnect-and-world-transfer.md)
+- [ADR-0009-render-profiles](adr/ADR-0009-render-profiles.md)
 - [README](adr/README.md)
 
 ## Coverage and provenance

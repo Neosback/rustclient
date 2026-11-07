@@ -106,8 +106,8 @@ opcode	adapter_name	runelite_name	evidence_status	host_status	live_uses	scanned_
 1121	CcResumePausebutton	CC_RESUME_PAUSEBUTTON	adapter	host-dispatched		classBB.method807,classCD.method1429
 1122	CcSetsecondarygraphic		adapter	host-dispatched		classBB.method807,classCD.method1429
 1123	CcSetfillcolour	CC_SETFILLCOLOUR	adapter	host-dispatched		classBB.method807,classCD.method1429
-1124	CcSetfilltransparency		handler-only	host-dispatched	12	classBB.method807,classCD.method1429
-1125	CcSetgradient		handler-only	host-dispatched	2	classBB.method807,classBB.method808,classCD.method1429
+1124	CcSetbottomtrans		handler-only	host-dispatched	12	classBB.method807,classCD.method1429
+1125	CcSetfillmode		handler-only	host-dispatched	2	classBB.method807,classBB.method808,classCD.method1429
 1126	CcSetlinedirection	CC_SETLINEDIRECTION	adapter	host-dispatched		classBB.method807,classBB.method808,classCD.method1429
 1127	CcSetmodeltransparent	CC_SETMODELTRANSPARENT	adapter	host-dispatched		classCD.method1429
 1128			unknown	unnamed-cache-used	17	
@@ -287,8 +287,8 @@ opcode	adapter_name	runelite_name	evidence_status	host_status	live_uses	scanned_
 2121	IfResumePausebutton	IF_RESUME_PAUSEBUTTON	adapter	host-dispatched		
 2122	IfSetsecondarygraphic		adapter-unconfirmed	host-dispatched		
 2123	IfSetfillcolour	IF_SETFILLCOLOUR	adapter	host-dispatched		
-2124	IfSetfilltransparency		unknown	host-dispatched	8	
-2125	IfSetgradient		unknown	host-dispatched	4	
+2124	IfSetbottomtrans		unknown	host-dispatched	8	
+2125	IfSetfillmode		unknown	host-dispatched	4	
 2126	IfSetlinedirection	IF_SETLINEDIRECTION	adapter	host-dispatched		
 2127	IfSetmodeltransparent	IF_SETMODELTRANSPARENT	adapter	host-dispatched		
 2200	IfSetobject	IF_SETOBJECT	adapter	host-dispatched		

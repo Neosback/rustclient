@@ -182,24 +182,41 @@ impl GeometryGpu {
             }
         }
     }
+    /// Draw one opaque run, skipping buffer and pipeline binds that `bound` says are current.
+    /// Consecutive runs of one zone share buffers, and most runs share the opaque pipeline.
     pub fn draw_opaque_range(
         &self,
         pass: &mut wgpu::RenderPass<'_>,
         pipelines: &super::world_pipeline::WorldPipelines,
         indices: core::ops::Range<u32>,
         policy: ModelDepthPolicy,
+        bound: &mut OpaqueBindings,
     ) {
-        pass.set_vertex_buffer(0, self.vertices.slice(..));
-        pass.set_index_buffer(self.opaque.slice(..), wgpu::IndexFormat::Uint32);
+        let buffers = std::ptr::from_ref(self) as usize;
+        if bound.buffers != Some(buffers) {
+            pass.set_vertex_buffer(0, self.vertices.slice(..));
+            pass.set_index_buffer(self.opaque.slice(..), wgpu::IndexFormat::Uint32);
+            bound.buffers = Some(buffers);
+        }
+        let mut pipeline = |pass: &mut wgpu::RenderPass<'_>, which: OpaquePipeline| {
+            if bound.pipeline != Some(which) {
+                pass.set_pipeline(match which {
+                    OpaquePipeline::Opaque => &pipelines.opaque,
+                    OpaquePipeline::DeferredColor => &pipelines.deferred_color,
+                    OpaquePipeline::DeferredDepth => &pipelines.deferred_depth,
+                });
+                bound.pipeline = Some(which);
+            }
+        };
         match policy {
             ModelDepthPolicy::DepthWrite => {
-                pass.set_pipeline(&pipelines.opaque);
+                pipeline(pass, OpaquePipeline::Opaque);
                 pass.draw_indexed(indices, 0, 0..1);
             }
             ModelDepthPolicy::SortedDeferredWrite => {
-                pass.set_pipeline(&pipelines.deferred_color);
+                pipeline(pass, OpaquePipeline::DeferredColor);
                 pass.draw_indexed(indices.clone(), 0, 0..1);
-                pass.set_pipeline(&pipelines.deferred_depth);
+                pipeline(pass, OpaquePipeline::DeferredDepth);
                 pass.draw_indexed(indices, 0, 0..1);
             }
         }
@@ -226,6 +243,22 @@ fn point(vertex: &SceneVertex) -> Vec3 {
         f32::from(vertex.position[1]),
         f32::from(vertex.position[2]),
     )
+}
+
+/// Which opaque pipeline a render pass has bound.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OpaquePipeline {
+    Opaque,
+    DeferredColor,
+    DeferredDepth,
+}
+
+/// The buffers and pipeline the opaque pass last bound, so redundant binds are skipped. A new
+/// value must be used for every render pass; nothing outside the opaque runs may bind in between.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct OpaqueBindings {
+    buffers: Option<usize>,
+    pipeline: Option<OpaquePipeline>,
 }
 
 #[cfg(test)]

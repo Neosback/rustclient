@@ -39,12 +39,12 @@ fn authentication_and_initial_placement_replay_exactly_and_reset_on_disconnect()
         stream.push(commit);
         envelopes.push(ReplayEnvelope::new(operation, commit));
     }
-    // Schema 29 retains placement action overrides and widget key dispatch scope.
+    // Schema 32 adds actor hitmarks, health bars and spot animations.
     assert_eq!(
         state.semantic_fingerprint().get(),
-        7_173_393_852_060_750_725
+        4_844_769_633_438_522_780
     );
-    assert_eq!(stream.finish().get(), 1_360_232_279_156_113_563);
+    assert_eq!(stream.finish().get(), 10_814_840_041_686_243_741);
     assert_eq!(state.lifecycle(), SessionLifecycle::Active);
     assert_eq!(state.authenticated_player(), Some(player()));
     assert_eq!(state.initial_placement(), Some(placement()));

@@ -169,11 +169,6 @@ pub(super) fn write(f: &mut StableFingerprint64, state: &InterfaceState) {
             }
             rustclient_model::WidgetHead::LocalPlayer => f.write_u8(1),
         });
-        option(f, value.fill, |f, fill| {
-            f.write_u32(fill.end_color);
-            f.write_u8(fill.end_transparency);
-            f.write_u8(u8::try_from(fill.gradient.id()).unwrap_or(0));
-        });
         f.write_u64(value.listeners.len() as u64);
         for (kind, args) in &value.listeners {
             listener(f, *kind);
@@ -313,6 +308,20 @@ fn listener(f: &mut StableFingerprint64, v: rustclient_model::WidgetListener) {
         Scroll => 17,
     });
 }
+fn rectangle_fill(
+    f: &mut StableFingerprint64,
+    fill_color: u32,
+    bottom_transparency: u8,
+    fill_mode: rustclient_model::RectangleFill,
+) {
+    f.write_u32(fill_color);
+    f.write_u8(bottom_transparency);
+    f.write_u8(match fill_mode {
+        rustclient_model::RectangleFill::Solid => 0,
+        rustclient_model::RectangleFill::Gradient => 1,
+        rustclient_model::RectangleFill::GradientAlpha => 2,
+    });
+}
 fn body(f: &mut StableFingerprint64, b: &rustclient_model::WidgetBody) {
     use rustclient_model::WidgetBody;
     match b {
@@ -330,11 +339,15 @@ fn body(f: &mut StableFingerprint64, b: &rustclient_model::WidgetBody) {
             color,
             filled,
             transparency,
+            fill_color,
+            bottom_transparency,
+            fill_mode,
         } => {
             f.write_u8(1);
             f.write_u32(*color);
             f.write_u8(u8::from(*filled));
             f.write_u8(*transparency);
+            rectangle_fill(f, *fill_color, *bottom_transparency, *fill_mode);
         }
         WidgetBody::Text {
             font,

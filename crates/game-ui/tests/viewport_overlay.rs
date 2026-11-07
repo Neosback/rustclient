@@ -42,6 +42,9 @@ fn viewport_rectangles_project_once_and_reset_without_mutating_widget_state() {
                     },
                     filled: true,
                     transparency: 128,
+                    fill_color: 0,
+                    bottom_transparency: 0,
+                    fill_mode: rustclient_model::RectangleFill::Solid,
                 };
                 if component == 3 {
                     widget.layout.size = [10, 10];

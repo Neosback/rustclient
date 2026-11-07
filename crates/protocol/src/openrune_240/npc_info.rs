@@ -9,8 +9,15 @@ use std::collections::BTreeSet;
 pub struct NpcInfoDecoder {
     active: Vec<NpcIndex>,
     origin: Option<TileOffset>,
+    /// Current definition of each tracked NPC: model customisation blocks are sized by it.
+    definitions: std::collections::BTreeMap<NpcIndex, NpcDefinitionId>,
+    shapes: Option<super::npc_extended::NpcShapeLookup>,
 }
 impl NpcInfoDecoder {
+    /// Supply the cache-backed recolour and retexture counts that size customisation blocks.
+    pub fn set_shapes(&mut self, shapes: super::npc_extended::NpcShapeLookup) {
+        self.shapes = Some(shapes);
+    }
     pub fn clear_origin(&mut self) {
         self.origin = None;
     }
@@ -125,6 +132,7 @@ impl NpcInfoDecoder {
                 [0, 1024, 1536, 512, 256, 768, 1280, 1792][usize::from(bits.read_bits_u8(3)?)];
             bits.read_bits(1)?; // teleport-vs-path placement hint, no position authority
             let delta_y = signed(bits.read_bits_i32(coord_bits)?, coord_bits);
+            self.definitions.insert(index, definition_id);
             update.new_npcs.push(NewNpc {
                 index,
                 definition_id,
@@ -142,14 +150,27 @@ impl NpcInfoDecoder {
         }
         bits.byte_align();
         let mut reader = Reader::new(bits.remaining_bytes(), "NPC extended info");
-        for index in extended {
-            update
-                .attributes
-                .push(decode_attributes(&mut reader, index)?);
-        }
+        let mut shapes = self.shapes.take();
+        let decoded = extended.into_iter().try_for_each(|index| {
+            let mut definition = self
+                .definitions
+                .get(&index)
+                .copied()
+                .ok_or_else(|| error("extended info for an NPC without a definition"))?;
+            let attributes = decode_attributes(&mut reader, index, &mut definition, &mut |id| {
+                shapes.as_mut().and_then(|lookup| lookup(id))
+            })?;
+            self.definitions.insert(index, definition);
+            update.attributes.push(attributes);
+            Ok::<(), ProtocolError>(())
+        });
+        self.shapes = shapes;
+        decoded?;
         if reader.offset != reader.bytes.len() {
             return Err(error("trailing NPC info bytes"));
         }
+        self.definitions
+            .retain(|index, _| membership.contains(index));
         self.active = next;
         Ok(update)
     }

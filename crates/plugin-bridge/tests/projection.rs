@@ -139,6 +139,8 @@ fn state_operations_project_to_snapshots_and_ordered_events() {
         npcs: Some(&resolve),
         varbits: Some(&varbits),
         interfaces: None,
+        items: None,
+        revision: 0,
     };
     let frame = Frame {
         fps: 50,
@@ -616,4 +618,222 @@ fn newly_granted_domains_baseline_existing_contents_without_shared_spawn_or_stat
         events.is_empty(),
         "a read-grant change is not a gameplay commit: {events:?}"
     );
+}
+
+#[test]
+fn carrying_unchanged_domains_forward_matches_rebuilding_every_projection() {
+    let npc_definition = definitions::npc(
+        b"\x02Banker\0\x20Bank\0\0",
+        NpcDefinitionId::new(12),
+        Source::group(IndexId(2), GroupId(9)),
+    )
+    .expect("definition");
+    let npcs: BTreeMap<NpcDefinitionId, NpcDefinition> =
+        BTreeMap::from([(npc_definition.id, npc_definition)]);
+    let resolve = |id: NpcDefinitionId| npcs.get(&id);
+    let sources = Sources {
+        npcs: Some(&resolve),
+        ..Sources::default()
+    };
+    let frame = Frame::default();
+    let wanted = everything();
+    let (mut reusing, mut rebuilding) = (Projector::new(), Projector::new());
+    rebuilding.set_rebuild_always(true);
+    let mut state = session();
+    let steps: Vec<Option<SemanticOperation>> = vec![
+        None,
+        Some(SemanticOperation::UpdateNpcs(NpcInfoUpdate {
+            origin: Some(TileOffset { x: -1, y: -1 }),
+            new_npcs: vec![NewNpc {
+                index: NpcIndex::new(42),
+                definition_id: NpcDefinitionId::new(12),
+                delta_x: 1,
+                delta_y: 1,
+                orientation: 0,
+            }],
+            ..Default::default()
+        })),
+        None,
+        Some(SemanticOperation::Scenery(SceneryOperation::SetVariable {
+            id: VarpId::new(172),
+            value: 3,
+        })),
+        Some(SemanticOperation::GameMessage(GameMessage {
+            channel: ChatChannelId::new(0),
+            sender: String::new(),
+            text: "Hello".into(),
+        })),
+        None,
+        Some(SemanticOperation::Inventory(InventoryUpdate::Replace {
+            id: InventoryId::new(93),
+            slots: vec![Some(rustclient_model::ItemStack {
+                item: ItemDefinitionId::new(995),
+                amount: 5,
+            })],
+        })),
+        Some(SemanticOperation::AdvanceTick(TickSpan::new(1))),
+        None,
+    ];
+    for step in steps {
+        if let Some(operation) = step {
+            apply(&mut state, operation);
+        }
+        let (a, a_events) = reusing.project(&state, &frame, &sources, &wanted);
+        let (b, b_events) = rebuilding.project(&state, &frame, &sources, &wanted);
+        assert_eq!(format!("{a:?}"), format!("{b:?}"));
+        assert_eq!(a_events, b_events);
+    }
+}
+
+#[test]
+fn hitmarks_health_bars_and_spot_animations_reach_snapshots_and_events() {
+    use rustclient_model::{
+        ActorEffects, ActorSpotAnim, Headbar, HeadbarFill, Hitmark, SpotAnimationId,
+    };
+    let sources = Sources::default();
+    let frame = Frame::default();
+    let wanted = everything();
+    let mut projector = Projector::new();
+    let mut state = session();
+    apply(
+        &mut state,
+        SemanticOperation::UpdateNpcs(NpcInfoUpdate {
+            origin: Some(TileOffset { x: -1, y: -1 }),
+            new_npcs: vec![NewNpc {
+                index: NpcIndex::new(42),
+                definition_id: NpcDefinitionId::new(12),
+                delta_x: 1,
+                delta_y: 1,
+                orientation: 0,
+            }],
+            ..Default::default()
+        }),
+    );
+    let _ = projector.project(&state, &frame, &sources, &wanted);
+    apply(
+        &mut state,
+        SemanticOperation::UpdateNpcs(NpcInfoUpdate {
+            attributes: vec![NpcAttributeUpdate {
+                index: NpcIndex::new(42),
+                changes: vec![NpcProperty::Effects(ActorEffects {
+                    hitmarks: vec![Hitmark {
+                        kind: 12,
+                        amount: 9,
+                        delay: 0,
+                        limit: 0,
+                    }],
+                    headbars: vec![Headbar {
+                        kind: 2,
+                        fill: Some(HeadbarFill {
+                            start_time: 0,
+                            end_time: 0,
+                            start_fill: 22,
+                            end_fill: 22,
+                        }),
+                    }],
+                    spotanims: vec![ActorSpotAnim {
+                        slot: 0,
+                        id: Some(SpotAnimationId::new(246)),
+                        height: 92,
+                        delay: 0,
+                        looping: false,
+                    }],
+                })],
+            }],
+            ..Default::default()
+        }),
+    );
+    let (snapshot, events) = projector.project(&state, &frame, &sources, &wanted);
+    let actor = &snapshot.npc(42).expect("npc").actor;
+    assert_eq!(actor.graphic, Some(246));
+    assert_eq!(
+        (actor.hitsplats[0].kind, actor.hitsplats[0].amount),
+        (12, 9)
+    );
+    assert_eq!(
+        (actor.healthbars[0].kind, actor.healthbars[0].amount),
+        (2, Some(22))
+    );
+    assert!(events.iter().any(|event| matches!(
+        event,
+        GameEvent::HitsplatApplied { actor: ActorRef::Npc(42), hitsplat } if hitsplat.amount == 9
+    )));
+    assert!(events.iter().any(|event| matches!(
+        event,
+        GameEvent::GraphicChanged {
+            actor: ActorRef::Npc(42),
+            graphic: Some(246)
+        }
+    )));
+}
+
+#[test]
+fn an_npc_facing_a_present_actor_is_interacting_and_the_change_is_an_event() {
+    use rustclient_model::{FacingBlock, FacingEntityKind, FacingTarget, FacingWalkPolicy};
+    let sources = Sources::default();
+    let frame = Frame::default();
+    let wanted = everything();
+    let mut projector = Projector::new();
+    let mut state = session();
+    apply(
+        &mut state,
+        SemanticOperation::UpdateNpcs(NpcInfoUpdate {
+            origin: Some(TileOffset { x: -1, y: -1 }),
+            new_npcs: vec![NewNpc {
+                index: NpcIndex::new(42),
+                definition_id: NpcDefinitionId::new(12),
+                delta_x: 1,
+                delta_y: 1,
+                orientation: 0,
+            }],
+            ..Default::default()
+        }),
+    );
+    let _ = projector.project(&state, &frame, &sources, &wanted);
+    let target = |kind, index| FacingBlock {
+        target: FacingTarget::Entity {
+            kind,
+            index: Some(index),
+            fallback_angle: 0,
+        },
+        walk: FacingWalkPolicy::CancelOnWalk,
+        instant: false,
+    };
+    let face = |state: &mut GameState, block| {
+        apply(
+            state,
+            SemanticOperation::UpdateNpcs(NpcInfoUpdate {
+                attributes: vec![NpcAttributeUpdate {
+                    index: NpcIndex::new(42),
+                    changes: vec![NpcProperty::FacingBlock(block)],
+                }],
+                ..Default::default()
+            }),
+        );
+    };
+    // Attacking the local player (index 1, present in the session).
+    face(&mut state, target(FacingEntityKind::Player, 1));
+    let (snapshot, events) = projector.project(&state, &frame, &sources, &wanted);
+    assert_eq!(
+        snapshot.npc(42).unwrap().actor.interacting,
+        Some(ActorRef::Player(1))
+    );
+    assert!(events.iter().any(|event| matches!(
+        event,
+        GameEvent::InteractingChanged {
+            source: ActorRef::Npc(42),
+            target: Some(ActorRef::Player(1))
+        }
+    )));
+    // A target that is not in the scene is not an interaction (RuneLite returns null).
+    face(&mut state, target(FacingEntityKind::Npc, 500));
+    let (snapshot, events) = projector.project(&state, &frame, &sources, &wanted);
+    assert_eq!(snapshot.npc(42).unwrap().actor.interacting, None);
+    assert!(events.iter().any(|event| matches!(
+        event,
+        GameEvent::InteractingChanged {
+            source: ActorRef::Npc(42),
+            target: None
+        }
+    )));
 }

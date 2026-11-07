@@ -113,6 +113,73 @@ pub(super) fn location(
     Ok((opcode, out))
 }
 
+/// `OPOBJ1_V2..OPOBJ5_V2`: per-op field order and transforms from the rsprox 240
+/// `OpObj{1..5}V2Decoder`s. The sub-op byte is 0 (no sub-op), as for NPC and location ops.
+pub(super) fn ground_item(
+    tile: WorldTile,
+    item: rustclient_model::ItemDefinitionId,
+    slot: ActionSlot,
+    control: bool,
+) -> Result<(u8, Vec<u8>)> {
+    let coordinate = |value| {
+        u32::try_from(value)
+            .map_err(|_| {
+                ProtocolError::new("ground item action encode", "negative world coordinate")
+            })
+            .and_then(bounded)
+    };
+    let (x, y, id) = (
+        coordinate(tile.x)?,
+        coordinate(tile.y)?,
+        bounded(item.get())?,
+    );
+    let control = u8::from(control);
+    let mut out = Vec::with_capacity(8);
+    let opcode = match slot.get() {
+        0 => {
+            out.push(0); // sub-op, g1Alt2
+            out.extend_from_slice(&be_add(x));
+            out.extend_from_slice(&le_add(y));
+            out.push(128_u8.wrapping_sub(control));
+            out.extend_from_slice(&id.to_be_bytes());
+            112
+        }
+        1 => {
+            out.push(0); // sub-op, g1Alt2
+            out.extend_from_slice(&y.to_be_bytes());
+            out.extend_from_slice(&be_add(id));
+            out.extend_from_slice(&be_add(x));
+            out.push(control.wrapping_add(128));
+            113
+        }
+        2 => {
+            out.extend_from_slice(&be_add(x));
+            out.push(control.wrapping_neg());
+            out.push(0); // sub-op, g1
+            out.extend_from_slice(&id.to_le_bytes());
+            out.extend_from_slice(&y.to_be_bytes());
+            22
+        }
+        3 => {
+            out.push(0); // sub-op, g1Alt2
+            out.push(128_u8.wrapping_sub(control));
+            out.extend_from_slice(&le_add(y));
+            out.extend_from_slice(&be_add(id));
+            out.extend_from_slice(&x.to_le_bytes());
+            65
+        }
+        _ => {
+            out.extend_from_slice(&le_add(id));
+            out.push(0); // sub-op, g1
+            out.extend_from_slice(&x.to_le_bytes());
+            out.push(128_u8.wrapping_sub(control));
+            out.extend_from_slice(&be_add(y));
+            75
+        }
+    };
+    Ok((opcode, out))
+}
+
 /// 240 widget button, indexed operation and continuation families.
 pub(super) fn widget(action: rustclient_model::WidgetAction) -> Result<(u8, Vec<u8>)> {
     let widget = action.address.widget;
@@ -326,5 +393,309 @@ mod tests {
                 .1,
             vec![0xff, 0xff, 0xff, 0x3f]
         );
+    }
+
+    /// Decode an `OPOBJ*_V2` body the way the rsprox 240 decoders read it:
+    /// returns `(sub-op, x, y, control, id)`.
+    fn decode_ground_item(opcode: u8, body: &[u8]) -> (u8, u16, u16, bool, u16) {
+        let mut r = crate::wire::Reader::new(body, "test");
+        let g1 = |r: &mut crate::wire::Reader<'_>| r.u8().unwrap();
+        let g1_alt1 = |r: &mut crate::wire::Reader<'_>| r.u8_add().unwrap();
+        let g1_alt2 = |r: &mut crate::wire::Reader<'_>| r.u8_neg().unwrap();
+        let g1_alt3 = |r: &mut crate::wire::Reader<'_>| r.u8_sub().unwrap();
+        let g2 = |r: &mut crate::wire::Reader<'_>| r.u16().unwrap();
+        let g2_alt1 = |r: &mut crate::wire::Reader<'_>| r.u16_le().unwrap();
+        let g2_alt2 = |r: &mut crate::wire::Reader<'_>| r.u16_add().unwrap();
+        let g2_alt3 = |r: &mut crate::wire::Reader<'_>| r.u16_add_le().unwrap();
+        let out = match opcode {
+            112 => {
+                let subop = g1_alt2(&mut r);
+                let x = g2_alt2(&mut r);
+                let y = g2_alt3(&mut r);
+                let control = g1_alt3(&mut r) == 1;
+                (subop, x, y, control, g2(&mut r))
+            }
+            113 => {
+                let subop = g1_alt2(&mut r);
+                let y = g2(&mut r);
+                let id = g2_alt2(&mut r);
+                let x = g2_alt2(&mut r);
+                (subop, x, y, g1_alt1(&mut r) == 1, id)
+            }
+            22 => {
+                let x = g2_alt2(&mut r);
+                let control = g1_alt2(&mut r) == 1;
+                let subop = g1(&mut r);
+                let id = g2_alt1(&mut r);
+                (subop, x, g2(&mut r), control, id)
+            }
+            65 => {
+                let subop = g1_alt2(&mut r);
+                let control = g1_alt3(&mut r) == 1;
+                let y = g2_alt3(&mut r);
+                let id = g2_alt2(&mut r);
+                (subop, g2_alt1(&mut r), y, control, id)
+            }
+            75 => {
+                let id = g2_alt3(&mut r);
+                let subop = g1(&mut r);
+                let x = g2_alt1(&mut r);
+                let control = g1_alt3(&mut r) == 1;
+                (subop, x, g2_alt2(&mut r), control, id)
+            }
+            _ => unreachable!(),
+        };
+        assert_eq!(r.offset, body.len(), "OPOBJ body is 8 bytes");
+        out
+    }
+
+    #[test]
+    fn ground_item_ops_round_trip_through_the_reference_decoders() {
+        let tile = WorldTile::new(3222, 3218, rustclient_model::Plane::MIN);
+        let item = rustclient_model::ItemDefinitionId::new(995);
+        for (slot, opcode) in [(0, 112), (1, 113), (2, 22), (3, 65), (4, 75)] {
+            for control in [false, true] {
+                let (encoded, body) =
+                    ground_item(tile, item, ActionSlot::new(slot).unwrap(), control).unwrap();
+                assert_eq!(encoded, opcode);
+                assert_eq!(body.len(), 8);
+                assert_eq!(
+                    decode_ground_item(opcode, &body),
+                    (0, 3222, 3218, control, 995),
+                    "op {}",
+                    slot + 1
+                );
+            }
+        }
+        assert!(
+            ground_item(
+                WorldTile::new(-1, 0, rustclient_model::Plane::MIN),
+                item,
+                ActionSlot::new(0).unwrap(),
+                false
+            )
+            .is_err()
+        );
+    }
+}
+
+/// `OPNPC6` (101): the NPC definition id, `g2Alt2`.
+pub(super) fn examine_npc(definition: rustclient_model::NpcDefinitionId) -> Result<(u8, Vec<u8>)> {
+    Ok((101, be_add(bounded(definition.get())?).to_vec()))
+}
+/// `OPLOC6` (105): the object definition id, `g2Alt1`.
+pub(super) fn examine_location(object: ObjectDefinitionId) -> Result<(u8, Vec<u8>)> {
+    Ok((105, bounded(object.get())?.to_le_bytes().to_vec()))
+}
+/// `OPOBJ6` (9): item id `g2Alt1`, tile y `g2Alt3`, tile x `g2`.
+pub(super) fn examine_ground_item(
+    tile: WorldTile,
+    item: rustclient_model::ItemDefinitionId,
+) -> Result<(u8, Vec<u8>)> {
+    let coordinate = |value| {
+        u32::try_from(value)
+            .map_err(|_| ProtocolError::new("examine encode", "negative world coordinate"))
+            .and_then(bounded)
+    };
+    let mut out = Vec::with_capacity(6);
+    out.extend_from_slice(&bounded(item.get())?.to_le_bytes());
+    out.extend_from_slice(&le_add(coordinate(tile.y)?));
+    out.extend_from_slice(&coordinate(tile.x)?.to_be_bytes());
+    Ok((9, out))
+}
+
+#[cfg(test)]
+mod examine_tests {
+    use super::*;
+    use rustclient_model::{ItemDefinitionId, NpcDefinitionId, Plane};
+
+    #[test]
+    fn examine_packets_use_the_240_field_transforms() {
+        assert_eq!(
+            examine_npc(NpcDefinitionId::new(0x0102)).unwrap(),
+            (101, vec![0x01, 0x02 + 128])
+        );
+        assert_eq!(
+            examine_location(ObjectDefinitionId::new(0x0102)).unwrap(),
+            (105, vec![0x02, 0x01])
+        );
+        // Item 0x0102, y 0x0304 (g2Alt3: low byte + 128 first), x 0x0506 (big-endian).
+        assert_eq!(
+            examine_ground_item(
+                WorldTile::new(0x0506, 0x0304, Plane::MIN),
+                ItemDefinitionId::new(0x0102)
+            )
+            .unwrap(),
+            (9, vec![0x02, 0x01, 0x04 + 128, 0x03, 0x05, 0x06])
+        );
+        assert!(examine_npc(NpcDefinitionId::new(70_000)).is_err());
+    }
+}
+
+/// `OPPLAYER1..8`: field order and transforms from the rsprox 240 `OpPlayer{1..8}Decoder`s.
+/// Opcodes 57, 21, 36, 64, 52, 4, 50 and 41.
+pub(super) fn player(
+    index: rustclient_model::PlayerIndex,
+    slot: rustclient_model::PlayerOpSlot,
+    control: bool,
+) -> Result<(u8, Vec<u8>)> {
+    let index = bounded(index.get())?;
+    let control = u8::from(control);
+    let mut out = Vec::with_capacity(3);
+    let opcode = match slot.get() {
+        1 => {
+            out.push(control.wrapping_neg()); // g1Alt2
+            out.extend_from_slice(&index.to_be_bytes());
+            57
+        }
+        2 => {
+            out.push(128_u8.wrapping_sub(control)); // g1Alt3
+            out.extend_from_slice(&index.to_le_bytes());
+            21
+        }
+        3 => {
+            out.extend_from_slice(&be_add(index)); // g2Alt2
+            out.push(control.wrapping_add(128)); // g1Alt1
+            36
+        }
+        4 => {
+            out.push(128_u8.wrapping_sub(control));
+            out.extend_from_slice(&index.to_be_bytes());
+            64
+        }
+        5 => {
+            out.extend_from_slice(&be_add(index));
+            out.push(control.wrapping_add(128));
+            52
+        }
+        6 => {
+            out.push(control.wrapping_add(128));
+            out.extend_from_slice(&index.to_le_bytes());
+            4
+        }
+        7 => {
+            out.push(control.wrapping_add(128));
+            out.extend_from_slice(&index.to_le_bytes());
+            50
+        }
+        _ => {
+            out.extend_from_slice(&be_add(index));
+            out.push(control); // g1
+            41
+        }
+    };
+    Ok((opcode, out))
+}
+
+#[cfg(test)]
+mod player_tests {
+    use super::*;
+    use rustclient_model::{PlayerIndex, PlayerOpSlot};
+
+    #[test]
+    fn every_player_option_uses_its_240_opcode_and_field_transforms() {
+        let index = PlayerIndex::new(0x0102);
+        let encode =
+            |slot, control| player(index, PlayerOpSlot::new(slot).unwrap(), control).unwrap();
+        // Control off, then on, for each slot.
+        assert_eq!(encode(1, false), (57, vec![0, 0x01, 0x02]));
+        assert_eq!(encode(1, true), (57, vec![255, 0x01, 0x02]));
+        assert_eq!(encode(2, true), (21, vec![127, 0x02, 0x01]));
+        assert_eq!(encode(3, true), (36, vec![0x01, 0x02 + 128, 129]));
+        assert_eq!(encode(4, false), (64, vec![128, 0x01, 0x02]));
+        assert_eq!(encode(5, false), (52, vec![0x01, 0x02 + 128, 128]));
+        assert_eq!(encode(6, true), (4, vec![129, 0x02, 0x01]));
+        assert_eq!(encode(7, false), (50, vec![128, 0x02, 0x01]));
+        assert_eq!(encode(8, true), (41, vec![0x01, 0x02 + 128, 1]));
+        assert!(PlayerOpSlot::new(0).is_none() && PlayerOpSlot::new(9).is_none());
+        assert!(
+            player(
+                PlayerIndex::new(70_000),
+                PlayerOpSlot::new(1).unwrap(),
+                false
+            )
+            .is_err()
+        );
+    }
+}
+
+/// `IF_BUTTOND` (39): a widget dropped on another. Stock `classTM.method10984` writes, in this
+/// order and matching the rsprox 240 `IfButtonDDecoder`: the dragged child (`g2Alt2`), the target's
+/// packed component id (`g4`), the target child (`g2`), the dragged packed id (`g4`), the target
+/// item (`g2Alt2`) and the dragged item (`g2Alt3`). A missing child or item is 65535.
+pub(super) fn widget_drag(drag: rustclient_model::WidgetDragDrop) -> Result<(u8, Vec<u8>)> {
+    let field = |end: &rustclient_model::WidgetDragEnd| -> Result<(u32, u16, u16)> {
+        let widget = end.address.widget;
+        let child = end.address.child.map_or(Ok(65535), bounded)?;
+        let item = end.item.map_or(Ok(65535), |id| bounded(id.get()))?;
+        if widget.interface.get() >= 65535 || widget.component >= 65535 {
+            return Err(ProtocolError::new(
+                "widget drag encode",
+                "address outside profile range",
+            ));
+        }
+        Ok((
+            (widget.interface.get() << 16) | widget.component,
+            child,
+            item,
+        ))
+    };
+    let (selected_id, selected_child, selected_item) = field(&drag.selected)?;
+    let (target_id, target_child, target_item) = field(&drag.target)?;
+    let mut out = Vec::with_capacity(16);
+    out.extend(be_add(selected_child));
+    out.extend(target_id.to_be_bytes());
+    out.extend(target_child.to_be_bytes());
+    out.extend(selected_id.to_be_bytes());
+    out.extend(be_add(target_item));
+    out.extend(le_add(selected_item));
+    Ok((39, out))
+}
+
+#[cfg(test)]
+mod drag_tests {
+    use super::*;
+    use rustclient_model::{
+        InterfaceId, ItemDefinitionId, WidgetAddress, WidgetDragDrop, WidgetDragEnd, WidgetId,
+    };
+
+    fn end(interface: u32, component: u32, child: Option<u32>, item: Option<u32>) -> WidgetDragEnd {
+        WidgetDragEnd {
+            address: WidgetAddress {
+                widget: WidgetId::new(InterfaceId::new(interface), component),
+                child,
+            },
+            item: item.map(ItemDefinitionId::new),
+        }
+    }
+
+    #[test]
+    fn drag_encodes_the_240_field_order_and_transforms() {
+        // Dragged 149:0 child 3 holding item 0x0102; dropped on 149:0 child 5 holding nothing.
+        let drag = WidgetDragDrop {
+            selected: end(149, 0, Some(3), Some(0x0102)),
+            target: end(149, 0, Some(5), None),
+        };
+        let packed = (149_u32 << 16).to_be_bytes();
+        let mut expected = vec![0, 3 + 128]; // selected child, g2Alt2
+        expected.extend(packed); // target packed id
+        expected.extend([0, 5]); // target child
+        expected.extend(packed); // selected packed id
+        expected.extend([0xff, 0xff_u8.wrapping_add(128)]); // target item 65535, g2Alt2
+        expected.extend([0x02_u8.wrapping_add(128), 0x01]); // selected item, g2Alt3
+        assert_eq!(widget_drag(drag).unwrap(), (39, expected));
+        // Whole-component ends use child 65535.
+        let plain = WidgetDragDrop {
+            selected: end(1, 2, None, None),
+            target: end(3, 4, None, None),
+        };
+        let (_, bytes) = widget_drag(plain).unwrap();
+        assert_eq!(&bytes[..2], &[0xff, 0xff_u8.wrapping_add(128)]);
+        assert_eq!(bytes.len(), 16);
+        let too_big = WidgetDragDrop {
+            selected: end(1, 2, Some(70_000), None),
+            target: end(3, 4, None, None),
+        };
+        assert!(widget_drag(too_big).is_err());
     }
 }

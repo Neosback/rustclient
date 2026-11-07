@@ -68,6 +68,22 @@ process; that model is rejected by invariants 1 and 4.
   schema-driven configuration (`PluginCall::config`) and carry an `enabled` switch (RuneLite `enabledByDefault`).
   Their schemas are generated from the vendored `*Config.java` by `tools/builtin-plugins/first_party_schemas.py`.
 
+- Menu stage (2026-11-05): `MenuEntryAdded`, `MenuOpened` and `PostMenuSort` are emitted by a synchronous host stage
+  and `PostMenuSort` subscribers' `menu_edits` are applied in order to the delivered list (SPEC-0021).
+  `MenuEdit::Swap { first, second }` is added, additively within 0.2, so Menu Entry Swapper's exchange semantics port
+  one to one; WIT `menu-edit` gains `swap(tuple<u32, u32>)`. `ScriptPostFired(script id)` is emitted once per finished
+  script invocation, failed ones included, as the stock interpreter catches failures inside `runScript`.
+- Ground items and drawn outputs (2026-11-05), additive within 0.2: capability `game.read.ground_items`,
+  `GameSnapshot::ground_items` (`GroundItemSnapshot` with the definition's name, value and stackability) read through
+  `PluginCall::ground_items`, and `ItemSpawned`, `ItemDespawned` and `ItemQuantityChanged` derived from consecutive
+  snapshots (an unchanged id sequence on a tile is an in-place count). `OverlayCommand::TileText` draws text centred
+  above a tile (`Perspective.getCanvasTextLocation`), `InfoBox::sprite` names the box image. The native shell now draws
+  info boxes (`InfoBoxOverlay` layout) and `MinimapDot` commands (the `renderMinimapLocation` dot).
+- Input state and camera targets (2026-11-05), additive within 0.2: `ClientSnapshot::shift_held` (the shell's modifier
+  state) and `wall_time_ms` (the platform clock; `GameState` never reads it). `CameraCommand::{YawTarget, PitchTarget,
+  ZoomTarget, ZoomLimits}` are now applied by the native camera (`CameraTuning`, deviation `CAMERA-TARGET-EASING`).
+  Menu Entry Swapper's Shift-dependent swaps read `shift_held`.
+
 ## Rejected
 
 - Exposing `&GameState` or a read-only clone: second representation of the same semantic concept and a leak of internal

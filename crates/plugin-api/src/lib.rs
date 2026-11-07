@@ -20,8 +20,8 @@ mod panels;
 pub use events::{GameEvent, VarKind};
 pub use game::{
     ActorRef, ActorState, CameraSnapshot, ChatKind, ChatLine, ClientSnapshot, GameSnapshot,
-    GameStateKind, Healthbar, Hitsplat, InputIdle, ItemStack, NpcSnapshot, PlayerSnapshot, Rect,
-    Skill, SkillLevel, VarbitDef, Vars, WidgetSnapshot, WorldPoint,
+    GameStateKind, GroundItemSnapshot, Healthbar, Hitsplat, InputIdle, ItemStack, NpcSnapshot,
+    PlayerSnapshot, Rect, Skill, SkillLevel, VarbitDef, Vars, WidgetSnapshot, WorldPoint,
 };
 pub use manifest::{ManifestError, PluginManifest};
 pub use menu::{MenuEdit, MenuEntry, MenuKind, MenuOffer, PLUGIN_MENU_TYPE};

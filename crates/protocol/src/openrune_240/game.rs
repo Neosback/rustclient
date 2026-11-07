@@ -280,6 +280,33 @@ pub enum ClientIntent {
         slot: rustclient_model::ActionSlot,
         control: bool,
     },
+    /// A ground option (`OPOBJ1..5`) on an item lying on `tile`.
+    GroundItemAction {
+        tile: WorldTile,
+        item: rustclient_model::ItemDefinitionId,
+        slot: rustclient_model::ActionSlot,
+        control: bool,
+    },
+    /// "Examine" on an NPC, object or ground item (`OPNPC6`, `OPLOC6`, `OPOBJ6`).
+    Examine(ExamineTarget),
+    /// A widget dropped on another (`IF_BUTTOND`).
+    WidgetDrag(rustclient_model::WidgetDragDrop),
+    /// An option on another player (`OPPLAYER1..8`).
+    PlayerAction {
+        index: rustclient_model::PlayerIndex,
+        slot: rustclient_model::PlayerOpSlot,
+        control: bool,
+    },
+}
+/// What an Examine names: the server answers with the definition's examine text.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ExamineTarget {
+    Npc(rustclient_model::NpcDefinitionId),
+    Location(rustclient_model::ObjectDefinitionId),
+    GroundItem {
+        tile: WorldTile,
+        item: rustclient_model::ItemDefinitionId,
+    },
 }
 impl ClientIntent {
     /// Encode only after validating all fields, before advancing the cipher.
@@ -334,6 +361,27 @@ impl ClientIntent {
                 slot,
                 control,
             } => super::actions::location(tile, object, slot, control)?,
+            Self::GroundItemAction {
+                tile,
+                item,
+                slot,
+                control,
+            } => super::actions::ground_item(tile, item, slot, control)?,
+            Self::PlayerAction {
+                index,
+                slot,
+                control,
+            } => super::actions::player(index, slot, control)?,
+            Self::WidgetDrag(drag) => super::actions::widget_drag(drag)?,
+            Self::Examine(ExamineTarget::Npc(definition)) => {
+                super::actions::examine_npc(definition)?
+            }
+            Self::Examine(ExamineTarget::Location(object)) => {
+                super::actions::examine_location(object)?
+            }
+            Self::Examine(ExamineTarget::GroundItem { tile, item }) => {
+                super::actions::examine_ground_item(tile, item)?
+            }
             Self::MinimapWalk {
                 destination,
                 invert_run,
@@ -424,6 +472,8 @@ pub enum ServerUpdate {
     LocationAnim(LocAnimUpdate),
     Location(super::zone::LocationUpdate),
     LocationZoneReset(super::zone::ZoneOrigin),
+    /// A ground item ("obj") change, from a zone body or an `OBJ_*_SPECIFIC` packet.
+    GroundItem(rustclient_model::GroundItemUpdate),
     Tick,
     LoggedOut,
     Control(super::control::SessionControl),
@@ -469,6 +519,11 @@ pub struct SessionCodec {
     npcs: NpcInfoDecoder,
     zones: super::zone::ZoneDecoder,
     group: Option<PacketGroup>,
+    /// Packets of opcodes this adapter does not decode yet, counted per opcode. The map is
+    /// bounded by the opcode space (at most 256 entries).
+    unhandled: std::collections::BTreeMap<u16, u64>,
+    /// Opcodes first seen since the last `take_new_unhandled`, in arrival order.
+    new_unhandled: Vec<u16>,
 }
 impl SessionCodec {
     #[must_use]
@@ -487,7 +542,22 @@ impl SessionCodec {
             npcs: NpcInfoDecoder::default(),
             zones: super::zone::ZoneDecoder::default(),
             group: None,
+            unhandled: std::collections::BTreeMap::new(),
+            new_unhandled: Vec::new(),
         }
+    }
+    /// Supply the cache-backed NPC recolour and retexture counts that size customisation blocks.
+    pub fn set_npc_shapes(&mut self, shapes: super::npc_extended::NpcShapeLookup) {
+        self.npcs.set_shapes(shapes);
+    }
+    /// Packets received per opcode that this adapter consumes without decoding (diagnostic).
+    #[must_use]
+    pub const fn unhandled_opcodes(&self) -> &std::collections::BTreeMap<u16, u64> {
+        &self.unhandled
+    }
+    /// Opcodes seen for the first time since the previous call, so a caller can log each once.
+    pub fn take_new_unhandled(&mut self) -> Vec<u16> {
+        std::mem::take(&mut self.new_unhandled)
     }
     /// Supply the selected cache's immutable Huffman codec before receiving player chat.
     pub fn set_chat_codec(&mut self, codec: super::huffman::Huffman) {
@@ -621,7 +691,7 @@ impl SessionCodec {
                 ServerUpdate::ChatFilters(values)
             }
             73 => ServerUpdate::GameMessage(super::chat::decode(&packet.payload)?),
-            19 | 63 | 66 | 120 => {
+            19 | 63 | 66 | 85 | 120 => {
                 ServerUpdate::PlayerStatus(super::scripts::status(packet.opcode, &packet.payload)?)
             }
             10 => ServerUpdate::Script(super::scripts::decode(&packet.payload)?),
@@ -680,6 +750,7 @@ impl SessionCodec {
                         super::zone::ZoneUpdate::Location(location) => {
                             ServerUpdate::Location(location)
                         }
+                        super::zone::ZoneUpdate::GroundItem(item) => ServerUpdate::GroundItem(item),
                     });
                 }
                 ServerUpdate::Deferred
@@ -692,6 +763,10 @@ impl SessionCodec {
                 .zones
                 .animation(&packet.payload)?
                 .map_or(ServerUpdate::Deferred, ServerUpdate::LocationAnim),
+            52 | 86 | 87 | 89 | 114 | 124 => {
+                super::ground_items::specific(packet.opcode, &packet.payload)?
+                    .map_or(ServerUpdate::Deferred, ServerUpdate::GroundItem)
+            }
             84 => {
                 let update = decode_loc_anim_specific(&packet.payload)?;
                 update.map_or(ServerUpdate::Deferred, ServerUpdate::LocationAnim)
@@ -708,7 +783,14 @@ impl SessionCodec {
             26 | 37 | 56 | 115 => {
                 ServerUpdate::Control(super::control::decode(packet.opcode, &packet.payload)?)
             }
-            _ => ServerUpdate::Deferred,
+            opcode => {
+                let count = self.unhandled.entry(opcode).or_insert(0);
+                if *count == 0 {
+                    self.new_unhandled.push(opcode);
+                }
+                *count = count.saturating_add(1);
+                ServerUpdate::Deferred
+            }
         };
         let is_logout = matches!(&update, ServerUpdate::LoggedOut)
             || matches!(&update, ServerUpdate::Control(control) if control.terminates_session());

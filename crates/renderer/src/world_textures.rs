@@ -145,15 +145,11 @@ pub(crate) fn fingerprint(
         );
         let pixels = asset.image.pixels();
         hash = mix(hash, pixels.len() as u64);
-        let mut words = pixels.chunks_exact(8);
-        for word in &mut words {
-            hash = mix(
-                hash,
-                u64::from_le_bytes(word.try_into().expect("eight bytes")),
-            );
+        let (words, rest) = pixels.as_chunks::<8>();
+        for word in words {
+            hash = mix(hash, u64::from_le_bytes(*word));
         }
         let mut tail = [0_u8; 8];
-        let rest = words.remainder();
         tail[..rest.len()].copy_from_slice(rest);
         hash = mix(hash, u64::from_le_bytes(tail));
     }

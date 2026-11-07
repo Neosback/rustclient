@@ -68,8 +68,31 @@ pub fn load_scene_from_cache(
     profile: CacheProfile,
     placement: InitialPlacement,
     inputs: &rustclient_scene::SceneryInputs,
-    mut progress: impl FnMut(&str),
+    progress: impl FnMut(&str),
 ) -> Result<LoadedScene, String> {
+    load_scene_cancellable(cache, profile, placement, inputs, progress, &|| false)
+}
+
+/// [`load_scene_from_cache`] that stops between its phases (world decode, location extension,
+/// mesh phases, pick index) once `cancelled` answers true. A cancelled load returns an error the
+/// caller discards with the superseded request.
+/// # Errors
+/// As [`load_scene_from_cache`], plus a cancellation error.
+pub fn load_scene_cancellable(
+    cache: &Cache<impl ReadOnlyBlobs>,
+    profile: CacheProfile,
+    placement: InitialPlacement,
+    inputs: &rustclient_scene::SceneryInputs,
+    mut progress: impl FnMut(&str),
+    cancelled: &dyn Fn() -> bool,
+) -> Result<LoadedScene, String> {
+    let check = || {
+        if cancelled() {
+            Err(String::from("scene load cancelled"))
+        } else {
+            Ok(())
+        }
+    };
     if placement.area.is_some() {
         return Err("instanced scene loading is not implemented".into());
     }
@@ -79,6 +102,7 @@ pub fn load_scene_from_cache(
     let mut assets = profile
         .load_world(cache, origin, width, height, &mut progress)
         .map_err(|e| e.to_string())?;
+    check()?;
     let wanted = inputs
         .locations
         .values()
@@ -91,9 +115,10 @@ pub fn load_scene_from_cache(
         .extend_world_locations(cache, &mut assets, &wanted)
         .map_err(|e| e.to_string())?;
     let asset = SceneAsset::new(assets, origin, width, height).map_err(|e| e.to_string())?;
+    check()?;
     progress("building terrain and location mesh");
     let descriptor = asset.descriptor().with_plane(placement.map_anchor.plane);
-    let mesh = rustclient_scene::build_mesh_with_inputs(
+    let mesh = rustclient_scene::build_mesh_cancellable(
         &asset,
         descriptor,
         if descriptor.contains(placement.position) {
@@ -102,8 +127,10 @@ pub fn load_scene_from_cache(
             placement.map_anchor
         },
         inputs,
+        cancelled,
     )
     .map_err(|e| e.to_string())?;
+    check()?;
     let picking =
         rustclient_scene::ScenePickIndex::new(&mesh.geometry).map_err(|e| e.to_string())?;
     let mut projection_inputs = inputs.clone();

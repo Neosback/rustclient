@@ -204,6 +204,19 @@ pub struct WidgetAction {
     pub interface_epoch: u64,
 }
 
+/// One end of a drag between widgets: the component (or child) and the item it holds.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct WidgetDragEnd {
+    pub address: crate::WidgetAddress,
+    pub item: Option<crate::ItemDefinitionId>,
+}
+/// A widget dropped on another (`IF_BUTTOND`): the dragged widget and the one under the pointer.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct WidgetDragDrop {
+    pub selected: WidgetDragEnd,
+    pub target: WidgetDragEnd,
+}
+
 #[cfg(test)]
 mod widget_operation_tests {
     use super::WidgetOperation;

@@ -9,6 +9,7 @@ impl NativeApp {
     pub(super) fn widget_sprites_missing(&self) -> bool {
         self.plugins.requested_sprites().any(|sprite| {
             !self
+                .scratch
                 .widget_requested
                 .sprites
                 .contains(&rustclient_model::SpriteId::new(sprite))
@@ -115,7 +116,7 @@ impl NativeApp {
                 .map(rustclient_model::SpriteId::new),
         );
         // Everything loaded stays loaded (the cache is immutable); only new visuals are decoded.
-        let request = request.missing_from(&self.widget_requested);
+        let request = request.missing_from(&self.scratch.widget_requested);
         if request.is_empty() {
             self.widget_asset_key = Some(key);
             return;
@@ -211,6 +212,49 @@ impl NativeApp {
         self.request_widget_assets();
         Ok(())
     }
+    /// A dragged widget was released over `target`: tell the server, if both ends are still shown
+    /// and the connection is up (`IF_BUTTOND`).
+    pub(super) fn send_widget_drop(
+        &mut self,
+        selected: rustclient_model::WidgetAddress,
+        target: rustclient_model::WidgetAddress,
+    ) {
+        let (Some(scripts), Some(connection)) = (&self.scripts, &self.connection) else {
+            return;
+        };
+        let item = |address: rustclient_model::WidgetAddress| {
+            self.state
+                .interfaces()
+                .runtime()
+                .get(&address)
+                .and_then(|runtime| runtime.item)
+                .map(|(id, _)| id)
+        };
+        let drop = rustclient_model::WidgetDragDrop {
+            selected: rustclient_model::WidgetDragEnd {
+                address: selected,
+                item: item(selected),
+            },
+            target: rustclient_model::WidgetDragEnd {
+                address: target,
+                item: item(target),
+            },
+        };
+        match rustclient_application::validate_widget_drag(&self.state, scripts.interfaces(), drop)
+        {
+            Ok(intent) => {
+                if let Err(error) = connection.send(network::Outbound {
+                    world_action: None,
+                    map_epoch: self.map_epoch,
+                    interface_epoch: Some(self.interface_epoch),
+                    intent,
+                }) {
+                    eprintln!("widget drop: {error}");
+                }
+            }
+            Err(error) => eprintln!("widget drop rejected: {error}"),
+        }
+    }
     /// Retain widget commands until one of the actual paint dependencies changes.
     pub(super) fn project_game_widgets(&mut self) {
         let dragged = self.dragged_widget();
@@ -243,8 +287,8 @@ impl NativeApp {
                 self.widget_paint = Some(projection.dependencies);
                 self.frame.seal_widgets();
                 for error in projection.diagnostics {
-                    if self.reported_script_errors.len() < 256
-                        && self.reported_script_errors.insert(error.clone())
+                    if self.scratch.reported_script_errors.len() < 256
+                        && self.scratch.reported_script_errors.insert(error.clone())
                     {
                         eprintln!("widget projection: {error}");
                     }
@@ -281,13 +325,44 @@ impl NativeApp {
             self.widget_tree_key = key;
         }
     }
+    /// Run the plugin menu stage over a widget's actions (SPEC-0021): hooks, ordered edits and
+    /// relabels. The rows are remembered so choosing one reaches plugins as `MenuOptionClicked`.
+    pub(super) fn stage_widget_entries(
+        &mut self,
+        entries: Vec<(String, WidgetAction)>,
+        opened: bool,
+    ) -> Vec<(String, WidgetAction)> {
+        let records: Vec<_> = entries
+            .iter()
+            .map(|(label, action)| rustclient_application::menu::widget_menu_entry(label, *action))
+            .collect();
+        self.widget_menu_records = entries
+            .iter()
+            .zip(&records)
+            .map(|((_, action), record)| (*action, record.clone()))
+            .collect();
+        if entries.is_empty() || !self.plugins.wants_menu_stage() {
+            return entries;
+        }
+        let edited = self.plugins.menu_stage(&records, opened);
+        rustclient_application::menu::apply_edited_menu(entries, &edited, |(label, _), option| {
+            *label = rustclient_application::menu::relabel(label, option);
+        })
+    }
+    /// A widget menu entry was chosen: deliver it to plugins, then run it.
+    fn choose_widget_action(&mut self, action: WidgetAction) -> Result<(), String> {
+        if let Some((_, record)) = self.widget_menu_records.iter().find(|(a, _)| *a == action) {
+            self.plugins.menu_chosen(record.clone());
+        }
+        self.send_widget_action(action)
+    }
     pub(super) fn widget_click(&mut self, x: f32, y: f32, right: bool) -> Result<bool, String> {
         if self.state.interfaces().root().is_none() {
             return Ok(false);
         }
         if self.widget_menu.is_open() && !right {
             if let Some(action) = self.widget_menu.click(x, y) {
-                self.send_widget_action(action)?;
+                self.choose_widget_action(action)?;
             }
             return Ok(true);
         }
@@ -299,6 +374,7 @@ impl NativeApp {
         if self.widget_tree.nodes.is_empty() {
             return Ok(true);
         }
+        let mut staged = None;
         for node in self.widget_tree.nodes.iter().rev() {
             if !node.bounds.rect().contains(x, y) || !node.clip.rect().contains(x, y) {
                 continue;
@@ -329,23 +405,8 @@ impl NativeApp {
                 node.address,
             )?;
             if !entries.is_empty() {
-                if right {
-                    if let Some(assets) = &self.assets {
-                        self.widget_menu.open(
-                            x,
-                            y,
-                            entries,
-                            &assets.fonts[2],
-                            &self.widget_assets.font_icons,
-                            self.state.interfaces().window().canvas,
-                        );
-                        self.context_menu.close();
-                        self.cancel_gestures();
-                    }
-                } else if let Some((_, action)) = entries.first() {
-                    self.send_widget_action(*action)?;
-                }
-                return Ok(true);
+                staged = Some(entries);
+                break;
             }
             if matches!(
                 widget.body,
@@ -368,6 +429,26 @@ impl NativeApp {
                 }
                 return Ok(true);
             }
+        }
+        if let Some(entries) = staged {
+            let entries = self.stage_widget_entries(entries, right);
+            if right {
+                if let Some(assets) = &self.assets {
+                    self.widget_menu.open(
+                        x,
+                        y,
+                        entries,
+                        &assets.fonts[2],
+                        &self.widget_assets.font_icons,
+                        self.state.interfaces().window().canvas,
+                    );
+                    self.context_menu.close();
+                    self.cancel_gestures();
+                }
+            } else if let Some((_, action)) = entries.first() {
+                self.choose_widget_action(*action)?;
+            }
+            return Ok(true);
         }
         Ok(false)
     }

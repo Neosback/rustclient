@@ -2,24 +2,7 @@
 //! and ModelData.method5262 in the pinned deob source. Flat-lit and animated models
 //! never join this pass; normals from earlier merges do not feed subsequent merges.
 use crate::locations::PreparedModel;
-use std::collections::{BTreeMap, BTreeSet};
-
-/// A model's lit vertices as `(position, vertex index)`, sorted so equal positions are one run
-/// in ascending index order. Positions and vertex counts are fixed once a model is prepared
-/// (merging only writes `merged` and face render types), so one table serves every pairing.
-type Positions = Vec<((i32, i32, i32), usize)>;
-
-fn positions_of(model: &PreparedModel) -> Positions {
-    let mut positions: Positions = model
-        .points
-        .iter()
-        .enumerate()
-        .filter(|(index, _)| model.normals.vertices[*index].count != 0)
-        .map(|(index, p)| ((p.x, p.y, p.z), index))
-        .collect();
-    positions.sort_unstable();
-    positions
-}
+use std::collections::BTreeMap;
 
 fn footprint(model: &PreparedModel) -> [u8; 2] {
     if matches!(model.loc.shape, 10 | 11) {
@@ -52,12 +35,11 @@ pub(crate) fn merge(models: &mut [PreparedModel]) -> crate::Result<()> {
             }
         }
     }
-    let mut positions = std::iter::repeat_with(|| None)
-        .take(models.len())
-        .collect::<Vec<Option<Positions>>>();
+    let mut lit_a = Vec::new();
+    let mut lit_b = Vec::new();
     let mut matched_a = Vec::new();
     let mut matched_b = Vec::new();
-    let mut candidates = BTreeSet::new();
+    let mut candidates = Vec::new();
     for a in 0..models.len() {
         if !models[a].mergeable {
             continue;
@@ -74,6 +56,10 @@ pub(crate) fn merge(models: &mut [PreparedModel]) -> crate::Result<()> {
                 }
             }
         }
+        // Ascending and unique, as the ordered set this replaced visited them.
+        candidates.sort_unstable();
+        candidates.dedup();
+        let mut a_sorted = false;
         for &b in &candidates {
             let same_boundary = models[a].loc.tile == models[b].loc.tile
                 && models[a].loc.shape <= 3
@@ -85,13 +71,17 @@ pub(crate) fn merge(models: &mut [PreparedModel]) -> crate::Result<()> {
             }) else {
                 continue;
             };
+            if !a_sorted {
+                lit_positions(&models[a], &mut lit_a);
+                a_sorted = true;
+            }
+            lit_positions(&models[b], &mut lit_b);
             let (left, right) = models.split_at_mut(b);
-            let table = positions[b].get_or_insert_with(|| positions_of(&right[0]));
             pair(
                 &mut left[a],
                 &mut right[0],
                 hide,
-                table,
+                [&lit_a, &lit_b],
                 &mut matched_a,
                 &mut matched_b,
             );
@@ -133,11 +123,61 @@ fn neighbors(a: &PreparedModel, b: &PreparedModel) -> Option<bool> {
     None
 }
 
+/// A model's vertices that carry a normal, as `(x, y, z, vertex)` sorted by position then vertex.
+///
+/// Normals from earlier merges never feed later ones (only `merged` changes), so the list depends
+/// on the model alone; `out` is a reused buffer.
+fn lit_positions(model: &PreparedModel, out: &mut Vec<(i32, i32, i32, u32)>) {
+    out.clear();
+    out.extend(
+        model
+            .points
+            .iter()
+            .enumerate()
+            .filter(|(index, _)| model.normals.vertices[*index].count != 0)
+            .map(|(index, p)| (p.x, p.y, p.z, u32::try_from(index).unwrap_or(u32::MAX))),
+    );
+    out.sort_unstable();
+}
+
+/// Call `each(i, j)` for every vertex `i` of `a` and `j` of `b` at the same position: a merge join
+/// of two position-sorted lists. Within one position, `i` and `j` ascend.
+fn coincident(
+    a: &[(i32, i32, i32, u32)],
+    b: &[(i32, i32, i32, u32)],
+    mut each: impl FnMut(usize, usize),
+) {
+    let key = |p: &(i32, i32, i32, u32)| (p.0, p.1, p.2);
+    let (mut i, mut j) = (0, 0);
+    while i < a.len() && j < b.len() {
+        match key(&a[i]).cmp(&key(&b[j])) {
+            std::cmp::Ordering::Less => i += 1,
+            std::cmp::Ordering::Greater => j += 1,
+            std::cmp::Ordering::Equal => {
+                let position = key(&a[i]);
+                let a_end = i + a[i..].iter().take_while(|p| key(p) == position).count();
+                let b_end = j + b[j..].iter().take_while(|p| key(p) == position).count();
+                for left in &a[i..a_end] {
+                    for right in &b[j..b_end] {
+                        each(left.3 as usize, right.3 as usize);
+                    }
+                }
+                (i, j) = (a_end, b_end);
+            }
+        }
+    }
+}
+
+/// Merge the normals of every coincident lit vertex pair (`ModelData.method5262`), then hide the
+/// faces whose vertices all matched when the pair hides (at least three matches).
+///
+/// `Normal::add` is wrapping integer addition, so the result does not depend on the order in
+/// which coincident pairs are visited.
 fn pair(
     a: &mut PreparedModel,
     b: &mut PreparedModel,
     hide: bool,
-    positions: &Positions,
+    [lit_a, lit_b]: [&[(i32, i32, i32, u32)]; 2],
     matched_a: &mut Vec<bool>,
     matched_b: &mut Vec<bool>,
 ) {
@@ -146,27 +186,17 @@ fn pair(
     matched_b.clear();
     matched_b.resize(b.points.len(), false);
     let mut matches = 0;
-    for (i, p) in a.points.iter().enumerate() {
-        if a.normals.vertices[i].count == 0 {
-            continue;
-        }
-        let key = (p.x, p.y, p.z);
-        let first = positions.partition_point(|(position, _)| *position < key);
-        for &(position, j) in &positions[first..] {
-            if position != key {
-                break;
-            }
-            a.merged[i]
-                .get_or_insert(a.normals.vertices[i])
-                .add(b.normals.vertices[j]);
-            b.merged[j]
-                .get_or_insert(b.normals.vertices[j])
-                .add(a.normals.vertices[i]);
-            matched_a[i] = true;
-            matched_b[j] = true;
-            matches += 1;
-        }
-    }
+    coincident(lit_a, lit_b, |i, j| {
+        a.merged[i]
+            .get_or_insert(a.normals.vertices[i])
+            .add(b.normals.vertices[j]);
+        b.merged[j]
+            .get_or_insert(b.normals.vertices[j])
+            .add(a.normals.vertices[i]);
+        matched_a[i] = true;
+        matched_b[j] = true;
+        matches += 1;
+    });
     if hide && matches >= 3 {
         for (model, matched) in [(a, &*matched_a), (b, &*matched_b)] {
             for face in &mut model.model.faces {
@@ -174,6 +204,47 @@ fn pair(
                     face.render_type = 2;
                 }
             }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::coincident;
+
+    /// The nested-loop definition `coincident` must equal: every same-position pair.
+    fn brute(a: &[(i32, i32, i32, u32)], b: &[(i32, i32, i32, u32)]) -> Vec<(usize, usize)> {
+        let mut out = Vec::new();
+        for p in a {
+            for q in b {
+                if (p.0, p.1, p.2) == (q.0, q.1, q.2) {
+                    out.push((p.3 as usize, q.3 as usize));
+                }
+            }
+        }
+        out.sort_unstable();
+        out
+    }
+
+    #[test]
+    fn merge_join_finds_exactly_the_coincident_pairs_including_duplicates() {
+        // A deterministic spread with repeated positions on both sides.
+        let mut seed = 0x2400_0001_u32;
+        let mut next = || {
+            seed ^= seed << 13;
+            seed ^= seed >> 17;
+            seed ^= seed << 5;
+            i32::try_from(seed % 4).unwrap()
+        };
+        for size in [0, 1, 7, 40] {
+            let mut a: Vec<_> = (0..size).map(|i| (next(), next(), next(), i)).collect();
+            let mut b: Vec<_> = (0..size + 3).map(|i| (next(), next(), next(), i)).collect();
+            a.sort_unstable();
+            b.sort_unstable();
+            let mut got = Vec::new();
+            coincident(&a, &b, |i, j| got.push((i, j)));
+            got.sort_unstable();
+            assert_eq!(got, brute(&a, &b), "size {size}");
         }
     }
 }

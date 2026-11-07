@@ -2,7 +2,7 @@
 use rustclient_platform::{ByteStream, TransportError};
 use std::{
     io::{Read, Write},
-    net::{IpAddr, Ipv4Addr, SocketAddr, TcpStream},
+    net::{IpAddr, Ipv4Addr, SocketAddr, TcpStream, ToSocketAddrs},
     sync::{
         Arc,
         atomic::{AtomicBool, Ordering},
@@ -21,6 +21,36 @@ impl ConnectionCancellation {
         self.0.load(Ordering::Acquire)
     }
 }
+/// Most addresses tried for one host name, so an unreachable name fails in bounded time.
+const MAX_ADDRESSES: usize = 4;
+/// The socket addresses to try for `host`: IP literals and `localhost` without a lookup, other
+/// valid host names through the system resolver.
+fn candidate_addresses(host: &str, port: u16) -> Result<Vec<SocketAddr>, TransportError> {
+    if host == "localhost" {
+        return Ok(vec![SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), port)]);
+    }
+    if let Ok(ip) = host.parse::<IpAddr>() {
+        return Ok(vec![SocketAddr::new(ip, port)]);
+    }
+    let valid_name = !host.is_empty()
+        && host.len() <= 253
+        && host
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'.'));
+    if !valid_name {
+        return Err(TransportError::Unavailable);
+    }
+    let addresses: Vec<SocketAddr> = (host, port)
+        .to_socket_addrs()
+        .map_err(|_| TransportError::Unavailable)?
+        .take(MAX_ADDRESSES)
+        .collect();
+    if addresses.is_empty() {
+        Err(TransportError::Unavailable)
+    } else {
+        Ok(addresses)
+    }
+}
 /// Native implementation intended to be driven on a dedicated worker.
 pub struct NativeTcp {
     stream: TcpStream,
@@ -29,7 +59,9 @@ pub struct NativeTcp {
 }
 impl NativeTcp {
     /// # Errors
-    /// Accepts an IP literal or localhost. Fails on connect/setup; host strings and payloads are not included in errors.
+    /// Accepts an IP literal, `localhost` or a host name, which is resolved here (on the worker)
+    /// and tried address by address. Fails on resolution/connect/setup; host strings and payloads
+    /// are not included in errors.
     pub fn connect(
         host: &str,
         port: u16,
@@ -38,13 +70,17 @@ impl NativeTcp {
         if cancel.is_cancelled() {
             return Err(TransportError::Cancelled);
         }
-        let ip = if host == "localhost" {
-            IpAddr::V4(Ipv4Addr::LOCALHOST)
-        } else {
-            host.parse().map_err(|_| TransportError::Unavailable)?
-        };
-        let stream = TcpStream::connect_timeout(&SocketAddr::new(ip, port), Duration::from_secs(2))
-            .map_err(|_| TransportError::Unavailable)?;
+        let mut connected = None;
+        for address in candidate_addresses(host, port)? {
+            if cancel.is_cancelled() {
+                return Err(TransportError::Cancelled);
+            }
+            if let Ok(stream) = TcpStream::connect_timeout(&address, Duration::from_secs(2)) {
+                connected = Some(stream);
+                break;
+            }
+        }
+        let stream = connected.ok_or(TransportError::Unavailable)?;
         stream
             .set_read_timeout(Some(Duration::from_millis(100)))
             .map_err(|_| TransportError::Unavailable)?;
@@ -145,6 +181,22 @@ impl ByteStream for NativeTcp {
 mod tests {
     use super::*;
     use std::net::TcpListener;
+    #[test]
+    fn literals_and_localhost_skip_the_resolver_and_malformed_names_are_refused() {
+        assert_eq!(
+            candidate_addresses("127.0.0.1", 43594).unwrap(),
+            [SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 43594)]
+        );
+        assert_eq!(candidate_addresses("::1", 1).unwrap().len(), 1);
+        assert_eq!(candidate_addresses("localhost", 7).unwrap().len(), 1);
+        for bad in ["", "has space", "a/b", "name:80", &"x".repeat(300)] {
+            assert_eq!(
+                candidate_addresses(bad, 1),
+                Err(TransportError::Unavailable),
+                "{bad:?}"
+            );
+        }
+    }
     #[test]
     fn idle_receive_poll_does_not_hold_outbound_input_behind_the_server() {
         let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();

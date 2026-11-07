@@ -1,9 +1,11 @@
 //! `OpenRune` 240.2 desktop adapter, pinned to `RSProt` 1.0.0-ALPHA-20260825.
 //! See SPEC-0014 and tests/fixtures/PROVENANCE.md for exact evidence and scope.
 mod actions;
+mod actor_effects;
 pub(crate) mod bit_reader;
 pub(crate) mod control;
 pub(crate) mod game;
+mod ground_items;
 pub(crate) mod huffman;
 mod info_fields;
 mod interfaces;
@@ -12,7 +14,7 @@ pub(crate) mod js5;
 mod lengths;
 pub(crate) mod loc_anim;
 pub(crate) mod login;
-mod npc_extended;
+pub(crate) mod npc_extended;
 pub(crate) mod npc_info;
 mod player_appearance;
 mod player_extended;

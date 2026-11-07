@@ -65,6 +65,8 @@ unsafe_code = "deny"
 [workspace.lints.clippy]
 all = { level = "warn", priority = -1 }
 pedantic = { level = "warn", priority = -1 }
+# Added to `clippy::all` in Rust 1.99; `assert!(x.is_empty())` is the workspace's test idiom.
+assert_is_empty = "allow"
 
 # Optimize the measured CPU gameplay hot paths while retaining dev assertions/symbols.
 # Third-party crates (wgpu, naga, image decoders) dominate frame time in debug builds.

@@ -242,16 +242,37 @@ pub fn build_mesh(
 /// Extract scenery from an immutable snapshot of committed variable/location/time inputs.
 /// # Errors
 /// Rejects missing dependencies, invalid morphs and invalid projection bounds.
-#[expect(
-    clippy::cast_precision_loss,
-    reason = "bounded scene focus converted to camera composition units"
-)]
 pub fn build_mesh_with_inputs(
     asset: &SceneAsset,
     descriptor: rustclient_model::SceneDescriptor,
     spawn: WorldTile,
     inputs: &crate::SceneryInputs,
 ) -> Result<WorldMesh> {
+    build_mesh_cancellable(asset, descriptor, spawn, inputs, &|| false)
+}
+
+/// [`build_mesh_with_inputs`] that stops between terrain, static location and dynamic location
+/// phases once `cancelled` answers true, so a superseded load releases its worker sooner.
+/// # Errors
+/// As [`build_mesh_with_inputs`], plus a cancellation error.
+#[expect(
+    clippy::cast_precision_loss,
+    reason = "bounded scene focus converted to camera composition units"
+)]
+pub fn build_mesh_cancellable(
+    asset: &SceneAsset,
+    descriptor: rustclient_model::SceneDescriptor,
+    spawn: WorldTile,
+    inputs: &crate::SceneryInputs,
+    cancelled: &dyn Fn() -> bool,
+) -> Result<WorldMesh> {
+    let check = || {
+        if cancelled() {
+            Err(SceneError("scene build cancelled".into()))
+        } else {
+            Ok(())
+        }
+    };
     if asset.descriptor().with_plane(descriptor.origin().plane) != descriptor
         || !descriptor.contains(spawn)
     {
@@ -273,8 +294,11 @@ pub fn build_mesh_with_inputs(
         textures: std::sync::Arc::clone(&asset.assets.textures),
         roofs: asset.roofs_with(&inputs.roof_areas),
     };
+    check()?;
     super::terrain::build(asset, &mut mesh, inputs)?;
+    check()?;
     super::locations::build(asset, &mut mesh, inputs, super::locations::Scope::Static)?;
+    check()?;
     let mut dynamic = empty_mesh(asset, mesh.focus, std::sync::Arc::clone(&mesh.roofs));
     super::locations::build(
         asset,

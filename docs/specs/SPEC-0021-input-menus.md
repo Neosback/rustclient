@@ -101,6 +101,30 @@ HIDEOBJOPS (matrix `server-interaction-state`). Cache op arrays come from 240 `E
 - Left-click runs the top entry unless the stock left-click rule (`client.method2344`
   MenuShouldLeftClick, shift-click flags) opens the menu instead.
 
+### Plugin menu stage (accepted 2026-11-05)
+
+After the client builds the world menu and before it shows, sorts or consults it, the host runs
+one synchronous plugin stage (`PluginSet::menu_stage`). It delivers `MenuEntryAdded` for each
+entry, `MenuOpened` only when the menu is being shown, then `PostMenuSort`. It then collects the
+`menu_edits` of every running `PostMenuSort` subscriber that holds `ui.menu.swap`, in
+subscriber priority order, and applies them in order to the delivered list (`apply_menu_edits`).
+The edited list is the one the left click runs, the mouse-over text shows and the opened menu
+paints. The stage is skipped when no running plugin subscribes to a menu hook.
+
+Rows project to the plugin `MenuEntry` with `RuneLite` identifiers (`application::menu`): the
+NPC index for NPC options, the object id and scene tile for location options, the item id and
+scene tile for ground item options, and the scene tile for "Walk here". Choosing any entry,
+stock or plugin-offered, delivers `MenuOptionClicked` at the next plugin update; consuming the
+click is not offered yet.
+
+Widget menus (inventory, equipment, bank and every interface with actions) run the same stage.
+Their rows project with `RuneLite` `CC_OP` conventions (`application::menu::widget_menu_entry`):
+`MenuKind::WidgetOption(op)` with the one-based operation index as identifier, the child index (-1
+for the widget itself) in `param0` and the packed widget id in `param1`. Operations beyond ten, continue
+and button clicks map to `MenuKind::Other`. The mouse-over text, the left click (first row) and the
+opened menu use the edited list, and choosing a row delivers `MenuOptionClicked`. A widget menu
+whose rows are all removed swallows the click.
+
 ### Selection modes
 
 Item-selected and spell-selected modes are semantic state with a lifetime. They are set by the

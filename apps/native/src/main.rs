@@ -1,4 +1,6 @@
 #![forbid(unsafe_code)]
+#[macro_use]
+mod diagnostics;
 mod actor_overlays;
 mod camera_input;
 mod capture;
@@ -101,6 +103,27 @@ enum LoadEvent {
     SceneLoaded(u64, Box<Result<scene::PreparedScene, String>>),
 }
 
+/// Per-session client state that must not outlive a login. Everything here is cleared by
+/// [`SessionScratch::reset`] when the session ends, so a field added later cannot be forgotten.
+#[derive(Default)]
+struct SessionScratch {
+    /// Script error texts already reported, so each is logged once per session.
+    reported_script_errors: std::collections::BTreeSet<String>,
+    /// Whether the last plugin update asked for mouse-wheel zoom on the minimap, so the client
+    /// changes the script-owned flag only when the request changes.
+    plugin_wheel_zoom: bool,
+    /// Whether the client last hid the minimap and orbs for a plugin, so lifting the request
+    /// shows them again.
+    minimap_hidden: bool,
+    /// Widget assets the session's interfaces have asked for.
+    widget_requested: rustclient_application::scripts::WidgetAssetRequest,
+}
+impl SessionScratch {
+    fn reset(&mut self) {
+        *self = Self::default();
+    }
+}
+
 #[expect(
     clippy::struct_excessive_bools,
     reason = "independent window and loading flags, not a state machine"
@@ -116,6 +139,13 @@ struct NativeApp {
     context_menu: rustclient_game_ui::ContextMenu<interaction::WorldChoice>,
     /// The plugin entries of the world menu that was last opened, by `WorldChoice::Plugin` slot.
     plugin_menu: Vec<rustclient_plugin_api::MenuEntry>,
+    /// Plugin records of the stock entries of the last built world menu, for `MenuOptionClicked`.
+    menu_records: Vec<(interaction::WorldChoice, rustclient_plugin_api::MenuEntry)>,
+    /// Plugin records of the rows of the last widget menu stage, for `MenuOptionClicked`.
+    widget_menu_records: Vec<(
+        rustclient_model::WidgetAction,
+        rustclient_plugin_api::MenuEntry,
+    )>,
     click_cross: Option<(Instant, interaction::CrossKind, f32, f32)>,
     hover: Option<interaction::HoverText>,
     /// Scene-local tile under the pointer, tracked while a plugin asks for hovered-roof removal.
@@ -124,7 +154,7 @@ struct NativeApp {
     /// Set once the game interface has been drawn this session; cleared on disconnect.
     entered_world: bool,
     widget_menu: rustclient_game_ui::ContextMenu<rustclient_model::WidgetAction>,
-    reported_script_errors: std::collections::BTreeSet<String>,
+    scratch: SessionScratch,
     entity_report: (Instant, String),
     /// Hidden or fully covered windows are not drawn: the OS blocks `get_current_texture` there.
     occluded: bool,
@@ -136,7 +166,6 @@ struct NativeApp {
     scripts: Option<rustclient_application::scripts::ClientScripts<DirectoryBlobs>>,
     widget_job_scope: rustclient_platform::JobCancellation,
     widget_assets: rustclient_game_ui::widget_visuals::WidgetVisualAssets,
-    widget_requested: rustclient_application::scripts::WidgetAssetRequest,
     widget_asset_key: Option<(u64, u64)>,
     widget_loading: bool,
     reported_window: Option<rustclient_model::WindowMetrics>,
@@ -150,12 +179,6 @@ struct NativeApp {
     /// Plane the cached minimap image was built for; the client rebuilds it when the player changes plane.
     minimap_plane: Option<rustclient_model::Plane>,
     minimap_pixels: Vec<u8>,
-    /// Whether the last plugin update asked for mouse-wheel zoom on the minimap, so the client
-    /// changes the script-owned flag only when the request changes.
-    plugin_wheel_zoom: bool,
-    /// Whether the client last hid the minimap and orbs for a plugin, so lifting the request
-    /// shows them again.
-    minimap_hidden: bool,
     compass_pixels: Vec<u8>,
     /// Hash of every input the composed minimap/compass pixels depend on, and the revision handed
     /// to the renderer; a frame with an unchanged key neither recomposes nor re-uploads.
@@ -182,6 +205,8 @@ struct NativeApp {
     shell: shell::Shell,
     storage: Option<DirectoryStorage>,
     saved_preferences: TitlePreferences,
+    /// Machine-local preferences: where the window was left.
+    client_preferences: rustclient_application::client_preferences::ClientPreferences,
     modifiers: ModifiersState,
     cursor: Option<(f64, f64)>,
     ime_preedit: bool,
@@ -206,6 +231,10 @@ struct NativeApp {
 impl NativeApp {
     /// Hand plugins the projected state: shell-owned facts plus the cache definitions in use.
     fn update_plugins(&mut self) {
+        if let Some(scripts) = &mut self.scripts {
+            self.plugins
+                .scripts_finished(scripts.take_completed_scripts());
+        }
         let window = self.state.interfaces().window();
         let camera = self.scene.camera.map(|camera| {
             let viewport = rustclient_renderer::CameraViewport::new(
@@ -227,6 +256,20 @@ impl NativeApp {
         let variables = self.state.scenery().variables();
         let catalog = &self.scene.entity_catalog;
         let resolve = |id| asset.and_then(|asset| catalog.resolve_npc(asset, id, variables));
+        // Stock `genCert` gives a noted item its unnoted name and price.
+        let items = |id| {
+            let def = catalog.item(id)?;
+            let unnoted = def
+                .note_template
+                .and(def.note)
+                .and_then(|note| catalog.item(note));
+            Some(rustclient_plugin_bridge::ItemFacts {
+                name: catalog.item_name(id),
+                cost: unnoted.map_or(def.cost, |unnoted| unnoted.cost),
+                stackable: def.stackable || def.note_template.is_some(),
+                noted: def.note_template.is_some(),
+            })
+        };
         let inputs = plugins::Inputs {
             frame: rustclient_plugin_bridge::Frame {
                 session: self.connection_generation.checked_add(1).unwrap_or(0),
@@ -236,10 +279,20 @@ impl NativeApp {
                 camera: camera.unwrap_or_default(),
                 input_idle: Some(self.input_activity.idle(Instant::now())),
                 hovered_tile: self.hovered_world_tile(),
+                shift_held: self.modifiers.shift_key(),
+                wall_time_ms: std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map_or(0, |elapsed| {
+                        u64::try_from(elapsed.as_millis()).unwrap_or(u64::MAX)
+                    }),
             },
             sources: rustclient_plugin_bridge::Sources {
                 npcs: Some(&resolve),
                 varbits: asset.map(|asset| &asset.sources().varbits),
+                items: Some(&items),
+                // NPC names and ground item facts change only when definitions arrive or the
+                // scene (and with it the asset NPCs resolve against) is replaced.
+                revision: catalog.generation() ^ self.map_epoch.rotate_left(32),
                 interfaces: self
                     .scripts
                     .as_ref()
@@ -338,8 +391,8 @@ impl NativeApp {
     fn sync_minimap(&mut self) {
         use rustclient_model::MinimapUpdate;
         let wheel_zoom = self.plugins.output().minimap.wheel_zoom;
-        if wheel_zoom != self.plugin_wheel_zoom {
-            self.plugin_wheel_zoom = wheel_zoom;
+        if wheel_zoom != self.scratch.plugin_wheel_zoom {
+            self.scratch.plugin_wheel_zoom = wheel_zoom;
             self.update_minimap(MinimapUpdate::Zoomable(wheel_zoom));
         }
         if let Some(zoom) = self.plugins.take_minimap_zoom() {
@@ -355,7 +408,7 @@ impl NativeApp {
         const MINIMAP: u32 = 22;
         const ORBS: u32 = 33;
         let hide = self.plugins.output().minimap.hidden;
-        if !hide && !self.minimap_hidden {
+        if !hide && !self.scratch.minimap_hidden {
             return;
         }
         let Some(root) = self
@@ -383,7 +436,7 @@ impl NativeApp {
                 )));
             }
         }
-        self.minimap_hidden = hide;
+        self.scratch.minimap_hidden = hide;
     }
     fn update_minimap(&mut self, update: rustclient_model::MinimapUpdate) {
         self.apply(Some(SemanticOperation::Interface(
@@ -412,7 +465,12 @@ impl NativeApp {
                 CameraCommand::InvertYaw(on) => tuning.invert_yaw = on,
                 CameraCommand::InvertPitch(on) => tuning.invert_pitch = on,
                 CameraCommand::RelaxPitch(on) => tuning.relax_pitch = on,
-                _ => {}
+                CameraCommand::YawTarget(angle) => {
+                    tuning.yaw_target = u16::try_from(angle.rem_euclid(2048)).ok();
+                }
+                CameraCommand::PitchTarget(angle) => tuning.pitch_target = Some(angle),
+                CameraCommand::ZoomTarget(zoom) => tuning.zoom_target = Some(zoom),
+                CameraCommand::ZoomLimits { min, max } => tuning.zoom_limits = Some((min, max)),
             }
         }
         if let Some(camera) = &mut self.scene.camera {
@@ -588,6 +646,14 @@ impl NativeApp {
                 }
             })
             .unwrap_or_default();
+        let client_preferences = storage
+            .as_ref()
+            .and_then(|store| {
+                rustclient_application::client_preferences::ClientPreferences::load(store)
+                    .map_err(|error| eprintln!("using default client preferences: {error}"))
+                    .ok()
+            })
+            .unwrap_or_default();
         let mut ui = TitleUi::new(preferences.clone());
         ui.set_online(options.connection.is_some());
         let mut plugins = plugins::Plugins::load(
@@ -617,13 +683,15 @@ impl NativeApp {
             ui,
             context_menu: rustclient_game_ui::ContextMenu::default(),
             plugin_menu: Vec::new(),
+            menu_records: Vec::new(),
+            widget_menu_records: Vec::new(),
             click_cross: None,
             hover: None,
             roof_hover: None,
             hover_dirty: false,
             entered_world: false,
             widget_menu: rustclient_game_ui::ContextMenu::default(),
-            reported_script_errors: std::collections::BTreeSet::default(),
+            scratch: SessionScratch::default(),
             entity_report: (Instant::now(), String::new()),
             occluded: false,
             window_focused: true,
@@ -633,7 +701,6 @@ impl NativeApp {
             scripts: None,
             widget_job_scope: rustclient_platform::JobCancellation::default(),
             widget_assets: rustclient_game_ui::widget_visuals::WidgetVisualAssets::default(),
-            widget_requested: rustclient_application::scripts::WidgetAssetRequest::default(),
             widget_asset_key: None,
             widget_loading: false,
             reported_window: None,
@@ -646,8 +713,6 @@ impl NativeApp {
             minimap: None,
             minimap_plane: None,
             minimap_pixels: Vec::new(),
-            plugin_wheel_zoom: false,
-            minimap_hidden: false,
             compass_pixels: Vec::new(),
             minimap_key: 0,
             minimap_revision: 0,
@@ -670,6 +735,7 @@ impl NativeApp {
             plugins,
             storage,
             saved_preferences: preferences,
+            client_preferences,
             modifiers: ModifiersState::default(),
             cursor: None,
             ime_preedit: false,
@@ -810,6 +876,16 @@ impl NativeApp {
                     .is_ok()
                 })
             }
+            rustclient_protocol::ClientIntent::WidgetDrag(drag) => {
+                self.scripts.as_ref().is_some_and(|scripts| {
+                    rustclient_application::validate_widget_drag(
+                        &self.state,
+                        scripts.interfaces(),
+                        *drag,
+                    )
+                    .is_ok()
+                })
+            }
             _ => true,
         }
     }
@@ -854,8 +930,8 @@ impl NativeApp {
             match scripts.enqueue(request, None) {
                 Ok(()) => {
                     for error in scripts.drain(&mut self.state) {
-                        if self.reported_script_errors.len() < 256
-                            && self.reported_script_errors.insert(error.clone())
+                        if self.scratch.reported_script_errors.len() < 256
+                            && self.scratch.reported_script_errors.insert(error.clone())
                         {
                             eprintln!("client script: {error}");
                         }
@@ -990,6 +1066,8 @@ impl NativeApp {
         self.world_map_input_bounds = None;
         self.widget_asset_key = None;
         self.widget_loading = false;
+        self.scratch.reset();
+        self.minimap_key = 0;
         self.map_view = worldmap::MapView::default();
         self.clear_map_projection();
         self.widget_job_scope.cancel();
@@ -1050,8 +1128,8 @@ impl NativeApp {
             match result {
                 Ok(errors) => {
                     for error in errors {
-                        if self.reported_script_errors.len() < 256
-                            && self.reported_script_errors.insert(error.clone())
+                        if self.scratch.reported_script_errors.len() < 256
+                            && self.scratch.reported_script_errors.insert(error.clone())
                         {
                             eprintln!("client script: {error}");
                         }
@@ -1123,6 +1201,21 @@ impl NativeApp {
             )
         };
         let mut dots = Vec::new();
+        // Stock draws the red item dot (mapdots frame 0) at the centre of every tile on the
+        // local player's plane with a pile, before NPC and player dots.
+        if let Some(plane) = entities.local_player().map(|player| player.tile.plane) {
+            for (tile, _) in self.state.ground_items().piles() {
+                if tile.plane == plane {
+                    dots.push(MinimapDot {
+                        tile: (
+                            f64::from(tile.x - origin.x) + 0.5,
+                            f64::from(tile.y - origin.y) + 0.5,
+                        ),
+                        frame: 0,
+                    });
+                }
+            }
+        }
         for player in entities.players().values() {
             if Some(player.index) == local {
                 continue;
@@ -1172,6 +1265,7 @@ impl NativeApp {
         if self.occluded {
             return;
         }
+        let mut frame_visibility: Option<rustclient_scene::SceneVisibility> = None;
         // GPU pacing and an optional FPS plugin share the existing presentation clock.
         let policy = self.presentation_limit();
         let deadline = self.frame_limit.deadline(policy);
@@ -1234,6 +1328,8 @@ impl NativeApp {
                     self.entered_world = true;
                 }
                 let visibility = self.scene_visibility(&window);
+                // The renderer below draws with the same predicate; compute it once per frame.
+                frame_visibility = Some(visibility.clone());
                 actor_overlays::project(
                     &self.scene,
                     &self.state,
@@ -1346,6 +1442,28 @@ impl NativeApp {
                             (dot.tile.0.to_bits(), dot.tile.1.to_bits(), dot.frame)
                                 .hash(&mut hasher);
                         }
+                        let plugin_dots: Vec<_> = self
+                            .plugins
+                            .output()
+                            .overlay
+                            .iter()
+                            .filter_map(|item| match item.command {
+                                rustclient_plugin_api::OverlayCommand::MinimapDot {
+                                    tile,
+                                    argb,
+                                } if i32::from(tile.plane)
+                                    == self
+                                        .state
+                                        .entities()
+                                        .local_player()
+                                        .map_or(-1, |p| i32::from(p.tile.plane.get())) =>
+                                {
+                                    Some(((tile.x, tile.y), argb))
+                                }
+                                _ => None,
+                            })
+                            .collect();
+                        plugin_dots.hash(&mut hasher);
                         let key = hasher.finish();
                         if key != self.minimap_key || self.minimap_pixels.is_empty() {
                             self.minimap_key = key;
@@ -1392,6 +1510,28 @@ impl NativeApp {
                                         zoom_quarters: minimap_settings.zoom_quarters,
                                     },
                                 );
+                                // Plugin dots (`OverlayCommand::MinimapDot`) above the cache's.
+                                for ((x, y), argb) in &plugin_dots {
+                                    if let Some(sprite) =
+                                        rustclient_scene::minimap::plugin_dot(*argb)
+                                    {
+                                        rustclient_scene::minimap::draw_marker(
+                                            &mut self.minimap_pixels,
+                                            &mask.pixels,
+                                            [mask.size[0] as usize, mask.size[1] as usize],
+                                            &sprite,
+                                            (
+                                                f64::from(x - origin.x) + 0.5,
+                                                f64::from(y - origin.y) + 0.5,
+                                            ),
+                                            rustclient_scene::minimap::MinimapView {
+                                                camera: relative,
+                                                angle,
+                                                zoom_quarters: minimap_settings.zoom_quarters,
+                                            },
+                                        );
+                                    }
+                                }
                             }
                             if let (Some(destination), Some(sprite)) =
                                 (destination, self.widget_assets.destination_flag.as_ref())
@@ -1479,7 +1619,9 @@ impl NativeApp {
                 self.widget_menu
                     .project(assets, &self.widget_assets.font_icons, &mut self.frame);
             }
-            let visibility = self.scene_visibility(&window);
+            let visibility = frame_visibility
+                .take()
+                .unwrap_or_else(|| self.scene_visibility(&window));
             self.renderer.as_mut().map(|renderer| {
                 if let (Some(descriptor), Some(camera)) =
                     (self.state.displayed_scene(), self.scene.camera)
@@ -1750,6 +1892,112 @@ impl NativeApp {
             eprintln!("script definition warm-up: projection queue full; scripts decode on use");
         }
     }
+    /// Apply the window placement saved by the last run, if it still fits the monitors.
+    fn restore_window_placement(
+        &self,
+        event_loop: &ActiveEventLoop,
+        attributes: winit::window::WindowAttributes,
+    ) -> winit::window::WindowAttributes {
+        use rustclient_application::client_preferences::MonitorRect;
+        let min = (765 + self.shell.width(), 503);
+        let Some(placement) = self
+            .client_preferences
+            .window
+            .and_then(|placement| placement.sanitized(min))
+        else {
+            return attributes;
+        };
+        let monitors: Vec<MonitorRect> = event_loop
+            .available_monitors()
+            .map(|monitor| {
+                let position = monitor.position();
+                let size = monitor.size();
+                MonitorRect {
+                    x: position.x,
+                    y: position.y,
+                    width: size.width,
+                    height: size.height,
+                }
+            })
+            .collect();
+        let mut attributes = attributes
+            .with_inner_size(winit::dpi::PhysicalSize::new(
+                placement.width,
+                placement.height,
+            ))
+            .with_maximized(placement.maximized);
+        if placement.reachable(&monitors) {
+            attributes = attributes
+                .with_position(winit::dpi::PhysicalPosition::new(placement.x, placement.y));
+        }
+        attributes
+    }
+    /// Remember where the window is. A maximized window keeps the restored size it had before.
+    fn save_window_placement(&mut self, window: &Window) {
+        use rustclient_application::client_preferences::WindowPlacement;
+        let maximized = window.is_maximized();
+        let placement = match (maximized, window.outer_position()) {
+            (false, Ok(position)) => {
+                let size = window.inner_size();
+                Some(WindowPlacement {
+                    x: position.x,
+                    y: position.y,
+                    width: size.width,
+                    height: size.height,
+                    maximized: false,
+                })
+            }
+            (true, _) => self
+                .client_preferences
+                .window
+                .map(|placement| WindowPlacement {
+                    maximized: true,
+                    ..placement
+                })
+                .or_else(|| {
+                    let size = window.inner_size();
+                    window
+                        .outer_position()
+                        .ok()
+                        .map(|position| WindowPlacement {
+                            x: position.x,
+                            y: position.y,
+                            width: size.width,
+                            height: size.height,
+                            maximized: true,
+                        })
+                }),
+            (false, Err(_)) => None,
+        };
+        let Some(placement) = placement else {
+            return;
+        };
+        self.client_preferences.window = Some(placement);
+        if let Some(storage) = &self.storage
+            && let Err(error) = self.client_preferences.save(storage)
+        {
+            eprintln!("{error}");
+        }
+    }
+    /// A scene load failed: retry once, then end the session at the title with the reason.
+    fn scene_load_failed(&mut self, error: &str) {
+        eprintln!("spawn scene: {error}");
+        match self.scene.note_load_failure() {
+            scene::SceneFailure::Retry => {
+                eprintln!("spawn scene: retrying the load once");
+                // `start_pending_scene` runs again on the next cycle.
+                if let Some(window) = &self.window {
+                    window.request_redraw();
+                }
+            }
+            scene::SceneFailure::Abort => {
+                self.apply_network_event(network::NetworkEvent::Failed(
+                    rustclient_game_state::LoginFailure::SceneLoad,
+                    format!("scene load failed twice: {error}"),
+                ));
+            }
+        }
+    }
     fn finish_scene(
         &mut self,
         event_loop: &ActiveEventLoop,
@@ -1844,12 +2092,7 @@ impl NativeApp {
                     window.request_redraw();
                 }
             }
-            Err(error) => {
-                eprintln!("spawn scene: {error}");
-                if let Some(window) = &self.window {
-                    window.set_title(&format!("RustClient - scene load failed: {error}"));
-                }
-            }
+            Err(error) => self.scene_load_failed(&error),
         }
     }
 
@@ -1927,6 +2170,7 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
             .with_title(format!("RustClient — {}", self.load_status))
             .with_inner_size(LogicalSize::new(765. + f64::from(self.shell.width()), 503.))
             .with_min_inner_size(LogicalSize::new(765. + f64::from(self.shell.width()), 503.));
+        let attributes = self.restore_window_placement(event_loop, attributes);
         match event_loop.create_window(attributes) {
             Ok(window) => {
                 window.set_ime_allowed(true);
@@ -2003,7 +2247,7 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                     self.compass_mask = None;
                     self.minimap_key = 0;
                     self.compass_key = 0;
-                    self.widget_requested.absorb(&request);
+                    self.scratch.widget_requested.absorb(&request);
                     self.request_widget_assets();
                     if let Some(window) = &self.window {
                         window.request_redraw();
@@ -2179,6 +2423,7 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
         }
         match event {
             WindowEvent::CloseRequested => {
+                self.save_window_placement(&window);
                 self.shell.prepare_close();
                 self.update_plugins();
                 self.disconnect();
@@ -2266,6 +2511,8 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                 }
             }
             WindowEvent::ModifiersChanged(modifiers) => {
+                // Plugins build the menu with Shift state, so the hovered menu must be rebuilt.
+                self.hover_dirty = true;
                 self.modifiers = modifiers.state();
                 if let Some(scripts) = &mut self.scripts {
                     scripts.modifiers = [
@@ -2635,8 +2882,8 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                 match result {
                     Ok(errors) => {
                         for error in errors {
-                            if self.reported_script_errors.len() < 256
-                                && self.reported_script_errors.insert(error.clone())
+                            if self.scratch.reported_script_errors.len() < 256
+                                && self.scratch.reported_script_errors.insert(error.clone())
                             {
                                 eprintln!("client timer: {error}");
                             }
@@ -2672,8 +2919,8 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                     match scripts.resize_widgets(&mut self.state) {
                         Ok(errors) => {
                             for error in errors {
-                                if self.reported_script_errors.len() < 256
-                                    && self.reported_script_errors.insert(error.clone())
+                                if self.scratch.reported_script_errors.len() < 256
+                                    && self.scratch.reported_script_errors.insert(error.clone())
                                 {
                                     eprintln!("widget resize: {error}");
                                 }
@@ -2758,6 +3005,7 @@ impl ApplicationHandler<LoadEvent> for NativeApp {
                         &loaded.asset,
                         self.state.entities(),
                         self.state.scenery(),
+                        self.state.ground_items(),
                     )
                 {
                     let in_flight = request.clone();
@@ -2905,6 +3153,7 @@ fn run() -> Result<(), String> {
     if options.capture_dir.is_some() {
         return capture::run(&options);
     }
+    diagnostics::install(options.preferences_dir.join("crash"));
     let event_loop = EventLoop::<LoadEvent>::with_user_event()
         .build()
         .map_err(|e| format!("event loop: {e}"))?;
@@ -2973,4 +3222,25 @@ fn widget_key(key: &Key) -> Option<rustclient_model::WidgetKey> {
         Key::Named(NamedKey::PageDown) => W::PageDown,
         _ => return None,
     })
+}
+
+#[cfg(test)]
+mod session_scratch_tests {
+    use super::SessionScratch;
+
+    #[test]
+    fn reset_returns_every_session_field_to_its_initial_value() {
+        let mut scratch = SessionScratch::default();
+        scratch.reported_script_errors.insert("boom".into());
+        scratch.plugin_wheel_zoom = true;
+        scratch.minimap_hidden = true;
+        scratch
+            .widget_requested
+            .sprites
+            .insert(rustclient_model::SpriteId::new(1));
+        scratch.reset();
+        assert!(scratch.reported_script_errors.is_empty());
+        assert!(!scratch.plugin_wheel_zoom && !scratch.minimap_hidden);
+        assert!(scratch.widget_requested.sprites.is_empty());
+    }
 }

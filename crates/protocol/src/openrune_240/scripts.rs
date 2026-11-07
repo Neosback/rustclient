@@ -109,6 +109,25 @@ pub(super) fn status(op: u16, bytes: &[u8]) -> Result<rustclient_model::PlayerSt
             },
         });
     }
+    if op == 85 {
+        // client.java SET_PLAYER_OP: slot and flag are `g1Alt3`, then the text.
+        let mut r = Reader::new(bytes, "player option");
+        let slot = r.u8_sub()?;
+        let flag = r.u8_sub()?;
+        let option = text(&mut r)?;
+        if r.offset != bytes.len() {
+            return Err(ProtocolError::new("player option", "trailing bytes"));
+        }
+        if !(1..=8).contains(&slot) {
+            return Err(ProtocolError::new("player option", "slot out of range"));
+        }
+        return Ok(PlayerStatusUpdate::PlayerOption {
+            slot,
+            // The stock client compares with `equalsIgnoreCase("null")`.
+            text: (!option.eq_ignore_ascii_case("null")).then_some(option),
+            priority: flag != 0,
+        });
+    }
     match (op, bytes) {
         (19, [a, b]) => Ok(PlayerStatusUpdate::RunWeight(i16::from_be_bytes([*a, *b]))),
         (120, [a, b]) => {
@@ -167,5 +186,37 @@ mod tests {
         );
         assert!(status(120, &[0x27, 0x11]).is_err());
         assert!(status(63, &[0; 6]).is_err());
+    }
+
+    #[test]
+    fn set_player_op_decodes_slot_flag_and_text_with_the_stock_null_rule() {
+        use rustclient_model::PlayerStatusUpdate;
+        // Slot 2 and flag 1 are both `g1Alt3` (128 - value), then the NUL-terminated option.
+        let mut bytes = vec![126, 127];
+        bytes.extend(b"Follow\0");
+        assert_eq!(
+            status(85, &bytes).unwrap(),
+            PlayerStatusUpdate::PlayerOption {
+                slot: 2,
+                text: Some("Follow".into()),
+                priority: true,
+            }
+        );
+        // "null" in any case removes the option; flag 0 is not a priority entry.
+        let mut bytes = vec![120, 128];
+        bytes.extend(b"NuLL\0");
+        assert_eq!(
+            status(85, &bytes).unwrap(),
+            PlayerStatusUpdate::PlayerOption {
+                slot: 8,
+                text: None,
+                priority: false,
+            }
+        );
+        // Slot 0 and 9, a missing terminator and trailing bytes are refused.
+        assert!(status(85, &[128, 128, 0]).is_err());
+        assert!(status(85, &[119, 128, 0]).is_err());
+        assert!(status(85, &[126, 128, b'a']).is_err());
+        assert!(status(85, &[126, 128, 0, 0]).is_err());
     }
 }

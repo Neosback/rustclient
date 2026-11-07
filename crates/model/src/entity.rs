@@ -292,6 +292,10 @@ pub struct PlayerInfoUpdate {
     pub sequence_timings: Vec<(SequenceId, crate::SequenceTiming)>,
     pub local_facing: Option<u16>,
     pub remote: Vec<RemotePlayerUpdate>,
+    /// Hitmark, health bar and spot animation blocks of visible players, local and remote.
+    pub effects: Vec<crate::PlayerEffects>,
+    /// Facing blocks of visible players, local and remote (what each is interacting with).
+    pub facings: Vec<crate::PlayerFacing>,
 }
 
 /// Dimensions of the server's coarse out-of-view player tracking grid, in tiles.
@@ -433,8 +437,12 @@ pub enum NpcProperty {
         delay: u32,
     },
     Facing(u16),
+    /// The full facing block: entity, area, angle or cleared (sent with `Facing` for angles).
+    FacingBlock(crate::FacingBlock),
     Name(Option<String>),
     Actions(crate::ActionMask),
+    /// Hitmark, health bar and spot animation blocks.
+    Effects(crate::ActorEffects),
 }
 
 #[cfg(test)]

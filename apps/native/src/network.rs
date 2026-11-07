@@ -231,6 +231,8 @@ fn open_session(
         failure(
             if e.transport.is_some() {
                 LoginFailure::Connection
+            } else if let Some(rejection) = e.rejection {
+                LoginFailure::Rejected(rejection)
             } else if e.stage == "authentication" {
                 LoginFailure::Authentication
             } else {
@@ -260,13 +262,16 @@ fn open_session(
             .map_err(|e| failure(LoginFailure::CacheMismatch, e.to_string()))?,
     );
     emit(NetworkEvent::Operation(0, 0, authenticated));
-    let sequence_policies = SequencePolicyResolver::new(cache, options.cache_profile);
+    let cache = std::sync::Arc::new(cache);
+    let shape_cache = std::sync::Arc::clone(&cache);
+    let profile = options.cache_profile;
+    decoder.set_npc_shapes(Box::new(move |id| {
+        rustclient_cache::osrs240::npc_path_policy::customisation_shape(&shape_cache, profile, id)
+            .ok()
+    }));
+    let sequence_policies = SequencePolicyResolver::shared(cache, profile);
     Ok((stream, decoder, sequence_policies))
 }
-#[expect(
-    clippy::too_many_lines,
-    reason = "one transport owner orders decode, cache policy resolution, epochs and outbound cipher advancement"
-)]
 fn run(
     options: &ConnectionOptions,
     credentials: Credentials,
@@ -275,10 +280,76 @@ fn run(
     actions: &Receiver<Vec<Outbound>>,
     emit: &impl Fn(NetworkEvent),
 ) -> Result<(), Failure> {
-    let failure = |category, error: String| (category, error);
     let (mut stream, mut decoder, mut sequence_policies) =
         open_session(options, credentials, window, cancel, emit)?;
-    let bootstrap_deadline = Instant::now() + Duration::from_secs(15);
+    let profile = options.cache_profile.name();
+    session_loop(
+        &mut stream,
+        &mut decoder,
+        &mut |operation| {
+            sequence_policies
+                .resolve_operation(operation)
+                .map_err(|error| {
+                    format!("sequence scheduling policy (cache profile {profile}): {error}")
+                })
+        },
+        cancel,
+        actions,
+        emit,
+        &LoopTiming::standard(),
+    )
+}
+/// The socket operations the post-login loop needs, so tests can drive it from memory.
+pub(super) trait SessionStream: ByteStream {
+    /// Bound the next read or write.
+    fn deadline_after(&mut self, duration: Duration);
+    /// Read what is available now: `Ok(None)` when nothing is, `Ok(Some(0))` at end of stream.
+    fn receive_available(&mut self, bytes: &mut [u8]) -> Result<Option<usize>, TransportError>;
+}
+impl SessionStream for NativeTcp {
+    fn deadline_after(&mut self, duration: Duration) {
+        NativeTcp::deadline_after(self, duration);
+    }
+    fn receive_available(&mut self, bytes: &mut [u8]) -> Result<Option<usize>, TransportError> {
+        NativeTcp::receive_available(self, bytes)
+    }
+}
+/// Time limits of the post-login loop.
+pub(super) struct LoopTiming {
+    /// The server must send something at least this often.
+    pub silence_limit: Duration,
+    /// The initial placement must arrive within this long of the loop starting.
+    pub bootstrap_limit: Duration,
+    /// How long an idle loop waits for an outgoing action before polling inbound data again.
+    pub idle_wait: Duration,
+}
+impl LoopTiming {
+    pub const fn standard() -> Self {
+        Self {
+            silence_limit: Duration::from_secs(15),
+            bootstrap_limit: Duration::from_secs(15),
+            idle_wait: Duration::from_millis(20),
+        }
+    }
+}
+/// Receive, decode and forward server packets and write queued client actions until the session
+/// ends, is cancelled or fails. `resolve` enriches each decoded operation with cache-derived
+/// inputs and reports its failure as text.
+#[expect(
+    clippy::too_many_lines,
+    reason = "one transport owner orders decode, cache policy resolution, epochs and outbound cipher advancement"
+)]
+pub(super) fn session_loop<S: SessionStream>(
+    stream: &mut S,
+    decoder: &mut ConnectionDecoder,
+    resolve: &mut dyn FnMut(SemanticOperation) -> Result<SemanticOperation, String>,
+    cancel: &ConnectionCancellation,
+    actions: &Receiver<Vec<Outbound>>,
+    emit: &impl Fn(NetworkEvent),
+    timing: &LoopTiming,
+) -> Result<(), Failure> {
+    let failure = |category, error: String| (category, error);
+    let bootstrap_deadline = Instant::now() + timing.bootstrap_limit;
 
     let mut bytes = [0; 16384];
     let mut last_received = Instant::now();
@@ -323,10 +394,10 @@ fn run(
                                     continue;
                                 }
                             };
-                            let op = match sequence_policies.resolve_operation(op) {
+                            let op = match resolve(op) {
                                 Ok(op) => op,
                                 Err(error) => {
-                                    policy_error = Some(error.to_string());
+                                    policy_error = Some(error);
                                     return;
                                 }
                             };
@@ -361,14 +432,14 @@ fn run(
                         ));
                     })
                     .map_err(|e| failure(LoginFailure::Protocol, e.to_string()))?;
+                for opcode in decoder.take_new_unhandled() {
+                    eprintln!(
+                        "server opcode {opcode} is not decoded by this client yet (first seen; {} distinct so far)",
+                        decoder.unhandled_opcodes().len()
+                    );
+                }
                 if let Some(error) = policy_error {
-                    return Err(failure(
-                        LoginFailure::CacheMismatch,
-                        format!(
-                            "sequence scheduling policy (cache profile {}): {error}",
-                            options.cache_profile.name()
-                        ),
-                    ));
+                    return Err(failure(LoginFailure::CacheMismatch, error));
                 }
                 if !connected {
                     return Ok(());
@@ -411,7 +482,7 @@ fn run(
                 .map_err(|e| failure(LoginFailure::Disconnected, e.to_string()))?;
             emit(NetworkEvent::Written);
         }
-        if last_received.elapsed() > Duration::from_secs(15) {
+        if last_received.elapsed() > timing.silence_limit {
             return Err(failure(
                 LoginFailure::Disconnected,
                 "server stopped sending data".into(),
@@ -426,7 +497,250 @@ fn run(
         if !received_data {
             // A click wakes this wait immediately. Idle inbound polling stays at the 50 Hz client
             // cadence instead of blocking outgoing input behind a 200 ms socket deadline.
-            pending_action = actions.recv_timeout(Duration::from_millis(20)).ok();
+            pending_action = actions.recv_timeout(timing.idle_wait).ok();
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rustclient_model::PlayerIndex;
+    use rustclient_protocol::{Isaac, LoginSession};
+    use std::{cell::RefCell, collections::VecDeque, future::Future};
+
+    /// One step of what the "server" does when the loop reads.
+    enum Step {
+        Data(Vec<u8>),
+        Idle,
+        Close,
+    }
+    /// An in-memory socket: a script of reads, then cancellation, and a record of writes.
+    struct Scripted {
+        steps: VecDeque<Step>,
+        written: Vec<u8>,
+        cancel: ConnectionCancellation,
+        cancel_when_done: bool,
+    }
+    impl ByteStream for Scripted {
+        fn receive(&mut self, _: &mut [u8]) -> impl Future<Output = Result<usize, TransportError>> {
+            std::future::ready(Err(TransportError::Unavailable))
+        }
+        fn send(&mut self, bytes: &[u8]) -> impl Future<Output = Result<(), TransportError>> {
+            self.written.extend_from_slice(bytes);
+            std::future::ready(Ok(()))
+        }
+    }
+    impl SessionStream for Scripted {
+        fn deadline_after(&mut self, _: Duration) {}
+        fn receive_available(&mut self, bytes: &mut [u8]) -> Result<Option<usize>, TransportError> {
+            match self.steps.pop_front() {
+                Some(Step::Data(data)) => {
+                    bytes[..data.len()].copy_from_slice(&data);
+                    Ok(Some(data.len()))
+                }
+                Some(Step::Idle) => Ok(None),
+                Some(Step::Close) => Ok(Some(0)),
+                None => {
+                    if self.cancel_when_done {
+                        self.cancel.cancel();
+                    }
+                    Ok(None)
+                }
+            }
+        }
+    }
+
+    const SEED: [u32; 4] = [1, 2, 3, 4];
+    fn decoder() -> ConnectionDecoder {
+        ConnectionDecoder::new(
+            ServerProfile::OPENRUNE_240_2,
+            LoginSession {
+                player: PlayerIndex::new(1),
+                member: true,
+                staff_level: 0,
+                incoming: Isaac::new(SEED),
+                outgoing: Isaac::new(SEED),
+            },
+        )
+        .0
+    }
+    /// A server frame with an ISAAC-masked opcode, like the wire.
+    fn frame(cipher: &mut Isaac, opcode: u8, payload: &[u8]) -> Vec<u8> {
+        let mut out = vec![opcode.wrapping_add(cipher.next_word().to_le_bytes()[0])];
+        out.extend_from_slice(payload);
+        out
+    }
+    fn outbound(intent: ClientIntent, map_epoch: u64) -> Outbound {
+        Outbound {
+            world_action: None,
+            map_epoch,
+            interface_epoch: None,
+            intent,
+        }
+    }
+    struct Run {
+        result: Result<(), Failure>,
+        written: Vec<u8>,
+        events: Vec<String>,
+    }
+    fn drive(
+        steps: Vec<Step>,
+        queued: Vec<Vec<Outbound>>,
+        timing: &LoopTiming,
+        mut resolve: impl FnMut(SemanticOperation) -> Result<SemanticOperation, String>,
+    ) -> Run {
+        let cancel = ConnectionCancellation::default();
+        let mut stream = Scripted {
+            steps: steps.into(),
+            written: Vec::new(),
+            cancel: cancel.clone(),
+            cancel_when_done: true,
+        };
+        let (sender, actions) = mpsc::sync_channel(32);
+        for batch in queued {
+            sender.send(batch).unwrap();
+        }
+        let events = RefCell::new(Vec::new());
+        let emit = |event: NetworkEvent| {
+            let label = match event {
+                NetworkEvent::Received => "received".to_owned(),
+                NetworkEvent::Written => "written".to_owned(),
+                NetworkEvent::Batch(batch) => format!("batch:{}", batch.payload.len()),
+                NetworkEvent::Failed(..) => "failed".to_owned(),
+                _ => "other".to_owned(),
+            };
+            events.borrow_mut().push(label);
+        };
+        let result = session_loop(
+            &mut stream,
+            &mut decoder(),
+            &mut resolve,
+            &cancel,
+            &actions,
+            &emit,
+            timing,
+        );
+        Run {
+            result,
+            written: stream.written,
+            events: events.into_inner(),
+        }
+    }
+    fn timing(silence: u64, bootstrap: u64) -> LoopTiming {
+        LoopTiming {
+            silence_limit: Duration::from_millis(silence),
+            bootstrap_limit: Duration::from_millis(bootstrap),
+            idle_wait: Duration::from_millis(1),
+        }
+    }
+    fn identity() -> impl FnMut(SemanticOperation) -> Result<SemanticOperation, String> {
+        |op| Ok(op)
+    }
+
+    #[test]
+    fn a_closed_socket_ends_the_session_as_a_disconnect() {
+        let run = drive(
+            vec![Step::Close],
+            vec![],
+            &timing(10_000, 10_000),
+            identity(),
+        );
+        assert_eq!(
+            run.result.unwrap_err(),
+            (
+                LoginFailure::Disconnected,
+                "server closed the connection".to_owned()
+            )
+        );
+    }
+
+    #[test]
+    fn silence_past_the_limit_is_a_disconnect_and_a_missing_placement_is_a_protocol_failure() {
+        let steps = || (0..2000).map(|_| Step::Idle).collect::<Vec<_>>();
+        let silent = drive(steps(), vec![], &timing(20, 60_000), identity());
+        assert_eq!(
+            silent.result.unwrap_err(),
+            (
+                LoginFailure::Disconnected,
+                "server stopped sending data".to_owned()
+            )
+        );
+        let slow = drive(steps(), vec![], &timing(60_000, 20), identity());
+        assert_eq!(
+            slow.result.unwrap_err(),
+            (
+                LoginFailure::Protocol,
+                "initial placement timed out".to_owned()
+            )
+        );
+    }
+
+    #[test]
+    fn a_malformed_group_is_a_protocol_failure() {
+        let mut cipher = Isaac::new(SEED);
+        // A group header with a negative byte count.
+        let bytes = frame(&mut cipher, 57, &[0xff, 0xff]);
+        let run = drive(
+            vec![Step::Data(bytes)],
+            vec![],
+            &timing(10_000, 10_000),
+            identity(),
+        );
+        let (category, _) = run.result.unwrap_err();
+        assert_eq!(category, LoginFailure::Protocol);
+    }
+
+    #[test]
+    fn decoded_packets_are_forwarded_in_one_batch_and_a_policy_failure_names_its_cause() {
+        let mut cipher = Isaac::new(SEED);
+        let mut bytes = frame(&mut cipher, 92, &[]);
+        bytes.extend(frame(&mut cipher, 92, &[]));
+        let run = drive(
+            vec![Step::Data(bytes.clone())],
+            vec![],
+            &timing(10_000, 10_000),
+            identity(),
+        );
+        assert!(run.result.is_ok());
+        assert_eq!(run.events, ["received", "batch:1", "batch:1"]);
+        let failed = drive(
+            vec![Step::Data(bytes)],
+            vec![],
+            &timing(10_000, 10_000),
+            |_| Err("sequence 9 is missing".to_owned()),
+        );
+        assert_eq!(
+            failed.result.unwrap_err(),
+            (
+                LoginFailure::CacheMismatch,
+                "sequence 9 is missing".to_owned()
+            )
+        );
+    }
+
+    #[test]
+    fn queued_actions_are_encoded_in_order_and_actions_for_another_map_are_dropped() {
+        let mut reference = decoder();
+        let keep_alive = reference.encode(ClientIntent::KeepAlive).unwrap();
+        let close = reference.encode(ClientIntent::CloseModal).unwrap();
+        // Epoch 0 is the loop's current map. The second batch targets a map that never arrived;
+        // the keep-alive is session-wide and is sent regardless.
+        let run = drive(
+            vec![Step::Idle, Step::Idle, Step::Idle],
+            vec![
+                vec![
+                    outbound(ClientIntent::KeepAlive, 0),
+                    outbound(ClientIntent::CloseModal, 0),
+                ],
+                vec![outbound(ClientIntent::CloseModal, 7)],
+            ],
+            &timing(10_000, 10_000),
+            identity(),
+        );
+        assert!(run.result.is_ok());
+        let expected = [keep_alive, close].concat();
+        assert_eq!(run.written, expected);
+        assert_eq!(run.events.iter().filter(|e| *e == "written").count(), 2);
     }
 }

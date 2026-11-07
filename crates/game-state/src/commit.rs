@@ -12,6 +12,15 @@ pub enum SemanticEvent {
         origin: rustclient_model::WorldTile,
         size: [u32; 2],
     },
+    /// The pile on one tile changed: an item arrived, left or changed quantity, ops or look.
+    GroundItemsChanged {
+        tile: rustclient_model::WorldTile,
+    },
+    /// Every ground item in a rectangle was removed.
+    GroundItemAreaReset {
+        origin: rustclient_model::WorldTile,
+        size: [u32; 2],
+    },
     ChatMessageAdded(u32),
     ChatSettingsChanged,
     InterfacesChanged,
@@ -89,7 +98,7 @@ pub struct StateDelta {
 }
 impl StateDelta {
     pub(crate) const ALL: Self = Self {
-        changed: (1 << 12) - 1,
+        changed: (1 << 13) - 1,
     };
     pub(crate) fn domains(self) -> impl Iterator<Item = (usize, Self)> {
         let mut remaining = self.changed;
@@ -112,7 +121,7 @@ impl StateDelta {
         changed: 8 | 16 | 128,
     };
     pub(crate) const MAP_REBUILD: Self = Self {
-        changed: 8 | 16 | 32,
+        changed: 8 | 16 | 32 | 4096,
     };
     pub(crate) const fn session_boundary(title_changed: bool) -> Self {
         Self {
@@ -127,6 +136,7 @@ impl StateDelta {
                 | 512
                 | 2048
                 | 1024
+                | 4096
                 | if title_changed { 4 } else { 0 },
         }
     }
@@ -136,6 +146,12 @@ impl StateDelta {
         }
     }
     pub(crate) const CHAT: Self = Self { changed: 2048 };
+    pub(crate) const GROUND_ITEMS: Self = Self { changed: 4096 };
+    /// Whether any ground item changed.
+    #[must_use]
+    pub const fn ground_items_changed(self) -> bool {
+        self.changed & 4096 != 0
+    }
     #[must_use]
     pub const fn chat_changed(self) -> bool {
         self.changed & 2048 != 0

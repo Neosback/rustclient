@@ -11,10 +11,12 @@
 
 pub mod configuration;
 mod lifecycle;
+pub mod menu;
 mod panels;
 pub mod required;
 mod subscriptions;
 pub use lifecycle::{ActivationId, LifecycleStatus};
+pub use menu::{EditedMenu, apply_menu_edits};
 pub use panels::{HostedPanel, PanelAction, PanelLease};
 mod v2;
 
@@ -61,10 +63,16 @@ impl PluginStorage for MemoryStorage {
 }
 
 /// JSON-file storage rooted at a directory, one folder per plugin.
+///
+/// Saves stage a sibling file, sync it and rename it over the target, so a crash or a full disk
+/// never truncates the last accepted document. A file that cannot be parsed is renamed to
+/// `config.json.corrupt` instead of being silently replaced by defaults, and every failure is
+/// queued for [`DirectoryStorage::take_errors`].
 #[cfg(not(target_arch = "wasm32"))]
 #[derive(Debug)]
 pub struct DirectoryStorage {
     root: std::path::PathBuf,
+    errors: std::sync::Mutex<Vec<String>>,
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -72,11 +80,46 @@ impl DirectoryStorage {
     /// Use `root` as the plugin configuration root.
     #[must_use]
     pub fn new(root: std::path::PathBuf) -> Self {
-        Self { root }
+        Self {
+            root,
+            errors: std::sync::Mutex::new(Vec::new()),
+        }
+    }
+
+    /// Storage failures since the last call, for the caller to log.
+    pub fn take_errors(&self) -> Vec<String> {
+        self.errors
+            .lock()
+            .map(|mut errors| std::mem::take(&mut *errors))
+            .unwrap_or_default()
     }
 
     fn path_for(&self, plugin: &PluginId) -> std::path::PathBuf {
         self.root.join(plugin.as_str()).join("config.json")
+    }
+
+    fn record(&self, plugin: &PluginId, message: &str) {
+        if let Ok(mut errors) = self.errors.lock() {
+            // Bounded so a failing disk cannot grow memory without limit.
+            if errors.len() < 32 {
+                errors.push(format!("plugin {plugin}: {message}"));
+            }
+        }
+    }
+
+    fn write_atomically(path: &std::path::Path, text: &str) -> std::io::Result<()> {
+        use std::io::Write;
+        let staged = path.with_extension("json.pending");
+        let result = (|| {
+            let mut file = std::fs::File::create(&staged)?;
+            file.write_all(text.as_bytes())?;
+            file.sync_all()?;
+            std::fs::rename(&staged, path)
+        })();
+        if result.is_err() {
+            let _ = std::fs::remove_file(&staged);
+        }
+        result
     }
 }
 
@@ -84,10 +127,29 @@ impl DirectoryStorage {
 impl PluginStorage for DirectoryStorage {
     fn load(&self, plugin: &PluginId) -> BTreeMap<String, String> {
         let path = self.path_for(plugin);
-        let Ok(text) = std::fs::read_to_string(&path) else {
-            return BTreeMap::new();
+        let text = match std::fs::read_to_string(&path) {
+            Ok(text) => text,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => return BTreeMap::new(),
+            Err(error) => {
+                self.record(
+                    plugin,
+                    &format!("could not read its configuration: {error}"),
+                );
+                return BTreeMap::new();
+            }
         };
-        serde_json::from_str(&text).unwrap_or_default()
+        serde_json::from_str(&text).unwrap_or_else(|error| {
+            let kept = path.with_extension("json.corrupt");
+            let outcome = match std::fs::rename(&path, &kept) {
+                Ok(()) => format!("kept as {}", kept.display()),
+                Err(rename) => format!("could not be kept ({rename})"),
+            };
+            self.record(
+                plugin,
+                &format!("configuration is not valid ({error}); defaults used, file {outcome}"),
+            );
+            BTreeMap::new()
+        })
     }
 
     fn save(&mut self, plugin: &PluginId, values: &BTreeMap<String, String>) {
@@ -95,11 +157,23 @@ impl PluginStorage for DirectoryStorage {
         let Some(parent) = path.parent() else {
             return;
         };
-        if std::fs::create_dir_all(parent).is_err() {
+        if let Err(error) = std::fs::create_dir_all(parent) {
+            self.record(plugin, &format!("could not create its folder: {error}"));
             return;
         }
-        if let Ok(text) = serde_json::to_string_pretty(values) {
-            let _ = std::fs::write(path, text);
+        match serde_json::to_string_pretty(values) {
+            Ok(text) => {
+                if let Err(error) = Self::write_atomically(&path, &text) {
+                    self.record(
+                        plugin,
+                        &format!("could not save its configuration: {error}"),
+                    );
+                }
+            }
+            Err(error) => self.record(
+                plugin,
+                &format!("could not encode its configuration: {error}"),
+            ),
         }
     }
 }

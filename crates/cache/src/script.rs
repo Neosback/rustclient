@@ -75,8 +75,10 @@ pub enum Opcode {
     CcSetscrollsize,
     CcResumePausebutton,
     CcSetfillcolour,
-    CcSetfilltransparency,
-    CcSetgradient,
+    /// 1124, unnamed in the reference: sets `transparencyBot` (235 `class575`).
+    CcSetbottomtrans,
+    /// 1125, unnamed in the reference: sets `fillMode` by ordinal, ignoring unknown ones.
+    CcSetfillmode,
     CcSetlinedirection,
     CcSetmodeltransparent,
     CcSetobject,
@@ -182,8 +184,10 @@ pub enum Opcode {
     IfSetscrollsize,
     IfResumePausebutton,
     IfSetfillcolour,
-    IfSetfilltransparency,
-    IfSetgradient,
+    /// 2124, unnamed in the reference: `IF_` form of 1124.
+    IfSetbottomtrans,
+    /// 2125, unnamed in the reference: `IF_` form of 1125.
+    IfSetfillmode,
     IfSetlinedirection,
     IfSetmodeltransparent,
     IfSetobject,
@@ -738,8 +742,8 @@ impl Opcode {
             Self::IfSetscrollsize => (Self::CcSetscrollsize, true),
             Self::IfResumePausebutton => (Self::CcResumePausebutton, true),
             Self::IfSetfillcolour => (Self::CcSetfillcolour, true),
-            Self::IfSetfilltransparency => (Self::CcSetfilltransparency, true),
-            Self::IfSetgradient => (Self::CcSetgradient, true),
+            Self::IfSetbottomtrans => (Self::CcSetbottomtrans, true),
+            Self::IfSetfillmode => (Self::CcSetfillmode, true),
             Self::IfSetlinedirection => (Self::CcSetlinedirection, true),
             Self::IfSetmodeltransparent => (Self::CcSetmodeltransparent, true),
             Self::IfSetobject => (Self::CcSetobject, true),

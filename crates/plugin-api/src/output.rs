@@ -135,6 +135,20 @@ pub enum OverlayCommand {
         /// Pixels right of the actor's horizontal centre.
         x_offset: i32,
     },
+    /// Text centred above a tile's centre at ground height (`Perspective.getCanvasTextLocation`);
+    /// added additively in 0.2.
+    TileText {
+        /// The tile.
+        tile: WorldPoint,
+        /// Text, at most 256 bytes.
+        text: String,
+        /// Height above the ground, in local units.
+        z_offset: i32,
+        /// Pixels to move the baseline down (negative is up), for stacking labels.
+        y_offset: i32,
+        /// Packed `AARRGGBB`.
+        argb: u32,
+    },
     /// A dot on the minimap at a world tile.
     MinimapDot {
         /// Tile.
@@ -185,6 +199,8 @@ pub struct InfoBox {
     pub argb: u32,
     /// Hover tooltip, at most 256 bytes.
     pub tooltip: String,
+    /// Cache sprite drawn centred in the box (`InfoBox.getImage`); added additively in 0.2.
+    pub sprite: Option<u32>,
 }
 
 /// An RGBA replacement for one interface sprite.

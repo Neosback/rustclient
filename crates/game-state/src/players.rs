@@ -199,6 +199,8 @@ impl WorldEntitiesState {
                                 sequence: ActorSequenceSlot::default(),
                                 sequence_timing_resolved: false,
                                 animation_cycle: 0,
+                                effects: crate::ActorEffectsState::default(),
+                                facing: None,
                                 locomotion: Locomotion::Idle,
                             },
                         );

@@ -183,6 +183,13 @@ pub struct ItemDefinition {
     pub bought: Option<ItemDefinitionId>,
     pub bought_template: Option<ItemDefinitionId>,
     pub inventory_actions: [Option<String>; 5],
+    /// Options on the item while it lies on the ground (opcodes 30-34; `Hidden` clears one).
+    pub ground_actions: [Option<String>; 5],
+    /// Store value (`price`, opcode 12); the reference default is 1.
+    pub cost: i32,
+    /// Stack-size model variants (`countobj`/`countco`, opcodes 100-109): the item shown once a
+    /// stack holds at least the paired count. Unused slots are omitted.
+    pub count_variants: Vec<(ItemDefinitionId, u16)>,
     pub parameters: BTreeMap<u32, rustclient_model::ScriptValue>,
     pub placeholder: Option<ItemDefinitionId>,
     pub placeholder_template: Option<ItemDefinitionId>,

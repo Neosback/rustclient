@@ -1261,3 +1261,18 @@ fn smooth_models_on_neighbouring_tiles_light_their_shared_corner_identically() {
     let separate = corner_colours(false);
     assert_ne!(separate[0], separate[1]);
 }
+
+#[test]
+fn a_cancelled_build_stops_with_an_error_and_an_uncancelled_one_matches_the_plain_build() {
+    let a = scene(assets());
+    let spawn = WorldTile::new(0, 0, Plane::MIN);
+    let inputs = crate::SceneryInputs::default();
+    assert!(
+        crate::build_mesh_cancellable(&a, a.descriptor(), spawn, &inputs, &|| true)
+            .is_err_and(|error| error.to_string().contains("cancelled"))
+    );
+    let plain = build_mesh(&a, a.descriptor(), spawn).unwrap();
+    let kept =
+        crate::build_mesh_cancellable(&a, a.descriptor(), spawn, &inputs, &|| false).unwrap();
+    assert_eq!(plain.geometry.vertices, kept.geometry.vertices);
+}

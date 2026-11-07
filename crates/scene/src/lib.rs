@@ -56,7 +56,7 @@ mod uv;
 use core::fmt;
 pub use mesh::{
     ActorLabelAnchor, ActorLabelId, PickRange, SceneGeometry, SceneModel, SceneStats, SceneVertex,
-    WorldMesh, build_dynamic, build_mesh, build_mesh_with_inputs,
+    WorldMesh, build_dynamic, build_mesh, build_mesh_cancellable, build_mesh_with_inputs,
 };
 use rustclient_cache::world::{TerrainTile, WorldAssets};
 use rustclient_model::{Plane, SceneAssetId, SceneDescriptor, WorldTile};

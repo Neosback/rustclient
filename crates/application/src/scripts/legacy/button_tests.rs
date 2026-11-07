@@ -272,6 +272,9 @@ fn hidden_unauthenticated_and_dynamic_selections_cannot_borrow_a_base_button() {
                 color: 0,
                 filled: true,
                 transparency: 0,
+                fill_color: 0,
+                bottom_transparency: 0,
+                fill_mode: rustclient_model::RectangleFill::Solid,
             },
         }))
         .unwrap();

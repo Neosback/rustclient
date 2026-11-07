@@ -37,6 +37,8 @@ pub enum ProjectionChange {
     Widget(WidgetAddress),
     Chat(u32),
     ActorOverhead(ActorProjectionKey),
+    /// The ground item pile on one tile.
+    GroundItem(rustclient_model::WorldTile),
 }
 impl ProjectionChange {
     const fn domains(self) -> StateDelta {
@@ -47,6 +49,7 @@ impl ProjectionChange {
             Self::Widget(_) => StateDelta::INTERFACE,
             Self::Chat(_) => StateDelta::CHAT,
             Self::ActorOverhead(_) => StateDelta::ENTITIES,
+            Self::GroundItem(_) => StateDelta::GROUND_ITEMS,
         }
     }
 }
@@ -74,6 +77,13 @@ impl ProjectionChanges<'_> {
     pub const fn missed_domains(&self) -> StateDelta {
         self.missed_domains
     }
+    /// Every domain that changed since the cursor: expired domains plus each retained change's.
+    #[must_use]
+    pub fn changed_domains(&self) -> StateDelta {
+        self.iter().fold(self.missed_domains, |delta, change| {
+            delta.union(change.domains())
+        })
+    }
     pub fn iter(&self) -> impl Iterator<Item = ProjectionChange> + '_ {
         self.history.range(self.start..).copied()
     }
@@ -83,7 +93,7 @@ impl ProjectionChanges<'_> {
 pub(crate) struct ProjectionJournal {
     sequence: u64,
     exhausted: bool,
-    latest: [u64; 12],
+    latest: [u64; 13],
     history: VecDeque<ProjectionChange>,
 }
 impl ProjectionJournal {
@@ -155,6 +165,9 @@ impl ProjectionJournal {
                     | SemanticEvent::ServerVariableChanged { id, .. },
                 ) => Some(ProjectionChange::Variable(id)),
                 Some(SemanticEvent::ChatMessageAdded(uid)) => Some(ProjectionChange::Chat(uid)),
+                Some(SemanticEvent::GroundItemsChanged { tile }) => {
+                    Some(ProjectionChange::GroundItem(tile))
+                }
                 _ => None,
             });
         if precise.is_none_or(|change| change.domains() != commit.delta()) {

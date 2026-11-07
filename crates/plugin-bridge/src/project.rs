@@ -38,6 +38,10 @@ pub struct Frame {
     pub input_idle: Option<InputIdle>,
     /// Tile under the pointer in the game view, when the shell tracks the pointer.
     pub hovered_tile: Option<rustclient_model::WorldTile>,
+    /// Whether a Shift key is held.
+    pub shift_held: bool,
+    /// Platform wall-clock milliseconds since the Unix epoch; `0` when unavailable.
+    pub wall_time_ms: u64,
 }
 
 /// Immutable cache definitions the projection consults.
@@ -49,6 +53,52 @@ pub struct Sources<'a> {
     pub varbits: Option<&'a BTreeMap<VarbitId, VarbitDefinition>>,
     /// Interface definitions for widget bounds and text.
     pub interfaces: Option<&'a BTreeMap<InterfaceId, InterfaceDefinition>>,
+    /// Item definition facts for ground items; `None` for an item whose definition is not
+    /// loaded yet.
+    pub items: Option<&'a dyn Fn(rustclient_model::ItemDefinitionId) -> Option<ItemFacts<'a>>>,
+    /// Identity of what `npcs` and `items` resolve. Change it whenever they could answer
+    /// differently (a definition batch arrived), so unchanged NPC and ground item projections are
+    /// rebuilt instead of carried forward.
+    pub revision: u64,
+}
+
+/// What a ground item snapshot needs from an item definition (`ItemComposition`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ItemFacts<'a> {
+    /// Name; a noted item's unnoted name.
+    pub name: Option<&'a str>,
+    /// Store value; a noted item's unnoted value.
+    pub cost: i32,
+    pub stackable: bool,
+    pub noted: bool,
+}
+
+/// Every ground item, by tile then pile order.
+pub(crate) fn ground_items<'a>(
+    state: &GameState,
+    items: Option<&'a dyn Fn(rustclient_model::ItemDefinitionId) -> Option<ItemFacts<'a>>>,
+) -> Vec<rustclient_plugin_api::GroundItemSnapshot> {
+    state
+        .ground_items()
+        .piles()
+        .flat_map(|(tile, pile)| {
+            pile.iter().map(move |item| {
+                let facts = items.and_then(|resolve| resolve(item.item));
+                rustclient_plugin_api::GroundItemSnapshot {
+                    tile: rustclient_plugin_api::WorldPoint::new(tile.x, tile.y, tile.plane.get()),
+                    id: item.item.get(),
+                    quantity: item.quantity,
+                    name: facts.and_then(|facts| facts.name).map(str::to_owned),
+                    cost: facts.map_or(0, |facts| facts.cost),
+                    stackable: facts.is_some_and(|facts| facts.stackable),
+                    noted: facts.is_some_and(|facts| facts.noted),
+                    ownership: item.ownership.0,
+                    public_tick: item.public_at.get(),
+                    despawn_tick: item.despawn_at.get(),
+                }
+            })
+        })
+        .collect()
 }
 
 /// Standard OSRS experience table: the level a given experience total reaches, capped at 99.
@@ -123,6 +173,8 @@ pub(crate) fn client(state: &GameState, frame: &Frame) -> ClientSnapshot {
                 WorldPoint::new(destination.x, destination.y, player.tile.plane.get())
             }),
         minimap_zoom: f64::from(state.interfaces().minimap().zoom_quarters) / 4.,
+        shift_held: frame.shift_held,
+        wall_time_ms: frame.wall_time_ms,
     }
 }
 
@@ -138,7 +190,66 @@ fn overhead(value: Option<&rustclient_game_state::ActorOverhead>) -> Option<Stri
     value.map(|overhead| overhead.text.text.clone())
 }
 
-pub(crate) fn player(entity: &PlayerEntity, local: bool) -> PlayerSnapshot {
+/// The plugin-visible graphic, hitsplats and health bars of an actor at client cycle `now`.
+///
+/// Hitsplats are those whose delay has elapsed (`cycle` is the cycle they arrived on); a health
+/// bar that has not started or has run out reports no amount. The graphic is the lowest occupied
+/// spot animation slot.
+fn effects(
+    state: &rustclient_game_state::ActorEffectsState,
+    now: rustclient_model::ClientCycle,
+) -> (
+    Option<u32>,
+    Vec<rustclient_plugin_api::Hitsplat>,
+    Vec<rustclient_plugin_api::Healthbar>,
+) {
+    let graphic = state.spotanims().next().map(|(_, anim)| anim.id.get());
+    let hitsplats = state
+        .hitmarks()
+        .iter()
+        .filter(|hit| hit.shown_at() <= now)
+        .map(|hit| rustclient_plugin_api::Hitsplat {
+            kind: hit.kind,
+            amount: i32::from(hit.amount),
+            cycle: u32::try_from(hit.applied.get()).unwrap_or(u32::MAX),
+        })
+        .collect();
+    let healthbars = state
+        .headbars()
+        .iter()
+        .map(|track| rustclient_plugin_api::Healthbar {
+            kind: track.kind,
+            amount: track.fill_at(now).map(u16::from),
+        })
+        .collect();
+    (graphic, hitsplats, healthbars)
+}
+
+/// The actor `facing` makes its owner interact with, if it is still in the scene (`RuneLite`'s
+/// `Actor.getInteracting` is null for a target that has left).
+pub(crate) fn interacting(
+    facing: Option<&rustclient_model::FacingBlock>,
+    entities: &rustclient_game_state::WorldEntitiesState,
+) -> Option<rustclient_plugin_api::ActorRef> {
+    use rustclient_model::Interaction;
+    match facing?.interaction()? {
+        Interaction::Npc(index) if entities.npcs.contains_key(&index) => Some(
+            rustclient_plugin_api::ActorRef::Npc(u16::try_from(index.get()).ok()?),
+        ),
+        Interaction::Player(index) if entities.players.contains_key(&index) => Some(
+            rustclient_plugin_api::ActorRef::Player(u16::try_from(index.get()).ok()?),
+        ),
+        _ => None,
+    }
+}
+
+pub(crate) fn player(
+    entity: &PlayerEntity,
+    local: bool,
+    now: rustclient_model::ClientCycle,
+    interacting: Option<rustclient_plugin_api::ActorRef>,
+) -> PlayerSnapshot {
+    let (graphic, hitsplats, healthbars) = effects(&entity.effects, now);
     let appearance = entity.appearance.as_ref();
     let movement = appearance.map(|appearance| appearance.movement_sequences);
     let pose = movement.and_then(|movement| match entity.locomotion {
@@ -155,11 +266,11 @@ pub(crate) fn player(entity: &PlayerEntity, local: bool) -> PlayerSnapshot {
             orientation: entity.current_orientation,
             animation: sequence(entity.sequence.sequence),
             pose: sequence(pose),
-            graphic: None,
+            graphic,
             overhead_text: overhead(entity.overhead.as_ref()),
-            interacting: None,
-            hitsplats: Vec::new(),
-            healthbars: Vec::new(),
+            interacting,
+            hitsplats,
+            healthbars,
         },
         name: appearance
             .map(|a| a.display_name.clone())
@@ -171,7 +282,13 @@ pub(crate) fn player(entity: &PlayerEntity, local: bool) -> PlayerSnapshot {
     }
 }
 
-pub(crate) fn npc(entity: &NpcEntity, definition: Option<&NpcDefinition>) -> NpcSnapshot {
+pub(crate) fn npc(
+    entity: &NpcEntity,
+    definition: Option<&NpcDefinition>,
+    now: rustclient_model::ClientCycle,
+    interacting: Option<rustclient_plugin_api::ActorRef>,
+) -> NpcSnapshot {
+    let (graphic, hitsplats, healthbars) = effects(&entity.effects, now);
     let pose = definition.and_then(|def| match entity.locomotion {
         Locomotion::Idle | Locomotion::Turn => def.idle_sequence,
         Locomotion::Walk => def.walk_sequence,
@@ -186,11 +303,11 @@ pub(crate) fn npc(entity: &NpcEntity, definition: Option<&NpcDefinition>) -> Npc
             orientation: entity.current_orientation,
             animation: sequence(entity.sequence.sequence),
             pose: sequence(pose),
-            graphic: None,
+            graphic,
             overhead_text: overhead(entity.overhead.as_ref()),
-            interacting: None,
-            hitsplats: Vec::new(),
-            healthbars: Vec::new(),
+            interacting,
+            hitsplats,
+            healthbars,
         },
         id: entity.definition_id.get(),
         name: entity

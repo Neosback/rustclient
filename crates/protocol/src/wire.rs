@@ -7,6 +7,8 @@ pub struct ProtocolError {
     pub detail: String,
     /// Stable transport category when an adapter failed.
     pub transport: Option<rustclient_platform::TransportError>,
+    /// Set when the server answered the login with a refusal.
+    pub rejection: Option<rustclient_model::LoginRejection>,
 }
 impl ProtocolError {
     pub(crate) fn new(stage: &'static str, detail: impl Into<String>) -> Self {
@@ -14,6 +16,7 @@ impl ProtocolError {
             stage,
             detail: detail.into(),
             transport: None,
+            rejection: None,
         }
     }
     fn transport(stage: &'static str, error: rustclient_platform::TransportError) -> Self {
@@ -21,6 +24,7 @@ impl ProtocolError {
             stage,
             detail: error.to_string(),
             transport: Some(error),
+            rejection: None,
         }
     }
 }

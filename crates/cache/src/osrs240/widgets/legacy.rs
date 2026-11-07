@@ -5,6 +5,7 @@ use super::{
     WidgetPermissions, optional,
 };
 use crate::widget::{LegacyButton, LegacyPresentation};
+use rustclient_model::RectangleFill;
 
 fn model(r: &mut Reader<'_>) -> Result<Option<ModelId>> {
     Ok(match r.u32()? {
@@ -124,15 +125,22 @@ pub fn decode_legacy(
         let alternate_color = r.u32()?;
         hover_colors = [r.u32()?, r.u32()?];
         if kind == 3 {
+            // IF1 reads `color2` for every rectangle; the IF1 alternate draws it as its colour.
             body = WidgetBody::Rectangle {
                 color,
                 filled,
                 transparency,
+                fill_color: alternate_color,
+                bottom_transparency: 0,
+                fill_mode: RectangleFill::Solid,
             };
             alternate = Some(WidgetBody::Rectangle {
                 color: alternate_color,
                 filled,
                 transparency,
+                fill_color: alternate_color,
+                bottom_transparency: 0,
+                fill_mode: RectangleFill::Solid,
             });
         } else {
             body = WidgetBody::Text {

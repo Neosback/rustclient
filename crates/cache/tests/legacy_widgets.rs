@@ -68,7 +68,9 @@ fn legacy_family_preserves_240_fields_conditionals_and_parent_links() {
                     WidgetBody::Rectangle {
                         color: 0x0012_3456,
                         filled: true,
-                        transparency: 64
+                        transparency: 64,
+                        fill_color: 0x00ab_cdef,
+                        ..
                     }
                 ));
                 assert!(matches!(

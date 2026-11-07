@@ -6,6 +6,11 @@
 
 #![forbid(unsafe_code)]
 
+mod actor_effects;
+mod facing;
+pub use facing::{
+    FacingBlock, FacingEntityKind, FacingTarget, FacingWalkPolicy, Interaction, PlayerFacing,
+};
 mod brightness;
 pub mod coords;
 mod minimap;
@@ -17,16 +22,23 @@ pub use minimap::{
 mod destination;
 pub use destination::MapDestination;
 pub mod entity;
+mod ground_item;
 pub mod ids;
 mod interaction;
-pub use interaction::{
-    ActionMask, ActionSlot, NpcInstanceId, PlayerInstanceId, TileOffset, WorldAction, WorldTarget,
+mod login_rejection;
+pub use ground_item::{
+    GroundItemCustomisation, GroundItemOwnership, GroundItemPosition, GroundItemUpdate,
 };
+pub use interaction::{
+    ActionMask, ActionSlot, NpcInstanceId, PlayerInstanceId, PlayerOpSlot, TileOffset, WorldAction,
+    WorldTarget,
+};
+pub use login_rejection::LoginRejection;
 mod interface;
 pub use interface::{
     CanvasSize, ClientSetting, InterfaceMount, InterfaceMountKind, InterfaceUpdate, ScriptRequest,
-    ScriptValue, WidgetAction, WidgetEventRange, WidgetKeyScope, WidgetOperation,
-    WidgetPermissions, WidgetProperty, WindowMetrics, WindowMode,
+    ScriptValue, WidgetAction, WidgetDragDrop, WidgetDragEnd, WidgetEventRange, WidgetKeyScope,
+    WidgetOperation, WidgetPermissions, WidgetProperty, WindowMetrics, WindowMode,
 };
 mod inventory;
 pub use inventory::{InventorySlotUpdate, InventoryUpdate, ItemStack};
@@ -42,6 +54,9 @@ mod sequence;
 mod sequence_timing;
 pub mod time;
 
+pub use actor_effects::{
+    ActorEffects, ActorSpotAnim, Headbar, HeadbarFill, Hitmark, PlayerEffects,
+};
 pub use coords::{
     FINE_UNITS_PER_TILE, FineCoord, MAX_PLANE, ModelPoint, Plane, REGION_SIZE_TILES, RegionCoord,
     RegionTile, SceneTile, WorldFinePoint, WorldTile,
@@ -74,7 +89,7 @@ pub use scene::{MapAnchor, SceneAssetId, SceneDescriptor};
 
 mod widget;
 pub use widget::{
-    FillGradient, PositionMode, RectangleFill, SizeMode, WidgetAddress, WidgetBody, WidgetContent,
+    PositionMode, RectangleFill, SizeMode, WidgetAddress, WidgetBody, WidgetContent,
     WidgetDefinition, WidgetDrag, WidgetHead, WidgetKey, WidgetLayout, WidgetListener,
     WidgetOpKeys, WidgetRuntime,
 };
@@ -97,6 +112,19 @@ pub enum PlayerStatusUpdate {
     },
     RunEnergy(u16),
     RunWeight(i16),
+    /// `SET_PLAYER_OP`: the option on other players' menus in `slot` (1..=8); `None` removes it.
+    PlayerOption {
+        slot: u8,
+        text: Option<String>,
+        /// The stock flag byte was non-zero (the option is not deprioritized).
+        priority: bool,
+    },
+}
+/// One option the server put on other players' menus.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PlayerOption {
+    pub text: String,
+    pub priority: bool,
 }
 
 /// Server-provided game message, before local history identity is assigned.

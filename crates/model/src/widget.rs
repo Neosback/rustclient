@@ -34,6 +34,29 @@ pub enum WidgetContent {
     WorldMapOverview,
     Other(u16),
 }
+/// Reference `FillMode`: how a filled rectangle widget is shaded.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum RectangleFill {
+    /// One colour, `color`, at `transparency` (`FillMode.SOLID`, ordinal 0).
+    #[default]
+    Solid,
+    /// Opaque vertical gradient from `color` at the top to `fill_color` at the bottom (ordinal 1).
+    Gradient,
+    /// Vertical gradient that also blends `transparency` to `bottom_transparency` (ordinal 2).
+    GradientAlpha,
+}
+impl RectangleFill {
+    /// The fill mode with the reference ordinal `value`, if any (`findEnumerated`).
+    #[must_use]
+    pub const fn from_ordinal(value: i32) -> Option<Self> {
+        match value {
+            0 => Some(Self::Solid),
+            1 => Some(Self::Gradient),
+            2 => Some(Self::GradientAlpha),
+            _ => None,
+        }
+    }
+}
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum WidgetBody {
     Container {
@@ -43,7 +66,14 @@ pub enum WidgetBody {
     Rectangle {
         color: u32,
         filled: bool,
+        /// Top (or uniform) transparency, `transparencyTop`.
         transparency: u8,
+        /// Bottom colour of a gradient fill, `color2` (`CC_SETFILLCOLOUR`).
+        fill_color: u32,
+        /// Bottom transparency of a gradient-alpha fill, `transparencyBot` (CS2 1124).
+        bottom_transparency: u8,
+        /// How a filled rectangle is shaded (CS2 1125).
+        fill_mode: RectangleFill,
     },
     Text {
         font: Option<FontId>,
@@ -188,46 +218,6 @@ pub struct WidgetDrag {
     pub threshold: i32,
     pub scrollbar: bool,
 }
-/// How a filled rectangle blends from its colour to `end_color` down its height (reference
-/// `classGP` rectangle painting; the ids are those of `CC_SETGRADIENT`).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum FillGradient {
-    /// One colour with the rectangle's own transparency.
-    #[default]
-    Solid,
-    /// Opaque blend from the rectangle colour (top) to the end colour (bottom).
-    Vertical,
-    /// As `Vertical`, with transparency blending from the rectangle's to `end_transparency`.
-    VerticalFade,
-}
-impl FillGradient {
-    /// The script id; `None` for an id the client has no gradient for.
-    #[must_use]
-    pub const fn from_id(id: i32) -> Option<Self> {
-        match id {
-            0 => Some(Self::Solid),
-            1 => Some(Self::Vertical),
-            2 => Some(Self::VerticalFade),
-            _ => None,
-        }
-    }
-    #[must_use]
-    pub const fn id(self) -> i32 {
-        match self {
-            Self::Solid => 0,
-            Self::Vertical => 1,
-            Self::VerticalFade => 2,
-        }
-    }
-}
-/// The second colour, second transparency and gradient a script gives a rectangle. The cache
-/// widget format carries none of these; they exist only as script overrides.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct RectangleFill {
-    pub end_color: u32,
-    pub end_transparency: u8,
-    pub gradient: FillGradient,
-}
 /// Model source a script selects for a model widget by head instead of by model id.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WidgetHead {
@@ -258,8 +248,6 @@ pub struct WidgetRuntime {
     pub item: Option<(crate::ItemDefinitionId, u32)>,
     /// Chat head selected for a model widget; exclusive with `item` and a model id.
     pub head: Option<WidgetHead>,
-    /// Script-set second colour and gradient of a rectangle.
-    pub fill: Option<RectangleFill>,
     /// Per-slot key bindings; empty until a script binds a key.
     pub op_keys: BTreeMap<u8, WidgetOpKeys>,
 }

@@ -1,8 +1,17 @@
 //! Typed action slots shared by definitions, semantic entities and validated intents.
-/// One of the five definition-authored world actions, in cache/menu order.
+/// One of the five definition-authored world actions, in cache/menu order, or the client-added
+/// Examine entry that follows them.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ActionSlot(u8);
 impl ActionSlot {
+    /// The "Examine" entry every NPC, object and ground item has after its own actions. It is not
+    /// a definition slot, so [`ActionSlot::new`] never returns it and masks never hide it.
+    pub const EXAMINE: Self = Self(5);
+    /// Whether this is [`ActionSlot::EXAMINE`].
+    #[must_use]
+    pub const fn is_examine(self) -> bool {
+        self.0 == 5
+    }
     #[must_use]
     pub const fn new(index: u8) -> Option<Self> {
         if index < 5 { Some(Self(index)) } else { None }
@@ -16,6 +25,24 @@ impl ActionSlot {
         self.0 as usize
     }
 }
+/// One of the eight options on another player's menu (`OPPLAYER1..8`), numbered from 1.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct PlayerOpSlot(u8);
+impl PlayerOpSlot {
+    #[must_use]
+    pub const fn new(slot: u8) -> Option<Self> {
+        if slot >= 1 && slot <= 8 {
+            Some(Self(slot))
+        } else {
+            None
+        }
+    }
+    /// The slot number, 1..=8.
+    #[must_use]
+    pub const fn get(self) -> u8 {
+        self.0
+    }
+}
 /// Server-controlled visibility of definition-authored world actions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ActionMask([bool; 5]);
@@ -27,7 +54,7 @@ impl ActionMask {
     }
     #[must_use]
     pub const fn allows(self, slot: ActionSlot) -> bool {
-        self.0[slot.index()]
+        slot.is_examine() || self.0[slot.index()]
     }
     #[must_use]
     pub const fn enabled(self) -> [bool; 5] {
@@ -81,6 +108,18 @@ pub enum WorldTarget {
         definition: crate::ObjectDefinitionId,
         resolved: crate::ObjectDefinitionId,
     },
+    /// Another player. The target names the player, not one option: listing it yields every
+    /// option the server set (`SET_PLAYER_OP`), and each listed action carries its own `op`.
+    Player {
+        index: crate::PlayerIndex,
+        instance: PlayerInstanceId,
+        op: PlayerOpSlot,
+    },
+    /// An item in the pile on `tile`; the first such item with this id when the action runs.
+    GroundItem {
+        tile: crate::WorldTile,
+        item: crate::ItemDefinitionId,
+    },
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct WorldAction {
@@ -103,6 +142,7 @@ mod tests {
             assert!(ActionMask::ALL.allows(slot));
         }
         assert_eq!(ActionSlot::new(5), None);
+        assert!(ActionSlot::EXAMINE.is_examine() && mask.allows(ActionSlot::EXAMINE));
         assert_eq!(ActionSlot::new(u8::MAX), None);
         assert_eq!(NpcInstanceId::new(u64::MAX).get(), u64::MAX);
     }

@@ -6,7 +6,9 @@
 #![forbid(unsafe_code)]
 
 pub mod builtin_config;
+pub mod client_preferences;
 mod interaction;
+pub mod menu;
 pub mod shell_preferences;
 pub use interaction::{validate_walk, validate_world_action, world_actions};
 
@@ -27,11 +29,11 @@ pub use sequence_policy::SequencePolicyResolver;
 
 mod scene;
 pub use scene::{
-    LoadedScene, extend_location_resources_from_cache, load_scene, load_scene_from_cache,
-    load_scene_with_inputs, reproject_scene, reproject_scene_from_cache,
+    LoadedScene, extend_location_resources_from_cache, load_scene, load_scene_cancellable,
+    load_scene_from_cache, load_scene_with_inputs, reproject_scene, reproject_scene_from_cache,
 };
 
 pub mod scripts;
 
 mod widget_actions;
-pub use widget_actions::{validate_widget_action, widget_actions};
+pub use widget_actions::{validate_widget_action, validate_widget_drag, widget_actions};
