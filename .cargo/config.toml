@@ -1,4 +1,7 @@
 [alias]
-client = "run -p rustclient-native --"
-play = "run -p rustclient-native --"
+client = "run -p rustclient-native --bin rustclient-native --profile play --"
+play = "run -p rustclient-native --bin rustclient-native --profile play --"
 xtask = "run -p xtask --"
+
+edit = "build -p rustclient-native --bin rustclient-native --no-default-features"
+quickcheck = "check -p rustclient-native --bin rustclient-native --no-default-features"

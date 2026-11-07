@@ -27,7 +27,8 @@ pub(super) struct ConnectionOptions {
     pub cache_profile: CacheProfile,
     pub host: String,
     pub port: u16,
-    pub public_key: PathBuf,
+    pub public_key: Option<PathBuf>,
+    pub server_url: String,
     pub cache_dir: PathBuf,
 }
 #[expect(
@@ -161,14 +162,19 @@ fn prepare(
     )
     .map_err(|e| failure(LoginFailure::CacheMismatch, e.to_string()))?;
     let mut key_text = String::new();
-    std::fs::File::open(&options.public_key)
-        .and_then(|file| file.take(2049).read_to_string(&mut key_text))
-        .map_err(|_| {
-            failure(
-                LoginFailure::Protocol,
-                "could not read public RSA key".into(),
-            )
-        })?;
+    std::fs::File::open(
+        options
+            .public_key
+            .as_ref()
+            .ok_or_else(|| failure(LoginFailure::Protocol, "missing OpenRune public key".into()))?,
+    )
+    .and_then(|file| file.take(2049).read_to_string(&mut key_text))
+    .map_err(|_| {
+        failure(
+            LoginFailure::Protocol,
+            "could not read public RSA key".into(),
+        )
+    })?;
     let key =
         PublicKey::parse(&key_text).map_err(|e| failure(LoginFailure::Protocol, e.to_string()))?;
     let connect = || {
@@ -197,12 +203,15 @@ fn open_session(
     emit: &impl Fn(NetworkEvent),
 ) -> Result<
     (
-        NativeTcp,
+        NativeSessionStream,
         ConnectionDecoder,
         SequencePolicyResolver<DirectoryBlobs>,
     ),
     Failure,
 > {
+    if options.profile == ServerProfile::TSPS_241 {
+        return open_tsps(options, credentials, cancel, emit);
+    }
     let failure = |category, error: String| (category, error);
     emit(NetworkEvent::Progress("Checking cache compatibility"));
     let (key, crcs, cache) = prepare(options, cancel)?;
@@ -242,7 +251,7 @@ fn open_session(
         )
     })?;
     drop(entropy);
-    let (mut decoder, authenticated) = ConnectionDecoder::new(options.profile, login);
+    let (mut decoder, authenticated) = ConnectionDecoder::openrune(login);
     let sizes = cache
         .huffman_sizes()
         .map_err(|e| {
@@ -270,7 +279,7 @@ fn open_session(
             .ok()
     }));
     let sequence_policies = SequencePolicyResolver::shared(cache, profile);
-    Ok((stream, decoder, sequence_policies))
+    Ok((NativeSessionStream::Tcp(stream), decoder, sequence_policies))
 }
 fn run(
     options: &ConnectionOptions,
@@ -299,6 +308,9 @@ fn run(
         &LoopTiming::standard(),
     )
 }
+mod tsps;
+use tsps::{NativeSessionStream, open_tsps};
+
 /// The socket operations the post-login loop needs, so tests can drive it from memory.
 pub(super) trait SessionStream: ByteStream {
     /// Bound the next read or write.
@@ -477,6 +489,11 @@ pub(super) fn session_loop<S: SessionStream>(
                     continue;
                 }
             };
+            // A profile may have no wire equivalent for a local notification. Do not
+            // count that as a network write or reset the successful-write watchdog.
+            if encoded.is_empty() {
+                continue;
+            }
             stream.deadline_after(Duration::from_secs(2));
             pollster::block_on(stream.send(&encoded))
                 .map_err(|e| failure(LoginFailure::Disconnected, e.to_string()))?;
@@ -553,16 +570,13 @@ mod tests {
 
     const SEED: [u32; 4] = [1, 2, 3, 4];
     fn decoder() -> ConnectionDecoder {
-        ConnectionDecoder::new(
-            ServerProfile::OPENRUNE_240_2,
-            LoginSession {
-                player: PlayerIndex::new(1),
-                member: true,
-                staff_level: 0,
-                incoming: Isaac::new(SEED),
-                outgoing: Isaac::new(SEED),
-            },
-        )
+        ConnectionDecoder::openrune(LoginSession {
+            player: PlayerIndex::new(1),
+            member: true,
+            staff_level: 0,
+            incoming: Isaac::new(SEED),
+            outgoing: Isaac::new(SEED),
+        })
         .0
     }
     /// A server frame with an ISAAC-masked opcode, like the wire.

@@ -1484,5 +1484,12 @@
     "source_manifest": "target/incremental-locations-20261101/after-source.json",
     "status": "implementation/diagnostic slice; whole-client performance and source/runtime acceptance incomplete",
     "note": "Original documentation-sweep hashes and claims above retain their original scope. No reference source changed."
+  },
+  "tsps_extension_review": {
+    "date": "2026-11-06",
+    "rust_base": "d4ea8072",
+    "source": "ac7b52a21df137cbd6c011c73fd2f173cbc274d6",
+    "scope": "TSPS/build cleanup extensions only; historical 240 review identity and claims unchanged.",
+    "evidence": "crates/protocol/tests/fixtures/tsps-241/sources.json"
   }
 }

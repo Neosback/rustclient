@@ -13,21 +13,36 @@ jobs:
         with:
           components: rustfmt, clippy
           targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
       - name: Format
         run: cargo fmt --all --check
-      - name: Documentation and parity inventories
+      - name: Documentation and local contract inventories
         run: |
           python3 tools/port_matrix.py --check
-          python3 tools/port_audit.py --check
-          python3 tools/parity_inventory.py --check
           python3 tools/docs_index.py --check
+          python3 tools/docs_check.py
       - name: Check workspace
-        run: cargo check --workspace --all-targets
+        run: cargo check --workspace --all-targets --all-features
       - name: Clippy
-        run: cargo clippy --workspace --all-targets -- -D warnings
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
       - name: Test
         run: cargo test --workspace
       - name: Check web target
         run: cargo check -p rustclient-web --target wasm32-unknown-unknown
       - name: Check shared runtime for web
         run: cargo check -p rustclient-application --target wasm32-unknown-unknown
+
+  native-platforms:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Check native composition and diagnostics
+        run: cargo check -p rustclient-native --all-targets --all-features
+      - name: Shared behavior and native transport contracts
+        run: cargo test -p rustclient-protocol -p rustclient-game-state -p rustclient-game-ui -p rustclient-platform-native

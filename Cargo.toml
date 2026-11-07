@@ -27,7 +27,8 @@ members = [
     "plugin-sdk/rust",
     "xtask",
 ]
-exclude = ["references/rustosrs", "vendor/blitz-dom-0.2.4", "vendor/dioxus-native-dom-0.7.10"]
+exclude = ["references/rustosrs"]
+default-members = ["apps/native"]
 
 [workspace.package]
 edition = "2024"
@@ -65,35 +66,36 @@ unsafe_code = "deny"
 [workspace.lints.clippy]
 all = { level = "warn", priority = -1 }
 pedantic = { level = "warn", priority = -1 }
-# Added to `clippy::all` in Rust 1.99; `assert!(x.is_empty())` is the workspace's test idiom.
-assert_is_empty = "allow"
 
-# Optimize the measured CPU gameplay hot paths while retaining dev assertions/symbols.
-# Third-party crates (wgpu, naga, image decoders) dominate frame time in debug builds.
-[profile.dev.package."*"]
+# Optimized interactive play is separate from edit/check/test builds.
+[profile.play]
+inherits = "dev"
+
+# Keep the previously selected gameplay and dependency optimization levels.
+[profile.play.package."*"]
 opt-level = 2
-[profile.dev.package.rustclient-native]
+[profile.play.package.rustclient-native]
 opt-level = 2
-[profile.dev.package.rustclient-application]
+[profile.play.package.rustclient-application]
 opt-level = 2
-[profile.dev.package.rustclient-client-script]
+[profile.play.package.rustclient-client-script]
 opt-level = 2
-[profile.dev.package.rustclient-game-ui]
+[profile.play.package.rustclient-game-ui]
 opt-level = 2
-[profile.dev.package.rustclient-scene]
+[profile.play.package.rustclient-scene]
 opt-level = 2
-[profile.dev.package.rustclient-renderer]
+[profile.play.package.rustclient-renderer]
 opt-level = 2
-[profile.dev.package.rustclient-cache]
+[profile.play.package.rustclient-cache]
 opt-level = 2
-[profile.dev.package.rustclient-game-state]
+[profile.play.package.rustclient-game-state]
 opt-level = 2
-[profile.dev.package.rustclient-model]
+[profile.play.package.rustclient-model]
 opt-level = 2
-[profile.dev.package.rustclient-protocol]
+[profile.play.package.rustclient-protocol]
 opt-level = 2
-[profile.dev.package.rustclient-platform-native]
+[profile.play.package.rustclient-platform-native]
 opt-level = 2
 
-[profile.dev.package.rustclient-shell-ui]
+[profile.play.package.rustclient-shell-ui]
 opt-level = 2

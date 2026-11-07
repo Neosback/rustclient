@@ -50,6 +50,7 @@ research stays under `docs/reference/` because it remains useful evidence.
 | `docs/plan/PLAYABLE-desktop.md` | [relocated: PLAYABLE-desktop.md](../archive/2026-foundation/plan/PLAYABLE-desktop.md) |
 | `docs/plan/PLAYER-UPDATING-240.md` | [relocated: PLAYER-UPDATING-240.md](../archive/2026-foundation/plan/PLAYER-UPDATING-240.md) |
 | `docs/plan/PORTING-ROADMAP.md` | [superseded-snapshot: PORTING-ROADMAP-2026-10-29.md](../archive/2026-foundation/plan/PORTING-ROADMAP-2026-10-29.md) |
+| `docs/plan/PORTING-ROADMAP.md` | [snapshot: PORTING-ROADMAP-2026-11-05.md](../archive/2026-foundation/plan/PORTING-ROADMAP-2026-11-05.md) |
 | `docs/plan/RENDER-GAMEFRAME-CONTINUATION-240.md` | [relocated: RENDER-GAMEFRAME-CONTINUATION-240.md](../archive/2026-foundation/plan/RENDER-GAMEFRAME-CONTINUATION-240.md) |
 | `docs/plan/RENDER-PIPELINE-REVIEW-2026-10-30.md` | [relocated: RENDER-PIPELINE-REVIEW-2026-10-30.md](../archive/2026-foundation/plan/RENDER-PIPELINE-REVIEW-2026-10-30.md) |
 | `docs/plan/REVISION-240-delivery.md` | [relocated: REVISION-240-delivery.md](../archive/2026-foundation/plan/REVISION-240-delivery.md) |
@@ -62,6 +63,7 @@ research stays under `docs/reference/` because it remains useful evidence.
 | `docs/plan/TSPS-ADOPTION-2026-10-29.md` | [relocated: TSPS-ADOPTION-2026-10-29.md](../archive/2026-foundation/plan/TSPS-ADOPTION-2026-10-29.md) |
 | `docs/plan/WALL-DECOR-240-2026-10-29.md` | [relocated: WALL-DECOR-240-2026-10-29.md](../archive/2026-foundation/plan/WALL-DECOR-240-2026-10-29.md) |
 | `docs/reference/rs240-port/CURRENT-AUDIT.md` | [superseded-snapshot: CURRENT-AUDIT-2026-10-28.md](../archive/2026-foundation/reviews/CURRENT-AUDIT-2026-10-28.md) |
+| `docs/reference/rs240-port/CURRENT-AUDIT.md` | [snapshot: CURRENT-AUDIT-2026-11-02.md](../archive/2026-foundation/reviews/CURRENT-AUDIT-2026-11-02.md) |
 | `docs/plan/CHECKPOINT_TEMPLATE.md` | [relocated: CHECKPOINT_TEMPLATE.md](../templates/CHECKPOINT_TEMPLATE.md) |
 
 Generated with `python3 tools/docs_index.py --write`; verify with `--check`.

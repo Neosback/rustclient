@@ -11,6 +11,12 @@ pub async fn verify_cache(
     profile: ServerProfile,
     crcs: &[u32; 23],
 ) -> Result<()> {
+    if profile != ServerProfile::OPENRUNE_240_2 {
+        return Err(ProtocolError::new(
+            "OpenRune JS5",
+            "incompatible server profile",
+        ));
+    }
     let mut hello = vec![15];
     hello.extend_from_slice(&u32::from(profile.revision().major()).to_be_bytes());
     hello.extend_from_slice(&[0; 16]);

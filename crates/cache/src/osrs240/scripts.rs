@@ -109,13 +109,25 @@ impl CacheProfile {
             .iter()
             .find(|(id, _)| id.0 == 0)
             .ok_or_else(|| source.error("script", "missing file"))?;
-        decode(&bytes.1, id, source)
+        match self {
+            Self::Tsps241 => crate::tsps241::decode_script(&bytes.1, id, source),
+            _ => decode(&bytes.1, id, source),
+        }
     }
 }
 /// Decode the selected 240 format with exact byte boundaries.
 /// # Errors
 /// Returns source context on malformed programs; unsupported instructions retain identity for VM errors.
 pub fn decode(bytes: &[u8], id: ScriptId, source: Source) -> Result<Script> {
+    decode_with_opcodes(bytes, id, source, super::script_opcodes::opcode)
+}
+
+pub(crate) fn decode_with_opcodes(
+    bytes: &[u8],
+    id: ScriptId,
+    source: Source,
+    opcode: fn(u16) -> crate::script::Opcode,
+) -> Result<Script> {
     let invalid = || source.error("script", "invalid footer or allocation limit");
     if bytes.len() < 19 || bytes.len() > 1_048_576 {
         return Err(invalid());
@@ -170,7 +182,7 @@ pub fn decode(bytes: &[u8], id: ScriptId, source: Source) -> Result<Script> {
         let value = reader.u16()?;
         let mut instruction = Instruction {
             array_default: None,
-            opcode: super::script_opcodes::opcode(value),
+            opcode: opcode(value),
             integer: 0,
             text: None,
             long: 0,

@@ -108,7 +108,7 @@ static slice; [SPEC-0016](docs/specs/SPEC-0016-reference-scenery-parity.md) and
 Capture fixed-camera GPU frames and verify byte-identical reconstruction from the server cache without connecting:
 
 ```sh
-cargo run -p rustclient-native --bin scene_probe -- "/Users/tylercovalt/Desktop/OpenRune Project/OpenRune-Server/.data/cache/LIVE" target/scene-captures
+cargo run -p rustclient-native --features diagnostics --bin scene_probe -- "/path/to/cache" target/scene-captures
 ```
 
 The title bar shows FPS and resident memory (MiB RSS). The development launcher
@@ -125,7 +125,7 @@ for a separate-login persistence check; see the checkpoint for fixture setup.
 ## Run the offline title preview
 
 ```sh
-cargo run -p rustclient-native -- --cache-dir /Users/tylercovalt/Desktop/LIVE --cache-profile osrs-240
+cargo play --offline --cache-dir PATH --cache-profile osrs-240
 ```
 
 The cache is opened read-only. Select the profile explicitly; cache table revisions
@@ -135,8 +135,8 @@ Tab/Shift-Tab, Backspace, Escape and mouse controls work locally. Login reports
 that server authentication is not configured. Passwords are never persisted.
 Music is silent and world selection is unavailable.
 
-Display preferences default to `$HOME/.rustclient/title/preferences.json`;
-`--preferences-dir PATH` overrides that directory. Remember username defaults off.
+Display preferences use the per-user application directory, retaining an existing
+`$HOME/.rustclient` installation when present; `--preferences-dir PATH` overrides it. Remember username defaults off.
 Browser cache import remains deferred; shared decoder/UI/renderer code still
 compiles for wasm.
 
@@ -144,16 +144,32 @@ Inspect metadata and validate every required title file (CRC, stored version,
 decoded size metadata and source hashes):
 
 ```sh
-cargo run -p xtask -- cache inspect --cache-dir /Users/tylercovalt/Desktop/LIVE --cache-profile osrs-240
+cargo xtask cache inspect --cache-dir PATH --cache-profile osrs-240
 ```
 
 Generate deterministic **GPU-rendered** welcome, credential, offline, authenticated-fixture and HiDPI PNG
 captures and verify byte-identical reconstruction after recreating GPU resources:
 
 ```sh
-cargo run -p rustclient-native -- --cache-dir /Users/tylercovalt/Desktop/LIVE --cache-profile osrs-240 --capture-dir target/title-captures
+cargo play --offline --cache-dir PATH --cache-profile osrs-240 --capture-dir target/title-captures
 ```
 
 Capture mode does not load or modify personal preferences. Its sample credentials
 are fixed local test strings. See [the title contract](docs/specs/SPEC-0013-offline-title.md)
 for ownership, supported formats and deliberate compatibility limits.
+
+### Development builds and TSPS
+
+`cargo play --cache-dir PATH` uses the optimized play profile with external plugins enabled.
+`cargo edit` and `cargo quickcheck` use the faster dev profile. Diagnostic binaries require
+`--features diagnostics`; full workspace validation enables `--all-features`.
+
+TSPS is the primary development profile (`--server-profile tsps-241 --cache-profile tsps-241
+--server-url ws://127.0.0.1:43594/`), currently experimental. Required packet/semantic gaps
+remain explicit failures; a playable TSPS milestone is not yet established. See the
+[current roadmap](docs/plan/PORTING-ROADMAP.md) for saved configuration and acceptance.
+OpenRune is retained through `scripts/run-openrune.sh`; startup no longer searches personal paths.
+
+Fast development commands disable the optional external Wasm executor (`--no-default-features`); built-in plugins remain available. Normal `cargo play` and default builds retain external Wasm plugins.
+
+Integration families run in one `integration` executable per crate. For a focused family, use `cargo test -p PACKAGE --test integration FAMILY::`; original module files and assertions are retained.

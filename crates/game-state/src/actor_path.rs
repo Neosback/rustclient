@@ -122,6 +122,7 @@ impl ActorPathQueue {
     }
 
     /// Active entries in newest-to-oldest storage order.
+    #[must_use]
     pub fn iter(self) -> impl DoubleEndedIterator<Item = ActorPathEntry> {
         self.entries
             .into_iter()

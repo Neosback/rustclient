@@ -33,3 +33,13 @@ Before significant work, read `ARCHITECTURE.md`, then the applicable `docs/specs
 For Rust changes, target: `cargo fmt --check`, `cargo check --workspace --all-targets`, strict Clippy, relevant tests, and `cargo check -p rustclient-web --target wasm32-unknown-unknown` when web-compatible code changes.
 
 Do not claim full validation if only a subset ran.
+
+## Source size and build workflows
+
+- Review authored Rust files above 500 lines for cohesion. Keep files at or below 1,000 lines
+  unless the owner records a concrete reason; split by responsibility, not arbitrary line ranges.
+- `cargo play` keeps optimized gameplay and external plugins; `cargo edit`/`cargo quickcheck`
+  prioritize development. Diagnostics require `--features diagnostics` and full checks use
+  `--all-features`. Full source-research regeneration is separate from ordinary build/test.
+
+Fast development commands disable the optional external Wasm executor (`--no-default-features`); built-in plugins remain available. Normal `cargo play` and default builds retain external Wasm plugins.

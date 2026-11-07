@@ -8,7 +8,7 @@ use rustclient_game_state::{GameState, SemanticOperation};
 use rustclient_game_ui::widgets::{WidgetBounds, WidgetTree};
 use rustclient_model::{CanvasSize, InterfaceUpdate, PlayerIndex, WindowMode};
 use rustclient_platform_native::DirectoryBlobs;
-use rustclient_protocol::{Isaac, LoginSession, ServerProfile};
+use rustclient_protocol::{Isaac, LoginSession};
 
 /// Packets that change interface, variable, inventory, status, chat or clock state. Actor, scene and zone packets
 /// need a map placement this replay does not have and cannot change widget layout.
@@ -137,7 +137,7 @@ fn open_session(
         incoming: Isaac::new(SEED),
         outgoing: Isaac::new([5, 6, 7, 8]),
     };
-    let (decoder, authenticated) = ConnectionDecoder::new(ServerProfile::OPENRUNE_240_2, login);
+    let (decoder, authenticated) = ConnectionDecoder::openrune(login);
     let mut state = GameState::new();
     state.apply_operation(authenticated)?;
     state.apply_operation(SemanticOperation::Interface(InterfaceUpdate::Window(

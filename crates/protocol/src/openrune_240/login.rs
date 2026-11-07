@@ -12,8 +12,8 @@ use zeroize::Zeroizing;
 
 /// Single-owner transient login input. No Debug, Clone or serialization.
 pub struct Credentials {
-    username: Zeroizing<String>,
-    password: Zeroizing<String>,
+    pub(crate) username: Zeroizing<String>,
+    pub(crate) password: Zeroizing<String>,
 }
 impl Credentials {
     /// # Errors
@@ -128,6 +128,12 @@ pub async fn authenticate(
         crcs,
         window,
     } = attempt;
+    if profile != ServerProfile::OPENRUNE_240_2 {
+        return Err(ProtocolError::new(
+            "OpenRune login",
+            "incompatible server profile",
+        ));
+    }
     if cancelled() {
         return Err(ProtocolError::new("login", "cancelled"));
     }

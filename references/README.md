@@ -36,7 +36,7 @@ commit, not submodules.
 
 `references/runelite-melxin-235` is the readable (`@Export`-named) revision-235 OpenOSRS
 injected-RuneLite tree (RuneLite 1.12.14 base, OpenOSRS 4.31.2, `rsversion = 235`), vendored
-as a tree recorded by the parent commit. It is the behaviour reference for ports; it is
+as a tree recorded by the parent commit. It is historical navigation/fallback evidence; exact 240 sources are primary for classic 240 behavior. It is
 **not** revision 240. Read [`docs/reference/REVISION-235-TO-240.md`](../docs/reference/REVISION-235-TO-240.md)
 for what changed up to 240 before relying on it, and `runelite-melxin-235/SNAPSHOT-NOTES.md`
 for the local edits (32-bit object model ids, wiki-scraper dumpers) and the build output

@@ -305,4 +305,49 @@ mod tests {
         assert_eq!(menu.click(bounds.x + 3., bounds.y + 31.), Some(7));
         assert!(!menu.is_open());
     }
+
+    #[test]
+    fn menu_rows_above_the_world_viewport_receive_clicks_at_fractional_and_retina_scales() {
+        use crate::arbitration::{PressFacts, PressRoute, route_press, suppress_gestures};
+        let font = font();
+        let world = Rect::new(0., 80., 512., 334.);
+        for scale in [1., 1.25, 1.5, 2., 3.] {
+            let viewport = crate::TitleViewport {
+                canvas_width: 765,
+                physical_width: 3000,
+                physical_height: 1800,
+                scale,
+                stretch: None,
+            };
+            let mut menu = ContextMenu::<u8>::default();
+            menu.open(
+                100.,
+                0.,
+                vec![("Use".into(), 7)],
+                &font,
+                &[],
+                rustclient_model::CanvasSize {
+                    width: 765,
+                    height: 503,
+                },
+            );
+            let bounds = menu.bounds.unwrap();
+            let logical = [bounds.x + 3., bounds.y + 31.];
+            assert!(!world.contains(logical[0], logical[1]));
+            let (x, y) = viewport.pointer(
+                viewport.physical_origin_x() + f64::from(logical[0]) * scale,
+                f64::from(logical[1]) * scale,
+            );
+            assert_eq!(
+                route_press(PressFacts {
+                    menu_open: menu.is_open(),
+                    ..PressFacts::default()
+                }),
+                PressRoute::Menu
+            );
+            assert!(suppress_gestures(menu.is_open()));
+            assert_eq!(menu.click(x, y), Some(7), "scale {scale}");
+            assert!(!menu.is_open());
+        }
+    }
 }

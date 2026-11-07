@@ -16,3 +16,7 @@ web-sys = { workspace = true, features = ["Performance", "Storage", "Window"] }
 
 [lints]
 workspace = true
+
+# No unit cases; keep doctests and target checks enabled. Re-enable when adding unit tests.
+[lib]
+test = false

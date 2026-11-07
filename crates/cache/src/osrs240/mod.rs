@@ -42,7 +42,9 @@ impl CacheProfile {
     #[must_use]
     pub const fn player_turn_rate(self) -> rustclient_model::JauTurnRate {
         match self {
-            Self::Osrs240 | Self::OpenRune240 => rustclient_model::JauTurnRate::new(32),
+            Self::Osrs240 | Self::OpenRune240 | Self::Tsps241 => {
+                rustclient_model::JauTurnRate::new(32)
+            }
         }
     }
 

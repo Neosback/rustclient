@@ -11,7 +11,10 @@ pub struct ProtocolError {
     pub rejection: Option<rustclient_model::LoginRejection>,
 }
 impl ProtocolError {
-    pub(crate) fn new(stage: &'static str, detail: impl Into<String>) -> Self {
+    /// Construct a stage-specific failure from an injected codec/definition provider.
+    /// The provider must omit credentials and raw payloads from its diagnostic.
+    #[must_use]
+    pub fn new(stage: &'static str, detail: impl Into<String>) -> Self {
         Self {
             stage,
             detail: detail.into(),

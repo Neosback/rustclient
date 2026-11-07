@@ -20,11 +20,11 @@ pub struct ConnectionDecoder {
 impl ConnectionDecoder {
     /// Transfer cipher ownership and return the authoritative authentication operation.
     #[must_use]
-    pub fn new(profile: ServerProfile, login: LoginSession) -> (Self, SemanticOperation) {
+    pub fn openrune(login: LoginSession) -> (Self, SemanticOperation) {
         let operation = SemanticOperation::AuthenticateSession {
-            revision: profile.revision(),
+            revision: ServerProfile::OPENRUNE_240_2.revision(),
             player: AuthenticatedPlayer {
-                profile: profile.id(),
+                profile: ServerProfile::OPENRUNE_240_2.id(),
                 player: login.player,
                 member: login.member,
                 staff_level: login.staff_level,
@@ -37,9 +37,32 @@ impl ConnectionDecoder {
             operation,
         )
     }
+    /// Construct a TSPS session without manufacturing `OpenRune` cipher state.
+    #[must_use]
+    pub fn tsps(login: rustclient_protocol::tsps_241::LoginSession) -> (Self, SemanticOperation) {
+        let operation = SemanticOperation::AuthenticateSession {
+            revision: ServerProfile::TSPS_241.revision(),
+            player: AuthenticatedPlayer {
+                profile: ServerProfile::TSPS_241.id(),
+                player: login.player,
+                member: login.member,
+                staff_level: login.staff_level,
+            },
+        };
+        (
+            Self {
+                codec: SessionCodec::tsps(login),
+            },
+            operation,
+        )
+    }
     /// Supply the selected cache's chat codec before authenticated packet consumption.
     pub fn set_chat_codec(&mut self, codec: rustclient_protocol::Huffman) {
         self.codec.set_chat_codec(codec);
+    }
+    /// Supply immutable varbit definitions without giving the wire adapter live variable values.
+    pub fn set_varbit_lookup(&mut self, lookup: rustclient_protocol::VarbitLookup) {
+        self.codec.set_varbit_lookup(lookup);
     }
     /// Supply the cache-backed NPC recolour and retexture counts that size customisation blocks.
     pub fn set_npc_shapes(&mut self, shapes: rustclient_protocol::NpcShapeLookup) {
@@ -47,12 +70,12 @@ impl ConnectionDecoder {
     }
     /// Profile packet count for diagnostics; not semantic time.
     #[must_use]
-    pub const fn framed_packets(&self) -> u64 {
+    pub fn framed_packets(&self) -> u64 {
         self.codec.framed_packets()
     }
     /// Per-opcode counts of server packets consumed without decoding (diagnostic).
     #[must_use]
-    pub const fn unhandled_opcodes(&self) -> &std::collections::BTreeMap<u16, u64> {
+    pub fn unhandled_opcodes(&self) -> &std::collections::BTreeMap<u16, u64> {
         self.codec.unhandled_opcodes()
     }
     /// Opcodes first seen since the last call, so each can be logged once.
@@ -60,7 +83,7 @@ impl ConnectionDecoder {
         self.codec.take_new_unhandled()
     }
     #[must_use]
-    pub const fn awaiting_initial_rebuild(&self) -> bool {
+    pub fn awaiting_initial_rebuild(&self) -> bool {
         self.codec.awaiting_initial_rebuild()
     }
     /// # Errors
@@ -167,6 +190,9 @@ fn translate(update: ServerUpdate, mut deliver: impl FnMut(ConnectionInput), con
                 map_anchor,
             )));
         }
+        ServerUpdate::SetMapAnchor(anchor) => deliver(ConnectionInput::Operation(
+            SemanticOperation::SetMapAnchor(anchor),
+        )),
         ServerUpdate::Interface(update) => deliver(ConnectionInput::Operation(
             SemanticOperation::Interface(update),
         )),
@@ -214,6 +240,9 @@ fn translate(update: ServerUpdate, mut deliver: impl FnMut(ConnectionInput), con
         }
         ServerUpdate::Variable(update) => deliver(ConnectionInput::Operation(
             SemanticOperation::Scenery(match update {
+                rustclient_protocol::VariableUpdate::SetBits { range, value } => {
+                    rustclient_game_state::SceneryOperation::SetServerVariableBits { range, value }
+                }
                 rustclient_protocol::VariableUpdate::Set { id, value } => {
                     rustclient_game_state::SceneryOperation::SetVariable { id, value }
                 }

@@ -7,3 +7,7 @@ repository.workspace = true
 
 [lints]
 workspace = true
+
+# No unit cases; keep doctests and target checks enabled. Re-enable when adding unit tests.
+[lib]
+test = false

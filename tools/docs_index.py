@@ -12,7 +12,7 @@ def render():
     current = '''# RustClient documentation
 
 Start with [architecture](../ARCHITECTURE.md), the [parity contract](specs/SPEC-0019-port-parity.md)
-and the [current roadmap](plan/PORTING-ROADMAP.md). Roadmap reconciled 2026-11-02; implementation
+and the [current roadmap](plan/PORTING-ROADMAP.md). TSPS is the primary development target; the adapter is experimental. Implementation
 and live acceptance remain separate. No whole-client completion percentage is claimed.
 
 ## Current owners
@@ -28,7 +28,7 @@ and live acceptance remain separate. No whole-client completion percentage is cl
 | What did the plugin-hook, ground-item and efficiency pass establish? | [Pass record](reference/CLIENT-PASS-2026-11-05.md), [ground items spec](specs/SPEC-0029-ground-items.md) |
 | What is left in classic GPU? | [GPU audit](reference/builtin-plugins/GPU-AUDIT.md) and [gate ledger](reference/builtin-plugins/gpu-audit.json) |
 | What is left for RuneLite features? | [First-party ledger](reference/builtin-plugins/FIRST-PARTY-LEDGER.md), [catalog](reference/builtin-plugins/RUNELITE-PLUGINS.tsv), [hooks/API ownership](reference/builtin-plugins/HOOK-API-OWNERS.tsv) |
-| Which TSPS ideas still transfer? | [Reconciled shortlist](reference/TSPS-GIT-SHORTLIST-2026-10-29.md#current-reconciliation--2026-10-31); stock 240 remains authoritative |
+| What defines the TSPS migration? | [SPEC-0031](specs/SPEC-0031-tsps-profile.md), the roadmap and pinned protocol fixtures; stock evidence remains authoritative for classic behavior |
 | What did an older checkpoint prove? | [Historical archive](archive/README.md), its [path/hash manifest](archive/MANIFEST.json) and dated reference records |
 
 Update these owners instead of creating another current plan. Specs/ADRs keep their
@@ -49,6 +49,7 @@ execution authority. Optional HD research is outside classic completion.
 - [Method ledger](reference/rs240-port/SYMBOL-LEDGER.tsv), [packet boundaries](reference/rs240-port/PACKET-COVERAGE.tsv) and [CS2 host inventory](reference/rs240-port/CS2-HOST-COVERAGE.tsv)
 - [Plugin event inventory](reference/builtin-plugins/RUNELITE-EVENTS.tsv), [consumer inventory](reference/builtin-plugins/source-inventory.json) and [scoped API verification](reference/builtin-plugins/API-CONTINUATION-EVIDENCE.json)
 - [Accepted/proposed deviations](plan/PARITY-DEVIATIONS.tsv) and [checkpoint evidence template](templates/CHECKPOINT_TEMPLATE.md)
+- [Retired shell removal provenance](archive/retired-shell/README.md) and [hash inventory](archive/retired-shell/removal.json)
 - [Readable-name evidence and workflow](reference/client-240/README.md)
 
 Counts, source mappings, dispatch arms, registered modules and successful builds are

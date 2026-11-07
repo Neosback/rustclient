@@ -20,6 +20,7 @@ pub use store::{Cache, split_files};
 pub use table::{Group, ReferenceTable, cp1252, name_hash};
 
 pub mod osrs240;
+pub mod tsps241;
 pub mod widget;
 pub mod world;
 

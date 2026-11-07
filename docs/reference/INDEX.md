@@ -1,14 +1,5 @@
 # Reference Index
 
-Update optimization: [prepared scene updates, indexed queries and retained poses](UPDATE-OPTIMIZATION-2026-10-30.md),
-[measurements and validation](UPDATE-OPTIMIZATION-EVIDENCE-2026-10-30.json).
-
-Update latency: [2026-10-30 scene/actor/widget/cycle review](UPDATE-SYSTEM-2026-10-30.md),
-[frozen sources and measurements](UPDATE-SYSTEM-EVIDENCE-2026-10-30.json).
-
-Loading, prompts, interface audit, minimap and memory: [2026-10-31 to 2026-11-02 pass record](CLIENT-PASS-2026-11-02.md)
-(commands, measurements and NOT-RUN gates).
-
 This index maps pinned behavioral evidence to RustClient owners.
 [SPEC-0019](../specs/SPEC-0019-port-parity.md) defines the nearly 1:1 contract;
 [the roadmap](../plan/PORTING-ROADMAP.md) orders implementation. Reference source
@@ -24,8 +15,7 @@ The matrix is generated from checked TSV; it is not a completion percentage.
 ## Revision-240 source map
 
 Read [the revision-240 integration guide](REVISION-240.md) before protocol, cache,
-rendering or plugin work. The client target is OpenRune `240.2`; a nearby source
-revision is evidence, not a compatibility declaration.
+rendering or plugin work on the retained OpenRune `240.2` profile. TSPS is the primary development target under [SPEC-0031](../specs/SPEC-0031-tsps-profile.md), with an experimental custom wire adapter. Nearby revisions are evidence, not compatibility declarations.
 
 | Source | Location | Use and limits |
 | --- | --- | --- |
@@ -36,7 +26,7 @@ revision is evidence, not a compatibility declaration.
 | rsprox | `references/rsprox-master/` | **Both client and server packet tables/codecs**, byte transforms, framing and proxy diagnostics. The current vendored tree includes OSRS-240 codecs; selected OpenRune RSProt remains exact target authority. `incoming` means client-to-server; `outgoing` means server-to-client. |
 | OpenRune development server | `/Users/tylercovalt/Desktop/OpenRune Project/OpenRune-Server` | Actual server behavior and cache for the target. Pins `net.rsprot:osrs-240-*` `1.0.0-ALPHA-20260825`; those source JARs provide exact 240 wire evidence. See existing protocol fixture provenance. |
 | OpenRune FileStore | `/Users/tylercovalt/Documents/OpenRune-FileStore-main` | Cache definition/opcode, container and model decoder research. Verify individual 240 layouts against actual cache and deob; presence of a codec does not prove every 240 format is supported. External local source, not yet vendored. |
-| TSPS client | `/Users/tylercovalt/Documents/tsps-main/client` | Supporting implementation research; the supplied snapshot targets cache 241 (`2026-10-20`), not verified stock 241 wire compatibility. See the [2026-10-29 review](TSPS-241-REVIEW-2026-10-29.md) and its separate source pins for useful rendering/UI/audit mechanisms and explicit exclusions (decoration corrections, priority depth bias, neutral opcode stubs and mutable engine plugin access). Older source-manifest and TSPS-237 pins retain their historical scope. Verify semantics against exact 240 and wire layouts against the selected RSProt adapter; preserve RustClient owners. |
+| TSPS client/server | `/Users/tylercovalt/Documents/tsps` | Primary custom wire target, pinned at `ac7b52a21df137cbd6c011c73fd2f173cbc274d6`; experimental adapter. Cache 241 is pinned independently in the protocol fixture provenance. Use its server/client codec pair for wire bytes and its client for candidate mechanisms. Classic behavior still requires stock evidence; do not import decoration corrections, depth-priority bias, effect lifts, neutral script stubs or mutable engine injection. Older TSPS reviews cover a different snapshot. |
 | 235 → 240 change inventory | [`REVISION-235-TO-240.md`](REVISION-235-TO-240.md) | What carries over from the readable 235 tree and what changed (packets, cache decoders, XTEA, world map, CS2 long type, camera, GPU plugin, sailing), with per-packet and per-commit data. Start here before porting from 235. |
 | RustOSRS | `references/rustosrs/` | Pinned Rust cache/scene/rendering research, coordinate conventions, model offsets, transforms, neighboring normal merges and Reference GPU oracle. Port semantic rules into RustClient; do not adopt editor enhancements as OSRS behavior. |
 
@@ -136,3 +126,23 @@ IF1 continuations: [CS1 evaluation and source-backed audit fixes](../archive/202
 Shared sidebar and lifecycle: [2026-10-29 implementation checkpoint](SIDEBAR-LIFECYCLE-2026-10-29.md),
 [hook/API ownership](builtin-plugins/HOOK-API-OWNERS.tsv) and
 [classic GPU completion order](builtin-plugins/GPU-AUDIT.md). Exact visual/gameplay acceptance remains open.
+
+## Retention and retirement
+
+- Keep exact 240 deob/gamepack evidence for unresolved cycle order, actor lifecycles, widgets/scripts, menus/picking and classic geometry/depth acceptance. Rendering is not signed off.
+- Keep pinned RuneLite API/plugin/GPU evidence for event timing, mediation and rendering acceptance; its source is not an external-plugin ABI.
+- Keep RSProt/rsprox evidence for the retained OpenRune adapter. TSPS bytes do not replace that wire authority.
+- Keep 235/RustOSRS and deob tools as historical/fallback evidence while they are still cited or hold unique local edits. Stop broad naming/migration work unless a specific unresolved behavior needs it.
+- No reference checkout participates in ordinary Cargo build/test. Source inventory regeneration is explicit (`bash scripts/check.sh research`).
+- The inactive root shell `vendor/` was removed. [Its archive](../archive/retired-shell/README.md) preserves provenance, file hashes and exact Git recovery instructions.
+
+## Historical measurements
+
+Update optimization: [prepared scene updates, indexed queries and retained poses](UPDATE-OPTIMIZATION-2026-10-30.md),
+[measurements and validation](UPDATE-OPTIMIZATION-EVIDENCE-2026-10-30.json).
+
+Update latency: [2026-10-30 scene/actor/widget/cycle review](UPDATE-SYSTEM-2026-10-30.md),
+[frozen sources and measurements](UPDATE-SYSTEM-EVIDENCE-2026-10-30.json).
+
+Loading, prompts, interface audit, minimap and memory: [2026-10-31 to 2026-11-02 pass record](CLIENT-PASS-2026-11-02.md)
+(commands, measurements and NOT-RUN gates).

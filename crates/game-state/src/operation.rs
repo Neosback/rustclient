@@ -49,6 +49,8 @@ pub enum SemanticOperation {
     EstablishInitialPlacement(InitialPlacement),
     /// Select a new ordinary map window, retaining confirmed world entities.
     RebuildMap(rustclient_model::MapAnchor),
+    /// Authoritative repeated window header; unchanged windows do not refresh placement or scenes.
+    SetMapAnchor(rustclient_model::MapAnchor),
     /// Select a validated immutable scene after initial placement.
     InstallScene(SceneDescriptor),
     /// End the active semantic game session.
@@ -271,19 +273,8 @@ impl GameState {
             }
             SemanticOperation::SelectGameFrameTab(tab) => self.apply_select_tab(tab),
             SemanticOperation::SetDestination(destination) => self.apply_destination(destination),
-            SemanticOperation::RebuildMap(anchor) => {
-                let (placement, changed) = self
-                    .rebuild_map(anchor)
-                    .map_err(OperationError::Connection)?;
-                Ok(if changed {
-                    OperationCommit::new(
-                        Some(SemanticEvent::MapRebuilt(placement)),
-                        StateDelta::MAP_REBUILD,
-                    )
-                } else {
-                    OperationCommit::new(None, StateDelta::default())
-                })
-            }
+            SemanticOperation::RebuildMap(anchor) => map_commit(self.rebuild_map(anchor)),
+            SemanticOperation::SetMapAnchor(anchor) => map_commit(self.set_map_anchor(anchor)),
             SemanticOperation::InstallScene(scene) => {
                 self.install_scene(scene)
                     .map_err(OperationError::Connection)?;
@@ -586,6 +577,20 @@ impl GameState {
 
         Ok(())
     }
+}
+
+fn map_commit(
+    result: Result<(InitialPlacement, bool), ConnectionStateError>,
+) -> Result<OperationCommit, OperationError> {
+    let (placement, changed) = result.map_err(OperationError::Connection)?;
+    Ok(if changed {
+        OperationCommit::new(
+            Some(SemanticEvent::MapRebuilt(placement)),
+            StateDelta::MAP_REBUILD,
+        )
+    } else {
+        OperationCommit::new(None, StateDelta::default())
+    })
 }
 
 #[cfg(test)]

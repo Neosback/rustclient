@@ -68,3 +68,5 @@ substantial work begins, extending existing owners and contracts as appropriate.
 [Historical checkpoints](../archive/README.md) retain exact past commands and
 foundation criteria. They do not provide current execution instructions. Architecture
 changes still require an accepted spec/ADR under the root instructions.
+
+- [SPEC-0031: TSPS profile and migration](SPEC-0031-tsps-profile.md) — accepted for implementation; gameplay acceptance incomplete.

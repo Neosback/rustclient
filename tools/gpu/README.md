@@ -7,14 +7,14 @@ No account/server is needed. Run from the repository root. Current checkpoint us
 python3 tools/gpu/audit.py --check
 # Optional literal 240 overlay-byte oracle; needs a JDK on PATH/JAVA_HOME or --java-home.
 python3 tools/gpu/overlay_oracle.py
-cargo run -p rustclient-native --bin gpu_probe -- target/gpu-probe
+cargo run -p rustclient-native --features diagnostics --bin gpu_probe -- target/gpu-probe
 # Optional second argument: a local cache directory, read only. Adds full title UI/HiDPI captures.
-cargo run -p rustclient-native --bin gpu_probe -- target/gpu-probe /path/to/cache
+cargo run -p rustclient-native --features diagnostics --bin gpu_probe -- target/gpu-probe /path/to/cache
 # Optional real underground boundary case: accepts undeclared void squares; declared corruption fails.
-cargo run -p rustclient-native --bin gpu_probe -- target/gpu-probe /path/to/cache --regions
-cargo run -p rustclient-native --bin scene_probe -- /path/to/cache target/gpu-world-probe
+cargo run -p rustclient-native --features diagnostics --bin gpu_probe -- target/gpu-probe /path/to/cache --regions
+cargo run -p rustclient-native --features diagnostics --bin scene_probe -- /path/to/cache target/gpu-world-probe
 # Optional exact-picker comparison and actual GPU geometry byte counters; no account/server.
-cargo run -p rustclient-native --bin scene_probe -- /path/to/cache --performance
+cargo run -p rustclient-native --features diagnostics --bin scene_probe -- /path/to/cache --performance
 # Optional native desktop smoke: opens/closes isolated offline title windows at 30/50/60 FPS.
 cargo build -p rustclient-native --bin rustclient-native
 python3 tools/gpu/window_probe.py /path/to/cache

@@ -22,6 +22,18 @@ This specification owns:
 
 It does not own server networking, packet layouts, cache binary formats, renderer transforms, plugin ABI types, or the full `ServerProfile` configuration.
 
+### Resolved integer-variable bit fields
+
+`VarpBitRange` identifies an immutable, cache-resolved field in one `VarpId`, with inclusive
+positions `0 <= low <= high < 32`. Construction rejects invalid ranges. Extraction and
+replacement use unsigned bit arithmetic without shifting by 32; negative or oversized authored
+values clear only that field. Definition IDs and cache decoding remain adapter concerns.
+Packet adapters carry the resolved range and value, never a cached live varp value. GameState
+merges server updates into its live and server mirrors independently, preserving unrelated
+client prediction bits; scripts use the same range arithmetic for local writes. Existing variable
+events, journals, session reset and replay apply. No new authoritative field or fingerprint
+encoding is introduced by this operation.
+
 ## Reference evidence
 
 The initial implementation was checked against the pinned RustOSRS snapshot at `references/rustosrs/`, especially:

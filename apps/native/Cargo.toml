@@ -6,6 +6,11 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[features]
+default = ["external-plugins"]
+external-plugins = ["dep:rustclient-plugin-runtime-native"]
+diagnostics = []
+
 [dependencies]
 rustclient-shell-ui = { path = "../../crates/shell-ui" }
 keyboard-types = "=0.7.0"
@@ -28,10 +33,11 @@ rustclient-plugin-api = { path = "../../crates/plugin-api" }
 rustclient-plugin-bridge = { path = "../../crates/plugin-bridge" }
 rustclient-first-party-plugins = { path = "../../crates/first-party-plugins" }
 rustclient-plugin-host = { path = "../../crates/plugin-host" }
-rustclient-plugin-runtime-native = { path = "../../crates/plugin-runtime-native" }
+rustclient-plugin-runtime-native = { path = "../../crates/plugin-runtime-native", optional = true }
 
 pollster.workspace = true
 serde_json.workspace = true
+serde.workspace = true
 rustclient-renderer = { path = "../../crates/renderer" }
 winit.workspace = true
 sysinfo = { version = "0.39.6", default-features = false, features = ["system"] }
@@ -40,75 +46,87 @@ sysinfo = { version = "0.39.6", default-features = false, features = ["system"] 
 workspace = true
 
 # Diagnostic executables run explicitly; they contain no Rust test cases.
-# Keep them in all-target check/Clippy without empty cargo-test harnesses.
+# Full checks enable diagnostics explicitly; normal builds skip these executables.
 
 [[bin]]
 name = "entity_probe"
 path = "src/bin/entity_probe.rs"
+required-features = ["diagnostics"]
 test = false
 bench = false
 
 [[bin]]
 name = "gpu_probe"
 path = "src/bin/gpu_probe.rs"
+required-features = ["diagnostics"]
 test = false
 bench = false
 
 [[bin]]
 name = "gpu_shell_probe"
 path = "src/bin/gpu_shell_probe.rs"
+required-features = ["diagnostics"]
 test = false
 bench = false
 
 [[bin]]
 name = "interface_audit"
 path = "src/bin/interface_audit.rs"
+required-features = ["diagnostics"]
 test = false
 
 [[bin]]
 name = "interface_probe"
 path = "src/bin/interface_probe.rs"
+required-features = ["diagnostics"]
 test = false
 bench = false
 
 [[bin]]
 name = "login_probe"
 path = "src/bin/login_probe.rs"
+required-features = ["diagnostics"]
 test = false
 bench = false
 
 [[bin]]
 name = "plugin_probe"
 path = "src/bin/plugin_probe.rs"
+required-features = ["diagnostics", "external-plugins"]
 test = false
 bench = false
 
 [[bin]]
 name = "reference_replay"
 path = "src/bin/reference_replay.rs"
+required-features = ["diagnostics"]
 test = false
 bench = false
 
 [[bin]]
 name = "scene_probe"
 path = "src/bin/scene_probe.rs"
+required-features = ["diagnostics"]
 test = false
 bench = false
 
 [[bin]]
 name = "script_probe"
 path = "src/bin/script_probe.rs"
+required-features = ["diagnostics"]
 test = false
 bench = false
 
 [[bin]]
 name = "sprite_probe"
 path = "src/bin/sprite_probe.rs"
+required-features = ["diagnostics"]
 test = false
 bench = false
 
 [[bin]]
 name = "worldmap_probe"
 path = "src/bin/worldmap_probe.rs"
+required-features = ["diagnostics"]
 test = false
 bench = false

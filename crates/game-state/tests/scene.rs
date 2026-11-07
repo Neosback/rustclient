@@ -16,6 +16,63 @@ fn descriptor() -> SceneDescriptor {
 }
 
 #[test]
+fn repeated_window_headers_after_movement_are_noops_and_changed_windows_retire_once() {
+    use rustclient_model::{MapAnchor, PlayerInfoUpdate, PlayerMovement};
+    let mut state = GameState::new();
+    let mut recording = Vec::new();
+    for operation in [
+        authenticate(),
+        placement(),
+        SemanticOperation::InstallScene(descriptor()),
+        SemanticOperation::UpdatePlayers(PlayerInfoUpdate {
+            local_movement: Some(PlayerMovement::Step { direction: 4 }),
+            ..Default::default()
+        }),
+        SemanticOperation::Scenery(rustclient_game_state::SceneryOperation::AdvanceCycles(3)),
+    ] {
+        let commit = state.apply_operation(operation.clone()).unwrap();
+        recording.push(ReplayEnvelope::new(operation, commit));
+    }
+    let previous = state.initial_placement().unwrap();
+    let position = state.entities().local_player().unwrap().tile;
+    assert_ne!(
+        previous.position, position,
+        "exercise an actor that moved since placement"
+    );
+    let anchor = MapAnchor {
+        x: previous.map_anchor.x,
+        y: previous.map_anchor.y,
+    };
+    let before = state.semantic_fingerprint();
+    let operation = SemanticOperation::SetMapAnchor(anchor);
+    let commit = state.apply_operation(operation.clone()).unwrap();
+    assert!(commit.event().is_none());
+    assert!(commit.delta().is_empty());
+    assert_eq!(state.semantic_fingerprint(), before);
+    assert_eq!(state.loaded_scene(), Some(descriptor()));
+    recording.push(ReplayEnvelope::new(operation, commit));
+    let next = MapAnchor {
+        x: anchor.x + 8,
+        y: anchor.y,
+    };
+    let operation = SemanticOperation::SetMapAnchor(next);
+    let commit = state.apply_operation(operation.clone()).unwrap();
+    assert!(commit.delta().scene_changed());
+    assert_eq!(state.loaded_scene(), None);
+    assert_eq!(state.displayed_scene(), Some(descriptor()));
+    assert_eq!(state.entities().local_player().unwrap().tile, position);
+    recording.push(ReplayEnvelope::new(operation.clone(), commit));
+    let before = state.semantic_fingerprint();
+    let commit = state.apply_operation(operation.clone()).unwrap();
+    assert!(commit.event().is_none());
+    assert_eq!(state.semantic_fingerprint(), before);
+    recording.push(ReplayEnvelope::new(operation, commit));
+    let mut replay = GameState::new();
+    replay.replay_envelopes(&recording).unwrap();
+    assert_eq!(replay.semantic_fingerprint(), state.semantic_fingerprint());
+}
+
+#[test]
 fn action_animation_delay_is_independent_of_locomotion_and_server_reset_is_replayable() {
     use rustclient_model::{
         NewNpc, NpcAttributeUpdate, NpcDefinitionId, NpcIndex, NpcInfoUpdate, NpcProperty,

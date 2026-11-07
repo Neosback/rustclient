@@ -134,7 +134,7 @@ fn decoded_cycle_boundaries_replay_identical_commits_and_state() {
     use rustclient_application::{ConnectionDecoder, ConnectionInput};
     use rustclient_game_state::{GameState, ReplayEnvelope, SceneryOperation, SemanticOperation};
     use rustclient_model::{GameTick, PlayerIndex};
-    use rustclient_protocol::{Isaac, LoginSession, ServerProfile};
+    use rustclient_protocol::{Isaac, LoginSession};
     let login = LoginSession {
         player: PlayerIndex::new(1),
         member: true,
@@ -142,8 +142,7 @@ fn decoded_cycle_boundaries_replay_identical_commits_and_state() {
         incoming: Isaac::new([0; 4]),
         outgoing: Isaac::new([0; 4]),
     };
-    let (mut decoder, authentication) =
-        ConnectionDecoder::new(ServerProfile::OPENRUNE_240_2, login);
+    let (mut decoder, authentication) = ConnectionDecoder::openrune(login);
     let mut state = GameState::new();
     let commit = state.apply_operation(authentication.clone()).unwrap();
     let mut replay = vec![ReplayEnvelope::new(authentication, commit)];

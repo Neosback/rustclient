@@ -11,6 +11,7 @@ const PLAYER_CAPACITY: usize = 2048;
 
 pub struct PlayerInfoDecoder {
     local: usize,
+    external_world_view: bool,
     high: [bool; PLAYER_CAPACITY],
     flags: [u8; PLAYER_CAPACITY],
 }
@@ -46,9 +47,16 @@ impl PlayerInfoDecoder {
             high[local] = true;
         }
         Self {
+            external_world_view: false,
             local,
             high,
             flags: [0; PLAYER_CAPACITY],
+        }
+    }
+    pub(crate) fn tsps(local: PlayerIndex) -> Self {
+        Self {
+            external_world_view: true,
+            ..Self::new(local)
         }
     }
     /// Decode all four independently aligned GPI passes and extended blocks.
@@ -62,6 +70,18 @@ impl PlayerInfoDecoder {
         &mut self,
         payload: &[u8],
         chat: Option<&super::huffman::Huffman>,
+    ) -> Result<PlayerInfoUpdate> {
+        self.decode_with_fields(payload, chat, decode_extended)
+    }
+    /// Reuse only the identical four-pass GPI framing; extended block layouts stay profile-owned.
+    pub(crate) fn decode_with_fields(
+        &mut self,
+        payload: &[u8],
+        chat: Option<&super::huffman::Huffman>,
+        fields: fn(
+            &mut Reader<'_>,
+            Option<&super::huffman::Huffman>,
+        ) -> Result<super::player_extended::Extended>,
     ) -> Result<PlayerInfoUpdate> {
         if self.local == 0 || self.local >= PLAYER_CAPACITY {
             return Err(error("invalid local player index"));
@@ -135,7 +155,7 @@ impl PlayerInfoDecoder {
         let mut attributes = Vec::with_capacity(extended.len());
         let mut reader = Reader::new(bits.remaining_bytes(), "player extended info");
         for index in extended {
-            let values = decode_extended(&mut reader, chat)?;
+            let values = fields(&mut reader, chat)?;
             update
                 .speech
                 .extend(
@@ -224,6 +244,12 @@ impl PlayerInfoDecoder {
                 }
                 let x = bits.read_bits_i32(13)?;
                 let y = bits.read_bits_i32(13)?;
+                if self.external_world_view && bits.read_bits(1)? != 0 {
+                    let id = bits.read_bits(16)?;
+                    if id != 0 {
+                        return Err(error("TSPS external world views are not implemented"));
+                    }
+                }
                 let pending_extended = bits.read_bits(1)? != 0;
                 if pending_extended {
                     extended.push(index);

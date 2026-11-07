@@ -7,7 +7,7 @@
 
 RustClient targets nearly 1:1 observable OSRS revision-240 client behavior and
 the applicable features of the pinned RuneLite 240 client. OpenRune 240.2 is the
-first server/cache profile. Desktop and browser share these semantics. Additional
+first server/cache profile. TSPS is now the primary development target under [SPEC-0031](SPEC-0031-tsps-profile.md), with 240 retained. This contract remains the classic behavior baseline; changed 241 behavior requires matching evidence. Desktop and browser share these semantics. Additional
 validated profiles remain possible; this contract does not declare them supported.
 
 Parity covers packet behavior, state, ordering, cycles, scripts, interfaces,

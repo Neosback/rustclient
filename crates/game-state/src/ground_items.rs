@@ -82,6 +82,7 @@ impl GroundItemsState {
         self.piles.get(&tile).map_or(&[], Vec::as_slice)
     }
     /// Every non-empty pile, ordered by tile.
+    #[must_use]
     pub fn piles(&self) -> impl ExactSizeIterator<Item = (WorldTile, &[GroundItem])> {
         self.piles
             .iter()

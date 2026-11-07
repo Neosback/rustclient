@@ -260,7 +260,7 @@
       "original": "docs/plan/SIDEBAR-PERFORMANCE-2026-10-28.md",
       "path": "docs/archive/2026-foundation/plan/SIDEBAR-PERFORMANCE-2026-10-28.md",
       "original_sha256": "c9773ccd84f5deca6fe70a2f3380738aef97930a95ad36dfd649292812d3c4ef",
-      "archived_sha256": "6fcf5193f8e005af05ce64be70e72c941e56c1d29fd6e121b9df94addbd38b7c"
+      "archived_sha256": "27380a403a99b39f8c0e3957d16ef9ccccfbb4dbeb97bb56b2c946596d3e6190"
     },
     {
       "kind": "relocated",
@@ -317,6 +317,20 @@
       "path": "docs/archive/2026-foundation/reviews/CURRENT-AUDIT-2026-10-28.md",
       "original_sha256": "bdc6511aa27965fa4d619b6bfb8688afe6216ea7c853d047ebb881a74c0a269e",
       "archived_sha256": "98eb59a20c8116efb8abdb6c50f73246a2e210d4753dc48819a43c64a0e79b99"
+    },
+    {
+      "kind": "snapshot",
+      "original": "docs/reference/rs240-port/CURRENT-AUDIT.md",
+      "path": "docs/archive/2026-foundation/reviews/CURRENT-AUDIT-2026-11-02.md",
+      "original_sha256": "eb90fa851d554cc00c482636402856725af2f1a44648436c676bf2f455cf02e0",
+      "archived_sha256": "5ffbc65f24cde5a89490e6632368bf67406cf8ca28103005d5cd6b92e22d312d"
+    },
+    {
+      "kind": "snapshot",
+      "original": "docs/plan/PORTING-ROADMAP.md",
+      "path": "docs/archive/2026-foundation/plan/PORTING-ROADMAP-2026-11-05.md",
+      "original_sha256": "093c985b61e7a401698a39b869bd8e39171aa354c3f90f3ab1a34053c30d7b1e",
+      "archived_sha256": "c947c3ab452626a0be0b949a19f090eedba8724293fa5485d059da15c4080464"
     }
   ]
 }

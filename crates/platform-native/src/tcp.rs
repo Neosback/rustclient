@@ -25,7 +25,10 @@ impl ConnectionCancellation {
 const MAX_ADDRESSES: usize = 4;
 /// The socket addresses to try for `host`: IP literals and `localhost` without a lookup, other
 /// valid host names through the system resolver.
-fn candidate_addresses(host: &str, port: u16) -> Result<Vec<SocketAddr>, TransportError> {
+pub(crate) fn candidate_addresses(
+    host: &str,
+    port: u16,
+) -> Result<Vec<SocketAddr>, TransportError> {
     if host == "localhost" {
         return Ok(vec![SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), port)]);
     }

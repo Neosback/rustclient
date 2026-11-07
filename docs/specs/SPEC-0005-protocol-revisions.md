@@ -6,7 +6,7 @@
 
 Support multiple OSRS-style private-server revisions without revision logic spreading throughout the client.
 
-The first implemented compatibility baseline is revision `240`. The architecture must support adding more revisions later without turning revision `240` into a global assumption.
+The first implemented compatibility baseline is revision `240`. TSPS cache-241 is now the primary development target under [SPEC-0031](SPEC-0031-tsps-profile.md); its custom binary adapter is experimental and does not establish stock 241 or playable compatibility. The architecture must support adding more revisions later without turning revision `240` into a global assumption.
 
 ## Revision identity
 
@@ -23,6 +23,10 @@ Revision
 The canonical semantic type is `rustclient_model::Revision`. Callers must not rely on a process-wide `CLIENT_REVISION = 240` constant.
 
 Only revisions with an implemented and validated profile appear in the supported-revision registry. RustClient does not claim broad historical compatibility merely because the semantic `Revision` value type can represent additional values.
+
+Known development profiles may be parsed separately from that support claim. `tsps-241` is
+selectable as an experimental development profile (`ServerProfile::is_experimental`); the
+supported wire baseline remains OpenRune 240.2 until SPEC-0031 acceptance is established.
 
 An active semantic `GameState` records the explicitly selected `Revision` as session-owned identity. `BeginSession { revision }` establishes that value and session shutdown clears it. `game-state` does not decide whether the revision is supported; profile/revision selection and validation happen before the semantic session begins.
 

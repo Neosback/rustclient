@@ -32,6 +32,11 @@ pub enum SceneryOperation {
         id: VarpId,
         value: i32,
     },
+    /// Merge one cache-resolved server bit field into the live and server mirrors separately.
+    SetServerVariableBits {
+        range: rustclient_model::VarpBitRange,
+        value: i32,
+    },
     SetClientVariable {
         id: VarpId,
         value: i32,
@@ -186,6 +191,12 @@ impl GameState {
             }
             SceneryOperation::SetVariable { id, value } => {
                 change_variable(scene, id, value, false)?
+            }
+            SceneryOperation::SetServerVariableBits { range, value } => {
+                let id = range.varp();
+                let live = range.replace(scene.variable(id), value);
+                let server = range.replace(*scene.server_variables.get(&id).unwrap_or(&0), value);
+                change_variable_values(scene, id, live, Some(server))?
             }
             SceneryOperation::SetClientVariable { id, value } => {
                 change_variable(scene, id, value, true)?
@@ -501,18 +512,25 @@ fn change_variable(
     value: i32,
     local: bool,
 ) -> Result<Option<SemanticEvent>, SceneryError> {
+    change_variable_values(scene, id, value, (!local).then_some(value))
+}
+fn change_variable_values(
+    scene: &mut SceneryState,
+    id: VarpId,
+    value: i32,
+    server_value: Option<i32>,
+) -> Result<Option<SemanticEvent>, SceneryError> {
     let previous = scene.variable(id);
     let server_previous = *scene.server_variables.get(&id).unwrap_or(&0);
     let effective_changed = previous != value;
-    let server_changed = !local && server_previous != value;
+    let server_changed = server_value.is_some_and(|next| next != server_previous);
     if !effective_changed && !server_changed {
         return Ok(None);
     }
-    if value != 0
-        && ((scene.variables.len() >= 16_384 && !scene.variables.contains_key(&id))
-            || (!local
-                && scene.server_variables.len() >= 16_384
-                && !scene.server_variables.contains_key(&id)))
+    if (value != 0 && scene.variables.len() >= 16_384 && !scene.variables.contains_key(&id))
+        || (server_value.is_some_and(|next| next != 0)
+            && scene.server_variables.len() >= 16_384
+            && !scene.server_variables.contains_key(&id))
     {
         return Err(SceneryError::Limit);
     }
@@ -525,11 +543,11 @@ fn change_variable(
     } else {
         scene.variables.insert(id, value);
     }
-    if !local {
-        if value == 0 {
+    if let Some(server_value) = server_value {
+        if server_value == 0 {
             scene.server_variables.remove(&id);
         } else {
-            scene.server_variables.insert(id, value);
+            scene.server_variables.insert(id, server_value);
         }
     }
     scene.generation = generation;
@@ -543,7 +561,7 @@ fn change_variable(
         SemanticEvent::ServerVariableChanged {
             id,
             previous: server_previous,
-            current: value,
+            current: server_value.unwrap_or(server_previous),
         }
     }))
 }

@@ -5,6 +5,8 @@
 //! those subsystems.
 
 #![forbid(unsafe_code)]
+mod varp_bits;
+pub use varp_bits::VarpBitRange;
 
 mod actor_effects;
 mod facing;

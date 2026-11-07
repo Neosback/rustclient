@@ -17,7 +17,7 @@ pub(crate) mod login;
 pub(crate) mod npc_extended;
 pub(crate) mod npc_info;
 mod player_appearance;
-mod player_extended;
+pub(crate) mod player_extended;
 #[allow(
     clippy::too_many_lines,
     reason = "the rev-240 GPI decoder intentionally mirrors the deob's ordered bitstream state machine"

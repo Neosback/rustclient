@@ -10,7 +10,7 @@ Optional arguments are an output PNG path and an owned asset export directory. A
 the source ImageUtil/ColorScheme transformations and writes only the named output directory.
 The PNG is a metric fixture, not the complete production configuration panel.
 
-`cargo run -p rustclient-native --bin gpu_shell_probe` exercises the real shared panel and retained
+`cargo run -p rustclient-native --features diagnostics --bin gpu_shell_probe` exercises the real shared panel and retained
 GPU shell with bounded list/settings, unchanged/hidden and reconstruction workloads. It writes under
 target/gpu-shell-probe. No golden image comparison is installed in CI (ADR-0004).
 

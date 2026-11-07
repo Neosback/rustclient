@@ -63,8 +63,10 @@ def cs2():
     folded = dict(re.findall(r'Self::(\w+) => \(Self::(\w+), true\)',
                              (ROOT / 'crates/cache/src/script.rs').read_text()))
     dispatched = set()
+    scripts = ROOT / 'crates/application/src/scripts'
     hosts = sorted((ROOT / 'crates/client-script/src').glob('*.rs')) + sorted(
-        p for p in (ROOT / 'crates/application/src/scripts').glob('*.rs') if 'test' not in p.name)
+        p for p in scripts.rglob('*.rs')
+        if not any('test' in part for part in p.relative_to(scripts).parts))
     for path in hosts:
         text = rust_without_tests(path)
         for block in re.findall(r'Opcode::\{([^}]*)\}', text):

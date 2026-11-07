@@ -1,0 +1,206 @@
+{
+  "baseline": "d4ea807237f412260e0b6e5c9147a42c4d4b0807",
+  "reason": "Inactive Dioxus/Blitz shell sources; no active Cargo dependency. Original sources and patches remain recoverable from this Git baseline; upstream provenance is in README.md.",
+  "files": [
+    {
+      "path": "vendor/.DS_Store",
+      "sha256": "e4bf071d248e167e33fd4b2f17707a370033a0d76ca1086e1694ae082438cf73"
+    },
+    {
+      "path": "vendor/README.md",
+      "sha256": "d569a86aa8c1a016bc92c83ee51a637966ec4f66f1ba3e897080af2b48db32d0"
+    },
+    {
+      "path": "vendor/blitz-dom-0.2.4/.DS_Store",
+      "sha256": "4d504902facf304466a840825e808486cf40f3e241be82e3faf42b1d43fdac43"
+    },
+    {
+      "path": "vendor/blitz-dom-0.2.4/.cargo_vcs_info.json",
+      "sha256": "14eb309f043226cf6b17ec74e2a73f806243a0daaccc284c0a78b2a4dae5be61"
+    },
+    {
+      "path": "vendor/blitz-dom-0.2.4/Cargo.lock",
+      "sha256": "444bb7c12b6061d85eb609f2a28938870617b429230f5491175c28cd49c3625f"
+    },
+    {
+      "path": "vendor/blitz-dom-0.2.4/Cargo.toml",
+      "sha256": "d330f8e39b6335183c4da5211e054a3e89972b2f51f0b237ca46e3d3473d02c1"
+    },
+    {
+      "path": "vendor/blitz-dom-0.2.4/Cargo.toml.orig",
+      "sha256": "7d066f9a229d246e05f0071e0671a5f4ceabf98d59b48e0e51905dbfe32de5a8"
+    },
+    {
+      "path": "vendor/blitz-dom-0.2.4/assets/default.css",
+      "sha256": "2e6318d405976ca9e79674a0010137d9fe0d2fc60ffbbb9c71416900fefd1ef4"
+    },
+    {
+      "path": "vendor/blitz-dom-0.2.4/assets/moz-bullet-font.otf",
+      "sha256": "0e0ac9d92203fe07d5dda97af40f1c38ce974e0c89d7f9718c92f73656d69aad"
+    },
+    {
+      "path": "vendor/blitz-dom-0.2.4/src/accessibility.rs",
+      "sha256": "6db0a6475ceca7ee774c2c00476e14b35a990520bf751c4939b710c009896fc4"
+    },
+    {
+      "path": "vendor/blitz-dom-0.2.4/src/config.rs",
+      "sha256": "532bedf96c0fa15bcf5f2e6c08334336ff6300796b6f3e664dfc02315fa7ec5f"
+    },
+    {
+      "path": "vendor/blitz-dom-0.2.4/src/debug.rs",
+      "sha256": "777cfa64108e28539840d9b257307fa1298ae5f9fd6dba1fa5f4e07c74c85be5"
+    },
+    {
+      "path": "vendor/blitz-dom-0.2.4/src/document.rs",
+      "sha256": "de9c44d02e355cfd446508eee3726e036b0b6fa2ddfee18dadcc83766ff76666"
+    },
+    {
+      "path": "vendor/blitz-dom-0.2.4/src/events/driver.rs",
+      "sha256": "23e093ee4a0f085647f7c179480fc91a09ecd2d2b44ab983698e634a745e6737"
+    },
+    {
+      "path": "vendor/blitz-dom-0.2.4/src/events/ime.rs",
+      "sha256": "bb03389db304a33b46ab65f3f23657153e70abe5b994486c4b79149025f9f969"
+    },
+    {
+      "path": "vendor/blitz-dom-0.2.4/src/events/keyboard.rs",
+      "sha256": "da9b4d5fa31e255095a171afc2a4472f68788eea556a95d5cca04a3946cbdc4c"
+    },
+    {
+      "path": "vendor/blitz-dom-0.2.4/src/events/mod.rs",
+      "sha256": "676c28bf7da47937f54b58e0f7bee275d48e893c009f3fa7786b3711374a5a75"
+    },
+    {
+      "path": "vendor/blitz-dom-0.2.4/src/events/mouse.rs",
+      "sha256": "3d342c1862eb0e2a7d056dd3d23db5b483d661d1792b66799eb95354c806d7d1"
+    },
+    {
+      "path": "vendor/blitz-dom-0.2.4/src/font_metrics.rs",
+      "sha256": "3bfc5e6eb97ef9c014e170a00cc1fdfeb360a4171f8b4e2c837d0a319696b8de"
+    },
+    {
+      "path": "vendor/blitz-dom-0.2.4/src/form.rs",
+      "sha256": "bf8aa7ec70d9b9cb1b099315970a09c6437713f5df8f7cc39839dcd76a2f26ec"
+    },
+    {
+      "path": "vendor/blitz-dom-0.2.4/src/html.rs",
+      "sha256": "d4efe96afa40390c5a7d8200ad76f3990f5781d0acbc7c2ec7c642bdc5d46d03"
+    },
+    {
+      "path": "vendor/blitz-dom-0.2.4/src/layout/construct.rs",
+      "sha256": "b9c0b72a98be15f02188668f52b76ee5f6e740a19aef2a894432e7f4b8a22ff3"
+    },
+    {
+      "path": "vendor/blitz-dom-0.2.4/src/layout/damage.rs",
+      "sha256": "568c00bbdd0517dbb407458500869513ee3985d829f8f00e1448d900186a6c15"
+    },
+    {
+      "path": "vendor/blitz-dom-0.2.4/src/layout/inline.rs",
+      "sha256": "46cc3bf4271a18c6d10a43a0db9c68e463b714ca67d9a7225ddbb999a0c18e26"
+    },
+    {
+      "path": "vendor/blitz-dom-0.2.4/src/layout/list.rs",
+      "sha256": "93fa492eb0e86e376de970eafb1e7d7e3a7912edb50812f516b0b1ee82af18bf"
+    },
+    {
+      "path": "vendor/blitz-dom-0.2.4/src/layout/mod.rs",
+      "sha256": "b37a98bdee88022c6cc7504d5d8befa0dbf6b10cb40ba5f6aa594550d4d67e1c"
+    },
+    {
+      "path": "vendor/blitz-dom-0.2.4/src/layout/replaced.rs",
+      "sha256": "a543d59a922a24ddc003a939af1cdd0db6b52b36d4f8a9b6c28ece028aaf6349"
+    },
+    {
+      "path": "vendor/blitz-dom-0.2.4/src/layout/table.rs",
+      "sha256": "136fa5cca78d309bb700fcf7410989bd9cb8cc94a28809b8d501ad0c38b4e33f"
+    },
+    {
+      "path": "vendor/blitz-dom-0.2.4/src/lib.rs",
+      "sha256": "cb50f321b3363832daba2d03a17397020aefeb73eb7aacba178162aace9fb40a"
+    },
+    {
+      "path": "vendor/blitz-dom-0.2.4/src/mutator.rs",
+      "sha256": "7b24ad2029c3f1a5902effa5fe4b70a69f6cc2c58b8deba4545be537cef33192"
+    },
+    {
+      "path": "vendor/blitz-dom-0.2.4/src/net.rs",
+      "sha256": "730d19cc757f05c4193c9397cf6a64716cb9238ac270b3beb8b93b921ca4bffa"
+    },
+    {
+      "path": "vendor/blitz-dom-0.2.4/src/node/attributes.rs",
+      "sha256": "8fae1f919a35ce4ba7932db8a578a4d0886643fc4e985b389de280adbad15fcb"
+    },
+    {
+      "path": "vendor/blitz-dom-0.2.4/src/node/element.rs",
+      "sha256": "5ff943fa3206d9b8f6dea58e960870015b9117bb0edea7457f4490d39ebecec8"
+    },
+    {
+      "path": "vendor/blitz-dom-0.2.4/src/node/mod.rs",
+      "sha256": "3d8bfb6340838c83530882e8449a035b2914459f1bfc8df17c5ce3bff26a1f1f"
+    },
+    {
+      "path": "vendor/blitz-dom-0.2.4/src/node/node.rs",
+      "sha256": "35fee48be42373ac54cadfe6ffb4201d9c168f055122ae1d84ccbf94436f6922"
+    },
+    {
+      "path": "vendor/blitz-dom-0.2.4/src/query_selector.rs",
+      "sha256": "b6f72fdf9c06712673f42dbd95eae3a88be87e55d84ad07c668689eac21d4128"
+    },
+    {
+      "path": "vendor/blitz-dom-0.2.4/src/stylo.rs",
+      "sha256": "aad1e64a70e06de1ced265c329d69e05e9b4efc4c4a43e3f5a0753491f8481ee"
+    },
+    {
+      "path": "vendor/blitz-dom-0.2.4/src/stylo_to_cursor_icon.rs",
+      "sha256": "49278a601de02962cf38e5420f83e21e3641be6cf3cc694aaaa332348286b26d"
+    },
+    {
+      "path": "vendor/blitz-dom-0.2.4/src/stylo_to_parley.rs",
+      "sha256": "9677c172d67a4e801f61a091e759c87c7a2bf6b361d4a78e1390682d925f138f"
+    },
+    {
+      "path": "vendor/blitz-dom-0.2.4/src/traversal.rs",
+      "sha256": "be1e6cc719e1a5b89cd07714bed165a8a2ee9dd8e7ab5d08a1b104fc8c519741"
+    },
+    {
+      "path": "vendor/blitz-dom-0.2.4/src/url.rs",
+      "sha256": "86550aff8f0d9d029bba7ed69b37472fe29b4178bde18573b9aac44f7552cdf9"
+    },
+    {
+      "path": "vendor/blitz-dom-0.2.4/src/util.rs",
+      "sha256": "9efbcf6c4e69f3da66ec5c44a0c24bd52f5d70f67d6e10a6934426d7ac2d21c4"
+    },
+    {
+      "path": "vendor/dioxus-native-dom-0.7.10/.cargo_vcs_info.json",
+      "sha256": "6ff69e803b9dac8d911dcc3f410bb6dce7d82f1e037746821fc6a0a9fe201ecc"
+    },
+    {
+      "path": "vendor/dioxus-native-dom-0.7.10/Cargo.lock",
+      "sha256": "447b70359b617e10db7c0a1a918e43993385129d4be537c8f9885f325961e4ae"
+    },
+    {
+      "path": "vendor/dioxus-native-dom-0.7.10/Cargo.toml",
+      "sha256": "8f561cea7a5bade78276a6a0126b68b25ae2ec99330029f26eb9c98a9a8b72cf"
+    },
+    {
+      "path": "vendor/dioxus-native-dom-0.7.10/Cargo.toml.orig",
+      "sha256": "509422358a814ed1335cc20a77565886dd7fda9cbfcd18c9fe75459770271172"
+    },
+    {
+      "path": "vendor/dioxus-native-dom-0.7.10/src/dioxus_document.rs",
+      "sha256": "6ea5aea9b40564b6ecade75608a12b6a5c00dd7c76c570d18dfbd90b46d3a698"
+    },
+    {
+      "path": "vendor/dioxus-native-dom-0.7.10/src/events.rs",
+      "sha256": "88bd34ddf1de7fc072144defc9688b463652681fcf450cf0d683406f70fd6765"
+    },
+    {
+      "path": "vendor/dioxus-native-dom-0.7.10/src/lib.rs",
+      "sha256": "a647d3589ee778ec73c7372874306ad3b747540532b5da59657a4fbcaf4df75d"
+    },
+    {
+      "path": "vendor/dioxus-native-dom-0.7.10/src/mutation_writer.rs",
+      "sha256": "fec1c23de63ae8a8f142ff02ad7b3bf9cf9caf37e6b3d8c2cd627f07842f0968"
+    }
+  ]
+}

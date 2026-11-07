@@ -17,7 +17,7 @@ impl CacheProfile {
     #[must_use]
     pub fn real_skill_level(self, experience: u32) -> u8 {
         match self {
-            Self::Osrs240 | Self::OpenRune240 => u8::try_from(
+            Self::Osrs240 | Self::OpenRune240 | Self::Tsps241 => u8::try_from(
                 EXPERIENCE[..98].partition_point(|threshold| experience >= *threshold) + 1,
             )
             .unwrap_or(99),

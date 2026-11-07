@@ -151,7 +151,11 @@ impl CacheProfile {
                 );
                 error
             }),
-            12 => super::scripts::decode(bytes, ScriptId::new(group), source).and_then(|s| {
+            12 => match self {
+                Self::Tsps241 => crate::tsps241::decode_script(bytes, ScriptId::new(group), source),
+                _ => super::scripts::decode(bytes, ScriptId::new(group), source),
+            }
+            .and_then(|s| {
                 let unknown = s
                     .instructions
                     .iter()

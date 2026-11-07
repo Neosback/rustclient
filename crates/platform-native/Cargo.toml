@@ -9,6 +9,7 @@ repository.workspace = true
 rustclient-platform = { path = "../platform" }
 getrandom.workspace = true
 arboard = { version = "=3.6.1", default-features = false }
+tungstenite = { version = "0.30", default-features = false, features = ["handshake", "rustls-tls-native-roots"] }
 
 [dev-dependencies]
 pollster.workspace = true

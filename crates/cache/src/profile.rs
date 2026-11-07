@@ -11,6 +11,8 @@ use sha2::{Digest, Sha256};
 pub enum CacheProfile {
     /// User-supplied LIVE snapshot, first revision-240 title target.
     Osrs240,
+    /// Experimental TSPS cache-241 layout; not stock revision-241 wire compatibility.
+    Tsps241,
     /// `OpenRune` 240 repack; decoded-size hints for selected repacked archives are advisory.
     OpenRune240,
 }
@@ -22,9 +24,10 @@ impl CacheProfile {
     pub fn parse(name: &str) -> std::result::Result<Self, String> {
         match name {
             "osrs-240" => Ok(Self::Osrs240),
+            "tsps-241" => Ok(Self::Tsps241),
             "openrune-240" => Ok(Self::OpenRune240),
             _ => Err(format!(
-                "unsupported cache profile {name:?}; supported: osrs-240, openrune-240"
+                "unsupported cache profile {name:?}; supported: osrs-240, openrune-240, tsps-241"
             )),
         }
     }
@@ -33,6 +36,7 @@ impl CacheProfile {
     pub const fn name(self) -> &'static str {
         match self {
             Self::Osrs240 => "osrs-240",
+            Self::Tsps241 => "tsps-241",
             Self::OpenRune240 => "openrune-240",
         }
     }
@@ -69,8 +73,11 @@ impl CacheProfile {
         cache: &Cache<S>,
         mut progress: impl FnMut(&str),
     ) -> Result<TitleAssets> {
+        if self == Self::Tsps241 {
+            crate::tsps241::validate_identity(cache)?;
+        }
         match self {
-            Self::Osrs240 | Self::OpenRune240 => load_240(cache, &mut progress),
+            Self::Osrs240 | Self::OpenRune240 | Self::Tsps241 => load_240(cache, &mut progress),
         }
     }
 }

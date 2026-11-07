@@ -16,6 +16,7 @@ use rustclient_plugin_host::{
     DirectoryStorage, HostOutput, HostView, PluginConfig, PluginSet, SnapshotView, StaticView,
     StderrLogSink, configuration::Configuration, required::Builtin,
 };
+#[cfg(feature = "external-plugins")]
 use rustclient_plugin_runtime_native::NativeRuntime;
 use std::{collections::BTreeMap, path::Path};
 
@@ -113,6 +114,11 @@ impl Plugins {
                 scripts_finished: Vec::new(),
             };
         }
+        #[cfg(not(feature = "external-plugins"))]
+        eprintln!(
+            "External Wasm plugins are disabled in this development build; use cargo play to load them"
+        );
+        #[cfg(feature = "external-plugins")]
         match NativeRuntime::new() {
             Ok(runtime) => {
                 let mut entries = std::fs::read_dir(packages)

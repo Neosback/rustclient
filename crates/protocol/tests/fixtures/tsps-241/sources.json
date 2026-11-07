@@ -1,0 +1,151 @@
+{
+  "commit": "ac7b52a21df137cbd6c011c73fd2f173cbc274d6",
+  "repository": "https://github.com/RSPSApp/tsps",
+  "configured_cache": "osrs-241_2026-10-20",
+  "cache_artifact_sha256": "0ae4abf4816affc278ae70a26eb750cf111178ac5c80ab0e1554ee97599c05af",
+  "files": [
+    {
+      "path": "server/target.txt",
+      "sha256": "becfddee5190008ee50ded050dc7449eb4aecd2eb789c7707b82865444d6578c"
+    },
+    {
+      "path": "server/src/main/typescript/elvarg/net/protocol/ClientPackets.ts",
+      "sha256": "5acd43df864d1e2b6c6d0c5cb60eb7e5476e368148394f5b2d5776199e43b101"
+    },
+    {
+      "path": "server/src/main/typescript/elvarg/net/protocol/ServerPackets.ts",
+      "sha256": "98dd652a825c60866408b05ec1663d59a1fb41473d4522ce49bafdbfe801751f"
+    },
+    {
+      "path": "server/src/main/typescript/elvarg/net/protocol/ClientProtocol.ts",
+      "sha256": "36e32349df291098173dba45d1dd7e56f52ae7c403ad45de178bacdd095d65ba"
+    },
+    {
+      "path": "client/network/packet/ClientBinaryEncoder.ts",
+      "sha256": "32ba002996d5524adab33e323c01c66ed85348168425fee28e19b6637a9fa1d5"
+    },
+    {
+      "path": "client/network/packet/ServerBinaryDecoder.ts",
+      "sha256": "b26d4876fa22fc99f565947e0c93ded0a2c2f91adee73415d965261c82b97978"
+    },
+    {
+      "path": "client/game/sync/PlayerUpdateDecoder.ts",
+      "sha256": "2a73e7eb6672967801490d368ab03bc62986367fb7f758e4fef79a190d40dcb1"
+    },
+    {
+      "path": "client/game/sync/NpcUpdateDecoder.ts",
+      "sha256": "09fd729086f86f7623aa9b30d4878f5e08f372cce73ba2f84384b243f20f6849"
+    },
+    {
+      "path": "client/rs/cs2/OpcodeDb.ts",
+      "sha256": "9aa2b170fbc4d98a0c1bb1ee8bcbc0fd9a632a6809a5380e0a7ec2f7947b7f27"
+    },
+    {
+      "path": "server/src/main/typescript/elvarg/net/protocol/NativeClientPackets.ts",
+      "sha256": "4e05a165edc325c547f8b4b4b073ae1689b6ca0218a5dd8bc26edc06f328b462"
+    },
+    {
+      "path": "client/rs/cs2/Opcodes.ts",
+      "sha256": "fa37e64aef2b5153224faf0773e39205b705da38fbab6dd77419cca55af417e0"
+    },
+    {
+      "path": "client/rs/cs2/Script.ts",
+      "sha256": "06ab7b86163682eb73bf1c28bebd2ed832fc24fd484a9669a54ac1facea09a7a"
+    },
+    {
+      "path": "client/rs/cache/CacheDecodeProfile.ts",
+      "sha256": "34ba8937a586bf231283ac515823b0f870bec15d44d178c263da865a61b51e44"
+    },
+    {
+      "path": "client/game/OsrsClient.ts",
+      "sha256": "0645278a7ce47702fbd88f7163b6706ec68f7a081c7a0cbe11d87791520432b2"
+    },
+    {
+      "path": "client/rs/config/vartype/VarManager.ts",
+      "sha256": "ad2dccdff4490f98fefeeedea50c41322624bd82798f350e0b13ce7d51e7cc11"
+    },
+    {
+      "path": "client/rs/config/vartype/bit/VarBitType.ts",
+      "sha256": "30a31fc645d3d56ada9aaa9b546f3176a4c6b7e4087975f3f14ba101946187a5"
+    },
+    {
+      "path": "server/scripts/ensure-cache.ts",
+      "sha256": "dfe9ecb489365985639e89eb3d0940690184508d23fbd471b20cc62ea6489981"
+    },
+    {
+      "path": "server/src/main/typescript/elvarg/game/cache/CachePipeline.ts",
+      "sha256": "7a9fd062079a2915cf669a8d9f7fd8da118869bdcba83b90175015817fcd19a8"
+    }
+  ],
+  "cache_artifact": {
+    "scope": "runescape",
+    "id": 2746,
+    "url": "https://archive.openrs2.org/caches/runescape/2746/disk.zip",
+    "bytes": 212419641,
+    "keys_sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+    "cache_wide_acceptance": "PARTIAL: declared=240949 decoded=200724 unsupported=877 failed=1 unchecked=39347; decode/stack inventory only, execution/full-map/visual acceptance NOT-RUN; one CPU world window passes",
+    "title_asset_acceptance": "PASS: xtask cache inspect --cache-profile tsps-241; CRC/version/decoded-size validated",
+    "keys_entries": 0,
+    "metadata_sha256": "eed13fcb9fd98865c24a7dfe50fbe41bae6f791df7dcbcd17bc6e04b8d967223",
+    "world_assets_acceptance": {
+      "result": "PASS",
+      "scope": "CPU assets only; no geometry/pixel/live acceptance",
+      "command": "cargo xtask cache inspect-world --cache-dir PATH --cache-profile tsps-241",
+      "origin": [
+        3168,
+        3168,
+        0
+      ],
+      "size": [
+        104,
+        104
+      ],
+      "content_sha256": "d1d407a9d36ff9816baa5b60d0cd5993065a963c6f772e825f7c07c47218a050",
+      "objects": 763,
+      "models": 951,
+      "textures": 215,
+      "sequences": 27,
+      "legacy_frames": 265,
+      "skeletons": 21,
+      "varbits": 15
+    }
+  },
+  "cache_selection": {
+    "index_url": "https://archive.openrs2.org/caches.json",
+    "index_sha256": "6c6e1b6e64e15029a26c79cd31e46dc8b5108b656b7d03034c7729c4d997334c",
+    "selector_source": "server/src/main/typescript/elvarg/game/cache/CachePipeline.ts",
+    "exact_date_match": true,
+    "matching_ids": [
+      2746
+    ],
+    "checked_date": "2026-11-07",
+    "selected": {
+      "id": 2746,
+      "scope": "runescape",
+      "game": "oldschool",
+      "environment": "live",
+      "language": "en",
+      "builds": [
+        {
+          "major": 241,
+          "minor": null
+        }
+      ],
+      "timestamp": "2026-10-20T09:00:05.929870Z",
+      "sources": [
+        "Jagex"
+      ],
+      "valid_indexes": 25,
+      "indexes": 25,
+      "valid_groups": 120049,
+      "groups": 120049,
+      "valid_keys": 0,
+      "keys": 0,
+      "size": 213492144,
+      "blocks": 483634,
+      "disk_store_valid": true,
+      "hidden": false
+    },
+    "tsps_checkout_cache_installed": false
+  }
+}

@@ -5,6 +5,66 @@ use rustclient_model::{
     AnimationStart, ClientCycle, LocationChange, LocationKey, LocationLayer, Plane, REVISION_240,
     SequenceId, VarpId, WorldTile,
 };
+
+#[test]
+fn server_bit_updates_preserve_distinct_client_predictions_and_replay_reset_exactly() {
+    use rustclient_game_state::SemanticEvent;
+    use rustclient_model::VarpBitRange;
+    let id = VarpId::new(42);
+    let range = VarpBitRange::new(id, 4, 7).unwrap();
+    let mut state = GameState::new();
+    let mut recording = Vec::new();
+    for operation in [
+        SemanticOperation::BeginSession {
+            revision: REVISION_240,
+        },
+        SemanticOperation::Scenery(SceneryOperation::SetVariable { id, value: 0x1234 }),
+        SemanticOperation::Scenery(SceneryOperation::SetClientVariable { id, value: 0xabcd }),
+        SemanticOperation::Scenery(SceneryOperation::SetServerVariableBits { range, value: 9 }),
+    ] {
+        let commit = state.apply_operation(operation.clone()).unwrap();
+        recording.push(ReplayEnvelope::new(operation, commit));
+    }
+    assert_eq!(state.scenery().variable(id), 0xab9d);
+    assert_eq!(state.scenery().server_variables()[&id], 0x1294);
+    let before = state.semantic_fingerprint();
+    let commit = state
+        .apply_operation(SemanticOperation::Scenery(
+            SceneryOperation::SetServerVariableBits { range, value: 9 },
+        ))
+        .unwrap();
+    assert!(commit.event().is_none());
+    assert_eq!(state.semantic_fingerprint(), before);
+    for operation in [
+        SemanticOperation::Scenery(SceneryOperation::SynchronizeVariables),
+        SemanticOperation::Scenery(SceneryOperation::SetClientVariable { id, value: 0x12a4 }),
+        SemanticOperation::Scenery(SceneryOperation::SetServerVariableBits { range, value: 10 }),
+    ] {
+        let commit = state.apply_operation(operation.clone()).unwrap();
+        if matches!(
+            operation,
+            SemanticOperation::Scenery(SceneryOperation::SetServerVariableBits { .. })
+        ) {
+            assert_eq!(
+                commit.event(),
+                Some(SemanticEvent::ServerVariableChanged {
+                    id,
+                    previous: 0x1294,
+                    current: 0x12a4,
+                })
+            );
+        }
+        recording.push(ReplayEnvelope::new(operation, commit));
+    }
+    let mut replay = GameState::new();
+    replay.replay_envelopes(&recording).unwrap();
+    assert_eq!(replay.semantic_fingerprint(), state.semantic_fingerprint());
+    state
+        .apply_operation(SemanticOperation::EndSession)
+        .unwrap();
+    assert!(state.scenery().variables().is_empty());
+    assert!(state.scenery().server_variables().is_empty());
+}
 #[test]
 fn scenery_inputs_replay_reset_and_do_not_depend_on_projection_state() {
     let key = LocationKey {

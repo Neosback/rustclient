@@ -84,7 +84,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         |s| println!("{s}"),
     ))?;
     drop(entropy);
-    let (mut decoder, authenticated) = ConnectionDecoder::new(profile, login);
+    let (mut decoder, authenticated) = ConnectionDecoder::openrune(login);
     let mut sequence_policies = SequencePolicyResolver::new(
         Cache::open(DirectoryBlobs::open(&args[0])?)?,
         rustclient_cache::CacheProfile::OpenRune240,

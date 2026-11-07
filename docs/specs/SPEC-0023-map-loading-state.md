@@ -1,7 +1,7 @@
 # SPEC-0023: Map loading state
 
 Status: accepted for the retained-scene slice, 2026-10-31; instances, world views and
-teardown stay open under the roadmap Phase 3. Owners: model, game-state, application
+teardown stay open under the current roadmap. Owners: model, game-state, application
 scene projection, game-ui and the native/web scene views.
 Contract: [SPEC-0019](SPEC-0019-port-parity.md); client states:
 [SPEC-0020](SPEC-0020-client-cycle.md); overlay rule: [SPEC-0018](SPEC-0018-playable-desktop.md).
@@ -48,6 +48,11 @@ Stock 240 keeps drawing the previous scene while the replacement loads.
    235 state-25 behaviour and is recorded in `PARITY-DEVIATIONS.tsv`.
 6. The retired scene is dropped as soon as the replacement is installed; no two scenes are ever
    uploaded to the same frame.
+7. `SetMapAnchor` accepts a repeated authoritative window selection. An unchanged ordinary
+   window is a strict no-op, including after actor movement; it does not refresh placement,
+   clear ground items, invalidate the scene or advance generations. A changed window delegates
+   to the same `RebuildMap` transition. This input introduces no second map/window state and
+   no new fingerprint encoding. TSPS adapters use it for their repeated scene-base headers.
 
 ## Failure behaviour
 

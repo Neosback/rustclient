@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DIRECTORY = ROOT / 'docs/reference/rs240-port'
 SOURCE = DIRECTORY / 'PORT-MATRIX.tsv'
 OUTPUT = DIRECTORY / 'PORT-MATRIX.md'
-STATUSES = {'partial', 'implemented', 'not-implemented', 'incorrect'}
+STATUSES = {'partial', 'implemented', 'not-implemented', 'incorrect', 'unsupported', 'unverified'}
 
 
 def check_packets():
@@ -80,6 +80,7 @@ def render():
         '[REVIEW-BASELINE.json](REVIEW-BASELINE.json) binds this review to inspected files.', '',
         'Implementation and verification are separate. `implemented` applies only to the explicitly named subset.',
         '`partial` means working behavior still lacks branches. `not-implemented` means the semantic runtime/effect is absent.',
+        '`unsupported` means the selected profile explicitly rejects the required effect; `unverified` means existing code lacks the matching acceptance evidence.',
         '`incorrect` identifies a confirmed remaining contradiction. Test paths below describe available contracts;',
         'they do not claim those tests ran at this checkpoint or that desktop/browser visuals passed.', '',
         'P0: connected-world correctness. P1: normal gameplay parity. P2: supporting client/product behavior.', '',

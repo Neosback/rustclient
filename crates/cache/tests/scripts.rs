@@ -1,5 +1,36 @@
 use rustclient_cache::{GroupId, IndexId, Source, osrs240::scripts::decode, script::Opcode};
 use rustclient_model::ScriptId;
+
+#[test]
+fn tsps_profile_decodes_long_scripts_with_its_independently_pinned_command_map() {
+    let mut bytes = vec![0, 0, 61];
+    bytes.extend(17_i64.to_be_bytes());
+    bytes.extend([0, 21, 0]);
+    bytes.extend(2_u32.to_be_bytes());
+    for count in [0_u16, 0, 1, 0, 0, 1] {
+        bytes.extend(count.to_be_bytes());
+    }
+    bytes.push(0); // No switch tables.
+    bytes.extend(1_u16.to_be_bytes());
+    let source = Source::group(IndexId(12), GroupId(23));
+    let script =
+        rustclient_cache::tsps241::decode_script(&bytes, ScriptId::new(23), source).unwrap();
+    assert_eq!(script.locals, [0, 0, 1]);
+    assert_eq!(script.instructions[0].opcode, Opcode::Lconst);
+    assert_eq!(script.instructions[0].long, 17);
+    assert_eq!(
+        rustclient_cache::CacheProfile::parse("tsps-241")
+            .unwrap()
+            .name(),
+        "tsps-241"
+    );
+    for end in 0..bytes.len() {
+        assert!(
+            rustclient_cache::tsps241::decode_script(&bytes[..end], ScriptId::new(23), source)
+                .is_err()
+        );
+    }
+}
 #[test]
 fn revision_240_script_footer_long_operands_switches_and_truncation_are_bounded() {
     // Synthetic 240 grammar: empty name, LCONST(17), RETURN; 3 local/argument types.

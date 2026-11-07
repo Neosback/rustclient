@@ -17,3 +17,6 @@ pub use storage::DirectoryStorage;
 
 mod tcp;
 pub use tcp::{ConnectionCancellation, NativeTcp};
+
+mod websocket;
+pub use websocket::NativeWebSocket;

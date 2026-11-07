@@ -1,0 +1,160 @@
+{
+  "sourceCommit": "ac7b52a21df137cbd6c011c73fd2f173cbc274d6",
+  "cases": [
+    {
+      "name": "login-success",
+      "bytes": 10,
+      "sha256": "94470247d62078144592b4f44f11e67a1dd1611a60362092a0d1059d66e787c7"
+    },
+    {
+      "name": "login-rejected",
+      "bytes": 39,
+      "sha256": "4004d2e1ad401b543fe05f81015741862224917f3ff7e5d92b21d697ab1e261b"
+    },
+    {
+      "name": "handshake",
+      "bytes": 67,
+      "sha256": "89e53e34bd1ab3002147c622de76e2f8e998fcc75ea47ccaf87427dd16a911d2"
+    },
+    {
+      "name": "animations",
+      "bytes": 23,
+      "sha256": "efc2f9a78af7251b1ed576994e60f7e0c20588c1f14e4269aca7c0fc0115f32d"
+    },
+    {
+      "name": "initial-placement",
+      "bytes": 22,
+      "sha256": "8b2265ee552daa7760b1a097bd54494a5c8b36039879323394fa5c659423fa45"
+    },
+    {
+      "name": "varp-small",
+      "bytes": 4,
+      "sha256": "3916fd4dc5afdd448bb0ad19925239b52cd340b696a4c81864fbc928872ed50b"
+    },
+    {
+      "name": "varp-large",
+      "bytes": 7,
+      "sha256": "7412b6ff8d98911f961f98df913e433927d62bec793dcfc4267cc3a82465ec16"
+    },
+    {
+      "name": "inventory",
+      "bytes": 14,
+      "sha256": "922a161597fce3ad2defd9af7ea1c314dc1d6302384612e12f758a85444d1f24"
+    },
+    {
+      "name": "logout",
+      "bytes": 4,
+      "sha256": "59d33d778813745488932df7d153247963022cdd0c656c42a02e28b6d987daa5"
+    },
+    {
+      "name": "walk",
+      "bytes": 6,
+      "sha256": "6683c170716babdbb39c33811f6cfd3349350b162c908320243507e8f9123e2b"
+    },
+    {
+      "name": "login-request",
+      "bytes": 21,
+      "sha256": "abf262a3871d24ae67477a05f8dff47f518953c80a4f43a0a74f98ee416503e5"
+    },
+    {
+      "name": "chat-request",
+      "bytes": 9,
+      "sha256": "f98cb2355e045186d48daf0646d54d71abb7ca39c104ade791db4fbe60e7e1c2"
+    },
+    {
+      "name": "count-request",
+      "bytes": 5,
+      "sha256": "fd207aeb76e45c569e158cf50361ca08c003c3b21b48eb4e170e103828785fd6"
+    },
+    {
+      "name": "widget-request",
+      "bytes": 23,
+      "sha256": "7cdb222b9f28c7a7c0d7ce85053cf5cd2e5276314285141085746bfa952596e4"
+    },
+    {
+      "name": "appearance-naked",
+      "bytes": 91,
+      "sha256": "6a31418e32322f555c2b755a428cd7a284e2ba590ad6a20712a7fa195a42c54d"
+    },
+    {
+      "name": "appearance-ring",
+      "bytes": 91,
+      "sha256": "24dbd1c1c63b42cbbf706e6279bf291bb842c21f4e70a89d64b9b9dc9b621940"
+    },
+    {
+      "name": "client-script",
+      "bytes": 18,
+      "sha256": "d69f761c1a1d173aaab768e6142c29b88f27d65565de771b55fd1eb4c3c195ca"
+    },
+    {
+      "name": "widget-script",
+      "bytes": 57,
+      "sha256": "01324bfefaccf846ec7f0f1776d96c404c36b1180c1190e43fd80a0b1c1b0126"
+    },
+    {
+      "name": "widget-script-varbit",
+      "bytes": 20,
+      "sha256": "7e983925b21abbad7c369312602e393aa8284022dcf972d42f6e9fa125dd0f15"
+    },
+    {
+      "name": "interface-open",
+      "bytes": 25,
+      "sha256": "b29a3066ef8c259619f0b1933a8e324e93f82c149a46c72f34118f0a8fec916d"
+    },
+    {
+      "name": "interface-scoped-script",
+      "bytes": 27,
+      "sha256": "02c9528fa1b7799663eb4ad54190e3e964d6c37e84654616b039cf7762f99615"
+    },
+    {
+      "name": "interface-flags",
+      "bytes": 9,
+      "sha256": "eeee957c4748514f3dcff2fc4b6d7119cf49d2ffee758152bba1acfe7a364614"
+    },
+    {
+      "name": "interface-range",
+      "bytes": 13,
+      "sha256": "961879965fec537578fd41d36c7493b74b86e9286e8c2e19d507d2d1a3aebcf2"
+    },
+    {
+      "name": "interface-range-v2",
+      "bytes": 17,
+      "sha256": "0a386a61e22969ce231adf7c0a5e6978cccaed7afdd4a983ec876286c743904c"
+    },
+    {
+      "name": "varbit",
+      "bytes": 7,
+      "sha256": "90793f368981033c23f0b198724a104ee5d21e10af9f1c86a56db074a09b00d2"
+    },
+    {
+      "name": "interface-varbit",
+      "bytes": 21,
+      "sha256": "d245b1645d987438f3f567abc40e47d8aed8ec83f33247c2fbfbca967271c249"
+    },
+    {
+      "name": "player-idle",
+      "bytes": 24,
+      "sha256": "7b47db102ee94bbcfb0ccc203dab08071d1e76e1e07a68e04814ccd4a503df9d"
+    },
+    {
+      "name": "player-map-shift",
+      "bytes": 22,
+      "sha256": "7324f43d31c450d9e2b5ba85f0d5eecae802adf90ee0e9524c5a63f1c723c537"
+    },
+    {
+      "name": "player-map-repeat",
+      "bytes": 20,
+      "sha256": "07ab874f0e7f6dd343ce8551e983c207bf6bc6f12d69ea461a56324a326c643a"
+    },
+    {
+      "name": "script-inventory-limit",
+      "bytes": 25,
+      "sha256": "5d3797fecc66b8b4bcb9e210debdd295e3084c9a751de1ef70e1502e0261169d"
+    },
+    {
+      "name": "logout-reason",
+      "bytes": 21,
+      "sha256": "e916dcf11487338b3378d7a93d4374e71d04b3a9df135989bda6dd15a38453f0"
+    }
+  ]
+}

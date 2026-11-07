@@ -24,7 +24,7 @@ const KNOWN: u32 = 0x10
     | 0x200
     | 0x80000;
 #[derive(Default)]
-pub(super) struct Extended {
+pub(crate) struct Extended {
     pub appearance: Option<PlayerAppearance>,
     pub sequence: SequenceChange,
     pub sequence_delay: u8,

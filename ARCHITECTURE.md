@@ -8,19 +8,20 @@ RustClient is an OSRS-style client platform for private servers. It is not desig
 
 ## Initial delivery target
 
-OpenRune 240.2 is the first concrete server target. The product aims for
-nearly 1:1 OSRS 240 behavior and applicable pinned RuneLite feature effects,
-with simpler plugin authoring and the same core
-on desktop and browser Wasm. RuneLite/deob 240 and both directions of rsprox
-packet codecs are behavioral evidence; OpenRune's selected rsprot 240 sources
-and cache resolve revision differences. OpenRune FileStore supplies cache decoder
-research; RustOSRS supplies additional scene/GPU evidence. See
-[the source map](docs/reference/INDEX.md) and
-[implementation status](docs/reference/rs240-port/CURRENT-AUDIT.md). The
-[parity contract](docs/specs/SPEC-0019-port-parity.md) requires observable behavior
-to match; Rust ownership/API/performance improvements preserve those contracts
-unless an explicit evidenced deviation is accepted.
-[The roadmap](docs/plan/PORTING-ROADMAP.md) is the current execution order.
+TSPS cache-241 is the primary development target under
+[SPEC-0031](docs/specs/SPEC-0031-tsps-profile.md). Its adapter is experimental:
+registration and codec fixtures do not establish playable compatibility. OpenRune
+240.2 remains available during migration. Classic behavior targets 1:1 fidelity
+with the applicable pinned stock/RuneLite contracts; acceptance remains incomplete. TSPS supplies its custom
+wire contract and extension ideas, not an alternative authority for stock behavior.
+
+Keep exact stock/deob evidence for unresolved input/cycle/interface/actor/render
+behavior, RuneLite evidence for plugin events and classic GPU, and packet evidence
+for retained profiles. Revision differences require matching evidence. RustClient
+owns all implementations; no reference tree is a Cargo/runtime dependency.
+See [the source map](docs/reference/INDEX.md),
+[the parity contract](docs/specs/SPEC-0019-port-parity.md) and
+[the roadmap](docs/plan/PORTING-ROADMAP.md).
 
 ## Core rule
 

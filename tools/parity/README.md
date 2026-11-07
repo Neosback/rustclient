@@ -128,7 +128,7 @@ stream through the unmodified connection decoder, `ClientScripts` and `WidgetTre
 (take the dump at the end of the capture; the stream keeps growing while the client runs):
 
 ```sh
-cargo run -p rustclient-native --bin reference_replay -- CACHE_DIR STREAM.log MAX_PACKETS fixed LOCAL_INDEX > rust.tsv
+cargo run -p rustclient-native --features diagnostics --bin reference_replay -- CACHE_DIR STREAM.log MAX_PACKETS fixed LOCAL_INDEX > rust.tsv
 python3 tools/parity/compare-layout.py rust.tsv target/runelite-240-runtime/recordings/NAME.json
 ```
 

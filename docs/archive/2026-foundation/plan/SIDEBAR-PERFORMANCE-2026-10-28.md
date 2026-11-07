@@ -32,7 +32,7 @@ attributed to this checkpoint.
   unchanged hover targets perform no update/layout/paint. Scrolling skips layout.
 - Repository-owned Blitz and Dioxus compatibility fixes address child reordering, stale
   node identities, overflow hit testing and removed focus/hover references. See
-  [vendor provenance](../../../../vendor/README.md).
+  [vendor provenance](../../retired-shell/README.md).
 
 ## Measured resource and CPU improvements
 

@@ -11,7 +11,15 @@ pub struct PublicChatMessage {
     compressed: Vec<u8>,
 }
 impl PublicChatMessage {
-    pub(super) fn append(self, chat_type: u8, body: &mut Vec<u8>) {
+    pub(crate) fn plain(&self, codec: &Huffman) -> Result<(String, u8, u8, &[u8])> {
+        Ok((
+            codec.decode_message(&self.compressed)?,
+            self.colour,
+            self.effect,
+            &self.pattern,
+        ))
+    }
+    pub(crate) fn append(self, chat_type: u8, body: &mut Vec<u8>) {
         body.extend([self.colour, self.effect]);
         body.extend(self.pattern);
         body.extend(self.compressed);

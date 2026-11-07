@@ -11,12 +11,18 @@ Sources: [TSPS-241-REVIEW](TSPS-241-REVIEW-2026-10-29.md) and
 [TSPS-GIT-SHORTLIST](TSPS-GIT-SHORTLIST-2026-10-29.md). The TS source was read there, not here; nothing
 below was re-checked against it, and its tests were not run.
 
+The TSPS migration continuation inspected the current checkout at
+`ac7b52a21df137cbd6c011c73fd2f173cbc274d6` for wire formats and appearance handling.
+That limited review does not revalidate every historical row below. The new TSPS appearance
+adapter rejects unowned extension facts instead of copying simplified skip logic.
+
 ## Where the TS client differs from stock (do not adopt)
 
 | Area | Stock (authority) | TS client | Rust owner and state |
 | --- | --- | --- | --- |
 | Face priority and depth | Authored face order and depth bias, strict reverse-Z with deferred opaque writes (SPEC-0016) | Priority masked to 3 bits and added to view depth; `less-equal` with depth writes | renderer / scene; unchanged |
-| Wall decoration offsets | Stock placement | `wallDecorationNudge`, `embeddedWallDecorationShift` corrections (some removed upstream) | scene `decorations.rs`, `locations.rs`. **Our own `FLUSH_DIAGONAL_DECORATIONS = true` and straight nudges disagree with SPEC-0016's baseline: unreconciled, check against the deob first** |
+| Wall decoration offsets | Stock placement | `wallDecorationNudge`, `embeddedWallDecorationShift` corrections (some removed upstream) | scene `decorations.rs`, `locations.rs`. **Current source disables `FLUSH_DIAGONAL_DECORATIONS` and documents stock 240 placement/rescaling. The earlier enabled-snap observation is stale; live location/depth acceptance remains unverified** |
+| Appearance customisation | Exact format and retained semantic effects | Current `AppearanceDecoder.ts` explicitly calls its override-data skip simplified and reads/discards guessed words | `protocol::tsps_241::appearance` validates the represented subset and rejects customisation, head icons, extra text-gender/name/worn-container facts it cannot retain. This is an explicit gap, not full appearance support. |
 | Effect heights and lifetimes | Cycle-driven, held in GameState | `TILE_GFX_LIFT_UNITS = 8`, wall-clock grace for chained effects | game-state `ActorEffectsState`; definition durations still defaulted (`*-DEFAULT-DURATION`) |
 | NPC movement step | Per-axis stepping | Normalised distance with an epsilon | game-state path queue |
 | Animation continuity | Stock sequence/pose rules | 150 ms cross-sequence grace, previous-pose holding, neutral-geometry fallback; looping reset in `ActorAnimation` | scene `entity_mesh`; unchanged |

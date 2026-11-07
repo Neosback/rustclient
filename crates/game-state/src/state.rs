@@ -200,6 +200,21 @@ impl GameState {
             .scene
             .and_then(|scene| scene.contains_footprint(position).then_some(scene));
     }
+    pub(crate) fn set_map_anchor(
+        &mut self,
+        anchor: rustclient_model::MapAnchor,
+    ) -> Result<(InitialPlacement, bool), ConnectionStateError> {
+        let previous = self
+            .placement
+            .ok_or(ConnectionStateError::SceneRequiresPlacement)?;
+        if previous.area.is_none()
+            && previous.map_anchor.x == anchor.x
+            && previous.map_anchor.y == anchor.y
+        {
+            return Ok((previous, false));
+        }
+        self.rebuild_map(anchor)
+    }
     pub(crate) fn rebuild_map(
         &mut self,
         anchor: rustclient_model::MapAnchor,
