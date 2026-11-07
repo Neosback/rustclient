@@ -2727,6 +2727,7 @@ dependencies = [
  "rustclient-game-ui",
  "rustclient-model",
  "rustclient-scene",
+ "sha2",
  "web-time",
  "wgpu",
 ]
